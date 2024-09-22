@@ -1,95 +1,179 @@
 package e2e
 
 import (
-	"fmt"
 	"path"
-	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/util/retry"
-
-	operator "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+//nolint:dupl
 var _ = Describe("test  vmalert Controller", func() {
+	ctx := context.Background()
+	It("must clean up previous test resutls", func() {
+		ctx = context.Background()
+		// clean up before tests
+		Expect(k8sClient.DeleteAllOf(ctx, &v1beta1vm.VMAlert{}, &client.DeleteAllOfOptions{
+			ListOptions: client.ListOptions{
+				Namespace: namespace,
+			},
+		})).To(Succeed())
+		Eventually(func() bool {
+			var unDeletedObjects v1beta1vm.VMAlertList
+			Expect(k8sClient.List(ctx, &unDeletedObjects, &client.ListOptions{
+				Namespace: namespace,
+			})).To(Succeed())
+			return len(unDeletedObjects.Items) == 0
+		}, eventualDeletionTimeout).Should(BeTrue())
+	})
+
 	Context("e2e vmalert", func() {
-		ctx := context.Background()
-		Context("crud", func() {
-			Context("create", func() {
-				Name := "vmalert-example"
-				Namespace := "default"
-				AfterEach(func() {
-					Expect(k8sClient.Delete(ctx, &operator.VMAlert{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      Name,
-							Namespace: Namespace,
+		namespace := "default"
+		namespacedName := types.NamespacedName{
+			Namespace: namespace,
+		}
+		AfterEach(func() {
+			Expect(k8sClient.Delete(ctx, &v1beta1vm.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      namespacedName.Name,
+					Namespace: namespacedName.Namespace,
+				},
+			},
+			)).To(Succeed())
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{
+					Name:      namespacedName.Name,
+					Namespace: namespacedName.Namespace,
+				}, &v1beta1vm.VMAlert{})
+			}, eventualDeletionTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+		})
+		tlsSecretName := "vmalert-remote-tls"
+		DescribeTable("should create vmalert",
+			func(name string, cr *v1beta1vm.VMAlert, setup func(), verify func(*v1beta1vm.VMAlert)) {
+
+				cr.Name = name
+				namespacedName.Name = name
+				if setup != nil {
+					setup()
+				}
+				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAlert{}, namespacedName)
+				}, eventualDeploymentAppReadyTimeout,
+				).Should(Succeed())
+
+				var created v1beta1vm.VMAlert
+				Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
+				verify(&created)
+
+			},
+			Entry("with extra env and read source", "with-extra-env",
+				&v1beta1vm.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespacedName.Namespace,
+					},
+					Spec: v1beta1vm.VMAlertSpec{
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+							ExtraEnvs: []corev1.EnvVar{
+								{
+									Name:  "external_url",
+									Value: "http://external-url.com",
+								},
+							},
+						},
+						Notifier:  &v1beta1vm.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
+						Notifiers: []v1beta1vm.VMAlertNotifierSpec{{URL: "http://alert-manager-2:9093"}},
+						Datasource: v1beta1vm.VMAlertDatasourceSpec{
+							URL: "http://some-datasource-url:8428",
 						},
 					},
-					)).To(Succeed())
-					time.Sleep(time.Second * 8)
-					Eventually(func() error {
-						err := k8sClient.Get(context.Background(), types.NamespacedName{
-							Name:      Name,
-							Namespace: Namespace,
-						}, &operator.VMAlert{})
-						if errors.IsNotFound(err) {
-							return nil
-						}
-						return fmt.Errorf("want NotFound error, got: %w", err)
-					}, 60, 1).Should(BeNil())
-				})
-				It("should create", func() {
-					Expect(k8sClient.Create(ctx, &operator.VMAlert{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: Namespace,
-							Name:      Name,
+				},
+				nil,
+				func(cr *v1beta1vm.VMAlert) {
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+
+				},
+			),
+			Entry("with remote read and notifier tls", "with-remote-read-notifier-tls",
+				&v1beta1vm.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespacedName.Namespace,
+					},
+					Spec: v1beta1vm.VMAlertSpec{
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+							Secrets:      []string{tlsSecretName},
 						},
-						Spec: operator.VMAlertSpec{
-							CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-								ExtraEnvs: []corev1.EnvVar{
-									{
-										Name:  "external_url",
-										Value: "http://external-url.com",
+						Notifiers: []v1beta1vm.VMAlertNotifierSpec{
+							{
+								URL: "http://alert-manager-url:9093",
+								HTTPAuth: v1beta1vm.HTTPAuth{
+									TLSConfig: &v1beta1vm.TLSConfig{
+										CertFile: path.Join(v1beta1vm.SecretsDir, tlsSecretName, "remote-cert"),
+										KeyFile:  path.Join(v1beta1vm.SecretsDir, tlsSecretName, "remote-key"),
+										CAFile:   path.Join(v1beta1vm.SecretsDir, tlsSecretName, "remote-ca"),
 									},
 								},
 							},
-							Notifier:  &operator.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
-							Notifiers: []operator.VMAlertNotifierSpec{{URL: "http://alert-manager-2:9093"}},
-							Datasource: operator.VMAlertDatasourceSpec{
-								URL: "http://some-datasource-url:8428",
+						},
+						Datasource: v1beta1vm.VMAlertDatasourceSpec{
+							URL: "http://some-datasource-url:8428",
+							HTTPAuth: v1beta1vm.HTTPAuth{
+								TLSConfig: &v1beta1vm.TLSConfig{
+									CertFile: path.Join(v1beta1vm.SecretsDir, tlsSecretName, "remote-cert"),
+									KeyFile:  path.Join(v1beta1vm.SecretsDir, tlsSecretName, "remote-key"),
+									CAFile:   path.Join(v1beta1vm.SecretsDir, tlsSecretName, "remote-ca"),
+								},
 							},
 						},
-					})).Should(Succeed())
-					vmAlert := &operator.VMAlert{}
-					Expect(k8sClient.Get(ctx, types.NamespacedName{
-						Namespace: Namespace,
-						Name:      Name,
-					}, vmAlert)).To(Succeed())
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &operator.VMAlert{}, types.NamespacedName{
-							Name:      Name,
-							Namespace: Namespace,
-						})
-					}, clusterReadyTimeout).Should(Succeed())
-
-					Eventually(func() string {
-						return expectPodCount(k8sClient, 1, Namespace, vmAlert.SelectorLabels())
-					}, 60, 1).Should(BeEmpty())
-				})
-				It("should create with remote read and notifier tls", func() {
-					tlsSecretName := "vmalert-remote-tls"
+						RemoteRead: &v1beta1vm.VMAlertRemoteReadSpec{
+							URL: "http://some-vmsingle-url",
+							HTTPAuth: v1beta1vm.HTTPAuth{
+								TLSConfig: &v1beta1vm.TLSConfig{
+									CA: v1beta1vm.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: tlsSecretName,
+											},
+											Key: "remote-ca",
+										},
+									},
+									Cert: v1beta1vm.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: tlsSecretName,
+											},
+											Key: "remote-cert",
+										},
+									},
+									KeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: tlsSecretName,
+										},
+										Key: "remote-key",
+									},
+								},
+							},
+						},
+					},
+				},
+				func() {
 					tlsSecret := &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      tlsSecretName,
-							Namespace: Namespace,
+							Namespace: namespacedName.Namespace,
 						},
 						StringData: map[string]string{
 							"remote-ca":   tlsCA,
@@ -97,188 +181,106 @@ var _ = Describe("test  vmalert Controller", func() {
 							"remote-key":  tlsKey,
 						},
 					}
-					Expect(k8sClient.Create(ctx, tlsSecret)).To(Succeed())
-					time.Sleep(time.Second * 8)
-					Expect(k8sClient.Create(ctx, &operator.VMAlert{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: Namespace,
-							Name:      Name,
-						},
-						Spec: operator.VMAlertSpec{
-							CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-								Secrets:      []string{tlsSecretName},
-							},
-							Notifiers: []operator.VMAlertNotifierSpec{
-								{
-									URL: "http://alert-manager-url:9093",
-									HTTPAuth: operator.HTTPAuth{
-										TLSConfig: &operator.TLSConfig{
-											CertFile: path.Join(operator.SecretsDir, tlsSecretName, "remote-cert"),
-											KeyFile:  path.Join(operator.SecretsDir, tlsSecretName, "remote-key"),
-											CAFile:   path.Join(operator.SecretsDir, tlsSecretName, "remote-ca"),
-										},
-									},
-								},
-							},
-							Datasource: operator.VMAlertDatasourceSpec{
-								URL: "http://some-datasource-url:8428",
-								HTTPAuth: operator.HTTPAuth{
-									TLSConfig: &operator.TLSConfig{
-										CertFile: path.Join(operator.SecretsDir, tlsSecretName, "remote-cert"),
-										KeyFile:  path.Join(operator.SecretsDir, tlsSecretName, "remote-key"),
-										CAFile:   path.Join(operator.SecretsDir, tlsSecretName, "remote-ca"),
-									},
-								},
-							},
-							RemoteRead: &operator.VMAlertRemoteReadSpec{
-								URL: "http://some-vmsingle-url",
-								HTTPAuth: operator.HTTPAuth{
-									TLSConfig: &operator.TLSConfig{
-										CA: operator.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: tlsSecretName,
-												},
-												Key: "remote-ca",
-											},
-										},
-										Cert: operator.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: tlsSecretName,
-												},
-												Key: "remote-cert",
-											},
-										},
-										KeySecret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: tlsSecretName,
-											},
-											Key: "remote-key",
-										},
-									},
-								},
-							},
-						},
-					})).Should(Succeed())
-					vmAlert := &operator.VMAlert{}
-					Expect(k8sClient.Get(ctx, types.NamespacedName{
-						Namespace: Namespace,
-						Name:      Name,
-					}, vmAlert)).To(Succeed())
-					Eventually(func() string {
-						return expectPodCount(k8sClient, 1, Namespace, vmAlert.SelectorLabels())
-					}, 60, 1).Should(BeEmpty())
-					Expect(k8sClient.Delete(ctx, tlsSecret)).To(Succeed())
-				})
-			})
-			Context("update", func() {
-				name := "update-vmalert"
-				namespace := "default"
-				JustBeforeEach(func() {
-					Expect(k8sClient.Create(ctx, &operator.VMAlert{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      name,
-							Namespace: namespace,
-						},
-						Spec: operator.VMAlertSpec{
-							CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-							Datasource: operator.VMAlertDatasourceSpec{
-								URL: "http://some-vmsingle:8428",
-							},
-							Notifier: &operator.VMAlertNotifierSpec{URL: "http://some-alertmanager:9093"},
-						},
-					})).To(Succeed())
-					time.Sleep(time.Second * 2)
-				})
-				JustAfterEach(func() {
-					Expect(k8sClient.Delete(ctx, &operator.VMAlert{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      name,
-							Namespace: namespace,
-						},
-					})).To(Succeed())
-					time.Sleep(time.Second * 8)
-					Eventually(func() error {
-						err := k8sClient.Get(context.Background(), types.NamespacedName{
-							Name:      name,
-							Namespace: namespace,
-						}, &operator.VMAlert{})
-						if errors.IsNotFound(err) {
-							return nil
+					Expect(func() error {
+						if err := k8sClient.Create(ctx, tlsSecret); err != nil &&
+							!errors.IsAlreadyExists(err) {
+							return err
 						}
-						return fmt.Errorf("want NotFound error, got: %w", err)
-					}, 60, 1).Should(BeNil())
-				})
-				It("Should expand vmalert up to 3 replicas with custom prefix", func() {
-					vmAlert := &operator.VMAlert{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      name,
-							Namespace: namespace,
-						},
-						Spec: operator.VMAlertSpec{
-							Notifier: &operator.VMAlertNotifierSpec{
-								URL: "http://some-notifier-url",
-							},
-							Datasource: operator.VMAlertDatasourceSpec{
-								URL: "http://vmsingle-url:8428",
-							},
-						},
-					}
+						return nil
+					}()).To(Succeed())
+				},
+				func(cr *v1beta1vm.VMAlert) {
 					Eventually(func() string {
-						return expectPodCount(k8sClient, 1, namespace, vmAlert.SelectorLabels())
-					}, 60, 1).Should(BeEmpty())
-					Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-						Expect(k8sClient.Get(ctx, types.NamespacedName{
-							Namespace: namespace,
-							Name:      name,
-						}, vmAlert)).To(Succeed())
-						vmAlert.Spec.ReplicaCount = ptr.To[int32](3)
-						vmAlert.Spec.LogLevel = "INFO"
-						vmAlert.Spec.ExtraArgs = map[string]string{"http.pathPrefix": "/somenew/prefix"}
-						return k8sClient.Update(ctx, vmAlert)
+						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      tlsSecretName,
+							Namespace: namespacedName.Namespace,
+						},
 					})).To(Succeed())
-					Eventually(func() string {
-						return expectPodCount(k8sClient, 3, namespace, vmAlert.SelectorLabels())
-					}, 60, 1).Should(BeEmpty())
-				})
-				It("should update revisionHistoryLimit of vmalert to 3", func() {
-					namespacedName := types.NamespacedName{Name: fmt.Sprintf("vmalert-%s", name), Namespace: namespace}
-					Eventually(func() int32 {
-						return getRevisionHistoryLimit(k8sClient, namespacedName)
-					}, 60).Should(Equal(int32(10)))
-					vmAlert := &operator.VMAlert{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      name,
-							Namespace: namespace,
-						},
-						Spec: operator.VMAlertSpec{
-							Notifier: &operator.VMAlertNotifierSpec{
-								URL: "http://some-notifier-url",
-							},
-							Datasource: operator.VMAlertDatasourceSpec{
-								URL: "http://vmsingle-url:8428",
-							},
-						},
-					}
 
-					Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-						Expect(k8sClient.Get(ctx, types.NamespacedName{
-							Namespace: namespace,
-							Name:      name,
-						}, vmAlert)).To(Succeed())
-						vmAlert.Spec.RevisionHistoryLimitCount = ptr.To[int32](3)
-						return k8sClient.Update(ctx, vmAlert)
-					})).To(Succeed())
-					Eventually(func() int32 {
-						return getRevisionHistoryLimit(k8sClient, namespacedName)
-					}, 60).Should(Equal(int32(3)))
-				})
-			})
-		},
+				},
+			),
 		)
-	})
+		existObject := &v1beta1vm.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespacedName.Namespace,
+			},
+			Spec: v1beta1vm.VMAlertSpec{
+				CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To[int32](1),
+				},
+				Datasource: v1beta1vm.VMAlertDatasourceSpec{
+					URL: "http://localhost:8428",
+				},
+				Notifier: &v1beta1vm.VMAlertNotifierSpec{
+					URL: "http://localhost:9093",
+				},
+			},
+		}
+		DescribeTable("should update exist vmalert",
+			func(name string, modify func(*v1beta1vm.VMAlert), verify func(*v1beta1vm.VMAlert)) {
+				// create and wait ready
+				existObject := existObject.DeepCopy()
+				existObject.Name = name
+				namespacedName.Name = name
+				Expect(k8sClient.Create(ctx, existObject)).To(Succeed())
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAlert{}, namespacedName)
+				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				// update and wait ready
+				Eventually(func() error {
+					var toUpdate v1beta1vm.VMAlert
+					Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+					modify(&toUpdate)
+					return k8sClient.Update(ctx, &toUpdate)
+				}, eventualExpandingTimeout).Should(Succeed())
+				Eventually(func() error {
+					return expectObjectStatusExpanding(ctx, k8sClient, &v1beta1vm.VMAlert{}, namespacedName)
+				}, eventualExpandingTimeout).Should(Succeed())
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAlert{}, namespacedName)
+				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				// verify
+				var updated v1beta1vm.VMAlert
+				Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+				verify(&updated)
+			},
+			Entry("by expand up to 3 replicas with custom prefix", "replica-3-prefix",
+				func(cr *v1beta1vm.VMAlert) {
+					cr.Spec.ReplicaCount = ptr.To[int32](3)
+					cr.Spec.LogLevel = "INFO"
+					cr.Spec.ExtraArgs = map[string]string{"http.pathPrefix": "/somenew/prefix"}
+				},
+				func(cr *v1beta1vm.VMAlert) {
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
+					}, eventualDeploymentPodTimeout).Should(BeEmpty())
+				}),
+			Entry("by updating revisionHistoryLimit to 3", "historylimit-3",
+				func(cr *v1beta1vm.VMAlert) {
+					cr.Spec.RevisionHistoryLimitCount = ptr.To[int32](3)
+				},
+				func(cr *v1beta1vm.VMAlert) {
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+					}, eventualDeploymentPodTimeout).Should(BeEmpty())
+					Expect(getRevisionHistoryLimit(k8sClient, types.NamespacedName{
+						Name:      cr.PrefixedName(),
+						Namespace: namespacedName.Namespace,
+					})).To(Equal(int32(3)))
+				}),
+			Entry("by switching to vm config-reloader", "vm-reloader",
+				func(cr *v1beta1vm.VMAlert) {
+					cr.Spec.UseVMConfigReloader = ptr.To(true)
+				},
+				func(cr *v1beta1vm.VMAlert) {
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+				}),
+		)
+	},
+	)
 })

@@ -29,7 +29,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const eventualAppReadyTimeout = 20 * time.Second
+var (
+	eventualDeploymentAppReadyTimeout  = 60 * time.Second
+	eventualStatefulsetAppReadyTimeout = 80 * time.Second
+	eventualDeletionTimeout            = 30 * time.Second
+	eventualDeploymentPodTimeout       = 10 * time.Second
+	eventualExpandingTimeout           = 5 * time.Second
+)
 
 // Run e2e tests using the Ginkgo runner.
 func TestE2E(t *testing.T) {

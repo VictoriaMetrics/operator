@@ -3,9 +3,9 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
@@ -14,12 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
-)
-
-const (
-	clusterReadyTimeout = 50 * time.Second
 )
 
 var _ = Describe("e2e vmcluster", func() {
@@ -29,6 +24,23 @@ var _ = Describe("e2e vmcluster", func() {
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}
+		It("must clean up previous test resutls", func() {
+			ctx = context.Background()
+			// clean up before tests
+			Expect(k8sClient.DeleteAllOf(ctx, &v1beta1vm.VMCluster{}, &client.DeleteAllOfOptions{
+				ListOptions: client.ListOptions{
+					Namespace: namespace,
+				},
+			})).To(Succeed())
+			Eventually(func() bool {
+				var unDeletedObjects v1beta1vm.VMClusterList
+				Expect(k8sClient.List(ctx, &unDeletedObjects, &client.ListOptions{
+					Namespace: namespace,
+				})).To(Succeed())
+				return len(unDeletedObjects.Items) == 0
+			}, eventualDeletionTimeout).Should(BeTrue())
+
+		})
 
 		Context("create", func() {
 			JustBeforeEach(func() {
@@ -50,7 +62,7 @@ var _ = Describe("e2e vmcluster", func() {
 						return nil
 					}
 					return fmt.Errorf("want NotFound error, got: %w", err)
-				}, 60, 1).Should(BeNil())
+				}, eventualDeletionTimeout, 1).Should(BeNil())
 			})
 
 			DescribeTable("should create vmcluster", func(name string, cr *v1beta1vm.VMCluster) {
@@ -59,7 +71,7 @@ var _ = Describe("e2e vmcluster", func() {
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMCluster{}, namespacedName)
-				}, clusterReadyTimeout).Should(Succeed())
+				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 
 			},
 				Entry("without any componets", "empty", &v1beta1vm.VMCluster{
@@ -186,7 +198,7 @@ var _ = Describe("e2e vmcluster", func() {
 						Namespace: namespace,
 					}, &v1beta1vm.VMCluster{})
 
-				}, 60, 1).Should(MatchError(errors.IsNotFound, "want not found error"))
+				}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "want not found error"))
 			})
 			clusterForUpdate := &v1beta1vm.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -219,28 +231,30 @@ var _ = Describe("e2e vmcluster", func() {
 					Expect(k8sClient.Create(ctx, existCluster)).To(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, existCluster, namespacedName)
-					}, clusterReadyTimeout).
+					}, eventualStatefulsetAppReadyTimeout).
 						Should(Succeed())
 					Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMStorageSelectorLabels())).To(BeEmpty())
 					Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMSelectSelectorLabels())).To(BeEmpty())
 					Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMInsertSelectorLabels())).To(BeEmpty())
 
-					Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					// update and wait ready
+					Eventually(func() error {
 						var toUpdate v1beta1.VMCluster
 						if err := k8sClient.Get(ctx, namespacedName, &toUpdate); err != nil {
 							return err
 						}
 						modify(&toUpdate)
 						return k8sClient.Update(ctx, &toUpdate)
-					})).To(Succeed())
+					}, eventualExpandingTimeout).Should(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusExpanding(ctx, k8sClient, existCluster, namespacedName)
-					}, clusterReadyTimeout).
+					}, eventualStatefulsetAppReadyTimeout).
 						Should(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, existCluster, namespacedName)
-					}, clusterReadyTimeout).
+					}, eventualStatefulsetAppReadyTimeout).
 						Should(Succeed())
+						// verify results
 					verify(existCluster)
 				},
 				Entry("update storage and select replicas to 2", "storage-select-r-2", func(cr *v1beta1vm.VMCluster) {
@@ -258,7 +272,7 @@ var _ = Describe("e2e vmcluster", func() {
 					Expect(expectPodCount(k8sClient, 2, namespace, cr.VMStorageSelectorLabels())).To(BeEmpty())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 2, namespace, cr.VMInsertSelectorLabels())
-					}, 5*time.Second).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout).Should(BeEmpty())
 				}),
 				Entry("update storage revisionHistoryLimit to 2", "storage-revision-2", func(cr *v1beta1vm.VMCluster) {
 					cr.Spec.VMStorage.RevisionHistoryLimitCount = ptr.To[int32](2)

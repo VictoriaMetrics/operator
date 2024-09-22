@@ -1,16 +1,16 @@
 package e2e
 
 import (
-	"fmt"
-	"time"
+	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/util/retry"
-
-	operator "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,155 +33,192 @@ receivers:
   - url: 'http://alertmanagerwh:30500/'`
 )
 
-var _ = Describe("e2e vmalertmanager ", func() {
-	Context("crud", func() {
+//nolint:dupl
+var _ = Describe("test  vmalertmanager Controller", func() {
+	It("must clean up previous test resutls", func() {
 		ctx := context.Background()
-		Context("create", func() {
-			name := "create-am"
-			namespace := "default"
-			JustAfterEach(func() {
-				Expect(k8sClient.Delete(ctx, &operator.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      name,
-					}})).To(Succeed())
-				Eventually(func() error {
-					err := k8sClient.Get(context.Background(), types.NamespacedName{
-						Name:      name,
-						Namespace: namespace,
-					}, &operator.VMAlertmanager{})
-					if errors.IsNotFound(err) {
-						return nil
-					}
-					return fmt.Errorf("want NotFound error, got: %w", err)
-				}, 60, 1).Should(BeNil())
-			})
-			It("should create vmalertmanager", func() {
-				Expect(k8sClient.Create(ctx, &operator.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      name,
-					},
-					Spec: operator.VMAlertmanagerSpec{
-						CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
-				})).To(Succeed())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &operator.VMAlertmanager{}, types.NamespacedName{
-						Name:      name,
-						Namespace: namespace,
-					})
-				}, clusterReadyTimeout).Should(Succeed())
-			})
+		// clean up before tests
+		Expect(k8sClient.DeleteAllOf(ctx, &v1beta1vm.VMAlertmanager{}, &client.DeleteAllOfOptions{
+			ListOptions: client.ListOptions{
+				Namespace: namespace,
+			},
+		})).To(Succeed())
+		Eventually(func() bool {
+			var unDeletedObjects v1beta1vm.VMAlertmanagerList
+			Expect(k8sClient.List(ctx, &unDeletedObjects, &client.ListOptions{
+				Namespace: namespace,
+			})).To(Succeed())
+			return len(unDeletedObjects.Items) == 0
+		}, eventualDeletionTimeout).Should(BeTrue())
+
+	})
+	Context("e2e vmalertmanager", func() {
+		ctx := context.Background()
+		namespace := "default"
+		namespacedName := types.NamespacedName{
+			Namespace: namespace,
+		}
+
+		// delete test results
+		AfterEach(func() {
+			Expect(finalize.SafeDelete(ctx, k8sClient, &v1beta1vm.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      namespacedName.Name,
+					Namespace: namespacedName.Namespace,
+				},
+			})).To(Succeed())
+			Eventually(func() error {
+				return k8sClient.Get(ctx, namespacedName, &v1beta1vm.VMAlertmanager{})
+			}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
 		})
-		Context("update", func() {
-			Name := "update-vmalermanager"
-			Namespace := "default"
-			configSecretName := "vma-conf"
-			JustBeforeEach(func() {
-				Expect(k8sClient.Create(ctx, &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: Namespace,
-						Name:      configSecretName,
-					},
-					StringData: map[string]string{
-						"alertmanager.yaml": alertmanagerTestConf,
-					}})).To(Succeed())
-				time.Sleep(time.Second * 3)
-				Expect(k8sClient.Create(ctx, &operator.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      Name,
-						Namespace: Namespace,
-					},
-					Spec: operator.VMAlertmanagerSpec{
-						CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-						ConfigSecret: configSecretName,
-					},
-				})).To(Succeed())
+		DescribeTable("should create alertmanager",
+			func(name string, cr *v1beta1vm.VMAlertmanager, verify func(*v1beta1vm.VMAlertmanager)) {
+				namespacedName.Name = name
+				cr.Name = name
+				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &operator.VMAlertmanager{}, types.NamespacedName{
-						Name:      Name,
-						Namespace: Namespace,
-					})
-				}, clusterReadyTimeout).Should(Succeed())
-
-				time.Sleep(time.Second * 3)
-			})
-			JustAfterEach(func() {
-				Expect(k8sClient.Delete(ctx, &operator.VMAlertmanager{
+					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAlertmanager{}, namespacedName)
+				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				var created v1beta1vm.VMAlertmanager
+				Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
+				verify(&created)
+			},
+			Entry("with 1 replica", "replica-1",
+				&v1beta1vm.VMAlertmanager{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      Name,
-						Namespace: Namespace,
-					},
-					Spec: operator.VMAlertmanagerSpec{
-						CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
-				})).To(Succeed())
-				Expect(k8sClient.Delete(ctx, &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      configSecretName,
-						Namespace: Namespace,
-					},
-				})).To(Succeed())
-				Eventually(func() error {
-					err := k8sClient.Get(context.Background(), types.NamespacedName{
-						Name:      Name,
 						Namespace: namespace,
-					}, &operator.VMAlertmanager{})
-					if errors.IsNotFound(err) {
+					},
+					Spec: v1beta1vm.VMAlertmanagerSpec{
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+				func(cr *v1beta1vm.VMAlertmanager) {
+					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(BeEmpty())
+				},
+			),
+			Entry("with vm config reloader", "vmreloader-create",
+				&v1beta1vm.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+					},
+					Spec: v1beta1vm.VMAlertmanagerSpec{
+						CommonConfigReloaderParams: v1beta1vm.CommonConfigReloaderParams{
+							UseVMConfigReloader: ptr.To(true),
+						},
+						CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+							UseDefaultResources: ptr.To(false),
+						},
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+				func(cr *v1beta1vm.VMAlertmanager) {
+					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(BeEmpty())
+				},
+			),
+		)
+
+		existAlertmanager := &v1beta1vm.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespacedName.Namespace,
+			},
+			Spec: v1beta1vm.VMAlertmanagerSpec{
+				CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To[int32](1),
+				},
+			},
+		}
+		DescribeTable("should update exist alertmanager",
+			func(name string, modify func(*v1beta1vm.VMAlertmanager), verify func(*v1beta1vm.VMAlertmanager)) {
+				// create and wait ready
+				existAlertmanager := existAlertmanager.DeepCopy()
+				existAlertmanager.Name = name
+				namespacedName.Name = name
+				Expect(k8sClient.Create(ctx, existAlertmanager)).To(Succeed())
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAlertmanager{}, namespacedName)
+				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				// update and wait ready
+				Eventually(func() error {
+					var toUpdate v1beta1vm.VMAlertmanager
+					Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+					modify(&toUpdate)
+					return k8sClient.Update(ctx, &toUpdate)
+				}, eventualExpandingTimeout).Should(Succeed())
+				Eventually(func() error {
+					return expectObjectStatusExpanding(ctx, k8sClient, &v1beta1vm.VMAlertmanager{}, namespacedName)
+				}, eventualExpandingTimeout).Should(Succeed())
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAlertmanager{}, namespacedName)
+				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				// verify
+				var updated v1beta1vm.VMAlertmanager
+				Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+				verify(&updated)
+			},
+			Entry("by changing replicas to 2", "update-replica-2",
+				func(cr *v1beta1vm.VMAlertmanager) {
+					cr.Spec.ReplicaCount = ptr.To[int32](2)
+				},
+				func(cr *v1beta1vm.VMAlertmanager) {
+					Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())).To(BeEmpty())
+				},
+			),
+			Entry("by changing default config", "change-config",
+				func(cr *v1beta1vm.VMAlertmanager) {
+					cr.Spec.ReplicaCount = ptr.To[int32](1)
+					cr.Spec.ConfigSecret = "non-default-am-config"
+					// create secret with config
+					Expect(func() error {
+						dstSecret := corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      cr.Spec.ConfigSecret,
+								Namespace: namespace,
+							},
+							Data: map[string][]byte{
+								"alertmanager.yaml": []byte(alertmanagerTestConf),
+							},
+						}
+						if err := k8sClient.Create(ctx, &dstSecret); err != nil && !errors.IsNotFound(err) {
+							return err
+						}
 						return nil
-					}
-					return fmt.Errorf("want NotFound error, got: %w", err)
-				}, 10, 1).Should(BeNil())
-			})
-			It("Should expand alertmanager to 2 replicas", func() {
-				currVma := &operator.VMAlertmanager{}
-				Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: Namespace, Name: Name}, currVma)).To(Succeed())
-					currVma.Spec.ReplicaCount = ptr.To[int32](2)
-					return k8sClient.Update(ctx, currVma)
-				})).To(Succeed())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &operator.VMAlertmanager{}, types.NamespacedName{
-						Name:      Name,
-						Namespace: Namespace,
-					})
-				}, clusterReadyTimeout).Should(Succeed())
+					}()).To(Succeed())
+				},
+				func(cr *v1beta1vm.VMAlertmanager) {
+					var amCfg corev1.Secret
+					Expect(k8sClient.Get(ctx,
+						types.NamespacedName{Name: cr.ConfigSecretName(), Namespace: namespace}, &amCfg)).To(Succeed())
+					Expect(string(amCfg.Data["alertmanager.yaml"])).To(Equal(alertmanagerTestConf))
+					Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      cr.Spec.ConfigSecret,
+							Namespace: namespace,
+						}})).To(Succeed())
+				},
+			),
 
-				Eventually(func() string {
-					return expectPodCount(k8sClient, 2, Namespace, currVma.SelectorLabels())
-				}, clusterReadyTimeout).Should(BeEmpty())
-			})
-			It("Should switch alertmanager to custom config reloader", func() {
-				currVma := &operator.VMAlertmanager{}
-				Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: Namespace, Name: Name}, currVma)).To(Succeed())
-					currVma.Spec.CommonConfigReloaderParams.UseVMConfigReloader = ptr.To(true)
-					return k8sClient.Update(ctx, currVma)
-				})).To(Succeed())
-				Eventually(func() error {
-					return expectObjectStatusExpanding(ctx, k8sClient, &operator.VMAlertmanager{}, types.NamespacedName{
-						Name:      Name,
-						Namespace: Namespace,
-					})
-				}, clusterReadyTimeout).Should(Succeed())
-
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &operator.VMAlertmanager{}, types.NamespacedName{
-						Name:      Name,
-						Namespace: Namespace,
-					})
-					// TODO investigate why it takes 60 seconds for pod start-up
-				}, 120*time.Second).Should(Succeed())
-				Expect(expectPodCount(k8sClient, 1, Namespace, currVma.SelectorLabels())).To(BeEmpty())
-			})
-
-		})
+			Entry("by switching to vm config reloader and empty resources", "switch-vm-reloader",
+				func(cr *v1beta1vm.VMAlertmanager) {
+					cr.Spec.ReplicaCount = ptr.To[int32](1)
+					cr.Spec.UseVMConfigReloader = ptr.To(true)
+					cr.Spec.UseDefaultResources = ptr.To(false)
+				},
+				func(cr *v1beta1vm.VMAlertmanager) {
+					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(BeEmpty())
+					var updatedSts appsv1.StatefulSet
+					Expect(k8sClient.Get(ctx, types.NamespacedName{
+						Namespace: namespace,
+						Name:      cr.PrefixedName(),
+					}, &updatedSts)).To(Succeed())
+					Expect(updatedSts.Spec.Template.Spec.Containers).To(HaveLen(2))
+					Expect(updatedSts.Spec.Template.Spec.Containers[0].Resources).To(Equal(corev1.ResourceRequirements{}))
+					Expect(updatedSts.Spec.Template.Spec.Containers[1].Resources).To(Equal(corev1.ResourceRequirements{}))
+				},
+			),
+		)
 	})
 })

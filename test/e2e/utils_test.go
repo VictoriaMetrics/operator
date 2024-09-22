@@ -69,18 +69,22 @@ func expectObjectStatus(ctx context.Context,
 	}
 	type objectStatus struct {
 		Status struct {
-			CurrentStatus string `json:"clusterStatus"`
-			UpdateStatus  string `json:"updateStatus"`
+			CurrentStatus      string `json:"clusterStatus"`
+			UpdateStatus       string `json:"updateStatus"`
+			SingleUpdateStatus string `json:"singleStatus,omitempty"`
 		} `json:"status"`
 	}
 	var obs objectStatus
 	if err := json.Unmarshal(jsD, &obs); err != nil {
 		return err
 	}
-	if obs.Status.UpdateStatus != string(status) && obs.Status.CurrentStatus != string(status) {
-		return fmt.Errorf("not expected object status: %s current status %s",
+	if obs.Status.UpdateStatus != string(status) &&
+		obs.Status.CurrentStatus != string(status) &&
+		obs.Status.SingleUpdateStatus != string(status) {
+		return fmt.Errorf("not expected object status=%q cluster status=%q,single_status=%q",
 			obs.Status.UpdateStatus,
-			obs.Status.CurrentStatus)
+			obs.Status.CurrentStatus,
+			obs.Status.SingleUpdateStatus)
 	}
 
 	return nil

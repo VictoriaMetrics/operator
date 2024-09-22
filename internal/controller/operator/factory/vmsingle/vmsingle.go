@@ -50,6 +50,11 @@ func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 		},
 		Spec: *cr.Spec.Storage,
 	}
+	if len(pvcObject.Spec.AccessModes) == 0 {
+		pvcObject.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{
+			corev1.ReadWriteOnce,
+		}
+	}
 	return pvcObject
 }
 

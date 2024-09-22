@@ -46,6 +46,12 @@ func makeVLogsPvc(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 		},
 		Spec: *r.Spec.Storage,
 	}
+	if len(pvcObject.Spec.AccessModes) == 0 {
+		pvcObject.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{
+			corev1.ReadWriteOnce,
+		}
+	}
+
 	return pvcObject
 }
 

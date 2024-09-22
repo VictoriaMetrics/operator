@@ -167,10 +167,15 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 					return fmt.Errorf("cannot fill placeholders for deployment sharded vmagent: %w", err)
 				}
 				if prevShardedObject != nil {
-					prevDeploy = prevShardedObject.(*appsv1.Deployment)
-					prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
-					if err != nil {
-						return fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent: %w", err)
+					// prev object could be deployment due to switching from statefulmode
+					prevObjApp, ok := prevShardedObject.(*appsv1.Deployment)
+					if ok {
+						prevDeploy = prevObjApp
+						prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
+						if err != nil {
+							return fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent: %w", err)
+						}
+
 					}
 				}
 				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, prevDeploy, false); err != nil {
@@ -184,10 +189,15 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 					return fmt.Errorf("cannot fill placeholders for sts in sharded vmagent: %w", err)
 				}
 				if prevShardedObject != nil {
-					prevSts = prevShardedObject.(*appsv1.StatefulSet)
-					prevSts, err = k8stools.RenderPlaceholders(prevSts, placeholders)
-					if err != nil {
-						return fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent: %w", err)
+					// prev object could be deployment due to switching to statefulmode
+					prevObjApp, ok := prevShardedObject.(*appsv1.StatefulSet)
+					if ok {
+						prevSts = prevObjApp
+						prevSts, err = k8stools.RenderPlaceholders(prevSts, placeholders)
+						if err != nil {
+							return fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent: %w", err)
+						}
+
 					}
 				}
 				stsOpts := reconcile.STSOptions{
@@ -209,12 +219,14 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		case *appsv1.Deployment:
 			var prevDeploy *appsv1.Deployment
 			if prevObjectSpec != nil {
-				prevDeploy = prevObjectSpec.(*appsv1.Deployment)
-				prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, defaultPlaceholders)
-				if err != nil {
-					return fmt.Errorf("cannot fill placeholders for prev deployment in vmagent: %w", err)
+				prevAppObject, ok := prevObjectSpec.(*appsv1.Deployment)
+				if ok {
+					prevDeploy = prevAppObject
+					prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, defaultPlaceholders)
+					if err != nil {
+						return fmt.Errorf("cannot fill placeholders for prev deployment in vmagent: %w", err)
+					}
 				}
-
 			}
 
 			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
@@ -228,10 +240,13 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		case *appsv1.StatefulSet:
 			var prevSTS *appsv1.StatefulSet
 			if prevObjectSpec != nil {
-				prevSTS = prevObjectSpec.(*appsv1.StatefulSet)
-				prevSTS, err = k8stools.RenderPlaceholders(prevSTS, defaultPlaceholders)
-				if err != nil {
-					return fmt.Errorf("cannot fill placeholders for prev sts in vmagent: %w", err)
+				prevAppObject, ok := prevObjectSpec.(*appsv1.StatefulSet)
+				if ok {
+					prevSTS = prevAppObject
+					prevSTS, err = k8stools.RenderPlaceholders(prevSTS, defaultPlaceholders)
+					if err != nil {
+						return fmt.Errorf("cannot fill placeholders for prev sts in vmagent: %w", err)
+					}
 				}
 			}
 			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)

@@ -4,7 +4,7 @@
 
 #### {{ $type.Name }}
 
-{{ if $type.IsAlias }}_Underlying type:_ _{{ markdownRenderTypeLink $type.UnderlyingType  }}_{{ end }}
+{{ if and $type.IsBasic $type.IsAlias }}_Underlying type:_ _{{ markdownRenderTypeLink $type.UnderlyingType }}_{{ end }}
 
 {{ $type.Doc }}
 

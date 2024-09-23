@@ -159,7 +159,7 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
 
-	// DisableNamespaceMatcher disables namespace label matcher for VMAlertmanagerConfig
+	// DisableNamespaceMatcher disables top route namespace label matcher for VMAlertmanagerConfig
 	// It may be useful if alert doesn't have namespace label for some reason
 	// +optional
 	DisableNamespaceMatcher bool `json:"disableNamespaceMatcher,omitempty"`
@@ -167,6 +167,12 @@ type VMAlertmanagerSpec struct {
 	// DisableRouteContinueEnforce cancel the behavior for VMAlertmanagerConfig that always enforce first-level route continue to true
 	// +optional
 	DisableRouteContinueEnforce bool `json:"disableRouteContinueEnforce,omitempty"`
+
+	// EnforcedTopRouteMatchers defines label matchers to be added for the top route
+	// of VMAlertmanagerConfig
+	// It allows to make some set of labels required for alerts.
+	// https://prometheus.io/docs/alerting/latest/configuration/#matcher
+	EnforcedTopRouteMatchers []string `json:"enforcedTopRouteMatchers,omitempty"`
 
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process

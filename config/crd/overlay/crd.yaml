@@ -10400,7 +10400,7 @@ spec:
                 type: array
               disableNamespaceMatcher:
                 description: |-
-                  DisableNamespaceMatcher disables namespace label matcher for VMAlertmanagerConfig
+                  DisableNamespaceMatcher disables top route namespace label matcher for VMAlertmanagerConfig
                   It may be useful if alert doesn't have namespace label for some reason
                 type: boolean
               disableRouteContinueEnforce:
@@ -10461,6 +10461,15 @@ spec:
               dnsPolicy:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string
+              enforcedTopRouteMatchers:
+                description: |-
+                  EnforcedTopRouteMatchers defines label matchers to be added for the top route
+                  of VMAlertmanagerConfig
+                  It allows to make some set of labels required for alerts.
+                  https://prometheus.io/docs/alerting/latest/configuration/#matcher
+                items:
+                  type: string
+                type: array
               externalURL:
                 description: |-
                   ExternalURL the VMAlertmanager instances will be available under. This is

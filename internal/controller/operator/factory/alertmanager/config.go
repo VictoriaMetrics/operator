@@ -22,7 +22,7 @@ type parsedConfig struct {
 	brokenAMCfgs []*vmv1beta1.VMAlertmanagerConfig
 }
 
-func buildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher, disableRouteContinueEnforce bool, baseCfg []byte, amcfgs []*vmv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*parsedConfig, error) {
+func buildConfig(ctx context.Context, rclient client.Client, alertmanagerCR *vmv1beta1.VMAlertmanager, baseCfg []byte, amcfgs []*vmv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*parsedConfig, error) {
 	// fast path.
 	if len(amcfgs) == 0 {
 		return &parsedConfig{data: baseCfg}, nil
@@ -40,7 +40,7 @@ func buildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 		baseYAMlCfg.Route = &route{
 			Receiver: "blackhole",
 		}
-		var isBlacholeDefined bool
+		var isBlackholeDefined bool
 		for _, recv := range baseYAMlCfg.Receivers {
 			var recvName string
 			for _, entry := range recv {
@@ -54,11 +54,13 @@ func buildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 				}
 			}
 			if recvName == "blackhole" {
-				isBlacholeDefined = true
+				isBlackholeDefined = true
 				break
 			}
 		}
-		if !isBlacholeDefined {
+		// conditionally add blackhole as default route path
+		// alertmanager config must have some default route
+		if !isBlackholeDefined {
 			baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, yaml.MapSlice{
 				{
 					Key:   "name",
@@ -105,7 +107,7 @@ OUTER:
 			continue
 		}
 
-		route, err := buildRoute(amcKey, amcKey.Spec.Route, true, disableRouteContinueEnforce, mustAddNamespaceMatcher)
+		route, err := buildRoute(amcKey, amcKey.Spec.Route, true, alertmanagerCR)
 		if err != nil {
 			result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
 			amcKey.Status.CurrentSyncError = err.Error()
@@ -114,7 +116,7 @@ OUTER:
 
 		baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, receiverCfgs...)
 		for _, rule := range amcKey.Spec.InhibitRules {
-			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule, mustAddNamespaceMatcher))
+			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule, !alertmanagerCR.Spec.DisableNamespaceMatcher))
 		}
 		if len(mtis) > 0 {
 			timeIntervals = append(timeIntervals, mtis...)
@@ -221,24 +223,29 @@ func buildGlobalTimeIntervals(cr *vmv1beta1.VMAlertmanagerConfig) ([]yaml.MapSli
 	return r, nil
 }
 
-func buildRoute(cr *vmv1beta1.VMAlertmanagerConfig, cfgRoute *vmv1beta1.Route, topLevel, disableRouteContinueEnforce, mustAddNamespaceMatcher bool) (yaml.MapSlice, error) {
+func buildRoute(cr *vmv1beta1.VMAlertmanagerConfig, cfgRoute *vmv1beta1.Route, topLevel bool, alertmanagerCR *vmv1beta1.VMAlertmanager) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 	matchers := cfgRoute.Matchers
 	// enforce continue when route is first-level and vmalertmanager disableRouteContinueEnforce filed is not set,
 	// otherwise, always inherit from VMAlertmanagerConfig
 	continueSetting := cfgRoute.Continue
-	if topLevel && !disableRouteContinueEnforce {
-		continueSetting = true
-	}
-	if mustAddNamespaceMatcher {
-		matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
+	if topLevel {
+		if !alertmanagerCR.Spec.DisableRouteContinueEnforce {
+			continueSetting = true
+		}
+		if !alertmanagerCR.Spec.DisableNamespaceMatcher {
+			matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
+		}
+		if len(alertmanagerCR.Spec.EnforcedTopRouteMatchers) > 0 {
+			matchers = append(matchers, alertmanagerCR.Spec.EnforcedTopRouteMatchers...)
+		}
 	}
 
 	var nestedRoutes []yaml.MapSlice
 	for _, nestedRoute := range cfgRoute.Routes {
 		// namespace matcher not needed for nested routes
 		tmpRoute := vmv1beta1.Route(*nestedRoute)
-		route, err := buildRoute(cr, &tmpRoute, false, false, false)
+		route, err := buildRoute(cr, &tmpRoute, false, alertmanagerCR)
 		if err != nil {
 			return r, err
 		}

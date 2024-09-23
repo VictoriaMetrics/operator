@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"fmt"
 
+	"github.com/prometheus/alertmanager/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -41,6 +42,13 @@ func (r *VMAlertmanager) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAlertmanager{}
 
 func (r *VMAlertmanager) sanityCheck() error {
+	for idx, matchers := range r.Spec.EnforcedTopRouteMatchers {
+		_, err := labels.ParseMatchers(matchers)
+		if err != nil {
+			fmt.Errorf("incorrect EnforcedTopRouteMatchers=%q at idx=%d: %w", matchers, idx, err)
+		}
+	}
+
 	if len(r.Spec.ConfigRawYaml) > 0 {
 		if err := ValidateAlertmanagerConfigSpec([]byte(r.Spec.ConfigRawYaml)); err != nil {
 			return fmt.Errorf("bad config syntax at spec.configRawYaml: %w", err)

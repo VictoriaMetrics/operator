@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	amcfg "github.com/prometheus/alertmanager/config"
+	"github.com/prometheus/alertmanager/pkg/labels"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -182,6 +183,11 @@ type SubRoute Route
 func parseNestedRoutes(src *Route) error {
 	if src == nil {
 		return nil
+	}
+	for idx, matchers := range src.Matchers {
+		if _, err := labels.ParseMatchers(matchers); err != nil {
+			return fmt.Errorf("cannot parse matchers=%q idx=%d for route_receiver=%s: %w", matchers, idx, src.Receiver, err)
+		}
 	}
 	for _, nestedRoute := range src.RawRoutes {
 		var subRoute Route

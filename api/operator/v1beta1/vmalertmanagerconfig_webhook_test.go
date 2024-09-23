@@ -120,6 +120,23 @@ var _ = Describe("VMAlertmanagerConfig Webhook", func() {
               routes:
               - matcher: [nested=env]
         `, `undefined mute time interval "months" used in root route`),
+			Entry("incorrect matchers syntax", `
+        apiVersion: v1
+        kind: VMAlertmanagerConfig
+        metadata:
+          name: test-fail
+        spec:
+          receivers:
+          - name: blackhole
+          route:
+            receiver: blackhole
+            matchers:
+            - bad !~-124 matcher"
+            routes:
+            - receiver: blackhole
+              routes:
+              - matcher: [nested=env]
+        `, `cannot parse nested route for alertmanager config err: cannot parse matchers="bad !~-124 matcher\"" idx=0 for route_receiver=blackhole: matcher value contains unescaped double quote: -124 matcher"`),
 		)
 		DescribeTable("should pass validation",
 			func(srcYAML string) {

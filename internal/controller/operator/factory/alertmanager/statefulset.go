@@ -659,7 +659,7 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
 
-	parsedCfg, err := buildConfig(ctx, rclient, !cr.Spec.DisableNamespaceMatcher, cr.Spec.DisableRouteContinueEnforce, originConfig, amCfgs, tlsAssets)
+	parsedCfg, err := buildConfig(ctx, rclient, cr, originConfig, amCfgs, tlsAssets)
 	if err != nil {
 		return nil, err
 	}

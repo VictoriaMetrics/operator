@@ -4448,6 +4448,11 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 		*out = new(metav1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.EnforcedTopRouteMatchers != nil {
+		in, out := &in.EnforcedTopRouteMatchers, &out.EnforcedTopRouteMatchers
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.ClaimTemplates != nil {
 		in, out := &in.ClaimTemplates, &out.ClaimTemplates
 		*out = make([]v1.PersistentVolumeClaim, len(*in))

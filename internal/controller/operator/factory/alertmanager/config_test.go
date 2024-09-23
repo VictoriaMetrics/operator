@@ -21,10 +21,10 @@ import (
 
 func TestBuildConfig(t *testing.T) {
 	type args struct {
-		ctx                     context.Context
-		disableNamespaceMatcher bool
-		baseCfg                 []byte
-		amcfgs                  []*vmv1beta1.VMAlertmanagerConfig
+		ctx     context.Context
+		amCR    *vmv1beta1.VMAlertmanager
+		baseCfg []byte
+		amcfgs  []*vmv1beta1.VMAlertmanagerConfig
 	}
 	tests := []struct {
 		name              string
@@ -34,6 +34,132 @@ func TestBuildConfig(t *testing.T) {
 		parseError        string
 		wantErr           bool
 	}{
+		{
+			name: "with complex routing and enforced matchers",
+			args: args{
+				ctx: context.Background(),
+				amCR: &vmv1beta1.VMAlertmanager{
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						EnforcedTopRouteMatchers: []string{
+							`env=~{"dev|prod"}`,
+							`pod!=""`,
+						},
+					},
+				},
+				baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+`),
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []vmv1beta1.Receiver{
+								{
+									Name: "email",
+									EmailConfigs: []vmv1beta1.EmailConfig{
+										{
+											SendResolved: ptr.To(true),
+											From:         "some-sender",
+											To:           "some-dst-1",
+											Text:         "some-text",
+											Smarthost:    "some:443",
+											TLSConfig: &vmv1beta1.TLSConfig{
+												CertFile: "some_cert_path",
+											},
+										},
+									},
+								},
+								{
+									Name: "email-sub-1",
+									EmailConfigs: []vmv1beta1.EmailConfig{
+										{
+											SendResolved: ptr.To(true),
+											From:         "some-sender",
+											To:           "some-dst-1",
+											Text:         "some-text",
+											Smarthost:    "some:443",
+											TLSConfig: &vmv1beta1.TLSConfig{
+												CertFile: "some_cert_path",
+											},
+										},
+									},
+								},
+							},
+							Route: &vmv1beta1.Route{
+								Receiver:  "email",
+								GroupWait: "1min",
+								Routes: []*vmv1beta1.SubRoute{
+									{
+										Receiver:  "email-sub-1",
+										GroupWait: "5min",
+										Matchers:  []string{"team=prod"},
+										Routes: []*vmv1beta1.SubRoute{
+											{
+												Receiver:  "email",
+												GroupWait: "10min",
+												Matchers:  []string{"pod=dev-env"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `global:
+  smtp_smarthost: some:443
+  time_out: 1min
+route:
+  receiver: blackhole
+  routes:
+  - routes:
+    - routes:
+      - matchers:
+        - pod=dev-env
+        group_wait: 10min
+        receiver: default-base-email
+        continue: false
+      matchers:
+      - team=prod
+      group_wait: 5min
+      receiver: default-base-email-sub-1
+      continue: false
+    matchers:
+    - namespace = "default"
+    - env=~{"dev|prod"}
+    - pod!=""
+    group_wait: 1min
+    receiver: default-base-email
+    continue: true
+receivers:
+- name: blackhole
+- name: default-base-email
+  email_configs:
+  - tls_config:
+      cert_file: some_cert_path
+    from: some-sender
+    text: some-text
+    to: some-dst-1
+    smarthost: some:443
+    send_resolved: true
+- name: default-base-email-sub-1
+  email_configs:
+  - tls_config:
+      cert_file: some_cert_path
+    from: some-sender
+    text: some-text
+    to: some-dst-1
+    smarthost: some:443
+    send_resolved: true
+templates: []
+`,
+		},
+
 		{
 			name: "email section",
 			args: args{
@@ -801,7 +927,10 @@ templates: []
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := buildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
+			if tt.args.amCR == nil {
+				tt.args.amCR = &vmv1beta1.VMAlertmanager{}
+			}
+			got, err := buildConfig(tt.args.ctx, testClient, tt.args.amCR, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return

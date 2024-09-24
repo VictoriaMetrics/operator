@@ -902,7 +902,7 @@ templates: []
 					},
 				},
 			},
-			parseError: `cannot find secret="tg-secret" to fetch content at ns="default", err: secrets "tg-secret" not found`,
+			parseError: `unable to fetch key from secret: "tg-secret" for object: "tg-secret" : secrets "tg-secret" not found`,
 			want: `global:
   time_out: 1min
 route:

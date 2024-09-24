@@ -10,6 +10,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -1242,8 +1243,8 @@ func (cb *configBuilder) buildOpsGenie(og vmv1beta1.OpsGenieConfig) error {
 	return nil
 }
 
-func (cb *configBuilder) fetchSecretValue(selector *corev1.SecretKeySelector) ([]byte, error) {
-	return fetchSecretValue(cb.Ctx, cb.Client, cb.CurrentCRNamespace, selector, cb.SecretCache)
+func (cb *configBuilder) fetchSecretValue(selector *corev1.SecretKeySelector) (string, error) {
+	return k8stools.GetCredFromSecret(cb.Ctx, cb.Client, cb.CurrentCRNamespace, selector, selector.Name, cb.SecretCache)
 }
 
 func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.MapSlice, error) {

@@ -3,12 +3,28 @@ package k8stools
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var disabledSpaceTrim bool
+
+// SetSpaceTrim configures option to trim space
+// at Secret/Configmap keys
+func SetSpaceTrim(disabled bool) {
+	disabledSpaceTrim = disabled
+}
+
+func maybeTrimSpace(s string) string {
+	if disabledSpaceTrim {
+		return s
+	}
+	return strings.TrimSpace(s)
+}
 
 // KeyNotFoundError represents an error if expected key
 // was not found at secret or configmap data
@@ -95,9 +111,9 @@ func LoadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, 
 	return bac, nil
 }
 
-func extractCredKey(secret *corev1.Secret, sel corev1.SecretKeySelector) (string, error) {
+func extractCredKey(secret *corev1.Secret, sel *corev1.SecretKeySelector) (string, error) {
 	if s, ok := secret.Data[sel.Key]; ok {
-		return string(s), nil
+		return maybeTrimSpace(string(s)), nil
 	}
 	return "", &KeyNotFoundError{sel.Key, sel.Name, "secret"}
 }
@@ -123,11 +139,7 @@ func GetCredFromSecret(
 		}
 		cache[cacheKey] = s
 	}
-	v, err := extractCredKey(s, *sel)
-	if err != nil {
-		return "", err
-	}
-	return v, nil
+	return extractCredKey(s, sel)
 }
 
 // GetCredFromConfigMap fetches content of configmap by given key
@@ -152,10 +164,9 @@ func GetCredFromConfigMap(
 	}
 
 	if a, ok := s.Data[sel.Key]; ok {
-		return a, nil
+		return maybeTrimSpace(a), nil
 	}
 	return "", &KeyNotFoundError{sel.Key, cacheKey, "configmap"}
-	// fmt.Errorf("key not found at configmap, key: %s, configmap %s ", sel.Key, sel.Name)
 }
 
 func buildCacheKey(ns, keyName string) string {

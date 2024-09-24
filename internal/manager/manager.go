@@ -88,6 +88,7 @@ var (
 	clientBurst                   = flag.Int("client.burst", 10, "defines K8s client burst")
 	wasCacheSynced                = uint32(0)
 	disableCacheForObjects        = flag.String("controller.disableCacheFor", "", "disables client for cache for API resources. Supported objects - namespace,pod,secret,configmap,deployment,statefulset")
+	disableSecretKeySpaceTrim     = flag.Bool("disableSecretKeySpaceTrim", false, "disables trim of space at Secret/Configmap value content. It's a common mistake to put new line to the base64 encoded secret value.")
 )
 
 func init() {
@@ -388,6 +389,7 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
+	k8stools.SetSpaceTrim(*disableSecretKeySpaceTrim)
 	k8sServerVersion, err := baseClient.ServerVersion()
 	if err != nil {
 		return fmt.Errorf("cannot get kubernetes server version: %w", err)

@@ -49,6 +49,30 @@ func Test_getCredFromSecret(t *testing.T) {
 			},
 		},
 		{
+			name: "extract basic auth password with leading space and new line",
+			args: args{
+				ns: "default",
+				sel: corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "basic-auth",
+					},
+					Key: "password",
+				},
+				cacheKey: "tls-secret",
+				cache:    map[string]*corev1.Secret{},
+			},
+			want: "password-value",
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-auth",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"password": []byte(" password-value\n")},
+				},
+			},
+		},
+		{
 			name: "fail extract missing tls cert data from secret",
 			args: args{
 				ns: "default",

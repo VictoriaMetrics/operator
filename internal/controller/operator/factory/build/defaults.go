@@ -308,6 +308,10 @@ func addVMClusterDefaults(objI interface{}) {
 		if cr.Spec.VMStorage.UseStrictSecurity == nil {
 			cr.Spec.VMStorage.UseStrictSecurity = &useStrictSecurity
 		}
+		if cr.Spec.VMStorage.DisableSelfServiceScrape == nil {
+			cr.Spec.VMStorage.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		}
+
 		useBackupDefaultResources := c.VMBackup.UseDefaultResources
 		if cr.Spec.VMStorage.UseDefaultResources != nil {
 			useBackupDefaultResources = *cr.Spec.VMStorage.UseDefaultResources
@@ -377,6 +381,10 @@ func addVMClusterDefaults(objI interface{}) {
 		if cr.Spec.VMInsert.UseStrictSecurity == nil {
 			cr.Spec.VMInsert.UseStrictSecurity = &useStrictSecurity
 		}
+		if cr.Spec.VMInsert.DisableSelfServiceScrape == nil {
+			cr.Spec.VMInsert.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		}
+
 		if cr.Spec.VMInsert.Image.Repository == "" {
 			cr.Spec.VMInsert.Image.Repository = c.VMClusterDefault.VMInsertDefault.Image
 		}
@@ -402,6 +410,9 @@ func addVMClusterDefaults(objI interface{}) {
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.UseStrictSecurity == nil {
 			cr.Spec.VMSelect.UseStrictSecurity = &useStrictSecurity
+		}
+		if cr.Spec.VMSelect.DisableSelfServiceScrape == nil {
+			cr.Spec.VMSelect.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
 
 		if cr.Spec.VMStorage.VMSelectPort == "" {

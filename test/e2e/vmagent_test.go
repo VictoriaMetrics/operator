@@ -42,7 +42,7 @@ var _ = Describe("test  vmagent Controller", func() {
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}
-		tlsSecretName := "vmagent-remote-tls"
+		tlsSecretName := "vmagent-remote-tls-certs"
 
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx, &v1beta1vm.VMAgent{

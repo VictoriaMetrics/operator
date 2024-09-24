@@ -415,9 +415,6 @@ func addVMClusterDefaults(objI interface{}) {
 			cr.Spec.VMSelect.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
 
-		if cr.Spec.VMStorage.VMSelectPort == "" {
-			cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
-		}
 		if cr.Spec.VMSelect.Image.Repository == "" {
 			cr.Spec.VMSelect.Image.Repository = c.VMClusterDefault.VMSelectDefault.Image
 		}

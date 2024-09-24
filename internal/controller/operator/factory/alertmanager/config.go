@@ -533,10 +533,10 @@ func (cb *configBuilder) buildTeams(ms vmv1beta1.MSTeamsConfig) error {
 		if err != nil {
 			return err
 		}
-		if err := parseURL(string(s)); err != nil {
-			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", string(s), ms.URLSecret.Key, ms.URLSecret.Name, err)
+		if err := parseURL(s); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %w", s, ms.URLSecret.Key, ms.URLSecret.Name, err)
 		}
-		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: string(s)})
+		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: s})
 	} else if ms.URL != nil {
 		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: ms.URL})
 	}
@@ -570,10 +570,10 @@ func (cb *configBuilder) buildDiscord(dc vmv1beta1.DiscordConfig) error {
 		if err != nil {
 			return err
 		}
-		if err := parseURL(string(s)); err != nil {
-			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", string(s), dc.URLSecret.Key, dc.URLSecret.Name, err)
+		if err := parseURL(s); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", s, dc.URLSecret.Key, dc.URLSecret.Name, err)
 		}
-		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: string(s)})
+		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: s})
 	} else if dc.URL != nil {
 		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: dc.URL})
 	}
@@ -636,14 +636,14 @@ func (cb *configBuilder) buildSNS(sns vmv1beta1.SnsConfig) error {
 			if err != nil {
 				return err
 			}
-			toYamlSig("access_key", string(s))
+			toYamlSig("access_key", s)
 		}
 		if sns.Sigv4.SecretKey != nil {
 			s, err := cb.fetchSecretValue(sns.Sigv4.SecretKey)
 			if err != nil {
 				return err
 			}
-			toYamlSig("secret_key", string(s))
+			toYamlSig("secret_key", s)
 		}
 		temp = append(temp, yaml.MapItem{Key: "sigv4", Value: sigv4})
 	}
@@ -692,7 +692,7 @@ func (cb *configBuilder) buildTelegram(tg vmv1beta1.TelegramConfig) error {
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "bot_token", Value: string(s)})
+		temp = append(temp, yaml.MapItem{Key: "bot_token", Value: s})
 	}
 	if tg.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *tg.SendResolved})
@@ -732,10 +732,10 @@ func (cb *configBuilder) buildSlack(slack vmv1beta1.SlackConfig) error {
 		if err != nil {
 			return err
 		}
-		if err := parseURL(string(s)); err != nil {
-			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", string(s), slack.APIURL.Key, slack.APIURL.Name, err)
+		if err := parseURL(s); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", s, slack.APIURL.Key, slack.APIURL.Name, err)
 		}
-		temp = append(temp, yaml.MapItem{Key: "api_url", Value: string(s)})
+		temp = append(temp, yaml.MapItem{Key: "api_url", Value: s})
 	}
 	if slack.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *slack.SendResolved})
@@ -844,7 +844,7 @@ func (cb *configBuilder) buildWebhook(wh vmv1beta1.WebhookConfig) error {
 		if err != nil {
 			return err
 		}
-		url = string(s)
+		url = s
 	}
 
 	// no point to add config without url
@@ -883,7 +883,7 @@ func (cb *configBuilder) buildWeeChat(wc vmv1beta1.WeChatConfig) error {
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "api_secret", Value: string(s)})
+		temp = append(temp, yaml.MapItem{Key: "api_secret", Value: s})
 	}
 	toYaml := func(key string, src string) {
 		if len(src) > 0 {
@@ -928,7 +928,7 @@ func (cb *configBuilder) buildVictorOps(vo vmv1beta1.VictorOpsConfig) error {
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "api_key", Value: string(s)})
+		temp = append(temp, yaml.MapItem{Key: "api_key", Value: s})
 	}
 	toYaml := func(key string, src string) {
 		if len(src) > 0 {
@@ -987,14 +987,14 @@ func (cb *configBuilder) buildPushOver(po vmv1beta1.PushoverConfig) error {
 		if err != nil {
 			return err
 		}
-		toYaml("user_key", string(s))
+		toYaml("user_key", s)
 	}
 	if po.Token != nil {
 		s, err := cb.fetchSecretValue(po.Token)
 		if err != nil {
 			return err
 		}
-		toYaml("token", string(s))
+		toYaml("token", s)
 	}
 
 	toYaml("url", po.URL)
@@ -1032,14 +1032,14 @@ func (cb *configBuilder) buildPagerDuty(pd vmv1beta1.PagerDutyConfig) error {
 		if err != nil {
 			return err
 		}
-		toYaml("routing_key", string(s))
+		toYaml("routing_key", s)
 	}
 	if pd.ServiceKey != nil {
 		s, err := cb.fetchSecretValue(pd.ServiceKey)
 		if err != nil {
 			return err
 		}
-		toYaml("service_key", string(s))
+		toYaml("service_key", s)
 	}
 	toYaml("url", pd.URL)
 	if pd.URL != "" {
@@ -1137,14 +1137,14 @@ func (cb *configBuilder) buildEmail(email vmv1beta1.EmailConfig) error {
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "auth_password", Value: string(p)})
+		temp = append(temp, yaml.MapItem{Key: "auth_password", Value: p})
 	}
 	if email.AuthSecret != nil {
 		s, err := cb.fetchSecretValue(email.AuthSecret)
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "auth_secret", Value: string(s)})
+		temp = append(temp, yaml.MapItem{Key: "auth_secret", Value: s})
 	}
 	if len(email.Headers) > 0 {
 		temp = append(temp, yaml.MapItem{Key: "headers", Value: email.Headers})
@@ -1180,7 +1180,7 @@ func (cb *configBuilder) buildOpsGenie(og vmv1beta1.OpsGenieConfig) error {
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "api_key", Value: string(s)})
+		temp = append(temp, yaml.MapItem{Key: "api_key", Value: s})
 	}
 	toYamlString := func(key string, value string) {
 		if len(value) > 0 {
@@ -1282,7 +1282,7 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 		if err != nil {
 			return nil, fmt.Errorf("cannot find secret for bearerToken: %w", err)
 		}
-		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials", Value: string(bearer)})
+		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials", Value: bearer})
 	}
 	if len(httpCfg.BearerTokenFile) > 0 {
 		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials_file", Value: httpCfg.BearerTokenFile})
@@ -1315,7 +1315,7 @@ func (cb *configBuilder) buildOAuth2(oauth2 *vmv1beta1.OAuth2) (yaml.MapSlice, e
 		}
 		r = append(r, yaml.MapItem{
 			Key:   "client_secret",
-			Value: string(p),
+			Value: p,
 		})
 	}
 
@@ -1336,7 +1336,7 @@ func (cb *configBuilder) buildOAuth2(oauth2 *vmv1beta1.OAuth2) (yaml.MapSlice, e
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch secret value for oauth2.client_id: %w", err)
 		}
-		r = append(r, yaml.MapItem{Key: "client_id", Value: string(p)})
+		r = append(r, yaml.MapItem{Key: "client_id", Value: p})
 	}
 	if len(oauth2.EndpointParams) > 0 {
 		r = append(r, yaml.MapItem{Key: "endpoint_params", Value: orderedYAMLMAp(oauth2.EndpointParams)})
@@ -1367,7 +1367,7 @@ func (cb *configBuilder) buildBasicAuth(basicAuth *vmv1beta1.BasicAuth) (yaml.Ma
 		}
 		r = append(r, yaml.MapItem{
 			Key:   "username",
-			Value: string(u),
+			Value: u,
 		})
 	}
 
@@ -1378,7 +1378,7 @@ func (cb *configBuilder) buildBasicAuth(basicAuth *vmv1beta1.BasicAuth) (yaml.Ma
 		}
 		r = append(r, yaml.MapItem{
 			Key:   "password",
-			Value: string(p),
+			Value: p,
 		})
 	}
 
@@ -1408,7 +1408,7 @@ func (cb *configBuilder) buildAuthorization(authCfg *vmv1beta1.Authorization) (y
 		}
 		r = append(r, yaml.MapItem{
 			Key:   "credentials",
-			Value: string(hv),
+			Value: hv,
 		})
 	}
 	if len(authCfg.CredentialsFile) > 0 {

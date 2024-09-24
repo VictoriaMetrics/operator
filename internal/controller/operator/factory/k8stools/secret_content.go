@@ -111,13 +111,6 @@ func LoadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, 
 	return bac, nil
 }
 
-func extractCredKey(secret *corev1.Secret, sel *corev1.SecretKeySelector) (string, error) {
-	if s, ok := secret.Data[sel.Key]; ok {
-		return maybeTrimSpace(string(s)), nil
-	}
-	return "", &KeyNotFoundError{sel.Key, sel.Name, "secret"}
-}
-
 // GetCredFromSecret fetch content of secret by given key
 func GetCredFromSecret(
 	ctx context.Context,
@@ -139,7 +132,10 @@ func GetCredFromSecret(
 		}
 		cache[cacheKey] = s
 	}
-	return extractCredKey(s, sel)
+	if s, ok := s.Data[sel.Key]; ok {
+		return maybeTrimSpace(string(s)), nil
+	}
+	return "", &KeyNotFoundError{sel.Key, cacheKey, "secret"}
 }
 
 // GetCredFromConfigMap fetches content of configmap by given key

@@ -11,14 +11,16 @@ import (
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//nolint:dupl
+//nolint:dupl,lll
 var _ = Describe("test  vmagent Controller", func() {
 	ctx := context.Background()
 	It("must clean up previous test resutls", func() {
@@ -236,83 +238,200 @@ var _ = Describe("test  vmagent Controller", func() {
 
 				}),
 		)
-		existObject := &v1beta1vm.VMAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      namespacedName.Name,
-				Namespace: namespace,
-			},
-			Spec: v1beta1vm.VMAgentSpec{
-				CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To[int32](1),
-				},
-				RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
-					{URL: "http://some-vm-single:8428"},
-				},
-			},
+		type testStep struct {
+			setup  func(*v1beta1vm.VMAgent)
+			modify func(*v1beta1vm.VMAgent)
+			verify func(*v1beta1vm.VMAgent)
 		}
 		DescribeTable("should update exist vmagent",
-			func(name string, modify func(*v1beta1vm.VMAgent), verify func(*v1beta1vm.VMAgent)) {
+			func(name string, initCR *v1beta1vm.VMAgent, steps ...testStep) {
 				// create and wait ready
-				existObject := existObject.DeepCopy()
-				existObject.Name = name
+				initCR.Name = name
+				initCR.Namespace = namespace
 				namespacedName.Name = name
-				Expect(k8sClient.Create(ctx, existObject)).To(Succeed())
+				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAgent{}, namespacedName)
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
-				// update and wait ready
-				Eventually(func() error {
-					var toUpdate v1beta1vm.VMAgent
-					Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
-					modify(&toUpdate)
-					return k8sClient.Update(ctx, &toUpdate)
-				}, eventualExpandingTimeout).Should(Succeed())
-				Eventually(func() error {
-					return expectObjectStatusExpanding(ctx, k8sClient, &v1beta1vm.VMAgent{}, namespacedName)
-				}, eventualExpandingTimeout).Should(Succeed())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAgent{}, namespacedName)
-				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
-				// verify
-				var updated v1beta1vm.VMAgent
-				Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
-				verify(&updated)
+				for _, step := range steps {
+					if step.setup != nil {
+						step.setup(initCR)
+					}
+					// update and wait ready
+					Eventually(func() error {
+						var toUpdate v1beta1vm.VMAgent
+						Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+						step.modify(&toUpdate)
+						return k8sClient.Update(ctx, &toUpdate)
+					}, eventualExpandingTimeout).Should(Succeed())
+					Eventually(func() error {
+						return expectObjectStatusExpanding(ctx, k8sClient, &v1beta1vm.VMAgent{}, namespacedName)
+					}, eventualExpandingTimeout).Should(Succeed())
+					Eventually(func() error {
+						return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAgent{}, namespacedName)
+					}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+					// verify
+					var updated v1beta1vm.VMAgent
+					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+					step.verify(&updated)
+				}
 			},
 			Entry("by scaling replicas to to 3", "update-replicas-3",
-				func(cr *v1beta1vm.VMAgent) { cr.Spec.ReplicaCount = ptr.To[int32](3) },
-				func(cr *v1beta1vm.VMAgent) {
-					Eventually(func() string {
-						return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
-					}, eventualDeploymentAppReadyTimeout, 1).Should(BeEmpty())
-				}),
-			Entry("by chaning revisionHistoryLimit to 3", "update-revision",
-				func(cr *v1beta1vm.VMAgent) { cr.Spec.RevisionHistoryLimitCount = ptr.To[int32](3) },
-				func(cr *v1beta1vm.VMAgent) {
-					namespacedNameDeployment := types.NamespacedName{
-						Name:      cr.PrefixedName(),
-						Namespace: namespace,
-					}
-					Expect(getRevisionHistoryLimit(k8sClient, namespacedNameDeployment)).To(Equal(int32(3)))
-				}),
-			Entry("by switching to statefulMode with shard", "stateful-shard",
-				func(cr *v1beta1vm.VMAgent) {
-					cr.Spec.ReplicaCount = ptr.To[int32](1)
-					cr.Spec.ShardCount = ptr.To(2)
-					cr.Spec.StatefulMode = true
-					cr.Spec.IngestOnlyMode = true
+				&v1beta1vm.VMAgent{
+					Spec: v1beta1vm.VMAgentSpec{
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+							{URL: "http://some-vm-single:8428"},
+						},
+					},
 				},
-				func(cr *v1beta1vm.VMAgent) {
-					var createdSts appsv1.StatefulSet
-					Expect(k8sClient.Get(ctx, types.NamespacedName{
-						Namespace: namespace,
-						Name:      fmt.Sprintf("%s-%d", cr.PrefixedName(), 0),
-					}, &createdSts)).To(Succeed())
-					Expect(k8sClient.Get(ctx, types.NamespacedName{
-						Namespace: namespace,
-						Name:      fmt.Sprintf("%s-%d", cr.PrefixedName(), 1),
-					}, &createdSts)).To(Succeed())
+				testStep{
+					modify: func(cr *v1beta1vm.VMAgent) { cr.Spec.ReplicaCount = ptr.To[int32](3) },
+					verify: func(cr *v1beta1vm.VMAgent) {
+						Eventually(func() string {
+							return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
+						}, eventualDeploymentAppReadyTimeout, 1).Should(BeEmpty())
+					},
+				},
+			),
+			Entry("by chaning revisionHistoryLimit to 3", "update-revision",
+				&v1beta1vm.VMAgent{
+					Spec: v1beta1vm.VMAgentSpec{
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount:              ptr.To[int32](1),
+							RevisionHistoryLimitCount: ptr.To[int32](11),
+						},
+						RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+							{URL: "http://some-vm-single:8428"},
+						},
+					},
+				},
+				testStep{
+					setup: func(cr *v1beta1vm.VMAgent) {
+						Expect(getRevisionHistoryLimit(k8sClient, types.NamespacedName{
+							Namespace: cr.Namespace,
+							Name:      cr.PrefixedName(),
+						})).To(Equal(int32(11)))
+					},
+					modify: func(cr *v1beta1vm.VMAgent) { cr.Spec.RevisionHistoryLimitCount = ptr.To[int32](3) },
+					verify: func(cr *v1beta1vm.VMAgent) {
+						namespacedNameDeployment := types.NamespacedName{
+							Name:      cr.PrefixedName(),
+							Namespace: namespace,
+						}
+						Expect(getRevisionHistoryLimit(k8sClient, namespacedNameDeployment)).To(Equal(int32(3)))
+					},
+				},
+			),
+			Entry("by switching to statefulMode with shard", "stateful-shard",
+				&v1beta1vm.VMAgent{
+					Spec: v1beta1vm.VMAgentSpec{
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+							{URL: "http://some-vm-single:8428"},
+						},
+					},
+				},
+				testStep{
+					modify: func(cr *v1beta1vm.VMAgent) {
+						cr.Spec.ReplicaCount = ptr.To[int32](1)
+						cr.Spec.ShardCount = ptr.To(2)
+						cr.Spec.StatefulMode = true
+						cr.Spec.IngestOnlyMode = true
+					},
+					verify: func(cr *v1beta1vm.VMAgent) {
+						var createdSts appsv1.StatefulSet
+						Expect(k8sClient.Get(ctx, types.NamespacedName{
+							Namespace: namespace,
+							Name:      fmt.Sprintf("%s-%d", cr.PrefixedName(), 0),
+						}, &createdSts)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{
+							Namespace: namespace,
+							Name:      fmt.Sprintf("%s-%d", cr.PrefixedName(), 1),
+						}, &createdSts)).To(Succeed())
 
-				}),
+					},
+				},
+			),
+
+			Entry("by transition into statefulMode and back", "stateful-transition",
+				&v1beta1vm.VMAgent{Spec: v1beta1vm.VMAgentSpec{
+					CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
+					RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+						{URL: "http://some-vm-single:8428"},
+					},
+				},
+				},
+				testStep{
+					modify: func(cr *v1beta1vm.VMAgent) { cr.Spec.StatefulMode = true },
+					verify: func(cr *v1beta1vm.VMAgent) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+					},
+				},
+				testStep{
+					modify: func(cr *v1beta1vm.VMAgent) { cr.Spec.StatefulMode = false },
+					verify: func(cr *v1beta1vm.VMAgent) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+					},
+				},
+			),
+			Entry("by deleting and restoring PodDisruptionBudget and serviceScrape", "pdb-mutations-scrape",
+				&v1beta1vm.VMAgent{Spec: v1beta1vm.VMAgentSpec{
+					CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{UseDefaultResources: ptr.To(false)},
+					CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](2),
+					},
+					SelectAllByDefault:  true,
+					PodDisruptionBudget: &v1beta1vm.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: &intstr.IntOrString{IntVal: 1}},
+					RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+						{URL: "http://some-vm-single:8428"},
+					},
+				},
+				},
+				testStep{
+					setup: func(cr *v1beta1vm.VMAgent) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						Expect(k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &v1beta1vm.VMServiceScrape{})).To(Succeed())
+					},
+					modify: func(cr *v1beta1vm.VMAgent) {
+						cr.Spec.PodDisruptionBudget = nil
+						cr.Spec.DisableSelfServiceScrape = ptr.To(true)
+					},
+					verify: func(cr *v1beta1vm.VMAgent) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						Eventually(func() error {
+							return k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})
+						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+						Eventually(func() error {
+							return k8sClient.Get(ctx, nsn, &v1beta1vm.VMServiceScrape{})
+						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+					},
+				},
+				testStep{
+					modify: func(cr *v1beta1vm.VMAgent) {
+						cr.Spec.PodDisruptionBudget = &v1beta1vm.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: &intstr.IntOrString{IntVal: 1}}
+						cr.Spec.DisableSelfServiceScrape = nil
+
+					},
+					verify: func(cr *v1beta1vm.VMAgent) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						Expect(k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &v1beta1vm.VMServiceScrape{})).To(Succeed())
+
+					},
+				},
+			),
 		)
 	})
 })

@@ -86,10 +86,12 @@ func Before() {
 		Expect(os.Setenv("VM_PODWAITREADYINTERVALCHECK", "1s")).To(Succeed())
 		Expect(os.Setenv("VM_APPREADYTIMEOUT", "50s")).To(Succeed())
 
-		// disable metrics server because it fails to listen when running several test packages one after another
-		// also metrics server isn't very useful in tests
-		os.Args = append(os.Args, "--metrics-bind-address", "0")
-
+		// disable web servers because it fails to listen when running several test packages one after another
+		// also web servers aren't very useful in tests
+		os.Args = append(os.Args[:1],
+			"--metrics-bind-address", "0",
+			"--pprof-addr", "0",
+			"--health-probe-bind-address", "0")
 		ctx, cancel := context.WithCancel(context.Background())
 		go func(ctx context.Context) {
 			defer GinkgoRecover()

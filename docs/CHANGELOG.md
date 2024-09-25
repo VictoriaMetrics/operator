@@ -11,6 +11,8 @@ aliases:
   - /operator/changelog/index.html
 ---
 
+## [v0.48.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.48.0) - 25 Sep 2024
+
 - [api](https://docs.victoriametrics.com/operator/api): adds new fields `useVMConfigReloader`, `configReloaderImageTag`, `configReloaderResources` to to the `VMagent`, `VMAlert`, `VMAuth`, and `VMAlertmanager`.
 - [api/vmalertmanager](https://docs.victoriametrics.com/operator/api/index.html#vmalertmanagerspec): adds new field `enforcedTopRouteMatchers`. It adds given alert label matchers to the top route of any `VMAlertmanagerConfig`.  See this [issue](https://github.com/VictoriaMetrics/operator/issues/1096) for details.
 - [api](https://docs.victoriametrics.com/operator/api): adds underscore version of `host_aliases` setting, which has priority over `hostAliases`.

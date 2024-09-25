@@ -3,9 +3,6 @@ package finalize
 import (
 	"context"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -59,64 +56,6 @@ type RemoveSvcArgs struct {
 	PrefixedName   func() string
 	SelectorLabels func() map[string]string
 	GetNameSpace   func() string
-}
-
-// RemoveOrphanedServices removes services that no longer belongs to given crd by its args.
-func RemoveOrphanedServices(ctx context.Context, rclient client.Client, args RemoveSvcArgs, spec *vmv1beta1.AdditionalServiceSpec) error {
-	svcsToRemove, err := discoverServicesByLabels(ctx, rclient, args)
-	if err != nil {
-		return err
-	}
-	handleDelete := func(s *corev1.Service) error {
-		if err := RemoveFinalizer(ctx, rclient, s); err != nil {
-			return err
-		}
-		return SafeDelete(ctx, rclient, s)
-	}
-
-	var additionalSvcName string
-	if spec != nil && !spec.UseAsDefault {
-		additionalSvcName = spec.NameOrDefault(args.PrefixedName())
-	}
-	cnt := 0
-	// filter in-place,
-	// keep services that doesn't match prefixedName and additional serviceName.
-	for i := range svcsToRemove {
-		svc := svcsToRemove[i]
-		switch svc.Name {
-		case args.PrefixedName():
-		case additionalSvcName:
-		default:
-			// service must be removed
-			svcsToRemove[cnt] = svc
-			cnt++
-		}
-	}
-	// remove left services.
-	svcsToRemove = svcsToRemove[:cnt]
-	for i := range svcsToRemove {
-		if err := handleDelete(svcsToRemove[i]); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// discoverServicesByLabels - returns services with given args.
-func discoverServicesByLabels(ctx context.Context, rclient client.Client, args RemoveSvcArgs) ([]*corev1.Service, error) {
-	var svcs corev1.ServiceList
-	opts := client.ListOptions{
-		Namespace:     args.GetNameSpace(),
-		LabelSelector: labels.SelectorFromSet(args.SelectorLabels()),
-	}
-	if err := rclient.List(ctx, &svcs, &opts); err != nil {
-		return nil, err
-	}
-	resp := make([]*corev1.Service, 0, len(svcs.Items))
-	for i := range svcs.Items {
-		resp = append(resp, &svcs.Items[i])
-	}
-	return resp, nil
 }
 
 // RemoveOrphanedSTSs removes deployments detached from given object

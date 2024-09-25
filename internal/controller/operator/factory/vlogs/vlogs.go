@@ -58,6 +58,9 @@ func makeVLogsPvc(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 // CreateOrUpdateVLogs performs an update for vlogs resource
 func CreateOrUpdateVLogs(ctx context.Context, r *vmv1beta1.VLogs, rclient client.Client) error {
 
+	if err := deletePrevStateResources(ctx, r, rclient); err != nil {
+		return err
+	}
 	if r.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(r)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
@@ -292,17 +295,27 @@ func CreateOrUpdateVLogsService(ctx context.Context, r *vmv1beta1.VLogs, rclient
 		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
 	}
 
-	if r.Spec.ServiceSpec == nil &&
-		r.Spec.ParsedLastAppliedSpec != nil &&
-		r.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
-		rca := finalize.RemoveSvcArgs{SelectorLabels: r.SelectorLabels, GetNameSpace: r.GetNamespace, PrefixedName: r.PrefixedName}
-		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, r.Spec.ServiceSpec); err != nil {
-			return nil, err
-		}
-	}
-
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
 		return nil, fmt.Errorf("cannot reconcile service for vlogs: %w", err)
 	}
 	return newService, nil
+}
+
+func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VLogs, rclient client.Client) error {
+	if cr.Spec.ParsedLastAppliedSpec == nil {
+		return nil
+	}
+	prevSvc, currSvc := cr.Spec.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
+		return fmt.Errorf("cannot remove additional service: %w", err)
+	}
+
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.Spec.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot remove serviceScrape: %w", err)
+		}
+	}
+
+	return nil
 }

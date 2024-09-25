@@ -8,9 +8,10 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
@@ -22,20 +23,20 @@ import (
 // NOTE it doesn't perform validation:
 // in case of spec.type= LoadBalancer or NodePort, clusterIP: None is not allowed,
 // its users responsibility to define it correctly.
-func Service(ctx context.Context, rclient client.Client, newService, prevService *v1.Service) error {
+func Service(ctx context.Context, rclient client.Client, newService, prevService *corev1.Service) error {
 	svcForReconcile := newService.DeepCopy()
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		return reconcileService(ctx, rclient, svcForReconcile, prevService)
 	})
 }
 
-func reconcileService(ctx context.Context, rclient client.Client, newService, prevService *v1.Service) error {
+func reconcileService(ctx context.Context, rclient client.Client, newService, prevService *corev1.Service) error {
 	var isPrevServiceEqual bool
 	if prevService != nil {
 		isPrevServiceEqual = equality.Semantic.DeepDerivative(prevService, newService)
 	}
 	// helper for proper service deletion.
-	recreateService := func(svc *v1.Service) error {
+	recreateService := func(svc *corev1.Service) error {
 		if err := finalize.RemoveFinalizer(ctx, rclient, svc); err != nil {
 			return err
 		}
@@ -47,7 +48,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		}
 		return nil
 	}
-	existingService := &v1.Service{}
+	existingService := &corev1.Service{}
 	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, existingService)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -126,5 +127,40 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		return err
 	}
 
+	return nil
+}
+
+// AdditionalServices reconcile AdditionalServices
+// by conditionally removing service from previous state
+func AdditionalServices(ctx context.Context, rclient client.Client,
+	defaultName, namespace string,
+	prevSvc, currSvc *vmv1beta1.AdditionalServiceSpec) error {
+
+	if currSvc == nil &&
+		prevSvc != nil &&
+		!prevSvc.UseAsDefault {
+		// services was removed from previous state
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient,
+			&corev1.Service{ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      prevSvc.NameOrDefault(defaultName)}}); err != nil {
+			return fmt.Errorf("cannot remove additional service: %w", err)
+		}
+	}
+
+	if currSvc != nil &&
+		prevSvc != nil {
+		// service name was changed
+		// or service was marked as default
+		if prevSvc.NameOrDefault(defaultName) != currSvc.NameOrDefault(defaultName) ||
+			(!prevSvc.UseAsDefault && currSvc.UseAsDefault) {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient,
+				&corev1.Service{ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      prevSvc.NameOrDefault(defaultName)}}); err != nil {
+				return fmt.Errorf("cannot remove additional service: %w", err)
+			}
+		}
+	}
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	appsv1 "k8s.io/api/apps/v1"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -37,9 +38,11 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 		}
 	}
 
+	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+		return fmt.Errorf("failed to remove objects from previous cluster state: %w", err)
+	}
 	if cr.Spec.VMStorage != nil {
 		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
-			// TODO verify lastSpec for missing PDB and detete it if needed
 			err := createOrUpdatePodDisruptionBudgetForVMStorage(ctx, cr, rclient)
 			if err != nil {
 				return err
@@ -63,7 +66,6 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.PodDisruptionBudget != nil {
-			// TODO verify lastSpec for missing PDB and detete it if needed
 			if err := createOrUpdatePodDisruptionBudgetForVMSelect(ctx, cr, rclient); err != nil {
 				return err
 			}
@@ -90,7 +92,6 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 
 	if cr.Spec.VMInsert != nil {
 		if cr.Spec.VMInsert.PodDisruptionBudget != nil {
-			// TODO verify lastSpec for missing PDB and detete it if needed
 			if err := createOrUpdatePodDisruptionBudgetForVMInsert(ctx, cr, rclient); err != nil {
 				return err
 			}
@@ -204,18 +205,6 @@ func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster,
 		})
 	}
 
-	if cr.Spec.VMSelect.ServiceSpec == nil &&
-		cr.Spec.ParsedLastAppliedSpec != nil &&
-		cr.Spec.ParsedLastAppliedSpec.VMSelect != nil &&
-		cr.Spec.ParsedLastAppliedSpec.VMSelect.ServiceSpec != nil {
-		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.VMSelectSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
-			return cr.Spec.VMSelect.GetNameWithPrefix(cr.Name)
-		}}
-		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.VMSelect.ServiceSpec); err != nil {
-			return nil, err
-		}
-	}
-
 	if err := reconcile.Service(ctx, rclient, newHeadless, prevService); err != nil {
 		return nil, fmt.Errorf("cannot reconcile vmselect service: %w", err)
 	}
@@ -297,16 +286,6 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 					})
 			}
 		})
-	}
-
-	if cr.Spec.VMInsert.ServiceSpec == nil &&
-		cr.Spec.ParsedLastAppliedSpec != nil &&
-		cr.Spec.ParsedLastAppliedSpec.VMInsert != nil &&
-		cr.Spec.ParsedLastAppliedSpec.VMInsert.ServiceSpec != nil {
-		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.VMInsert.ServiceSpec); err != nil {
-			return nil, err
-		}
 	}
 
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
@@ -423,19 +402,6 @@ func createOrUpdateVMStorageService(ctx context.Context, cr *vmv1beta1.VMCluster
 				})
 			}
 		})
-	}
-
-	if cr.Spec.VMStorage.ServiceSpec == nil &&
-		cr.Spec.ParsedLastAppliedSpec != nil &&
-		cr.Spec.ParsedLastAppliedSpec.VMStorage != nil &&
-		cr.Spec.ParsedLastAppliedSpec.VMStorage.ServiceSpec != nil {
-		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.VMStorageSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
-			return cr.Spec.VMStorage.GetNameWithPrefix(cr.Name)
-		}}
-		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.VMStorage.ServiceSpec); err != nil {
-			return nil, err
-		}
-
 	}
 
 	if err := reconcile.Service(ctx, rclient, newHeadless, prevService); err != nil {
@@ -1122,10 +1088,6 @@ func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *vmv1
 
 func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cluster *vmv1beta1.VMCluster) error {
 	if cluster.Spec.VMInsert.HPA == nil {
-		// TODO verify with lastSpec
-		if err := finalize.HPADelete(ctx, rclient, cluster.Spec.VMInsert.GetNameWithPrefix(cluster.Name), cluster.Namespace); err != nil {
-			return fmt.Errorf("cannot remove HPA for vminsert: %w", err)
-		}
 		return nil
 	}
 	targetRef := v2beta2.CrossVersionObjectReference{
@@ -1139,11 +1101,6 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, clust
 
 func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cluster *vmv1beta1.VMCluster) error {
 	if cluster.Spec.VMSelect.HPA == nil {
-		// TODO verify with lastSpec
-
-		if err := finalize.HPADelete(ctx, rclient, cluster.Spec.VMSelect.GetNameWithPrefix(cluster.Name), cluster.Namespace); err != nil {
-			return fmt.Errorf("cannot remove HPA for vmselect: %w", err)
-		}
 		return nil
 	}
 	targetRef := v2beta2.CrossVersionObjectReference{
@@ -1163,18 +1120,119 @@ type clusterSvcBuilder struct {
 	additionalService *vmv1beta1.AdditionalServiceSpec
 }
 
+// PrefixedName implements build.svcBuilderArgs interface
 func (csb *clusterSvcBuilder) PrefixedName() string {
 	return csb.prefixedName
 }
 
+// AllLabels implements build.svcBuilderArgs interface
 func (csb *clusterSvcBuilder) AllLabels() map[string]string {
 	return csb.finalLabels
 }
 
+// SelectorLabels implements build.svcBuilderArgs interface
 func (csb *clusterSvcBuilder) SelectorLabels() map[string]string {
 	return csb.selectorLabels
 }
 
+// GetAdditionalService implements build.svcBuilderArgs interface
 func (csb *clusterSvcBuilder) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return csb.additionalService
+}
+
+func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+	if cr.Spec.ParsedLastAppliedSpec == nil {
+		// fast path
+		return nil
+	}
+	vmst := cr.Spec.VMStorage
+	vmse := cr.Spec.VMSelect
+	vmis := cr.Spec.VMInsert
+	prevSt := cr.Spec.ParsedLastAppliedSpec.VMStorage
+	prevSe := cr.Spec.ParsedLastAppliedSpec.VMSelect
+	prevIs := cr.Spec.ParsedLastAppliedSpec.VMInsert
+	if prevSt != nil {
+		if vmst == nil {
+			if err := finalize.OnVMStorageDelete(ctx, rclient, cr, prevSt); err != nil {
+				return fmt.Errorf("cannot remove storage from prev state: %w", err)
+			}
+		} else {
+			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: prevSt.GetNameWithPrefix(cr.Name)}
+			if vmst.PodDisruptionBudget == nil && prevSt.PodDisruptionBudget != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
+					return fmt.Errorf("cannot remove PDB from prev storage: %w", err)
+				}
+			}
+			if ptr.Deref(vmst.DisableSelfServiceScrape, false) && !ptr.Deref(prevSt.DisableSelfServiceScrape, false) {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
+					return fmt.Errorf("cannot remove serviceScrape from prev storage: %w", err)
+				}
+			}
+			prevSvc, currSvc := prevSt.ServiceSpec, vmst.ServiceSpec
+			if err := reconcile.AdditionalServices(ctx, rclient, vmst.GetNameWithPrefix(cr.Name), cr.Namespace, prevSvc, currSvc); err != nil {
+				return fmt.Errorf("cannot remove vmstorage additional service: %w", err)
+			}
+		}
+	}
+
+	if prevSe != nil {
+		if vmse == nil {
+			if err := finalize.OnVMSelectDelete(ctx, rclient, cr, prevSe); err != nil {
+				return fmt.Errorf("cannot remove select from prev state: %w", err)
+			}
+		} else {
+			commonObjMeta := metav1.ObjectMeta{
+				Namespace: cr.Namespace, Name: prevSe.GetNameWithPrefix(cr.Name)}
+			if vmse.PodDisruptionBudget == nil && prevSe.PodDisruptionBudget != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
+					return fmt.Errorf("cannot remove PDB from prev select: %w", err)
+				}
+			}
+			if vmse.HPA == nil && prevSe.HPA != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &v2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
+					return fmt.Errorf("cannot remove HPA from prev select: %w", err)
+				}
+			}
+			if ptr.Deref(vmse.DisableSelfServiceScrape, false) && !ptr.Deref(prevSe.DisableSelfServiceScrape, false) {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
+					return fmt.Errorf("cannot remove serviceScrape from prev select: %w", err)
+				}
+			}
+			prevSvc, currSvc := prevSe.ServiceSpec, vmse.ServiceSpec
+			if err := reconcile.AdditionalServices(ctx, rclient, vmse.GetNameWithPrefix(cr.Name), cr.Namespace, prevSvc, currSvc); err != nil {
+				return fmt.Errorf("cannot remove vmselect additional service: %w", err)
+			}
+		}
+	}
+
+	if prevIs != nil {
+		if vmis == nil {
+			if err := finalize.OnVMInsertDelete(ctx, rclient, cr, prevIs); err != nil {
+				return fmt.Errorf("cannot remove insert from prev state: %w", err)
+			}
+		} else {
+			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: prevIs.GetNameWithPrefix(cr.Name)}
+			if vmis.PodDisruptionBudget == nil && prevIs.PodDisruptionBudget != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
+					return fmt.Errorf("cannot remove PDB from prev insert: %w", err)
+				}
+			}
+			if vmis.HPA == nil && prevIs.HPA != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &v2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
+					return fmt.Errorf("cannot remove HPA from prev insert: %w", err)
+				}
+			}
+			if ptr.Deref(vmis.DisableSelfServiceScrape, false) && !ptr.Deref(prevIs.DisableSelfServiceScrape, false) {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
+					return fmt.Errorf("cannot remove serviceScrape from prev insert: %w", err)
+				}
+			}
+			prevSvc, currSvc := prevIs.ServiceSpec, vmis.ServiceSpec
+			if err := reconcile.AdditionalServices(ctx, rclient, vmis.GetNameWithPrefix(cr.Name), cr.Namespace, prevSvc, currSvc); err != nil {
+				return fmt.Errorf("cannot remove vminsert additional service: %w", err)
+			}
+		}
+	}
+
+	return nil
 }

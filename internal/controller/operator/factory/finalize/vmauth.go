@@ -11,23 +11,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// VMAuthIngressDelete handles case, when user wants to remove spec.Ingress from vmauth config.
-func VMAuthIngressDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.VMAuth) error {
-	vmauthIngress := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      crd.PrefixedName(),
-			Namespace: crd.Namespace,
-		},
-	}
-	if err := removeFinalizeObjByName(ctx, rclient, vmauthIngress, crd.PrefixedName(), crd.Namespace); err != nil {
-		return err
-	}
-	if err := SafeDelete(ctx, rclient, vmauthIngress); err != nil {
-		return err
-	}
-	return nil
-}
-
 // OnVMAuthDelete deletes all vmauth related resources
 func OnVMAuthDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.VMAuth) error {
 	// check deployment
@@ -53,6 +36,20 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.V
 	// check PDB
 	if crd.Spec.PodDisruptionBudget != nil {
 		if err := finalizePBD(ctx, rclient, crd); err != nil {
+			return err
+		}
+	}
+	if crd.Spec.Ingress != nil {
+		vmauthIngress := &networkingv1.Ingress{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      crd.PrefixedName(),
+				Namespace: crd.Namespace,
+			},
+		}
+		if err := removeFinalizeObjByName(ctx, rclient, vmauthIngress, crd.PrefixedName(), crd.Namespace); err != nil {
+			return err
+		}
+		if err := SafeDelete(ctx, rclient, vmauthIngress); err != nil {
 			return err
 		}
 	}

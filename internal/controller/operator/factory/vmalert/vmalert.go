@@ -16,6 +16,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -43,8 +44,8 @@ func buildRemoteSecretKey(source, suffix string) string {
 	return fmt.Sprintf("%s_%s", strings.ToUpper(source), strings.ToUpper(suffix))
 }
 
-// CreateOrUpdateVMAlertService creates service for vmalert
-func CreateOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) (*corev1.Service, error) {
+// createOrUpdateVMAlertService creates service for vmalert
+func createOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) (*corev1.Service, error) {
 
 	newService := build.Service(cr, cr.Spec.Port, nil)
 
@@ -64,15 +65,6 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 		prevCR := cr.DeepCopy()
 		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
 		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
-	}
-
-	if cr.Spec.ServiceSpec == nil &&
-		cr.Spec.ParsedLastAppliedSpec != nil &&
-		cr.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
-		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
-			return nil, err
-		}
 	}
 
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
@@ -129,55 +121,16 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 
 // CreateOrUpdateVMAlert creates vmalert deployment for given CRD
 func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
-	var additionalNotifiers []vmv1beta1.VMAlertNotifierSpec
-
-	if cr.Spec.Notifier != nil {
-		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
+	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+		return fmt.Errorf("cannot delete objects from previous state: %w", err)
 	}
-	// trim notifiers with non-empty notifier Selector
-	var cnt int
-	for i := range cr.Spec.Notifiers {
-		n := cr.Spec.Notifiers[i]
-		// fast path
-		if n.Selector == nil {
-			cr.Spec.Notifiers[cnt] = n
-			cnt++
-			continue
-		}
-		// discover alertmanagers
-		var ams vmv1beta1.VMAlertmanagerList
-		amListOpts, err := n.Selector.AsListOptions()
-		if err != nil {
-			return fmt.Errorf("cannot convert notifier selector as ListOptions: %w", err)
-		}
-		if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(objects *vmv1beta1.VMAlertmanagerList) {
-			ams.Items = append(ams.Items, objects.Items...)
-		}, amListOpts); err != nil {
-			return fmt.Errorf("cannot list alertmanager with discovery selector: %w", err)
-		}
-
-		for _, item := range ams.Items {
-			if !item.DeletionTimestamp.IsZero() || (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
-				continue
-			}
-			dsc := item.AsNotifiers()
-			additionalNotifiers = append(additionalNotifiers, dsc...)
-		}
-	}
-	cr.Spec.Notifiers = cr.Spec.Notifiers[:cnt]
-
-	if len(additionalNotifiers) > 0 {
-		sort.Slice(additionalNotifiers, func(i, j int) bool {
-			return additionalNotifiers[i].URL > additionalNotifiers[j].URL
-		})
-		logger.WithContext(ctx).Info("additional notifiers with sd selector", "len", len(additionalNotifiers))
-	}
-	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
-
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
+	}
+	if err := discoverNotifierIfNeeded(ctx, rclient, cr); err != nil {
+		return fmt.Errorf("cannot discover additional notifiers: %w", err)
 	}
 
 	remoteSecrets, err := loadVMAlertRemoteSecrets(ctx, rclient, cr)
@@ -189,8 +142,19 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient c
 		return err
 	}
 
+	svc, err := createOrUpdateVMAlertService(ctx, cr, rclient)
+	if err != nil {
+		return err
+	}
+
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
+		if err != nil {
+			return fmt.Errorf("cannot create vmservicescrape: %w", err)
+		}
+	}
+
 	if cr.Spec.PodDisruptionBudget != nil {
-		// TODO verify lastSpec for missing PDB and detete it if needed
 		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget)); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmalert: %w", err)
 		}
@@ -988,4 +952,77 @@ func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert,
 
 	dst = append(dst, configReloaderContainer)
 	return dst
+}
+
+func discoverNotifierIfNeeded(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
+	var additionalNotifiers []vmv1beta1.VMAlertNotifierSpec
+
+	if cr.Spec.Notifier != nil {
+		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
+	}
+	// trim notifiers with non-empty notifier Selector
+	var cnt int
+	for i := range cr.Spec.Notifiers {
+		n := cr.Spec.Notifiers[i]
+		// fast path
+		if n.Selector == nil {
+			cr.Spec.Notifiers[cnt] = n
+			cnt++
+			continue
+		}
+		// discover alertmanagers
+		var ams vmv1beta1.VMAlertmanagerList
+		amListOpts, err := n.Selector.AsListOptions()
+		if err != nil {
+			return fmt.Errorf("cannot convert notifier selector as ListOptions: %w", err)
+		}
+		if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(objects *vmv1beta1.VMAlertmanagerList) {
+			ams.Items = append(ams.Items, objects.Items...)
+		}, amListOpts); err != nil {
+			return fmt.Errorf("cannot list alertmanager with discovery selector: %w", err)
+		}
+
+		for _, item := range ams.Items {
+			if !item.DeletionTimestamp.IsZero() || (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
+				continue
+			}
+			dsc := item.AsNotifiers()
+			additionalNotifiers = append(additionalNotifiers, dsc...)
+		}
+	}
+	cr.Spec.Notifiers = cr.Spec.Notifiers[:cnt]
+
+	if len(additionalNotifiers) > 0 {
+		sort.Slice(additionalNotifiers, func(i, j int) bool {
+			return additionalNotifiers[i].URL > additionalNotifiers[j].URL
+		})
+		logger.WithContext(ctx).Info("additional notifiers with sd selectors", "len", len(additionalNotifiers))
+	}
+	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
+	return nil
+}
+
+func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) error {
+	if cr.Spec.ParsedLastAppliedSpec == nil {
+		return nil
+	}
+	prevSvc, currSvc := cr.Spec.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
+		return fmt.Errorf("cannot remove additional service: %w", err)
+	}
+
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	if cr.Spec.PodDisruptionBudget == nil && cr.Spec.ParsedLastAppliedSpec.PodDisruptionBudget != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
+		}
+	}
+
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.Spec.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot remove serviceScrape: %w", err)
+		}
+	}
+
+	return nil
 }

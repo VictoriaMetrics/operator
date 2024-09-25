@@ -29,8 +29,7 @@ const (
 	streamAggrSecretKey = "config.yaml"
 )
 
-// CreateVMSingleStorage creates persistent volume for vmsingle
-func CreateVMSingleStorage(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
+func createVMSingleStorage(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
 	l := logger.WithContext(ctx).WithValues("pvc_for", "vmsingle")
 	ctx = logger.AddToContext(ctx, l)
 	newPvc := makeVMSinglePvc(cr)
@@ -61,18 +60,25 @@ func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 // CreateOrUpdateVMSingle performs an update for single node resource
 func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
 
+	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+		return fmt.Errorf("cannot delete objects from prev state: %w", err)
+	}
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
 
-	svc, err := CreateOrUpdateVMSingleService(ctx, cr, rclient)
+	if cr.Spec.Storage != nil && cr.Spec.StorageDataPath == "" {
+		if err := createVMSingleStorage(ctx, cr, rclient); err != nil {
+			return fmt.Errorf("cannot create storage: %w", err)
+		}
+	}
+	svc, err := createOrUpdateVMSingleService(ctx, cr, rclient)
 	if err != nil {
 		return err
 	}
 
-	// TODO delete conditionally
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
 		if err != nil {
@@ -340,8 +346,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 	return vmSingleSpec, nil
 }
 
-// CreateOrUpdateVMSingleService creates service for vmsingle
-func CreateOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) (*corev1.Service, error) {
 
 	addBackupPort := func(svc *corev1.Service, vmb *vmv1beta1.VMBackup) {
 		if vmb != nil {
@@ -380,15 +385,6 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, 
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
 
 		})
-	}
-
-	if cr.Spec.ServiceSpec == nil &&
-		cr.Spec.ParsedLastAppliedSpec != nil &&
-		cr.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
-		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
-			return nil, err
-		}
 	}
 
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
@@ -442,4 +438,26 @@ func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.V
 		return err
 	}
 	return reconcile.ConfigMap(ctx, rclient, streamAggrCM)
+}
+
+func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
+	if cr.Spec.ParsedLastAppliedSpec == nil {
+		return nil
+	}
+	// TODO check storage for nil
+	// TODO check for stream aggr removed
+
+	prevSvc, currSvc := cr.Spec.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
+		return fmt.Errorf("cannot remove additional service: %w", err)
+	}
+
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.Spec.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot remove serviceScrape: %w", err)
+		}
+	}
+
+	return nil
 }

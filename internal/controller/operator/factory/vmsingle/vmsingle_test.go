@@ -195,7 +195,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateVMSingleService(context.TODO(), tt.args.cr, fclient)
+			got, err := createOrUpdateVMSingleService(context.TODO(), tt.args.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMSingleService() error = %v, wantErr %v", err, tt.wantErr)
 				return

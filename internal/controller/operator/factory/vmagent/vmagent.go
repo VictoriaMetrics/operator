@@ -15,9 +15,11 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -44,8 +46,7 @@ const (
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
 var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
 
-// CreateOrUpdateVMAgentService creates service for vmagent
-func CreateOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.Service, error) {
 
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		if cr.Spec.StatefulMode {
@@ -79,15 +80,6 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 		})
 	}
 
-	if cr.Spec.ServiceSpec == nil &&
-		cr.Spec.ParsedLastAppliedSpec != nil &&
-		cr.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
-		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
-			return nil, err
-		}
-	}
-
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
 		return nil, fmt.Errorf("cannot reconcile service for vmagent: %w", err)
 	}
@@ -97,6 +89,9 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 // CreateOrUpdateVMAgent creates deployment for vmagent and configures it
 // waits for healthy state
 func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+		return fmt.Errorf("cannot delete objects from prev state: %w", err)
+	}
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
@@ -107,6 +102,18 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 			}
 		}
 
+	}
+
+	svc, err := createOrUpdateVMAgentService(ctx, cr, rclient)
+	if err != nil {
+		return err
+	}
+
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		err = reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr, "http"))
+		if err != nil {
+			return fmt.Errorf("cannot create serviceScrape: %w", err)
+		}
 	}
 
 	ssCache, err := createOrUpdateConfigurationSecret(ctx, cr, rclient)
@@ -123,7 +130,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		// TODO verify lastSpec for missing PDB and detete it if needed
 		err = reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget))
 		if err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
@@ -1410,4 +1416,30 @@ func buildInitConfigContainer(useCustomConfigReloader bool, baseImage string, re
 		Resources: resources,
 	}
 	return []corev1.Container{initReloader}
+}
+
+func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+	if cr.Spec.ParsedLastAppliedSpec == nil {
+		return nil
+	}
+	// TODO check for stream aggr removed
+
+	prevSvc, currSvc := cr.Spec.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
+		return fmt.Errorf("cannot remove additional service: %w", err)
+	}
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	if cr.Spec.PodDisruptionBudget == nil && cr.Spec.ParsedLastAppliedSpec.PodDisruptionBudget != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
+		}
+	}
+
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.Spec.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot remove serviceScrape: %w", err)
+		}
+	}
+
+	return nil
 }

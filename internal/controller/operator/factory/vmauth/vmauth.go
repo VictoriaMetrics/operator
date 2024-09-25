@@ -19,6 +19,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -37,44 +38,11 @@ const (
 	vmAuthVolumeName      = "config"
 )
 
-// CreateOrUpdateVMAuthService creates service for VMAuth
-func CreateOrUpdateVMAuthService(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) (*corev1.Service, error) {
-	newService := build.Service(cr, cr.Spec.Port, nil)
-	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(newService, s)
-		if additionalService.Name == newService.Name {
-			logger.WithContext(ctx).Error(fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
-			return fmt.Errorf("cannot reconcile additional service for vmauth: %w", err)
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	var prevService *corev1.Service
-	if cr.Spec.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
-		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
-	}
-
-	if cr.Spec.ServiceSpec == nil &&
-		cr.Spec.ParsedLastAppliedSpec != nil &&
-		cr.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
-		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile service for vmauth: %w", err)
-	}
-	return newService, nil
-}
-
 // CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
 func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
+	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+		return err
+	}
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
@@ -85,16 +53,24 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 			}
 		}
 	}
-
-	// we have to create empty or full cm first
-	err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr)
+	svc, err := createOrUpdateVMAuthService(ctx, cr, rclient)
 	if err != nil {
-		logger.WithContext(ctx).Error(err, "cannot create configmap")
+		return fmt.Errorf("cannot create or update vmauth service :%w", err)
+	}
+	if err := createOrUpdateVMAuthIngress(ctx, rclient, cr); err != nil {
+		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
+	}
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr)); err != nil {
+			return err
+		}
+	}
+
+	if err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr); err != nil {
 		return err
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		// TODO verify lastSpec for missing PDB and detete it if needed
 		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget)); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
 		}
@@ -356,14 +332,9 @@ func makeVMAuthConfigSecret(cr *vmv1beta1.VMAuth) *corev1.Secret {
 	}
 }
 
-// CreateOrUpdateVMAuthIngress handles ingress for vmauth.
-func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
+// createOrUpdateVMAuthIngress handles ingress for vmauth.
+func createOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	if cr.Spec.Ingress == nil {
-		// TODO verify lastSpec for missing ingress and detete it if needed
-		if err := finalize.VMAuthIngressDelete(ctx, rclient, cr); err != nil {
-			return fmt.Errorf("cannot delete ingress for vmauth: %s, err :%w", cr.Name, err)
-		}
-
 		return nil
 	}
 	newIngress := buildIngressConfig(cr)
@@ -554,5 +525,62 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	if _, err := w.Write(conf); err != nil {
 		return err
 	}
+	return nil
+}
+
+// createOrUpdateVMAuthService creates service for VMAuth
+func createOrUpdateVMAuthService(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) (*corev1.Service, error) {
+	newService := build.Service(cr, cr.Spec.Port, nil)
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
+		additionalService := build.AdditionalServiceFromDefault(newService, s)
+		if additionalService.Name == newService.Name {
+			logger.WithContext(ctx).Error(fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
+			return fmt.Errorf("cannot reconcile additional service for vmauth: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	var prevService *corev1.Service
+	if cr.Spec.ParsedLastAppliedSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
+	}
+
+	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
+		return nil, fmt.Errorf("cannot reconcile service for vmauth: %w", err)
+	}
+	return newService, nil
+}
+
+func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
+	if cr.Spec.ParsedLastAppliedSpec == nil {
+		return nil
+	}
+	prevSvc, currSvc := cr.Spec.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
+		return fmt.Errorf("cannot remove additional service: %w", err)
+	}
+
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	if cr.Spec.PodDisruptionBudget == nil && cr.Spec.ParsedLastAppliedSpec.PodDisruptionBudget != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
+		}
+	}
+
+	if cr.Spec.Ingress == nil && cr.Spec.ParsedLastAppliedSpec.Ingress != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &networkingv1.Ingress{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot delete ingress from prev state: %w", err)
+		}
+	}
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.Spec.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot remove serviceScrape: %w", err)
+		}
+	}
+
 	return nil
 }

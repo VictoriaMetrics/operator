@@ -87,6 +87,36 @@ func SafeDelete(ctx context.Context, rclient client.Client, r client.Object) err
 	return nil
 }
 
+// SafeDeleteWithFinalizer removes object, ignores notfound error.
+func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r client.Object) error {
+	objName, objNs := r.GetName(), r.GetNamespace()
+	if objName == "" || objNs == "" {
+		return fmt.Errorf("BUG: object name=%q or object namespace=%q cannot be empty", objName, objNs)
+	}
+	// reload object from API to properly remove finalizer
+	if err := rclient.Get(ctx, types.NamespacedName{
+		Namespace: objNs,
+		Name:      objName,
+	}, r); err != nil {
+		// fast path
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	if err := RemoveFinalizer(ctx, rclient, r); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	if err := rclient.Delete(ctx, r); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
+}
+
 func deleteSA(ctx context.Context, rclient client.Client, crd crdObject) error {
 	if !crd.IsOwnsServiceAccount() {
 		return nil
@@ -99,10 +129,6 @@ func deleteSA(ctx context.Context, rclient client.Client, crd crdObject) error {
 
 func finalizePBD(ctx context.Context, rclient client.Client, crd crdObject) error {
 	return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, crd.PrefixedName(), crd.GetNSName())
-}
-
-func finalizePBDWithName(ctx context.Context, rclient client.Client, name, ns string) error {
-	return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, name, ns)
 }
 
 func removeConfigReloaderRole(ctx context.Context, rclient client.Client, crd crdObject) error {

@@ -12,7 +12,6 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -77,8 +76,7 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 	return statefulset, nil
 }
 
-// CreateOrUpdateAlertManagerService creates service for alertmanager
-func CreateOrUpdateAlertManagerService(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateAlertManagerService(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) (*corev1.Service, error) {
 	port, err := strconv.ParseInt(cr.Port(), 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
@@ -138,11 +136,6 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *vmv1beta1.VMAler
 		}
 		return nil
 	}); err != nil {
-		return nil, err
-	}
-
-	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {

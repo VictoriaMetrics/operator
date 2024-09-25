@@ -290,6 +290,7 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 		if err := createGenericEventForObject(ctx, c, object, "starting object update"); err != nil {
 			logger.WithContext(ctx).Error(err, " cannot create k8s api event")
 		}
+		logger.WithContext(ctx).Info("object has changes with previous state, applying changes")
 	}
 
 	result, err = cb()
@@ -316,6 +317,8 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 		if err := createGenericEventForObject(ctx, c, object, "reconcile of object finished successfully"); err != nil {
 			logger.WithContext(ctx).Error(err, " cannot create k8s api event")
 		}
+		logger.WithContext(ctx).Info("object was successfully reconciled")
+
 	}
 
 	return result, nil

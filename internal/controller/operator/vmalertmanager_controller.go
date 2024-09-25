@@ -22,15 +22,13 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/alertmanager"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -92,18 +90,6 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return result, err
 		}
 
-		service, err := alertmanager.CreateOrUpdateAlertManagerService(ctx, instance, r)
-		if err != nil {
-			return result, err
-		}
-
-		// TODO delete conditionally
-		if !ptr.Deref(instance.Spec.DisableSelfServiceScrape, false) {
-			err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForAlertmanager(service, instance))
-			if err != nil {
-				reqLogger.Error(err, "cannot create serviceScrape for vmalertmanager")
-			}
-		}
 		return result, nil
 	})
 	if err != nil {

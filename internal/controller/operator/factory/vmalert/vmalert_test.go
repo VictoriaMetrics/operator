@@ -708,7 +708,7 @@ func TestCreateOrUpdateVMAlertService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateVMAlertService(tt.args.ctx, tt.args.cr, cl)
+			got, err := createOrUpdateVMAlertService(tt.args.ctx, tt.args.cr, cl)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAlertService() error = %v, wantErr %v", err, tt.wantErr)
 				return

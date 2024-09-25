@@ -160,7 +160,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		amArgs = append(amArgs, fmt.Sprintf("--cluster.tls-config=%s/%s", tlsAssetsDir, gossipConfigKey))
 	}
 
-	if *cr.Spec.ReplicaCount == 1 {
+	if ptr.Deref(cr.Spec.ReplicaCount, 0) == 1 {
 		amArgs = append(amArgs, "--cluster.listen-address=")
 	} else {
 		amArgs = append(amArgs, "--cluster.listen-address=[$(POD_IP)]:9094")
@@ -207,7 +207,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		clusterPeerDomain = cr.PrefixedName()
 	}
 
-	for i := int32(0); i < *cr.Spec.ReplicaCount; i++ {
+	for i := int32(0); i < ptr.Deref(cr.Spec.ReplicaCount, 0); i++ {
 		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:9094", cr.PrefixedName(), i, clusterPeerDomain))
 	}
 

@@ -493,7 +493,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 	// selectNode arg add for deployments without HPA
 	// HPA leads to rolling restart for vmselect statefulset in case of replicas count changes
-	if cr.Spec.VMSelect.HPA == nil {
+	if cr.Spec.VMSelect.HPA == nil && cr.Spec.VMSelect.ReplicaCount != nil {
 		selectArg := "-selectNode="
 		vmselectCount := *cr.Spec.VMSelect.ReplicaCount
 		for i := int32(0); i < vmselectCount; i++ {

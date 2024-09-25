@@ -2018,7 +2018,7 @@ _Appears in:_
 
 #### StringOrArray
 
-
+_Underlying type:_ _string array_
 
 StringOrArray is a helper type for storing string or array of string.
 
@@ -2337,7 +2337,7 @@ _Appears in:_
 
 #### UpdateStatus
 
-
+_Underlying type:_ _string_
 
 UpdateStatus defines status for application
 

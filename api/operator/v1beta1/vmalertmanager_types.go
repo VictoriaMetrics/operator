@@ -80,9 +80,11 @@ type VMAlertmanagerSpec struct {
 	ConfigSecret string `json:"configSecret,omitempty"`
 	// Log level for VMAlertmanager to be configured with.
 	// +optional
+	// +kubebuilder:validation:Enum=debug;info;warn;error;DEBUG;INFO;WARN;ERROR
 	LogLevel string `json:"logLevel,omitempty"`
 	// LogFormat for VMAlertmanager to be configured with.
 	// +optional
+	// +kubebuilder:validation:Enum=logfmt;json
 	LogFormat string `json:"logFormat,omitempty"`
 
 	// Retention Time duration VMAlertmanager shall retain data for. Default is '120h',
@@ -190,9 +192,11 @@ type VMAlertmanagerSpec struct {
 
 	// WebConfig defines configuration for webserver
 	// https://github.com/prometheus/alertmanager/blob/main/docs/https.md
+	// +optional
 	WebConfig *AlertmanagerWebConfig `json:"webConfig,omitempty"`
 
 	// GossipConfig defines gossip TLS configuration for Alertmanager cluster
+	// +optional
 	GossipConfig *AlertmanagerGossipConfig `json:"gossipConfig,omitempty"`
 
 	CommonDefaultableParams           `json:",inline,omitempty"`
@@ -513,11 +517,14 @@ type AlertmanagerGossipConfig struct {
 // AlertmanagerWebConfig defines web server configuration for alertmanager
 type AlertmanagerWebConfig struct {
 	// TLSServerConfig defines server TLS configuration for alertmanager
+	// +optional
 	TLSServerConfig *TLSServerConfig `json:"tls_server_config,omitempty"`
 	// HTTPServerConfig defines http server configuration for alertmanager web server
+	// +optional
 	HTTPServerConfig *AlertmanagerHTTPConfig `json:"http_server_config,omitempty"`
 	// BasicAuthUsers Usernames and hashed passwords that have full access to the web server
 	// Passwords must be hashed with bcrypt
+	// +optional
 	BasicAuthUsers map[string]string `json:"basic_auth_users,omitempty"`
 }
 
@@ -525,8 +532,10 @@ type AlertmanagerWebConfig struct {
 type AlertmanagerHTTPConfig struct {
 	// HTTP2 enables HTTP/2 support. Note that HTTP/2 is only supported with TLS.
 	// This can not be changed on the fly.
+	// +optional
 	HTTP2 bool `json:"http2,omitempty"`
 	// Headers defines list of headers that can be added to HTTP responses.
+	// +optional
 	Headers map[string]string `json:"headers,omitempty"`
 }
 

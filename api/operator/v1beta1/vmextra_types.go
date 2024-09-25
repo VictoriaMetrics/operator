@@ -512,8 +512,10 @@ type StreamAggrConfig struct {
 	DedupInterval string `json:"dedupInterval,omitempty"`
 	// labels to drop from samples for aggregator before stream de-duplication and aggregation
 	// +optional
-	DropInputLabels      []string `json:"dropInputLabels,omitempty"`
-	IgnoreFirstIntervals int      `json:"ignoreFirstIntervals,omitempty"`
+	DropInputLabels []string `json:"dropInputLabels,omitempty"`
+	// IgnoreFirstIntervals instructs to ignore first interval
+	// +optional
+	IgnoreFirstIntervals int `json:"ignoreFirstIntervals,omitempty"`
 	// IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval.
 	// +optional
 	IgnoreOldSamples bool `json:"ignoreOldSamples,omitempty"`
@@ -934,15 +936,21 @@ func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
 
 // Certs defines TLS certs configuration
 type Certs struct {
+	// CertSecretRef defines reference for secret with certificate content under given key
+	// mutually exclusive with CertFile
+	// +optional
 	CertSecretRef *v1.SecretKeySelector `json:"cert_secret_ref,omitempty"`
 	// CertFile defines path to the pre-mounted file with certificate
 	// mutually exclusive with CertSecretRef
+	// +optional
 	CertFile string `json:"cert_file,omitempty"`
 	// Key defines reference for secret with certificate key content under given key
 	// mutually exclusive with KeyFile
+	// +optional
 	KeySecretRef *v1.SecretKeySelector `json:"key_secret_ref,omitempty"`
 	// KeyFile defines path to the pre-mounted file with certificate key
 	// mutually exclusive with KeySecretRef
+	// +optional
 	KeyFile string `json:"key_file,omitempty"`
 }
 
@@ -950,31 +958,39 @@ type Certs struct {
 type TLSServerConfig struct {
 	// ClientCASecretRef defines reference for secret with CA content under given key
 	// mutually exclusive with ClientCAFile
+	// +optional
 	ClientCASecretRef *v1.SecretKeySelector `json:"client_ca_secret_ref,omitempty"`
 	// ClientCAFile defines path to the pre-mounted file with CA
 	// mutually exclusive with ClientCASecretRef
+	// +optional
 	ClientCAFile string `json:"client_ca_file,omitempty"`
 	// Cert defines reference for secret with CA content under given key
 	// mutually exclusive with CertFile
 	// ClientAuthType defines server policy for client authentication
 	// If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert
 	// Note, mTLS is supported only at enterprise version of VictoriaMetrics components
+	// +optional
 	// +kubebuilder:validation:Enum=NoClientCert;RequireAndVerifyClientCert
 	ClientAuthType string `json:"client_auth_type,omitempty"`
 	// MinVersion minimum TLS version that is acceptable.
+	// +optional
 	// +kubebuilder:validation:Enum=TLS10;TLS11;TLS12;TLS13
 	MinVersion string `json:"min_version,omitempty"`
 	// MaxVersion maximum TLS version that is acceptable.
+	// +optional
 	// +kubebuilder:validation:Enum=TLS10;TLS11;TLS12;TLS13
 	MaxVersion string `json:"max_version,omitempty"`
 	// CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2
 	// https://golang.org/pkg/crypto/tls/#pkg-constants
+	// +optional
 	CipherSuites []string `json:"cipher_suites,omitempty"`
 	// CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.
 	// https://golang.org/pkg/crypto/tls/#CurveID
+	// +optional
 	CurvePreferences []string `json:"curve_preferences,omitempty"`
 	// PreferServerCipherSuites controls whether the server selects the
 	// client's most preferred ciphersuite
+	// +optional
 	PreferServerCipherSuites bool `json:"prefer_server_cipher_suites,omitempty"`
 	// Certs defines cert, CA and key for TLS auth
 	Certs `json:",inline"`
@@ -984,14 +1000,18 @@ type TLSServerConfig struct {
 type TLSClientConfig struct {
 	// CA defines reference for secret with CA content under given key
 	// mutually exclusive with CAFile
+	// +optional
 	CASecretRef *v1.SecretKeySelector `json:"ca_secret_ref,omitempty"`
 	// CAFile defines path to the pre-mounted file with CA
 	// mutually exclusive with CASecretRef
+	// +optional
 	CAFile string `json:"ca_file,omitempty"`
 	// Cert defines reference for secret with CA content under given key
 	// mutually exclusive with CertFile
+	// +optional
 	InsecureSkipVerify bool `json:"insecure_skip_verify,omitempty"`
 	// ServerName indicates a name of a server
+	// +optional
 	ServerName string `json:"server_name,omitempty"`
 	// Certs defines cert, CA and key for TLS auth
 	Certs `json:",inline"`
@@ -1047,6 +1067,7 @@ type CommonDefaultableParams struct {
 	// DisableSelfServiceScrape controls creation of VMServiceScrape by operator
 	// for the application.
 	// Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable
+	// +optional
 	DisableSelfServiceScrape *bool `json:"disableSelfServiceScrape,omitempty"`
 }
 
@@ -1054,11 +1075,14 @@ type CommonConfigReloaderParams struct {
 	// UseVMConfigReloader replaces prometheus-like config-reloader
 	// with vm one. It uses secrets watch instead of file watch
 	// which greatly increases speed of config updates
+	// +optional
 	UseVMConfigReloader *bool `json:"useVMConfigReloader,omitempty"`
 	// ConfigReloaderImageTag defines image:tag for config-reloader container
+	// +optional
 	ConfigReloaderImageTag string `json:"configReloaderImageTag,omitempty"`
 	// ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not defined default resources from operator config will be used
+	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	ConfigReloaderResources v1.ResourceRequirements `json:"configReloaderResources,omitempty"`
 	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container

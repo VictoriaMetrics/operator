@@ -188,7 +188,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 	amArgs = append(amArgs, fmt.Sprintf("--web.route-prefix=%s", webRoutePrefix))
 
 	if cr.Spec.LogLevel != "" && cr.Spec.LogLevel != "info" {
-		amArgs = append(amArgs, fmt.Sprintf("--log.level=%s", cr.Spec.LogLevel))
+		amArgs = append(amArgs, fmt.Sprintf("--log.level=%s", strings.ToLower(cr.Spec.LogLevel)))
 	}
 
 	if cr.Spec.LogFormat != "" {

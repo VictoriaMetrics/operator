@@ -3276,6 +3276,8 @@ spec:
                             type: string
                           type: array
                         ignoreFirstIntervals:
+                          description: IgnoreFirstIntervals instructs to ignore first
+                            interval
                           type: integer
                         ignoreOldSamples:
                           description: IgnoreOldSamples instructs to ignore samples
@@ -5073,6 +5075,7 @@ spec:
                       type: string
                     type: array
                   ignoreFirstIntervals:
+                    description: IgnoreFirstIntervals instructs to ignore first interval
                     type: integer
                   ignoreOldSamples:
                     description: IgnoreOldSamples instructs to ignore samples with
@@ -10556,7 +10559,9 @@ spec:
                           mutually exclusive with CertSecretRef
                         type: string
                       cert_secret_ref:
-                        description: SecretKeySelector selects a key of a Secret.
+                        description: |-
+                          CertSecretRef defines reference for secret with certificate content under given key
+                          mutually exclusive with CertFile
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -10633,7 +10638,9 @@ spec:
                           mutually exclusive with CertSecretRef
                         type: string
                       cert_secret_ref:
-                        description: SecretKeySelector selects a key of a Secret.
+                        description: |-
+                          CertSecretRef defines reference for secret with certificate content under given key
+                          mutually exclusive with CertFile
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -10888,9 +10895,21 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               logFormat:
                 description: LogFormat for VMAlertmanager to be configured with.
+                enum:
+                - logfmt
+                - json
                 type: string
               logLevel:
                 description: Log level for VMAlertmanager to be configured with.
+                enum:
+                - debug
+                - info
+                - warn
+                - error
+                - DEBUG
+                - INFO
+                - WARN
+                - ERROR
                 type: string
               minReadySeconds:
                 description: |-
@@ -11878,7 +11897,9 @@ spec:
                           mutually exclusive with CertSecretRef
                         type: string
                       cert_secret_ref:
-                        description: SecretKeySelector selects a key of a Secret.
+                        description: |-
+                          CertSecretRef defines reference for secret with certificate content under given key
+                          mutually exclusive with CertFile
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -29220,6 +29241,7 @@ spec:
                       type: string
                     type: array
                   ignoreFirstIntervals:
+                    description: IgnoreFirstIntervals instructs to ignore first interval
                     type: integer
                   ignoreOldSamples:
                     description: IgnoreOldSamples instructs to ignore samples with

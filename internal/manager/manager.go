@@ -50,8 +50,9 @@ const defaultMetricsAddr = ":8080"
 const defaultWebhookPort = 9443
 
 var (
-	startTime  = time.Now()
-	appVersion = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application", ConstLabels: map[string]string{"version": buildinfo.Version}}, func() float64 {
+	managerFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	startTime    = time.Now()
+	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application", ConstLabels: map[string]string{"version": buildinfo.Version}}, func() float64 {
 		return 1.0
 	})
 	uptime = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_uptime_seconds", Help: "uptime"}, func() float64 {
@@ -62,33 +63,33 @@ var (
 	})
 	scheme              = runtime.NewScheme()
 	setupLog            = ctrl.Log.WithName("setup")
-	leaderElect         = flag.Bool("leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	enableWebhooks      = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
-	webhookPort         = flag.Int("webhook.port", defaultWebhookPort, "port to start webhook server on")
-	disableCRDOwnership = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
-	webhooksDir         = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
-	webhookCertName     = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
-	webhookKeyName      = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
-	tlsEnable           = flag.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
-	tlsCertsDir         = flag.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
-	tlsCertName         = flag.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
-	tlsKeyName          = flag.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
-	mtlsEnable          = flag.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set. ")
-	mtlsCAFile          = flag.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
+	leaderElect         = managerFlags.Bool("leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	enableWebhooks      = managerFlags.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
+	webhookPort         = managerFlags.Int("webhook.port", defaultWebhookPort, "port to start webhook server on")
+	disableCRDOwnership = managerFlags.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
+	webhooksDir         = managerFlags.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
+	webhookCertName     = managerFlags.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
+	webhookKeyName      = managerFlags.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	tlsEnable           = managerFlags.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
+	tlsCertsDir         = managerFlags.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
+	tlsCertName         = managerFlags.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
+	tlsKeyName          = managerFlags.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
+	mtlsEnable          = managerFlags.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set. ")
+	mtlsCAFile          = managerFlags.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
 		"By default the host system TLS Root CA is used for client certificate verification. ")
-	metricsBindAddress            = flag.String("metrics-bind-address", defaultMetricsAddr, "The address the metric endpoint binds to.")
-	pprofAddr                     = flag.String("pprof-addr", ":8435", "The address for pprof/debug API. Empty value disables server")
-	probeAddr                     = flag.String("health-probe-bind-address", ":8081", "The address the probes (health, ready) binds to.")
-	defaultKubernetesMinorVersion = flag.Uint64("default.kubernetesVersion.minor", 21, "Minor version of kubernetes server, if operator cannot parse actual kubernetes response")
-	defaultKubernetesMajorVersion = flag.Uint64("default.kubernetesVersion.major", 1, "Major version of kubernetes server, if operator cannot parse actual kubernetes response")
-	printDefaults                 = flag.Bool("printDefaults", false, "print all variables with their default values and exit")
-	printFormat                   = flag.String("printFormat", "table", "output format for --printDefaults. Can be table, json, yaml or list")
-	promCRDResyncPeriod           = flag.Duration("controller.prometheusCRD.resyncPeriod", 0, "Configures resync period for prometheus CRD converter. Disabled by default")
-	clientQPS                     = flag.Int("client.qps", 5, "defines K8s client QPS")
-	clientBurst                   = flag.Int("client.burst", 10, "defines K8s client burst")
+	metricsBindAddress            = managerFlags.String("metrics-bind-address", defaultMetricsAddr, "The address the metric endpoint binds to.")
+	pprofAddr                     = managerFlags.String("pprof-addr", ":8435", "The address for pprof/debug API. Empty value disables server")
+	probeAddr                     = managerFlags.String("health-probe-bind-address", ":8081", "The address the probes (health, ready) binds to.")
+	defaultKubernetesMinorVersion = managerFlags.Uint64("default.kubernetesVersion.minor", 21, "Minor version of kubernetes server, if operator cannot parse actual kubernetes response")
+	defaultKubernetesMajorVersion = managerFlags.Uint64("default.kubernetesVersion.major", 1, "Major version of kubernetes server, if operator cannot parse actual kubernetes response")
+	printDefaults                 = managerFlags.Bool("printDefaults", false, "print all variables with their default values and exit")
+	printFormat                   = managerFlags.String("printFormat", "table", "output format for --printDefaults. Can be table, json, yaml or list")
+	promCRDResyncPeriod           = managerFlags.Duration("controller.prometheusCRD.resyncPeriod", 0, "Configures resync period for prometheus CRD converter. Disabled by default")
+	clientQPS                     = managerFlags.Int("client.qps", 5, "defines K8s client QPS")
+	clientBurst                   = managerFlags.Int("client.burst", 10, "defines K8s client burst")
 	wasCacheSynced                = uint32(0)
-	disableCacheForObjects        = flag.String("controller.disableCacheFor", "", "disables client for cache for API resources. Supported objects - namespace,pod,secret,configmap,deployment,statefulset")
-	disableSecretKeySpaceTrim     = flag.Bool("disableSecretKeySpaceTrim", false, "disables trim of space at Secret/Configmap value content. It's a common mistake to put new line to the base64 encoded secret value.")
+	disableCacheForObjects        = managerFlags.String("controller.disableCacheFor", "", "disables client for cache for API resources. Supported objects - namespace,pod,secret,configmap,deployment,statefulset")
+	disableSecretKeySpaceTrim     = managerFlags.Bool("disableSecretKeySpaceTrim", false, "disables trim of space at Secret/Configmap value content. It's a common mistake to put new line to the base64 encoded secret value.")
 )
 
 func init() {
@@ -108,9 +109,9 @@ func RunManager(ctx context.Context) error {
 	opts := zap.Options{
 		StacktraceLevel: zapcore.PanicLevel,
 	}
-	opts.BindFlags(flag.CommandLine)
-	vmcontroller.BindFlags(flag.CommandLine)
-	flag.Parse()
+	opts.BindFlags(managerFlags)
+	vmcontroller.BindFlags(managerFlags)
+	managerFlags.Parse(os.Args[1:])
 
 	baseConfig := config.MustGetBaseConfig()
 	if *printDefaults {

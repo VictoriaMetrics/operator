@@ -120,9 +120,9 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 func createOrUpdateVMSelect(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
 
 	var prevSts *appsv1.StatefulSet
-	if cr.Spec.ParsedLastAppliedSpec != nil && cr.Spec.ParsedLastAppliedSpec.VMSelect != nil {
+	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMSelect != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		var err error
 		prevSts, err = genVMSelectSpec(prevCR)
 		if err != nil {
@@ -181,9 +181,9 @@ func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster,
 	}
 
 	var prevService *corev1.Service
-	if cr.Spec.ParsedLastAppliedSpec != nil && cr.Spec.ParsedLastAppliedSpec.VMSelect != nil {
+	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMSelect != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		prevT := &clusterSvcBuilder{
 			prevCR,
 			prevCR.Spec.VMSelect.GetNameWithPrefix(prevCR.Name),
@@ -214,9 +214,9 @@ func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster,
 func createOrUpdateVMInsert(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
 	var prevDeploy *appsv1.Deployment
 
-	if cr.Spec.ParsedLastAppliedSpec != nil && cr.Spec.ParsedLastAppliedSpec.VMInsert != nil {
+	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMInsert != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		var err error
 		prevDeploy, err = genVMInsertSpec(prevCR)
 		if err != nil {
@@ -264,9 +264,9 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 		return nil, err
 	}
 	var prevService *corev1.Service
-	if cr.Spec.ParsedLastAppliedSpec != nil && cr.Spec.ParsedLastAppliedSpec.VMInsert != nil {
+	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMInsert != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		prevT := &clusterSvcBuilder{
 			cr,
 			prevCR.Spec.VMInsert.GetNameWithPrefix(cr.Name),
@@ -297,9 +297,9 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 func createOrUpdateVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
 	var prevSts *appsv1.StatefulSet
 
-	if cr.Spec.ParsedLastAppliedSpec != nil && cr.Spec.ParsedLastAppliedSpec.VMStorage != nil {
+	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMStorage != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		var err error
 		prevSts, err = buildVMStorageSpec(ctx, prevCR)
 		if err != nil {
@@ -365,9 +365,9 @@ func createOrUpdateVMStorageService(ctx context.Context, cr *vmv1beta1.VMCluster
 		return nil, err
 	}
 	var prevService *corev1.Service
-	if cr.Spec.ParsedLastAppliedSpec != nil && cr.Spec.ParsedLastAppliedSpec.VMStorage != nil {
+	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMStorage != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		prevT := &clusterSvcBuilder{
 			cr,
 			prevCR.Spec.VMStorage.GetNameWithPrefix(prevCR.Name),
@@ -1141,16 +1141,16 @@ func (csb *clusterSvcBuilder) GetAdditionalService() *vmv1beta1.AdditionalServic
 }
 
 func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
-	if cr.Spec.ParsedLastAppliedSpec == nil {
+	if cr.ParsedLastAppliedSpec == nil {
 		// fast path
 		return nil
 	}
 	vmst := cr.Spec.VMStorage
 	vmse := cr.Spec.VMSelect
 	vmis := cr.Spec.VMInsert
-	prevSt := cr.Spec.ParsedLastAppliedSpec.VMStorage
-	prevSe := cr.Spec.ParsedLastAppliedSpec.VMSelect
-	prevIs := cr.Spec.ParsedLastAppliedSpec.VMInsert
+	prevSt := cr.ParsedLastAppliedSpec.VMStorage
+	prevSe := cr.ParsedLastAppliedSpec.VMSelect
+	prevIs := cr.ParsedLastAppliedSpec.VMInsert
 	if prevSt != nil {
 		if vmst == nil {
 			if err := finalize.OnVMStorageDelete(ctx, rclient, cr, prevSt); err != nil {

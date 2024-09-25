@@ -39,6 +39,9 @@ type VMAlertmanager struct {
 	// Specification of the desired behavior of the VMAlertmanager cluster. More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec VMAlertmanagerSpec `json:"spec"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMAlertmanagerSpec `json:"-" yaml:"-"`
+
 	// Most recent observed status of the VMAlertmanager cluster.
 	// Operator API itself. More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
@@ -52,8 +55,6 @@ type VMAlertmanagerSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
 
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAlertmanagerSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -214,7 +215,7 @@ func (cr *VMAlertmanager) UnmarshalJSON(src []byte) error {
 	if err != nil {
 		return err
 	}
-	cr.Spec.ParsedLastAppliedSpec = prev
+	cr.ParsedLastAppliedSpec = prev
 	return nil
 }
 

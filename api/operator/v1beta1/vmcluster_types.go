@@ -23,8 +23,6 @@ import (
 type VMClusterSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMClusterSpec `json:"-" yaml:"-"`
 	// RetentionPeriod for the stored metrics
 	// Note VictoriaMetrics has data/ and indexdb/ folders
 	// metrics from data/ removed eventually as soon as partition leaves retention period
@@ -91,7 +89,7 @@ func (cr *VMCluster) UnmarshalJSON(src []byte) error {
 	if err != nil {
 		return err
 	}
-	cr.Spec.ParsedLastAppliedSpec = prev
+	cr.ParsedLastAppliedSpec = prev
 	return nil
 }
 
@@ -128,6 +126,8 @@ type VMCluster struct {
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              VMClusterSpec `json:"spec"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMClusterSpec `json:"-" yaml:"-"`
 	// +optional
 	Status VMClusterStatus `json:"status,omitempty"`
 }

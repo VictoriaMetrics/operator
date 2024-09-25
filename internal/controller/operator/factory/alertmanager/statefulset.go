@@ -100,9 +100,9 @@ func createOrUpdateAlertManagerService(ctx context.Context, cr *vmv1beta1.VMAler
 		)
 	})
 	var prevService *corev1.Service
-	if cr.Spec.ParsedLastAppliedSpec != nil {
+	if cr.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		prevPort, err := strconv.ParseInt(cr.Port(), 10, 32)
 		if err != nil {
 			return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)

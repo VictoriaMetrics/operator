@@ -68,9 +68,9 @@ func createOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 	}
 
 	var prevService *corev1.Service
-	if cr.Spec.ParsedLastAppliedSpec != nil {
+	if cr.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			if prevCR.Spec.StatefulMode {
 				svc.Spec.ClusterIP = "None"
@@ -138,9 +138,9 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 
 	var prevObjectSpec runtime.Object
 
-	if cr.Spec.ParsedLastAppliedSpec != nil {
+	if cr.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		prevObjectSpec, err = newDeployForVMAgent(prevCR, ssCache)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
@@ -1419,23 +1419,23 @@ func buildInitConfigContainer(useCustomConfigReloader bool, baseImage string, re
 }
 
 func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
-	if cr.Spec.ParsedLastAppliedSpec == nil {
+	if cr.ParsedLastAppliedSpec == nil {
 		return nil
 	}
 	// TODO check for stream aggr removed
 
-	prevSvc, currSvc := cr.Spec.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	prevSvc, currSvc := cr.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
 	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
 		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil && cr.Spec.ParsedLastAppliedSpec.PodDisruptionBudget != nil {
+	if cr.Spec.PodDisruptionBudget == nil && cr.ParsedLastAppliedSpec.PodDisruptionBudget != nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 		}
 	}
 
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.Spec.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

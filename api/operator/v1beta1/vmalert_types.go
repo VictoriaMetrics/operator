@@ -31,8 +31,6 @@ const (
 type VMAlertSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAlertSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAlert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VMAlert to be configured with.
@@ -167,7 +165,7 @@ func (cr *VMAlert) UnmarshalJSON(src []byte) error {
 	if err != nil {
 		return err
 	}
-	cr.Spec.ParsedLastAppliedSpec = prev
+	cr.ParsedLastAppliedSpec = prev
 	return nil
 }
 
@@ -281,7 +279,10 @@ type VMAlert struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VMAlertSpec   `json:"spec,omitempty"`
+	Spec VMAlertSpec `json:"spec,omitempty"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMAlertSpec `json:"-" yaml:"-"`
+
 	Status VMAlertStatus `json:"status,omitempty"`
 }
 

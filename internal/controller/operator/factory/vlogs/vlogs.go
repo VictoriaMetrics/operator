@@ -81,9 +81,9 @@ func CreateOrUpdateVLogs(ctx context.Context, r *vmv1beta1.VLogs, rclient client
 
 	var prevDeploy *appsv1.Deployment
 
-	if r.Spec.ParsedLastAppliedSpec != nil {
+	if r.ParsedLastAppliedSpec != nil {
 		prevCR := r.DeepCopy()
-		prevCR.Spec = *r.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *r.ParsedLastAppliedSpec
 		prevDeploy, err = newDeployForVLogs(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -289,9 +289,9 @@ func CreateOrUpdateVLogsService(ctx context.Context, r *vmv1beta1.VLogs, rclient
 		return nil, err
 	}
 	var prevService *corev1.Service
-	if r.Spec.ParsedLastAppliedSpec != nil {
+	if r.ParsedLastAppliedSpec != nil {
 		prevCR := r.DeepCopy()
-		prevCR.Spec = *r.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *r.ParsedLastAppliedSpec
 		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
 	}
 
@@ -302,16 +302,16 @@ func CreateOrUpdateVLogsService(ctx context.Context, r *vmv1beta1.VLogs, rclient
 }
 
 func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VLogs, rclient client.Client) error {
-	if cr.Spec.ParsedLastAppliedSpec == nil {
+	if cr.ParsedLastAppliedSpec == nil {
 		return nil
 	}
-	prevSvc, currSvc := cr.Spec.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	prevSvc, currSvc := cr.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
 	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
 		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.Spec.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

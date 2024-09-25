@@ -20,8 +20,6 @@ import (
 type VMAuthSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAuthSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -210,7 +208,7 @@ func (cr *VMAuth) UnmarshalJSON(src []byte) error {
 	if err != nil {
 		return err
 	}
-	cr.Spec.ParsedLastAppliedSpec = prev
+	cr.ParsedLastAppliedSpec = prev
 	return nil
 }
 
@@ -270,7 +268,10 @@ type VMAuth struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VMAuthSpec   `json:"spec,omitempty"`
+	Spec VMAuthSpec `json:"spec,omitempty"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMAuthSpec `json:"-" yaml:"-"`
+
 	Status VMAuthStatus `json:"status,omitempty"`
 }
 

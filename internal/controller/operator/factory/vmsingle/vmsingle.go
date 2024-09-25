@@ -86,9 +86,9 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient
 		}
 	}
 	var prevDeploy *appsv1.Deployment
-	if cr.Spec.ParsedLastAppliedSpec != nil {
+	if cr.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		prevDeploy, err = newDeployForVMSingle(ctx, prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -377,9 +377,9 @@ func createOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, 
 	}
 
 	var prevService *corev1.Service
-	if cr.Spec.ParsedLastAppliedSpec != nil {
+	if cr.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			addBackupPort(svc, prevCR.Spec.VMBackup)
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
@@ -441,19 +441,19 @@ func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.V
 }
 
 func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
-	if cr.Spec.ParsedLastAppliedSpec == nil {
+	if cr.ParsedLastAppliedSpec == nil {
 		return nil
 	}
 	// TODO check storage for nil
 	// TODO check for stream aggr removed
 
-	prevSvc, currSvc := cr.Spec.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	prevSvc, currSvc := cr.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
 	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
 		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.Spec.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

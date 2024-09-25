@@ -25,8 +25,6 @@ import (
 type VMSingleSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMSingleSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSingle pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -102,7 +100,7 @@ func (cr *VMSingle) UnmarshalJSON(src []byte) error {
 	if err != nil {
 		return err
 	}
-	cr.Spec.ParsedLastAppliedSpec = prev
+	cr.ParsedLastAppliedSpec = prev
 	return nil
 }
 
@@ -150,8 +148,10 @@ type VMSingle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VMSingleSpec   `json:"spec,omitempty"`
-	Status VMSingleStatus `json:"status,omitempty"`
+	Spec VMSingleSpec `json:"spec,omitempty"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMSingleSpec  `json:"-" yaml:"-"`
+	Status                VMSingleStatus `json:"status,omitempty"`
 }
 
 func (cr *VMSingle) Probe() *EmbeddedProbes {
@@ -307,9 +307,6 @@ func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
 
 // HasSpecChanges compares single spec with last applied single spec stored in annotation
 func (cr *VMSingle) HasSpecChanges() (bool, error) {
-	if cr.Spec.ParsedLastAppliedSpec == nil {
-		return true, nil
-	}
 	lastAppliedSingleJSON := cr.Annotations[lastAppliedSpecAnnotationName]
 	if len(lastAppliedSingleJSON) == 0 {
 		return true, nil

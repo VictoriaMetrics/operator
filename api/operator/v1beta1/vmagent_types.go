@@ -51,8 +51,6 @@ type VMAgentSecurityEnforcements struct {
 type VMAgentSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAgentSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -317,7 +315,7 @@ func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	if err != nil {
 		return err
 	}
-	cr.Spec.ParsedLastAppliedSpec = prev
+	cr.ParsedLastAppliedSpec = prev
 	return nil
 }
 
@@ -464,7 +462,10 @@ type VMAgent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VMAgentSpec   `json:"spec,omitempty"`
+	Spec VMAgentSpec `json:"spec,omitempty"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMAgentSpec `json:"-" yaml:"-"`
+
 	Status VMAgentStatus `json:"status,omitempty"`
 }
 

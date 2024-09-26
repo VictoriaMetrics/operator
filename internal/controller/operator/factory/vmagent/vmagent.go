@@ -637,25 +637,10 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 	}
 
 	return &corev1.PodSpec{
-		NodeSelector:                  cr.Spec.NodeSelector,
-		Volumes:                       volumes,
-		InitContainers:                ic,
-		Containers:                    containers,
-		ServiceAccountName:            cr.GetServiceAccountName(),
-		SecurityContext:               build.AddStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
-		ImagePullSecrets:              cr.Spec.ImagePullSecrets,
-		Affinity:                      cr.Spec.Affinity,
-		SchedulerName:                 cr.Spec.SchedulerName,
-		Tolerations:                   cr.Spec.Tolerations,
-		PriorityClassName:             cr.Spec.PriorityClassName,
-		HostNetwork:                   cr.Spec.HostNetwork,
-		DNSPolicy:                     cr.Spec.DNSPolicy,
-		DNSConfig:                     cr.Spec.DNSConfig,
-		RuntimeClassName:              cr.Spec.RuntimeClassName,
-		HostAliases:                   cr.Spec.HostAliases,
-		TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
-		TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
-		ReadinessGates:                cr.Spec.ReadinessGates,
+		Volumes:            volumes,
+		InitContainers:     ic,
+		Containers:         containers,
+		ServiceAccountName: cr.GetServiceAccountName(),
 	}, nil
 }
 

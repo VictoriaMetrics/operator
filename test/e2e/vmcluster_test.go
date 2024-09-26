@@ -615,6 +615,54 @@ var _ = Describe("e2e vmcluster", func() {
 					},
 				},
 			),
+			Entry("by adding imagePullSecret", "storage-image-pull-secret",
+				&v1beta1vm.VMCluster{
+					Spec: v1beta1vm.VMClusterSpec{
+						RetentionPeriod:  "1",
+						ImagePullSecrets: nil,
+						VMStorage: &v1beta1vm.VMStorage{
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+						VMSelect: &v1beta1vm.VMSelect{
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						},
+					},
+				},
+				testStep{
+					setup: func(v *v1beta1vm.VMCluster) {
+						pullSecret := corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{Name: "test-pull-secret", Namespace: namespace},
+							Data: map[string][]byte{
+								".dockerconfigjson": []byte(`{"auths":{"test.example.com":{"username":"test","password":"12345","email":"test@example.com","auth":"dGVzdDoxMjM0NQ=="}}}`),
+							},
+							Type: corev1.SecretTypeDockerConfigJson,
+						}
+						Expect(k8sClient.Create(ctx, &pullSecret)).To(Succeed())
+					},
+					modify: func(cr *v1beta1vm.VMCluster) {
+						cr.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+							{Name: "test-pull-secret"},
+						}
+					},
+					verify: func(cr *v1beta1vm.VMCluster) {
+						var sts appsv1.StatefulSet
+						nss := types.NamespacedName{Namespace: namespace, Name: cr.Spec.VMStorage.GetNameWithPrefix(cr.Name)}
+						Expect(k8sClient.Get(ctx, nss, &sts)).To(Succeed())
+						Expect(sts.Spec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
+						Expect(k8sClient.Delete(ctx,
+							&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "test-pull-secret", Namespace: namespace}})).
+							To(Succeed())
+					},
+				},
+			),
 		)
 	})
 })

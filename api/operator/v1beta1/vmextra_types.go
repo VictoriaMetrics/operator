@@ -1171,9 +1171,6 @@ type CommonApplicationDeploymentParams struct {
 	// +optional
 	RevisionHistoryLimitCount *int32 `json:"revisionHistoryLimitCount,omitempty"`
 
-	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Containers property allows to inject additions sidecars or to patch existing containers.
 	// It can be useful for proxies, backup, etc.
 	// +optional

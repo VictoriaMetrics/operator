@@ -80,6 +80,9 @@ type VMAuthSpec struct {
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
 	// +optional
 	ConfigSecret string `json:"configSecret,omitempty"`
+	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	CommonDefaultableParams           `json:",inline,omitempty"`
 	CommonConfigReloaderParams        `json:",inline,omitempty"`

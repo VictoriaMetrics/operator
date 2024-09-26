@@ -81,6 +81,10 @@ type VMSingleSpec struct {
 	// StreamAggrConfig defines stream aggregation configuration for VMSingle
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
 
+	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
 	CommonDefaultableParams           `json:",inline"`
 	CommonApplicationDeploymentParams `json:",inline"`
 }

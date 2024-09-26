@@ -146,10 +146,10 @@ type VMAlertSpec struct {
 	// +optional
 	License *License `json:"license,omitempty"`
 
-	// Paused If set to true all actions on the underlying managed objects are not
-	// going to be performed, except for delete actions.
+	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	Paused                            bool `json:"paused,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
 	CommonDefaultableParams           `json:",inline,omitempty"`
 	CommonConfigReloaderParams        `json:",inline,omitempty"`
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`

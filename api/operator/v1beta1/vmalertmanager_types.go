@@ -199,6 +199,9 @@ type VMAlertmanagerSpec struct {
 	// GossipConfig defines gossip TLS configuration for Alertmanager cluster
 	// +optional
 	GossipConfig *AlertmanagerGossipConfig `json:"gossipConfig,omitempty"`
+	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	CommonDefaultableParams           `json:",inline,omitempty"`
 	CommonConfigReloaderParams        `json:",inline,omitempty"`

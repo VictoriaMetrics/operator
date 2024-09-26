@@ -311,6 +311,7 @@ func addVMClusterDefaults(objI interface{}) {
 		if cr.Spec.VMStorage.DisableSelfServiceScrape == nil {
 			cr.Spec.VMStorage.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
+		cr.Spec.VMStorage.ImagePullSecrets = append(cr.Spec.VMStorage.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
 
 		useBackupDefaultResources := c.VMBackup.UseDefaultResources
 		if cr.Spec.VMStorage.UseDefaultResources != nil {
@@ -384,6 +385,7 @@ func addVMClusterDefaults(objI interface{}) {
 		if cr.Spec.VMInsert.DisableSelfServiceScrape == nil {
 			cr.Spec.VMInsert.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
+		cr.Spec.VMInsert.ImagePullSecrets = append(cr.Spec.VMInsert.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
 
 		if cr.Spec.VMInsert.Image.Repository == "" {
 			cr.Spec.VMInsert.Image.Repository = c.VMClusterDefault.VMInsertDefault.Image
@@ -414,6 +416,8 @@ func addVMClusterDefaults(objI interface{}) {
 		if cr.Spec.VMSelect.DisableSelfServiceScrape == nil {
 			cr.Spec.VMSelect.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
+
+		cr.Spec.VMSelect.ImagePullSecrets = append(cr.Spec.VMSelect.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
 
 		if cr.Spec.VMSelect.Image.Repository == "" {
 			cr.Spec.VMSelect.Image.Repository = c.VMClusterDefault.VMSelectDefault.Image

@@ -190,10 +190,6 @@ func newDeployForVMAlert(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, rem
 		return nil, fmt.Errorf("cannot generate new spec for vmalert: %w", err)
 	}
 
-	if len(cr.Spec.ImagePullSecrets) > 0 {
-		generatedSpec.Template.Spec.ImagePullSecrets = cr.Spec.ImagePullSecrets
-	}
-
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),

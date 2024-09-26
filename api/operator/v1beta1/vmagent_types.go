@@ -299,6 +299,10 @@ type VMAgentSpec struct {
 	// +optional
 	License *License `json:"license,omitempty"`
 
+	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
 	VMAgentSecurityEnforcements       `json:",inline"`
 	CommonDefaultableParams           `json:",inline,omitempty"`
 	CommonConfigReloaderParams        `json:",inline,omitempty"`

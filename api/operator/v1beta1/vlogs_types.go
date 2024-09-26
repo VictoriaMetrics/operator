@@ -89,6 +89,10 @@ type VLogsSpec struct {
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// LivenessProbe that will be added to VLogs pod
 	*EmbeddedProbes `json:",inline"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // VLogsStatus defines the observed state of VLogs

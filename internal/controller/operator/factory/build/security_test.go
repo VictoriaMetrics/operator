@@ -120,6 +120,47 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 			},
 		},
 		{
+			name: "add from spec",
+			args: args{
+				sc: &vmv1beta1.SecurityContext{
+					PodSecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:    ptr.To[int64](1),
+						RunAsNonRoot: ptr.To(false),
+					},
+					ContainerSecurityContext: &vmv1beta1.ContainerSecurityContext{
+						Privileged: ptr.To(true),
+					},
+				},
+				containers: []corev1.Container{
+					{
+						Name: "c1",
+					},
+					{
+						Name: "c2",
+					},
+				},
+			},
+			expected: []corev1.Container{
+				{
+					Name: "c1",
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser:    ptr.To[int64](1),
+						RunAsNonRoot: ptr.To(false),
+						Privileged:   ptr.To(true),
+					},
+				},
+				{
+					Name: "c2",
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser:    ptr.To[int64](1),
+						RunAsNonRoot: ptr.To(false),
+						Privileged:   ptr.To(true),
+					},
+				},
+			},
+		},
+
+		{
 			name: "keep defined context",
 			args: args{
 				containers: []corev1.Container{
@@ -184,9 +225,46 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "keep security context if external defined",
+			args: args{
+				sc: &vmv1beta1.SecurityContext{
+					PodSecurityContext: &corev1.PodSecurityContext{
+						RunAsUser: ptr.To[int64](1000),
+					},
+				},
+				containers: []corev1.Container{
+					{
+						Name: "c1",
+						SecurityContext: &corev1.SecurityContext{
+							ReadOnlyRootFilesystem: ptr.To(false),
+						},
+					},
+					{
+						Name: "c2",
+					},
+				},
+			},
+			expected: []corev1.Container{
+				{
+					Name: "c1",
+					SecurityContext: &corev1.SecurityContext{
+						ReadOnlyRootFilesystem: ptr.To(false),
+					},
+				},
+				{
+					Name: "c2",
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser: ptr.To[int64](1000),
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
-		res := AddStrictSecuritySettingsToContainers(tt.args.sc, tt.args.containers, true)
-		assert.Equal(t, tt.expected, res)
+		t.Run(tt.name, func(t *testing.T) {
+			res := AddStrictSecuritySettingsToContainers(tt.args.sc, tt.args.containers, true)
+			assert.Equal(t, tt.expected, res)
+		})
 	}
 }

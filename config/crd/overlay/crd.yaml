@@ -3032,6 +3032,10 @@ spec:
                       - key
                       type: object
                       x-kubernetes-map-type: atomic
+                    forceVMProto:
+                      description: ForceVMProto forces using VictoriaMetrics protocol
+                        for sending data to -remoteWrite.url
+                      type: boolean
                     headers:
                       description: |-
                         Headers allow configuring custom http headers
@@ -3119,6 +3123,10 @@ spec:
                             type: string
                         type: object
                       type: array
+                    maxDiskUsage:
+                      description: MaxDiskUsage defines the maximum file-based buffer
+                        size in bytes for -remoteWrite.url
+                      type: string
                     oauth2:
                       description: OAuth2 defines auth configuration
                       properties:

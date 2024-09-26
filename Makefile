@@ -7,8 +7,11 @@ TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
 	git diff-index --quiet HEAD -- || echo '-dirty-'$$( \
 		git diff-index -u HEAD -- ':!config' ':!docs' | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
 VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.0,$(TAG:v%=%))
+DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
 OVERLAY ?= config/manager
+
+BUILDINFO="operator-$(DATEINFO_TAG)-$(TAG)"
 
 LOCAL_REGISTRY_NAME ?= kind-registry
 LOCAL_REGISTRY_PORT ?= 5001
@@ -141,11 +144,15 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 
 .PHONY: build
 build: docs generate fmt vet ## Build manager binary.
-	go build -o bin/$(REPO) $(ROOT)/
+	go build \
+		-ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=operator-${BUILDINFO}'"\
+		-o bin/$(REPO) $(ROOT)/
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run $(ROOT)/
+	go run \
+		-ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=operator-${BUILDINFO}'"\
+     $(ROOT)/
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
@@ -154,6 +161,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg ROOT=$(ROOT) \
+		--build-arg BUILDINFO=$(BUILDINFO) \
 		${DOCKER_BUILD_ARGS} \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) .
 
@@ -184,6 +192,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 		--push \
 		--platform=$(PLATFORMS) \
 		--build-arg ROOT=$(ROOT) \
+		--build-arg BUILDINFO=$(BUILDINFO) \
 		${DOCKER_BUILD_ARGS} \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
 		-f Dockerfile.cross .

@@ -404,6 +404,12 @@ type VMAgentRemoteWriteSpec struct {
 	// StreamAggrConfig defines stream aggregation configuration for VMAgent for -remoteWrite.url
 	// +optional
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
+	// MaxDiskUsage defines the maximum file-based buffer size in bytes for -remoteWrite.url
+	// +optional
+	MaxDiskUsage *string `json:"maxDiskUsage,omitempty"`
+	// ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url
+	// +optional
+	ForceVMProto bool `json:"forceVMProto,omitempty"`
 }
 
 // AsMapKey key for internal cache map

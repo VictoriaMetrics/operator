@@ -41,6 +41,7 @@ const (
 	tlsAssetsDir           = "/etc/vmagent-tls/certs"
 	vmagentGzippedFilename = "vmagent.yaml.gz"
 	configEnvsubstFilename = "vmagent.env.yaml"
+	defaultMaxDiskUsage    = "1073741824"
 )
 
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
@@ -969,7 +970,7 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 	// limit to 1GB
 	// most people do not care about this setting,
 	// but it may harmfully affect kubernetes cluster health
-	maxDiskUsage := "1073741824"
+	maxDiskUsage := defaultMaxDiskUsage
 	if rws.MaxDiskUsagePerURL != nil {
 		maxDiskUsage = fmt.Sprintf("%d", *rws.MaxDiskUsagePerURL)
 	}
@@ -993,6 +994,15 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 			containsMaxDiskUsage = true
 		}
 		break
+	}
+	if !containsMaxDiskUsage {
+		for i := range cr.Spec.RemoteWrite {
+			rws := cr.Spec.RemoteWrite[i]
+			if rws.MaxDiskUsage != nil {
+				containsMaxDiskUsage = true
+				break
+			}
+		}
 	}
 	if !containsMaxDiskUsage {
 		// limit to 1GB
@@ -1060,8 +1070,37 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	streamAggrDropInputLabels := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInputLabels="}
 	streamAggrIgnoreFirstIntervals := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreFirstIntervals="}
 	streamAggrIgnoreOldSamples := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreOldSamples="}
+	maxDiskUsagePerURL := remoteFlag{flagSetting: "-remoteWrite.maxDiskUsagePerURL="}
+	forceVMProto := remoteFlag{flagSetting: "-remoteWrite.forceVMProto="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
+
+	var maxDiskUsageInExtraArgs bool
+	var forceVMProtoInExtraArgs bool
+	for arg := range cr.Spec.ExtraArgs {
+		if arg == "remoteWrite.maxDiskUsagePerURL" {
+			maxDiskUsageInExtraArgs = true
+		}
+		if arg == "remoteWrite.forceVMProto" {
+			forceVMProtoInExtraArgs = true
+		}
+		if maxDiskUsageInExtraArgs && forceVMProtoInExtraArgs {
+			break
+		}
+	}
+
+	for i := range remoteTargets {
+		rws := remoteTargets[i]
+		if !maxDiskUsageInExtraArgs && rws.MaxDiskUsage != nil {
+			maxDiskUsagePerURL.isNotNull = true
+		}
+		if !forceVMProtoInExtraArgs && rws.ForceVMProto {
+			forceVMProto.isNotNull = true
+		}
+		if maxDiskUsagePerURL.isNotNull && forceVMProto.isNotNull {
+			break
+		}
+	}
 
 	for i := range remoteTargets {
 		rws := remoteTargets[i]
@@ -1240,12 +1279,26 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", dedupIntVal)
 		streamAggrIgnoreFirstIntervals.flagSetting += fmt.Sprintf("%d,", ignoreFirstIntervalsVal)
 		streamAggrIgnoreOldSamples.flagSetting += fmt.Sprintf("%v,", ignoreOldSamples)
+
+		if maxDiskUsagePerURL.isNotNull {
+			if rws.MaxDiskUsage != nil {
+				maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", *rws.MaxDiskUsage)
+			} else {
+				maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", defaultMaxDiskUsage)
+			}
+		}
+
+		if forceVMProto.isNotNull {
+			forceVMProto.flagSetting += fmt.Sprintf("%t,", rws.ForceVMProto)
+		}
 	}
+
 	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
 	remoteArgs = append(remoteArgs, headers, authPasswordFile)
 	remoteArgs = append(remoteArgs, streamAggrConfig, streamAggrKeepInput, streamAggrDedupInterval, streamAggrDropInput, streamAggrDropInputLabels, streamAggrIgnoreFirstIntervals, streamAggrIgnoreOldSamples)
+	remoteArgs = append(remoteArgs, maxDiskUsagePerURL, forceVMProto)
 
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNotNull {

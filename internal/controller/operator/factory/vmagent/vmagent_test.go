@@ -1135,6 +1135,94 @@ func TestBuildRemoteWrites(t *testing.T) {
 			want: []string{"-remoteWrite.url=http://vminsert-cluster-1:8480/insert/multitenant/prometheus/api/v1/write,http://vmagent-aggregation:8429", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 		{
+			name: "test maxDiskUsage",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				cr: &vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:          "localhost:8429",
+							MaxDiskUsage: ptr.To("1500MB"),
+						},
+						{
+							URL:          "localhost:8431",
+							MaxDiskUsage: ptr.To("500MB"),
+						},
+						{
+							URL: "localhost:8432",
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432", "-remoteWrite.maxDiskUsagePerURL=1500MB,500MB,1073741824"},
+		},
+		{
+			name: "test maxDiskUsage in extraArgs is not overwritten",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				cr: &vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL:          "localhost:8429",
+								MaxDiskUsage: ptr.To("1500MB"),
+							},
+						},
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ExtraArgs: map[string]string{
+								"remoteWrite.maxDiskUsagePerURL": "1000MB",
+							},
+						},
+					},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429"},
+		},
+		{
+			name: "test forceVMProto",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				cr: &vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:          "localhost:8429",
+							ForceVMProto: true,
+						},
+						{
+							URL: "localhost:8431",
+						},
+						{
+							URL:          "localhost:8432",
+							ForceVMProto: true,
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432", "-remoteWrite.forceVMProto=true,false,true"},
+		},
+		{
+			name: "test forceVMProto in extraArgs is not overwritten",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				cr: &vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL:          "localhost:8429",
+								ForceVMProto: true,
+							},
+						},
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ExtraArgs: map[string]string{
+								"remoteWrite.forceVMProto": "true",
+							},
+						},
+					},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429"},
+		},
+		{
 			name: "test oauth2",
 			args: args{
 				ssCache: &scrapesSecretsCache{
@@ -2012,6 +2100,25 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 				},
 			},
 			want: []string{"-remoteWrite.maxDiskUsagePerURL=1000", "-remoteWrite.tmpDataPath=/tmp/my-path", "-remoteWrite.showURL=true", "-enableMultitenantHandlers=true"},
+		},
+		{
+			name: "maxDiskUsage already set in RemoteWriteSpec",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL:          "localhost:8431",
+								MaxDiskUsage: ptr.To("500MB"),
+							},
+						},
+						RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+							MaxDiskUsagePerURL: ptr.To(int64(1000)),
+						},
+					},
+				},
+			},
+			want: []string{"-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"},
 		},
 	}
 	for _, tt := range tests {

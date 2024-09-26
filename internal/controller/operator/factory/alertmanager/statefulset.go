@@ -107,7 +107,7 @@ func createOrUpdateAlertManagerService(ctx context.Context, cr *vmv1beta1.VMAler
 		if err != nil {
 			return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
 		}
-		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+		prevService = build.Service(prevCR, prevCR.Spec.PortName, func(svc *corev1.Service) {
 			svc.Spec.ClusterIP = "None"
 			svc.Spec.Ports[0].Port = int32(prevPort)
 			svc.Spec.Ports = append(svc.Spec.Ports,

@@ -12,6 +12,7 @@ aliases:
 ---
 
 - [operator](https://docs.victoriametrics.com/operator/): properly expose `vm_app_version` metric tag with `version` and `short_version` build info. It was broken since v0.46.0 release.
+- [operator](https://docs.victoriametrics.com/operator/): changes default value for `controller.maxConcurrentReconciles` from `1` to `5`. It should improve reconcile performance for the most installations.
 
 ## [v0.48.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.48.1) - 26 Sep 2024
 

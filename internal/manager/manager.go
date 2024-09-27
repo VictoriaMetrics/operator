@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -49,10 +50,13 @@ import (
 const defaultMetricsAddr = ":8080"
 const defaultWebhookPort = 9443
 
+var versionRe = regexp.MustCompile(`v\d+\.\d+\.\d+(?:-enterprise)?(?:-cluster)?`)
+
 var (
 	managerFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	startTime    = time.Now()
-	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application", ConstLabels: map[string]string{"version": buildinfo.Version}}, func() float64 {
+	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application",
+		ConstLabels: map[string]string{"version": buildinfo.Version, "short_version": versionRe.FindString(buildinfo.Version)}}, func() float64 {
 		return 1.0
 	})
 	uptime = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_uptime_seconds", Help: "uptime"}, func() float64 {
@@ -90,6 +94,7 @@ var (
 	wasCacheSynced                = uint32(0)
 	disableCacheForObjects        = managerFlags.String("controller.disableCacheFor", "", "disables client for cache for API resources. Supported objects - namespace,pod,secret,configmap,deployment,statefulset")
 	disableSecretKeySpaceTrim     = managerFlags.Bool("disableSecretKeySpaceTrim", false, "disables trim of space at Secret/Configmap value content. It's a common mistake to put new line to the base64 encoded secret value.")
+	version                       = managerFlags.Bool("version", false, "Show operator version")
 )
 
 func init() {
@@ -113,6 +118,11 @@ func RunManager(ctx context.Context) error {
 	vmcontroller.BindFlags(managerFlags)
 	managerFlags.Parse(os.Args[1:])
 
+	if *version {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", buildinfo.Version)
+		os.Exit(0)
+	}
+
 	baseConfig := config.MustGetBaseConfig()
 	if *printDefaults {
 		err := baseConfig.PrintDefaults(*printFormat)
@@ -128,8 +138,6 @@ func RunManager(ctx context.Context) error {
 	l := logger.New(sink)
 	logf.SetLogger(l)
 
-	buildinfo.Init()
-
 	// Use a zap logr.Logger implementation. If none of the zap
 	// flags are configured (or if the zap flag set is not being
 	// used), this defaults to a production zap logger.
@@ -141,6 +149,7 @@ func RunManager(ctx context.Context) error {
 	klog.SetLogger(l)
 	ctrl.SetLogger(l)
 
+	setupLog.Info("starting VictoriaMetrics operator", "build version", buildinfo.Version, "short_version", versionRe.FindString(buildinfo.Version))
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt)
 	setupLog.Info("Registering Components.")

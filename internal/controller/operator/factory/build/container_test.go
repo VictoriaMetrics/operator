@@ -257,7 +257,7 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 func TestFormatContainerImage(t *testing.T) {
 	f := func(globalRepo, image, wantImage string) {
 		t.Helper()
-		gotImage := FormatContainerImage(globalRepo, image)
+		gotImage := formatContainerImage(globalRepo, image)
 		if gotImage != wantImage {
 			t.Errorf("unexpected container image, got: \n%s\nwant: \n%s", gotImage, wantImage)
 		}

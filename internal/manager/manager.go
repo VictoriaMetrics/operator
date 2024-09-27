@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
@@ -25,6 +26,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +36,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	restmetrics "k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -152,6 +155,8 @@ func RunManager(ctx context.Context) error {
 	setupLog.Info("starting VictoriaMetrics operator", "build version", buildinfo.Version, "short_version", versionRe.FindString(buildinfo.Version))
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt)
+	setupRuntimeMetrics(r)
+	addRestClientMetrics(r)
 	setupLog.Info("Registering Components.")
 	var watchNsCacheByName map[string]cache.Config
 	watchNss := config.MustGetWatchNamespaces()
@@ -507,4 +512,67 @@ var cacheClientObjectsByName = map[string]client.Object{
 	"pod":         &corev1.Pod{},
 	"deployment":  &appsv1.Deployment{},
 	"statefulset": &appsv1.StatefulSet{},
+}
+
+var runtimeMetrics = []string{
+	"/sched/latencies:seconds",
+	"/sync/mutex/wait/total:seconds",
+	"/cpu/classes/gc/mark/assist:cpu-seconds",
+	"/cpu/classes/gc/total:cpu-seconds",
+	"/sched/pauses/total/gc:seconds",
+	"/cpu/classes/scavenge/total:cpu-seconds",
+	"/gc/gomemlimit:bytes",
+}
+
+// runtime-contoller doesn't expose this metric
+// due to high cardinality
+var restClientLatency = prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "rest_client_request_duration_seconds"}, []string{"method", "api"})
+
+type latencyMetricWrapper struct {
+	collector *prometheus.HistogramVec
+}
+
+var apiLatencyPrefixAllowList = []string{
+	"/apis/rbac.authorization.k8s.io/v1/",
+	"/apis/operator.victoriametrics.com/",
+	"/apis/apps/v1/",
+	"/api/v1/",
+}
+
+func (lmw *latencyMetricWrapper) Observe(ctx context.Context, verb string, u url.URL, latency time.Duration) {
+	apiPath := u.Path
+	var shouldObserveReqLatency bool
+	for _, allowedPrefix := range apiLatencyPrefixAllowList {
+		if strings.HasPrefix(apiPath, allowedPrefix) {
+			shouldObserveReqLatency = true
+			break
+		}
+	}
+	if !shouldObserveReqLatency {
+		return
+	}
+	lmw.collector.WithLabelValues(verb, apiPath).Observe(latency.Seconds())
+}
+
+func addRestClientMetrics(r metrics.RegistererGatherer) {
+	// replace global go-client RequestLatency metric
+	restmetrics.RequestLatency = &latencyMetricWrapper{collector: restClientLatency}
+	r.Register(restClientLatency)
+}
+
+func setupRuntimeMetrics(r metrics.RegistererGatherer) {
+	// do not use default go metrics added by controller-runtime
+	r.Unregister(collectors.NewGoCollector())
+	// add metrics in align with VictoriaMetrics/metrics package
+	rules := make([]collectors.GoRuntimeMetricsRule, len(runtimeMetrics))
+	for idx, rule := range runtimeMetrics {
+		rules[idx].Matcher = regexp.MustCompile(rule)
+	}
+	r.MustRegister(
+		collectors.NewGoCollector(
+			collectors.WithGoCollectorRuntimeMetrics(
+				rules...,
+			)),
+	)
+
 }

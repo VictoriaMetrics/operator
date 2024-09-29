@@ -27,6 +27,14 @@ type VMClusterReconciler struct {
 	BaseConf     *config.BaseOperatorConf
 }
 
+// Init implements crdController interface
+func (r *VMClusterReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.Client = rclient
+	r.Log = l.WithName("controller").WithName("VMCluster")
+	r.OriginScheme = sc
+	r.BaseConf = cf
+}
+
 // Scheme implements interface.
 func (r *VMClusterReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme

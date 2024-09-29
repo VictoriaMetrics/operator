@@ -13,6 +13,7 @@ aliases:
 
 - [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster): properly apply global container registry from configuration. It was ignored for `VMCluster` since `v0.48.0` release. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1118) for details.
 - [operator](https://docs.victoriametrics.com/operator/): updates default vlogs app version to v0.32.0
+- [operator](https://docs.victoriametrics.com/operator/): adds new flag `--disableControllerForCRD`. It allows to disable reconcile controller for the given comma-separated list of CRD names. See [this issue](https://github.com/VictoriaMetrics/operator/issues/528) for details.
 
 ## [v0.48.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.48.2) - 27 Sep 2024
 

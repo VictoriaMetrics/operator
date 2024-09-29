@@ -41,6 +41,14 @@ type VMSingleReconciler struct {
 	BaseConf     *config.BaseOperatorConf
 }
 
+// Init implements crdController interface
+func (r *VMSingleReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.Client = rclient
+	r.Log = l.WithName("controller").WithName("VMSingle")
+	r.OriginScheme = sc
+	r.BaseConf = cf
+}
+
 // Scheme implements interface.
 func (r *VMSingleReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme

@@ -44,6 +44,14 @@ type VLogsReconciler struct {
 	BaseConf     *config.BaseOperatorConf
 }
 
+// Init implements crdController interface
+func (r *VLogsReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.Client = rclient
+	r.Log = l.WithName("controller").WithName("VLogs")
+	r.OriginScheme = sc
+	r.BaseConf = cf
+}
+
 // Scheme implements interface.
 func (r *VLogsReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme

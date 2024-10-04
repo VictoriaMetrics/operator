@@ -196,8 +196,8 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 	return args
 }
 
-// FormatContainerImage returns container image with registry prefix if needed.
-func FormatContainerImage(globalRepo string, containerImage string) string {
+// formatContainerImage returns container image with registry prefix if needed.
+func formatContainerImage(globalRepo string, containerImage string) string {
 	if globalRepo == "" {
 		// no need to add global repo
 		return containerImage

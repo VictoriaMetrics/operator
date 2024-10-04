@@ -38,6 +38,13 @@ type VMNodeScrapeReconciler struct {
 	OriginScheme *runtime.Scheme
 }
 
+// Init implements crdController interface
+func (r *VMNodeScrapeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.Client = rclient
+	r.Log = l.WithName("controller").WithName("VMNodeScrape")
+	r.OriginScheme = sc
+}
+
 // Scheme implements interface.
 func (r *VMNodeScrapeReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme

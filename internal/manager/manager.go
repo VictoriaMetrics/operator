@@ -23,6 +23,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/go-logr/logr"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
@@ -98,6 +99,8 @@ var (
 	disableCacheForObjects        = managerFlags.String("controller.disableCacheFor", "", "disables client for cache for API resources. Supported objects - namespace,pod,secret,configmap,deployment,statefulset")
 	disableSecretKeySpaceTrim     = managerFlags.Bool("disableSecretKeySpaceTrim", false, "disables trim of space at Secret/Configmap value content. It's a common mistake to put new line to the base64 encoded secret value.")
 	version                       = managerFlags.Bool("version", false, "Show operator version")
+	disableControllerForCRD       = managerFlags.String("controller.disableReconcileFor", "", "disables reconcile controllers for given list of comma separated CRD names. For example - VMCluster,VMSingle,VMAuth."+
+		"Note, child controllers still require parent object CRDs.")
 )
 
 func init() {
@@ -257,144 +260,10 @@ func RunManager(ctx context.Context) error {
 	}
 	vmv1beta1.SetLabelAndAnnotationPrefixes(baseConfig.FilterChildLabelPrefixes, baseConfig.FilterChildAnnotationPrefixes)
 
-	if err = (&vmcontroller.VMAgentReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMAgent"),
-		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMAgent")
-		return err
-	}
-	if err = (&vmcontroller.VMAlertReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMAlert"),
-		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMAlert")
-		return err
-	}
-	if err = (&vmcontroller.VMAlertmanagerReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMAlertmanager"),
-		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMAlertmanager")
-		return err
-	}
-	if err = (&vmcontroller.VMPodScrapeReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMPodScrape"),
-		OriginScheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMPodScrape")
-		return err
-	}
-	if err = (&vmcontroller.VMRuleReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMRule"),
-		OriginScheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMRule")
-		return err
-	}
-	if err = (&vmcontroller.VMServiceScrapeReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMServiceScrape"),
-		OriginScheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMServiceScrape")
-		return err
-	}
-	if err = (&vmcontroller.VMSingleReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMSingle"),
-		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMSingle")
-		return err
-	}
-	if err = (&vmcontroller.VLogsReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VLogs"),
-		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VLogs")
-		return err
-	}
-	if err = (&vmcontroller.VMClusterReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMCluster"),
-		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMCluster")
-		return err
-	}
-	if err = (&vmcontroller.VMProbeReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMProbe"),
-		OriginScheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMProbe")
-		return err
-	}
-	if err = (&vmcontroller.VMNodeScrapeReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMNodeScrape"),
-		OriginScheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMNodeScrape")
-		return err
-	}
-	if err = (&vmcontroller.VMStaticScrapeReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMStaticScrape"),
-		OriginScheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMStaticScrape")
-		return err
-	}
-	if err = (&vmcontroller.VMScrapeConfigReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMScrapeConfig"),
-		OriginScheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMScrapeConfig")
+	if err := initControllers(mgr, ctrl.Log, baseConfig); err != nil {
 		return err
 	}
 
-	if err = (&vmcontroller.VMAuthReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMAuthReconciler"),
-		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMAuth")
-		return err
-	}
-
-	if err = (&vmcontroller.VMUserReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMUserReconciler"),
-		OriginScheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMUser")
-		return err
-	}
-	if err = (&vmcontroller.VMAlertmanagerConfigReconciler{
-		Client:       mgr.GetClient(),
-		Log:          ctrl.Log.WithName("controller").WithName("VMAlertmanagerConfigReconciler"),
-		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMAlertmanager")
-		return err
-	}
 	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting vmconverter clients")
 
@@ -575,4 +444,53 @@ func setupRuntimeMetrics(r metrics.RegistererGatherer) {
 			)),
 	)
 
+}
+
+type crdController interface {
+	Init(client.Client, logr.Logger, *runtime.Scheme, *config.BaseOperatorConf)
+	SetupWithManager(mgr ctrl.Manager) error
+}
+
+var controllersByName = map[string]crdController{
+	"VMCluster":            &vmcontroller.VMClusterReconciler{},
+	"VMAgent":              &vmcontroller.VMAgentReconciler{},
+	"VMAuth":               &vmcontroller.VMAuthReconciler{},
+	"VMSingle":             &vmcontroller.VMSingleReconciler{},
+	"VLogs":                &vmcontroller.VLogsReconciler{},
+	"VMAlertmanager":       &vmcontroller.VMAlertmanagerReconciler{},
+	"VMAlert":              &vmcontroller.VMAlertReconciler{},
+	"VMUser":               &vmcontroller.VMUserReconciler{},
+	"VMRule":               &vmcontroller.VMRuleReconciler{},
+	"VMAlertmanagerConfig": &vmcontroller.VMAlertmanagerConfigReconciler{},
+	"VMServiceScrape":      &vmcontroller.VMServiceScrapeReconciler{},
+	"VMPodScrape":          &vmcontroller.VMPodScrapeReconciler{},
+	"VMProbe":              &vmcontroller.VMProbeReconciler{},
+	"VMNodeScrape":         &vmcontroller.VMNodeScrapeReconciler{},
+	"VMStaticScrape":       &vmcontroller.VMStaticScrapeReconciler{},
+	"VMScrapeConfig":       &vmcontroller.VMScrapeConfigReconciler{},
+}
+
+func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorConf) error {
+	var disabledControllerNames map[string]struct{}
+	if len(*disableControllerForCRD) > 0 {
+		disabledControllerNames = make(map[string]struct{})
+		names := strings.Split(*disableControllerForCRD, ",")
+		for _, cn := range names {
+			if _, ok := controllersByName[cn]; !ok {
+				return fmt.Errorf("bad value=%q for flag=controller.disableReconcileFor. Expected name of reconcile controller", cn)
+			}
+			disabledControllerNames[cn] = struct{}{}
+		}
+	}
+	for name, ct := range controllersByName {
+		if _, ok := disabledControllerNames[name]; ok {
+			l.Info("controller disabled by provided flag", "name", name, "controller.disableReconcileFor", *disableControllerForCRD)
+			continue
+		}
+		ct.Init(mgr.GetClient(), l, mgr.GetScheme(), bs)
+		if err := ct.SetupWithManager(mgr); err != nil {
+			return fmt.Errorf("cannot setup controller=%q: %w", name, err)
+		}
+	}
+	return nil
 }

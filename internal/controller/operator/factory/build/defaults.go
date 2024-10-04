@@ -336,6 +336,8 @@ func addVMClusterDefaults(objI interface{}) {
 		if cr.Spec.VMStorage.Image.Repository == "" {
 			cr.Spec.VMStorage.Image.Repository = c.VMClusterDefault.VMStorageDefault.Image
 		}
+		cr.Spec.VMStorage.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.VMStorage.Image.Repository)
+
 		if cr.Spec.VMStorage.Image.Tag == "" {
 			if cr.Spec.ClusterVersion != "" {
 				cr.Spec.VMStorage.Image.Tag = cr.Spec.ClusterVersion
@@ -390,6 +392,7 @@ func addVMClusterDefaults(objI interface{}) {
 		if cr.Spec.VMInsert.Image.Repository == "" {
 			cr.Spec.VMInsert.Image.Repository = c.VMClusterDefault.VMInsertDefault.Image
 		}
+		cr.Spec.VMInsert.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.VMInsert.Image.Repository)
 		if cr.Spec.VMInsert.Image.Tag == "" {
 			if cr.Spec.ClusterVersion != "" {
 				cr.Spec.VMInsert.Image.Tag = cr.Spec.ClusterVersion
@@ -422,6 +425,7 @@ func addVMClusterDefaults(objI interface{}) {
 		if cr.Spec.VMSelect.Image.Repository == "" {
 			cr.Spec.VMSelect.Image.Repository = c.VMClusterDefault.VMSelectDefault.Image
 		}
+		cr.Spec.VMSelect.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.VMSelect.Image.Repository)
 		if cr.Spec.VMSelect.Image.Tag == "" {
 			if cr.Spec.ClusterVersion != "" {
 				cr.Spec.VMSelect.Image.Tag = cr.Spec.ClusterVersion
@@ -466,7 +470,7 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, appDef
 	if common.DisableSelfServiceScrape == nil {
 		common.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 	}
-	common.Image.Repository = FormatContainerImage(c.ContainerRegistry, common.Image.Repository)
+	common.Image.Repository = formatContainerImage(c.ContainerRegistry, common.Image.Repository)
 	if common.Image.Tag == "" {
 		common.Image.Tag = appDefaults.Version
 	}
@@ -502,7 +506,7 @@ func addDefaluesToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 		}
 	}
 
-	common.ConfigReloaderImageTag = FormatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
+	common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
 	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource{
 		Limit: struct {
 			Mem string
@@ -530,7 +534,7 @@ func addDefaultsToVMBackup(cr *vmv1beta1.VMBackup, useDefaultResources bool, app
 	if cr.Image.Repository == "" {
 		cr.Image.Repository = appDefaults.Image
 	}
-	cr.Image.Repository = FormatContainerImage(c.ContainerRegistry, cr.Image.Repository)
+	cr.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Image.Repository)
 	if cr.Image.Tag == "" {
 		cr.Image.Tag = appDefaults.Version
 	}

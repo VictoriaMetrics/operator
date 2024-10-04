@@ -7,8 +7,10 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -24,6 +26,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +36,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	restmetrics "k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -49,10 +53,13 @@ import (
 const defaultMetricsAddr = ":8080"
 const defaultWebhookPort = 9443
 
+var versionRe = regexp.MustCompile(`v\d+\.\d+\.\d+(?:-enterprise)?(?:-cluster)?`)
+
 var (
 	managerFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	startTime    = time.Now()
-	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application", ConstLabels: map[string]string{"version": buildinfo.Version}}, func() float64 {
+	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application",
+		ConstLabels: map[string]string{"version": buildinfo.Version, "short_version": versionRe.FindString(buildinfo.Version)}}, func() float64 {
 		return 1.0
 	})
 	uptime = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_uptime_seconds", Help: "uptime"}, func() float64 {
@@ -90,6 +97,7 @@ var (
 	wasCacheSynced                = uint32(0)
 	disableCacheForObjects        = managerFlags.String("controller.disableCacheFor", "", "disables client for cache for API resources. Supported objects - namespace,pod,secret,configmap,deployment,statefulset")
 	disableSecretKeySpaceTrim     = managerFlags.Bool("disableSecretKeySpaceTrim", false, "disables trim of space at Secret/Configmap value content. It's a common mistake to put new line to the base64 encoded secret value.")
+	version                       = managerFlags.Bool("version", false, "Show operator version")
 )
 
 func init() {
@@ -113,6 +121,11 @@ func RunManager(ctx context.Context) error {
 	vmcontroller.BindFlags(managerFlags)
 	managerFlags.Parse(os.Args[1:])
 
+	if *version {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", buildinfo.Version)
+		os.Exit(0)
+	}
+
 	baseConfig := config.MustGetBaseConfig()
 	if *printDefaults {
 		err := baseConfig.PrintDefaults(*printFormat)
@@ -128,8 +141,6 @@ func RunManager(ctx context.Context) error {
 	l := logger.New(sink)
 	logf.SetLogger(l)
 
-	buildinfo.Init()
-
 	// Use a zap logr.Logger implementation. If none of the zap
 	// flags are configured (or if the zap flag set is not being
 	// used), this defaults to a production zap logger.
@@ -141,8 +152,11 @@ func RunManager(ctx context.Context) error {
 	klog.SetLogger(l)
 	ctrl.SetLogger(l)
 
+	setupLog.Info("starting VictoriaMetrics operator", "build version", buildinfo.Version, "short_version", versionRe.FindString(buildinfo.Version))
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt)
+	setupRuntimeMetrics(r)
+	addRestClientMetrics(r)
 	setupLog.Info("Registering Components.")
 	var watchNsCacheByName map[string]cache.Config
 	watchNss := config.MustGetWatchNamespaces()
@@ -498,4 +512,67 @@ var cacheClientObjectsByName = map[string]client.Object{
 	"pod":         &corev1.Pod{},
 	"deployment":  &appsv1.Deployment{},
 	"statefulset": &appsv1.StatefulSet{},
+}
+
+var runtimeMetrics = []string{
+	"/sched/latencies:seconds",
+	"/sync/mutex/wait/total:seconds",
+	"/cpu/classes/gc/mark/assist:cpu-seconds",
+	"/cpu/classes/gc/total:cpu-seconds",
+	"/sched/pauses/total/gc:seconds",
+	"/cpu/classes/scavenge/total:cpu-seconds",
+	"/gc/gomemlimit:bytes",
+}
+
+// runtime-contoller doesn't expose this metric
+// due to high cardinality
+var restClientLatency = prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "rest_client_request_duration_seconds"}, []string{"method", "api"})
+
+type latencyMetricWrapper struct {
+	collector *prometheus.HistogramVec
+}
+
+var apiLatencyPrefixAllowList = []string{
+	"/apis/rbac.authorization.k8s.io/v1/",
+	"/apis/operator.victoriametrics.com/",
+	"/apis/apps/v1/",
+	"/api/v1/",
+}
+
+func (lmw *latencyMetricWrapper) Observe(ctx context.Context, verb string, u url.URL, latency time.Duration) {
+	apiPath := u.Path
+	var shouldObserveReqLatency bool
+	for _, allowedPrefix := range apiLatencyPrefixAllowList {
+		if strings.HasPrefix(apiPath, allowedPrefix) {
+			shouldObserveReqLatency = true
+			break
+		}
+	}
+	if !shouldObserveReqLatency {
+		return
+	}
+	lmw.collector.WithLabelValues(verb, apiPath).Observe(latency.Seconds())
+}
+
+func addRestClientMetrics(r metrics.RegistererGatherer) {
+	// replace global go-client RequestLatency metric
+	restmetrics.RequestLatency = &latencyMetricWrapper{collector: restClientLatency}
+	r.Register(restClientLatency)
+}
+
+func setupRuntimeMetrics(r metrics.RegistererGatherer) {
+	// do not use default go metrics added by controller-runtime
+	r.Unregister(collectors.NewGoCollector())
+	// add metrics in align with VictoriaMetrics/metrics package
+	rules := make([]collectors.GoRuntimeMetricsRule, len(runtimeMetrics))
+	for idx, rule := range runtimeMetrics {
+		rules[idx].Matcher = regexp.MustCompile(rule)
+	}
+	r.MustRegister(
+		collectors.NewGoCollector(
+			collectors.WithGoCollectorRuntimeMetrics(
+				rules...,
+			)),
+	)
+
 }

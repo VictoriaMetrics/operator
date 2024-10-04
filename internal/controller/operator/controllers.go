@@ -34,7 +34,7 @@ func BindFlags(f *flag.FlagSet) {
 
 var (
 	cacheSyncTimeout = ptr.To(3 * time.Minute)
-	maxConcurrency   = ptr.To(1)
+	maxConcurrency   = ptr.To(5)
 )
 
 var (

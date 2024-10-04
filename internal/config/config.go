@@ -75,13 +75,13 @@ type BaseOperatorConf struct {
 	UseCustomConfigReloader bool `default:"false"`
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry                string `default:""`
-	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.47.2"`
+	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.48.2"`
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false"`
 
 	VLogsDefault struct {
 		Image   string `default:"victoriametrics/victoria-logs"`
-		Version string `default:"v0.28.0-victorialogs"`
+		Version string `default:"v0.31.0-victorialogs"`
 		// ignored
 		ConfigReloadImage   string `ignored:"true"`
 		Port                string `default:"9428"`

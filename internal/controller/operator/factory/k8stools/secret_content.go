@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,7 +24,7 @@ func maybeTrimSpace(s string) string {
 	if disabledSpaceTrim {
 		return s
 	}
-	return strings.TrimSpace(s)
+	return strings.TrimRightFunc(s, unicode.IsSpace)
 }
 
 // KeyNotFoundError represents an error if expected key

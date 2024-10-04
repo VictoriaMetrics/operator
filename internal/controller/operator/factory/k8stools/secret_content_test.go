@@ -61,7 +61,7 @@ func Test_getCredFromSecret(t *testing.T) {
 				cacheKey: "tls-secret",
 				cache:    map[string]*corev1.Secret{},
 			},
-			want: "password-value",
+			want: " password-value",
 			predefinedObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -108,7 +108,7 @@ func Test_getCredFromSecret(t *testing.T) {
 				return
 			}
 			if got != tt.want {
-				t.Errorf("getCredFromSecret() got = %v, want %v", got, tt.want)
+				t.Errorf("getCredFromSecret() got = %q, want %q", got, tt.want)
 			}
 		})
 	}

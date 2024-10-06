@@ -1273,3 +1273,14 @@ func statusPatch(ctx context.Context, rclient client.Client, object client.Objec
 	pr := client.RawPatch(types.JSONPatchType, data)
 	return rclient.Status().Patch(ctx, object, pr)
 }
+
+// ExternalConfig defines external source of configuration
+type ExternalConfig struct {
+	// SecretRef defines selector for externally managed secret which contains configuration
+	// +optional
+	SecretRef *v1.SecretKeySelector `json:"secretRef,omitempty"`
+	// LocalPath contains static path to a config, which is managed externally for cases
+	// when using secrets is not applicable, e.g.: Vault sidecar.
+	// +optional
+	LocalPath string `json:"localPath,omitempty"`
+}

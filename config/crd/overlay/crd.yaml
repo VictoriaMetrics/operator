@@ -14086,14 +14086,6 @@ spec:
                       More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     type: object
                 type: object
-              configSecret:
-                description: |-
-                  ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
-                  VMAuth object, which contains auth configuration for vmauth,
-                  configuration must be inside secret key: config.yaml.
-                  It must be created and managed manually.
-                  If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
-                type: string
               containers:
                 description: |-
                   Containers property allows to inject additions sidecars or to patch existing containers.
@@ -14176,6 +14168,44 @@ spec:
                   DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
                   See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details.
                 type: integer
+              externalConfig:
+                description: |-
+                  ExternalConfig defines a source of external VMAuth configuration.
+                  If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
+                properties:
+                  localPath:
+                    description: |-
+                      LocalPath contains static path to a config, which is managed externally for cases
+                      when using secrets is not applicable, e.g.: Vault sidecar.
+                    type: string
+                  secretRef:
+                    description: SecretRef defines selector for externally managed
+                      secret which contains configuration
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          TODO: Add other useful fields. apiVersion, kind, uid?
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
               extraArgs:
                 additionalProperties:
                   type: string

@@ -2006,6 +2006,7 @@ _Appears in:_
 | `ignore_old_samples` | IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval. | _boolean_ | false |
 | `input_relabel_configs` | InputRelabelConfigs is an optional relabeling rules, which are applied on the input<br />before aggregation. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `interval` | Interval is the interval between aggregations. | _string_ | true |
+| `keep_input` | KeepInput instructs whether to keep all the matched input samples after the aggregation | _boolean_ | true |
 | `keep_metric_names` | KeepMetricNames instructs to leave metric names as is for the output time series without adding any suffix. | _boolean_ | false |
 | `match` | Match is a label selector (or list of label selectors) for filtering time series for the given selector.<br /><br />If the match isn't set, then all the input time series are processed. | _[StringOrArray](#stringorarray)_ | false |
 | `no_align_flush_to_interval` | NoAlignFlushToInterval disables aligning of flushes to multiples of Interval.<br />By default flushes are aligned to Interval. | _boolean_ | false |

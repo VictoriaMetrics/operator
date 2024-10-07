@@ -815,7 +815,7 @@ func (cr *VMCluster) VMInsertURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.Spec.VMInsert.GetNameWithPrefix(cr.Name), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.Spec.VMInsert.GetNameWithPrefix(cr.Name), cr.Namespace, port)
 }
 
 func (cr *VMCluster) VMStorageURL() string {
@@ -833,7 +833,7 @@ func (cr *VMCluster) VMStorageURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMStorage.ExtraArgs), cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.Namespace, port)
 }
 
 // AsCRDOwner implements interface

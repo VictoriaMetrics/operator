@@ -258,7 +258,7 @@ func buildVMAgentNamespaceRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: cr.AsCRDOwner(),
+			OwnerReferences: cr.AsOwner(),
 		},
 		Rules: singleNSPolicyRules,
 	}
@@ -272,7 +272,7 @@ func buildVMAgentNamespaceRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.RoleBinding
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: cr.AsCRDOwner(),
+			OwnerReferences: cr.AsOwner(),
 		},
 		Subjects: []rbacv1.Subject{
 			{

@@ -23,7 +23,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, rb *rbacv1.RoleBind
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, rb)
 		}
-		return fmt.Errorf("cannot get rolebinding for vmauth: %w", err)
+		return fmt.Errorf("cannot get exist rolebinding: %w", err)
 	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, &existRoleBinding); err != nil {
 		return err
@@ -34,7 +34,8 @@ func RoleBinding(ctx context.Context, rclient client.Client, rb *rbacv1.RoleBind
 	if equality.Semantic.DeepEqual(rb.Subjects, existRoleBinding.Subjects) &&
 		equality.Semantic.DeepEqual(rb.RoleRef, existRoleBinding.RoleRef) &&
 		equality.Semantic.DeepEqual(rb.Labels, existRoleBinding.Labels) &&
-		equality.Semantic.DeepEqual(rb.Annotations, existRoleBinding.Annotations) {
+		equality.Semantic.DeepEqual(rb.Annotations, existRoleBinding.Annotations) &&
+		equality.Semantic.DeepEqual(rb.OwnerReferences, existRoleBinding.OwnerReferences) {
 		return nil
 	}
 	logger.WithContext(ctx).Info("updating rolebinding configuration", "rolebinding_name", rb.Name)
@@ -42,6 +43,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, rb *rbacv1.RoleBind
 	existRoleBinding.Labels = rb.Labels
 	existRoleBinding.Subjects = rb.Subjects
 	existRoleBinding.RoleRef = rb.RoleRef
+	existRoleBinding.OwnerReferences = rb.OwnerReferences
 	vmv1beta1.AddFinalizer(&existRoleBinding, &existRoleBinding)
 
 	return rclient.Update(ctx, &existRoleBinding)
@@ -54,23 +56,24 @@ func Role(ctx context.Context, rclient client.Client, rl *rbacv1.Role) error {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, rl)
 		}
-		return fmt.Errorf("cannot get role for vmauth: %w", err)
+		return fmt.Errorf("cannot get exist role: %w", err)
 	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, &existRole); err != nil {
 		return err
 	}
 	existRole.Annotations = labels.Merge(existRole.Annotations, rl.Annotations)
-	existRole.OwnerReferences = rl.OwnerReferences
 
 	if equality.Semantic.DeepEqual(rl.Rules, existRole.Rules) &&
 		equality.Semantic.DeepEqual(rl.Labels, existRole.Labels) &&
-		equality.Semantic.DeepEqual(rl.Annotations, existRole.Annotations) {
+		equality.Semantic.DeepEqual(rl.Annotations, existRole.Annotations) &&
+		equality.Semantic.DeepEqual(rl.OwnerReferences, existRole.OwnerReferences) {
 		return nil
 	}
 	logger.WithContext(ctx).Info("updating role configuration", "role_name", rl.Name)
 
 	existRole.Labels = rl.Labels
 	existRole.Rules = rl.Rules
+	existRole.OwnerReferences = rl.OwnerReferences
 	vmv1beta1.AddFinalizer(&existRole, &existRole)
 
 	return rclient.Update(ctx, &existRole)

@@ -47,7 +47,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if ptr.Deref(cr.Spec.UseVMConfigReloader, false) && cr.Spec.ConfigSecret == "" {
+		if ptr.Deref(cr.Spec.UseVMConfigReloader, false) && cr.Spec.ExternalConfig.SecretRef == nil {
 			if err := createVMAuthSecretAccess(ctx, cr, rclient); err != nil {
 				return err
 			}
@@ -124,7 +124,11 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 
 func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	var args []string
-	args = append(args, fmt.Sprintf("-auth.config=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)))
+	configPath := path.Join(vmAuthConfigFolder, vmAuthConfigName)
+	if cr.Spec.ExternalConfig.LocalPath != "" {
+		configPath = cr.Spec.ExternalConfig.LocalPath
+	}
+	args = append(args, fmt.Sprintf("-auth.config=%s", configPath))
 
 	if cr.Spec.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
@@ -208,7 +212,29 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
 	var initContainers []corev1.Container
-	if cr.Spec.ConfigSecret == "" {
+	if cr.Spec.ExternalConfig.SecretRef != nil && cr.Spec.ExternalConfig.SecretRef.Name != "" {
+		var keyToPath []corev1.KeyToPath
+		if cr.Spec.ExternalConfig.SecretRef.Key != "" {
+			keyToPath = append(keyToPath, corev1.KeyToPath{
+				Key:  cr.Spec.ExternalConfig.SecretRef.Key,
+				Path: vmAuthConfigName,
+			})
+		}
+		volumes = append(volumes, corev1.Volume{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.ExternalConfig.SecretRef.Name,
+					Items:      keyToPath,
+				},
+			},
+			Name: vmAuthVolumeName,
+		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      vmAuthVolumeName,
+			MountPath: vmAuthConfigFolder,
+		})
+		operatorContainers[0].VolumeMounts = volumeMounts
+	} else if cr.Spec.ExternalConfig.LocalPath == "" {
 		volumes = append(volumes, corev1.Volume{
 			Name: "config-out",
 			VolumeSource: corev1.VolumeSource{
@@ -239,20 +265,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
 			buildInitConfigContainer(useCustomConfigReloader, cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
-	} else {
-		volumes = append(volumes, corev1.Volume{
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.Spec.ConfigSecret,
-				},
-			},
-			Name: vmAuthVolumeName,
-		})
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      vmAuthVolumeName,
-			MountPath: vmAuthConfigFolder,
-		})
-		operatorContainers[0].VolumeMounts = volumeMounts
 	}
 
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
@@ -287,7 +299,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 // CreateOrUpdateVMAuthConfig configuration secret for vmauth.
 func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	// fast path
-	if cr.Spec.ConfigSecret != "" {
+	if cr.Spec.ExternalConfig.SecretRef != nil && cr.Spec.ExternalConfig.SecretRef.Name != "" {
 		return nil
 	}
 	s := makeVMAuthConfigSecret(cr)

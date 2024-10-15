@@ -11,6 +11,9 @@ aliases:
   - /operator/changelog/index.html
 ---
 
+## tip
+
+- [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth): Moved `spec.configSecret` to `spec.externalConfig.secretRef.name` and added `spec.externalConfig.localPath` to be able to provide custom configs via sidecar.
 - [api](https://docs.victoriametrics.com/operator/api): adds new fields `maxDiskUsagePerUrl` and`forceVMProto` to the `VMagent` `remoteWriteSpec`
 - [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): fixes the protocol of generated CRD target access url for vminsert and vmstorage when TLS is enabled.
 - [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly make transition to `statefulMode`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1127) for details.

@@ -56,7 +56,13 @@ func TestCreateOrUpdateVMAuth(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAuthSpec{
-						ConfigSecret: "external-cfg",
+						ExternalConfig: vmv1beta1.ExternalConfig{
+							SecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "external-cfg",
+								},
+							},
+						},
 					},
 				},
 				c: config.MustGetBaseConfig(),

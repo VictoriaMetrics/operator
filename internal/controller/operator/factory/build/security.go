@@ -17,15 +17,9 @@ var (
 	containerUserGroup     int64 = 65534
 	runNonRoot                   = true
 	defaultSecurityContext       = &corev1.SecurityContext{
-		RunAsUser:    &containerUserGroup,
-		RunAsGroup:   &containerUserGroup,
-		RunAsNonRoot: &runNonRoot,
-		AppArmorProfile: &corev1.AppArmorProfile{
-			Type: corev1.AppArmorProfileTypeRuntimeDefault,
-		},
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
+		RunAsUser:                &containerUserGroup,
+		RunAsGroup:               &containerUserGroup,
+		RunAsNonRoot:             &runNonRoot,
 		ReadOnlyRootFilesystem:   ptr.To(true),
 		AllowPrivilegeEscalation: ptr.To(false),
 		Capabilities: &corev1.Capabilities{

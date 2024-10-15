@@ -92,7 +92,7 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 					Spec: v1beta1vm.VMAuthSpec{
 						CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
-							//						UseStrictSecurity:   ptr.To(true),
+							UseStrictSecurity:   ptr.To(true),
 							UseDefaultResources: ptr.To(false),
 						},
 						CommonConfigReloaderParams: v1beta1vm.CommonConfigReloaderParams{

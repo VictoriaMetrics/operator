@@ -173,7 +173,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	if err := rclient.List(ctx, podList, listOps); err != nil {
 		return fmt.Errorf("cannot list pods for statefulset rolling update: %w", err)
 	}
-
+	keepOnlyStsPods(podList)
 	if err := sortStsPodsByID(podList.Items); err != nil {
 		return fmt.Errorf("cannot sort statefulset pods: %w", err)
 	}
@@ -367,54 +367,22 @@ func sortStsPodsByID(src []corev1.Pod) error {
 	return firstParseError
 }
 
-/*
-*func SetDefaults_StatefulSet(obj *appsv1.StatefulSet) {
-	if len(obj.Spec.PodManagementPolicy) == 0 {
-		obj.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
-	}
-
-	if obj.Spec.UpdateStrategy.Type == "" {
-		obj.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-
-		if obj.Spec.UpdateStrategy.RollingUpdate == nil {
-			// UpdateStrategy.RollingUpdate will take default values below.
-			obj.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{}
-		}
-	}
-
-	if obj.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType &&
-		obj.Spec.UpdateStrategy.RollingUpdate != nil {
-
-		if obj.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
-			obj.Spec.UpdateStrategy.RollingUpdate.Partition = ptr.To[int32](0)
-		}
-		if utilfeature.DefaultFeatureGate.Enabled(features.MaxUnavailableStatefulSet) {
-			if obj.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable == nil {
-				obj.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable = ptr.To(intstr.FromInt32(1))
+func keepOnlyStsPods(podList *corev1.PodList) {
+	var cnt int
+	for _, pod := range podList.Items {
+		var ownedBySts bool
+		for _, ow := range pod.OwnerReferences {
+			if ow.Kind == "StatefulSet" {
+				ownedBySts = true
+				break
 			}
 		}
-	}
-
-	if utilfeature.DefaultFeatureGate.Enabled(features.StatefulSetAutoDeletePVC) {
-		if obj.Spec.PersistentVolumeClaimRetentionPolicy == nil {
-			obj.Spec.PersistentVolumeClaimRetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{}
+		// pod could be owned by Deployment due to Deployment -> StatefulSet transition
+		if !ownedBySts {
+			continue
 		}
-		if len(obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted) == 0 {
-			obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
-		}
-		if len(obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled) == 0 {
-			obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
-		}
+		podList.Items[cnt] = pod
+		cnt++
 	}
-
-	if obj.Spec.Replicas == nil {
-		obj.Spec.Replicas = new(int32)
-		*obj.Spec.Replicas = 1
-	}
-	if obj.Spec.RevisionHistoryLimit == nil {
-		obj.Spec.RevisionHistoryLimit = new(int32)
-		*obj.Spec.RevisionHistoryLimit = 10
-	}
+	podList.Items = podList.Items[:cnt]
 }
-
-* */

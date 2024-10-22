@@ -142,6 +142,8 @@ aliases:
 
 - [vmscrapeconfig](https://docs.victoriametrics.com/operator/api#vmscrapeconfig) - added `max_scrape_size` parameter for scrape protocols configuration
 
+- [vmagent](./api.md#vmagent) and [vmsingle](./api.md#vmsingle): adds `keep_input` into `streamAggrConfig`.
+
 <a name="v0.45.0"></a>
 
 ## [v0.45.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.45.0) - 10 Jun 2024

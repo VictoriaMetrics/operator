@@ -1,0 +1,50 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: with-balanacer
+spec:
+  retentionPeriod: "4"
+  replicationFactor: 1
+  requestsLoadBalancer:
+    enabled: true
+    spec:
+      replicaCount: 2
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "512Mi"
+        requests:
+          cpu: "0.2"
+          memory: "256Mi"
+
+  vmstorage:
+    replicaCount: 2
+    storageDataPath: "/vm-data"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1500Mi
+  vmselect:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: "1"
+        memory: "1000Mi"
+      requests:
+        cpu: "0.5"
+        memory: "500Mi"
+  vminsert:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1000Mi
+      requests:
+        cpu: "0.5"
+        memory: "500Mi"

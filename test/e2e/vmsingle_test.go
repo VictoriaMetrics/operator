@@ -158,6 +158,9 @@ var _ = Describe("test  vmsingle Controller", func() {
 						Expect(createdDeploy.Spec.Template.Spec.Containers[1].VolumeMounts).To(HaveLen(2))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].Resources).To(Equal(corev1.ResourceRequirements{}))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[1].Resources).To(Equal(corev1.ResourceRequirements{}))
+						var vss vmv1beta1.VMServiceScrape
+						Expect(k8sClient.Get(ctx, createdChildObjects, &vss)).To(Succeed())
+						Expect(vss.Spec.Endpoints).To(HaveLen(2))
 					}),
 				Entry("with strict security", "strict-security",
 					&vmv1beta1.VMSingle{

@@ -77,6 +77,26 @@ type VMClusterSpec struct {
 	// drops not needed security permissions
 	// +optional
 	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
+
+	// RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests
+	// it helps to evenly spread load across pods
+	// usually it's not possible with kubernetes TCP based service
+	RequestsLoadBalancer VMAuthLoadBalancer `json:"requestsLoadBalancer,omitempty"`
+}
+
+// VMAuthLBSelectorLabels defines selector labels for vmauth balancer
+func (cr VMCluster) VMAuthLBSelectorLabels() map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":      "vmclusterlb-vmauth-balancer",
+		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/component": "monitoring",
+		"managed-by":                  "vm-operator",
+	}
+}
+
+// GetVMAuthLBName returns prefixed name for the loadbalanacer components
+func (cr VMCluster) GetVMAuthLBName() string {
+	return fmt.Sprintf("vmclusterlb-%s", cr.Name)
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -225,8 +245,9 @@ type VMSelect struct {
 	CommonApplicationDeploymentParams `json:",inline"`
 }
 
-func (s VMSelect) GetNameWithPrefix(clusterName string) string {
-	return PrefixedName(clusterName, "vmselect")
+// GetSelectLBName returns headless proxy service name for select component
+func (cr VMCluster) GetSelectLBName() string {
+	return PrefixedName(cr.Name, "vmselectinternal")
 }
 
 func (s VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
@@ -302,6 +323,11 @@ type VMInsert struct {
 	CommonApplicationDeploymentParams `json:",inline"`
 }
 
+// GetInsertLBName returns headless proxy service name for insert component
+func (cr VMCluster) GetInsertLBName() string {
+	return PrefixedName(cr.Name, "vminsertinternal")
+}
+
 func (cr *VMInsert) Probe() *EmbeddedProbes {
 	return cr.EmbeddedProbes
 }
@@ -322,8 +348,14 @@ func (cr *VMInsert) ProbeNeedLiveness() bool {
 	return true
 }
 
-func (i VMInsert) GetNameWithPrefix(clusterName string) string {
-	return PrefixedName(clusterName, "vminsert")
+// GetInsertName returns vminsert component name
+func (cr VMCluster) GetInsertName() string {
+	return PrefixedName(cr.Name, "vminsert")
+}
+
+// GetInsertName returns select component name
+func (cr VMCluster) GetSelectName() string {
+	return PrefixedName(cr.Name, "vmselect")
 }
 
 type VMStorage struct {
@@ -608,6 +640,7 @@ func (cr VMCluster) VMStoragePodLabels() map[string]string {
 	return labels.Merge(cr.Spec.VMStorage.PodMetadata.Labels, selectorLabels)
 }
 
+// FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr VMCluster) FinalLabels(baseLabels map[string]string) map[string]string {
 	if cr.ObjectMeta.Labels == nil {
 		return baseLabels
@@ -767,6 +800,7 @@ func (cr VMCluster) SelectorLabels() map[string]string {
 	}
 }
 
+// AllLabels defines global CR labels
 func (cr VMCluster) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
@@ -797,7 +831,7 @@ func (cr *VMCluster) VMSelectURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.Spec.VMSelect.GetNameWithPrefix(cr.Name), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.GetSelectName(), cr.Namespace, port)
 }
 
 func (cr *VMCluster) VMInsertURL() string {
@@ -815,7 +849,7 @@ func (cr *VMCluster) VMInsertURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.Spec.VMInsert.GetNameWithPrefix(cr.Name), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.GetInsertName(), cr.Namespace, port)
 }
 
 func (cr *VMCluster) VMStorageURL() string {
@@ -922,6 +956,86 @@ func (cr *VMInsert) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.ServiceSpec
 }
 
+// ProbeNeedLiveness implements build.probeCRD interface
 func (cr *VMStorage) ProbeNeedLiveness() bool {
 	return false
+}
+
+// VMAuthLoadBalancer configures vmauth as a load balancer
+// for the requests
+type VMAuthLoadBalancer struct {
+	Enabled                bool                   `json:"enabled,omitempty"`
+	DisableInsertBalancing bool                   `json:"disableInsertBalancing,omitempty"`
+	DisableSelectBalancing bool                   `json:"disableSelectBalancing,omitempty"`
+	Spec                   VMAuthLoadBalancerSpec `json:"spec,omitempty"`
+}
+
+// VMAuthLoadBalancerSpec defines configuration spec for VMAuth used as load-balancer
+// for VMCluster component
+type VMAuthLoadBalancerSpec struct {
+	// Common params for scheduling
+	// PodMetadata configures Labels and Annotations which are propagated to the vmauth lb pods.
+	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	// AdditionalServiceSpec defines service override configuration for vmauth lb deployment
+	// it'll be only applied to vmclusterlb- service
+	AdditionalServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceScrapeSpec that will be added to vmauthlb VMServiceScrape spec
+	// +optional
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
+
+	// LogFormat for vmauth
+	// default or json
+	// +optional
+	// +kubebuilder:validation:Enum=default;json
+	LogFormat string `json:"logFormat,omitempty"`
+	// LogLevel for vmauth container.
+	// +optional
+	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
+	LogLevel                          string `json:"logLevel,omitempty"`
+	CommonApplicationDeploymentParams `json:",inline"`
+	CommonDefaultableParams           `json:",inline"`
+	*EmbeddedProbes                   `json:",inline"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+}
+
+// ProbePath returns path for probe requests
+func (cr *VMAuthLoadBalancerSpec) Probe() *EmbeddedProbes {
+	return cr.EmbeddedProbes
+}
+
+// ProbePort returns port for probe requests
+func (cr *VMAuthLoadBalancerSpec) ProbePort() string {
+	return cr.Port
+}
+
+// ProbeNeedLiveness implements build.probeCRD interface
+func (cr *VMAuthLoadBalancerSpec) ProbeNeedLiveness() bool {
+	return false
+}
+
+// ProbePath returns path for probe requests
+func (cr *VMAuthLoadBalancerSpec) ProbePath() string {
+	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+}
+
+// ProbeScheme returns scheme for probe requests
+func (cr *VMAuthLoadBalancerSpec) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+}
+
+// GetServiceScrape implements build.serviceScrapeBuilder interface
+func (cr *VMAuthLoadBalancerSpec) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.ServiceScrapeSpec
+}
+
+// GetExtraArgs implements build.serviceScrapeBuilder interface
+func (cr *VMAuthLoadBalancerSpec) GetExtraArgs() map[string]string {
+	return cr.ExtraArgs
+}
+
+// GetMetricPath implements build.serviceScrapeBuilder interface
+func (cr *VMAuthLoadBalancerSpec) GetMetricPath() string {
+	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
 }

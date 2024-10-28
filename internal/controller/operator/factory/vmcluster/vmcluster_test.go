@@ -293,6 +293,46 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 			},
 			want: string(vmv1beta1.UpdateStatusExpanding),
 		},
+		{
+			name: "vmcluster with load-balancing",
+			args: args{
+				cr: &vmv1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "cluster-1",
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod:   "2",
+						ReplicationFactor: ptr.To(int32(2)),
+						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+							Enabled: true,
+							Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To(int32(0))},
+							},
+						},
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(0))},
+						},
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(0))},
+						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(0))},
+							InsertPorts: &vmv1beta1.InsertPorts{
+								GraphitePort:     "8025",
+								OpenTSDBHTTPPort: "3311",
+								InfluxPort:       "5511",
+							},
+						},
+					},
+				},
+			},
+			want: string(vmv1beta1.UpdateStatusExpanding),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -322,10 +362,29 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 					}
 				}()
 			}
+			if tt.args.cr.Spec.RequestsLoadBalancer.Enabled {
+				var vmauthLB appsv1.Deployment
+				eventuallyUpdateStatusToOk(func() error {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMAuthLBName(), Namespace: tt.args.cr.Namespace}, &vmauthLB); err != nil {
+						return err
+					}
+					vmauthLB.Status.Conditions = append(vmauthLB.Status.Conditions, appsv1.DeploymentCondition{
+						Type:   appsv1.DeploymentProgressing,
+						Reason: "NewReplicaSetAvailable",
+						Status: "True",
+					})
+					if err := fclient.Status().Update(ctx, &vmauthLB); err != nil {
+						return err
+					}
+
+					return nil
+				})
+
+			}
 			if tt.args.cr.Spec.VMInsert != nil {
 				var vminsert appsv1.Deployment
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMInsert.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
 						return err
 					}
 					vminsert.Status.Conditions = append(vminsert.Status.Conditions, appsv1.DeploymentCondition{
@@ -343,7 +402,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 			if tt.args.cr.Spec.VMSelect != nil {
 				var vmselect appsv1.StatefulSet
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMSelect.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
 						return err
 					}
 					vmselect.Status.ReadyReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
@@ -379,12 +438,12 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 				var vmselect, vmstorage appsv1.StatefulSet
 				var vminsert appsv1.Deployment
 				if tt.args.cr.Spec.VMInsert != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMInsert.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
 				if tt.args.cr.Spec.VMSelect != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMSelect.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
@@ -803,6 +862,95 @@ spec:
 	}, `
 objectmeta:
     name: vminsert-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vminsert
+        managed-by: vm-operator
+    annotations:
+      "service.beta.kubernetes.io/aws-load-balancer-type": "external"
+    ownerreferences:
+        - apiversion: ""
+          name: test
+          controller: true
+          blockownerdeletion: true
+    finalizers:
+        - apps.victoriametrics.com/finalizer
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8480
+          targetport:
+            intval: 8480
+        - name: opentsdb-http
+          protocol: TCP
+          port: 8087
+          targetport:
+            intval: 8087
+        - name: clusternative
+          protocol: TCP
+          port: 8055
+          targetport:
+            intval: 8055
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vminsert
+        managed-by: vm-operator
+    type: LoadBalancer
+    loadbalancerclass: service.k8s.aws/nlb
+`, &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vminsert-test",
+			Namespace: "default-1",
+		},
+		Spec: corev1.ServiceSpec{
+			Type:      corev1.ServiceTypeClusterIP,
+			ClusterIP: "10.0.0.5",
+			Selector: map[string]string{
+				"app.kubernetes.io/component": "monitoring",
+				"app.kubernetes.io/instance":  "test",
+				"app.kubernetes.io/name":      "vminsert",
+				"managed-by":                  "vm-operator",
+			},
+		},
+	})
+	// insert with load-balanacer
+	f("insert", &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
+		Spec: vmv1beta1.VMClusterSpec{
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Enabled: true,
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+					UseAsDefault: true,
+					EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
+						Labels: map[string]string{
+							"app.kubernetes.io/instance": "incorrect-label",
+						},
+						Annotations: map[string]string{
+							"service.beta.kubernetes.io/aws-load-balancer-type": "external",
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						ClusterIP:         "",
+						Type:              "LoadBalancer",
+						LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
+					},
+				},
+				ClusterNativePort: "8055",
+				InsertPorts: &vmv1beta1.InsertPorts{
+					OpenTSDBHTTPPort: "8087",
+				},
+			},
+		},
+	}, `
+objectmeta:
+    name: vminsertinternal-test
     namespace: default-1
     resourceversion: "1"
     labels:

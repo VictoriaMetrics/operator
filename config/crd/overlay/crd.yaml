@@ -15600,6 +15600,25 @@ spec:
                   distinct storage nodes
                 format: int32
                 type: integer
+              requestLoadBalancer:
+                description: |-
+                  RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests
+                  it helps to evenly spread load across pods
+                  usually it's not possible with kubernetes TCP based service
+                properties:
+                  disableInsertBalancing:
+                    type: boolean
+                  disableSelectBalancing:
+                    type: boolean
+                  enabled:
+                    type: boolean
+                  spec:
+                    description: |-
+                      VMAuthLoadBalancerSpec defines configuration spec for VMAuth used as load-balancer
+                      for VMCluster component
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
               retentionPeriod:
                 description: |-
                   RetentionPeriod for the stored metrics

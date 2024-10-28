@@ -295,6 +295,25 @@ func addVMClusterDefaults(objI interface{}) {
 	cr := objI.(*vmv1beta1.VMCluster)
 	c := getCfg()
 
+	if cr.Spec.RequestsLoadBalancer.Enabled {
+		cv := config.ApplicationDefaults(c.VMAuthDefault)
+		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, &cv)
+		spec := &cr.Spec.RequestsLoadBalancer.Spec
+		if spec.EmbeddedProbes == nil {
+			spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{}
+		}
+		if spec.StartupProbe == nil {
+			spec.StartupProbe = &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{},
+				},
+			}
+		}
+		if spec.AdditionalServiceSpec != nil && !spec.AdditionalServiceSpec.UseAsDefault {
+			spec.AdditionalServiceSpec.UseAsDefault = true
+		}
+	}
+
 	// cluster is tricky is has main strictSecurity and per app
 	useStrictSecurity := c.EnableStrictSecurity
 	if cr.Spec.UseStrictSecurity != nil {

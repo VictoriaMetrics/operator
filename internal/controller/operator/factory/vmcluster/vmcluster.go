@@ -66,7 +66,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 			return err
 		}
 		if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, false) {
-			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.VMStorage, "http"))
+			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.VMStorage, "http", "vmbackupmanager"))
 			if err != nil {
 				return fmt.Errorf("cannot create VMServiceScrape for vmStorage: %w", err)
 			}

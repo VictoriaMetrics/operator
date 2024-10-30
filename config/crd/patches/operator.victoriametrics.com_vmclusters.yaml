@@ -1,8 +1,8 @@
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/requestLoadBalancer/properties/spec/x-kubernetes-preserve-unknown-fields
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/requestsLoadBalancer/properties/spec/x-kubernetes-preserve-unknown-fields
   value: true
 - op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/requestLoadBalancer/properties/spec/properties
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/requestsLoadBalancer/properties/spec/properties
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmstorage/properties/storage/properties/volumeClaimTemplate/x-kubernetes-preserve-unknown-fields
   value: true

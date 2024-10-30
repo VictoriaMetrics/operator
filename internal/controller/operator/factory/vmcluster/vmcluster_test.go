@@ -958,6 +958,7 @@ objectmeta:
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
+        operator.victoriametrics.com/vmauthlb-proxy-job-name: vminsert-test
     annotations:
       "service.beta.kubernetes.io/aws-load-balancer-type": "external"
     ownerreferences:
@@ -989,7 +990,8 @@ spec:
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
-    type: LoadBalancer
+    type: ClusterIP
+    clusterip: "None"
     loadbalancerclass: service.k8s.aws/nlb
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

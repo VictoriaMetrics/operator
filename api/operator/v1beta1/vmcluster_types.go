@@ -81,7 +81,7 @@ type VMClusterSpec struct {
 	// RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests
 	// it helps to evenly spread load across pods
 	// usually it's not possible with kubernetes TCP based service
-	RequestsLoadBalancer VMAuthLoadBalancer `json:"requestLoadBalancer,omitempty"`
+	RequestsLoadBalancer VMAuthLoadBalancer `json:"requestsLoadBalancer,omitempty"`
 }
 
 // VMAuthLBSelectorLabels defines selector labels for vmauth balancer
@@ -245,7 +245,7 @@ type VMSelect struct {
 	CommonApplicationDeploymentParams `json:",inline"`
 }
 
-// GetSelectLBName returns headless lb name for select component
+// GetSelectLBName returns headless proxy service name for select component
 func (cr VMCluster) GetSelectLBName() string {
 	return PrefixedName(cr.Name, "vmselectinternal")
 }
@@ -323,7 +323,7 @@ type VMInsert struct {
 	CommonApplicationDeploymentParams `json:",inline"`
 }
 
-// GetInsertLBName returns headless lb name for insert component
+// GetInsertLBName returns headless proxy service name for insert component
 func (cr VMCluster) GetInsertLBName() string {
 	return PrefixedName(cr.Name, "vminsertinternal")
 }
@@ -956,6 +956,7 @@ func (cr *VMInsert) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.ServiceSpec
 }
 
+// ProbeNeedLiveness implements build.probeCRD interface
 func (cr *VMStorage) ProbeNeedLiveness() bool {
 	return false
 }
@@ -1009,9 +1010,9 @@ func (cr *VMAuthLoadBalancerSpec) ProbePort() string {
 	return cr.Port
 }
 
-// ProbeNeedLiveness defines if probe need default liveness
+// ProbeNeedLiveness implements build.probeCRD interface
 func (cr *VMAuthLoadBalancerSpec) ProbeNeedLiveness() bool {
-	return true
+	return false
 }
 
 // ProbePath returns path for probe requests

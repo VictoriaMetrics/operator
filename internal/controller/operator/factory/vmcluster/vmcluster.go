@@ -18,12 +18,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const serviceLoadBalancerJobNameLabel = "vmcluster-internal-job-name"
+const (
+	vmauthLBServiceProxyJobNameLabel = "operator.victoriametrics.com/vmauthlb-proxy-job-name"
+	vmauthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
+)
 
 // CreateOrUpdateVMCluster reconciled cluster object with order
 // first we check status of vmStorage and waiting for its readiness
@@ -92,7 +96,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 			svs := build.VMServiceScrapeForServiceWithSpec(selectSvc, cr.Spec.VMSelect, "http")
 			if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 				// for backward compatibility we must keep job label value
-				svs.Spec.JobLabel = serviceLoadBalancerJobNameLabel
+				svs.Spec.JobLabel = vmauthLBServiceProxyJobNameLabel
 			}
 			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs)
 			if err != nil {
@@ -121,7 +125,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 			svs := build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.VMInsert, "http")
 			if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 				// for backward compatibility we must keep job label value
-				svs.Spec.JobLabel = serviceLoadBalancerJobNameLabel
+				svs.Spec.JobLabel = vmauthLBServiceProxyJobNameLabel
 			}
 			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs)
 			if err != nil {
@@ -189,7 +193,7 @@ func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 		svc.Name = cr.GetSelectLBName()
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
-		svc.Labels[serviceLoadBalancerJobNameLabel] = cr.GetSelectName()
+		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetSelectName()
 	}
 
 	return svc
@@ -222,19 +226,21 @@ func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster,
 		return nil, fmt.Errorf("cannot reconcile vmselect service: %w", err)
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
-		if err := createOrUpdateLBService(ctx, rclient, cr, cr.GetSelectName(), cr.Spec.VMSelect.Port, cr.VMAuthLBSelectorLabels()); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, cr.GetSelectName(), cr.Spec.VMSelect.Port, "vmselect", cr.VMAuthLBSelectorLabels()); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for vmselect: %w", err)
 		}
 	}
 	return svc, nil
 }
 
-func createOrUpdateLBService(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster, svcName, port string, svcSelectorLabels map[string]string) error {
+func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster, svcName, port, targetName string, svcSelectorLabels map[string]string) error {
 
+	fls := cr.FinalLabels(svcSelectorLabels)
+	fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: targetName})
 	t := &clusterSvcBuilder{
 		cr,
 		svcName,
-		cr.FinalLabels(svcSelectorLabels),
+		fls,
 		cr.VMAuthLBSelectorLabels(),
 		nil,
 	}
@@ -293,7 +299,7 @@ func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
 		svc.Name = cr.GetInsertLBName()
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
-		svc.Labels[serviceLoadBalancerJobNameLabel] = cr.GetInsertName()
+		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetInsertName()
 	}
 	return svc
 }
@@ -325,7 +331,7 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 
 	// create extra service for loadbalancing
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
-		if err := createOrUpdateLBService(ctx, rclient, cr, cr.GetInsertName(), cr.Spec.VMInsert.Port, cr.VMAuthLBSelectorLabels()); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, cr.GetInsertName(), cr.Spec.VMInsert.Port, "vminsert", cr.VMAuthLBSelectorLabels()); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for vminsert: %w", err)
 		}
 	}
@@ -1243,22 +1249,40 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMCluster, rcli
 				return fmt.Errorf("cannot remove vmselect additional service: %w", err)
 			}
 		}
-		if !prevSpec.RequestsLoadBalancer.Enabled &&
+		// transition to load-balancer state
+		// have to remove prev service scrape
+		if (!prevSpec.RequestsLoadBalancer.Enabled &&
 			cr.Spec.RequestsLoadBalancer.Enabled &&
-			!cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
+			!cr.Spec.RequestsLoadBalancer.DisableSelectBalancing) ||
+			// second case load balancer was enabled, but disabled for select component
+			(prevSpec.RequestsLoadBalancer.DisableInsertBalancing &&
+				!cr.Spec.RequestsLoadBalancer.DisableInsertBalancing) {
 			// remove service scrape because service was renamed
-			if ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetSelectName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for non-lb select svc: %w", err)
 				}
 			}
+		}
+		// disabled loadbalancer only for component
+		// transit to the k8s service balancing mode
+		if prevSpec.RequestsLoadBalancer.Enabled &&
+			!prevSpec.RequestsLoadBalancer.DisableSelectBalancing &&
+			cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 				Name:      cr.GetSelectLBName(),
 				Namespace: cr.Namespace,
 			}}); err != nil {
 				return fmt.Errorf("cannot remove vmselect lb service: %w", err)
+			}
+			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetSelectLBName(), Namespace: cr.Namespace},
+				}); err != nil {
+					return fmt.Errorf("cannot delete vmservicescrape for lb select svc: %w", err)
+				}
 			}
 		}
 	}
@@ -1291,39 +1315,65 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMCluster, rcli
 				return fmt.Errorf("cannot remove vminsert additional service: %w", err)
 			}
 		}
-		if !prevSpec.RequestsLoadBalancer.Enabled &&
+		// transition to load-balancer state
+		// have to remove prev service scrape
+		if (!prevSpec.RequestsLoadBalancer.Enabled &&
 			cr.Spec.RequestsLoadBalancer.Enabled &&
-			!prevSpec.RequestsLoadBalancer.DisableInsertBalancing {
+			!cr.Spec.RequestsLoadBalancer.DisableInsertBalancing) ||
+			// second case load balancer was enabled, but disabled for insert component
+			(prevSpec.RequestsLoadBalancer.DisableInsertBalancing &&
+				!cr.Spec.RequestsLoadBalancer.DisableInsertBalancing) {
 			// remove service scrape because service was renamed
-			if ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetInsertName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for non-lb insert svc: %w", err)
 				}
 			}
+		}
+		// disabled loadbalancer only for component
+		// transit to the k8s service balancing mode
+		if prevSpec.RequestsLoadBalancer.Enabled &&
+			!prevSpec.RequestsLoadBalancer.DisableInsertBalancing &&
+			cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 				Name:      cr.GetInsertLBName(),
 				Namespace: cr.Namespace,
 			}}); err != nil {
 				return fmt.Errorf("cannot remove vminsert lb service: %w", err)
 			}
+			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetInsertLBName(), Namespace: cr.Namespace},
+				}); err != nil {
+					return fmt.Errorf("cannot delete vmservicescrape for lb vminsert svc: %w", err)
+				}
+			}
 		}
 	}
 
 	if prevSpec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.Enabled {
-		// remove deployment and secret
-		lbMeta := metav1.ObjectMeta{
-			Namespace: cr.Namespace,
-			Name:      cr.GetVMAuthLBName(),
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *prevSpec
+		if err := finalize.OnVMClusterLoadBalancerDelete(ctx, rclient, prevCR); err != nil {
+			return fmt.Errorf("failed to remove loadbalancer components enabled at prev state: %w", err)
 		}
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &appsv1.Deployment{ObjectMeta: lbMeta}); err != nil {
-			return fmt.Errorf("cannot remove cluster lb deployment: %w", err)
+	}
+	if cr.Spec.RequestsLoadBalancer.Enabled {
+		// case for child objects
+		prevLBSpec := prevSpec.RequestsLoadBalancer.Spec
+		lbSpec := cr.Spec.RequestsLoadBalancer.Spec
+		if prevLBSpec.PodDisruptionBudget != nil && lbSpec.PodDisruptionBudget == nil {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cr.GetVMAuthLBName(),
+					Namespace: cr.Namespace,
+				},
+			}); err != nil {
+				return fmt.Errorf("cannot delete PodDisruptionBudget for cluster lb: %w", err)
+			}
 		}
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Secret{ObjectMeta: lbMeta}); err != nil {
-			return fmt.Errorf("cannot remove cluster lb secret: %w", err)
-		}
-
 	}
 
 	return nil
@@ -1406,6 +1456,9 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	if len(spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+	volumes, vmounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmounts, vmv1beta1.SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
 	vmauthLBCnt := corev1.Container{
 		Name: "vmauth",
@@ -1427,6 +1480,8 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	containers := []corev1.Container{
 		vmauthLBCnt,
 	}
+	containers = build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
+
 	var err error
 	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)
 	if err != nil {
@@ -1456,17 +1511,25 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.UseStrictSecurity, false), &spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, false), &spec.CommonApplicationDeploymentParams)
 
 	return lbDep, nil
 }
 
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
 	lbls := cr.VMAuthLBSelectorLabels()
+
+	// add proxy label directly to the service.labels
+	// it'll be used below for vmservicescrape matcher
+	// otherwise, it could lead to the multiple targets discovery
+	// for the single pod
+	// it's caused by multiple services pointed to the same pods
+	fls := cr.FinalLabels(lbls)
+	fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: "vmauth"})
 	t := &clusterSvcBuilder{
 		VMCluster:         cr,
 		prefixedName:      cr.GetVMAuthLBName(),
-		finalLabels:       cr.FinalLabels(lbls),
+		finalLabels:       fls,
 		selectorLabels:    lbls,
 		additionalService: cr.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec,
 	}
@@ -1482,7 +1545,9 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb service: %w", err)
 	}
-	if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, &cr.Spec.RequestsLoadBalancer.Spec, "http")); err != nil {
+	svs := build.VMServiceScrapeForServiceWithSpec(svc, &cr.Spec.RequestsLoadBalancer.Spec, "http")
+	svs.Spec.Selector.MatchLabels[vmauthLBServiceProxyTargetLabel] = "vmauth"
+	if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
 	}
 	return nil
@@ -1512,5 +1577,31 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1
 	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr); err != nil {
 		return err
 	}
+	if cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
+		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, cr, rclient); err != nil {
+			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
+		}
+	}
 	return nil
+}
+
+func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+	lbls := cr.VMAuthLBSelectorLabels()
+	pdb := &policyv1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.GetVMAuthLBName(),
+			Labels:          cr.FinalLabels(lbls),
+			OwnerReferences: cr.AsOwner(),
+			Namespace:       cr.Namespace,
+			Finalizers:      []string{vmv1beta1.FinalizerName},
+		},
+		Spec: policyv1.PodDisruptionBudgetSpec{
+			MinAvailable:   cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget.MinAvailable,
+			MaxUnavailable: cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget.MaxUnavailable,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget.SelectorLabelsWithDefaults(lbls),
+			},
+		},
+	}
+	return reconcile.PDB(ctx, rclient, pdb)
 }

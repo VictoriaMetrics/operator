@@ -15600,7 +15600,7 @@ spec:
                   distinct storage nodes
                 format: int32
                 type: integer
-              requestLoadBalancer:
+              requestsLoadBalancer:
                 description: |-
                   RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests
                   it helps to evenly spread load across pods

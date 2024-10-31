@@ -1480,7 +1480,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	containers := []corev1.Container{
 		vmauthLBCnt,
 	}
-	containers = build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
 
 	var err error
 	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)

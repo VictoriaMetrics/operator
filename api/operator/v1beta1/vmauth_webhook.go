@@ -44,6 +44,21 @@ func (r *VMAuth) sanityCheck() error {
 			return fmt.Errorf("spec.ingress.tlsHosts cannot be empty with non-empty spec.ingress.tlsSecretName")
 		}
 	}
+	if r.Spec.ConfigSecret != "" && r.Spec.ExternalConfig.SecretRef != nil {
+		return fmt.Errorf("spec.configSecret and spec.externalConfig.secretRef cannot be used at the same time")
+	}
+	if r.Spec.ExternalConfig.SecretRef != nil && r.Spec.ExternalConfig.LocalPath != "" {
+		return fmt.Errorf("at most one option can be used for externalConfig: spec.configSecret or spec.externalConfig.secretRef")
+	}
+	if r.Spec.ExternalConfig.SecretRef != nil {
+		if r.Spec.ExternalConfig.SecretRef.Name == r.PrefixedName() {
+			return fmt.Errorf("spec.externalConfig.secretRef cannot be equal to the vmauth-config-CR_NAME=%q, it's operator reserved value", r.ConfigSecretName())
+		}
+		if r.Spec.ExternalConfig.SecretRef.Name == "" || r.Spec.ExternalConfig.SecretRef.Key == "" {
+			return fmt.Errorf("name=%q and key=%q fields must be non-empty for spec.externalConfig.secretRef",
+				r.Spec.ExternalConfig.SecretRef.Name, r.Spec.ExternalConfig.SecretRef.Key)
+		}
+	}
 	return nil
 }
 

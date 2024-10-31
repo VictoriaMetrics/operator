@@ -180,6 +180,15 @@ func addVMAuthDefaults(objI interface{}) {
 	cr := objI.(*vmv1beta1.VMAuth)
 	c := getCfg()
 
+	if cr.Spec.ConfigSecret != "" {
+		// Removed if later with ConfigSecret field later
+		cr.Spec.ExternalConfig.SecretRef = &corev1.SecretKeySelector{
+			Key: "config.yaml",
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: cr.Spec.ConfigSecret,
+			},
+		}
+	}
 	cv := config.ApplicationDefaults(c.VMAuthDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
 	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)

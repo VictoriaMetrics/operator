@@ -73,6 +73,13 @@ type VMAuthSpec struct {
 	// See [here](https://docs.victoriametrics.com/enterprise)
 	// +optional
 	License *License `json:"license,omitempty"`
+	// ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
+	// VMAuth object, which contains auth configuration for vmauth,
+	// configuration must be inside secret key: config.yaml.
+	// It must be created and managed manually.
+	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
+	// Deprecated, use externalConfig.secretRef instead
+	ConfigSecret string `json:"configSecret,omitempty"`
 	// ExternalConfig defines a source of external VMAuth configuration.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
 	// +optional
@@ -403,7 +410,9 @@ func (cr *VMAuth) AsCRDOwner() []metav1.OwnerReference {
 
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAuth) IsUnmanaged() bool {
-	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) || (cr.Spec.ExternalConfig.SecretRef == nil && cr.Spec.ExternalConfig.SecretRef.Name != "") || cr.Spec.ExternalConfig.LocalPath != ""
+	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) ||
+		cr.Spec.ExternalConfig.SecretRef == nil ||
+		cr.Spec.ExternalConfig.LocalPath != ""
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation

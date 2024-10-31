@@ -40,14 +40,12 @@ const (
 
 // CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
 func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
-	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
-		return err
-	}
+
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if ptr.Deref(cr.Spec.UseVMConfigReloader, false) && cr.Spec.ExternalConfig.SecretRef == nil {
+		if ptr.Deref(cr.Spec.UseVMConfigReloader, false) {
 			if err := createVMAuthSecretAccess(ctx, cr, rclient); err != nil {
 				return err
 			}
@@ -89,7 +87,13 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
+	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false); err != nil {
+		return fmt.Errorf("cannot reconcile vmauth deployment: %w", err)
+	}
+	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+		return err
+	}
+	return nil
 }
 
 func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
@@ -149,6 +153,9 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
 
@@ -191,28 +198,11 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	volumes, volumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, volumeMounts, vmv1beta1.SecretsDir)
 	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
 
-	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
-	sort.Strings(args)
-
-	vmauthContainer := corev1.Container{
-		Name:                     "vmauth",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
-		Ports:                    ports,
-		Args:                     args,
-		VolumeMounts:             volumeMounts,
-		Resources:                cr.Spec.Resources,
-		Env:                      envs,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
-	}
-	vmauthContainer = build.Probe(vmauthContainer, cr)
-
-	operatorContainers := []corev1.Container{vmauthContainer}
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
-
 	var initContainers []corev1.Container
-	if cr.Spec.ExternalConfig.SecretRef != nil && cr.Spec.ExternalConfig.SecretRef.Name != "" {
+	var operatorContainers []corev1.Container
+	// config mount options
+	switch {
+	case cr.Spec.ExternalConfig.SecretRef != nil:
 		var keyToPath []corev1.KeyToPath
 		if cr.Spec.ExternalConfig.SecretRef.Key != "" {
 			keyToPath = append(keyToPath, corev1.KeyToPath{
@@ -233,8 +223,12 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 			Name:      vmAuthVolumeName,
 			MountPath: vmAuthConfigFolder,
 		})
-		operatorContainers[0].VolumeMounts = volumeMounts
-	} else if cr.Spec.ExternalConfig.LocalPath == "" {
+
+	case cr.Spec.ExternalConfig.LocalPath != "":
+		// no-op external managed configuration
+		// add check interval
+		args = append(args, "-configCheckInterval=1m")
+	default:
 		volumes = append(volumes, corev1.Volume{
 			Name: "config-out",
 			VolumeSource: corev1.VolumeSource{
@@ -259,13 +253,31 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 			Name:      "config-out",
 			MountPath: vmAuthConfigFolder,
 		})
-		operatorContainers[0].VolumeMounts = volumeMounts
 
 		configReloader := buildVMAuthConfigReloaderContainer(cr)
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
 			buildInitConfigContainer(useCustomConfigReloader, cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
 	}
+
+	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
+	sort.Strings(args)
+
+	vmauthContainer := corev1.Container{
+		Name:                     "vmauth",
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Ports:                    ports,
+		Args:                     args,
+		VolumeMounts:             volumeMounts,
+		Resources:                cr.Spec.Resources,
+		Env:                      envs,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
+	}
+	vmauthContainer = build.Probe(vmauthContainer, cr)
+
+	// move vmauth container to the 0 index
+	operatorContainers = append([]corev1.Container{vmauthContainer}, operatorContainers...)
 
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
@@ -299,7 +311,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 // CreateOrUpdateVMAuthConfig configuration secret for vmauth.
 func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	// fast path
-	if cr.Spec.ExternalConfig.SecretRef != nil && cr.Spec.ExternalConfig.SecretRef.Name != "" {
+	if cr.Spec.ExternalConfig.SecretRef != nil || cr.Spec.ExternalConfig.LocalPath != "" {
 		return nil
 	}
 	s := makeVMAuthConfigSecret(cr)
@@ -571,24 +583,26 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAuth, rclient
 	if cr.ParsedLastAppliedSpec == nil {
 		return nil
 	}
-	prevSvc, currSvc := cr.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	prevCR := cr.DeepCopy()
+	prevCR.Spec = *cr.ParsedLastAppliedSpec
+	prevSvc, currSvc := prevCR.Spec.ServiceSpec, cr.Spec.ServiceSpec
 	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
 		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil && cr.ParsedLastAppliedSpec.PodDisruptionBudget != nil {
+	if cr.Spec.PodDisruptionBudget == nil && prevCR.Spec.PodDisruptionBudget != nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 		}
 	}
 
-	if cr.Spec.Ingress == nil && cr.ParsedLastAppliedSpec.Ingress != nil {
+	if cr.Spec.Ingress == nil && prevCR.Spec.Ingress != nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &networkingv1.Ingress{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot delete ingress from prev state: %w", err)
 		}
 	}
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(prevCR.Spec.DisableSelfServiceScrape, false) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

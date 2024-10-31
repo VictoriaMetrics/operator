@@ -332,7 +332,8 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 						verify: func(cr *v1beta1vm.VMAuth) {
 							var dep appsv1.Deployment
-							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep))
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
+								To(Succeed())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Eventually(func() string {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
@@ -352,7 +353,8 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 						verify: func(cr *v1beta1vm.VMAuth) {
 							var dep appsv1.Deployment
-							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep))
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
+								To(Succeed())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Expect(dep.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
 							Eventually(func() string {
@@ -415,7 +417,8 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 						verify: func(cr *v1beta1vm.VMAuth) {
 							var dep appsv1.Deployment
-							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep))
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
+								To(Succeed())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Eventually(func() string {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())

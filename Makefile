@@ -282,7 +282,7 @@ load-kind: docker-build kind operator-sdk
 		$(CONTAINER_TOOL) network connect "kind" "$(LOCAL_REGISTRY_NAME)"; \
 	fi
 	if ! $(OPERATOR_SDK) olm status; then \
-		$(OPERATOR_SDK) olm install; \
+		$(OPERATOR_SDK) olm install --version $(OLM_VERSION); \
 	fi
 
 kustomize-set-annotation:
@@ -362,6 +362,7 @@ CODEGENERATOR_VERSION ?= v0.30.2
 KIND_VERSION ?= v0.23.0
 OPERATOR_SDK_VERSION ?= v1.35.0
 OPM_VERSION ?= v1.44.0
+OLM_VERSION ?= 0.28.0
 YQ_VERSION ?= v4.44.2
 ENVCONFIG_DOCS_VERSION ?= 746866a6303f8e7e610d39389aa951b3c0d97123
 CRD_REF_DOCS_VERSION ?= latest

@@ -1077,11 +1077,12 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	}
 	useStrictSecurity := ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false)
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMStorage.SecurityContext, initContainers, useStrictSecurity)
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMStorage.SecurityContext, operatorContainers, useStrictSecurity)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.VMStorage.InitContainers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch vmstorage init containers: %w", err)
 	}
+
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMStorage.SecurityContext, operatorContainers, useStrictSecurity)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMStorage.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch vmstorage containers: %w", err)
@@ -1480,9 +1481,9 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	containers := []corev1.Container{
 		vmauthLBCnt,
 	}
-	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
-
 	var err error
+
+	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
 	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)

@@ -112,6 +112,20 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				}, func(cr *v1beta1vm.VMAuth) {
 					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					ps := dep.Spec.Template.Spec
+					Expect(ps.SecurityContext).NotTo(BeNil())
+					Expect(ps.SecurityContext.RunAsNonRoot).NotTo(BeNil())
+					Expect(ps.Containers).To(HaveLen(2))
+					Expect(ps.InitContainers).To(HaveLen(1))
+					Expect(ps.Containers[0].SecurityContext).NotTo(BeNil())
+					Expect(ps.Containers[1].SecurityContext).NotTo(BeNil())
+					Expect(ps.InitContainers[0].SecurityContext).NotTo(BeNil())
+					Expect(ps.Containers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(ps.Containers[1].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(ps.InitContainers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+
 				}),
 			)
 

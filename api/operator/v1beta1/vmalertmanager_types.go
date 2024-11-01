@@ -184,12 +184,6 @@ type VMAlertmanagerSpec struct {
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
-	// UseStrictSecurity enables strict security mode for component
-	// it restricts disk writes access
-	// uses non-root user out of the box
-	// drops not needed security permissions
-	// +optional
-	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 
 	// WebConfig defines configuration for webserver
 	// https://github.com/prometheus/alertmanager/blob/main/docs/https.md

@@ -608,16 +608,13 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 		if !cr.Spec.IngestOnlyMode {
 			ic = append(ic,
 				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, false), cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
-			if len(cr.Spec.InitContainers) > 0 {
-				var err error
-				build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
-				ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
-				if err != nil {
-					return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
-				}
-			}
-
+			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 		}
+	}
+	var err error
+	ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
+	if err != nil {
+		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 	}
 
 	operatorContainers = append(operatorContainers, vmagentContainer)

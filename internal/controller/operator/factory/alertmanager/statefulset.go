@@ -329,6 +329,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		}
 		amVolumeMounts = append(amVolumeMounts, cmVolumeMount)
+		crVolumeMounts = append(crVolumeMounts, cmVolumeMount)
 	}
 
 	volumeByName := make(map[string]struct{})

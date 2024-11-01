@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+- [operator](https://docs.victoriametrics.com/operator/): properly apply `useStrictSecurity: true` to the `initContainers` for `VMAuth`, `VMAgent` and `VMAlertmanager`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1134) for details.
 - [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth): Moved `spec.configSecret` to `spec.externalConfig.secretRef.name` and added `spec.externalConfig.localPath` to be able to provide custom configs via sidecar.
 - [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster): adds `requestsLoadBalancer` configuration to the `VMCluster.spec`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1130) for details.
 - [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster): properly configure monitoring for `VMCluster` with enabled `backup`.

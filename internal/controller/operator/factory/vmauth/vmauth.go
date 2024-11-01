@@ -258,6 +258,11 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
 			buildInitConfigContainer(useCustomConfigReloader, cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
+		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
+	}
+	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
+	if err != nil {
+		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
@@ -285,14 +290,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		return nil, err
 	}
 
-	if len(cr.Spec.InitContainers) > 0 {
-		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
-		initContainers, err = k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
-		if err != nil {
-			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
-		}
-	}
-
 	vmAuthSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
@@ -300,7 +297,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		},
 		Spec: corev1.PodSpec{
 			Volumes:            volumes,
-			InitContainers:     initContainers,
+			InitContainers:     ic,
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
 		},

@@ -119,6 +119,41 @@ var _ = Describe("test  vmalertmanager Controller", func() {
 					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(BeEmpty())
 				},
 			),
+			Entry("with strict security and vm config reloader", "strict-vmreloader-create",
+				&v1beta1vm.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+					},
+					Spec: v1beta1vm.VMAlertmanagerSpec{
+						CommonConfigReloaderParams: v1beta1vm.CommonConfigReloaderParams{
+							UseVMConfigReloader: ptr.To(true),
+						},
+						CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+							UseDefaultResources: ptr.To(false),
+							UseStrictSecurity:   ptr.To(true),
+						},
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+				func(cr *v1beta1vm.VMAlertmanager) {
+					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(BeEmpty())
+					var sts appsv1.StatefulSet
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &sts)).To(Succeed())
+					ps := sts.Spec.Template.Spec
+					Expect(ps.SecurityContext).NotTo(BeNil())
+					Expect(ps.SecurityContext.RunAsNonRoot).NotTo(BeNil())
+					Expect(ps.Containers).To(HaveLen(2))
+					Expect(ps.InitContainers).To(HaveLen(1))
+					Expect(ps.Containers[0].SecurityContext).NotTo(BeNil())
+					Expect(ps.Containers[1].SecurityContext).NotTo(BeNil())
+					Expect(ps.InitContainers[0].SecurityContext).NotTo(BeNil())
+					Expect(ps.Containers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(ps.Containers[1].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(ps.InitContainers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+				},
+			),
 		)
 
 		existAlertmanager := &v1beta1vm.VMAlertmanager{

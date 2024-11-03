@@ -263,8 +263,8 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := AddStrictSecuritySettingsToContainers(tt.args.sc, tt.args.containers, true)
-			assert.Equal(t, tt.expected, res)
+			AddStrictSecuritySettingsToContainers(tt.args.sc, tt.args.containers, true)
+			assert.Equal(t, tt.expected, tt.args.containers)
 		})
 	}
 }

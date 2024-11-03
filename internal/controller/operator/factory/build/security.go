@@ -40,9 +40,9 @@ var (
 )
 
 // AddStrictSecuritySettingsToContainers conditionally adds Security settings to given containers
-func AddStrictSecuritySettingsToContainers(p *vmv1beta1.SecurityContext, containers []corev1.Container, enableStrictSecurity bool) []corev1.Container {
+func AddStrictSecuritySettingsToContainers(p *vmv1beta1.SecurityContext, containers []corev1.Container, enableStrictSecurity bool) {
 	if !enableStrictSecurity {
-		return containers
+		return
 	}
 	for idx := range containers {
 		container := &containers[idx]
@@ -50,7 +50,6 @@ func AddStrictSecuritySettingsToContainers(p *vmv1beta1.SecurityContext, contain
 			container.SecurityContext = containerSecurityContext(p)
 		}
 	}
-	return containers
 }
 
 func containerSecurityContext(p *vmv1beta1.SecurityContext) *corev1.SecurityContext {

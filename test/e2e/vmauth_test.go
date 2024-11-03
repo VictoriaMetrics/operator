@@ -7,6 +7,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -110,6 +112,20 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				}, func(cr *v1beta1vm.VMAuth) {
 					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					ps := dep.Spec.Template.Spec
+					Expect(ps.SecurityContext).NotTo(BeNil())
+					Expect(ps.SecurityContext.RunAsNonRoot).NotTo(BeNil())
+					Expect(ps.Containers).To(HaveLen(2))
+					Expect(ps.InitContainers).To(HaveLen(1))
+					Expect(ps.Containers[0].SecurityContext).NotTo(BeNil())
+					Expect(ps.Containers[1].SecurityContext).NotTo(BeNil())
+					Expect(ps.InitContainers[0].SecurityContext).NotTo(BeNil())
+					Expect(ps.Containers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(ps.Containers[1].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(ps.InitContainers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+
 				}),
 			)
 
@@ -286,6 +302,142 @@ var _ = Describe("test vmauth Controller", func() {
 								Name:      nsn.Name,
 								Namespace: nsn.Namespace,
 							}})).To(Succeed())
+						},
+					},
+				),
+				Entry("by migrating from configSecret to externalConfig.secretRef", "ext-config",
+					&v1beta1vm.VMAuth{
+						Spec: v1beta1vm.VMAuthSpec{
+							SelectAllByDefault: true,
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+								{
+									URLPrefix: []string{"http://localhost:8490"},
+									SrcPaths:  []string{"/.*"},
+								},
+							},
+						},
+					},
+					testStep{
+						setup: func(v *v1beta1vm.VMAuth) {
+							extSecret := &corev1.Secret{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      "auth-ext-config",
+									Namespace: namespace,
+								},
+								StringData: map[string]string{
+									"config.yaml": `
+ unauthorized_user:
+  url_map:
+  - src_paths:
+    - "/.*"
+    url_prefix: "http://vmsingle-some-url:8429"`,
+								},
+							}
+							Expect(k8sClient.Create(ctx, extSecret)).To(Succeed())
+							DeferCleanup(func(specCtx SpecContext) {
+								Expect(k8sClient.Delete(ctx, extSecret)).To(Succeed())
+							})
+						},
+						modify: func(cr *v1beta1vm.VMAuth) {
+							cr.Spec.ConfigSecret = "auth-ext-config"
+						},
+						verify: func(cr *v1beta1vm.VMAuth) {
+							var dep appsv1.Deployment
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
+								To(Succeed())
+							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
+							Eventually(func() string {
+								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+
+						},
+					},
+					testStep{
+						modify: func(cr *v1beta1vm.VMAuth) {
+							cr.Spec.ConfigSecret = ""
+							cr.Spec.ExternalConfig.SecretRef = &corev1.SecretKeySelector{
+								Key: "config.yaml",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "auth-ext-config",
+								},
+							}
+						},
+						verify: func(cr *v1beta1vm.VMAuth) {
+							var dep appsv1.Deployment
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
+								To(Succeed())
+							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
+							Expect(dep.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
+							Eventually(func() string {
+								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+
+						},
+					},
+				),
+				Entry("by switching to local config", "local-config",
+					&v1beta1vm.VMAuth{
+						Spec: v1beta1vm.VMAuthSpec{
+							SelectAllByDefault: true,
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+								{
+									URLPrefix: []string{"http://localhost:8490"},
+									SrcPaths:  []string{"/.*"},
+								},
+							},
+						},
+					},
+					testStep{
+						setup: func(v *v1beta1vm.VMAuth) {
+							extSecret := &corev1.Secret{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      "local-ext-config",
+									Namespace: namespace,
+								},
+								StringData: map[string]string{
+									"vmauth.yaml": `
+ unauthorized_user:
+  url_map:
+  - src_paths:
+    - "/.*"
+    url_prefix: "http://vmsingle-some-url:8429"`,
+								},
+							}
+							Expect(k8sClient.Create(ctx, extSecret)).To(Succeed())
+							DeferCleanup(func(specCtx SpecContext) {
+								Expect(k8sClient.Delete(ctx, extSecret)).To(Succeed())
+							})
+						},
+						modify: func(cr *v1beta1vm.VMAuth) {
+							cr.Spec.ExternalConfig.LocalPath = "/etc/local-config/vmauth.yaml"
+							cr.Spec.Volumes = append(cr.Spec.Volumes, corev1.Volume{
+								Name: "local-cfg",
+								VolumeSource: corev1.VolumeSource{
+									Secret: &corev1.SecretVolumeSource{
+										SecretName: "local-ext-config",
+									},
+								},
+							})
+							cr.Spec.VolumeMounts = append(cr.Spec.VolumeMounts, corev1.VolumeMount{
+								Name:      "local-cfg",
+								MountPath: "/etc/local-config",
+							})
+						},
+						verify: func(cr *v1beta1vm.VMAuth) {
+							var dep appsv1.Deployment
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
+								To(Succeed())
+							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
+							Eventually(func() string {
+								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+
 						},
 					},
 				),

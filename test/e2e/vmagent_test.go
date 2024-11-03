@@ -237,6 +237,44 @@ var _ = Describe("test  vmagent Controller", func() {
 					)).To(Succeed())
 
 				}),
+			Entry("with strict security", "strict-sec",
+				&v1beta1vm.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      namespacedName.Name,
+					},
+					Spec: v1beta1vm.VMAgentSpec{
+						CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+							UseStrictSecurity: ptr.To(true),
+						},
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+							{URL: "http://localhost:8428"},
+						},
+						SelectAllByDefault: true,
+					},
+				}, nil, func(cr *v1beta1vm.VMAgent) {
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					Expect(dep.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
+					Expect(dep.Spec.Template.Spec.SecurityContext.RunAsUser).NotTo(BeNil())
+					Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(2))
+					Expect(dep.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+					pc := dep.Spec.Template.Spec.Containers
+					pic := dep.Spec.Template.Spec.InitContainers
+					Expect(pc[0].SecurityContext).NotTo(BeNil())
+					Expect(pc[1].SecurityContext).NotTo(BeNil())
+					Expect(pic[0].SecurityContext).NotTo(BeNil())
+					Expect(pc[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(pc[1].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(pic[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+
+				}),
 		)
 		type testStep struct {
 			setup  func(*v1beta1vm.VMAgent)

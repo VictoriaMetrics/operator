@@ -300,7 +300,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 	vmsingleContainer = build.Probe(vmsingleContainer, cr)
 
 	operatorContainers := []corev1.Container{vmsingleContainer}
-	initContainers := cr.Spec.InitContainers
+	var initContainers []corev1.Container
 
 	if cr.Spec.VMBackup != nil {
 		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMBackup, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
@@ -323,8 +323,13 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 		}
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, ptr.Deref(cr.Spec.UseStrictSecurity, false))
+	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
+	if err != nil {
+		return nil, fmt.Errorf("cannot apply initContainer patch: %w", err)
+	}
 
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.UseStrictSecurity, false))
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
@@ -337,7 +342,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 		},
 		Spec: corev1.PodSpec{
 			Volumes:            volumes,
-			InitContainers:     initContainers,
+			InitContainers:     ic,
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
 		},

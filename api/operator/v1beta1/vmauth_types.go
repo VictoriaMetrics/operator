@@ -78,8 +78,12 @@ type VMAuthSpec struct {
 	// configuration must be inside secret key: config.yaml.
 	// It must be created and managed manually.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
-	// +optional
+	// Deprecated, use externalConfig.secretRef instead
 	ConfigSecret string `json:"configSecret,omitempty"`
+	// ExternalConfig defines a source of external VMAuth configuration.
+	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
+	// +optional
+	ExternalConfig `json:"externalConfig,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -406,7 +410,9 @@ func (cr *VMAuth) AsCRDOwner() []metav1.OwnerReference {
 
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAuth) IsUnmanaged() bool {
-	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) || cr.Spec.ConfigSecret != ""
+	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) ||
+		cr.Spec.ExternalConfig.SecretRef == nil ||
+		cr.Spec.ExternalConfig.LocalPath != ""
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation

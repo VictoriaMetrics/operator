@@ -69,7 +69,6 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 		Spec: *spec,
 	}
 	build.StatefulSetAddCommonParams(statefulset, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
-
 	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &statefulset.Spec)
 	statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 
@@ -330,6 +329,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		}
 		amVolumeMounts = append(amVolumeMounts, cmVolumeMount)
+		crVolumeMounts = append(crVolumeMounts, cmVolumeMount)
 	}
 
 	volumeByName := make(map[string]struct{})
@@ -379,14 +379,13 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	initContainers = append(initContainers, buildInitConfigContainer(cr)...)
-	if len(cr.Spec.InitContainers) > 0 {
-		var err error
-		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
-		initContainers, err = k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
-		if err != nil {
-			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
-		}
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
+
+	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
+	if err != nil {
+		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 	}
+
 	vmaContainer := corev1.Container{
 		Args:                     amArgs,
 		Name:                     "alertmanager",
@@ -430,7 +429,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 				Annotations: cr.PodAnnotations(),
 			},
 			Spec: corev1.PodSpec{
-				InitContainers:     initContainers,
+				InitContainers:     ic,
 				Containers:         containers,
 				Volumes:            volumes,
 				ServiceAccountName: cr.GetServiceAccountName(),

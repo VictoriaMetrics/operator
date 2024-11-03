@@ -40,7 +40,7 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, pvc *core
 		return nil
 	}
 	newSize := pvc.Spec.Resources.Requests.Storage()
-	oldSize := pvc.Spec.Resources.Requests.Storage()
+	oldSize := existPvc.Spec.Resources.Requests.Storage()
 
 	pvc.Annotations = labels.Merge(existPvc.Annotations, pvc.Annotations)
 	isResizeNeeded := mayGrow(ctx, newSize, oldSize)

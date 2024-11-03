@@ -18,6 +18,7 @@ aliases:
 - [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster): adds `requestsLoadBalancer` configuration to the `VMCluster.spec`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1130) for details.
 - [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster): properly configure monitoring for `VMCluster` with enabled `backup`.
 - [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): properly trigger reload when `ConfigMap` provided via `.spec.configMap` are changed.
+- [operator](https://docs.victoriametrics.com/operator/): fixed operator reconcile on storage size change
 
 
 ## [v0.48.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.48.4) - 15 Oct 2024

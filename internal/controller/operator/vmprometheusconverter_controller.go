@@ -493,14 +493,14 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 }
 
 // CreateAlertmanagerConfig converts AlertmanagerConfig to VMAlertmanagerConfig
-func (c *ConverterController) CreateAlertmanagerConfig(amc interface{}) {
+func (c *ConverterController) CreateAlertmanagerConfig(new interface{}) {
 	var vmAMc *vmv1beta1.VMAlertmanagerConfig
 	var err error
-	switch promAMc := amc.(type) {
+	switch promAMc := new.(type) {
 	case *promv1alpha1.AlertmanagerConfig:
 		vmAMc, err = converterv1alpha1.ConvertAlertmanagerConfig(promAMc, c.baseConf)
 	default:
-		err = fmt.Errorf("scrape config of type %t is not supported", promAMc)
+		err = fmt.Errorf("scrape config of type %T is not supported", promAMc)
 	}
 	if err != nil {
 		log.Error(err, "cannot convert alertmanager config")
@@ -509,7 +509,7 @@ func (c *ConverterController) CreateAlertmanagerConfig(amc interface{}) {
 	l := log.WithValues("kind", "vmAlertmanagerConfig", "name", vmAMc.Name, "ns", vmAMc.Namespace)
 	if err := c.rclient.Create(context.Background(), vmAMc); err != nil {
 		if errors.IsAlreadyExists(err) {
-			c.UpdateAlertmanagerConfig(nil, vmAMc)
+			c.UpdateAlertmanagerConfig(nil, new)
 			return
 		}
 		l.Error(err, "cannot create vmServiceScrape")
@@ -525,7 +525,7 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 	case *promv1alpha1.AlertmanagerConfig:
 		vmAMc, err = converterv1alpha1.ConvertAlertmanagerConfig(promAMc, c.baseConf)
 	default:
-		err = fmt.Errorf("alertmanager config of type %t is not supported", new)
+		err = fmt.Errorf("alertmanager config of type %T is not supported", new)
 	}
 	if err != nil {
 		log.Error(err, "cannot convert alertmanager config at update")

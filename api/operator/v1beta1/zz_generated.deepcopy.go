@@ -4485,11 +4485,6 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.UseStrictSecurity != nil {
-		in, out := &in.UseStrictSecurity, &out.UseStrictSecurity
-		*out = new(bool)
-		**out = **in
-	}
 	if in.WebConfig != nil {
 		in, out := &in.WebConfig, &out.WebConfig
 		*out = new(AlertmanagerWebConfig)

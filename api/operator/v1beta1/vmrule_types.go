@@ -66,7 +66,7 @@ type RuleGroup struct {
 	// +optional
 	Params url.Values `json:"params,omitempty" yaml:"params,omitempty"`
 	// Type defines datasource type for enterprise version of vmalert
-	// possible values - prometheus,graphite
+	// possible values - prometheus,graphite,vlogs
 	// +optional
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 	// Headers contains optional HTTP headers added to each rule request

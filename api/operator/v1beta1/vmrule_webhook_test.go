@@ -94,7 +94,7 @@ var _ = Describe("VMRule Webhook", func() {
         `, `validation failed for VMRule: / group: kafka err: "alerting rule \"some indicator\"; expr: \"ml_app_gauge{exec_context=\\\"consumer_group_state\\\"} == 0\"" is a duplicate in group`),
 		)
 		DescribeTable("ok validation",
-			func(srcYAML string, wantErr string) {
+			func(srcYAML string) {
 				var vmr VMRule
 				Expect(yaml.Unmarshal([]byte(srcYAML), &vmr)).To(Succeed())
 				Expect(vmr.Validate()).To(Succeed())
@@ -119,7 +119,7 @@ var _ = Describe("VMRule Webhook", func() {
               value: "{{ $value }}"
               description: 'kafka coorinator is down'
 
-        `, `at idx=0 bad tenant="bad-value": cannot parse account_id: "bad-value" as int32, err: strconv.ParseInt: parsing "bad-value": invalid syntax`),
+        `),
 			Entry("with template functions", `
       apiVersion: operator.victoriametrics.com/v1beta1
       kind: VMRule
@@ -144,7 +144,23 @@ var _ = Describe("VMRule Webhook", func() {
                       {{ . | first | value | humanize }}
                     {{ end }}
 
-        `, `at idx=0 bad tenant="bad-value": cannot parse account_id: "bad-value" as int32, err: strconv.ParseInt: parsing "bad-value": invalid syntax`),
+        `),
+			Entry("with vlogs alert", `
+      apiVersion: operator.victoriametrics.com/v1beta1
+      kind: VMRule
+      metadata:
+        name: vlogs-alert-1
+      spec:
+        groups:
+        - name: log-stats
+          interval: 5m
+          type: vlogs
+          rules:
+          - alert: TooManyFailedRequest
+            expr: 'env: "test" AND service: "nginx" | stats count(*) as requests'
+            annotations: 
+              description: "Service nginx on env test accepted {{$labels.requests}} requests in the last 5 minutes"
+        `),
 		)
 	})
 })

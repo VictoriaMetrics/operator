@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -252,7 +251,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	for _, pod := range podsForUpdate {
 		l.Info("updating pod", "pod", pod.Name)
 		// we have to delete pod and wait for it readiness
-		err := rclient.Delete(ctx, &pod, &client.DeleteOptions{GracePeriodSeconds: ptr.To(int64(30))})
+		err := rclient.Delete(ctx, &pod)
 		if err != nil {
 			return err
 		}

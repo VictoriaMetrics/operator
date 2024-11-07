@@ -225,7 +225,7 @@ type EndpointScrapeParams struct {
 	Path string `json:"path,omitempty"`
 	// HTTP scheme to use for scraping.
 	// +optional
-	// +kubebuilder:validation:Enum=http;https
+	// +kubebuilder:validation:Enum=http;https;HTTPS;HTTP
 	Scheme string `json:"scheme,omitempty"`
 	// Optional HTTP URL parameters
 	// +optional

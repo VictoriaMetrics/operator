@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -27,6 +28,40 @@ type testCase struct {
 var (
 	namespace = "default"
 	testCases = []testCase{
+		{
+			name: "PrometheusScrapeConfig-https",
+			source: &promv1alpha1.ScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "e2e-test-scrapeconfig",
+				},
+				Spec: promv1alpha1.ScrapeConfigSpec{
+					Scheme: ptr.To("HTTPS"),
+					StaticConfigs: []promv1alpha1.StaticConfig{
+						{
+
+							Targets: []promv1alpha1.Target{
+								"localhost:9100",
+							},
+						},
+					},
+				},
+			},
+			targetTpl: &vmv1beta1.VMScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "e2e-test-scrapeconfig",
+				},
+			},
+			targetValidator: func(obj client.Object) error {
+				ss := obj.(*vmv1beta1.VMScrapeConfig)
+				if len(ss.Spec.StaticConfigs) != 1 {
+					return fmt.Errorf("unexpected len of static config: %d, want 1", len(ss.Spec.StaticConfigs))
+				}
+				return nil
+			},
+		},
+
 		{
 			name: "PrometheusScrapeConfig",
 			source: &promv1alpha1.ScrapeConfig{

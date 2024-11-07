@@ -1500,7 +1500,9 @@ func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParam
 		cfg = append(cfg, yaml.MapItem{Key: "params", Value: params})
 	}
 	if cs.Scheme != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: cs.Scheme})
+		// scheme may have uppercase format to be compatible with prometheus-operator objects
+		// vmagent expects lower case format only
+		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: strings.ToLower(cs.Scheme)})
 	}
 	if cs.MaxScrapeSize != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "max_scrape_size", Value: cs.MaxScrapeSize})

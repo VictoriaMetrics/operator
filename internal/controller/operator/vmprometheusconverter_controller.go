@@ -500,7 +500,7 @@ func (c *ConverterController) CreateAlertmanagerConfig(new interface{}) {
 	case *promv1alpha1.AlertmanagerConfig:
 		vmAMc, err = converterv1alpha1.ConvertAlertmanagerConfig(promAMc, c.baseConf)
 	default:
-		err = fmt.Errorf("scrape config of type %T is not supported", promAMc)
+		err = fmt.Errorf("BUG: scrape config of type %T is not supported", promAMc)
 	}
 	if err != nil {
 		log.Error(err, "cannot convert alertmanager config")
@@ -525,7 +525,7 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 	case *promv1alpha1.AlertmanagerConfig:
 		vmAMc, err = converterv1alpha1.ConvertAlertmanagerConfig(promAMc, c.baseConf)
 	default:
-		err = fmt.Errorf("alertmanager config of type %T is not supported", new)
+		err = fmt.Errorf("BUG: alertmanager config of type %T is not supported", new)
 	}
 	if err != nil {
 		log.Error(err, "cannot convert alertmanager config at update")
@@ -673,15 +673,15 @@ func (c *ConverterController) CreateScrapeConfig(scrapeConfig interface{}) {
 	case *promv1alpha1.ScrapeConfig:
 		vmScrapeConfig = converterv1alpha1.ConvertScrapeConfig(promScrapeConfig, c.baseConf)
 	default:
-		err = fmt.Errorf("scrape config of type %t is not supported", promScrapeConfig)
-		log.Error(err, "cannot parse vmScrapeConfig")
+		err = fmt.Errorf("BUG: scrape config of type %T is not supported", promScrapeConfig)
+		log.Error(err, "cannot parse promscrapeConfig for create")
 		return
 	}
 	l := log.WithValues("kind", "vmScrapeConfig", "name", vmScrapeConfig.Name, "ns", vmScrapeConfig.Namespace)
 	err = c.rclient.Create(context.Background(), vmScrapeConfig)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			c.UpdateScrapeConfig(nil, vmScrapeConfig)
+			c.UpdateScrapeConfig(nil, scrapeConfig)
 			return
 		}
 		l.Error(err, "cannot create vmScrapeConfig")
@@ -690,15 +690,15 @@ func (c *ConverterController) CreateScrapeConfig(scrapeConfig interface{}) {
 }
 
 // UpdateScrapeConfig updates VMScrapeConfig
-func (c *ConverterController) UpdateScrapeConfig(_, new interface{}) {
+func (c *ConverterController) UpdateScrapeConfig(_, newObj interface{}) {
 	var vmScrapeConfig *vmv1beta1.VMScrapeConfig
 	var err error
-	switch promScrapeConfig := new.(type) {
+	switch promScrapeConfig := newObj.(type) {
 	case *promv1alpha1.ScrapeConfig:
 		vmScrapeConfig = converterv1alpha1.ConvertScrapeConfig(promScrapeConfig, c.baseConf)
 	default:
-		err = fmt.Errorf("scrape config of type %t is not supported", promScrapeConfig)
-		log.Error(err, "cannot parse vmScrapeConfig")
+		err = fmt.Errorf("BUG: scrape config of type %T is not supported", promScrapeConfig)
+		log.Error(err, "cannot parse promScrapeConfig for update")
 		return
 	}
 	l := log.WithValues("kind", "vmScrapeConfig", "name", vmScrapeConfig.Name, "ns", vmScrapeConfig.Namespace)

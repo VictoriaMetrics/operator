@@ -11,6 +11,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+
 	"go.uber.org/zap/zapcore"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -72,7 +74,8 @@ func Before() {
 		// prometheus operator scheme for client
 		err = monitoringv1.AddToScheme(scheme.Scheme)
 		Expect(err).NotTo(HaveOccurred())
-
+		err = promv1alpha1.AddToScheme(scheme.Scheme)
+		Expect(err).NotTo(HaveOccurred())
 		build.AddDefaults(scheme.Scheme)
 		//+kubebuilder:scaffold:scheme
 

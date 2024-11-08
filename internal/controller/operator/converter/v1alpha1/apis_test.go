@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -203,6 +204,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 					Spec: promv1alpha1.ScrapeConfigSpec{
 						KubernetesSDConfigs: []promv1alpha1.KubernetesSDConfig{
 							{
+
 								APIServer: ptr.To("http://1.2.3.4"),
 								Role:      promv1alpha1.Role("pod"),
 								Selectors: []promv1alpha1.K8SSelectorConfig{
@@ -332,10 +334,177 @@ func TestConvertScrapeConfig(t *testing.T) {
 				Spec: vmv1beta1.VMScrapeConfigSpec{},
 			},
 		},
+		{
+			name: "with oauth2",
+			args: args{
+				scrapeConfig: &promv1alpha1.ScrapeConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-ns",
+						UID:       "42",
+					},
+					Spec: promv1alpha1.ScrapeConfigSpec{
+						KubernetesSDConfigs: []promv1alpha1.KubernetesSDConfig{
+							{
+								OAuth2: &promv1.OAuth2{
+									ClientID: promv1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key: "some-key",
+										},
+									},
+									ClientSecret: corev1.SecretKeySelector{
+										Key: "secret-key",
+									},
+								},
+								Role: promv1alpha1.Role("endpointslices"),
+								Namespaces: &promv1alpha1.NamespaceDiscovery{
+									Names: []string{"default"},
+								},
+							},
+						},
+						StaticConfigs: []promv1alpha1.StaticConfig{
+							{Targets: []promv1alpha1.Target{"localhost"}},
+						},
+						JobName:         ptr.To("some-job"),
+						ScrapeInterval:  ptr.To(promv1.Duration("10s")),
+						ScrapeTimeout:   ptr.To(promv1.Duration("20s")),
+						MetricsPath:     ptr.To("/metrics/v1"),
+						HonorTimestamps: ptr.To(true),
+						HonorLabels:     ptr.To(true),
+						SampleLimit:     ptr.To(uint64(10)),
+						Scheme:          ptr.To("http"),
+						Authorization:   &promv1.SafeAuthorization{},
+						ProxyConfig: promv1.ProxyConfig{
+							ProxyURL: ptr.To("http://some-url"),
+						},
+					},
+				},
+				ownerRef: true,
+			},
+			want: vmv1beta1.VMScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-ns",
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "monitoring.coreos.com/v1alpha1",
+							Kind:               "ScrapeConfig",
+							Name:               "test",
+							UID:                "42",
+							Controller:         ptr.To(true),
+							BlockOwnerDeletion: ptr.To(true),
+						},
+					},
+				},
+				Spec: vmv1beta1.VMScrapeConfigSpec{
+					KubernetesSDConfigs: []vmv1beta1.KubernetesSDConfig{
+						{
+							OAuth2: &vmv1beta1.OAuth2{
+								ClientID: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "some-key",
+									},
+								},
+								ClientSecret: &corev1.SecretKeySelector{
+									Key: "secret-key",
+								},
+							},
+							Role: "endpointslices",
+							Namespaces: &vmv1beta1.NamespaceDiscovery{
+								Names: []string{"default"},
+							},
+						},
+					},
+					StaticConfigs: []vmv1beta1.StaticConfig{
+						{
+							Targets: []string{"localhost"},
+						},
+					},
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						Authorization: &vmv1beta1.Authorization{},
+					},
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						ScrapeInterval:  "10s",
+						ScrapeTimeout:   "20s",
+						Path:            "/metrics/v1",
+						HonorTimestamps: ptr.To(true),
+						HonorLabels:     ptr.To(true),
+						SampleLimit:     10,
+						Scheme:          "http",
+						ProxyURL:        ptr.To("http://some-url"),
+					},
+				},
+			},
+		},
+		{
+			name: "with common scrape params",
+			args: args{
+				scrapeConfig: &promv1alpha1.ScrapeConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-ns",
+						UID:       "42",
+					},
+					Spec: promv1alpha1.ScrapeConfigSpec{
+						StaticConfigs: []promv1alpha1.StaticConfig{
+							{Targets: []promv1alpha1.Target{"localhost"}},
+						},
+						JobName:         ptr.To("some-job"),
+						ScrapeInterval:  ptr.To(promv1.Duration("10s")),
+						ScrapeTimeout:   ptr.To(promv1.Duration("20s")),
+						MetricsPath:     ptr.To("/metrics/v1"),
+						HonorTimestamps: ptr.To(true),
+						HonorLabels:     ptr.To(true),
+						SampleLimit:     ptr.To(uint64(10)),
+						Scheme:          ptr.To("http"),
+						ProxyConfig: promv1.ProxyConfig{
+							ProxyURL: ptr.To("http://some-url"),
+						},
+					},
+				},
+				ownerRef: true,
+			},
+			want: vmv1beta1.VMScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-ns",
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "monitoring.coreos.com/v1alpha1",
+							Kind:               "ScrapeConfig",
+							Name:               "test",
+							UID:                "42",
+							Controller:         ptr.To(true),
+							BlockOwnerDeletion: ptr.To(true),
+						},
+					},
+				},
+				Spec: vmv1beta1.VMScrapeConfigSpec{
+					StaticConfigs: []vmv1beta1.StaticConfig{
+						{
+							Targets: []string{"localhost"},
+						},
+					},
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						ScrapeInterval:  "10s",
+						ScrapeTimeout:   "20s",
+						Path:            "/metrics/v1",
+						HonorTimestamps: ptr.To(true),
+						HonorLabels:     ptr.To(true),
+						SampleLimit:     10,
+						Scheme:          "http",
+						ProxyURL:        ptr.To("http://some-url"),
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ConvertScrapeConfig(tt.args.scrapeConfig, &config.BaseOperatorConf{EnabledPrometheusConverterOwnerReferences: tt.args.ownerRef})
+			if !assert.Equal(t, tt.want, *got) {
+				t.Fatal("expected to match")
+			}
 			if !cmp.Equal(*got, tt.want) {
 				diff := cmp.Diff(*got, tt.want)
 				t.Fatal("not expected output with diff: ", diff)

@@ -99,7 +99,7 @@ relabel_configs:
 							Path:            "/metrics",
 							Interval:        "30s",
 							Scheme:          "https",
-							HonorLabels:     true,
+							HonorLabels:     ptr.To(true),
 							ProxyURL:        ptr.To("https://some-url"),
 							SampleLimit:     50,
 							SeriesLimit:     1000,

@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -1025,11 +1026,11 @@ func stringMapToMapSlice(m map[string]string) yaml.MapSlice {
 // honorLabels determines the value of honor_labels.
 // if overrideHonorLabels is true and user tries to set the
 // value to true, we want to set honor_labels to false.
-func honorLabels(userHonorLabels, overrideHonorLabels bool) bool {
-	if userHonorLabels && overrideHonorLabels {
+func honorLabels(userHonorLabels *bool, overrideHonorLabels bool) bool {
+	if overrideHonorLabels {
 		return false
 	}
-	return userHonorLabels
+	return ptr.Deref(userHonorLabels, false)
 }
 
 // honorTimestamps adds option to enforce honor_timestamps option in scrape_config.
@@ -1389,6 +1390,9 @@ func buildProxyAuthConfig(namespace, cacheKey string, proxyAuth *vmv1beta1.Proxy
 				yaml.MapItem{Key: "password", Value: ba.Password},
 			)
 		}
+		if len(proxyAuth.BasicAuth.UsernameFile) > 0 {
+			pa = append(pa, yaml.MapItem{Key: "username_file", Value: proxyAuth.BasicAuth.UsernameFile})
+		}
 		if len(proxyAuth.BasicAuth.PasswordFile) > 0 {
 			pa = append(pa, yaml.MapItem{Key: "password_file", Value: proxyAuth.BasicAuth.PasswordFile})
 		}
@@ -1555,6 +1559,9 @@ func addEndpointAuthTo(cfg yaml.MapSlice, ac vmv1beta1.EndpointAuth, key string,
 			if len(s.Password) > 0 {
 				bac = append(bac, yaml.MapItem{Key: "password", Value: s.Password})
 			}
+		}
+		if len(ac.BasicAuth.UsernameFile) > 0 {
+			bac = append(bac, yaml.MapItem{Key: "username_file", Value: ac.BasicAuth.UsernameFile})
 		}
 		if len(ac.BasicAuth.PasswordFile) > 0 {
 			bac = append(bac, yaml.MapItem{Key: "password_file", Value: ac.BasicAuth.PasswordFile})

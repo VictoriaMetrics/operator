@@ -386,9 +386,13 @@ type VMAgentRemoteWriteSpec struct {
 	InlineUrlRelabelConfig []RelabelConfig `json:"inlineUrlRelabelConfig,omitempty"`
 	// OAuth2 defines auth configuration
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 	// TLSConfig describes tls configuration for remote write target
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// Timeout for sending a single block of data to -remoteWrite.url (default 1m0s)
 	// +optional
@@ -770,6 +774,8 @@ type APIServerConfig struct {
 	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
 	// TLSConfig Config to use for accessing apiserver.
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// +optional
 	Authorization *Authorization `json:"authorization,omitempty"`

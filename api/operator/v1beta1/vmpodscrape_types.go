@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -89,6 +90,17 @@ type PodMetricsEndpoint struct {
 	// enabled by default
 	// +optional
 	FilterRunning *bool `json:"filterRunning,omitempty"`
+}
+
+func (c *PodMetricsEndpoint) UnmarshalJSON(src []byte) error {
+	type tmp PodMetricsEndpoint
+	if err := json.Unmarshal(src, (*tmp)(c)); err != nil {
+		return err
+	}
+	c.EndpointAuth.applyTagsCase()
+	c.EndpointRelabelings.applyTagsCase()
+	c.EndpointScrapeParams.applyTagsCase()
+	return nil
 }
 
 // ArbitraryFSAccessThroughSMsConfig enables users to configure, whether

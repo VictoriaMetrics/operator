@@ -214,7 +214,7 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `credentials` | Reference to the secret with value for authorization | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
-| `credentialsFile` | File with value for authorization | _string_ | false |
+| `credentials_file` | File with value for authorization | _string_ | false |
 | `type` | Type of authorization, default to bearer | _string_ | false |
 
 
@@ -276,6 +276,7 @@ _Appears in:_
 | `password` | Password defines reference for secret with password value<br />The secret needs to be in the same namespace as scrape object | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `password_file` | PasswordFile defines path to password file at disk<br />must be pre-mounted | _string_ | false |
 | `username` | Username defines reference for secret with username value<br />The secret needs to be in the same namespace as scrape object | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `username_file` | UsernameFile defines path to username file at disk<br />must be pre-mounted | _string_ | true |
 
 
 #### BearerAuth
@@ -831,28 +832,44 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `attach_metadata` | AttachMetadata configures metadata attaching from service discovery | _[AttachMetadata](#attachmetadata)_ | false |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
-| `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
-| `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `basicAuth` | BasicAuthS alias for BasicAuth | _[BasicAuth](#basicauth)_ | false |
+| `basic_auth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
+| `bearerTokenFile` | BearerTokenFileS alias for BearerTokenFile | _string_ | false |
+| `bearerTokenSecret` | BearerTokenSecretS alias for BearerTokenSecret | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `bearer_token_file` | File to read bearer token for scraping targets. | _string_ | false |
+| `bearer_token_secret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `followRedirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
-| `honorLabels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honorLabels` | HonorLabelsS chooses the metric's labels on collisions with target labels. | _boolean_ | false |
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
+| `honor_labels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honor_timestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
 | `max_scrape_size` | MaxScrapeSize defines a maximum size of scraped data for a job | _string_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigsS alias for MetricRelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metric_relabel_configs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricsPath` | MetricsPathS alias for Path | _string_ | false |
+| `metrics_path` | HTTP path to scrape for metrics.<br />alias for Path | _string_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
 | `port` | Name of the port exposed at Service. | _string_ | false |
-| `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `proxyUrl` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `proxy_url` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `relabelConfigs` | RelabelConfigsS alias ofr RelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabel_configs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
+| `sample_limit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeInterval` | ScrapeIntervalS is the same as ScrapeInterval and has priority over it. | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeoutS  after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_timeout` | Timeout after which the scrape is ended | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
+| `series_limit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targetPort` | TargetPort<br />Name or number of the pod port this endpoint refers to. Mutually exclusive with port. | _[IntOrString](#intorstring)_ | false |
-| `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
+| `tlsConfig` | TLSConfigS alias for TLSConfig | _[TLSConfig](#tlsconfig)_ | false |
+| `tls_config` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
 
@@ -875,11 +892,15 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
-| `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
-| `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `basicAuth` | BasicAuthS alias for BasicAuth | _[BasicAuth](#basicauth)_ | false |
+| `basic_auth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
+| `bearerTokenFile` | BearerTokenFileS alias for BearerTokenFile | _string_ | false |
+| `bearerTokenSecret` | BearerTokenSecretS alias for BearerTokenSecret | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `bearer_token_file` | File to read bearer token for scraping targets. | _string_ | false |
+| `bearer_token_secret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
-| `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
+| `tlsConfig` | TLSConfigS alias for TLSConfig | _[TLSConfig](#tlsconfig)_ | false |
+| `tls_config` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
 
 
 #### EndpointRelabelings
@@ -899,8 +920,10 @@ _Appears in:_
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigsS alias for MetricRelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metric_relabel_configs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabelConfigs` | RelabelConfigsS alias ofr RelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabel_configs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 
 
 #### EndpointScrapeParams
@@ -921,19 +944,29 @@ _Appears in:_
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
+| `followRedirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
-| `honorLabels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honorLabels` | HonorLabelsS chooses the metric's labels on collisions with target labels. | _boolean_ | false |
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
+| `honor_labels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honor_timestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
 | `max_scrape_size` | MaxScrapeSize defines a maximum size of scraped data for a job | _string_ | false |
+| `metricsPath` | MetricsPathS alias for Path | _string_ | false |
+| `metrics_path` | HTTP path to scrape for metrics.<br />alias for Path | _string_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
-| `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `proxyUrl` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `proxy_url` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
+| `sample_limit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeInterval` | ScrapeIntervalS is the same as ScrapeInterval and has priority over it. | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeoutS  after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_timeout` | Timeout after which the scrape is ended | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
+| `series_limit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
 
@@ -1347,11 +1380,15 @@ _Appears in:_
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
+| `clientId` | The secret or configmap containing the OAuth2 client id | _[SecretOrConfigMap](#secretorconfigmap)_ | true |
+| `clientSecret` | The secret containing the OAuth2 client secret | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `client_id` | The secret or configmap containing the OAuth2 client id | _[SecretOrConfigMap](#secretorconfigmap)_ | true |
 | `client_secret` | The secret containing the OAuth2 client secret | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `client_secret_file` | ClientSecretFile defines path for client secret file. | _string_ | false |
+| `endpointParams` | Parameters to append to the token URL | _object (keys:string, values:string)_ | false |
 | `endpoint_params` | Parameters to append to the token URL | _object (keys:string, values:string)_ | false |
 | `scopes` | OAuth2 scopes used for the token request | _string array_ | false |
+| `tokenUrl` | The URL to fetch the token from | _string_ | true |
 | `token_url` | The URL to fetch the token from | _string_ | true |
 
 
@@ -1485,29 +1522,45 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `attach_metadata` | AttachMetadata configures metadata attaching from service discovery | _[AttachMetadata](#attachmetadata)_ | false |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
-| `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
-| `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `basicAuth` | BasicAuthS alias for BasicAuth | _[BasicAuth](#basicauth)_ | false |
+| `basic_auth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
+| `bearerTokenFile` | BearerTokenFileS alias for BearerTokenFile | _string_ | false |
+| `bearerTokenSecret` | BearerTokenSecretS alias for BearerTokenSecret | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `bearer_token_file` | File to read bearer token for scraping targets. | _string_ | false |
+| `bearer_token_secret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `filterRunning` | FilterRunning applies filter with pod status == running<br />it prevents from scrapping metrics at failed or succeed state pods.<br />enabled by default | _boolean_ | false |
+| `followRedirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
-| `honorLabels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honorLabels` | HonorLabelsS chooses the metric's labels on collisions with target labels. | _boolean_ | false |
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
+| `honor_labels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honor_timestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
 | `max_scrape_size` | MaxScrapeSize defines a maximum size of scraped data for a job | _string_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigsS alias for MetricRelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metric_relabel_configs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricsPath` | MetricsPathS alias for Path | _string_ | false |
+| `metrics_path` | HTTP path to scrape for metrics.<br />alias for Path | _string_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
 | `port` | Name of the port exposed at Pod. | _string_ | false |
-| `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `proxyUrl` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `proxy_url` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `relabelConfigs` | RelabelConfigsS alias ofr RelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabel_configs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
+| `sample_limit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeInterval` | ScrapeIntervalS is the same as ScrapeInterval and has priority over it. | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeoutS  after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_timeout` | Timeout after which the scrape is ended | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
+| `series_limit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targetPort` | TargetPort<br />Name or number of the pod port this endpoint refers to. Mutually exclusive with port. | _[IntOrString](#intorstring)_ | false |
-| `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
+| `tlsConfig` | TLSConfigS alias for TLSConfig | _[TLSConfig](#tlsconfig)_ | false |
+| `tls_config` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
 
@@ -1728,7 +1781,7 @@ _Appears in:_
 | `params` | Params optional HTTP URL parameters added to each rule request | _[Values](#values)_ | false |
 | `rules` | Rules list of alert rules | _[Rule](#rule) array_ | true |
 | `tenant` | Tenant id for group, can be used only with enterprise version of vmalert.<br />See more details [here](https://docs.victoriametrics.com/vmalert#multitenancy). | _string_ | false |
-| `type` | Type defines datasource type for enterprise version of vmalert<br />possible values - prometheus,graphite | _string_ | false |
+| `type` | Type defines datasource type for enterprise version of vmalert<br />possible values - prometheus,graphite,vlogs | _string_ | false |
 
 
 
@@ -2118,12 +2171,18 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `ca` | Stuct containing the CA cert to use for the targets. | _[SecretOrConfigMap](#secretorconfigmap)_ | false |
 | `caFile` | Path to the CA cert in the container to use for the targets. | _string_ | false |
+| `ca_file` | Path to the CA cert in the container to use for the targets. | _string_ | false |
 | `cert` | Struct containing the client cert file for the targets. | _[SecretOrConfigMap](#secretorconfigmap)_ | false |
 | `certFile` | Path to the client cert file in the container for the targets. | _string_ | false |
+| `cert_file` | Path to the client cert file in the container for the targets. | _string_ | false |
 | `insecureSkipVerify` | Disable target certificate validation. | _boolean_ | false |
+| `insecure_skip_verify` | Disable target certificate validation. | _boolean_ | false |
 | `keyFile` | Path to the client key file in the container for the targets. | _string_ | false |
 | `keySecret` | Secret containing the client key file for the targets. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `key_file` | Path to the client key file in the container for the targets. | _string_ | false |
+| `key_secret` | Secret containing the client key file for the targets. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `serverName` | Used to verify the hostname for the targets. | _string_ | false |
+| `server_name` | Used to verify the hostname for the targets. | _string_ | false |
 
 
 
@@ -2170,28 +2229,44 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
-| `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
-| `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `basicAuth` | BasicAuthS alias for BasicAuth | _[BasicAuth](#basicauth)_ | false |
+| `basic_auth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
+| `bearerTokenFile` | BearerTokenFileS alias for BearerTokenFile | _string_ | false |
+| `bearerTokenSecret` | BearerTokenSecretS alias for BearerTokenSecret | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `bearer_token_file` | File to read bearer token for scraping targets. | _string_ | false |
+| `bearer_token_secret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `followRedirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
-| `honorLabels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honorLabels` | HonorLabelsS chooses the metric's labels on collisions with target labels. | _boolean_ | false |
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
+| `honor_labels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honor_timestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
 | `labels` | Labels static labels for targets. | _object (keys:string, values:string)_ | false |
 | `max_scrape_size` | MaxScrapeSize defines a maximum size of scraped data for a job | _string_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigsS alias for MetricRelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metric_relabel_configs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricsPath` | MetricsPathS alias for Path | _string_ | false |
+| `metrics_path` | HTTP path to scrape for metrics.<br />alias for Path | _string_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
-| `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `proxyUrl` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `proxy_url` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `relabelConfigs` | RelabelConfigsS alias ofr RelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabel_configs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
+| `sample_limit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeInterval` | ScrapeIntervalS is the same as ScrapeInterval and has priority over it. | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeoutS  after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_timeout` | Timeout after which the scrape is ended | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
+| `series_limit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targets` | Targets static targets addresses in form of ["192.122.55.55:9100","some-name:9100"]. | _string array_ | true |
-| `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
+| `tlsConfig` | TLSConfigS alias for TLSConfig | _[TLSConfig](#tlsconfig)_ | false |
+| `tls_config` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
 
@@ -3364,30 +3439,46 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
-| `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
-| `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `basicAuth` | BasicAuthS alias for BasicAuth | _[BasicAuth](#basicauth)_ | false |
+| `basic_auth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
+| `bearerTokenFile` | BearerTokenFileS alias for BearerTokenFile | _string_ | false |
+| `bearerTokenSecret` | BearerTokenSecretS alias for BearerTokenSecret | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `bearer_token_file` | File to read bearer token for scraping targets. | _string_ | false |
+| `bearer_token_secret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `followRedirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
-| `honorLabels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honorLabels` | HonorLabelsS chooses the metric's labels on collisions with target labels. | _boolean_ | false |
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
+| `honor_labels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honor_timestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
 | `jobLabel` | The label to use to retrieve the job name from. | _string_ | false |
 | `max_scrape_size` | MaxScrapeSize defines a maximum size of scraped data for a job | _string_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigsS alias for MetricRelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metric_relabel_configs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricsPath` | MetricsPathS alias for Path | _string_ | false |
+| `metrics_path` | HTTP path to scrape for metrics.<br />alias for Path | _string_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
 | `port` | Name of the port exposed at Node. | _string_ | false |
-| `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `proxyUrl` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `proxy_url` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `relabelConfigs` | RelabelConfigsS alias ofr RelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabel_configs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
+| `sample_limit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeInterval` | ScrapeIntervalS is the same as ScrapeInterval and has priority over it. | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeoutS  after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_timeout` | Timeout after which the scrape is ended | _string_ | false |
 | `selector` | Selector to select kubernetes Nodes. | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
+| `series_limit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targetLabels` | TargetLabels transfers labels on the Kubernetes Node onto the target. | _string array_ | false |
-| `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
+| `tlsConfig` | TLSConfigS alias for TLSConfig | _[TLSConfig](#tlsconfig)_ | false |
+| `tls_config` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
 
@@ -3468,28 +3559,42 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
-| `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
-| `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `basicAuth` | BasicAuthS alias for BasicAuth | _[BasicAuth](#basicauth)_ | false |
+| `basic_auth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
+| `bearerTokenFile` | BearerTokenFileS alias for BearerTokenFile | _string_ | false |
+| `bearerTokenSecret` | BearerTokenSecretS alias for BearerTokenSecret | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `bearer_token_file` | File to read bearer token for scraping targets. | _string_ | false |
+| `bearer_token_secret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `followRedirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
-| `honorLabels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honorLabels` | HonorLabelsS chooses the metric's labels on collisions with target labels. | _boolean_ | false |
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
+| `honor_labels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honor_timestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
 | `jobName` | The job name assigned to scraped metrics by default. | _string_ | true |
 | `max_scrape_size` | MaxScrapeSize defines a maximum size of scraped data for a job | _string_ | false |
 | `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricsPath` | MetricsPathS alias for Path | _string_ | false |
+| `metrics_path` | HTTP path to scrape for metrics.<br />alias for Path | _string_ | false |
 | `module` | The module to use for probing specifying how to probe the target.<br />Example module configuring in the blackbox exporter:<br />https://github.com/prometheus/blackbox_exporter/blob/master/example.yml | _string_ | true |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
-| `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `proxyUrl` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `proxy_url` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
+| `sample_limit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeInterval` | ScrapeIntervalS is the same as ScrapeInterval and has priority over it. | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeoutS  after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_timeout` | Timeout after which the scrape is ended | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
+| `series_limit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targets` | Targets defines a set of static and/or dynamically discovered targets to be probed using the prober. | _[VMProbeTargets](#vmprobetargets)_ | true |
-| `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
+| `tlsConfig` | TLSConfigS alias for TLSConfig | _[TLSConfig](#tlsconfig)_ | false |
+| `tls_config` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
 | `vmProberSpec` | Specification for the prober to use for probing targets.<br />The prober.URL parameter is required. Targets cannot be probed if left empty. | _[VMProberSpec](#vmproberspec)_ | true |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
@@ -3648,36 +3753,52 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
 | `azureSDConfigs` | AzureSDConfigs defines a list of Azure service discovery configurations. | _[AzureSDConfig](#azuresdconfig) array_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
-| `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
-| `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `basicAuth` | BasicAuthS alias for BasicAuth | _[BasicAuth](#basicauth)_ | false |
+| `basic_auth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
+| `bearerTokenFile` | BearerTokenFileS alias for BearerTokenFile | _string_ | false |
+| `bearerTokenSecret` | BearerTokenSecretS alias for BearerTokenSecret | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `bearer_token_file` | File to read bearer token for scraping targets. | _string_ | false |
+| `bearer_token_secret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `consulSDConfigs` | ConsulSDConfigs defines a list of Consul service discovery configurations. | _[ConsulSDConfig](#consulsdconfig) array_ | false |
 | `digitalOceanSDConfigs` | DigitalOceanSDConfigs defines a list of DigitalOcean service discovery configurations. | _[DigitalOceanSDConfig](#digitaloceansdconfig) array_ | false |
 | `dnsSDConfigs` | DNSSDConfigs defines a list of DNS service discovery configurations. | _[DNSSDConfig](#dnssdconfig) array_ | false |
 | `ec2SDConfigs` | EC2SDConfigs defines a list of EC2 service discovery configurations. | _[EC2SDConfig](#ec2sdconfig) array_ | false |
 | `fileSDConfigs` | FileSDConfigs defines a list of file service discovery configurations. | _[FileSDConfig](#filesdconfig) array_ | false |
+| `followRedirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
 | `gceSDConfigs` | GCESDConfigs defines a list of GCE service discovery configurations. | _[GCESDConfig](#gcesdconfig) array_ | false |
-| `honorLabels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honorLabels` | HonorLabelsS chooses the metric's labels on collisions with target labels. | _boolean_ | false |
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
+| `honor_labels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
+| `honor_timestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `httpSDConfigs` | HTTPSDConfigs defines a list of HTTP service discovery configurations. | _[HTTPSDConfig](#httpsdconfig) array_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
 | `kubernetesSDConfigs` | KubernetesSDConfigs defines a list of Kubernetes service discovery configurations. | _[KubernetesSDConfig](#kubernetessdconfig) array_ | false |
 | `max_scrape_size` | MaxScrapeSize defines a maximum size of scraped data for a job | _string_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigsS alias for MetricRelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metric_relabel_configs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricsPath` | MetricsPathS alias for Path | _string_ | false |
+| `metrics_path` | HTTP path to scrape for metrics.<br />alias for Path | _string_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `openstackSDConfigs` | OpenStackSDConfigs defines a list of OpenStack service discovery configurations. | _[OpenStackSDConfig](#openstacksdconfig) array_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
-| `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `proxyUrl` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `proxy_url` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
+| `relabelConfigs` | RelabelConfigsS alias ofr RelabelConfigs | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabel_configs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
+| `sample_limit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeInterval` | ScrapeIntervalS is the same as ScrapeInterval and has priority over it. | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeoutS  after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_timeout` | Timeout after which the scrape is ended | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
+| `series_limit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `staticConfigs` | StaticConfigs defines a list of static targets with a common label set. | _[StaticConfig](#staticconfig) array_ | false |
-| `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
+| `tlsConfig` | TLSConfigS alias for TLSConfig | _[TLSConfig](#tlsconfig)_ | false |
+| `tls_config` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
 

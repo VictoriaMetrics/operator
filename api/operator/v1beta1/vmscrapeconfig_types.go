@@ -16,6 +16,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -78,6 +79,17 @@ type VMScrapeConfigSpec struct {
 	EndpointScrapeParams  `json:",inline"`
 	EndpointRelabelings   `json:",inline"`
 	EndpointAuth          `json:",inline"`
+}
+
+func (c *VMScrapeConfigSpec) UnmarshalJSON(src []byte) error {
+	type tmp VMScrapeConfigSpec
+	if err := json.Unmarshal(src, (*tmp)(c)); err != nil {
+		return err
+	}
+	c.EndpointAuth.applyTagsCase()
+	c.EndpointRelabelings.applyTagsCase()
+	c.EndpointScrapeParams.applyTagsCase()
+	return nil
 }
 
 // StaticConfig defines a static configuration.

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,10 +39,27 @@ type VMProbeSpec struct {
 	Targets VMProbeTargets `json:"targets,omitempty"`
 	// MetricRelabelConfigs to apply to samples after scrapping.
 	// +optional
-	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
+	MetricRelabelConfigs []*RelabelConfig `json:"metric_relabel_configs,omitempty"`
+	// MetricRelabelConfigs to apply to samples after scrapping.
+	// +optional
+	MetricRelabelConfigsS []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
 
 	EndpointAuth         `json:",inline"`
 	EndpointScrapeParams `json:",inline"`
+}
+
+func (c *VMProbeSpec) UnmarshalJSON(src []byte) error {
+	type tmp VMProbeSpec
+	if err := json.Unmarshal(src, (*tmp)(c)); err != nil {
+		return err
+	}
+	c.EndpointAuth.applyTagsCase()
+	c.EndpointScrapeParams.applyTagsCase()
+	if len(c.MetricRelabelConfigs) == 0 && len(c.MetricRelabelConfigsS) > 0 {
+		c.MetricRelabelConfigs = c.MetricRelabelConfigsS
+		c.MetricRelabelConfigsS = nil
+	}
+	return nil
 }
 
 // VMProbeTargets defines a set of static and dynamically discovered targets for the prober.
@@ -61,7 +79,21 @@ type VMProbeTargetStaticConfig struct {
 	// Labels assigned to all metrics scraped from the targets.
 	Labels map[string]string `json:"labels,omitempty"`
 	// RelabelConfigs to apply to samples during service discovery.
-	RelabelConfigs []*RelabelConfig `json:"relabelingConfigs,omitempty"`
+	RelabelConfigs []*RelabelConfig `json:"relabeling_configs,omitempty"`
+	// alias for RelabelConfigs
+	RelabelConfigsS []*RelabelConfig `json:"relabelingConfigs,omitempty"`
+}
+
+func (c *VMProbeTargetStaticConfig) UnmarshalJSON(src []byte) error {
+	type tmp VMProbeTargetStaticConfig
+	if err := json.Unmarshal(src, (*tmp)(c)); err != nil {
+		return err
+	}
+	if len(c.RelabelConfigs) == 0 && len(c.RelabelConfigsS) > 0 {
+		c.RelabelConfigs = c.RelabelConfigsS
+		c.RelabelConfigsS = nil
+	}
+	return nil
 }
 
 // ProbeTargetIngress defines the set of Ingress objects considered for probing.

@@ -102,6 +102,9 @@ func generateScrapeConfig(
 						yaml.MapItem{Key: "password", Value: s.Password},
 					)
 				}
+				if len(config.BasicAuth.UsernameFile) > 0 {
+					bac = append(bac, yaml.MapItem{Key: "username_file", Value: config.BasicAuth.UsernameFile})
+				}
 				if len(config.BasicAuth.PasswordFile) > 0 {
 					bac = append(bac, yaml.MapItem{Key: "password_file", Value: config.BasicAuth.PasswordFile})
 				}
@@ -150,6 +153,9 @@ func generateScrapeConfig(
 						yaml.MapItem{Key: "username", Value: s.Username},
 						yaml.MapItem{Key: "password", Value: s.Password},
 					)
+				}
+				if len(config.BasicAuth.UsernameFile) > 0 {
+					bac = append(bac, yaml.MapItem{Key: "username_file", Value: config.BasicAuth.UsernameFile})
 				}
 				if len(config.BasicAuth.PasswordFile) > 0 {
 					bac = append(bac, yaml.MapItem{Key: "password_file", Value: config.BasicAuth.PasswordFile})
@@ -320,6 +326,9 @@ func generateScrapeConfig(
 						yaml.MapItem{Key: "username", Value: s.Username},
 						yaml.MapItem{Key: "password", Value: s.Password},
 					)
+				}
+				if len(config.BasicAuth.UsernameFile) > 0 {
+					bac = append(bac, yaml.MapItem{Key: "username_file", Value: config.BasicAuth.UsernameFile})
 				}
 				if len(config.BasicAuth.PasswordFile) > 0 {
 					bac = append(bac, yaml.MapItem{Key: "password_file", Value: config.BasicAuth.PasswordFile})

@@ -686,7 +686,7 @@ bearer_token_file: /var/run/tolen
 						HonorTimestamps: ptr.To(true),
 						FollowRedirects: ptr.To(true),
 						ProxyURL:        ptr.To("https://some-proxy"),
-						HonorLabels:     true,
+						HonorLabels:     ptr.To(true),
 						Scheme:          "https",
 						Path:            "/metrics",
 

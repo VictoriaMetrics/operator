@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +28,17 @@ type VMNodeScrapeSpec struct {
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:selector:"
 	// +optional
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
+}
+
+func (c *VMNodeScrapeSpec) UnmarshalJSON(src []byte) error {
+	type tmp VMNodeScrapeSpec
+	if err := json.Unmarshal(src, (*tmp)(c)); err != nil {
+		return err
+	}
+	c.EndpointAuth.applyTagsCase()
+	c.EndpointRelabelings.applyTagsCase()
+	c.EndpointScrapeParams.applyTagsCase()
+	return nil
 }
 
 // VMNodeScrape defines discovery for targets placed on kubernetes nodes,

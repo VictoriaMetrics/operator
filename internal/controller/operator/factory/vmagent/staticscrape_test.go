@@ -154,7 +154,7 @@ relabel_configs:
 						Path:            "/metrics-1",
 						Scheme:          "https",
 						ProxyURL:        ptr.To("https://some-proxy"),
-						HonorLabels:     true,
+						HonorLabels:     ptr.To(true),
 						HonorTimestamps: ptr.To(true),
 
 						VMScrapeParams: &vmv1beta1.VMScrapeParams{

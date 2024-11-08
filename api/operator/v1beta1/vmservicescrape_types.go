@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -128,6 +129,17 @@ type Endpoint struct {
 	// AttachMetadata configures metadata attaching from service discovery
 	// +optional
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
+}
+
+func (c *Endpoint) UnmarshalJSON(src []byte) error {
+	type tmp Endpoint
+	if err := json.Unmarshal(src, (*tmp)(c)); err != nil {
+		return err
+	}
+	c.EndpointAuth.applyTagsCase()
+	c.EndpointRelabelings.applyTagsCase()
+	c.EndpointScrapeParams.applyTagsCase()
+	return nil
 }
 
 // AsProxyKey builds key for proxy cache maps

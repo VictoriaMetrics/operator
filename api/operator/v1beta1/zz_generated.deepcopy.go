@@ -1182,13 +1182,28 @@ func (in *EndpointAuth) DeepCopyInto(out *EndpointAuth) {
 		*out = new(TLSConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.TLSConfigS != nil {
+		in, out := &in.TLSConfigS, &out.TLSConfigS
+		*out = new(TLSConfig)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.BearerTokenSecret != nil {
 		in, out := &in.BearerTokenSecret, &out.BearerTokenSecret
 		*out = new(v1.SecretKeySelector)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.BearerTokenSecretS != nil {
+		in, out := &in.BearerTokenSecretS, &out.BearerTokenSecretS
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.BasicAuth != nil {
 		in, out := &in.BasicAuth, &out.BasicAuth
+		*out = new(BasicAuth)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.BasicAuthS != nil {
+		in, out := &in.BasicAuthS, &out.BasicAuthS
 		*out = new(BasicAuth)
 		(*in).DeepCopyInto(*out)
 	}
@@ -1223,8 +1238,30 @@ func (in *EndpointRelabelings) DeepCopyInto(out *EndpointRelabelings) {
 			}
 		}
 	}
+	if in.MetricRelabelConfigsS != nil {
+		in, out := &in.MetricRelabelConfigsS, &out.MetricRelabelConfigsS
+		*out = make([]*RelabelConfig, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(RelabelConfig)
+				(*in).DeepCopyInto(*out)
+			}
+		}
+	}
 	if in.RelabelConfigs != nil {
 		in, out := &in.RelabelConfigs, &out.RelabelConfigs
+		*out = make([]*RelabelConfig, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(RelabelConfig)
+				(*in).DeepCopyInto(*out)
+			}
+		}
+	}
+	if in.RelabelConfigsS != nil {
+		in, out := &in.RelabelConfigsS, &out.RelabelConfigsS
 		*out = make([]*RelabelConfig, len(*in))
 		for i := range *in {
 			if (*in)[i] != nil {
@@ -1270,13 +1307,38 @@ func (in *EndpointScrapeParams) DeepCopyInto(out *EndpointScrapeParams) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ScoreFollowRedirectsS != nil {
+		in, out := &in.ScoreFollowRedirectsS, &out.ScoreFollowRedirectsS
+		*out = new(bool)
+		**out = **in
+	}
 	if in.ProxyURL != nil {
 		in, out := &in.ProxyURL, &out.ProxyURL
 		*out = new(string)
 		**out = **in
 	}
+	if in.ScoreProxyURLS != nil {
+		in, out := &in.ScoreProxyURLS, &out.ScoreProxyURLS
+		*out = new(string)
+		**out = **in
+	}
+	if in.HonorLabels != nil {
+		in, out := &in.HonorLabels, &out.HonorLabels
+		*out = new(bool)
+		**out = **in
+	}
+	if in.HonorLabelsS != nil {
+		in, out := &in.HonorLabelsS, &out.HonorLabelsS
+		*out = new(bool)
+		**out = **in
+	}
 	if in.HonorTimestamps != nil {
 		in, out := &in.HonorTimestamps, &out.HonorTimestamps
+		*out = new(bool)
+		**out = **in
+	}
+	if in.HonorTimestampsS != nil {
+		in, out := &in.HonorTimestampsS, &out.HonorTimestampsS
 		*out = new(bool)
 		**out = **in
 	}
@@ -1767,8 +1829,18 @@ func (in *NamespaceSelector) DeepCopy() *NamespaceSelector {
 func (in *OAuth2) DeepCopyInto(out *OAuth2) {
 	*out = *in
 	in.ClientID.DeepCopyInto(&out.ClientID)
+	if in.ClientIDS != nil {
+		in, out := &in.ClientIDS, &out.ClientIDS
+		*out = new(SecretOrConfigMap)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ClientSecret != nil {
 		in, out := &in.ClientSecret, &out.ClientSecret
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.ClientSecretS != nil {
+		in, out := &in.ClientSecretS, &out.ClientSecretS
 		*out = new(v1.SecretKeySelector)
 		(*in).DeepCopyInto(*out)
 	}
@@ -1779,6 +1851,13 @@ func (in *OAuth2) DeepCopyInto(out *OAuth2) {
 	}
 	if in.EndpointParams != nil {
 		in, out := &in.EndpointParams, &out.EndpointParams
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.EndpointParamsS != nil {
+		in, out := &in.EndpointParamsS, &out.EndpointParamsS
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
@@ -2950,6 +3029,16 @@ func (in *TLSConfig) DeepCopyInto(out *TLSConfig) {
 		in, out := &in.KeySecret, &out.KeySecret
 		*out = new(v1.SecretKeySelector)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.KeySecretS != nil {
+		in, out := &in.KeySecretS, &out.KeySecretS
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.InsecureSkipVerifyS != nil {
+		in, out := &in.InsecureSkipVerifyS, &out.InsecureSkipVerifyS
+		*out = new(bool)
+		**out = **in
 	}
 }
 
@@ -5252,6 +5341,17 @@ func (in *VMProbeSpec) DeepCopyInto(out *VMProbeSpec) {
 	in.Targets.DeepCopyInto(&out.Targets)
 	if in.MetricRelabelConfigs != nil {
 		in, out := &in.MetricRelabelConfigs, &out.MetricRelabelConfigs
+		*out = make([]*RelabelConfig, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(RelabelConfig)
+				(*in).DeepCopyInto(*out)
+			}
+		}
+	}
+	if in.MetricRelabelConfigsS != nil {
+		in, out := &in.MetricRelabelConfigsS, &out.MetricRelabelConfigsS
 		*out = make([]*RelabelConfig, len(*in))
 		for i := range *in {
 			if (*in)[i] != nil {

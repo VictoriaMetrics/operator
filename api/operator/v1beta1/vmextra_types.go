@@ -280,12 +280,15 @@ type EmbeddedPersistentVolumeClaim struct {
 }
 
 // HTTPAuth generic auth used with http protocols
+// TODO: use EndpointAuth instead
 type HTTPAuth struct {
 	// +optional
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// +optional
 	*BearerAuth `json:",inline,omitempty"`
@@ -299,6 +302,7 @@ type HTTPAuth struct {
 }
 
 // BearerAuth defines auth with bearer token
+// TODO: use EndpointAuth instead
 type BearerAuth struct {
 	// Path to bearer token file
 	// +optional
@@ -315,6 +319,9 @@ type BasicAuth struct {
 	// The secret needs to be in the same namespace as scrape object
 	// +optional
 	Username v1.SecretKeySelector `json:"username,omitempty"`
+	// UsernameFile defines path to username file at disk
+	// must be pre-mounted
+	UsernameFile string `json:"username_file,omitempty"`
 	// Password defines reference for secret with password value
 	// The secret needs to be in the same namespace as scrape object
 	// +optional
@@ -793,31 +800,84 @@ type SecretOrConfigMap struct {
 type TLSConfig struct {
 	// Path to the CA cert in the container to use for the targets.
 	// +optional
-	CAFile string `json:"caFile,omitempty" yaml:"ca_file,omitempty"`
+	CAFile string `json:"ca_file,omitempty"`
+	// Path to the CA cert in the container to use for the targets.
+	// +optional
+	CAFileS string `json:"caFile,omitempty"`
+
 	// Stuct containing the CA cert to use for the targets.
 	// +optional
 	CA SecretOrConfigMap `json:"ca,omitempty"`
 
 	// Path to the client cert file in the container for the targets.
 	// +optional
-	CertFile string `json:"certFile,omitempty" yaml:"cert_file,omitempty"`
+	CertFile string `json:"cert_file,omitempty" `
+	// Path to the client cert file in the container for the targets.
+	// +optional
+	CertFileS string `json:"certFile,omitempty" `
 	// Struct containing the client cert file for the targets.
 	// +optional
 	Cert SecretOrConfigMap `json:"cert,omitempty"`
 
 	// Path to the client key file in the container for the targets.
 	// +optional
-	KeyFile string `json:"keyFile,omitempty" yaml:"key_file,omitempty"`
+	KeyFile string `json:"key_file,omitempty" `
+	// Path to the client key file in the container for the targets.
+	// +optional
+	KeyFileS string `json:"keyFile,omitempty" `
 	// Secret containing the client key file for the targets.
 	// +optional
-	KeySecret *v1.SecretKeySelector `json:"keySecret,omitempty" yaml:"key_secret,omitempty"`
+	KeySecret *v1.SecretKeySelector `json:"key_secret,omitempty" `
+	// Secret containing the client key file for the targets.
+	// +optional
+	KeySecretS *v1.SecretKeySelector `json:"keySecret,omitempty" `
 
 	// Used to verify the hostname for the targets.
 	// +optional
-	ServerName string `json:"serverName,omitempty" yaml:"server_name,omitempty"`
+	ServerName string `json:"server_name,omitempty"`
+	// Used to verify the hostname for the targets.
+	// +optional
+	ServerNameS string `json:"serverName,omitempty"`
+
 	// Disable target certificate validation.
 	// +optional
-	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty" yaml:"insecure_skip_verify,omitempty"`
+	InsecureSkipVerify bool `json:"insecure_skip_verify,omitempty"`
+	// Disable target certificate validation.
+	// +optional
+	InsecureSkipVerifyS *bool `json:"insecureSkipVerify,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaller interface
+func (c *TLSConfig) UnmarshalJSON(src []byte) error {
+	type tmp TLSConfig
+	if err := json.Unmarshal(src, (*tmp)(c)); err != nil {
+		return fmt.Errorf("cannot parse TLSConfig: %w", err)
+	}
+	if len(c.CAFile) == 0 && len(c.CAFileS) > 0 {
+		c.CAFile = c.CAFileS
+		c.CAFileS = ""
+	}
+	if len(c.CertFile) == 0 && len(c.CertFileS) > 0 {
+		c.CertFile = c.CertFileS
+		c.CertFileS = ""
+	}
+	if len(c.KeyFile) == 0 && len(c.KeyFileS) > 0 {
+		c.KeyFile = c.KeyFileS
+		c.KeyFileS = ""
+	}
+	if c.KeySecret == nil && c.KeySecretS != nil {
+		c.KeySecret = c.KeySecretS
+		c.KeySecretS = nil
+	}
+	if len(c.ServerName) == 0 && len(c.ServerNameS) > 0 {
+		c.ServerName = c.ServerNameS
+		c.ServerNameS = ""
+	}
+	if !c.InsecureSkipVerify && c.InsecureSkipVerifyS != nil {
+		c.InsecureSkipVerify = *c.InsecureSkipVerifyS
+		c.InsecureSkipVerifyS = nil
+	}
+	return nil
 }
 
 func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {

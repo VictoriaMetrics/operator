@@ -157,6 +157,8 @@ type UserConfigOption struct {
 	DefaultURLs []string `json:"default_url,omitempty"`
 
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 
 	// IPFilters defines per target src ip filters

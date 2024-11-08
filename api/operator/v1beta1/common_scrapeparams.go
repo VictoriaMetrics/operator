@@ -57,30 +57,67 @@ type ProxyAuth struct {
 	BasicAuth       *BasicAuth            `json:"basic_auth,omitempty"`
 	BearerToken     *v1.SecretKeySelector `json:"bearer_token,omitempty"`
 	BearerTokenFile string                `json:"bearer_token_file,omitempty"`
-	TLSConfig       *TLSConfig            `json:"tls_config,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
 }
 
 // OAuth2 defines OAuth2 configuration
 type OAuth2 struct {
 	// The secret or configmap containing the OAuth2 client id
 	// +required
-	ClientID SecretOrConfigMap `json:"client_id" yaml:"client_id,omitempty"`
+	ClientID SecretOrConfigMap `json:"client_id,omitempty"`
+	// The secret or configmap containing the OAuth2 client id
+	// +required
+	ClientIDS *SecretOrConfigMap `json:"clientId,omitempty"`
 	// The secret containing the OAuth2 client secret
 	// +optional
-	ClientSecret *v1.SecretKeySelector `json:"client_secret,omitempty" yaml:"client_secret,omitempty"`
+	ClientSecret *v1.SecretKeySelector `json:"client_secret,omitempty"`
+	// The secret containing the OAuth2 client secret
+	// +optional
+	ClientSecretS *v1.SecretKeySelector `json:"clientSecret,omitempty"`
 	// ClientSecretFile defines path for client secret file.
 	// +optional
-	ClientSecretFile string `json:"client_secret_file,omitempty" yaml:"client_secret_file,omitempty"`
+	ClientSecretFile string `json:"client_secret_file,omitempty"`
 	// The URL to fetch the token from
-	// +kubebuilder:validation:MinLength=1
-	// +required
-	TokenURL string `json:"token_url" yaml:"token_url"`
+	TokenURL string `json:"token_url,omitempty"`
+	// The URL to fetch the token from
+	TokenURLS string `json:"tokenUrl,omitempty"`
+
 	// OAuth2 scopes used for the token request
 	// +optional
 	Scopes []string `json:"scopes,omitempty"`
 	// Parameters to append to the token URL
 	// +optional
-	EndpointParams map[string]string `json:"endpoint_params,omitempty" yaml:"endpoint_params"`
+	EndpointParams map[string]string `json:"endpoint_params,omitempty"`
+	// Parameters to append to the token URL
+	// +optional
+	EndpointParamsS map[string]string `json:"endpointParams,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaller interface
+func (o *OAuth2) UnmarshalJSON(src []byte) error {
+	type tmp OAuth2
+	if err := json.Unmarshal(src, (*tmp)(o)); err != nil {
+		return fmt.Errorf("cannot parse OAuth2: %w", err)
+	}
+	if o.ClientIDS != nil {
+		o.ClientID = *o.ClientIDS
+		o.ClientIDS = nil
+	}
+	if o.ClientSecret == nil && o.ClientSecretS != nil {
+		o.ClientSecret = o.ClientSecretS
+		o.ClientSecretS = nil
+	}
+	if len(o.TokenURL) == 0 && len(o.TokenURLS) > 0 {
+		o.TokenURL = o.TokenURLS
+		o.TokenURLS = ""
+	}
+	if o.EndpointParams == nil && o.EndpointParamsS != nil {
+		o.EndpointParams = o.EndpointParamsS
+		o.EndpointParamsS = nil
+	}
+	return nil
 }
 
 func (o *OAuth2) validate() error {
@@ -110,7 +147,7 @@ type Authorization struct {
 	Credentials *v1.SecretKeySelector `json:"credentials,omitempty"`
 	// File with value for authorization
 	// +optional
-	CredentialsFile string `json:"credentialsFile,omitempty" yaml:"credentials_file,omitempty"`
+	CredentialsFile string `json:"credentials_file,omitempty"`
 }
 
 func (ac *Authorization) validate() error {
@@ -197,16 +234,14 @@ func (rc *RelabelConfig) UnmarshalJSON(src []byte) error {
 
 	if len(rc.SourceLabels) == 0 && len(rc.UnderScoreSourceLabels) > 0 {
 		rc.SourceLabels = append(rc.SourceLabels, rc.UnderScoreSourceLabels...)
+		rc.UnderScoreSourceLabels = nil
 	}
-	if len(rc.UnderScoreSourceLabels) == 0 && len(rc.SourceLabels) > 0 {
-		rc.UnderScoreSourceLabels = append(rc.UnderScoreSourceLabels, rc.SourceLabels...)
-	}
+
 	if rc.TargetLabel == "" && rc.UnderScoreTargetLabel != "" {
 		rc.TargetLabel = rc.UnderScoreTargetLabel
+		rc.UnderScoreTargetLabel = ""
 	}
-	if rc.UnderScoreTargetLabel == "" && rc.TargetLabel != "" {
-		rc.UnderScoreTargetLabel = rc.TargetLabel
-	}
+
 	return nil
 }
 
@@ -223,6 +258,14 @@ type EndpointScrapeParams struct {
 	// HTTP path to scrape for metrics.
 	// +optional
 	Path string `json:"path,omitempty"`
+	// HTTP path to scrape for metrics.
+	// alias for Path
+	// +optional
+	MetricsPath string `json:"metrics_path,omitempty"`
+	// MetricsPathS alias for Path
+	// +optional
+	MetricsPathS string `json:"metricsPath,omitempty"`
+
 	// HTTP scheme to use for scraping.
 	// +optional
 	// +kubebuilder:validation:Enum=http;https;HTTPS;HTTP
@@ -233,13 +276,26 @@ type EndpointScrapeParams struct {
 	// FollowRedirects controls redirects for scraping.
 	// +optional
 	FollowRedirects *bool `json:"follow_redirects,omitempty"`
+	// FollowRedirects controls redirects for scraping.
+	// +optional
+	ScoreFollowRedirectsS *bool `json:"followRedirects,omitempty"`
+
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
-	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	SampleLimit uint64 `json:"sample_limit,omitempty"`
+	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
+	// +optional
+	SampleLimitS uint64 `json:"sampleLimit,omitempty"`
+
 	// SeriesLimit defines per-scrape limit on number of unique time series
 	// a single target can expose during all the scrapes on the time window of 24h.
 	// +optional
-	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
+	SeriesLimit uint64 `json:"series_limit,omitempty"`
+	// SeriesLimit defines per-scrape limit on number of unique time series
+	// a single target can expose during all the scrapes on the time window of 24h.
+	// +optional
+	SeriesLimitS uint64 `json:"seriesLimit,omitempty"`
+
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`
@@ -247,18 +303,38 @@ type EndpointScrapeParams struct {
 	// one of scrape_interval or interval can be used
 	// +optional
 	ScrapeInterval string `json:"scrape_interval,omitempty"`
+
+	// ScrapeIntervalS is the same as ScrapeInterval and has priority over it.
+	// +optional
+	ScrapeIntervalS string `json:"scrapeInterval,omitempty"`
 	// Timeout after which the scrape is ended
 	// +optional
-	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	ScrapeTimeout string `json:"scrape_timeout,omitempty"`
+	// ScrapeTimeoutS  after which the scrape is ended
+	// +optional
+	ScrapeTimeoutS string `json:"scrapeTimeout,omitempty"`
+
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	// +optional
-	ProxyURL *string `json:"proxyURL,omitempty"`
+	ProxyURL *string `json:"proxy_url,omitempty"`
+	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
+	// +optional
+	ScoreProxyURLS *string `json:"proxyUrl,omitempty"`
+
 	// HonorLabels chooses the metric's labels on collisions with target labels.
 	// +optional
-	HonorLabels bool `json:"honorLabels,omitempty"`
+	HonorLabels *bool `json:"honor_labels,omitempty"`
+	// HonorLabelsS chooses the metric's labels on collisions with target labels.
+	// +optional
+	HonorLabelsS *bool `json:"honorLabels,omitempty"`
+
 	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
 	// +optional
-	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
+	HonorTimestamps *bool `json:"honor_timestamps,omitempty"`
+	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
+	// +optional
+	HonorTimestampsS *bool `json:"honorTimestamps,omitempty"`
+
 	// MaxScrapeSize defines a maximum size of scraped data for a job
 	// +optional
 	MaxScrapeSize string `json:"max_scrape_size,omitempty"`
@@ -267,37 +343,145 @@ type EndpointScrapeParams struct {
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 }
 
+// handles cases for snakeCase and camel_case of json tags
+// on conflict snakeCase alwasys wins, camel_case erased to empty value
+func (esp *EndpointScrapeParams) applyTagsCase() error {
+
+	if len(esp.Path) == 0 && len(esp.MetricsPath) > 0 {
+		esp.Path = esp.MetricsPath
+		esp.MetricsPath = ""
+	}
+	if len(esp.Path) == 0 && len(esp.MetricsPathS) > 0 {
+		esp.Path = esp.MetricsPathS
+		esp.MetricsPathS = ""
+	}
+	if esp.SampleLimit == 0 && esp.SampleLimitS > 0 {
+		esp.SampleLimit = esp.SampleLimitS
+		esp.SampleLimitS = 0
+	}
+	if esp.FollowRedirects == nil && esp.ScoreFollowRedirectsS != nil {
+		esp.FollowRedirects = esp.ScoreFollowRedirectsS
+		esp.ScoreFollowRedirectsS = nil
+	}
+
+	if esp.HonorLabels == nil && esp.HonorLabelsS != nil {
+		esp.HonorLabels = esp.HonorLabelsS
+		esp.HonorLabelsS = nil
+	}
+	if esp.HonorTimestamps == nil && esp.HonorTimestampsS != nil {
+		esp.HonorTimestamps = esp.HonorTimestampsS
+		esp.HonorTimestampsS = nil
+	}
+	if len(esp.ScrapeTimeout) == 0 && len(esp.ScrapeTimeoutS) > 0 {
+		esp.ScrapeTimeout = esp.ScrapeTimeoutS
+		esp.ScrapeTimeoutS = ""
+	}
+	if len(esp.ScrapeInterval) == 0 && len(esp.ScrapeIntervalS) > 0 {
+		esp.ScrapeInterval = esp.ScrapeIntervalS
+		esp.ScrapeIntervalS = ""
+	}
+	if esp.SampleLimit == 0 && esp.SampleLimitS > 0 {
+		esp.SampleLimit = esp.SampleLimitS
+		esp.SampleLimitS = 0
+	}
+	if esp.SeriesLimit == 0 && esp.SeriesLimitS > 0 {
+		esp.SeriesLimit = esp.SeriesLimitS
+		esp.SeriesLimitS = 0
+	}
+	if esp.ProxyURL == nil && esp.ScoreProxyURLS != nil {
+		esp.ProxyURL = esp.ScoreProxyURLS
+		esp.ScoreProxyURLS = nil
+	}
+
+	return nil
+}
+
 // EndpointAuth defines target endpoint authorization options for scrapping
 type EndpointAuth struct {
 	// OAuth2 defines auth configuration
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 	// TLSConfig configuration to use when scraping the endpoint
 	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
+	// TLSConfigS alias for TLSConfig
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	TLSConfigS *TLSConfig `json:"tlsConfig,omitempty"`
 	// File to read bearer token for scraping targets.
 	// +optional
-	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
+	BearerTokenFile string `json:"bearer_token_file,omitempty"`
+	// BearerTokenFileS alias for BearerTokenFile
+	// +optional
+	BearerTokenFileS string `json:"bearerTokenFile,omitempty"`
 	// Secret to mount to read bearer token for scraping targets. The secret
 	// needs to be in the same namespace as the scrape object and accessible by
 	// the victoria-metrics operator.
 	// +optional
-	// +nullable
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *v1.SecretKeySelector `json:"bearer_token_secret,omitempty"`
+	// BearerTokenSecretS alias for BearerTokenSecret
+	// +optional
+	BearerTokenSecretS *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
 	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	BasicAuth *BasicAuth `json:"basic_auth,omitempty"`
+	// BasicAuthS alias for BasicAuth
+	// +optional
+	BasicAuthS *BasicAuth `json:"basicAuth,omitempty"`
 	// Authorization with http header Authorization
 	// +optional
 	Authorization *Authorization `json:"authorization,omitempty"`
+}
+
+func (ea *EndpointAuth) applyTagsCase() {
+	if ea.TLSConfig == nil && ea.TLSConfigS != nil {
+		ea.TLSConfig = ea.TLSConfigS
+		ea.TLSConfigS = nil
+	}
+	if ea.BasicAuth == nil && ea.BasicAuthS != nil {
+		ea.BasicAuth = ea.BasicAuthS
+		ea.BasicAuthS = nil
+	}
+	if len(ea.BearerTokenFile) == 0 && len(ea.BearerTokenFileS) > 0 {
+		ea.BearerTokenFile = ea.BearerTokenFileS
+		ea.BearerTokenFileS = ""
+	}
+	if ea.BearerTokenSecret == nil && ea.BearerTokenSecretS != nil {
+		ea.BearerTokenSecret = ea.BearerTokenSecretS
+		ea.BearerTokenSecretS = nil
+	}
 }
 
 // EndpointRelabelings defines service discovery and metrics relabeling configuration for endpoints
 type EndpointRelabelings struct {
 	// MetricRelabelConfigs to apply to samples after scrapping.
 	// +optional
-	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
+	MetricRelabelConfigs []*RelabelConfig `json:"metric_relabel_configs,omitempty"`
+	// MetricRelabelConfigsS alias for MetricRelabelConfigs
+	// +optional
+	MetricRelabelConfigsS []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
 	// RelabelConfigs to apply to samples during service discovery.
 	// +optional
-	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
+	RelabelConfigs []*RelabelConfig `json:"relabel_configs,omitempty"`
+	// RelabelConfigsS alias ofr RelabelConfigs
+	// +optional
+	RelabelConfigsS []*RelabelConfig `json:"relabelConfigs,omitempty"`
+}
+
+// handles cases for snakeCase and camel_case of json tags
+// on conflict snakeCase alwasys wins, camel_case erased to empty value
+func (ers *EndpointRelabelings) applyTagsCase() {
+	if len(ers.MetricRelabelConfigs) == 0 && len(ers.MetricRelabelConfigsS) > 0 {
+		ers.MetricRelabelConfigs = ers.MetricRelabelConfigsS
+		ers.MetricRelabelConfigsS = nil
+	}
+	if len(ers.RelabelConfigs) == 0 && len(ers.RelabelConfigsS) > 0 {
+		ers.RelabelConfigs = ers.RelabelConfigsS
+		ers.RelabelConfigsS = nil
+	}
 }

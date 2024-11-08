@@ -418,6 +418,8 @@ type EmailConfig struct {
 	RequireTLS *bool `json:"require_tls,omitempty" yaml:"require_tls,omitempty"`
 	// TLS configuration
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	TLSConfig *TLSConfig `json:"tls_config,omitempty" yaml:"tls_config,omitempty"`
 }
 
@@ -892,6 +894,8 @@ type HTTPConfig struct {
 	BearerTokenFile string `json:"bearer_token_file,omitempty" yaml:"bearer_token_file,omitempty"`
 	// TLS configuration for the client.
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	TLSConfig *TLSConfig `json:"tls_config,omitempty" yaml:"tls_config,omitempty"`
 	// Optional proxy URL.
 	// +optional
@@ -902,6 +906,8 @@ type HTTPConfig struct {
 	Authorization *Authorization `json:"authorization,omitempty"`
 	// OAuth2 client credentials used to fetch a token for the targets.
 	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 }
 

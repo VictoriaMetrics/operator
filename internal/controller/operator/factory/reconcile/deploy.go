@@ -81,6 +81,10 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 		// (https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment)
 		// this function uses the deployment readiness detection algorithm from `kubectl rollout status` command
 		// (https://github.com/kubernetes/kubectl/blob/6e4fe32a45fdcbf61e5c30ebdc511d75e7242432/pkg/polymorphichelpers/rollout_status.go#L76)
+		if actualDeploy.Generation > actualDeploy.Status.ObservedGeneration {
+			// Waiting for deployment spec update to be observed by controller...
+			return false, nil
+		}
 		cond := getDeploymentCondition(actualDeploy.Status, appsv1.DeploymentProgressing)
 		if cond != nil && cond.Reason == "ProgressDeadlineExceeded" {
 			return false, fmt.Errorf("deployment %s/%s has exceeded its progress deadline", dep.Namespace, dep.Name)

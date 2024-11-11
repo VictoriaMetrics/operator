@@ -124,6 +124,9 @@ func NewReadyDeployment(name, namespace string) *appsv1.Deployment {
 					Status: "True",
 				},
 			},
+			UpdatedReplicas:   1,
+			AvailableReplicas: 1,
+			Replicas:          1,
 		},
 	}
 }

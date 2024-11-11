@@ -59,6 +59,8 @@ func TestDeployOk(t *testing.T) {
 				}
 				createdDep.Status.ReadyReplicas = 1
 				createdDep.Status.UpdatedReplicas = 1
+				createdDep.Status.AvailableReplicas = 1
+				createdDep.Status.Replicas = 1
 				if err := rclient.Status().Update(ctx, &createdDep); err != nil {
 					return false, err
 				}
@@ -83,9 +85,14 @@ func TestDeployOk(t *testing.T) {
 
 		// expect 1 UpdateCalls
 		reloadDep()
+		dep.Status.AvailableReplicas = 10
+		dep.Status.UpdatedReplicas = 10
+		if err = rclient.Status().Update(ctx, dep); err != nil {
+			t.Fatalf("cannot update deployment status: %s", err)
+		}
+
 		dep.Spec.Replicas = ptr.To[int32](10)
 		dep.Spec.Template.ObjectMeta.Annotations = map[string]string{"new-annotation": "value"}
-
 		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("expect 1 failed to update created deploy: %s", err)
 		}

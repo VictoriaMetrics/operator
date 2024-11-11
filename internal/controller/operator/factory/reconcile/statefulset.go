@@ -44,6 +44,9 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts 
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newSts.Namespace, Name: newSts.Name}, &stsForStatus); err != nil {
 			return false, err
 		}
+		if stsForStatus.Generation > stsForStatus.Status.ObservedGeneration {
+			return false, nil
+		}
 		if *newSts.Spec.Replicas != stsForStatus.Status.ReadyReplicas || *newSts.Spec.Replicas != stsForStatus.Status.UpdatedReplicas {
 			return false, nil
 		}
@@ -139,6 +142,28 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 	})
 }
 
+// this change is needed to properly handle revision version fields
+// object was processed by controller-manager
+// if ObservedGeneration matches current generation
+func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS types.NamespacedName) (*appsv1.StatefulSet, error) {
+	var sts appsv1.StatefulSet
+	err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck,
+		appWaitReadyDeadline, true, func(ctx context.Context) (done bool, err error) {
+			if err := rclient.Get(ctx, targetSTS, &sts); err != nil {
+				return true, err
+			}
+			if sts.Generation > sts.Status.ObservedGeneration {
+				return false, nil
+			}
+			return true, nil
+		})
+
+	if err != nil {
+		return nil, fmt.Errorf("cannot wait for deployment Generation status transition to=%d, current generation=%d", sts.Generation, sts.Status.ObservedGeneration)
+	}
+	return &sts, nil
+}
+
 // we perform rolling update on sts by manually deleting pods one by one
 // we check sts revision (kubernetes controller-manager is responsible for that)
 // and compare pods revision label with sts revision
@@ -148,8 +173,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 // see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
 func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, stsName string, ns string, podLabels map[string]string) error {
 	time.Sleep(podWaitReadyIntervalCheck)
-	sts := &appsv1.StatefulSet{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: stsName, Namespace: ns}, sts)
+	sts, err := getLatestStsState(ctx, rclient, types.NamespacedName{Name: stsName, Namespace: ns})
 	if err != nil {
 		return err
 	}

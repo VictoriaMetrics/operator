@@ -295,6 +295,11 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 
 	result, err = cb()
 	if err != nil {
+		// do not change status on conflict to failed
+		// it should be retried on the next loop
+		if apierrors.IsConflict(err) {
+			return
+		}
 		if updateErr := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusFailed, err); updateErr != nil {
 			resultErr = fmt.Errorf("failed to update object status: %q, origin err: %w", updateErr, err)
 			return

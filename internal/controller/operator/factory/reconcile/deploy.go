@@ -77,6 +77,10 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: dep.Namespace, Name: dep.Name}, &actualDeploy); err != nil {
 			return false, fmt.Errorf("cannot fetch actual deployment state: %w", err)
 		}
+		// Based on recommendations from the kubernetes documentation
+		// (https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment)
+		// this function uses the deployment readiness detection algorithm from `kubectl rollout status` command
+		// (https://github.com/kubernetes/kubectl/blob/6e4fe32a45fdcbf61e5c30ebdc511d75e7242432/pkg/polymorphichelpers/rollout_status.go#L76)
 		cond := getDeploymentCondition(actualDeploy.Status, appsv1.DeploymentProgressing)
 		if cond != nil && cond.Reason == "ProgressDeadlineExceeded" {
 			return false, fmt.Errorf("deployment %s/%s has exceeded its progress deadline", dep.Namespace, dep.Name)

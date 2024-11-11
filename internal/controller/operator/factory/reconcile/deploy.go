@@ -77,20 +77,44 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: dep.Namespace, Name: dep.Name}, &actualDeploy); err != nil {
 			return false, fmt.Errorf("cannot fetch actual deployment state: %w", err)
 		}
-		for _, cond := range actualDeploy.Status.Conditions {
-			if cond.Type == appsv1.DeploymentProgressing {
-				// https://kubernetes.io/docs/concepts/workloads/internal/controller/deployment/#complete-deployment
-				// Completed status for deployment
-				if cond.Reason == "NewReplicaSetAvailable" && cond.Status == "True" {
-					return true, nil
-				}
-				return false, nil
-			}
+		// Based on recommendations from the kubernetes documentation
+		// (https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment)
+		// this function uses the deployment readiness detection algorithm from `kubectl rollout status` command
+		// (https://github.com/kubernetes/kubectl/blob/6e4fe32a45fdcbf61e5c30ebdc511d75e7242432/pkg/polymorphichelpers/rollout_status.go#L76)
+		if actualDeploy.Generation > actualDeploy.Status.ObservedGeneration {
+			// Waiting for deployment spec update to be observed by controller...
+			return false, nil
 		}
-		return false, nil
+		cond := getDeploymentCondition(actualDeploy.Status, appsv1.DeploymentProgressing)
+		if cond != nil && cond.Reason == "ProgressDeadlineExceeded" {
+			return false, fmt.Errorf("deployment %s/%s has exceeded its progress deadline", dep.Namespace, dep.Name)
+		}
+		if actualDeploy.Spec.Replicas != nil && actualDeploy.Status.UpdatedReplicas < *actualDeploy.Spec.Replicas {
+			// Waiting for deployment rollout to finish: part of new replicas have been updated...
+			return false, nil
+		}
+		if actualDeploy.Status.Replicas > actualDeploy.Status.UpdatedReplicas {
+			// Waiting for deployment rollout to finish: part of old replicas are pending termination...
+			return false, nil
+		}
+		if actualDeploy.Status.AvailableReplicas < actualDeploy.Status.UpdatedReplicas {
+			// Waiting for deployment rollout to finish: part of updated replicas are available
+			return false, nil
+		}
+		return true, nil
 	})
 	if err != nil {
 		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for deployment to become ready: %w", err), dep.Namespace, labels.SelectorFromSet(dep.Spec.Selector.MatchLabels), dep.Spec.MinReadySeconds)
+	}
+	return nil
+}
+
+func getDeploymentCondition(status appsv1.DeploymentStatus, condType appsv1.DeploymentConditionType) *appsv1.DeploymentCondition {
+	for i := range status.Conditions {
+		c := status.Conditions[i]
+		if c.Type == condType {
+			return &c
+		}
 	}
 	return nil
 }

@@ -19642,6 +19642,8 @@ spec:
                 enum:
                 - http
                 - https
+                - HTTPS
+                - HTTP
                 type: string
               scrape_interval:
                 description: |-
@@ -20688,6 +20690,8 @@ spec:
                       enum:
                       - http
                       - https
+                      - HTTPS
+                      - HTTP
                       type: string
                     scrape_interval:
                       description: |-
@@ -21640,6 +21644,8 @@ spec:
                 enum:
                 - http
                 - https
+                - HTTPS
+                - HTTP
                 type: string
               scrape_interval:
                 description: |-
@@ -22577,7 +22583,7 @@ spec:
                     type:
                       description: |-
                         Type defines datasource type for enterprise version of vmalert
-                        possible values - prometheus,graphite
+                        possible values - prometheus,graphite,vlogs
                       type: string
                   required:
                   - name
@@ -26077,6 +26083,8 @@ spec:
                 enum:
                 - http
                 - https
+                - HTTPS
+                - HTTP
                 type: string
               scrape_interval:
                 description: |-
@@ -27081,6 +27089,8 @@ spec:
                       enum:
                       - http
                       - https
+                      - HTTPS
+                      - HTTP
                       type: string
                     scrape_interval:
                       description: |-
@@ -29838,6 +29848,8 @@ spec:
                       enum:
                       - http
                       - https
+                      - HTTPS
+                      - HTTP
                       type: string
                     scrape_interval:
                       description: |-

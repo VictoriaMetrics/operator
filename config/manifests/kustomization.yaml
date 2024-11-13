@@ -1,6 +1,6 @@
 resources:
 - ../examples
-- ../default
+- ../default-with-webhook
 - scorecard.yaml
 patches:
 - patch: |-

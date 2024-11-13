@@ -210,7 +210,8 @@ publish:
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
 	cd config/manager && $(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
-	$(KUSTOMIZE) build config/base > dist/install.yaml
+	$(KUSTOMIZE) build config/base > dist/install-no-webhook.yaml
+	$(KUSTOMIZE) build config/base-with-webhook > dist/install-with-webhook.yaml
 
 olm: operator-sdk opm yq docs
 	rm -rf bundle*
@@ -292,7 +293,7 @@ kustomize-set-annotation:
 	cd $(OVERLAY) && \
 		$(KUSTOMIZE) edit set annotation $(ANNOTATION)
 
-deploy-kind: OVERLAY=config/base
+deploy-kind: OVERLAY=config/base-with-webhook
 deploy-kind: REGISTRY=localhost:$(LOCAL_REGISTRY_PORT)
 deploy-kind: load-kind docker-push deploy
 
@@ -360,11 +361,11 @@ GINKGO_VERSION ?= v2.19.0
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.5.0
-CONTROLLER_TOOLS_VERSION ?= v0.16.4
+CONTROLLER_TOOLS_VERSION ?= v0.16.5
 ENVTEST_VERSION ?= release-0.19
-GOLANGCI_LINT_VERSION ?= v1.61.0
+GOLANGCI_LINT_VERSION ?= v1.62.2
 CODEGENERATOR_VERSION ?= v0.31.1
-KIND_VERSION ?= v0.24.0
+KIND_VERSION ?= v0.25.0
 OLM_VERSION ?= 0.28.0
 OPERATOR_SDK_VERSION ?= v1.37.0
 OPM_VERSION ?= v1.47.0

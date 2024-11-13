@@ -1,0 +1,8 @@
+namespace: vm
+namePrefix: vm-
+resources:
+- ../default-with-webhook
+patches:
+- path: manager_webhook_patch.yaml
+  target:
+    kind: Deployment

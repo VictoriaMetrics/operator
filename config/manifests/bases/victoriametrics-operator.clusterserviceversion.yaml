@@ -47,30 +47,31 @@ spec:
         path: replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
-    - description: VMAgent - is a tiny but brave agent, which helps you collect metrics
-        from various sources and stores them in VictoriaMetrics or any other Prometheus-compatible
-        storage system that supports the remote_write protocol.
+    - description: |-
+        VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics
+        or any other Prometheus-compatible storage system that supports the remote_write protocol.
       displayName: VMAgent
       kind: VMAgent
       name: vmagents.operator.victoriametrics.com
       specDescriptors:
-      - description: ConfigReloaderResources config-reloader container resource request
-          and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: configReloaderResources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
-      - description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
-          This relabeling is applied to all the collected metrics before sending them
-          to remote storage.
+      - description: |-
+          RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
+          This relabeling is applied to all the collected metrics before sending them to remote storage.
         displayName: Key at Configmap with relabelConfig name
         path: relabelConfig
         x-descriptors:
@@ -86,7 +87,8 @@ spec:
         path: replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: resources
@@ -104,18 +106,20 @@ spec:
       kind: VMAlertmanager
       name: vmalertmanagers.operator.victoriametrics.com
       specDescriptors:
-      - description: ConfigReloaderResources config-reloader container resource request
-          and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: configReloaderResources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
-      - description: 'ConfigSecret is the name of a Kubernetes Secret in the same
-          namespace as the VMAlertmanager object, which contains configuration for
-          this VMAlertmanager, configuration must be inside secret key: alertmanager.yaml.
-          It must be created by user. instance. Defaults to ''vmalertmanager-<alertmanager-name>''
-          The secret is mounted into /etc/alertmanager/config.'
+      - description: |-
+          ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
+          VMAlertmanager object, which contains configuration for this VMAlertmanager,
+          configuration must be inside secret key: alertmanager.yaml.
+          It must be created by user.
+          instance. Defaults to 'vmalertmanager-<alertmanager-name>'
+          The secret is mounted into /etc/alertmanager/config.
         displayName: Secret with alertmanager config
         path: configSecret
         x-descriptors:
@@ -125,7 +129,8 @@ spec:
         path: replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: resources
@@ -138,8 +143,8 @@ spec:
       kind: VMAlert
       name: vmalerts.operator.victoriametrics.com
       specDescriptors:
-      - description: ConfigReloaderResources config-reloader container resource request
-          and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: configReloaderResources
@@ -150,7 +155,8 @@ spec:
         path: replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: resources
@@ -162,8 +168,8 @@ spec:
       kind: VMAuth
       name: vmauths.operator.victoriametrics.com
       specDescriptors:
-      - description: ConfigReloaderResources config-reloader container resource request
-          and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: configReloaderResources
@@ -174,14 +180,16 @@ spec:
         path: replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
-    - description: VMCluster is fast, cost-effective and scalable time-series database.
+    - description: |-
+        VMCluster is fast, cost-effective and scalable time-series database.
         Cluster version with
       displayName: VMCluster
       kind: VMCluster
@@ -189,10 +197,23 @@ spec:
       specDescriptors:
       - description: ReplicaCount is the expected size of the Application.
         displayName: Number of pods
+        path: requestsLoadBalancer.spec.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: requestsLoadBalancer.spec.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
         path: vminsert.replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: vminsert.resources
@@ -203,7 +224,8 @@ spec:
         path: vmselect.replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: vmselect.resources
@@ -214,29 +236,34 @@ spec:
         path: vmstorage.replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: vmstorage.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
-    - description: VMNodeScrape defines discovery for targets placed on kubernetes
-        nodes, usually its node-exporters and other host services. InternalIP is used
-        as __address__ for scraping.
+    - description: |-
+        VMNodeScrape defines discovery for targets placed on kubernetes nodes,
+        usually its node-exporters and other host services.
+        InternalIP is used as __address__ for scraping.
       displayName: VMNode Scrape
       kind: VMNodeScrape
       name: vmnodescrapes.operator.victoriametrics.com
       version: v1beta1
-    - description: VMPodScrape is scrape configuration for pods, it generates vmagent's
-        config for scraping pod targets based on selectors.
+    - description: |-
+        VMPodScrape is scrape configuration for pods,
+        it generates vmagent's config for scraping pod targets
+        based on selectors.
       displayName: VMPod Scrape
       kind: VMPodScrape
       name: vmpodscrapes.operator.victoriametrics.com
       version: v1beta1
-    - description: VMProbe defines a probe for targets, that will be executed with
-        prober, like blackbox exporter. It helps to monitor reachability of target
-        with various checks.
+    - description: |-
+        VMProbe defines a probe for targets, that will be executed with prober,
+        like blackbox exporter.
+        It helps to monitor reachability of target with various checks.
       displayName: VMProbe
       kind: VMProbe
       name: vmprobes.operator.victoriametrics.com
@@ -252,9 +279,11 @@ spec:
       kind: VMScrapeConfig
       name: vmscrapeconfigs.operator.victoriametrics.com
       version: v1beta1
-    - description: VMServiceScrape is scrape configuration for endpoints associated
-        with kubernetes service, it generates scrape configuration for vmagent based
-        on selectors. result config will scrape service endpoints
+    - description: |-
+        VMServiceScrape is scrape configuration for endpoints associated with
+        kubernetes service,
+        it generates scrape configuration for vmagent based on selectors.
+        result config will scrape service endpoints
       displayName: VMService Scrape
       kind: VMServiceScrape
       name: vmservicescrapes.operator.victoriametrics.com
@@ -269,7 +298,8 @@ spec:
         path: replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           if not defined default resources from operator config will be used
         displayName: Resources
         path: resources

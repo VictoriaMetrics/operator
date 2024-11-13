@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	certmanagerVersion = "v1.15.1"
+	certmanagerVersion = "v1.16.1"
 	certmanagerURLTmpl = "https://github.com/jetstack/cert-manager/releases/download/%s/cert-manager.yaml"
 )
 

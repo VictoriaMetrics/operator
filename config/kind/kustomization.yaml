@@ -1,5 +1,5 @@
 resources:
-- ../default
+- ../default-with-webhook
 
 patches:
 - target:

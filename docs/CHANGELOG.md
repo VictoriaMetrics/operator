@@ -13,7 +13,7 @@ aliases:
 
 ## tip
 
-- TODO
+- Provided manifest without webhook
 
 ## [v0.49.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.49.1) - 11 Nov 2024
 

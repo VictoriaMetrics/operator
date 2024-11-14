@@ -207,7 +207,8 @@ publish:
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
 	cd config/manager && $(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
-	$(KUSTOMIZE) build config/base > dist/install.yaml
+	$(KUSTOMIZE) build config/base > dist/install-no-webhook.yaml
+	$(KUSTOMIZE) build config/base-with-webhook > dist/install-with-webhook.yaml
 
 olm: operator-sdk opm yq docs
 	rm -rf bundle*
@@ -289,7 +290,7 @@ kustomize-set-annotation:
 	cd $(OVERLAY) && \
 		$(KUSTOMIZE) edit set annotation $(ANNOTATION)
 
-deploy-kind: OVERLAY=config/base
+deploy-kind: OVERLAY=config/base-with-webhook
 deploy-kind: REGISTRY=localhost:$(LOCAL_REGISTRY_PORT)
 deploy-kind: load-kind docker-push deploy
 

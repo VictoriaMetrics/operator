@@ -67,3 +67,12 @@ func MustConvertObjectVersionsJSON[A, B any](src *A, objectName string) *B {
 	}
 	return &dst
 }
+
+// IsEndpointSliceSupported check if EndpointSlice is supported by kubernetes API server
+// https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/
+func IsEndpointSliceSupported() bool {
+	if ServerMajorVersion == 1 && ServerMinorVersion >= 21 {
+		return true
+	}
+	return false
+}

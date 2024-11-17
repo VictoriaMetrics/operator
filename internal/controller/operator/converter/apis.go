@@ -5,6 +5,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,6 +99,7 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 			Labels:      FilterPrefixes(serviceMon.Labels, conf.FilterPrometheusConverterLabelPrefixes),
 		},
 		Spec: vmv1beta1.VMServiceScrapeSpec{
+			DiscoveryRole:   vmagent.ServiceMonitorDiscoveryRole(serviceMon, conf.EnabledPrometheusConverter.DiscoveryRole),
 			JobLabel:        serviceMon.Spec.JobLabel,
 			TargetLabels:    serviceMon.Spec.TargetLabels,
 			PodTargetLabels: serviceMon.Spec.PodTargetLabels,

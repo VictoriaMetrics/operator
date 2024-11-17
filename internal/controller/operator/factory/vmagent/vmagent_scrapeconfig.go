@@ -825,6 +825,9 @@ const (
 	kubernetesSDRolePod            = "pod"
 	kubernetesSDRoleIngress        = "ingress"
 	kubernetesSDRoleNode           = "node"
+
+	// discoveryRoleAnnotation is the annotation used to identify the service discovery role.
+	discoveryRoleAnnotation = "operator.victoriametrics.com/discovery-role"
 )
 
 var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)

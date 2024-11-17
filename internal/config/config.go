@@ -10,7 +10,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	version "github.com/hashicorp/go-version"
+	"github.com/hashicorp/go-version"
 	"github.com/kelseyhightower/envconfig"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -280,6 +280,7 @@ type BaseOperatorConf struct {
 		Probe              bool `default:"true"`
 		AlertmanagerConfig bool `default:"true"`
 		ScrapeConfig       bool `default:"true"`
+		DiscoveryRole      string
 	}
 	FilterChildLabelPrefixes      []string `default:""`
 	FilterChildAnnotationPrefixes []string `default:""`

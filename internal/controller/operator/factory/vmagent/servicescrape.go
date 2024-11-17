@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 )
 
@@ -229,4 +231,25 @@ func generateServiceScrapeConfig(
 	cfg = addEndpointAuthTo(cfg, ep.EndpointAuth, m.AsMapKey(i), ssCache)
 
 	return cfg
+}
+
+// ServiceMonitorDiscoveryRole returns the service discovery role name.
+func ServiceMonitorDiscoveryRole(serviceMon *promv1.ServiceMonitor, discoveryRoleConfig string) string {
+	// check if endpoint slice is supported
+	supported := k8stools.IsEndpointSliceSupported()
+
+	// if the role is set in the annotation.
+	if serviceMon.Annotations != nil {
+		role := serviceMon.Annotations[discoveryRoleAnnotation]
+		if role == kubernetesSDRoleEndpoint || role == kubernetesSDRoleService || (role == kubernetesSDRoleEndpointSlices && supported) {
+			return role
+		}
+	}
+
+	// if the role is set in the config.
+	if discoveryRoleConfig == kubernetesSDRoleEndpoint || discoveryRoleConfig == kubernetesSDRoleService || (discoveryRoleConfig == kubernetesSDRoleEndpointSlices && supported) {
+		return discoveryRoleConfig
+	}
+
+	return ""
 }

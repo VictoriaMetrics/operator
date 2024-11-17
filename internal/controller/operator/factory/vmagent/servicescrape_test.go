@@ -6,11 +6,13 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	k8sversion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/utils/ptr"
 )
 
@@ -933,6 +935,89 @@ bearer_token_file: /var/run/tolen
 				return
 			}
 			assert.Equal(t, tt.want, string(gotBytes))
+		})
+	}
+}
+
+func TestServiceMonitorDiscoveryRole(t *testing.T) {
+	type args struct {
+		k8sVersion *k8sversion.Info
+		serviceMon *promv1.ServiceMonitor
+		roleConfig string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "serviceMonitor with endpointslices role annotation (k8s version supported)",
+			args: args{
+				k8sVersion: &k8sversion.Info{Major: "1", Minor: "21"},
+				serviceMon: &promv1.ServiceMonitor{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							discoveryRoleAnnotation: kubernetesSDRoleEndpointSlices,
+						},
+					},
+				},
+				roleConfig: "",
+			},
+			want: kubernetesSDRoleEndpointSlices,
+		},
+		{
+			name: "serviceMonitor with endpointslices role config (k8s version supported)",
+			args: args{
+				k8sVersion: &k8sversion.Info{Major: "1", Minor: "21"},
+				serviceMon: &promv1.ServiceMonitor{
+					ObjectMeta: metav1.ObjectMeta{},
+				},
+				roleConfig: kubernetesSDRoleEndpointSlices,
+			},
+			want: kubernetesSDRoleEndpointSlices,
+		},
+		{
+			name: "default serviceMonitor discovery role",
+			args: args{
+				k8sVersion: &k8sversion.Info{Major: "1", Minor: "21"},
+				serviceMon: &promv1.ServiceMonitor{
+					ObjectMeta: metav1.ObjectMeta{},
+				},
+				roleConfig: "",
+			},
+			want: "",
+		},
+		{
+			name: "invalid discovery role",
+			args: args{
+				k8sVersion: &k8sversion.Info{Major: "1", Minor: "21"},
+				serviceMon: &promv1.ServiceMonitor{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							discoveryRoleAnnotation: "svc",
+						},
+					},
+				},
+				roleConfig: "",
+			},
+			want: "",
+		},
+		{
+			name: "endpointslices unsupported by kubernetes version",
+			args: args{
+				k8sVersion: &k8sversion.Info{Major: "1", Minor: "19"},
+				serviceMon: &promv1.ServiceMonitor{
+					ObjectMeta: metav1.ObjectMeta{},
+				},
+				roleConfig: kubernetesSDRoleEndpointSlices,
+			},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.NoError(t, k8stools.SetKubernetesVersionWithDefaults(tt.args.k8sVersion, 0, 0))
+			assert.Equalf(t, tt.want, ServiceMonitorDiscoveryRole(tt.args.serviceMon, tt.args.roleConfig), "ServiceMonitorDiscoveryRole(%v, %v)", tt.args.serviceMon, tt.args.roleConfig)
 		})
 	}
 }

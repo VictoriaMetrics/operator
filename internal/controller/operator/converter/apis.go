@@ -117,6 +117,10 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 			Node: serviceMon.Spec.AttachMetadata.Node,
 		}
 	}
+	// Check for the "discovery-role" annotation in the ServiceMonitor
+	if role, exists := serviceMon.Annotations["discovery-role"]; exists {
+		cs.Spec.DiscoveryRole = role
+	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cs.OwnerReferences = []metav1.OwnerReference{
 			{

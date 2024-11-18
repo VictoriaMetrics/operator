@@ -273,6 +273,50 @@ func TestConvertServiceMonitor(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with discovery role label",
+			args: args{
+				serviceMon: &promv1.ServiceMonitor{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels:      map[string]string{"helm.sh/release": "prod", "keep-label": "value"},
+						Annotations: map[string]string{"app.kubernetes.io/": "release", "discovery-role": "endpointslices"},
+					},
+					Spec: promv1.ServiceMonitorSpec{
+						Endpoints: []promv1.Endpoint{
+							{
+								MetricRelabelConfigs: []promv1.RelabelConfig{
+									{
+										Action:       "drop",
+										SourceLabels: []promv1.LabelName{"__meta__instance"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: vmv1beta1.VMServiceScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      map[string]string{"keep-label": "value"},
+					Annotations: map[string]string{"discovery-role": "endpointslices"},
+				},
+				Spec: vmv1beta1.VMServiceScrapeSpec{
+					DiscoveryRole: "endpointslices",
+					Endpoints: []vmv1beta1.Endpoint{
+						{
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										Action:       "drop",
+										SourceLabels: []string{"__meta__instance"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

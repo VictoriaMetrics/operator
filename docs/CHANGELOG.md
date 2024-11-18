@@ -15,6 +15,8 @@ aliases:
 
 - TODO
 
+- [vmoperator](https://docs.victoriametrics.com/operator/): Adding default discovery role to `VMServiceScrapeDefaultRole` to use for service monitors conversion.
+
 ## [v0.49.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.49.1) - 11 Nov 2024
 
 - [vmrule](https://docs.victoriametrics.com/operator/resources/vmrule/): properly validate rules for [vlogs](https://docs.victoriametrics.com/victorialogs/vmalert/) group `type`.

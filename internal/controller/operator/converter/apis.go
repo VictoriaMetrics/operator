@@ -107,6 +107,7 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 				Any:        serviceMon.Spec.NamespaceSelector.Any,
 				MatchNames: serviceMon.Spec.NamespaceSelector.MatchNames,
 			},
+			DiscoveryRole: conf.VMServiceScrapeDefaultRole,
 		},
 	}
 	if serviceMon.Spec.SampleLimit != nil {
@@ -116,10 +117,6 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 		cs.Spec.AttachMetadata = vmv1beta1.AttachMetadata{
 			Node: serviceMon.Spec.AttachMetadata.Node,
 		}
-	}
-	// Check for the "discovery-role" annotation in the ServiceMonitor
-	if role, exists := serviceMon.Annotations["discovery-role"]; exists {
-		cs.Spec.DiscoveryRole = role
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cs.OwnerReferences = []metav1.OwnerReference{

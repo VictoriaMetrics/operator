@@ -192,12 +192,14 @@ func TestConvertServiceMonitor(t *testing.T) {
 		serviceMon *promv1.ServiceMonitor
 	}
 	tests := []struct {
-		name string
-		args args
-		want vmv1beta1.VMServiceScrape
+		name                     string
+		serviceScrapeDefaultRole string
+		args                     args
+		want                     vmv1beta1.VMServiceScrape
 	}{
 		{
-			name: "with metricsRelabelConfig",
+			name:                     "with metricsRelabelConfig",
+			serviceScrapeDefaultRole: "endpoints",
 			args: args{
 				serviceMon: &promv1.ServiceMonitor{
 					Spec: promv1.ServiceMonitorSpec{
@@ -216,6 +218,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 			},
 			want: vmv1beta1.VMServiceScrape{
 				Spec: vmv1beta1.VMServiceScrapeSpec{
+					DiscoveryRole: "endpoints",
 					Endpoints: []vmv1beta1.Endpoint{
 						{
 							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
@@ -232,7 +235,8 @@ func TestConvertServiceMonitor(t *testing.T) {
 			},
 		},
 		{
-			name: "with label and annotations filter",
+			name:                     "with label and annotations filter",
+			serviceScrapeDefaultRole: "endpoints",
 			args: args{
 				serviceMon: &promv1.ServiceMonitor{
 					ObjectMeta: metav1.ObjectMeta{
@@ -258,6 +262,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 					Labels: map[string]string{"keep-label": "value"},
 				},
 				Spec: vmv1beta1.VMServiceScrapeSpec{
+					DiscoveryRole: "endpoints",
 					Endpoints: []vmv1beta1.Endpoint{
 						{
 							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
@@ -274,12 +279,13 @@ func TestConvertServiceMonitor(t *testing.T) {
 			},
 		},
 		{
-			name: "with discovery role label",
+			name:                     "with endpointslice discovery role",
+			serviceScrapeDefaultRole: "endpointslices",
 			args: args{
 				serviceMon: &promv1.ServiceMonitor{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels:      map[string]string{"helm.sh/release": "prod", "keep-label": "value"},
-						Annotations: map[string]string{"app.kubernetes.io/": "release", "discovery-role": "endpointslices"},
+						Annotations: map[string]string{"app.kubernetes.io/": "release"},
 					},
 					Spec: promv1.ServiceMonitorSpec{
 						Endpoints: []promv1.Endpoint{
@@ -297,8 +303,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 			},
 			want: vmv1beta1.VMServiceScrape{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      map[string]string{"keep-label": "value"},
-					Annotations: map[string]string{"discovery-role": "endpointslices"},
+					Labels: map[string]string{"keep-label": "value"},
 				},
 				Spec: vmv1beta1.VMServiceScrapeSpec{
 					DiscoveryRole: "endpointslices",
@@ -323,6 +328,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 			got := ConvertServiceMonitor(tt.args.serviceMon, &config.BaseOperatorConf{
 				FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
 				FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
+				VMServiceScrapeDefaultRole:                  tt.serviceScrapeDefaultRole,
 			})
 			if !reflect.DeepEqual(*got, tt.want) {
 				t.Errorf("ConvertServiceMonitor() got = \n%v, \nwant \n%v", got, tt.want)

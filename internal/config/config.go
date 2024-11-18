@@ -285,8 +285,9 @@ type BaseOperatorConf struct {
 	FilterChildAnnotationPrefixes []string `default:""`
 	// adds compare-options and sync-options for prometheus objects converted by operator.
 	// It helps to properly use converter with ArgoCD
-	PrometheusConverterAddArgoCDIgnoreAnnotations bool `default:"false"`
-	EnabledPrometheusConverterOwnerReferences     bool `default:"false"`
+	PrometheusConverterAddArgoCDIgnoreAnnotations bool   `default:"false"`
+	EnabledPrometheusConverterOwnerReferences     bool   `default:"false"`
+	VMServiceScrapeDefaultRole                    string `default:"endpoints"`
 	// allows filtering for converted labels, labels with matched prefix will be ignored
 	FilterPrometheusConverterLabelPrefixes []string `default:""`
 	// allows filtering for converted annotations, annotations with matched prefix will be ignored

@@ -51,8 +51,12 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
-						StatefulMode:   true,
-						IngestOnlyMode: true,
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
+						StatefulMode:            true,
+						IngestOnlyMode:          true,
 						StatefulStorage: &vmv1beta1.StorageSpec{
 							VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 								Spec: corev1.PersistentVolumeClaimSpec{
@@ -126,6 +130,9 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0)),
+						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
@@ -404,6 +411,9 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
 						StatefulMode: true,
 						ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 							EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
@@ -523,6 +533,9 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
 						StatefulMode:   true,
 						IngestOnlyMode: true,
 						StatefulStorage: &vmv1beta1.StorageSpec{
@@ -602,6 +615,8 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				tt.args.cr.Annotations["operator.victoriametrics/last-applied-spec"] = string(jsonSpec)
 			}
 			errC := make(chan error)
+			build.AddDefaults(fclient.Scheme())
+			fclient.Scheme().Default(tt.args.cr)
 			go func() {
 				err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient)
 				select {
@@ -619,8 +634,10 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 								Namespace: "default",
 								Name:      fmt.Sprintf("vmagent-%s-%d", tt.args.cr.Name, i),
 							}, &sts); err != nil {
+
 								return false, nil
 							}
+							sts.Status.ObservedGeneration = sts.Generation
 							sts.Status.ReadyReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
 							sts.Status.UpdatedReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
 							sts.Status.CurrentReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
@@ -638,12 +655,18 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 					err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, false, func(ctx context.Context) (done bool, err error) {
 						var sts appsv1.StatefulSet
 						if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: fmt.Sprintf("vmagent-%s", tt.args.cr.Name)}, &sts); err != nil {
+
+							println("updating to err ", err.Error())
 							return false, nil
 						}
+						println("updating to ,t ", *tt.args.cr.Spec.ReplicaCount)
 						sts.Status.ReadyReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
 						sts.Status.UpdatedReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
 						sts.Status.CurrentReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
-						fclient.Status().Update(ctx, &sts)
+						err = fclient.Status().Update(ctx, &sts)
+						if err != nil {
+							return false, err
+						}
 						return true, nil
 					})
 					if err != nil {

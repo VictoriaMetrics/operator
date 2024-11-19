@@ -16,7 +16,7 @@ func getCfg() *config.BaseOperatorConf {
 	return config.MustGetBaseConfig()
 }
 
-// AddDefaults adds defauling functions to the runtimeScheme
+// AddDefaults adds defaulting functions to the runtimeScheme
 func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&corev1.Service{}, addServiceDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.Deployment{}, addDeploymentDefaults)
@@ -28,7 +28,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAlertmanager{}, addVMAlertmanagerDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMCluster{}, addVMClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VLogs{}, addVlogsDefaults)
-
+	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 }
 
 // defaults according to
@@ -526,7 +526,6 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, appDef
 	}
 
 	common.Resources = Resources(common.Resources, config.Resource(appDefaults.Resource), ptr.Deref(common.UseDefaultResources, false))
-
 }
 
 func addDefaluesToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, useDefaultResources bool, appDefaults *config.ApplicationDefaults) {
@@ -582,5 +581,15 @@ func addDefaultsToVMBackup(cr *vmv1beta1.VMBackup, useDefaultResources bool, app
 	}
 
 	cr.Resources = Resources(cr.Resources, config.Resource(appDefaults.Resource), useDefaultResources)
+}
 
+func addVMServiceScrapeDefaults(objI interface{}) {
+	cr := objI.(*vmv1beta1.VMServiceScrape)
+	if cr == nil {
+		return
+	}
+	c := getCfg()
+	if cr.Spec.DiscoveryRole == "" && c.VMServiceScrapeDefault.EnforceEndpointslices {
+		cr.Spec.DiscoveryRole = "endpointslices"
+	}
 }

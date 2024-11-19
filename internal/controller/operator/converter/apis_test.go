@@ -192,14 +192,14 @@ func TestConvertServiceMonitor(t *testing.T) {
 		serviceMon *promv1.ServiceMonitor
 	}
 	tests := []struct {
-		name                     string
-		serviceScrapeDefaultRole string
-		args                     args
-		want                     vmv1beta1.VMServiceScrape
+		name                                     string
+		VMServiceScrapeDefaultRoleEndpointslices bool
+		args                                     args
+		want                                     vmv1beta1.VMServiceScrape
 	}{
 		{
-			name:                     "with metricsRelabelConfig",
-			serviceScrapeDefaultRole: "endpoints",
+			name:                                     "with metricsRelabelConfig",
+			VMServiceScrapeDefaultRoleEndpointslices: false,
 			args: args{
 				serviceMon: &promv1.ServiceMonitor{
 					Spec: promv1.ServiceMonitorSpec{
@@ -218,7 +218,6 @@ func TestConvertServiceMonitor(t *testing.T) {
 			},
 			want: vmv1beta1.VMServiceScrape{
 				Spec: vmv1beta1.VMServiceScrapeSpec{
-					DiscoveryRole: "endpoints",
 					Endpoints: []vmv1beta1.Endpoint{
 						{
 							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
@@ -235,8 +234,8 @@ func TestConvertServiceMonitor(t *testing.T) {
 			},
 		},
 		{
-			name:                     "with label and annotations filter",
-			serviceScrapeDefaultRole: "endpoints",
+			name:                                     "with label and annotations filter",
+			VMServiceScrapeDefaultRoleEndpointslices: false,
 			args: args{
 				serviceMon: &promv1.ServiceMonitor{
 					ObjectMeta: metav1.ObjectMeta{
@@ -262,7 +261,6 @@ func TestConvertServiceMonitor(t *testing.T) {
 					Labels: map[string]string{"keep-label": "value"},
 				},
 				Spec: vmv1beta1.VMServiceScrapeSpec{
-					DiscoveryRole: "endpoints",
 					Endpoints: []vmv1beta1.Endpoint{
 						{
 							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
@@ -279,8 +277,8 @@ func TestConvertServiceMonitor(t *testing.T) {
 			},
 		},
 		{
-			name:                     "with endpointslice discovery role",
-			serviceScrapeDefaultRole: "endpointslices",
+			name:                                     "with endpointslice discovery role",
+			VMServiceScrapeDefaultRoleEndpointslices: true,
 			args: args{
 				serviceMon: &promv1.ServiceMonitor{
 					ObjectMeta: metav1.ObjectMeta{
@@ -328,7 +326,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 			got := ConvertServiceMonitor(tt.args.serviceMon, &config.BaseOperatorConf{
 				FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
 				FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
-				VMServiceScrapeDefaultRole:                  tt.serviceScrapeDefaultRole,
+				VMServiceScrapeDefaultRoleEndpointslices:    tt.VMServiceScrapeDefaultRoleEndpointslices,
 			})
 			if !reflect.DeepEqual(*got, tt.want) {
 				t.Errorf("ConvertServiceMonitor() got = \n%v, \nwant \n%v", got, tt.want)

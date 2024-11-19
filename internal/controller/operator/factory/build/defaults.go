@@ -525,6 +525,10 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, appDef
 		common.UseDefaultResources = &appDefaults.UseDefaultResources
 	}
 
+	if common.VMServiceScrapeDefaultRoleEndpointslices == nil && c.VMServiceScrapeDefaultRoleEndpointslices {
+		common.VMServiceScrapeDefaultRoleEndpointslices = &c.VMServiceScrapeDefaultRoleEndpointslices
+	}
+
 	common.Resources = Resources(common.Resources, config.Resource(appDefaults.Resource), ptr.Deref(common.UseDefaultResources, false))
 
 }

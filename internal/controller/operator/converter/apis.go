@@ -15,6 +15,7 @@ import (
 const (
 	prometheusSecretDir    = "/etc/prometheus/secrets"
 	prometheusConfigmapDir = "/etc/prometheus/configmaps"
+	endpointslices         = "endpointslices"
 )
 
 var log = ctrl.Log.WithValues("controller", "prometheus.converter")
@@ -107,7 +108,6 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 				Any:        serviceMon.Spec.NamespaceSelector.Any,
 				MatchNames: serviceMon.Spec.NamespaceSelector.MatchNames,
 			},
-			DiscoveryRole: conf.VMServiceScrapeDefaultRole,
 		},
 	}
 	if serviceMon.Spec.SampleLimit != nil {
@@ -117,6 +117,9 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 		cs.Spec.AttachMetadata = vmv1beta1.AttachMetadata{
 			Node: serviceMon.Spec.AttachMetadata.Node,
 		}
+	}
+	if conf.VMServiceScrapeDefaultRoleEndpointslices {
+		cs.Spec.DiscoveryRole = endpointslices
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cs.OwnerReferences = []metav1.OwnerReference{

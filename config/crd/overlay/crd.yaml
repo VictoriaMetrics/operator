@@ -842,6 +842,11 @@ spec:
                   uses non-root user out of the box
                   drops not needed security permissions
                 type: boolean
+              vmServiceScrapeDefaultRoleEndpointslices:
+                description: |-
+                  Use endpointslices in discoveryrole instead of endpoints
+                  for the vmservicescrape.
+                type: boolean
               volumeMounts:
                 description: |-
                   VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
@@ -5373,6 +5378,11 @@ spec:
                   name. Defaults to the value of `prometheus`. External label will
                   _not_ be added when value is set to empty string (`""`).
                 type: string
+              vmServiceScrapeDefaultRoleEndpointslices:
+                description: |-
+                  Use endpointslices in discoveryrole instead of endpoints
+                  for the vmservicescrape.
+                type: boolean
               volumeMounts:
                 description: |-
                   VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
@@ -11493,6 +11503,11 @@ spec:
                   with vm one. It uses secrets watch instead of file watch
                   which greatly increases speed of config updates
                 type: boolean
+              vmServiceScrapeDefaultRoleEndpointslices:
+                description: |-
+                  Use endpointslices in discoveryrole instead of endpoints
+                  for the vmservicescrape.
+                type: boolean
               volumeMounts:
                 description: |-
                   VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
@@ -13483,6 +13498,11 @@ spec:
                   with vm one. It uses secrets watch instead of file watch
                   which greatly increases speed of config updates
                 type: boolean
+              vmServiceScrapeDefaultRoleEndpointslices:
+                description: |-
+                  Use endpointslices in discoveryrole instead of endpoints
+                  for the vmservicescrape.
+                type: boolean
               volumeMounts:
                 description: |-
                   VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
@@ -15015,6 +15035,11 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
+              vmServiceScrapeDefaultRoleEndpointslices:
+                description: |-
+                  Use endpointslices in discoveryrole instead of endpoints
+                  for the vmservicescrape.
+                type: boolean
               volumeMounts:
                 description: |-
                   VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
@@ -15938,6 +15963,11 @@ spec:
                       it restricts disk writes access
                       uses non-root user out of the box
                       drops not needed security permissions
+                    type: boolean
+                  vmServiceScrapeDefaultRoleEndpointslices:
+                    description: |-
+                      Use endpointslices in discoveryrole instead of endpoints
+                      for the vmservicescrape.
                     type: boolean
                   volumeMounts:
                     description: |-
@@ -17549,6 +17579,11 @@ spec:
                       uses non-root user out of the box
                       drops not needed security permissions
                     type: boolean
+                  vmServiceScrapeDefaultRoleEndpointslices:
+                    description: |-
+                      Use endpointslices in discoveryrole instead of endpoints
+                      for the vmservicescrape.
+                    type: boolean
                   volumeMounts:
                     description: |-
                       VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
@@ -19055,6 +19090,11 @@ spec:
                   vmSelectPort:
                     description: VMSelectPort for VMSelect connections
                     type: string
+                  vmServiceScrapeDefaultRoleEndpointslices:
+                    description: |-
+                      Use endpointslices in discoveryrole instead of endpoints
+                      for the vmservicescrape.
+                    type: boolean
                   volumeMounts:
                     description: |-
                       VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
@@ -29231,6 +29271,11 @@ spec:
                       type: object
                     type: array
                 type: object
+              vmServiceScrapeDefaultRoleEndpointslices:
+                description: |-
+                  Use endpointslices in discoveryrole instead of endpoints
+                  for the vmservicescrape.
+                type: boolean
               volumeMounts:
                 description: |-
                   VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.

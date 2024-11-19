@@ -923,6 +923,121 @@ tls_config:
 bearer_token_file: /var/run/tolen
 `,
 		},
+		{
+			name: "with endpointslices discovery role",
+			args: args{
+				cr: vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						ServiceScrapeRelabelTemplate: []*vmv1beta1.RelabelConfig{
+							{
+								TargetLabel:  "node",
+								SourceLabels: []string{"__meta_kubernetes_node_name"},
+								Regex:        []string{".+"},
+							},
+						},
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							VMServiceScrapeDefaultRoleEndpointslices: ptr.To(true),
+						},
+					},
+				},
+				m: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
+											},
+										},
+									},
+									BearerTokenFile: "/var/run/tolen",
+								},
+							},
+						},
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					Port: "8080",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							Cert: vmv1beta1.SecretOrConfigMap{},
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
+								},
+							},
+						},
+						BearerTokenFile: "/var/run/tolen",
+					},
+				},
+				i:               0,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: endpointslices
+  namespaces:
+    names:
+    - default
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpointslice_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpointslice_address_target_kind
+  - __meta_kubernetes_endpointslice_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpointslice_address_target_kind
+  - __meta_kubernetes_endpointslice_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+- source_labels:
+  - __meta_kubernetes_node_name
+  target_label: node
+  regex: .+
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -1069,6 +1069,11 @@ type CommonDefaultableParams struct {
 	// Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable
 	// +optional
 	DisableSelfServiceScrape *bool `json:"disableSelfServiceScrape,omitempty"`
+
+	// Use endpointslices in discoveryrole instead of endpoints
+	// for the vmservicescrape.
+	// +optional
+	VMServiceScrapeDefaultRoleEndpointslices *bool `json:"vmServiceScrapeDefaultRoleEndpointslices,omitempty"`
 }
 
 type CommonConfigReloaderParams struct {

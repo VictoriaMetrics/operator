@@ -26,7 +26,11 @@ func generateServiceScrapeConfig(
 	}
 	// service role.
 	if m.Spec.DiscoveryRole == "" {
-		m.Spec.DiscoveryRole = kubernetesSDRoleEndpoint
+		if vmagentCR.Spec.VMServiceScrapeDefaultRoleEndpointslices != nil && *vmagentCR.Spec.VMServiceScrapeDefaultRoleEndpointslices {
+			m.Spec.DiscoveryRole = kubernetesSDRoleEndpointSlices
+		} else {
+			m.Spec.DiscoveryRole = kubernetesSDRoleEndpoint
+		}
 	}
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, se.IgnoreNamespaceSelectors)

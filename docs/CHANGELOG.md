@@ -12,10 +12,8 @@ aliases:
 ---
 
 ## tip
-
+- [vmoperator](https://docs.victoriametrics.com/operator/): Adding option to use endpointslice `VM_VMSERVICESCRAPEDEFAULTROLEENDPOINTSLICES` as default discovery role in vmservicescrape object.
 - [vmoperator](https://docs.victoriametrics.com/operator/): bump default version of VictoriaMetrics components to [1.106.1](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.106.1).
-
-- [vmoperator](https://docs.victoriametrics.com/operator/): Adding default discovery role to `VMServiceScrapeDefaultRole` to use for service monitors conversion.
 
 ## [v0.49.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.49.1) - 11 Nov 2024
 

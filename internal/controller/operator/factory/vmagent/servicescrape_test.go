@@ -441,6 +441,9 @@ relabel_configs:
   - __meta_kubernetes_pod_name
   target_label: pod
 - source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
   - __meta_kubernetes_namespace
   target_label: namespace
 - source_labels:

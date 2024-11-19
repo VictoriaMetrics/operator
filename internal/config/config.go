@@ -122,6 +122,12 @@ type BaseOperatorConf struct {
 		ConfigReloaderMemory string `default:"25Mi"`
 	}
 
+	VMServiceScrapeDefault struct {
+		// Use endpointslices instead of endpoints as discovery role
+		// for vmservicescrape when generate scrape config for vmagent.
+		EnforceEndpointslices bool `default:"false"`
+	}
+
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
 		Version             string `default:"v1.106.1"`

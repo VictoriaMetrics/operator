@@ -155,6 +155,7 @@ func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
+				rclient.Scheme().Default(&item)
 				item := item
 				serviceScrapeNamespacedNames = append(serviceScrapeNamespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 				servScrapesCombined = append(servScrapesCombined, &item)

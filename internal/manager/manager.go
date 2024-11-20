@@ -101,6 +101,9 @@ var (
 	version                       = managerFlags.Bool("version", false, "Show operator version")
 	disableControllerForCRD       = managerFlags.String("controller.disableReconcileFor", "", "disables reconcile controllers for given list of comma separated CRD names. For example - VMCluster,VMSingle,VMAuth."+
 		"Note, child controllers still require parent object CRDs.")
+	loggerJSONFields = managerFlags.String("loggerJSONFields", "", "Allows renaming fields in JSON formatted logs"+
+		`Example: "ts:timestamp,msg:message" renames "ts" to "timestamp" and "msg" to "message".`+
+		"Supported fields: ts, level, caller, msg")
 )
 
 func init() {
@@ -120,6 +123,7 @@ func RunManager(ctx context.Context) error {
 	opts := zap.Options{
 		StacktraceLevel: zapcore.PanicLevel,
 	}
+
 	opts.BindFlags(managerFlags)
 	vmcontroller.BindFlags(managerFlags)
 	managerFlags.Parse(os.Args[1:])
@@ -140,7 +144,11 @@ func RunManager(ctx context.Context) error {
 	}
 
 	zap.UseFlagOptions(&opts)
-	sink := zap.New(zap.UseFlagOptions(&opts)).GetSink()
+	zapEncOpts := mustGetLoggerEncodingOpts()
+
+	sink := zap.New(zap.UseFlagOptions(&opts), func(o *zap.Options) {
+		o.EncoderConfigOptions = append(o.EncoderConfigOptions, zapEncOpts...)
+	}).GetSink()
 	l := logger.New(sink)
 	logf.SetLogger(l)
 
@@ -493,4 +501,46 @@ func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorCon
 		}
 	}
 	return nil
+}
+
+func mustGetLoggerEncodingOpts() []zap.EncoderConfigOption {
+	fieldRemaps := *loggerJSONFields
+	if len(fieldRemaps) == 0 {
+		return nil
+	}
+
+	var opts []zap.EncoderConfigOption
+	fields := strings.Split(fieldRemaps, ",")
+	for _, f := range fields {
+		f = strings.TrimSpace(f)
+		v := strings.Split(f, ":")
+		if len(v) != 2 {
+			errMsg := fmt.Sprintf("expected to have key:value format for fields=%q", f)
+			panic(errMsg)
+		}
+
+		name, value := v[0], v[1]
+		switch name {
+		case "ts":
+			opts = append(opts, func(ec *zapcore.EncoderConfig) {
+				ec.TimeKey = value
+			})
+		case "level":
+			opts = append(opts, func(ec *zapcore.EncoderConfig) {
+				ec.LevelKey = value
+			})
+		case "caller":
+			opts = append(opts, func(ec *zapcore.EncoderConfig) {
+				ec.CallerKey = value
+			})
+		case "msg":
+			opts = append(opts, func(ec *zapcore.EncoderConfig) {
+				ec.MessageKey = value
+			})
+		default:
+			errMsg := fmt.Sprintf("unexpected loggerJSONFields key=%q, supported keys: ts,level,caller,msg", name)
+			panic(errMsg)
+		}
+	}
+	return opts
 }

@@ -225,8 +225,8 @@ var _ = Describe("test  vmsingle Controller", func() {
 						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
 						ts := createdDeploy.Spec.Template.Spec
 						Expect(ts.Containers).To(HaveLen(1))
-						Expect(ts.Volumes).To(HaveLen(0))
-						Expect(ts.Containers[0].VolumeMounts).To(HaveLen(0))
+						Expect(ts.Volumes).To(BeEmpty())
+						Expect(ts.Containers[0].VolumeMounts).To(BeEmpty())
 					}),
 			)
 

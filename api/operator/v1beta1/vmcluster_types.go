@@ -10,7 +10,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -138,7 +137,7 @@ func (cr *VMClusterSpec) UnmarshalJSON(src []byte) error {
 // +kubebuilder:printcolumn:name="Storage Count",type="string",JSONPath=".spec.vmstorage.replicaCount",description="replicas of VMStorage"
 // +kubebuilder:printcolumn:name="Select Count",type="string",JSONPath=".spec.vmselect.replicaCount",description="replicas of VMSelect"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.clusterStatus",description="Current status of cluster"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of cluster"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type VMCluster struct {
 	// +optional
@@ -170,9 +169,13 @@ type VMClusterStatus struct {
 	// Deprecated.
 	UpdateFailCount int `json:"updateFailCount"`
 	// Deprecated.
-	LastSync     string       `json:"lastSync,omitempty"`
-	UpdateStatus UpdateStatus `json:"clusterStatus,omitempty"`
-	Reason       string       `json:"reason,omitempty"`
+	LastSync       string `json:"lastSync,omitempty"`
+	StatusMetadata `json:",inline"`
+}
+
+// GetStatusMetadata returns metadata for object status
+func (cr *VMClusterStatus) GetStatusMetadata() *StatusMetadata {
+	return &cr.StatusMetadata
 }
 
 // VMClusterList contains a list of VMCluster
@@ -917,28 +920,12 @@ func (cr *VMStorage) ProbePort() string {
 
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	currentStatus := cr.Status.UpdateStatus
-	prevStatus := cr.Status.DeepCopy()
-	switch status {
-	case UpdateStatusExpanding:
-	case UpdateStatusFailed:
-		if maybeErr != nil {
-			cr.Status.Reason = maybeErr.Error()
-		}
-	case UpdateStatusOperational:
-		cr.Status.Reason = ""
-	case UpdateStatusPaused:
-		if currentStatus == status {
-			return nil
-		}
-	default:
-		panic(fmt.Sprintf("BUG: not expected status=%q", status))
-	}
-	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) && currentStatus == status {
-		return nil
-	}
-	cr.Status.UpdateStatus = status
-	return statusPatch(ctx, r, cr.DeepCopy(), cr.Status)
+	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMCluster, *VMClusterStatus]{
+		actualStatus: status,
+		cr:           cr,
+		crStatus:     &cr.Status,
+		maybeErr:     maybeErr,
+	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

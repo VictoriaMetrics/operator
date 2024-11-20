@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -1019,6 +1020,9 @@ type TLSClientConfig struct {
 
 // ScrapeObjectStatus defines the observed state of ScrapeObjects
 type ScrapeObjectStatus struct {
+	// ObservedGeneration defines current generation picked by operator for the
+	// reconcile
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// Status defines update status of resource
 	Status UpdateStatus `json:"status,omitempty"`
 	// LastSyncError contains error message for unsuccessful config generation
@@ -1253,7 +1257,70 @@ type ContainerSecurityContext struct {
 	ProcMount *v1.ProcMountType `json:"procMount,omitempty"`
 }
 
-func statusPatch(ctx context.Context, rclient client.Client, object client.Object, st interface{}) error {
+type objectWithDeepCopy[T client.Object] interface {
+	client.Object
+	DeepCopy() T
+}
+
+type objectStatusWithDeepCopy[ST any] interface {
+	GetStatusMetadata() *StatusMetadata
+	DeepCopy() ST
+}
+
+type patchStatusOpts[T client.Object, ST any] struct {
+	actualStatus               UpdateStatus
+	cr                         objectWithDeepCopy[T]
+	crStatus                   objectStatusWithDeepCopy[ST]
+	maybeErr                   error
+	mutateCurrentBeforeCompare func(ST)
+}
+
+func updateObjectStatus[T client.Object, ST any](ctx context.Context, rclient client.Client, opts *patchStatusOpts[T, ST]) error {
+	currentStatus := opts.crStatus
+	prevStatus := opts.crStatus.DeepCopy()
+	currMeta := currentStatus.GetStatusMetadata()
+	switch opts.actualStatus {
+	case UpdateStatusExpanding, UpdateStatusPaused:
+	case UpdateStatusFailed:
+		if opts.maybeErr != nil {
+			currMeta.Reason = opts.maybeErr.Error()
+		}
+	case UpdateStatusOperational:
+		currMeta.Reason = ""
+	default:
+		panic(fmt.Sprintf("BUG: not expected status=%q", opts.actualStatus))
+	}
+
+	currMeta.ObservedGeneration = opts.cr.GetGeneration()
+
+	if opts.mutateCurrentBeforeCompare != nil {
+		opts.mutateCurrentBeforeCompare(opts.crStatus.(ST))
+	}
+	// compare before send update request
+	// it reduces load at kubernetes api-server
+	if equality.Semantic.DeepEqual(currentStatus, prevStatus) && currMeta.UpdateStatus == opts.actualStatus {
+		return nil
+	}
+	currMeta.UpdateStatus = opts.actualStatus
+
+	pr, err := buildStatusPatch(currentStatus)
+	if err != nil {
+		return err
+	}
+	// make a deep copy before passing object to Patch function
+	// it reload state of the object from API server
+	// which is not desired behaviour
+	objecToUpdate := opts.cr.DeepCopy()
+	if err := rclient.Status().Patch(ctx, objecToUpdate, pr); err != nil {
+		return fmt.Errorf("cannot update resource status with patch: %w", err)
+	}
+	// Update ResourceVersion in order to resolve future conflicts
+	opts.cr.SetResourceVersion(objecToUpdate.GetResourceVersion())
+
+	return nil
+}
+
+func buildStatusPatch(currentStatus interface{}) (client.Patch, error) {
 	type patch struct {
 		OP    string      `json:"op"`
 		Path  string      `json:"path"`
@@ -1263,15 +1330,16 @@ func statusPatch(ctx context.Context, rclient client.Client, object client.Objec
 		{
 			OP:    "replace",
 			Path:  "/status",
-			Value: st,
+			Value: currentStatus,
 		},
 	}
 	data, err := json.Marshal(ops)
 	if err != nil {
-		return fmt.Errorf("possible bug, cannot serialize specification as json :%w", err)
+		return nil, fmt.Errorf("possible bug, cannot serialize patch specification as json :%w", err)
 	}
-	pr := client.RawPatch(types.JSONPatchType, data)
-	return rclient.Status().Patch(ctx, object, pr)
+
+	return client.RawPatch(types.JSONPatchType, data), nil
+
 }
 
 // ExternalConfig defines external source of configuration
@@ -1283,4 +1351,16 @@ type ExternalConfig struct {
 	// when using secrets is not applicable, e.g.: Vault sidecar.
 	// +optional
 	LocalPath string `json:"localPath,omitempty"`
+}
+
+// StatusMetadata holds metadata of application update status
+// +k8s:openapi-gen=true
+type StatusMetadata struct {
+	// UpdateStatus defines a status for update rollout
+	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
+	// Reason defines fail reason for reconcile process
+	Reason string `json:"reason,omitempty"`
+	// ObservedGeneration defines current generation picked by operator for the
+	// reconcile
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }

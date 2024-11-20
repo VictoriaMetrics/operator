@@ -9,7 +9,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,9 +24,6 @@ const (
 
 // VMAlertSpec defines the desired state of VMAlert
 // +k8s:openapi-gen=true
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAlert"
-// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicas",description="The desired replicas number of VmAlerts"
-// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMAlertSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
@@ -246,21 +242,20 @@ type VMAlertRemoteWriteSpec struct {
 // VMAlertStatus defines the observed state of VMAlert
 // +k8s:openapi-gen=true
 type VMAlertStatus struct {
-	// ReplicaCount Total number of non-terminated pods targeted by this VMAlert
-	// cluster (their labels match the selector).
+	// Deprecated
 	Replicas int32 `json:"replicas,omitempty"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert
-	// cluster that have the desired version spec.
+	// Deprecated
 	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
-	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
-	// targeted by this VMAlert cluster.
+	// Deprecated
 	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster.
+	// Deprecated
 	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
-	// UpdateStatus defines a status for update rollout, effective only for statefulMode
-	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
-	// Reason defines fail reason for update process, effective only for statefulMode
-	Reason string `json:"reason,omitempty"`
+	StatusMetadata      `json:",inline"`
+}
+
+// GetStatusMetadata returns metadata for object status
+func (cr *VMAlertStatus) GetStatusMetadata() *StatusMetadata {
+	return &cr.StatusMetadata
 }
 
 // VMAlert  executes a list of given alerting or recording rules against configured address.
@@ -275,6 +270,8 @@ type VMAlertStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmalerts,scope=Namespaced
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of update rollout"
+// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicaCount",description="The desired replicas number of Alertmanagers"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMAlert struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -487,28 +484,12 @@ func (cr *VMAlert) Paused() bool {
 
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAlert) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	currentStatus := cr.Status.UpdateStatus
-	prevStatus := cr.Status.DeepCopy()
-	switch status {
-	case UpdateStatusExpanding:
-	case UpdateStatusFailed:
-		if maybeErr != nil {
-			cr.Status.Reason = maybeErr.Error()
-		}
-	case UpdateStatusOperational:
-		cr.Status.Reason = ""
-	case UpdateStatusPaused:
-		if currentStatus == status {
-			return nil
-		}
-	default:
-		panic(fmt.Sprintf("BUG: not expected status=%q", status))
-	}
-	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) && currentStatus == status {
-		return nil
-	}
-	cr.Status.UpdateStatus = status
-	return statusPatch(ctx, r, cr.DeepCopy(), cr.Status)
+	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAlert, *VMAlertStatus]{
+		actualStatus: status,
+		cr:           cr,
+		crStatus:     &cr.Status,
+		maybeErr:     maybeErr,
+	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

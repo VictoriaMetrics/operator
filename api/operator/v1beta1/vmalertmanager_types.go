@@ -11,7 +11,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,7 +27,6 @@ import (
 // +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.image.tag",description="The version of VMAlertmanager"
 // +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicaCount",description="The desired replicas number of Alertmanagers"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:path=vmalertmanagers,scope=Namespaced,shortName=vma,singular=vmalertmanager
@@ -241,10 +239,12 @@ type VMAlertmanagerList struct {
 // VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cluster
 // Operator API itself. More info:
 type VMAlertmanagerStatus struct {
-	// Status defines a status of object update
-	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
-	// Reason has non empty reason for update failure
-	Reason string `json:"reason,omitempty"`
+	StatusMetadata `json:",inline"`
+}
+
+// GetStatusMetadata returns metadata for object status
+func (cr *VMAlertmanagerStatus) GetStatusMetadata() *StatusMetadata {
+	return &cr.StatusMetadata
 }
 
 func (cr *VMAlertmanager) AsOwner() []metav1.OwnerReference {
@@ -476,32 +476,12 @@ func (cr *VMAlertmanager) Paused() bool {
 
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	currentStatus := cr.Status.UpdateStatus
-	prevStatus := cr.Status.DeepCopy()
-
-	switch status {
-	case UpdateStatusExpanding:
-	case UpdateStatusFailed:
-		if maybeErr != nil {
-			cr.Status.Reason = maybeErr.Error()
-		}
-	case UpdateStatusOperational:
-		cr.Status.Reason = ""
-	case UpdateStatusPaused:
-		if currentStatus == status {
-			return nil
-		}
-	default:
-		panic(fmt.Sprintf("BUG: not expected status=%q", status))
-	}
-	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) && currentStatus == status {
-		return nil
-	}
-	cr.Status.UpdateStatus = status
-	if err := statusPatch(ctx, r, cr.DeepCopy(), cr.Status); err != nil {
-		return fmt.Errorf("cannot patch status: %w", err)
-	}
-	return nil
+	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAlertmanager, *VMAlertmanagerStatus]{
+		actualStatus: status,
+		cr:           cr,
+		crStatus:     &cr.Status,
+		maybeErr:     maybeErr,
+	})
 }
 
 // AlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager

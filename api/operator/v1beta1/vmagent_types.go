@@ -9,7 +9,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -45,9 +44,6 @@ type VMAgentSecurityEnforcements struct {
 
 // VMAgentSpec defines the desired state of VMAgent
 // +k8s:openapi-gen=true
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAgent"
-// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicas",description="The desired replicas number of VMAgent"
-// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMAgentSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
@@ -436,18 +432,18 @@ type VMAgentStatus struct {
 	Selector string `json:"selector,omitempty"`
 	// ReplicaCount Total number of pods targeted by this VMAgent
 	Replicas int32 `json:"replicas,omitempty"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAgent
-	// cluster that have the desired version spec.
+	// Deprecated
 	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
-	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
-	// targeted by this VMAlert cluster.
+	// Deprecated
 	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VMAgent cluster.
+	// Deprecated
 	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
-	// UpdateStatus defines a status for update rollout, effective only for statefulMode
-	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
-	// Reason defines fail reason for update process, effective only for statefulMode
-	Reason string `json:"reason,omitempty"`
+	StatusMetadata      `json:",inline"`
+}
+
+// GetStatusMetadata returns metadata for object status
+func (cr *VMAgentStatus) GetStatusMetadata() *StatusMetadata {
+	return &cr.StatusMetadata
 }
 
 // +genclient
@@ -468,6 +464,7 @@ type VMAgentStatus struct {
 // +kubebuilder:printcolumn:name="Shards Count",type="integer",JSONPath=".status.shards",description="current number of shards"
 // +kubebuilder:printcolumn:name="Replica Count",type="integer",JSONPath=".status.replicas",description="current number of replicas"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of update rollout"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMAgent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -711,41 +708,26 @@ func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	currentStatus := cr.Status.UpdateStatus
-	prevStatus := cr.Status.DeepCopy()
-	switch status {
-	case UpdateStatusExpanding:
-	case UpdateStatusFailed:
-		if maybeErr != nil {
-			cr.Status.Reason = maybeErr.Error()
-		}
-	case UpdateStatusOperational:
-		cr.Status.Reason = ""
-	case UpdateStatusPaused:
-		if currentStatus == status {
-			return nil
-		}
-	default:
-		panic(fmt.Sprintf("BUG: not expected status=%q", status))
-	}
-	replicaCount := int32(0)
-	if cr.Spec.ReplicaCount != nil {
-		replicaCount = *cr.Spec.ReplicaCount
-	}
-	var shardCnt int32
-	if cr.Spec.ShardCount != nil {
-		shardCnt = int32(*cr.Spec.ShardCount)
-	}
-	cr.Status.Replicas = replicaCount
-	cr.Status.Shards = shardCnt
-	cr.Status.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
 
-	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) && currentStatus == status {
-		return nil
-	}
-	cr.Status.UpdateStatus = status
-
-	return statusPatch(ctx, r, cr.DeepCopy(), cr.Status)
+	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAgent, *VMAgentStatus]{
+		actualStatus: status,
+		cr:           cr,
+		crStatus:     &cr.Status,
+		maybeErr:     maybeErr,
+		mutateCurrentBeforeCompare: func(vs *VMAgentStatus) {
+			replicaCount := int32(0)
+			if cr.Spec.ReplicaCount != nil {
+				replicaCount = *cr.Spec.ReplicaCount
+			}
+			var shardCnt int32
+			if cr.Spec.ShardCount != nil {
+				shardCnt = int32(*cr.Spec.ShardCount)
+			}
+			vs.Replicas = replicaCount
+			vs.Shards = shardCnt
+			vs.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
+		},
+	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

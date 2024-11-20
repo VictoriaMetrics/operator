@@ -28,10 +28,15 @@ spec:
       jsonPath: .status.status
       name: Status
       type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VLogs is the Schema for the vlogs API
+        description: |-
+          VLogs is fast, cost-effective and scalable logs database.
+          VLogs is the Schema for the vlogs API
         properties:
           apiVersion:
             description: |-
@@ -928,29 +933,31 @@ spec:
             description: VLogsStatus defines the observed state of VLogs
             properties:
               availableReplicas:
-                description: AvailableReplicas Total number of available pods (ready
-                  for at least minReadySeconds) targeted by this VLogs.
+                description: deprecated
                 format: int32
+                type: integer
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
                 type: integer
               reason:
-                description: Reason defines a reason in case of update failure
+                description: Reason defines fail reason for reconcile process
                 type: string
               replicas:
-                description: ReplicaCount Total number of non-terminated pods targeted
-                  by this VLogs.
+                description: deprecated
                 format: int32
                 type: integer
-              status:
-                description: UpdateStatus defines a status of vlogs instance rollout
-                type: string
               unavailableReplicas:
-                description: UnavailableReplicas Total number of unavailable pods
-                  targeted by this VLogs.
+                description: deprecated
                 format: int32
                 type: integer
+              updateStatus:
+                description: UpdateStatus defines a status for update rollout
+                type: string
               updatedReplicas:
-                description: UpdatedReplicas Total number of non-terminated pods targeted
-                  by this VLogs.
+                description: deprecated
                 format: int32
                 type: integer
             type: object
@@ -998,6 +1005,9 @@ spec:
       jsonPath: .status.updateStatus
       name: Status
       type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1beta1
     schema:
       openAPIV3Schema:
@@ -5459,14 +5469,17 @@ spec:
             description: VMAgentStatus defines the observed state of VMAgent
             properties:
               availableReplicas:
-                description: |-
-                  AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
-                  targeted by this VMAlert cluster.
+                description: Deprecated
                 format: int32
                 type: integer
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               reason:
-                description: Reason defines fail reason for update process, effective
-                  only for statefulMode
+                description: Reason defines fail reason for reconcile process
                 type: string
               replicas:
                 description: ReplicaCount Total number of pods targeted by this VMAgent
@@ -5481,18 +5494,14 @@ spec:
                 format: int32
                 type: integer
               unavailableReplicas:
-                description: UnavailableReplicas Total number of unavailable pods
-                  targeted by this VMAgent cluster.
+                description: Deprecated
                 format: int32
                 type: integer
               updateStatus:
-                description: UpdateStatus defines a status for update rollout, effective
-                  only for statefulMode
+                description: UpdateStatus defines a status for update rollout
                 type: string
               updatedReplicas:
-                description: |-
-                  UpdatedReplicas Total number of non-terminated pods targeted by this VMAgent
-                  cluster that have the desired version spec.
+                description: Deprecated
                 format: int32
                 type: integer
             type: object
@@ -9460,10 +9469,6 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: The version of VMAlertmanager
-      jsonPath: .spec.image.tag
-      name: Version
-      type: string
     - description: The desired replicas number of Alertmanagers
       jsonPath: .spec.replicaCount
       name: ReplicaCount
@@ -11752,11 +11757,17 @@ spec:
               Operator API itself. More info:
               https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
             properties:
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               reason:
-                description: Reason has non empty reason for update failure
+                description: Reason defines fail reason for reconcile process
                 type: string
               updateStatus:
-                description: Status defines a status of object update
+                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         required:
@@ -11797,6 +11808,13 @@ spec:
       jsonPath: .status.updateStatus
       name: Status
       type: string
+    - description: The desired replicas number of Alertmanagers
+      jsonPath: .spec.replicaCount
+      name: ReplicaCount
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1beta1
     schema:
       openAPIV3Schema:
@@ -13569,34 +13587,31 @@ spec:
             description: VMAlertStatus defines the observed state of VMAlert
             properties:
               availableReplicas:
-                description: |-
-                  AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
-                  targeted by this VMAlert cluster.
+                description: Deprecated
                 format: int32
                 type: integer
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               reason:
-                description: Reason defines fail reason for update process, effective
-                  only for statefulMode
+                description: Reason defines fail reason for reconcile process
                 type: string
               replicas:
-                description: |-
-                  ReplicaCount Total number of non-terminated pods targeted by this VMAlert
-                  cluster (their labels match the selector).
+                description: Deprecated
                 format: int32
                 type: integer
               unavailableReplicas:
-                description: UnavailableReplicas Total number of unavailable pods
-                  targeted by this VMAlert cluster.
+                description: Deprecated
                 format: int32
                 type: integer
               updateStatus:
-                description: UpdateStatus defines a status for update rollout, effective
-                  only for statefulMode
+                description: UpdateStatus defines a status for update rollout
                 type: string
               updatedReplicas:
-                description: |-
-                  UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert
-                  cluster that have the desired version spec.
+                description: Deprecated
                 format: int32
                 type: integer
             type: object
@@ -13636,6 +13651,13 @@ spec:
       jsonPath: .status.updateStatus
       name: Status
       type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - description: The desired replicas number of Alertmanagers
+      jsonPath: .spec.replicaCount
+      name: ReplicaCount
+      type: integer
     name: v1beta1
     schema:
       openAPIV3Schema:
@@ -15098,13 +15120,17 @@ spec:
           status:
             description: VMAuthStatus defines the observed state of VMAuth
             properties:
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               reason:
-                description: Reason defines fail reason for update process, effective
-                  only for statefulMode
+                description: Reason defines fail reason for reconcile process
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout, effective
-                  only for statefulMode
+                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -15155,7 +15181,7 @@ spec:
       name: Age
       type: date
     - description: Current status of cluster
-      jsonPath: .status.clusterStatus
+      jsonPath: .status.updateStatus
       name: Status
       type: string
     name: v1beta1
@@ -19141,17 +19167,24 @@ spec:
           status:
             description: VMClusterStatus defines the observed state of VMCluster
             properties:
-              clusterStatus:
-                description: UpdateStatus defines status for application
-                type: string
               lastSync:
                 description: Deprecated.
                 type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               reason:
+                description: Reason defines fail reason for reconcile process
                 type: string
               updateFailCount:
                 description: Deprecated.
                 type: integer
+              updateStatus:
+                description: UpdateStatus defines a status for update rollout
+                type: string
             required:
             - updateFailCount
             type: object
@@ -27691,9 +27724,12 @@ spec:
   versions:
   - additionalPrinterColumns:
     - description: Current status of single node update process
-      jsonPath: .status.singleStatus
+      jsonPath: .status.updateStatus
       name: Status
       type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1beta1
     schema:
       openAPIV3Schema:
@@ -29323,22 +29359,28 @@ spec:
                   for at least minReadySeconds) targeted by this VMSingle.
                 format: int32
                 type: integer
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               reason:
-                description: Reason defines a reason in case of update failure
+                description: Reason defines fail reason for reconcile process
                 type: string
               replicas:
                 description: ReplicaCount Total number of non-terminated pods targeted
                   by this VMSingle.
                 format: int32
                 type: integer
-              singleStatus:
-                description: UpdateStatus defines a status of single node rollout
-                type: string
               unavailableReplicas:
                 description: UnavailableReplicas Total number of unavailable pods
                   targeted by this VMSingle.
                 format: int32
                 type: integer
+              updateStatus:
+                description: UpdateStatus defines a status for update rollout
+                type: string
               updatedReplicas:
                 description: UpdatedReplicas Total number of non-terminated pods targeted
                   by this VMSingle.

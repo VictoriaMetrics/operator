@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,9 +34,6 @@ import (
 
 // VLogsSpec defines the desired state of VLogs
 // +k8s:openapi-gen=true
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VLogs"
-// +kubebuilder:printcolumn:name="RetentionPeriod",type="string",JSONPath=".spec.RetentionPeriod",description="The desired RetentionPeriod for VLogs"
-// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VLogsSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
@@ -97,19 +93,20 @@ type VLogsSpec struct {
 
 // VLogsStatus defines the observed state of VLogs
 type VLogsStatus struct {
-	// ReplicaCount Total number of non-terminated pods targeted by this VLogs.
+	// deprecated
 	Replicas int32 `json:"replicas,omitempty"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VLogs.
+	// deprecated
 	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
-	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VLogs.
+	// deprecated
 	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VLogs.
+	// deprecated
 	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
+	StatusMetadata      `json:",inline"`
+}
 
-	// UpdateStatus defines a status of vlogs instance rollout
-	UpdateStatus UpdateStatus `json:"status,omitempty"`
-	// Reason defines a reason in case of update failure
-	Reason string `json:"reason,omitempty"`
+// GetStatusMetadata returns metadata for object status
+func (cr *VLogsStatus) GetStatusMetadata() *StatusMetadata {
+	return &cr.StatusMetadata
 }
 
 // VLogs is fast, cost-effective and scalable logs database.
@@ -124,7 +121,7 @@ type VLogsStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vlogs,scope=Namespaced
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status",description="Current status of logs instance update process"
-
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // VLogs is the Schema for the vlogs API
 type VLogs struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -323,33 +320,12 @@ func (r *VLogs) Paused() bool {
 
 // SetStatusTo changes update status with optional reason of fail
 func (r *VLogs) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
-	currentStatus := r.Status.UpdateStatus
-	prevStatus := r.Status.DeepCopy()
-	switch status {
-	case UpdateStatusExpanding:
-		// keep failed status until success reconcile
-		if currentStatus == UpdateStatusFailed {
-			return nil
-		}
-	case UpdateStatusFailed:
-		if maybeErr != nil {
-			r.Status.Reason = maybeErr.Error()
-		}
-	case UpdateStatusOperational:
-		r.Status.Reason = ""
-	case UpdateStatusPaused:
-		if currentStatus == status {
-			return nil
-		}
-	default:
-		panic(fmt.Sprintf("BUG: not expected status=%q", status))
-	}
-	if equality.Semantic.DeepEqual(&r.Status, prevStatus) && currentStatus == status {
-		return nil
-	}
-	r.Status.UpdateStatus = status
-
-	return statusPatch(ctx, c, r.DeepCopy(), r.Status)
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VLogs, *VLogsStatus]{
+		actualStatus: status,
+		cr:           r,
+		crStatus:     &r.Status,
+		maybeErr:     maybeErr,
+	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

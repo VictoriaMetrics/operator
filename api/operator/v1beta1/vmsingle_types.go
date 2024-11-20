@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,9 +18,6 @@ import (
 
 // VMSingleSpec defines the desired state of VMSingle
 // +k8s:openapi-gen=true
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMSingle"
-// +kubebuilder:printcolumn:name="RetentionPeriod",type="string",JSONPath=".spec.RetentionPeriod",description="The desired RetentionPeriod for vm single"
-// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMSingleSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
@@ -131,11 +127,7 @@ type VMSingleStatus struct {
 	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
 	// UnavailableReplicas Total number of unavailable pods targeted by this VMSingle.
 	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
-
-	// UpdateStatus defines a status of single node rollout
-	UpdateStatus UpdateStatus `json:"singleStatus,omitempty"`
-	// Reason defines a reason in case of update failure
-	Reason string `json:"reason,omitempty"`
+	StatusMetadata      `json:",inline"`
 }
 
 // VMSingle  is fast, cost-effective and scalable time-series database.
@@ -149,7 +141,8 @@ type VMSingleStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmsingles,scope=Namespaced
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.singleStatus",description="Current status of single node update process"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of single node update process"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMSingle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -331,29 +324,17 @@ func (cr *VMSingle) Paused() bool {
 
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	currentStatus := cr.Status.UpdateStatus
-	prevStatus := cr.Status.DeepCopy()
-	switch status {
-	case UpdateStatusExpanding:
-	case UpdateStatusFailed:
-		if maybeErr != nil {
-			cr.Status.Reason = maybeErr.Error()
-		}
-	case UpdateStatusOperational:
-		cr.Status.Reason = ""
-	case UpdateStatusPaused:
-		if currentStatus == status {
-			return nil
-		}
-	default:
-		panic(fmt.Sprintf("BUG: not expected status=%q", status))
-	}
-	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) && currentStatus == status {
-		return nil
-	}
-	cr.Status.UpdateStatus = status
+	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMSingle, *VMSingleStatus]{
+		actualStatus: status,
+		cr:           cr,
+		crStatus:     &cr.Status,
+		maybeErr:     maybeErr,
+	})
+}
 
-	return statusPatch(ctx, r, cr.DeepCopy(), cr.Status)
+// GetStatusMetadata returns metadata for object status
+func (cr *VMSingleStatus) GetStatusMetadata() *StatusMetadata {
+	return &cr.StatusMetadata
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

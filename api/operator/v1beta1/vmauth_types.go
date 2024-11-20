@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	v12 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -258,10 +257,12 @@ type EmbeddedIngress struct {
 
 // VMAuthStatus defines the observed state of VMAuth
 type VMAuthStatus struct {
-	// UpdateStatus defines a status for update rollout, effective only for statefulMode
-	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
-	// Reason defines fail reason for update process, effective only for statefulMode
-	Reason string `json:"reason,omitempty"`
+	StatusMetadata `json:",inline"`
+}
+
+// GetStatusMetadata returns metadata for object status
+func (cr *VMAuthStatus) GetStatusMetadata() *StatusMetadata {
+	return &cr.StatusMetadata
 }
 
 // VMAuth is the Schema for the vmauths API
@@ -271,6 +272,8 @@ type VMAuthStatus struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of update rollout"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicaCount",description="The desired replicas number of Alertmanagers"
 type VMAuth struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -445,28 +448,12 @@ func (cr *VMAuth) Paused() bool {
 
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	currentStatus := cr.Status.UpdateStatus
-	prevStatus := cr.Status.DeepCopy()
-	switch status {
-	case UpdateStatusExpanding:
-	case UpdateStatusFailed:
-		if maybeErr != nil {
-			cr.Status.Reason = maybeErr.Error()
-		}
-	case UpdateStatusOperational:
-		cr.Status.Reason = ""
-	case UpdateStatusPaused:
-		if currentStatus == status {
-			return nil
-		}
-	default:
-		panic(fmt.Sprintf("BUG: not expected status=%q", status))
-	}
-	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) && status == currentStatus {
-		return nil
-	}
-	cr.Status.UpdateStatus = status
-	return statusPatch(ctx, r, cr.DeepCopy(), cr.Status)
+	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAuth, *VMAuthStatus]{
+		actualStatus: status,
+		cr:           cr,
+		crStatus:     &cr.Status,
+		maybeErr:     maybeErr,
+	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

@@ -138,8 +138,10 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
 	}
 
-	// if customStorageDataPath is not empty, do not add pvc.
-	shouldAddPVC := cr.Spec.StorageDataPath == ""
+	// if customStorageDataPath is not empty, do not add volumes
+	// and volumeMounts
+	// it's user responsobility to provide correct values
+	addVolumeMounts := cr.Spec.StorageDataPath == ""
 
 	storagePath := vmSingleDataDir
 	if cr.Spec.StorageDataPath != "" {
@@ -165,27 +167,32 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
-	volumes := []corev1.Volume{}
 
-	storageSpec := cr.Spec.Storage
+	var volumes []corev1.Volume
+	var vmMounts []corev1.VolumeMount
 
-	if storageSpec == nil {
-		volumes = append(volumes, corev1.Volume{
-			Name: vmDataVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-	} else if shouldAddPVC {
-		volumes = append(volumes, corev1.Volume{
-			Name: vmDataVolumeName,
-			VolumeSource: corev1.VolumeSource{
+	// conditionally add volume mounts
+	if addVolumeMounts {
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      vmDataVolumeName,
+			MountPath: storagePath},
+		)
+
+		vlSource := corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		}
+		if cr.Spec.Storage != nil {
+			vlSource = corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: cr.PrefixedName(),
 				},
-			},
-		})
+			}
+		}
+		volumes = append(volumes, corev1.Volume{
+			Name:         vmDataVolumeName,
+			VolumeSource: vlSource})
 	}
+
 	if cr.Spec.VMBackup != nil && cr.Spec.VMBackup.CredentialsSecret != nil {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("secret-" + cr.Spec.VMBackup.CredentialsSecret.Name),
@@ -196,14 +203,8 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 			},
 		})
 	}
-	volumes = append(volumes, cr.Spec.Volumes...)
-	vmMounts := []corev1.VolumeMount{
-		{
-			Name:      vmDataVolumeName,
-			MountPath: storagePath,
-		},
-	}
 
+	volumes = append(volumes, cr.Spec.Volumes...)
 	vmMounts = append(vmMounts, cr.Spec.VolumeMounts...)
 
 	for _, s := range cr.Spec.Secrets {

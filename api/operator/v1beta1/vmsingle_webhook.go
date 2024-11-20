@@ -46,6 +46,14 @@ func (r *VMSingle) sanityCheck() error {
 			return err
 		}
 	}
+	if r.Spec.StorageDataPath != "" {
+		if len(r.Spec.VolumeMounts) == 0 {
+			return fmt.Errorf("spec.volumeMounts must have at least 1 value for spec.storageDataPath=%q", r.Spec.StorageDataPath)
+		}
+		if len(r.Spec.Volumes) == 0 {
+			return fmt.Errorf("spec.volumes must have at least 1 value for spec.storageDataPath=%q", r.Spec.StorageDataPath)
+		}
+	}
 	return nil
 }
 

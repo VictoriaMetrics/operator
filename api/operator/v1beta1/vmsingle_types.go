@@ -38,10 +38,12 @@ type VMSingleSpec struct {
 	LogFormat string `json:"logFormat,omitempty"`
 	// StorageDataPath disables spec.storage option and overrides arg for victoria-metrics binary --storageDataPath,
 	// its users responsibility to mount proper device into given path.
+	// It requires to provide spec.volumes and spec.volumeMounts with at least 1 value
 	// +optional
 	StorageDataPath string `json:"storageDataPath,omitempty"`
 	// Storage is the definition of how storage will be used by the VMSingle
 	// by default it`s empty dir
+	// this option is ignored if storageDataPath is set
 	// +optional
 	Storage *v1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
 

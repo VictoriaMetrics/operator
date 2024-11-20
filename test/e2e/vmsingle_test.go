@@ -195,6 +195,39 @@ var _ = Describe("test  vmsingle Controller", func() {
 						Expect(*createdDeploy.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot).To(BeTrue())
 
 					}),
+				Entry("with data emptyDir", "emptydir",
+					&vmv1beta1.VMSingle{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+						},
+						Spec: vmv1beta1.VMSingleSpec{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+								UseStrictSecurity: ptr.To(false),
+							},
+							RetentionPeriod:      "1",
+							RemovePvcAfterDelete: true,
+							StorageDataPath:      "/tmp/",
+							Storage: &corev1.PersistentVolumeClaimSpec{
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("1Gi"),
+									},
+								},
+							},
+						},
+					},
+					func(cr *vmv1beta1.VMSingle) {
+						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						var createdDeploy appsv1.Deployment
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						ts := createdDeploy.Spec.Template.Spec
+						Expect(ts.Containers).To(HaveLen(1))
+						Expect(ts.Volumes).To(HaveLen(0))
+						Expect(ts.Containers[0].VolumeMounts).To(HaveLen(0))
+					}),
 			)
 
 			existSingle := &vmv1beta1.VMSingle{

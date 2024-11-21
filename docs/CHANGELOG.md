@@ -11,7 +11,7 @@ aliases:
   - /operator/changelog/index.html
 ---
 
-## tip
+## [v0.50.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.50.0) - 22 Nov 2024
 
 - [vmoperator](https://docs.victoriametrics.com/operator/): add missing `container` labels to the metrics discovered with `VMServiceScrape` for `endpointslices` discovery role.
 - [vmoperator](https://docs.victoriametrics.com/operator/): bump default version of VictoriaMetrics components to [1.106.1](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.106.1).

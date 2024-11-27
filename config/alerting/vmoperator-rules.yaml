@@ -14,7 +14,7 @@ spec:
               level="error",job=~".*((victoria.*)|vm)-?operator"
             }[5m]
           )
-        ) > 0
+        ) by (cluster) > 0
       for: 15m
       labels:
         severity: warning
@@ -31,7 +31,7 @@ spec:
               job=~".*((victoria.*)|vm)-?operator"
             }[5m]
           )
-        ) > 0
+        ) by (cluster) > 0
       for: 10m
       labels:
         severity: warning
@@ -47,7 +47,7 @@ spec:
             job=~".*((victoria.*)|vm)-?operator",
             name=~"(vmagent|vmalert|vmalertmanager|vmauth|vmcluster|vmnodescrape|vmpodscrape|vmprobe|vmrule|vmservicescrape|vmsingle|vmstaticscrape)"
           }
-        ) by(name) > 10
+        ) by(name, cluster) > 10
       for: 15m
       labels:
         severity: warning
@@ -60,7 +60,7 @@ spec:
       expr: |
         sum(
           operator_controller_bad_objects_count{job=~".*((victoria.*)|vm)-?operator"}
-        ) by(controller) > 0
+        ) by(controller, cluster) > 0
       for: 15m
       labels:
         severity: warning

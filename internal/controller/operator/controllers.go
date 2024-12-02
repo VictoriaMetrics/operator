@@ -199,8 +199,14 @@ func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sour
 	return false, nil
 }
 
-func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selector, namespaceSelector *metav1.LabelSelector) (bool, error) {
-	// check namespace selector
+// isSelectorsMatchesTargetCRD checks if targetCRD matches sourceCRD by selector, namespaceSelector and selectAll.
+// see https://docs.victoriametrics.com/operator/resources/vmagent/#scraping for details
+func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selector, namespaceSelector *metav1.LabelSelector, selectAll bool) (bool, error) {
+	// selectAll only works when NamespaceSelector and Selector both undefined
+	if selector == nil && namespaceSelector == nil {
+		return selectAll, nil
+	}
+	// check namespace selector, only return when NS not match
 	if isNsMatch, err := isNamespaceSelectorMatches(ctx, rclient, sourceCRD, targetCRD, namespaceSelector); !isNsMatch || err != nil {
 		return isNsMatch, err
 	}

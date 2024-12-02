@@ -38,24 +38,23 @@ func VisitObjectsForSelectorsAtNs[T any, PT interface {
 	case objectSelector != nil && nsSelector == nil:
 		// in single namespace mode, return object ns
 		namespaces = append(namespaces, objNamespace)
-	default:
+	case nsSelector != nil:
 		// perform a cluster wide request for namespaces with given filters
 		nsSelector, err := metav1.LabelSelectorAsSelector(nsSelector)
 		if err != nil {
-			return fmt.Errorf("cannot convert  selector: %w", err)
+			return fmt.Errorf("cannot convert selector: %w", err)
 		}
 		namespaces, err = SelectNamespaces(ctx, rclient, nsSelector)
 		if err != nil {
 			return fmt.Errorf("cannot select namespaces for  match: %w", err)
 		}
-	}
-	// fast path nothing selected
-	if namespaces == nil && !selectAllByDefault {
-		return nil
+		// if nsSelector is specified and no match, return directly
+		if len(namespaces) == 0 {
+			return nil
+		}
 	}
 
-	// if namespaces isn't nil, then nameSpaceSelector is defined
-	// but userSelector maybe be nil and we must set it to catch all values
+	// if userSelector is nil, we must set it to catch all values
 	if objectSelector == nil {
 		objectSelector = &metav1.LabelSelector{}
 	}
@@ -63,6 +62,7 @@ func VisitObjectsForSelectorsAtNs[T any, PT interface {
 	if err != nil {
 		return fmt.Errorf("cannot convert  to Selector: %w", err)
 	}
+	// namespaces could still be empty if nsSelector&objectSelector are nil and selectAllByDefault=true, and it's ok
 	return ListObjectsByNamespace(ctx, rclient, namespaces, cb, &client.ListOptions{LabelSelector: objLabelSelector})
 }
 

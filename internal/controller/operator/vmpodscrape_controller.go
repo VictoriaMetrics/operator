@@ -83,15 +83,17 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	for _, vmagentItem := range objects.Items {
-		if !vmagentItem.DeletionTimestamp.IsZero() || vmagentItem.Spec.ParsingError != "" || vmagentItem.IsUnmanaged() {
+		if !vmagentItem.DeletionTimestamp.IsZero() || vmagentItem.Spec.ParsingError != "" || vmagentItem.IsPodScrapeUnmanaged() {
 			continue
 		}
 		currentVMagent := &vmagentItem
 		reqLogger := reqLogger.WithValues("parent_vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
 		ctx := logger.AddToContext(ctx, reqLogger)
-		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
-		if instance.DeletionTimestamp.IsZero() && !currentVMagent.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.PodScrapeSelector, currentVMagent.Spec.PodScrapeNamespaceSelector)
+
+		// only check selector when deleting object,
+		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
+		if !instance.DeletionTimestamp.IsZero() {
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.PodScrapeSelector, currentVMagent.Spec.PodScrapeNamespaceSelector, currentVMagent.Spec.SelectAllByDefault)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmagent and vmPodScrape")
 				continue

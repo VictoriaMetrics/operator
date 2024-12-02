@@ -4929,7 +4929,7 @@ spec:
                 type: array
               staticScrapeSelector:
                 description: |-
-                  StaticScrapeSelector defines PodScrapes to be selected for target discovery.
+                  StaticScrapeSelector defines VMStaticScrape to be selected for target discovery.
                   Works in combination with NamespaceSelector.
                   If both nil - match everything.
                   NamespaceSelector nil - only objects at VMAgent namespace.
@@ -20182,6 +20182,12 @@ spec:
                 description: LastSyncError contains error message for unsuccessful
                   config generation
                 type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               status:
                 description: Status defines update status of resource
                 type: string
@@ -21261,6 +21267,12 @@ spec:
                 description: LastSyncError contains error message for unsuccessful
                   config generation
                 type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               status:
                 description: Status defines update status of resource
                 type: string
@@ -22401,6 +22413,12 @@ spec:
                 description: LastSyncError contains error message for unsuccessful
                   config generation
                 type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               status:
                 description: Status defines update status of resource
                 type: string
@@ -26593,6 +26611,12 @@ spec:
                 description: LastSyncError contains error message for unsuccessful
                   config generation
                 type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               status:
                 description: Status defines update status of resource
                 type: string
@@ -27685,6 +27709,12 @@ spec:
                 description: LastSyncError contains error message for unsuccessful
                   config generation
                 type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               status:
                 description: Status defines update status of resource
                 type: string
@@ -30367,6 +30397,12 @@ spec:
                 description: LastSyncError contains error message for unsuccessful
                   config generation
                 type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration defines current generation picked by operator for the
+                  reconcile
+                format: int64
+                type: integer
               status:
                 description: Status defines update status of resource
                 type: string

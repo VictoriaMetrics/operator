@@ -102,9 +102,10 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		l = l.WithValues("parent_vmauth", currentVMAuth.Name, "parent_namespace", currentVMAuth.Namespace)
 		ctx := logger.AddToContext(ctx, l)
 
-		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
-		if instance.DeletionTimestamp.IsZero() && !currentVMAuth.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, currentVMAuth, currentVMAuth.Spec.UserSelector, currentVMAuth.Spec.UserNamespaceSelector)
+		// only check selector when deleting object,
+		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
+		if !instance.DeletionTimestamp.IsZero() {
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, currentVMAuth, currentVMAuth.Spec.UserSelector, currentVMAuth.Spec.UserNamespaceSelector, currentVMAuth.Spec.SelectAllByDefault)
 			if err != nil {
 				l.Error(err, "cannot match vmauth and VMUser")
 				continue

@@ -17,7 +17,7 @@ func selectScrapeConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient clie
 	var scrapeConfigsCombined []*vmv1beta1.VMScrapeConfig
 	var namespacedNames []string
 
-	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.NodeScrapeNamespaceSelector, cr.Spec.ScrapeConfigSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ScrapeConfigNamespaceSelector, cr.Spec.ScrapeConfigSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMScrapeConfigList) {
 			for _, item := range list.Items {
 				if !item.DeletionTimestamp.IsZero() {

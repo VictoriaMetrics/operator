@@ -16,6 +16,7 @@ import (
 func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 	tests := []struct {
 		name              string
+		selectAll         bool
 		sourceCRD         client.Object
 		targetCRD         client.Object
 		selector          *metav1.LabelSelector
@@ -24,11 +25,12 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 		isMatch           bool
 	}{
 		{
-			name: "matches cause under same namespace",
+			name:      "match: selectors are nil, selectAll=true",
+			selectAll: true,
 			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
-					Namespace: "default",
+					Namespace: "n1",
 					Labels: map[string]string{
 						"app": "target-app",
 					},
@@ -37,7 +39,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			targetCRD: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmalert",
-					Namespace: "default",
+					Namespace: "n2",
 				},
 				Spec: vmv1beta1.VMAlertSpec{
 					RuleSelector:          &metav1.LabelSelector{},
@@ -49,7 +51,8 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			isMatch:           true,
 		},
 		{
-			name: "not match",
+			name:      "not match: selectors are nil, selectAll=false",
+			selectAll: false,
 			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
@@ -62,7 +65,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			targetCRD: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmalert",
-					Namespace: "vm-stack",
+					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAlertSpec{
 					RuleSelector:          &metav1.LabelSelector{},
@@ -74,7 +77,8 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			isMatch:           false,
 		},
 		{
-			name: "selector matches",
+			name:      "match: selector matches, selectAll=any",
+			selectAll: false,
 			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
@@ -112,7 +116,8 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			isMatch:           true,
 		},
 		{
-			name: "selector not match",
+			name:      "not match: selector not match, selectAll=any",
+			selectAll: true,
 			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
@@ -163,7 +168,8 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			isMatch:           false,
 		},
 		{
-			name: "namespaceselector matches",
+			name:      "match: namespaceselector matches, selectAll=any",
+			selectAll: false,
 			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
@@ -204,7 +210,8 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			isMatch: true,
 		},
 		{
-			name: "namespaceselector not matches",
+			name:      "not match: namespaceselector not matches, selectAll=any",
+			selectAll: true,
 			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
@@ -245,7 +252,8 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			isMatch: false,
 		},
 		{
-			name: "selector+namespaceSelector match",
+			name:      "match: selector+namespaceSelector match, selectAll=any",
+			selectAll: false,
 			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
@@ -305,7 +313,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, tt.sourceCRD, tt.targetCRD, tt.selector, tt.namespaceSelector)
+			matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, tt.sourceCRD, tt.targetCRD, tt.selector, tt.namespaceSelector, tt.selectAll)
 			if err != nil {
 				t.Fatal(err)
 			}

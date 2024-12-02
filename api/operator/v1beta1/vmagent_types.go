@@ -166,7 +166,7 @@ type VMAgentSpec struct {
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	NodeScrapeNamespaceSelector *metav1.LabelSelector `json:"nodeScrapeNamespaceSelector,omitempty"`
-	// StaticScrapeSelector defines PodScrapes to be selected for target discovery.
+	// StaticScrapeSelector defines VMStaticScrape to be selected for target discovery.
 	// Works in combination with NamespaceSelector.
 	// If both nil - match everything.
 	// NamespaceSelector nil - only objects at VMAgent namespace.
@@ -636,7 +636,7 @@ func (cr VMAgent) ProbeNeedLiveness() bool {
 	return true
 }
 
-// IsUnmanaged checks if object should managed any  config objects
+// IsUnmanaged checks if object should managed any config objects
 func (cr *VMAgent) IsUnmanaged() bool {
 	// fast path
 	if cr.Spec.IngestOnlyMode {
@@ -647,7 +647,68 @@ func (cr *VMAgent) IsUnmanaged() bool {
 		cr.Spec.ServiceScrapeSelector == nil && cr.Spec.ServiceScrapeNamespaceSelector == nil &&
 		cr.Spec.PodScrapeSelector == nil && cr.Spec.PodScrapeNamespaceSelector == nil &&
 		cr.Spec.ProbeSelector == nil && cr.Spec.ProbeNamespaceSelector == nil &&
+		cr.Spec.StaticScrapeSelector == nil && cr.Spec.StaticScrapeNamespaceSelector == nil &&
+		cr.Spec.ScrapeConfigSelector == nil && cr.Spec.ScrapeConfigNamespaceSelector == nil
+}
+
+// IsNodeScrapeUnmanaged checks if vmagent should managed any VMNodeScrape objects
+func (cr *VMAgent) IsNodeScrapeUnmanaged() bool {
+	// fast path
+	if cr.Spec.IngestOnlyMode {
+		return true
+	}
+	return !cr.Spec.SelectAllByDefault &&
+		cr.Spec.NodeScrapeSelector == nil && cr.Spec.NodeScrapeNamespaceSelector == nil
+}
+
+// IsServiceScrapeUnmanaged checks if vmagent should managed any VMServiceScrape objects
+func (cr *VMAgent) IsServiceScrapeUnmanaged() bool {
+	// fast path
+	if cr.Spec.IngestOnlyMode {
+		return true
+	}
+	return !cr.Spec.SelectAllByDefault &&
+		cr.Spec.ServiceScrapeSelector == nil && cr.Spec.ServiceScrapeNamespaceSelector == nil
+}
+
+// IsUnmanaged checks if vmagent should managed any VMPodScrape objects
+func (cr *VMAgent) IsPodScrapeUnmanaged() bool {
+	// fast path
+	if cr.Spec.IngestOnlyMode {
+		return true
+	}
+	return !cr.Spec.SelectAllByDefault &&
+		cr.Spec.PodScrapeSelector == nil && cr.Spec.PodScrapeNamespaceSelector == nil
+}
+
+// IsProbeUnmanaged checks if vmagent should managed any VMProbe objects
+func (cr *VMAgent) IsProbeUnmanaged() bool {
+	// fast path
+	if cr.Spec.IngestOnlyMode {
+		return true
+	}
+	return !cr.Spec.SelectAllByDefault &&
+		cr.Spec.ProbeSelector == nil && cr.Spec.ProbeNamespaceSelector == nil
+}
+
+// IsStaticScrapeUnmanaged checks if vmagent should managed any VMStaticScrape objects
+func (cr *VMAgent) IsStaticScrapeUnmanaged() bool {
+	// fast path
+	if cr.Spec.IngestOnlyMode {
+		return true
+	}
+	return !cr.Spec.SelectAllByDefault &&
 		cr.Spec.StaticScrapeSelector == nil && cr.Spec.StaticScrapeNamespaceSelector == nil
+}
+
+// IsScrapeConfigUnmanaged checks if vmagent should managed any VMScrapeConfig objects
+func (cr *VMAgent) IsScrapeConfigUnmanaged() bool {
+	// fast path
+	if cr.Spec.IngestOnlyMode {
+		return true
+	}
+	return !cr.Spec.SelectAllByDefault &&
+		cr.Spec.ScrapeConfigSelector == nil && cr.Spec.ScrapeConfigNamespaceSelector == nil
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
@@ -708,7 +769,6 @@ func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-
 	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAgent, *VMAgentStatus]{
 		actualStatus: status,
 		cr:           cr,

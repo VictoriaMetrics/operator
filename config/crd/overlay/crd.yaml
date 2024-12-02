@@ -4929,7 +4929,7 @@ spec:
                 type: array
               staticScrapeSelector:
                 description: |-
-                  StaticScrapeSelector defines PodScrapes to be selected for target discovery.
+                  StaticScrapeSelector defines VMStaticScrape to be selected for target discovery.
                   Works in combination with NamespaceSelector.
                   If both nil - match everything.
                   NamespaceSelector nil - only objects at VMAgent namespace.

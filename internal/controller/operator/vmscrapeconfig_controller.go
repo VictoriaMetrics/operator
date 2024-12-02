@@ -77,20 +77,21 @@ func (r *VMScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAgentList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
-		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
+		return result, fmt.Errorf("cannot list vmagent for vmscrapeconfig: %w", err)
 	}
 
 	for _, vmagentItem := range objects.Items {
-		if !vmagentItem.DeletionTimestamp.IsZero() || vmagentItem.Spec.ParsingError != "" || vmagentItem.IsUnmanaged() {
+		if !vmagentItem.DeletionTimestamp.IsZero() || vmagentItem.Spec.ParsingError != "" || vmagentItem.IsScrapeConfigUnmanaged() {
 			continue
 		}
 		currentVMagent := &vmagentItem
 		reqLogger := reqLogger.WithValues("parent_vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
-		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
-		if instance.DeletionTimestamp.IsZero() && !currentVMagent.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.ScrapeConfigSelector, currentVMagent.Spec.ScrapeConfigNamespaceSelector)
+		// only check selector when deleting object,
+		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
+		if !instance.DeletionTimestamp.IsZero() {
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.ScrapeConfigSelector, currentVMagent.Spec.ScrapeConfigNamespaceSelector, currentVMagent.Spec.SelectAllByDefault)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmagent and vmScrapeConfig")
 				continue

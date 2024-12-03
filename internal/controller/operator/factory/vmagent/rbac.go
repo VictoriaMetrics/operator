@@ -142,8 +142,22 @@ func ensureVMAgentCRExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 	clusterRole := buildVMAgentClusterRole(cr)
 	var existsClusterRole rbacv1.ClusterRole
 
-	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRole.Name, Namespace: cr.Namespace}, &existsClusterRole); err != nil {
+	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRole.Name}, &existsClusterRole); err != nil {
 		if errors.IsNotFound(err) {
+			// check for possible legacy ClusterRole and clean it, see https://github.com/VictoriaMetrics/operator/pull/1176
+			var orphanedClusterRole rbacv1.ClusterRole
+			err = rclient.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("monitoring:vmagent-cluster-access-%s", cr.Name)}, &orphanedClusterRole)
+			if err != nil {
+				logger.WithContext(ctx).Error(err, "failed to check legacy ClusterRole", "vmagent", cr.Name, "namespace", cr.Namespace)
+			}
+			if orphanedClusterRole.Name != "" {
+				finalize.RemoveFinalizer(ctx, rclient, &orphanedClusterRole)
+				err = rclient.Delete(ctx, &orphanedClusterRole)
+				if err != nil {
+					logger.WithContext(ctx).Error(err, "failed to cleanup legacy ClusterRole", "vmagent", cr.Name, "namespace", cr.Namespace)
+				}
+			}
+
 			return rclient.Create(ctx, clusterRole)
 		}
 		return fmt.Errorf("cannot get exist cluster role for vmagent: %w", err)
@@ -172,8 +186,22 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	clusterRoleBinding := buildVMAgentClusterRoleBinding(cr)
 	var existsClusterRoleBinding rbacv1.ClusterRoleBinding
 
-	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRoleBinding.Name, Namespace: cr.Namespace}, &existsClusterRoleBinding); err != nil {
+	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRoleBinding.Name}, &existsClusterRoleBinding); err != nil {
 		if errors.IsNotFound(err) {
+			// check for possible legacy ClusterRoleBinding and clean it, see https://github.com/VictoriaMetrics/operator/pull/1176
+			var orphanedClusterRoleBinding rbacv1.ClusterRoleBinding
+			err = rclient.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("monitoring:vmagent-cluster-access-%s", cr.Name)}, &orphanedClusterRoleBinding)
+			if err != nil {
+				logger.WithContext(ctx).Error(err, "failed to check legacy ClusterRoleBinding", "vmagent", cr.Name, "namespace", cr.Namespace)
+			}
+			if orphanedClusterRoleBinding.Name != "" {
+				finalize.RemoveFinalizer(ctx, rclient, &orphanedClusterRoleBinding)
+				err = rclient.Delete(ctx, &orphanedClusterRoleBinding)
+				if err != nil {
+					logger.WithContext(ctx).Error(err, "failed to cleanup legacy ClusterRoleBinding", "vmagent", cr.Name, "namespace", cr.Namespace)
+				}
+			}
+
 			return rclient.Create(ctx, clusterRoleBinding)
 		}
 		return fmt.Errorf("cannot get clusterRoleBinding for vmagent: %w", err)

@@ -13,8 +13,6 @@ aliases:
 
 ## tip
 
-- **Update note 1: the default ClusterRole and ClusterRoleBinding names change to `monitoring:<vmagent-namespace>:vmagent-cluster-access-<vmagentName>` when `vmagentSpec.ServiceAccountName` is null, the old `monitoring:vmagent-cluster-access-<vmagentName>` ClusterRole and ClusterRoleBinding need to be cleared manually.**
-
 - [alerts]: added cluster label for multicluster alerts.
 - [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): change the default ClusterRole and ClusterRoleBinding name to avoid resource collisions when `vmagentSpec.ServiceAccountName` is null. See [this issue](https://github.com/VictoriaMetrics/operator/issues/891).
 - [vmoperator](https://docs.victoriametrics.com/operator/): bump default version of VictoriaMetrics components to [1.107.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.107.0).

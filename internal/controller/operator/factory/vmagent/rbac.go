@@ -204,11 +204,13 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 func buildVMAgentClusterRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetClusterRoleName(),
-			Namespace:       cr.GetNamespace(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
+			Name:        cr.GetClusterRoleName(),
+			Namespace:   cr.GetNamespace(),
+			Labels:      cr.AllLabels(),
+			Annotations: cr.AnnotationsFiltered(),
+			Finalizers:  []string{vmv1beta1.FinalizerName},
+			// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
+			// use crd instead
 			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Subjects: []rbacv1.Subject{
@@ -229,11 +231,13 @@ func buildVMAgentClusterRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBi
 func buildVMAgentClusterRole(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetClusterRoleName(),
-			Namespace:       cr.GetNamespace(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
+			Name:        cr.GetClusterRoleName(),
+			Namespace:   cr.GetNamespace(),
+			Labels:      cr.AllLabels(),
+			Annotations: cr.AnnotationsFiltered(),
+			Finalizers:  []string{vmv1beta1.FinalizerName},
+			// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
+			// use crd instead
 			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Rules: clusterWidePolicyRules,

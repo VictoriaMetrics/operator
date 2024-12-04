@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -92,17 +90,24 @@ func (cr *VMSingle) HasAnyStreamAggrRule() bool {
 	return cr.Spec.StreamAggrConfig.HasAnyRule()
 }
 
+func (cr *VMSingle) setLastMetadata(lam LastAppliedMetadata) {
+	cr.ParsedLastAppliedMetadata = lam
+}
+
+func (cr *VMSingle) setLastSpec(prevSpec VMSingleSpec) {
+	cr.ParsedLastAppliedSpec = &prevSpec
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMSingle) UnmarshalJSON(src []byte) error {
 	type pcr VMSingle
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	prev, err := parseLastAppliedSpec[VMSingleSpec](cr)
-	if err != nil {
+	if err := parseLastAppliedState(cr); err != nil {
 		return err
 	}
-	cr.ParsedLastAppliedSpec = prev
+
 	return nil
 }
 
@@ -149,8 +154,11 @@ type VMSingle struct {
 
 	Spec VMSingleSpec `json:"spec,omitempty"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMSingleSpec  `json:"-" yaml:"-"`
-	Status                VMSingleStatus `json:"status,omitempty"`
+	ParsedLastAppliedSpec *VMSingleSpec `json:"-" yaml:"-"`
+	//ParsedLastAppliedMetadata contains last-applied cr.metadata fields
+	ParsedLastAppliedMetadata LastAppliedMetadata `json:"-" yaml:"-"`
+
+	Status VMSingleStatus `json:"status,omitempty"`
 }
 
 func (cr *VMSingle) Probe() *EmbeddedProbes {
@@ -296,26 +304,12 @@ func (cr *VMSingle) AsCRDOwner() []metav1.OwnerReference {
 
 // LastAppliedSpecAsPatch return last applied single spec as patch annotation
 func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
-	data, err := json.Marshal(cr.Spec)
-	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json :%w", err)
-	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q}}}`, lastAppliedSpecAnnotationName, data)
-	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares single spec with last applied single spec stored in annotation
 func (cr *VMSingle) HasSpecChanges() (bool, error) {
-	lastAppliedSingleJSON := cr.Annotations[lastAppliedSpecAnnotationName]
-	if len(lastAppliedSingleJSON) == 0 {
-		return true, nil
-	}
-
-	instanceSpecData, err := json.Marshal(cr.Spec)
-	if err != nil {
-		return false, err
-	}
-	return !bytes.Equal([]byte(lastAppliedSingleJSON), instanceSpecData), nil
+	return hasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VMSingle) Paused() bool {

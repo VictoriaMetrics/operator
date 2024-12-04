@@ -313,23 +313,22 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 
 		return result, err
 	}
-
-	if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusOperational, nil); err != nil {
-		resultErr = fmt.Errorf("failed to update object status: %w", err)
-		return
-	}
 	if specChanged {
-
 		// use patch instead of update, only 1 field must be changed.
 		if err := c.Patch(ctx, object, diffPatch); err != nil {
 			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
 			return
 		}
+
 		if err := createGenericEventForObject(ctx, c, object, "reconcile of object finished successfully"); err != nil {
 			logger.WithContext(ctx).Error(err, " cannot create k8s api event")
 		}
 		logger.WithContext(ctx).Info("object was successfully reconciled")
 
+	}
+	if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusOperational, nil); err != nil {
+		resultErr = fmt.Errorf("failed to update object status: %w", err)
+		return
 	}
 
 	return result, nil

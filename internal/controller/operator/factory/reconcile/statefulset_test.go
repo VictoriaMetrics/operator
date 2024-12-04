@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
+
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_waitForPodReady(t *testing.T) {

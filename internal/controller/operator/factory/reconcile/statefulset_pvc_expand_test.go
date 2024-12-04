@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -14,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_reCreateSTS(t *testing.T) {

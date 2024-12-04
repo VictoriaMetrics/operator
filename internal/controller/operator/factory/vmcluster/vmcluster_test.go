@@ -469,7 +469,7 @@ func TestCreatOrUpdateClusterServices(t *testing.T) {
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(cr)
 
-		var builderF func(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) (*corev1.Service, error)
+		var builderF func(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) (*corev1.Service, error)
 		switch component {
 		case "insert":
 			builderF = createOrUpdateVMInsertService
@@ -481,7 +481,7 @@ func TestCreatOrUpdateClusterServices(t *testing.T) {
 		default:
 			t.Fatalf("BUG not expected component for test: %q", component)
 		}
-		svc, err := builderF(ctx, cr, fclient)
+		svc, err := builderF(ctx, fclient, cr, nil)
 		if err != nil {
 			t.Fatalf("not expected error= %q", err)
 		}

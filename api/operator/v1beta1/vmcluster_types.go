@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -98,17 +96,23 @@ func (cr VMCluster) GetVMAuthLBName() string {
 	return fmt.Sprintf("vmclusterlb-%s", cr.Name)
 }
 
+func (cr *VMCluster) setLastMetadata(lam LastAppliedMetadata) {
+	cr.ParsedLastAppliedMetadata = lam
+}
+
+func (cr *VMCluster) setLastSpec(prevSpec VMClusterSpec) {
+	cr.ParsedLastAppliedSpec = &prevSpec
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMCluster) UnmarshalJSON(src []byte) error {
 	type pcr VMCluster
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	prev, err := parseLastAppliedSpec[VMClusterSpec](cr)
-	if err != nil {
+	if err := parseLastAppliedState(cr); err != nil {
 		return err
 	}
-	cr.ParsedLastAppliedSpec = prev
 	return nil
 }
 
@@ -147,6 +151,9 @@ type VMCluster struct {
 	Spec              VMClusterSpec `json:"spec"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
 	ParsedLastAppliedSpec *VMClusterSpec `json:"-" yaml:"-"`
+	//ParsedLastAppliedMetadata contains last-applied cr.metadata fields
+	ParsedLastAppliedMetadata LastAppliedMetadata `json:"-" yaml:"-"`
+
 	// +optional
 	Status VMClusterStatus `json:"status,omitempty"`
 }
@@ -679,26 +686,12 @@ func (cr VMCluster) AnnotationsFiltered() map[string]string {
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
-	data, err := json.Marshal(cr.Spec)
-	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize cluster specification as json :%w", err)
-	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q}}}`, lastAppliedSpecAnnotationName, data)
-	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares cluster spec with last applied cluster spec stored in annotation
 func (cr *VMCluster) HasSpecChanges() (bool, error) {
-	lastAppliedClusterJSON := cr.Annotations[lastAppliedSpecAnnotationName]
-	if len(lastAppliedClusterJSON) == 0 {
-		return true, nil
-	}
-
-	instanceSpecData, err := json.Marshal(cr.Spec)
-	if err != nil {
-		return true, err
-	}
-	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
+	return hasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VMCluster) Paused() bool {

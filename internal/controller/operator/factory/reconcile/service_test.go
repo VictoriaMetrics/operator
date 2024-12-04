@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_reconcileServiceForCRD(t *testing.T) {

@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,7 +25,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -130,6 +128,8 @@ type VLogs struct {
 	Spec VLogsSpec `json:"spec,omitempty"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
 	ParsedLastAppliedSpec *VLogsSpec `json:"-" yaml:"-"`
+	//ParsedLastAppliedMetadata contains last-applied cr.metadata fields
+	ParsedLastAppliedMetadata LastAppliedMetadata `json:"-" yaml:"-"`
 
 	Status VLogsStatus `json:"status,omitempty"`
 }
@@ -166,17 +166,24 @@ func (r *VLogs) AsOwner() []metav1.OwnerReference {
 	}
 }
 
+func (cr *VLogs) setLastMetadata(lam LastAppliedMetadata) {
+	cr.ParsedLastAppliedMetadata = lam
+}
+
+func (cr *VLogs) setLastSpec(prevSpec VLogsSpec) {
+	cr.ParsedLastAppliedSpec = &prevSpec
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VLogs) UnmarshalJSON(src []byte) error {
 	type pcr VLogs
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	prev, err := parseLastAppliedSpec[VLogsSpec](cr)
-	if err != nil {
+	if err := parseLastAppliedState(cr); err != nil {
 		return err
 	}
-	cr.ParsedLastAppliedSpec = prev
+
 	return nil
 }
 
@@ -293,25 +300,12 @@ func (r *VLogs) AsURL() string {
 
 // LastAppliedSpecAsPatch return last applied vlogs spec as patch annotation
 func (r *VLogs) LastAppliedSpecAsPatch() (client.Patch, error) {
-	data, err := json.Marshal(r.Spec)
-	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize vlogs specification as json :%w", err)
-	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
-	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+	return lastAppliedChangesAsPatch(r.ObjectMeta, r.Spec)
 }
 
 // HasSpecChanges compares vlogs spec with last applied vlogs spec stored in annotation
 func (r *VLogs) HasSpecChanges() (bool, error) {
-	lastAppliedLogsJSON := r.Annotations[lastAppliedSpecAnnotationName]
-	if len(lastAppliedLogsJSON) == 0 {
-		return true, nil
-	}
-	instanceSpecData, err := json.Marshal(r.Spec)
-	if err != nil {
-		return true, err
-	}
-	return !bytes.Equal([]byte(lastAppliedLogsJSON), instanceSpecData), nil
+	return hasStateChanges(r.ObjectMeta, r.Spec)
 }
 
 func (r *VLogs) Paused() bool {

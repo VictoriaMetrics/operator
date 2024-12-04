@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -49,8 +50,9 @@ const (
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
-	PVCExpandableLabel            = "operator.victoriametrics.com/pvc-allow-volume-expansion"
-	lastAppliedSpecAnnotationName = "operator.victoriametrics/last-applied-spec"
+	PVCExpandableLabel                = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+	lastAppliedSpecAnnotationName     = "operator.victoriametrics/last-applied-spec"
+	lastAppliedMetadataAnnotationName = "operator.victoriametrics/last-applied-metadata"
 )
 
 const (
@@ -67,7 +69,7 @@ var SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.co
 var (
 	labelFilterPrefixes []string
 	// default ignored annotations
-	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/", "operator.victoriametrics/last-applied-spec"}
+	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/", "operator.victoriametrics/"}
 )
 
 // SetLabelAndAnnotationPrefixes configures global filtering for child labels and annotations
@@ -1031,16 +1033,83 @@ type ScrapeObjectStatus struct {
 	CurrentSyncError string `json:"-"`
 }
 
-func parseLastAppliedSpec[T any](cr client.Object) (*T, error) {
-	var prevSpec T
-	lastAppliedClusterJSON := cr.GetAnnotations()[lastAppliedSpecAnnotationName]
-	if len(lastAppliedClusterJSON) == 0 {
-		return nil, nil
+// LastAppliedMetadata defines well-known object metadata fields
+// since last reconcile apply loop
+// it's needed to properly track labels and annotations changes
+// for child objects
+type LastAppliedMetadata struct {
+	Annotations map[string]string `json:"annotations,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+}
+
+type objectWithLastAppliedState[T, ST any] interface {
+	GetAnnotations() map[string]string
+	setLastSpec(ST)
+	setLastMetadata(LastAppliedMetadata)
+}
+
+func parseLastAppliedState[T objectWithLastAppliedState[T, ST], ST any](cr T) error {
+	lastAppliedSpecJSON := cr.GetAnnotations()[lastAppliedSpecAnnotationName]
+	if len(lastAppliedSpecJSON) == 0 {
+		return nil
 	}
-	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevSpec); err != nil {
-		return nil, fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", lastAppliedSpecAnnotationName, err)
+	var dst ST
+	if err := json.Unmarshal([]byte(lastAppliedSpecJSON), &dst); err != nil {
+		return fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", lastAppliedSpecAnnotationName, err)
 	}
-	return &prevSpec, nil
+	cr.setLastSpec(dst)
+	var lam LastAppliedMetadata
+	lastAppliedJSON := cr.GetAnnotations()[lastAppliedMetadataAnnotationName]
+	if len(lastAppliedJSON) == 0 {
+		return nil
+	}
+	if err := json.Unmarshal([]byte(lastAppliedJSON), &lam); err != nil {
+		return fmt.Errorf("cannot parse last applied metadata annotation=%q, remove this annotation manually from object : %w", lastAppliedMetadataAnnotationName, err)
+	}
+	cr.setLastMetadata(lam)
+	return nil
+}
+
+// HasSpecChanges compares single spec with last applied single spec stored in annotation
+func hasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
+	labels, annotations := crMeta.GetLabels(), crMeta.GetAnnotations()
+	lastAppliedSpecJSON := annotations[lastAppliedSpecAnnotationName]
+	lastAppliedMetaJSON := annotations[lastAppliedMetadataAnnotationName]
+	if len(lastAppliedSpecJSON) == 0 || len(lastAppliedMetaJSON) == 0 {
+		return true, nil
+	}
+	mt := LastAppliedMetadata{Labels: filterMapKeysByPrefixes(labels, labelFilterPrefixes), Annotations: filterMapKeysByPrefixes(annotations, annotationFilterPrefixes)}
+	md, err := json.Marshal(mt)
+	if err != nil {
+		return false, err
+	}
+	if !bytes.Equal(md, []byte(lastAppliedMetaJSON)) {
+		return true, nil
+	}
+	instanceSpecData, err := json.Marshal(spec)
+	if err != nil {
+		return false, err
+	}
+	if !bytes.Equal([]byte(lastAppliedSpecJSON), instanceSpecData) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func lastAppliedChangesAsPatch(crMeta metav1.ObjectMeta, spec any) (client.Patch, error) {
+	data, err := json.Marshal(spec)
+	if err != nil {
+		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json :%w", err)
+	}
+	lam := LastAppliedMetadata{
+		Labels:      filterMapKeysByPrefixes(crMeta.Labels, labelFilterPrefixes),
+		Annotations: filterMapKeysByPrefixes(crMeta.Annotations, annotationFilterPrefixes),
+	}
+	dlam, err := json.Marshal(lam)
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q, %q: %q}}}`, lastAppliedSpecAnnotationName, data, lastAppliedMetadataAnnotationName, dlam)
+	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+
 }
 
 // CommonDefaultableParams contains Application settings

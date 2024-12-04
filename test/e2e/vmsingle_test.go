@@ -230,7 +230,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 					}),
 			)
 
-			existSingle := &vmv1beta1.VMSingle{
+			baseSingle := &vmv1beta1.VMSingle{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 				},
@@ -242,55 +242,125 @@ var _ = Describe("test  vmsingle Controller", func() {
 					},
 				},
 			}
+			type testStep struct {
+				setup  func(*vmv1beta1.VMSingle)
+				modify func(*vmv1beta1.VMSingle)
+				verify func(*vmv1beta1.VMSingle)
+			}
+
 			DescribeTable("should update exist vmsingle",
-				func(name string, modify func(*vmv1beta1.VMSingle), verify func(*vmv1beta1.VMSingle)) {
-					// create and wait ready
-					existSingle := existSingle.DeepCopy()
-					existSingle.Name = name
+				func(name string, initCR *vmv1beta1.VMSingle, steps ...testStep) {
+					initCR.Name = name
+					initCR.Namespace = namespace
 					namespacedName.Name = name
-					Expect(k8sClient.Create(ctx, existSingle)).To(Succeed())
+					// setup test
+					Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, namespacedName)
-					}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
-					// update and wait ready
-					Eventually(func() error {
-						var toUpdate vmv1beta1.VMSingle
-						Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
-						modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).Should(Succeed())
-					Eventually(func() error {
-						return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, namespacedName)
-					}, eventualExpandingTimeout).Should(Succeed())
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, namespacedName)
-					}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
-					// verify
-					var updated vmv1beta1.VMSingle
-					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
-					verify(&updated)
+					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+
+					for _, step := range steps {
+						if step.setup != nil {
+							step.setup(initCR)
+						}
+						// perform update
+						Eventually(func() error {
+							var toUpdate vmv1beta1.VMSingle
+							Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+							step.modify(&toUpdate)
+							return k8sClient.Update(ctx, &toUpdate)
+						}, eventualExpandingTimeout).Should(Succeed())
+						Eventually(func() error {
+							return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, namespacedName)
+						}, eventualExpandingTimeout).Should(Succeed())
+
+						Eventually(func() error {
+							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, namespacedName)
+						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+
+						var updated vmv1beta1.VMSingle
+						Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+
+						// verify results
+						step.verify(&updated)
+					}
 				},
 				Entry("add backup app", "add-backup",
-					func(cr *vmv1beta1.VMSingle) {
-						cr.Spec.Volumes = []corev1.Volume{
-							{Name: "backup", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
-						}
-						cr.Spec.VMBackup = &vmv1beta1.VMBackup{
-							AcceptEULA:   true,
-							Destination:  "fs:///opt/backup",
-							VolumeMounts: []corev1.VolumeMount{{Name: "backup", MountPath: "/opt/backup"}},
-						}
-					},
-					func(cr *vmv1beta1.VMSingle) {
-						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx,
-							types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &createdDeploy)).
-							To(Succeed())
-						Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(2))
-						Expect(createdDeploy.Spec.Template.Spec.Containers[1].VolumeMounts).To(HaveLen(2))
+					baseSingle.DeepCopy(),
+					testStep{
+						modify: func(cr *vmv1beta1.VMSingle) {
+							cr.Spec.Volumes = []corev1.Volume{
+								{Name: "backup", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+							}
+							cr.Spec.VMBackup = &vmv1beta1.VMBackup{
+								AcceptEULA:   true,
+								Destination:  "fs:///opt/backup",
+								VolumeMounts: []corev1.VolumeMount{{Name: "backup", MountPath: "/opt/backup"}},
+							}
+						},
+						verify: func(cr *vmv1beta1.VMSingle) {
+							var createdDeploy appsv1.Deployment
+							Expect(k8sClient.Get(ctx,
+								types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &createdDeploy)).
+								To(Succeed())
+							Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(2))
+							Expect(createdDeploy.Spec.Template.Spec.Containers[1].VolumeMounts).To(HaveLen(2))
+
+						},
 					}),
+				Entry("add and remove annotations", "manage-annotations",
+					baseSingle.DeepCopy(),
+					testStep{
+						modify: func(cr *vmv1beta1.VMSingle) {
+							cr.Annotations["added-annotation"] = "some-value"
+							println("added")
+						},
+						verify: func(cr *vmv1beta1.VMSingle) {
+							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+
+							expectedAnnotations := map[string]string{"added-annotation": "some-value"}
+							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
+							var createdDeploy appsv1.Deployment
+							Expect(k8sClient.Get(ctx, nss, &createdDeploy)).
+								To(Succeed())
+						},
+					},
+					testStep{
+						modify: func(cr *vmv1beta1.VMSingle) {
+							delete(cr.Annotations, "added-annotation")
+						},
+						verify: func(cr *vmv1beta1.VMSingle) {
+							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+							expectedAnnotations := map[string]string{"added-annotation": ""}
+
+							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
+
+						},
+					},
+				),
 			)
 		},
 		)
 	})
 })
+
+func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, annotations map[string]string) {
+	for idx, obj := range objects {
+		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
+		gotAnnotations := obj.GetAnnotations()
+		for k, v := range gotAnnotations {
+			println("got kv ", k, v)
+		}
+		for k, v := range annotations {
+			gv, ok := gotAnnotations[k]
+			if v == "" {
+				Expect(ok).NotTo(BeTrue(), "annotation key=%s must not exist for object at idx=%d", k, idx)
+			} else {
+				Expect(ok).To(BeTrue(), "annotation key=%s must present for object at idx=%d", k, idx)
+				Expect(gv).To(Equal(v), "annotation key=%s must equal for object at idx=%d", k, idx)
+
+			}
+
+		}
+	}
+}

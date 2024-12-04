@@ -75,7 +75,7 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 	return statefulset, nil
 }
 
-func createOrUpdateAlertManagerService(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) (*corev1.Service, error) {
 	port, err := strconv.ParseInt(cr.Port(), 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
@@ -99,10 +99,8 @@ func createOrUpdateAlertManagerService(ctx context.Context, cr *vmv1beta1.VMAler
 		)
 	})
 	var prevService *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
-		prevPort, err := strconv.ParseInt(cr.Port(), 10, 32)
+	if prevCR != nil {
+		prevPort, err := strconv.ParseInt(prevCR.Port(), 10, 32)
 		if err != nil {
 			return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
 		}
@@ -131,6 +129,7 @@ func createOrUpdateAlertManagerService(ctx context.Context, cr *vmv1beta1.VMAler
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
 		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
+			// TODO: @f41gh7 check prevCR
 			return fmt.Errorf("cannot reconcile additional service for vmalertmanager: %w", err)
 		}
 		return nil
@@ -524,7 +523,12 @@ func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient c
 		newAMSecretConfig.Data[assetKey] = []byte(assetValue)
 	}
 
-	return reconcile.Secret(ctx, rclient, newAMSecretConfig)
+	prevSecretMeta := &metav1.ObjectMeta{
+		Labels:      cr.ParsedLastAppliedMetadata.Labels,
+		Annotations: cr.ParsedLastAppliedMetadata.Annotations,
+	}
+
+	return reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta)
 }
 
 func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {

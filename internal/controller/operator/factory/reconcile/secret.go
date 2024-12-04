@@ -3,38 +3,45 @@ package reconcile
 import (
 	"context"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // Secret reconciles secret object
-func Secret(ctx context.Context, rclient client.Client, s *corev1.Secret) error {
-	var curSecret corev1.Secret
+func Secret(ctx context.Context, rclient client.Client, newS *corev1.Secret, prevMeta *metav1.ObjectMeta) error {
+	var currentS corev1.Secret
 
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, &curSecret); err != nil {
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newS.Namespace, Name: newS.Name}, &currentS); err != nil {
 		if errors.IsNotFound(err) {
 			logger.WithContext(ctx).Info("creating new configuration secret")
-			return rclient.Create(ctx, s)
+			return rclient.Create(ctx, newS)
 		}
 		return err
 	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &curSecret); err != nil {
+	if err := finalize.FreeIfNeeded(ctx, rclient, &currentS); err != nil {
 		return err
 	}
-	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
-	s.ResourceVersion = curSecret.ResourceVersion
-	// fast path
-	if equality.Semantic.DeepEqual(s.Data, curSecret.Data) &&
-		equality.Semantic.DeepEqual(s.Labels, curSecret.Labels) &&
-		equality.Semantic.DeepEqual(s.Annotations, curSecret.Annotations) {
+	var prevAnnotations map[string]string
+	if prevMeta != nil {
+		prevAnnotations = prevMeta.Annotations
+	}
+
+	if equality.Semantic.DeepEqual(newS.Data, currentS.Data) &&
+		equality.Semantic.DeepEqual(newS.Labels, currentS.Labels) &&
+		isAnnotationsEqual(currentS.Annotations, newS.Annotations, prevAnnotations) {
 		return nil
 	}
 	logger.WithContext(ctx).Info("updating configuration secret")
-	return rclient.Update(ctx, s)
+
+	newS.Annotations = mergeAnnotations(currentS.Annotations, newS.Annotations, prevAnnotations)
+	newS.ResourceVersion = currentS.ResourceVersion
+
+	return rclient.Update(ctx, newS)
 }

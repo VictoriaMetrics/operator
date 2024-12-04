@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -17,6 +14,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // Deployment performs an update or create operator for deployment and waits until it's replicas is ready
@@ -46,22 +47,25 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 		if hasHPA {
 			newDeploy.Spec.Replicas = currentDeploy.Spec.Replicas
 		}
-		newDeploy.Spec.Template.Annotations = labels.Merge(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations)
 		newDeploy.Status = currentDeploy.Status
-		newDeploy.Annotations = labels.Merge(currentDeploy.Annotations, newDeploy.Annotations)
-		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
-
+		var prevAnnotations map[string]string
+		if prevDeploy != nil {
+			prevAnnotations = prevDeploy.Annotations
+		}
 		isEqual := equality.Semantic.DeepDerivative(newDeploy.Spec, currentDeploy.Spec)
 		if isEqual &&
 			isPrevEqual &&
 			equality.Semantic.DeepEqual(newDeploy.Labels, currentDeploy.Labels) &&
-			equality.Semantic.DeepEqual(newDeploy.Annotations, currentDeploy.Annotations) {
+			isAnnotationsEqual(currentDeploy.Annotations, newDeploy.Annotations, prevAnnotations) {
 			return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 		}
 		logger.WithContext(ctx).Info("updating deployment configuration",
 			"is_prev_equal", isPrevEqual, "is_current_equal", isEqual,
 			"is_prev_nil", prevDeploy == nil)
 
+		newDeploy.Annotations = mergeAnnotations(currentDeploy.Annotations, newDeploy.Annotations, prevAnnotations)
+
+		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
 		if err := rclient.Update(ctx, newDeploy); err != nil {
 			return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)
 		}

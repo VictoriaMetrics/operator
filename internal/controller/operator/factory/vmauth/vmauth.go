@@ -41,8 +41,19 @@ const (
 // CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
 func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
 
+	var prevCR *vmv1beta1.VMAuth
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
+		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
 	if cr.IsOwnsServiceAccount() {
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+		var prevSA *corev1.ServiceAccount
+		if prevCR != nil {
+			prevSA = build.ServiceAccount(prevCR)
+		}
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if ptr.Deref(cr.Spec.UseVMConfigReloader, false) {
@@ -64,19 +75,21 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 		}
 	}
 
-	if err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr); err != nil {
+	if err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget)); err != nil {
+		var prevPDB *policyv1.PodDisruptionBudget
+		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
+			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
+		}
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
 		}
 	}
 	var prevDeploy *appsv1.Deployment
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil {
 		prevDeploy, err = newDeployForVMAuth(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -90,7 +103,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth deployment: %w", err)
 	}
-	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 	return nil
@@ -306,12 +319,18 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 }
 
 // CreateOrUpdateVMAuthConfig configuration secret for vmauth.
-func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
+func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
 	// fast path
 	if cr.Spec.ExternalConfig.SecretRef != nil || cr.Spec.ExternalConfig.LocalPath != "" {
 		return nil
 	}
-	s := makeVMAuthConfigSecret(cr)
+	s := &corev1.Secret{
+		ObjectMeta: buildConfigSecretMeta(cr),
+		Data: map[string][]byte{
+			vmAuthConfigNameGz: {},
+		},
+	}
+	//makeVMAuthConfigSecret(cr)
 
 	// name of tls object and it's value
 	// e.g. namespace_secret_name_secret_key
@@ -329,26 +348,24 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 		return fmt.Errorf("cannot gzip config for vmagent: %w", err)
 	}
 	s.Data[vmAuthConfigNameGz] = buf.Bytes()
-
-	return reconcile.Secret(ctx, rclient, s)
+	var prevSecretMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevSecretMeta = ptr.To(buildConfigSecretMeta(prevCR))
+	}
+	return reconcile.Secret(ctx, rclient, s, prevSecretMeta)
 }
 
-func makeVMAuthConfigSecret(cr *vmv1beta1.VMAuth) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   cr.ConfigSecretName(),
-			Labels: cr.AllLabels(),
-			Annotations: map[string]string{
-				"generated": "true",
-			},
-			Namespace:       cr.Namespace,
-			OwnerReferences: cr.AsOwner(),
-			Finalizers: []string{
-				vmv1beta1.FinalizerName,
-			},
+func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:   cr.ConfigSecretName(),
+		Labels: cr.AllLabels(),
+		Annotations: map[string]string{
+			"generated": "true",
 		},
-		Data: map[string][]byte{
-			vmAuthConfigNameGz: {},
+		Namespace:       cr.Namespace,
+		OwnerReferences: cr.AsOwner(),
+		Finalizers: []string{
+			vmv1beta1.FinalizerName,
 		},
 	}
 }
@@ -576,12 +593,11 @@ func createOrUpdateVMAuthService(ctx context.Context, cr *vmv1beta1.VMAuth, rcli
 	return newService, nil
 }
 
-func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
-	if cr.ParsedLastAppliedSpec == nil {
+func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
+	if prevCR == nil {
 		return nil
 	}
-	prevCR := cr.DeepCopy()
-	prevCR.Spec = *cr.ParsedLastAppliedSpec
+
 	prevSvc, currSvc := prevCR.Spec.ServiceSpec, cr.Spec.ServiceSpec
 	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
 		return fmt.Errorf("cannot remove additional service: %w", err)

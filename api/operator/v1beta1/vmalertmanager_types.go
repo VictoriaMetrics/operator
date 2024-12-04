@@ -1,20 +1,17 @@
 package v1beta1
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"path"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
@@ -39,6 +36,8 @@ type VMAlertmanager struct {
 	Spec VMAlertmanagerSpec `json:"spec"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
 	ParsedLastAppliedSpec *VMAlertmanagerSpec `json:"-" yaml:"-"`
+	//ParsedLastAppliedMetadata contains last-applied cr.metadata fields
+	ParsedLastAppliedMetadata LastAppliedMetadata `json:"-" yaml:"-"`
 
 	// Most recent observed status of the VMAlertmanager cluster.
 	// Operator API itself. More info:
@@ -200,17 +199,24 @@ type VMAlertmanagerSpec struct {
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
+func (cr *VMAlertmanager) setLastMetadata(lam LastAppliedMetadata) {
+	cr.ParsedLastAppliedMetadata = lam
+}
+
+func (cr *VMAlertmanager) setLastSpec(prevSpec VMAlertmanagerSpec) {
+	cr.ParsedLastAppliedSpec = &prevSpec
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAlertmanager) UnmarshalJSON(src []byte) error {
 	type pcr VMAlertmanager
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	prev, err := parseLastAppliedSpec[VMAlertmanagerSpec](cr)
-	if err != nil {
+	if err := parseLastAppliedState(cr); err != nil {
 		return err
 	}
-	cr.ParsedLastAppliedSpec = prev
+
 	return nil
 }
 
@@ -448,26 +454,12 @@ func (cr *VMAlertmanager) IsUnmanaged() bool {
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VMAlertmanager) LastAppliedSpecAsPatch() (client.Patch, error) {
-	data, err := json.Marshal(cr.Spec)
-	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize specification as json :%w", err)
-	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
-	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
 func (cr *VMAlertmanager) HasSpecChanges() (bool, error) {
-	lastAppliedClusterJSON := cr.Annotations[lastAppliedSpecAnnotationName]
-	if len(lastAppliedClusterJSON) == 0 {
-		return true, nil
-	}
-
-	instanceSpecData, err := json.Marshal(cr.Spec)
-	if err != nil {
-		return false, err
-	}
-	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
+	return hasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VMAlertmanager) Paused() bool {

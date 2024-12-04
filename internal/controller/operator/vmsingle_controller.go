@@ -90,10 +90,6 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	r.Client.Scheme().Default(instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
-		if err := vmsingle.CreateOrUpdateVMSingleStreamAggrConfig(ctx, instance, r); err != nil {
-			return result, fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
-		}
-
 		if err = vmsingle.CreateOrUpdateVMSingle(ctx, instance, r); err != nil {
 			return result, fmt.Errorf("failed create or update single: %w", err)
 		}

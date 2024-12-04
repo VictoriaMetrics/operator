@@ -12,6 +12,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,12 +27,15 @@ const (
 	vlogsDataVolumeName = "data"
 )
 
-// CreateVLogsStorage creates persistent volume for vlogs
-func CreateVLogsStorage(ctx context.Context, r *vmv1beta1.VLogs, rclient client.Client) error {
+func createVLogsStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VLogs) error {
 	l := logger.WithContext(ctx).WithValues("pvc_for", "vlogs")
 	ctx = logger.AddToContext(ctx, l)
-	newPvc := makeVLogsPvc(r)
-	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc)
+	newPvc := makeVLogsPvc(cr)
+	var prevPVC *corev1.PersistentVolumeClaim
+	if prevCR != nil && prevCR.Spec.Storage != nil {
+		prevPVC = makeVLogsPvc(prevCR)
+	}
+	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC)
 }
 
 func makeVLogsPvc(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
@@ -56,41 +60,55 @@ func makeVLogsPvc(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 }
 
 // CreateOrUpdateVLogs performs an update for vlogs resource
-func CreateOrUpdateVLogs(ctx context.Context, r *vmv1beta1.VLogs, rclient client.Client) error {
+func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VLogs) error {
 
-	if err := deletePrevStateResources(ctx, r, rclient); err != nil {
+	var prevCR *vmv1beta1.VLogs
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
+		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
+	}
+	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
 		return err
 	}
-	if r.IsOwnsServiceAccount() {
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(r)); err != nil {
+	if cr.Spec.Storage != nil && cr.Spec.StorageDataPath == "" {
+		if err := createVLogsStorage(ctx, rclient, cr, prevCR); err != nil {
+			return err
+		}
+	}
+
+	if cr.IsOwnsServiceAccount() {
+		var prevSA *corev1.ServiceAccount
+		if prevCR != nil {
+			prevSA = build.ServiceAccount(prevCR)
+		}
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
 
-	svc, err := CreateOrUpdateVLogsService(ctx, r, rclient)
+	svc, err := createOrUpdateVLogsService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
 
-	if !ptr.Deref(r.Spec.DisableSelfServiceScrape, false) {
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, r))
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
 		if err != nil {
 			return fmt.Errorf("cannot create serviceScrape for vlogs: %w", err)
 		}
 	}
 
 	var prevDeploy *appsv1.Deployment
-
-	if r.ParsedLastAppliedSpec != nil {
-		prevCR := r.DeepCopy()
-		prevCR.Spec = *r.ParsedLastAppliedSpec
+	if prevCR != nil {
 		prevDeploy, err = newDeployForVLogs(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
 
-	newDeploy, err := newDeployForVLogs(r)
+	newDeploy, err := newDeployForVLogs(cr)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vlogs: %w", err)
 	}
@@ -273,15 +291,16 @@ func makeSpecForVLogs(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 	return vlogsSpec, nil
 }
 
-// CreateOrUpdateVLogsService creates service for vlogs
-func CreateOrUpdateVLogsService(ctx context.Context, r *vmv1beta1.VLogs, rclient client.Client) (*corev1.Service, error) {
-	newService := build.Service(r, r.Spec.Port, nil)
+// createOrUpdateVLogsService creates service for vlogs
+func createOrUpdateVLogsService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VLogs) (*corev1.Service, error) {
+	newService := build.Service(cr, cr.Spec.Port, nil)
 
-	if err := r.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vlogs additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
 		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
+			// TODO: f41gh7 add prevCR
 			return fmt.Errorf("cannot reconcile additional service for vlogs: %w", err)
 		}
 		return nil
@@ -289,9 +308,7 @@ func CreateOrUpdateVLogsService(ctx context.Context, r *vmv1beta1.VLogs, rclient
 		return nil, err
 	}
 	var prevService *corev1.Service
-	if r.ParsedLastAppliedSpec != nil {
-		prevCR := r.DeepCopy()
-		prevCR.Spec = *r.ParsedLastAppliedSpec
+	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
 	}
 

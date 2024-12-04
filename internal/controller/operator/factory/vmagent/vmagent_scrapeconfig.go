@@ -13,19 +13,21 @@ import (
 	"strings"
 
 	"github.com/VictoriaMetrics/metricsql"
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 var vmagentSecretFetchErrsTotal prometheus.Counter
@@ -60,13 +62,20 @@ type scrapeObjects struct {
 
 // CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
-	if _, err := createOrUpdateConfigurationSecret(ctx, cr, rclient); err != nil {
+	var prevCR *vmv1beta1.VMAgent
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
+		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+	if _, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*scrapesSecretsCache, error) {
+func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*scrapesSecretsCache, error) {
 	if cr.Spec.IngestOnlyMode {
 		return nil, nil
 	}
@@ -113,7 +122,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgen
 		return nil, fmt.Errorf("cannot load scrape target secrets: %w", err)
 	}
 
-	if err := createOrUpdateTLSAssets(ctx, cr, rclient, ssCache.tlsAssets); err != nil {
+	if err := createOrUpdateTLSAssets(ctx, rclient, cr, prevCR, ssCache.tlsAssets); err != nil {
 		return nil, fmt.Errorf("cannot create tls assets secret for vmagent: %w", err)
 	}
 
@@ -147,7 +156,11 @@ func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgen
 	s.Data[vmagentGzippedFilename] = buf.Bytes()
 	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmagent promscrape config"))
 
-	if err := reconcile.Secret(ctx, rclient, s); err != nil {
+	var prevSecretMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevSecretMeta = ptr.To(buildConfigMeta(prevCR))
+	}
+	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta); err != nil {
 		return nil, fmt.Errorf("cannot reconcile vmagent config secret: %w", err)
 	}
 	if err := updateStatusesForScrapeObjects(ctx, rclient, sos); err != nil {
@@ -962,16 +975,20 @@ func generateConfig(
 	return yaml.Marshal(cfg)
 }
 
+func buildConfigMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:            cr.PrefixedName(),
+		Annotations:     cr.AnnotationsFiltered(),
+		Labels:          cr.AllLabels(),
+		Namespace:       cr.Namespace,
+		OwnerReferences: cr.AsOwner(),
+		Finalizers:      []string{vmv1beta1.FinalizerName},
+	}
+}
+
 func makeConfigSecret(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) *corev1.Secret {
 	s := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(),
-			Annotations:     cr.AnnotationsFiltered(),
-			Labels:          cr.AllLabels(),
-			Namespace:       cr.Namespace,
-			OwnerReferences: cr.AsOwner(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-		},
+		ObjectMeta: buildConfigMeta(cr),
 		Data: map[string][]byte{
 			vmagentGzippedFilename: {},
 		},

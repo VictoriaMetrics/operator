@@ -587,7 +587,7 @@ func (cr VMAgent) IsOwnsServiceAccount() bool {
 }
 
 func (cr VMAgent) GetClusterRoleName() string {
-	return fmt.Sprintf("monitoring:vmagent-cluster-access-%s", cr.Name)
+	return fmt.Sprintf("monitoring:%s:vmagent-%s", cr.Namespace, cr.Name)
 }
 
 func (cr VMAgent) GetNSName() string {

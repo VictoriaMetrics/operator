@@ -300,7 +300,7 @@ type BaseOperatorConf struct {
 	// Defines domain name suffix for in-cluster addresses
 	// most known ClusterDomainName is .cluster.local
 	ClusterDomainName string `default:""`
-	// Defines deadline for deploymnet/statefulset
+	// Defines deadline for deployment/statefulset
 	// to transit into ready state
 	// to wait for transition to ready state
 	AppReadyTimeout time.Duration `default:"80s"`

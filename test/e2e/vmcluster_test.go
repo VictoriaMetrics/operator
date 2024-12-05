@@ -1084,6 +1084,81 @@ up{baz="bar"} 123
 					},
 				},
 			),
+			Entry("by chaning annotations for created objects", "manage-annotations",
+				&v1beta1vm.VMCluster{
+					Spec: v1beta1vm.VMClusterSpec{
+						RequestsLoadBalancer: v1beta1vm.VMAuthLoadBalancer{Enabled: true},
+						RetentionPeriod:      "1",
+						VMStorage: &v1beta1vm.VMStorage{
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+						VMSelect: &v1beta1vm.VMSelect{
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						},
+					},
+				},
+				testStep{
+					modify: func(cr *v1beta1vm.VMCluster) {
+						cr.Spec.ManagedMetadata = &v1beta1vm.ManagedObjectsMetadata{
+							// attemp to change selector label should fail
+							Labels:      map[string]string{"label-1": "value-1", "label-2": "value-2", "managed-by": "wrong-value"},
+							Annotations: map[string]string{"annotation-1": "value-a-1", "annotation-2": "value-a-2"},
+						}
+					},
+					verify: func(cr *v1beta1vm.VMCluster) {
+						expectedAnnotations := map[string]string{"annotation-1": "value-a-1", "annotation-2": "value-a-2"}
+						expectedLabels := map[string]string{"label-1": "value-1", "label-2": "value-2", "managed-by": "vm-operator"}
+						selectN, insertN, storageN, lbName := cr.GetSelectName(), cr.GetInsertName(), cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.GetVMAuthLBName()
+						objectsByNss := map[types.NamespacedName][]client.Object{
+							types.NamespacedName{Name: selectN}:           {&corev1.Service{}, &appsv1.StatefulSet{}},
+							types.NamespacedName{Name: storageN}:          {&corev1.Service{}, &appsv1.StatefulSet{}},
+							types.NamespacedName{Name: insertN}:           {&corev1.Service{}, &appsv1.Deployment{}},
+							types.NamespacedName{Name: lbName}:            {&corev1.Service{}, &appsv1.Deployment{}},
+							types.NamespacedName{Name: cr.PrefixedName()}: {&corev1.ServiceAccount{}},
+						}
+						for nss, objectsToAssert := range objectsByNss {
+							nss.Namespace = namespace
+							By(nss.String())
+							assertAnnotationsOnObjects(ctx, nss, objectsToAssert, expectedAnnotations)
+							assertLabelsOnObjects(ctx, nss, objectsToAssert, expectedLabels)
+						}
+					},
+				},
+				testStep{
+					modify: func(cr *v1beta1vm.VMCluster) {
+						cr.Spec.ManagedMetadata = &v1beta1vm.ManagedObjectsMetadata{
+							Annotations: map[string]string{"annotation-1": "value-a-1"},
+						}
+					},
+					verify: func(cr *v1beta1vm.VMCluster) {
+						GinkgoWriter.Println("STARTING WAIT")
+						expectedAnnotations := map[string]string{"annotation-1": "value-a-1", "annotation-2": ""}
+						expectedLabels := map[string]string{"label-1": "", "label-2": "", "managed-by": "vm-operator"}
+						selectN, insertN, storageN, lbName := cr.GetSelectName(), cr.GetInsertName(), cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.GetVMAuthLBName()
+						objectsByNss := map[types.NamespacedName][]client.Object{
+							types.NamespacedName{Name: selectN}:           {&corev1.Service{}, &appsv1.StatefulSet{}},
+							types.NamespacedName{Name: storageN}:          {&corev1.Service{}, &appsv1.StatefulSet{}},
+							types.NamespacedName{Name: insertN}:           {&corev1.Service{}, &appsv1.Deployment{}},
+							types.NamespacedName{Name: lbName}:            {&corev1.Service{}, &appsv1.Deployment{}},
+							types.NamespacedName{Name: cr.PrefixedName()}: {&corev1.ServiceAccount{}},
+						}
+						for nss, objectsToAssert := range objectsByNss {
+							nss.Namespace = namespace
+							By(nss.String())
+							assertAnnotationsOnObjects(ctx, nss, objectsToAssert, expectedAnnotations)
+							assertLabelsOnObjects(ctx, nss, objectsToAssert, expectedLabels)
+						}
+					},
+				},
+			),
 		)
 	})
 })

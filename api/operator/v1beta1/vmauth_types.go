@@ -20,6 +20,9 @@ type VMAuthSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	// ManagedMetadata defines metadata that will be added to the all objects
+	// created by operator for the given CustomResource
+	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 	// LogLevel for victoria metrics single to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
@@ -202,10 +205,6 @@ type UserConfigOption struct {
 	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
 }
 
-func (cr *VMAuth) setLastMetadata(lam LastAppliedMetadata) {
-	cr.ParsedLastAppliedMetadata = lam
-}
-
 func (cr *VMAuth) setLastSpec(prevSpec VMAuthSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
@@ -286,8 +285,6 @@ type VMAuth struct {
 	Spec VMAuthSpec `json:"spec,omitempty"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
 	ParsedLastAppliedSpec *VMAuthSpec `json:"-" yaml:"-"`
-	//ParsedLastAppliedMetadata contains last-applied cr.metadata fields
-	ParsedLastAppliedMetadata LastAppliedMetadata `json:"-" yaml:"-"`
 
 	Status VMAuthStatus `json:"status,omitempty"`
 }
@@ -334,7 +331,7 @@ func (cr *VMAuth) AsOwner() []metav1.OwnerReference {
 	}
 }
 
-func (cr VMAuth) PodAnnotations() map[string]string {
+func (cr *VMAuth) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
 		for annotation, value := range cr.Spec.PodMetadata.Annotations {
@@ -344,11 +341,21 @@ func (cr VMAuth) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr VMAuth) AnnotationsFiltered() map[string]string {
-	return filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+func (cr *VMAuth) AnnotationsFiltered() map[string]string {
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if cr.Spec.ManagedMetadata != nil {
+		if dst == nil {
+			dst = make(map[string]string)
+		}
+		for k, v := range cr.Spec.ManagedMetadata.Annotations {
+			dst[k] = v
+		}
+	}
+	return dst
 }
 
-func (cr VMAuth) SelectorLabels() map[string]string {
+func (cr *VMAuth) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmauth",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -357,7 +364,7 @@ func (cr VMAuth) SelectorLabels() map[string]string {
 	}
 }
 
-func (cr VMAuth) PodLabels() map[string]string {
+func (cr *VMAuth) PodLabels() map[string]string {
 	lbls := cr.SelectorLabels()
 	if cr.Spec.PodMetadata == nil {
 		return lbls
@@ -365,14 +372,21 @@ func (cr VMAuth) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr VMAuth) AllLabels() map[string]string {
+func (cr *VMAuth) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil {
+	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
-	crLabels := filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
-	return labels.Merge(crLabels, selectorLabels)
+	var result map[string]string
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	if cr.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	}
+	if cr.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	}
+	return labels.Merge(result, selectorLabels)
 }
 
 func (cr VMAuth) PrefixedName() string {

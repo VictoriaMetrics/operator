@@ -40,8 +40,6 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 	var prevCR *vmv1beta1.VMCluster
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
-		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 	if cr.IsOwnsServiceAccount() {
@@ -233,14 +231,15 @@ func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, c
 		return nil, fmt.Errorf("cannot reconcile vmselect service: %w", err)
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, cr.GetSelectName(), cr.Spec.VMSelect.Port, "vmselect", cr.VMAuthLBSelectorLabels()); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetSelectName(), cr.Spec.VMSelect.Port, "vmselect", cr.VMAuthLBSelectorLabels()); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for vmselect: %w", err)
 		}
 	}
 	return svc, nil
 }
 
-func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster, svcName, port, targetName string, svcSelectorLabels map[string]string) error {
+// TODO: @f41gh7 add prevPort ?
+func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, svcName, port, targetName string, svcSelectorLabels map[string]string) error {
 
 	fls := cr.FinalLabels(svcSelectorLabels)
 	fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: targetName})
@@ -256,7 +255,24 @@ func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr
 		svc.Spec.Ports[0].Port = intstr.Parse(port).IntVal
 	})
 
-	if err := reconcile.Service(ctx, rclient, svc, svc); err != nil {
+	var prevSvc *corev1.Service
+	if prevCR != nil {
+		fls := prevCR.FinalLabels(svcSelectorLabels)
+		fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: targetName})
+		t := &clusterSvcBuilder{
+			prevCR,
+			svcName,
+			fls,
+			prevCR.VMAuthLBSelectorLabels(),
+			nil,
+		}
+
+		prevSvc = build.Service(t, prevCR.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
+			svc.Spec.Ports[0].Port = intstr.Parse(port).IntVal
+		})
+	}
+
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
 		return fmt.Errorf("cannot reconcile lb service: %w", err)
 	}
 	return nil
@@ -335,7 +351,7 @@ func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, c
 
 	// create extra service for loadbalancing
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, cr.GetInsertName(), cr.Spec.VMInsert.Port, "vminsert", cr.VMAuthLBSelectorLabels()); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetInsertName(), cr.Spec.VMInsert.Port, "vminsert", cr.VMAuthLBSelectorLabels()); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for vminsert: %w", err)
 		}
 	}
@@ -415,7 +431,7 @@ func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, 
 	var prevService *corev1.Service
 	if prevCR != nil && prevCR.Spec.VMStorage != nil {
 		prevT := &clusterSvcBuilder{
-			cr,
+			prevCR,
 			prevCR.Spec.VMStorage.GetNameWithPrefix(prevCR.Name),
 			prevCR.FinalLabels(prevCR.VMStorageSelectorLabels()),
 			prevCR.VMStorageSelectorLabels(),
@@ -1502,7 +1518,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	return lbDep, nil
 }
 
-func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
+func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	lbls := cr.VMAuthLBSelectorLabels()
 
 	// add proxy label directly to the service.labels
@@ -1521,9 +1537,8 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	}
 	svc := build.Service(t, cr.Spec.RequestsLoadBalancer.Spec.Port, nil)
 	var prevSvc *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.RequestsLoadBalancer.Enabled {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Enabled {
+		t.VMCluster = prevCR
 		t.additionalService = prevCR.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec
 		prevSvc = build.Service(t, prevCR.Spec.RequestsLoadBalancer.Spec.Port, nil)
 	}
@@ -1562,7 +1577,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, false); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb deployment: %w", err)
 	}
-	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr); err != nil {
+	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 	if cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {

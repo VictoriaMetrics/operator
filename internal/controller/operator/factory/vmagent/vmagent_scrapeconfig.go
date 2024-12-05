@@ -65,8 +65,6 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgen
 	var prevCR *vmv1beta1.VMAgent
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
-		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 	if _, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR); err != nil {

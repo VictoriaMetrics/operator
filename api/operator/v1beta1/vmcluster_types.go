@@ -79,6 +79,9 @@ type VMClusterSpec struct {
 	// it helps to evenly spread load across pods
 	// usually it's not possible with kubernetes TCP based service
 	RequestsLoadBalancer VMAuthLoadBalancer `json:"requestsLoadBalancer,omitempty"`
+	// ManagedMetadata defines metadata that will be added to the all objects
+	// created by operator for the given CustomResource
+	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 }
 
 // VMAuthLBSelectorLabels defines selector labels for vmauth balancer
@@ -94,10 +97,6 @@ func (cr VMCluster) VMAuthLBSelectorLabels() map[string]string {
 // GetVMAuthLBName returns prefixed name for the loadbalanacer components
 func (cr VMCluster) GetVMAuthLBName() string {
 	return fmt.Sprintf("vmclusterlb-%s", cr.Name)
-}
-
-func (cr *VMCluster) setLastMetadata(lam LastAppliedMetadata) {
-	cr.ParsedLastAppliedMetadata = lam
 }
 
 func (cr *VMCluster) setLastSpec(prevSpec VMClusterSpec) {
@@ -151,9 +150,6 @@ type VMCluster struct {
 	Spec              VMClusterSpec `json:"spec"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
 	ParsedLastAppliedSpec *VMClusterSpec `json:"-" yaml:"-"`
-	//ParsedLastAppliedMetadata contains last-applied cr.metadata fields
-	ParsedLastAppliedMetadata LastAppliedMetadata `json:"-" yaml:"-"`
-
 	// +optional
 	Status VMClusterStatus `json:"status,omitempty"`
 }
@@ -642,7 +638,7 @@ func (cr VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	return result
 }
 
-func (cr VMCluster) VMStoragePodLabels() map[string]string {
+func (cr *VMCluster) VMStoragePodLabels() map[string]string {
 	selectorLabels := cr.VMStorageSelectorLabels()
 	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
 		return selectorLabels
@@ -651,37 +647,56 @@ func (cr VMCluster) VMStoragePodLabels() map[string]string {
 }
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
-func (cr VMCluster) FinalLabels(baseLabels map[string]string) map[string]string {
-	if cr.ObjectMeta.Labels == nil {
-		return baseLabels
+func (cr *VMCluster) FinalLabels(selectorLabels map[string]string) map[string]string {
+	// fast path
+	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+		return selectorLabels
 	}
-	crLabels := filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
-	return labels.Merge(crLabels, baseLabels)
+	var result map[string]string
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	if cr.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	}
+	if cr.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	}
+	return labels.Merge(result, selectorLabels)
 }
 
-func (cr VMCluster) VMSelectPodAnnotations() map[string]string {
+func (cr *VMCluster) VMSelectPodAnnotations() map[string]string {
 	if cr.Spec.VMSelect == nil || cr.Spec.VMSelect.PodMetadata == nil {
 		return make(map[string]string)
 	}
 	return cr.Spec.VMSelect.PodMetadata.Annotations
 }
 
-func (cr VMCluster) VMInsertPodAnnotations() map[string]string {
+func (cr *VMCluster) VMInsertPodAnnotations() map[string]string {
 	if cr.Spec.VMInsert == nil || cr.Spec.VMInsert.PodMetadata == nil {
 		return make(map[string]string)
 	}
 	return cr.Spec.VMInsert.PodMetadata.Annotations
 }
 
-func (cr VMCluster) VMStoragePodAnnotations() map[string]string {
+func (cr *VMCluster) VMStoragePodAnnotations() map[string]string {
 	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
 		return make(map[string]string)
 	}
 	return cr.Spec.VMStorage.PodMetadata.Annotations
 }
 
-func (cr VMCluster) AnnotationsFiltered() map[string]string {
-	return filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+func (cr *VMCluster) AnnotationsFiltered() map[string]string {
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if cr.Spec.ManagedMetadata != nil {
+		if dst == nil {
+			dst = make(map[string]string)
+		}
+		for k, v := range cr.Spec.ManagedMetadata.Annotations {
+			dst[k] = v
+		}
+	}
+	return dst
+
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
@@ -752,11 +767,11 @@ func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
 }
 
-func (cr VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
+func (cr *VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotCreate))), extraArgs)
 }
 
-func (cr VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
+func (cr *VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete))), extraArgs)
 }
 
@@ -772,22 +787,22 @@ func joinBackupAuthKey(urlPath string, extraArgs map[string]string) string {
 	return urlPath
 }
 
-func (cr VMCluster) GetServiceAccountName() string {
+func (cr *VMCluster) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
 	}
 	return cr.Spec.ServiceAccountName
 }
 
-func (cr VMCluster) IsOwnsServiceAccount() bool {
+func (cr *VMCluster) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr VMCluster) PrefixedName() string {
+func (cr *VMCluster) PrefixedName() string {
 	return fmt.Sprintf("vmcluster-%s", cr.Name)
 }
 
-func (cr VMCluster) SelectorLabels() map[string]string {
+func (cr *VMCluster) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmcluster",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -797,14 +812,21 @@ func (cr VMCluster) SelectorLabels() map[string]string {
 }
 
 // AllLabels defines global CR labels
-func (cr VMCluster) AllLabels() map[string]string {
+func (cr *VMCluster) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil {
+	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
-	crLabels := filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
-	return labels.Merge(crLabels, selectorLabels)
+	var result map[string]string
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	if cr.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	}
+	if cr.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	}
+	return labels.Merge(result, selectorLabels)
 }
 
 // AsURL implements stub for interface.

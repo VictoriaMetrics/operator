@@ -75,22 +75,18 @@ func expectObjectStatus(ctx context.Context,
 	}
 	type objectStatus struct {
 		Status struct {
-			CurrentStatus      string `json:"clusterStatus"`
-			UpdateStatus       string `json:"updateStatus"`
-			SingleUpdateStatus string `json:"singleStatus,omitempty"`
+			operator.StatusMetadata `json:",inline"`
 		} `json:"status"`
 	}
 	var obs objectStatus
 	if err := json.Unmarshal(jsD, &obs); err != nil {
 		return err
 	}
-	if obs.Status.UpdateStatus != string(status) &&
-		obs.Status.CurrentStatus != string(status) &&
-		obs.Status.SingleUpdateStatus != string(status) {
-		return fmt.Errorf("not expected object status=%q cluster status=%q,single_status=%q",
-			obs.Status.UpdateStatus,
-			obs.Status.CurrentStatus,
-			obs.Status.SingleUpdateStatus)
+	if object.GetGeneration() > obs.Status.ObservedGeneration {
+		return fmt.Errorf("expected generation: %d be greater than: %d", obs.Status.ObservedGeneration, object.GetGeneration())
+	}
+	if obs.Status.UpdateStatus != status {
+		return fmt.Errorf("not expected object status=%q", obs.Status.UpdateStatus)
 	}
 
 	return nil
@@ -188,4 +184,40 @@ fi
 		return k8sClient.Get(ctx, nss, &jb)
 	}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
 
+}
+
+func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, annotations map[string]string) {
+	for idx, obj := range objects {
+		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
+		gotAnnotations := obj.GetAnnotations()
+		for k, v := range annotations {
+			gv, ok := gotAnnotations[k]
+			if v == "" {
+				Expect(ok).To(BeFalse(), "annotation key=%q,value=%q must not exist for object at idx=%d, object=%q", k, gv, idx, nss.String())
+			} else {
+				Expect(ok).To(BeTrue(), "annotation key=%s must present for object at idx=%d, object=%q", k, idx, nss.String())
+				Expect(gv).To(Equal(v), "annotation key=%s must equal for object at idx=%d, object=%q", k, idx, nss.String())
+
+			}
+
+		}
+	}
+}
+
+func assertLabelsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, wantLabels map[string]string) {
+	for idx, obj := range objects {
+		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
+		gotAnnotations := obj.GetLabels()
+		for k, v := range wantLabels {
+			gv, ok := gotAnnotations[k]
+			if v == "" {
+				Expect(ok).NotTo(BeTrue(), "label key=%s must not exist for object at idx=%d", k, idx)
+			} else {
+				Expect(ok).To(BeTrue(), "label key=%s must present for object at idx=%d", k, idx)
+				Expect(gv).To(Equal(v), "label key=%s must equal for object at idx=%d", k, idx)
+
+			}
+
+		}
+	}
 }

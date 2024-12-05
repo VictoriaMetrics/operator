@@ -304,6 +304,29 @@ spec:
                   this can be useful for debugging of high cardinality issues with
                   log streams; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields
                 type: boolean
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               minReadySeconds:
                 description: |-
                   MinReadySeconds defines a minim number os seconds to wait before starting update next pod
@@ -2218,6 +2241,29 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               maxScrapeInterval:
                 description: |-
                   MaxScrapeInterval allows limiting maximum scrape interval for VMServiceScrape, VMPodScrape and other scrapes
@@ -10637,6 +10683,29 @@ spec:
                 - WARN
                 - ERROR
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               minReadySeconds:
                 description: |-
                   MinReadySeconds defines a minim number os seconds to wait before starting update next pod
@@ -12316,6 +12385,29 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               minReadySeconds:
                 description: |-
                   MinReadySeconds defines a minim number os seconds to wait before starting update next pod
@@ -14341,6 +14433,29 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               max_concurrent_requests:
                 description: |-
                   MaxConcurrentRequests defines max concurrent requests per user
@@ -15280,6 +15395,29 @@ spec:
                     - key
                     type: object
                     x-kubernetes-map-type: atomic
+                type: object
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
                 type: object
               paused:
                 description: |-
@@ -28071,6 +28209,29 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               minReadySeconds:
                 description: |-
                   MinReadySeconds defines a minim number os seconds to wait before starting update next pod

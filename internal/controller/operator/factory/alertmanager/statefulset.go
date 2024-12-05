@@ -442,6 +442,11 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
 	l := logger.WithContext(ctx).WithValues("secret_for", "vmalertmanager config")
 	ctx = logger.AddToContext(ctx, l)
+	var prevCR *vmv1beta1.VMAlertmanager
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
 
 	// name of tls object and it's value
 	// e.g. namespace_secret_name_secret_key
@@ -523,9 +528,16 @@ func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient c
 		newAMSecretConfig.Data[assetKey] = []byte(assetValue)
 	}
 
-	prevSecretMeta := &metav1.ObjectMeta{
-		Labels:      cr.ParsedLastAppliedMetadata.Labels,
-		Annotations: cr.ParsedLastAppliedMetadata.Annotations,
+	var prevSecretMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevSecretMeta = &metav1.ObjectMeta{
+			Name:            prevCR.ConfigSecretName(),
+			Namespace:       prevCR.Namespace,
+			Labels:          prevCR.AllLabels(),
+			Annotations:     prevCR.AnnotationsFiltered(),
+			OwnerReferences: prevCR.AsOwner(),
+			Finalizers:      []string{vmv1beta1.FinalizerName},
+		}
 	}
 
 	return reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta)

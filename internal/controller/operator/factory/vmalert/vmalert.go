@@ -131,8 +131,6 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient c
 	var prevCR *vmv1beta1.VMAlert
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
-		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {

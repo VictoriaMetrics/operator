@@ -66,8 +66,6 @@ func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1bet
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
-		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
-		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
 	}
 	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
 		return err

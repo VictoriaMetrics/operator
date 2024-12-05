@@ -38,7 +38,11 @@ type VLogsSpec struct {
 
 	// PodMetadata configures Labels and Annotations which are propagated to the VLogs pods.
 	// +optional
-	PodMetadata                       *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	// ManagedMetadata defines metadata that will be added to the all objects
+	// created by operator for the given CustomResource
+	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+
 	CommonDefaultableParams           `json:",inline,omitempty"`
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 
@@ -128,8 +132,6 @@ type VLogs struct {
 	Spec VLogsSpec `json:"spec,omitempty"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
 	ParsedLastAppliedSpec *VLogsSpec `json:"-" yaml:"-"`
-	//ParsedLastAppliedMetadata contains last-applied cr.metadata fields
-	ParsedLastAppliedMetadata LastAppliedMetadata `json:"-" yaml:"-"`
 
 	Status VLogsStatus `json:"status,omitempty"`
 }
@@ -143,7 +145,7 @@ type VLogsList struct {
 	Items           []VLogs `json:"items"`
 }
 
-func (r VLogs) PodAnnotations() map[string]string {
+func (r *VLogs) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if r.Spec.PodMetadata != nil {
 		for annotation, value := range r.Spec.PodMetadata.Annotations {
@@ -164,10 +166,6 @@ func (r *VLogs) AsOwner() []metav1.OwnerReference {
 			BlockOwnerDeletion: ptr.To(true),
 		},
 	}
-}
-
-func (cr *VLogs) setLastMetadata(lam LastAppliedMetadata) {
-	cr.ParsedLastAppliedMetadata = lam
 }
 
 func (cr *VLogs) setLastSpec(prevSpec VLogsSpec) {
@@ -217,11 +215,21 @@ func (r *VLogs) ProbeNeedLiveness() bool {
 	return false
 }
 
-func (r VLogs) AnnotationsFiltered() map[string]string {
-	return filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
+func (r *VLogs) AnnotationsFiltered() map[string]string {
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	dst := filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if r.Spec.ManagedMetadata != nil {
+		if dst == nil {
+			dst = make(map[string]string)
+		}
+		for k, v := range r.Spec.ManagedMetadata.Annotations {
+			dst[k] = v
+		}
+	}
+	return dst
 }
 
-func (r VLogs) SelectorLabels() map[string]string {
+func (r *VLogs) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlogs",
 		"app.kubernetes.io/instance":  r.Name,
@@ -230,7 +238,7 @@ func (r VLogs) SelectorLabels() map[string]string {
 	}
 }
 
-func (r VLogs) PodLabels() map[string]string {
+func (r *VLogs) PodLabels() map[string]string {
 	lbls := r.SelectorLabels()
 	if r.Spec.PodMetadata == nil {
 		return lbls
@@ -238,14 +246,21 @@ func (r VLogs) PodLabels() map[string]string {
 	return labels.Merge(r.Spec.PodMetadata.Labels, lbls)
 }
 
-func (r VLogs) AllLabels() map[string]string {
+func (r *VLogs) AllLabels() map[string]string {
 	selectorLabels := r.SelectorLabels()
 	// fast path
-	if r.ObjectMeta.Labels == nil {
+	if r.ObjectMeta.Labels == nil && r.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
-	rLabels := filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
-	return labels.Merge(rLabels, selectorLabels)
+	var result map[string]string
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	if r.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
+	}
+	if r.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, r.Spec.ManagedMetadata.Labels)
+	}
+	return labels.Merge(result, selectorLabels)
 }
 
 func (r VLogs) PrefixedName() string {

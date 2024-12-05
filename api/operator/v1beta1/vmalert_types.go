@@ -27,6 +27,10 @@ type VMAlertSpec struct {
 	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAlert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	// ManagedMetadata defines metadata that will be added to the all objects
+	// created by operator for the given CustomResource
+	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+
 	// LogFormat for VMAlert to be configured with.
 	// default or json
 	// +optional
@@ -147,10 +151,6 @@ type VMAlertSpec struct {
 	CommonDefaultableParams           `json:",inline,omitempty"`
 	CommonConfigReloaderParams        `json:",inline,omitempty"`
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
-}
-
-func (cr *VMAlert) setLastMetadata(lam LastAppliedMetadata) {
-	cr.ParsedLastAppliedMetadata = lam
 }
 
 func (cr *VMAlert) setLastSpec(prevSpec VMAlertSpec) {
@@ -284,8 +284,6 @@ type VMAlert struct {
 	Spec VMAlertSpec `json:"spec,omitempty"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
 	ParsedLastAppliedSpec *VMAlertSpec `json:"-" yaml:"-"`
-	//ParsedLastAppliedMetadata contains last-applied cr.metadata fields
-	ParsedLastAppliedMetadata LastAppliedMetadata `json:"-" yaml:"-"`
 
 	Status VMAlertStatus `json:"status,omitempty"`
 }
@@ -332,7 +330,7 @@ func (cr *VMAlert) AsOwner() []metav1.OwnerReference {
 	}
 }
 
-func (cr VMAlert) PodAnnotations() map[string]string {
+func (cr *VMAlert) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
 		for annotation, value := range cr.Spec.PodMetadata.Annotations {
@@ -342,11 +340,21 @@ func (cr VMAlert) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr VMAlert) AnnotationsFiltered() map[string]string {
-	return filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+func (cr *VMAlert) AnnotationsFiltered() map[string]string {
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if cr.Spec.ManagedMetadata != nil {
+		if dst == nil {
+			dst = make(map[string]string)
+		}
+		for k, v := range cr.Spec.ManagedMetadata.Annotations {
+			dst[k] = v
+		}
+	}
+	return dst
 }
 
-func (cr VMAlert) SelectorLabels() map[string]string {
+func (cr *VMAlert) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmalert",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -355,7 +363,7 @@ func (cr VMAlert) SelectorLabels() map[string]string {
 	}
 }
 
-func (cr VMAlert) PodLabels() map[string]string {
+func (cr *VMAlert) PodLabels() map[string]string {
 	lbls := cr.SelectorLabels()
 	if cr.Spec.PodMetadata == nil {
 		return lbls
@@ -363,14 +371,21 @@ func (cr VMAlert) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr VMAlert) AllLabels() map[string]string {
+func (cr *VMAlert) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil {
+	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
-	crLabels := filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
-	return labels.Merge(crLabels, selectorLabels)
+	var result map[string]string
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	if cr.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	}
+	if cr.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	}
+	return labels.Merge(result, selectorLabels)
 }
 
 func (cr VMAlert) PrefixedName() string {

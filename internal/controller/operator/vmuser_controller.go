@@ -114,14 +114,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				continue
 			}
 		}
-		var prevCR *vmv1beta1.VMAuth
-		if currentVMAuth.ParsedLastAppliedSpec != nil {
-			prevCR = currentVMAuth.DeepCopy()
-			prevCR.Labels = currentVMAuth.ParsedLastAppliedMetadata.Labels
-			prevCR.Annotations = currentVMAuth.ParsedLastAppliedMetadata.Annotations
-			prevCR.Spec = *currentVMAuth.ParsedLastAppliedSpec
-		}
-		if err := vmauth.CreateOrUpdateVMAuthConfig(ctx, r, currentVMAuth, prevCR); err != nil {
+		if err := vmauth.CreateOrUpdateVMAuthConfig(ctx, r, currentVMAuth); err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot create or update vmauth deploy for vmuser: %w", err)
 		}
 	}

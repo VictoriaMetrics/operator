@@ -312,8 +312,11 @@ var _ = Describe("test  vmsingle Controller", func() {
 					baseSingle.DeepCopy(),
 					testStep{
 						modify: func(cr *vmv1beta1.VMSingle) {
-							cr.Annotations["added-annotation"] = "some-value"
-							println("added")
+							cr.Spec.ManagedMetadata = &vmv1beta1.ManagedObjectsMetadata{
+								Annotations: map[string]string{
+									"added-annotation": "some-value",
+								},
+							}
 						},
 						verify: func(cr *vmv1beta1.VMSingle) {
 							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
@@ -327,7 +330,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 					},
 					testStep{
 						modify: func(cr *vmv1beta1.VMSingle) {
-							delete(cr.Annotations, "added-annotation")
+							delete(cr.Spec.ManagedMetadata.Annotations, "added-annotation")
 						},
 						verify: func(cr *vmv1beta1.VMSingle) {
 							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
@@ -343,24 +346,3 @@ var _ = Describe("test  vmsingle Controller", func() {
 		)
 	})
 })
-
-func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, annotations map[string]string) {
-	for idx, obj := range objects {
-		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
-		gotAnnotations := obj.GetAnnotations()
-		for k, v := range gotAnnotations {
-			println("got kv ", k, v)
-		}
-		for k, v := range annotations {
-			gv, ok := gotAnnotations[k]
-			if v == "" {
-				Expect(ok).NotTo(BeTrue(), "annotation key=%s must not exist for object at idx=%d", k, idx)
-			} else {
-				Expect(ok).To(BeTrue(), "annotation key=%s must present for object at idx=%d", k, idx)
-				Expect(gv).To(Equal(v), "annotation key=%s must equal for object at idx=%d", k, idx)
-
-			}
-
-		}
-	}
-}

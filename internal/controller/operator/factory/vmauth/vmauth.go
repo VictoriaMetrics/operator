@@ -44,8 +44,6 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	var prevCR *vmv1beta1.VMAuth
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
-		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 	if cr.IsOwnsServiceAccount() {
@@ -75,7 +73,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 		}
 	}
 
-	if err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr, prevCR); err != nil {
+	if err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr); err != nil {
 		return err
 	}
 
@@ -319,10 +317,15 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 }
 
 // CreateOrUpdateVMAuthConfig configuration secret for vmauth.
-func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
+func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	// fast path
 	if cr.Spec.ExternalConfig.SecretRef != nil || cr.Spec.ExternalConfig.LocalPath != "" {
 		return nil
+	}
+	var prevCR *vmv1beta1.VMAuth
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 	s := &corev1.Secret{
 		ObjectMeta: buildConfigSecretMeta(cr),
@@ -330,7 +333,6 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr, 
 			vmAuthConfigNameGz: {},
 		},
 	}
-	//makeVMAuthConfigSecret(cr)
 
 	// name of tls object and it's value
 	// e.g. namespace_secret_name_secret_key

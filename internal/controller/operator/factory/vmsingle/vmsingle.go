@@ -68,8 +68,6 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
-		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
-		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
 	}
 	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot delete objects from prev state: %w", err)

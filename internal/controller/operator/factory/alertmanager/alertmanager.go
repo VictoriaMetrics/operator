@@ -38,8 +38,6 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 	var prevCR *vmv1beta1.VMAlertmanager
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Labels = cr.ParsedLastAppliedMetadata.Labels
-		prevCR.Annotations = cr.ParsedLastAppliedMetadata.Annotations
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {

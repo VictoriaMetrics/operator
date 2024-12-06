@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,7 +25,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -40,7 +38,11 @@ type VLogsSpec struct {
 
 	// PodMetadata configures Labels and Annotations which are propagated to the VLogs pods.
 	// +optional
-	PodMetadata                       *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	// ManagedMetadata defines metadata that will be added to the all objects
+	// created by operator for the given CustomResource
+	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+
 	CommonDefaultableParams           `json:",inline,omitempty"`
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 
@@ -143,7 +145,7 @@ type VLogsList struct {
 	Items           []VLogs `json:"items"`
 }
 
-func (r VLogs) PodAnnotations() map[string]string {
+func (r *VLogs) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if r.Spec.PodMetadata != nil {
 		for annotation, value := range r.Spec.PodMetadata.Annotations {
@@ -166,17 +168,20 @@ func (r *VLogs) AsOwner() []metav1.OwnerReference {
 	}
 }
 
+func (cr *VLogs) setLastSpec(prevSpec VLogsSpec) {
+	cr.ParsedLastAppliedSpec = &prevSpec
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VLogs) UnmarshalJSON(src []byte) error {
 	type pcr VLogs
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	prev, err := parseLastAppliedSpec[VLogsSpec](cr)
-	if err != nil {
+	if err := parseLastAppliedState(cr); err != nil {
 		return err
 	}
-	cr.ParsedLastAppliedSpec = prev
+
 	return nil
 }
 
@@ -210,11 +215,21 @@ func (r *VLogs) ProbeNeedLiveness() bool {
 	return false
 }
 
-func (r VLogs) AnnotationsFiltered() map[string]string {
-	return filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
+func (r *VLogs) AnnotationsFiltered() map[string]string {
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	dst := filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if r.Spec.ManagedMetadata != nil {
+		if dst == nil {
+			dst = make(map[string]string)
+		}
+		for k, v := range r.Spec.ManagedMetadata.Annotations {
+			dst[k] = v
+		}
+	}
+	return dst
 }
 
-func (r VLogs) SelectorLabels() map[string]string {
+func (r *VLogs) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlogs",
 		"app.kubernetes.io/instance":  r.Name,
@@ -223,7 +238,7 @@ func (r VLogs) SelectorLabels() map[string]string {
 	}
 }
 
-func (r VLogs) PodLabels() map[string]string {
+func (r *VLogs) PodLabels() map[string]string {
 	lbls := r.SelectorLabels()
 	if r.Spec.PodMetadata == nil {
 		return lbls
@@ -231,14 +246,21 @@ func (r VLogs) PodLabels() map[string]string {
 	return labels.Merge(r.Spec.PodMetadata.Labels, lbls)
 }
 
-func (r VLogs) AllLabels() map[string]string {
+func (r *VLogs) AllLabels() map[string]string {
 	selectorLabels := r.SelectorLabels()
 	// fast path
-	if r.ObjectMeta.Labels == nil {
+	if r.ObjectMeta.Labels == nil && r.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
-	rLabels := filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
-	return labels.Merge(rLabels, selectorLabels)
+	var result map[string]string
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	if r.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
+	}
+	if r.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, r.Spec.ManagedMetadata.Labels)
+	}
+	return labels.Merge(result, selectorLabels)
 }
 
 func (r VLogs) PrefixedName() string {
@@ -293,25 +315,12 @@ func (r *VLogs) AsURL() string {
 
 // LastAppliedSpecAsPatch return last applied vlogs spec as patch annotation
 func (r *VLogs) LastAppliedSpecAsPatch() (client.Patch, error) {
-	data, err := json.Marshal(r.Spec)
-	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize vlogs specification as json :%w", err)
-	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
-	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+	return lastAppliedChangesAsPatch(r.ObjectMeta, r.Spec)
 }
 
 // HasSpecChanges compares vlogs spec with last applied vlogs spec stored in annotation
 func (r *VLogs) HasSpecChanges() (bool, error) {
-	lastAppliedLogsJSON := r.Annotations[lastAppliedSpecAnnotationName]
-	if len(lastAppliedLogsJSON) == 0 {
-		return true, nil
-	}
-	instanceSpecData, err := json.Marshal(r.Spec)
-	if err != nil {
-		return true, err
-	}
-	return !bytes.Equal([]byte(lastAppliedLogsJSON), instanceSpecData), nil
+	return hasStateChanges(r.ObjectMeta, r.Spec)
 }
 
 func (r *VLogs) Paused() bool {

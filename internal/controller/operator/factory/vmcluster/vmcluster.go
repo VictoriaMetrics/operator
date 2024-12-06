@@ -37,31 +37,40 @@ const (
 // needed in update checked by revesion status
 // its controlled by k8s controller-manager
 func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+	var prevCR *vmv1beta1.VMCluster
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
 	if cr.IsOwnsServiceAccount() {
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+		var prevSA *corev1.ServiceAccount
+		if prevCR != nil {
+			prevSA = build.ServiceAccount(prevCR)
+		}
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
 	// handle case for loadbalancing
 	if cr.Spec.RequestsLoadBalancer.Enabled {
 		// create vmauth deployment
-		if err := createOrUpdateVMAuthLB(ctx, rclient, cr); err != nil {
+		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 	}
 
 	if cr.Spec.VMStorage != nil {
 		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
-			err := createOrUpdatePodDisruptionBudgetForVMStorage(ctx, cr, rclient)
+			err := createOrUpdatePodDisruptionBudgetForVMStorage(ctx, rclient, cr, prevCR)
 			if err != nil {
 				return err
 			}
 		}
-		if err := createOrUpdateVMStorage(ctx, cr, rclient); err != nil {
+		if err := createOrUpdateVMStorage(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 
-		storageSvc, err := createOrUpdateVMStorageService(ctx, cr, rclient)
+		storageSvc, err := createOrUpdateVMStorageService(ctx, rclient, cr, prevCR)
 		if err != nil {
 			return err
 		}
@@ -75,19 +84,19 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.PodDisruptionBudget != nil {
-			if err := createOrUpdatePodDisruptionBudgetForVMSelect(ctx, cr, rclient); err != nil {
+			if err := createOrUpdatePodDisruptionBudgetForVMSelect(ctx, rclient, cr, prevCR); err != nil {
 				return err
 			}
 		}
-		if err := createOrUpdateVMSelect(ctx, cr, rclient); err != nil {
+		if err := createOrUpdateVMSelect(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 
-		if err := createOrUpdateVMSelectHPA(ctx, rclient, cr); err != nil {
+		if err := createOrUpdateVMSelectHPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 		// create vmselect service
-		selectSvc, err := createOrUpdateVMSelectService(ctx, cr, rclient)
+		selectSvc, err := createOrUpdateVMSelectService(ctx, rclient, cr, prevCR)
 		if err != nil {
 			return err
 		}
@@ -107,18 +116,18 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 
 	if cr.Spec.VMInsert != nil {
 		if cr.Spec.VMInsert.PodDisruptionBudget != nil {
-			if err := createOrUpdatePodDisruptionBudgetForVMInsert(ctx, cr, rclient); err != nil {
+			if err := createOrUpdatePodDisruptionBudgetForVMInsert(ctx, rclient, cr, prevCR); err != nil {
 				return err
 			}
 		}
-		if err := createOrUpdateVMInsert(ctx, cr, rclient); err != nil {
+		if err := createOrUpdateVMInsert(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
-		insertSvc, err := createOrUpdateVMInsertService(ctx, cr, rclient)
+		insertSvc, err := createOrUpdateVMInsertService(ctx, rclient, cr, prevCR)
 		if err != nil {
 			return err
 		}
-		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr); err != nil {
+		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 		if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
@@ -134,18 +143,16 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 		}
 	}
 
-	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("failed to remove objects from previous cluster state: %w", err)
 	}
 	return nil
 }
 
-func createOrUpdateVMSelect(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 
 	var prevSts *appsv1.StatefulSet
-	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMSelect != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil && prevCR.Spec.VMSelect != nil {
 		var err error
 		prevSts, err = genVMSelectSpec(prevCR)
 		if err != nil {
@@ -200,7 +207,7 @@ func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 
 }
 
-func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) (*corev1.Service, error) {
 
 	svc := buildVMSelectService(cr)
 	if err := cr.Spec.VMSelect.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
@@ -216,9 +223,7 @@ func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster,
 	}
 
 	var prevService *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMSelect != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil && prevCR.Spec.VMSelect != nil {
 		prevService = buildVMSelectService(prevCR)
 	}
 
@@ -226,14 +231,18 @@ func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster,
 		return nil, fmt.Errorf("cannot reconcile vmselect service: %w", err)
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, cr.GetSelectName(), cr.Spec.VMSelect.Port, "vmselect", cr.VMAuthLBSelectorLabels()); err != nil {
+		var prevPort string
+		if prevCR != nil && prevCR.Spec.VMSelect != nil {
+			prevPort = prevCR.Spec.VMSelect.Port
+		}
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetSelectName(), cr.Spec.VMSelect.Port, prevPort, "vmselect", cr.VMAuthLBSelectorLabels()); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for vmselect: %w", err)
 		}
 	}
 	return svc, nil
 }
 
-func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster, svcName, port, targetName string, svcSelectorLabels map[string]string) error {
+func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, svcName, port, prevPort, targetName string, svcSelectorLabels map[string]string) error {
 
 	fls := cr.FinalLabels(svcSelectorLabels)
 	fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: targetName})
@@ -249,18 +258,33 @@ func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr
 		svc.Spec.Ports[0].Port = intstr.Parse(port).IntVal
 	})
 
-	if err := reconcile.Service(ctx, rclient, svc, svc); err != nil {
+	var prevSvc *corev1.Service
+	if prevCR != nil {
+		fls := prevCR.FinalLabels(svcSelectorLabels)
+		fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: targetName})
+		t := &clusterSvcBuilder{
+			prevCR,
+			svcName,
+			fls,
+			prevCR.VMAuthLBSelectorLabels(),
+			nil,
+		}
+
+		prevSvc = build.Service(t, prevCR.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
+			svc.Spec.Ports[0].Port = intstr.Parse(prevPort).IntVal
+		})
+	}
+
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
 		return fmt.Errorf("cannot reconcile lb service: %w", err)
 	}
 	return nil
 }
 
-func createOrUpdateVMInsert(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	var prevDeploy *appsv1.Deployment
 
-	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMInsert != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil && prevCR.Spec.VMInsert != nil {
 		var err error
 		prevDeploy, err = genVMInsertSpec(prevCR)
 		if err != nil {
@@ -304,7 +328,7 @@ func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
 	return svc
 }
 
-func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) (*corev1.Service, error) {
 
 	newService := buildVMInsertService(cr)
 	if err := cr.Spec.VMInsert.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
@@ -312,6 +336,7 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 		if additionalService.Name == newService.Name {
 			return fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
 		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
+			// TODO: @f41gh7 use prevCR
 			return fmt.Errorf("cannot reconcile vminsert additional service: %w", err)
 		}
 		return nil
@@ -319,9 +344,7 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 		return nil, err
 	}
 	var prevService *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMInsert != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil && prevCR.Spec.VMInsert != nil {
 		prevService = buildVMInsertService(prevCR)
 	}
 
@@ -331,7 +354,11 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 
 	// create extra service for loadbalancing
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, cr.GetInsertName(), cr.Spec.VMInsert.Port, "vminsert", cr.VMAuthLBSelectorLabels()); err != nil {
+		var prevPort string
+		if prevCR != nil && prevCR.Spec.VMInsert != nil {
+			prevPort = prevCR.Spec.VMInsert.Port
+		}
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetInsertName(), cr.Spec.VMInsert.Port, prevPort, "vminsert", cr.VMAuthLBSelectorLabels()); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for vminsert: %w", err)
 		}
 	}
@@ -339,12 +366,10 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 	return newService, nil
 }
 
-func createOrUpdateVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	var prevSts *appsv1.StatefulSet
 
-	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMStorage != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil && prevCR.Spec.VMStorage != nil {
 		var err error
 		prevSts, err = buildVMStorageSpec(ctx, prevCR)
 		if err != nil {
@@ -363,7 +388,7 @@ func createOrUpdateVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
 }
 
-func createOrUpdateVMStorageService(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) (*corev1.Service, error) {
 	t := &clusterSvcBuilder{
 		cr,
 		cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
@@ -403,6 +428,7 @@ func createOrUpdateVMStorageService(ctx context.Context, cr *vmv1beta1.VMCluster
 		if additionalService.Name == newHeadless.Name {
 			return fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
 		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
+			// TODO: @f41gh7 use prevCR
 			return fmt.Errorf("cannot reconcile vmstorage additional service: %w", err)
 		}
 		return nil
@@ -410,11 +436,9 @@ func createOrUpdateVMStorageService(ctx context.Context, cr *vmv1beta1.VMCluster
 		return nil, err
 	}
 	var prevService *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.VMStorage != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil && prevCR.Spec.VMStorage != nil {
 		prevT := &clusterSvcBuilder{
-			cr,
+			prevCR,
 			prevCR.Spec.VMStorage.GetNameWithPrefix(prevCR.Name),
 			prevCR.FinalLabels(prevCR.VMStorageSelectorLabels()),
 			prevCR.VMStorageSelectorLabels(),
@@ -662,24 +686,15 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	return vmSelectPodSpec, nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
-	pdb := &policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetSelectName(),
-			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
-			OwnerReferences: cr.AsOwner(),
-			Namespace:       cr.Namespace,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-		},
-		Spec: policyv1.PodDisruptionBudgetSpec{
-			MinAvailable:   cr.Spec.VMSelect.PodDisruptionBudget.MinAvailable,
-			MaxUnavailable: cr.Spec.VMSelect.PodDisruptionBudget.MaxUnavailable,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.Spec.VMSelect.PodDisruptionBudget.SelectorLabelsWithDefaults(cr.VMSelectSelectorLabels()),
-			},
-		},
+func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	t := newSvcBuilder(cr, cr.GetSelectName(), cr.VMSelectSelectorLabels())
+	pdb := build.PodDisruptionBudget(t, cr.Spec.VMSelect.PodDisruptionBudget)
+	var prevPDB *policyv1.PodDisruptionBudget
+	if prevCR != nil && prevCR.Spec.VMSelect.PodDisruptionBudget != nil {
+		t = newSvcBuilder(prevCR, prevCR.GetSelectName(), prevCR.VMSelectSelectorLabels())
+		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.VMSelect.PodDisruptionBudget)
 	}
-	return reconcile.PDB(ctx, rclient, pdb)
+	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
 func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
@@ -867,24 +882,15 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	return vmInsertPodSpec, nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
-	pdb := &policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetInsertName(),
-			Labels:          cr.FinalLabels(cr.VMInsertSelectorLabels()),
-			OwnerReferences: cr.AsOwner(),
-			Namespace:       cr.Namespace,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-		},
-		Spec: policyv1.PodDisruptionBudgetSpec{
-			MinAvailable:   cr.Spec.VMInsert.PodDisruptionBudget.MinAvailable,
-			MaxUnavailable: cr.Spec.VMInsert.PodDisruptionBudget.MaxUnavailable,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.Spec.VMInsert.PodDisruptionBudget.SelectorLabelsWithDefaults(cr.VMInsertSelectorLabels()),
-			},
-		},
+func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	t := newSvcBuilder(cr, cr.GetInsertName(), cr.VMInsertSelectorLabels())
+	pdb := build.PodDisruptionBudget(t, cr.Spec.VMInsert.PodDisruptionBudget)
+	var prevPDB *policyv1.PodDisruptionBudget
+	if prevCR != nil && prevCR.Spec.VMInsert.PodDisruptionBudget != nil {
+		t = newSvcBuilder(prevCR, prevCR.GetInsertName(), prevCR.VMInsertSelectorLabels())
+		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.VMInsert.PodDisruptionBudget)
 	}
-	return reconcile.PDB(ctx, rclient, pdb)
+	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
 func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
@@ -1112,50 +1118,50 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	return vmStoragePodSpec, nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
-	pdb := &policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
-			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
-			OwnerReferences: cr.AsOwner(),
-			Namespace:       cr.Namespace,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-		},
-		Spec: policyv1.PodDisruptionBudgetSpec{
-			MinAvailable:   cr.Spec.VMStorage.PodDisruptionBudget.MinAvailable,
-			MaxUnavailable: cr.Spec.VMStorage.PodDisruptionBudget.MaxUnavailable,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.Spec.VMStorage.PodDisruptionBudget.SelectorLabelsWithDefaults(cr.VMStorageSelectorLabels()),
-			},
-		},
+func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	t := newSvcBuilder(cr, cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.VMStorageSelectorLabels())
+	pdb := build.PodDisruptionBudget(t, cr.Spec.VMStorage.PodDisruptionBudget)
+	var prevPDB *policyv1.PodDisruptionBudget
+	if prevCR != nil && prevCR.Spec.VMStorage.PodDisruptionBudget != nil {
+		t = newSvcBuilder(prevCR, prevCR.Spec.VMStorage.GetNameWithPrefix(prevCR.Name), prevCR.VMStorageSelectorLabels())
+		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.VMStorage.PodDisruptionBudget)
 	}
-	return reconcile.PDB(ctx, rclient, pdb)
+	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
-func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cluster *vmv1beta1.VMCluster) error {
-	if cluster.Spec.VMInsert.HPA == nil {
+func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	if cr.Spec.VMInsert.HPA == nil {
 		return nil
 	}
 	targetRef := v2beta2.CrossVersionObjectReference{
-		Name:       cluster.GetInsertName(),
+		Name:       cr.GetInsertName(),
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	}
-	defaultHPA := build.HPA(targetRef, cluster.Spec.VMInsert.HPA, cluster.AsOwner(), cluster.VMInsertSelectorLabels(), cluster.Namespace)
-	return reconcile.HPA(ctx, rclient, defaultHPA)
+	defaultHPA := build.HPA(targetRef, cr.Spec.VMInsert.HPA, cr.AsOwner(), cr.VMInsertSelectorLabels(), cr.Namespace)
+	var prevHPA *v2.HorizontalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VMInsert.HPA != nil {
+		prevHPA = build.HPA(targetRef, prevCR.Spec.VMInsert.HPA, cr.AsOwner(), prevCR.VMInsertSelectorLabels(), cr.Namespace)
+	}
+	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
 }
 
-func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cluster *vmv1beta1.VMCluster) error {
-	if cluster.Spec.VMSelect.HPA == nil {
+func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	if cr.Spec.VMSelect.HPA == nil {
 		return nil
 	}
 	targetRef := v2beta2.CrossVersionObjectReference{
-		Name:       cluster.GetSelectName(),
+		Name:       cr.GetSelectName(),
 		Kind:       "StatefulSet",
 		APIVersion: "apps/v1",
 	}
-	defaultHPA := build.HPA(targetRef, cluster.Spec.VMSelect.HPA, cluster.AsOwner(), cluster.VMSelectSelectorLabels(), cluster.Namespace)
-	return reconcile.HPA(ctx, rclient, defaultHPA)
+	defaultHPA := build.HPA(targetRef, cr.Spec.VMSelect.HPA, cr.AsOwner(), cr.VMSelectSelectorLabels(), cr.Namespace)
+	var prevHPA *v2.HorizontalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VMSelect.HPA != nil {
+		prevHPA = build.HPA(targetRef, prevCR.Spec.VMSelect.HPA, cr.AsOwner(), prevCR.VMSelectSelectorLabels(), cr.Namespace)
+	}
+
+	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
 }
 
 type clusterSvcBuilder struct {
@@ -1186,18 +1192,18 @@ func (csb *clusterSvcBuilder) GetAdditionalService() *vmv1beta1.AdditionalServic
 	return csb.additionalService
 }
 
-func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
-	if cr.ParsedLastAppliedSpec == nil {
+func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	if prevCR == nil {
 		// fast path
 		return nil
 	}
 	vmst := cr.Spec.VMStorage
 	vmse := cr.Spec.VMSelect
 	vmis := cr.Spec.VMInsert
-	prevSpec := cr.ParsedLastAppliedSpec
-	prevSt := cr.ParsedLastAppliedSpec.VMStorage
-	prevSe := cr.ParsedLastAppliedSpec.VMSelect
-	prevIs := cr.ParsedLastAppliedSpec.VMInsert
+	prevSpec := prevCR.Spec
+	prevSt := prevSpec.VMStorage
+	prevSe := prevSpec.VMSelect
+	prevIs := prevSpec.VMInsert
 	if prevSt != nil {
 		if vmst == nil {
 			if err := finalize.OnVMStorageDelete(ctx, rclient, cr, prevSt); err != nil {
@@ -1355,8 +1361,6 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMCluster, rcli
 	}
 
 	if prevSpec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.Enabled {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *prevSpec
 		if err := finalize.OnVMClusterLoadBalancerDelete(ctx, rclient, prevCR); err != nil {
 			return fmt.Errorf("failed to remove loadbalancer components enabled at prev state: %w", err)
 		}
@@ -1380,6 +1384,16 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMCluster, rcli
 	return nil
 }
 
+func buildLBConfigSecretMeta(cr *vmv1beta1.VMCluster) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Namespace:       cr.Namespace,
+		Name:            cr.GetVMAuthLBName(),
+		Labels:          cr.FinalLabels(cr.VMAuthLBSelectorLabels()),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: cr.AsOwner(),
+	}
+}
+
 func buildVMauthLBSecret(cr *vmv1beta1.VMCluster) *corev1.Secret {
 	targetHostSuffix := fmt.Sprintf("%s.svc", cr.Namespace)
 	if cr.Spec.ClusterDomainName != "" {
@@ -1394,13 +1408,7 @@ func buildVMauthLBSecret(cr *vmv1beta1.VMCluster) *corev1.Secret {
 		insertPort = cr.Spec.VMInsert.Port
 	}
 	lbScrt := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       cr.Namespace,
-			Name:            cr.GetVMAuthLBName(),
-			Labels:          cr.FinalLabels(cr.VMAuthLBSelectorLabels()),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-		},
+		ObjectMeta: buildLBConfigSecretMeta(cr),
 		StringData: map[string]string{"config.yaml": fmt.Sprintf(`
 unauthorized_user:
   url_map:
@@ -1517,7 +1525,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	return lbDep, nil
 }
 
-func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
+func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	lbls := cr.VMAuthLBSelectorLabels()
 
 	// add proxy label directly to the service.labels
@@ -1536,9 +1544,8 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	}
 	svc := build.Service(t, cr.Spec.RequestsLoadBalancer.Spec.Port, nil)
 	var prevSvc *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.RequestsLoadBalancer.Enabled {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Enabled {
+		t.VMCluster = prevCR
 		t.additionalService = prevCR.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec
 		prevSvc = build.Service(t, prevCR.Spec.RequestsLoadBalancer.Spec.Port, nil)
 	}
@@ -1554,9 +1561,13 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	return nil
 }
 
-func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
+func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 
-	if err := reconcile.Secret(ctx, rclient, buildVMauthLBSecret(cr)); err != nil {
+	var prevSecretMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevSecretMeta = ptr.To(buildLBConfigSecretMeta(prevCR))
+	}
+	if err := reconcile.Secret(ctx, rclient, buildVMauthLBSecret(cr), prevSecretMeta); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
 	lbDep, err := buildVMauthLBDeployment(cr)
@@ -1564,9 +1575,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1
 		return fmt.Errorf("cannot build deployment for vmauth loadbalancing: %w", err)
 	}
 	var prevLB *appsv1.Deployment
-	if cr.ParsedLastAppliedSpec != nil && cr.ParsedLastAppliedSpec.RequestsLoadBalancer.Enabled {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Enabled {
 		prevLB, err = buildVMauthLBDeployment(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot build prev deployment for vmauth loadbalancing: %w", err)
@@ -1575,34 +1584,34 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1
 	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, false); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb deployment: %w", err)
 	}
-	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr); err != nil {
+	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 	if cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, cr, rclient); err != nil {
+		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
 		}
 	}
 	return nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
-	lbls := cr.VMAuthLBSelectorLabels()
-	pdb := &policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetVMAuthLBName(),
-			Labels:          cr.FinalLabels(lbls),
-			OwnerReferences: cr.AsOwner(),
-			Namespace:       cr.Namespace,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-		},
-		Spec: policyv1.PodDisruptionBudgetSpec{
-			MinAvailable:   cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget.MinAvailable,
-			MaxUnavailable: cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget.MaxUnavailable,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget.SelectorLabelsWithDefaults(lbls),
-			},
-		},
+func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+
+	t := newSvcBuilder(cr, cr.GetVMAuthLBName(), cr.VMAuthLBSelectorLabels())
+	pdb := build.PodDisruptionBudget(t, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
+	var prevPDB *policyv1.PodDisruptionBudget
+	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
+		t = newSvcBuilder(prevCR, prevCR.GetVMAuthLBName(), prevCR.VMAuthLBSelectorLabels())
+		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	}
-	return reconcile.PDB(ctx, rclient, pdb)
+	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+}
+
+func newSvcBuilder(cr *vmv1beta1.VMCluster, name string, selectorLabels map[string]string) *clusterSvcBuilder {
+	return &clusterSvcBuilder{
+		VMCluster:      cr,
+		prefixedName:   name,
+		finalLabels:    cr.FinalLabels(selectorLabels),
+		selectorLabels: selectorLabels,
+	}
 }

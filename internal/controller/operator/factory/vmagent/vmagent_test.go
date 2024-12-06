@@ -1638,7 +1638,7 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := createOrUpdateVMAgentService(tt.args.ctx, tt.args.cr, cl)
+			got, err := createOrUpdateVMAgentService(tt.args.ctx, cl, tt.args.cr, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAgentService() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1757,7 +1757,7 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := createOrUpdateRelabelConfigsAssets(tt.args.ctx, tt.args.cr, cl); (err != nil) != tt.wantErr {
+			if err := createOrUpdateRelabelConfigsAssets(tt.args.ctx, cl, tt.args.cr, nil); (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateRelabelConfigsAssets() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdCM corev1.ConfigMap
@@ -1959,7 +1959,7 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := CreateOrUpdateVMAgentStreamAggrConfig(tt.args.ctx, tt.args.cr, cl); (err != nil) != tt.wantErr {
+			if err := createOrUpdateStreamAggrConfig(tt.args.ctx, cl, tt.args.cr, nil); (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateVMAgentStreamAggrConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdCM corev1.ConfigMap

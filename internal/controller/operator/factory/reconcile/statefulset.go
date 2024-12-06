@@ -8,10 +8,6 @@ import (
 	"strings"
 	"time"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -21,6 +17,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 const podRevisionLabel = "controller-revision-hash"
@@ -93,8 +93,6 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		}
 		// hack for kubernetes 1.18
 		newSts.Status.Replicas = currentSts.Status.Replicas
-		newSts.Spec.Template.Annotations = labels.Merge(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
-		vmv1beta1.AddFinalizer(newSts, &currentSts)
 
 		stsRecreated, podMustRecreate, err := recreateSTSIfNeed(ctx, rclient, newSts, &currentSts)
 		if err != nil {
@@ -104,11 +102,15 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		// if sts wasn't recreated, update it first
 		// before making call for performRollingUpdateOnSts
 		if !stsRecreated {
+			var prevAnnotations map[string]string
+			if prevSts != nil {
+				prevAnnotations = prevSts.Annotations
+			}
 			isEqual := equality.Semantic.DeepDerivative(newSts.Spec, currentSts.Spec)
 			shouldSkipUpdate := isPrevEqual &&
 				isEqual &&
 				equality.Semantic.DeepEqual(newSts.Labels, currentSts.Labels) &&
-				equality.Semantic.DeepEqual(newSts.Annotations, currentSts.Annotations)
+				isAnnotationsEqual(currentSts.Annotations, newSts.Annotations, prevAnnotations)
 
 			if !shouldSkipUpdate {
 				logger.WithContext(ctx).Info("updating statefulset configuration",
@@ -116,6 +118,10 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 					"is_prev_equal", isPrevEqual,
 					"is_current_equal", isEqual,
 					"is_prev_nil", prevSts == nil)
+
+				newSts.Annotations = mergeAnnotations(currentSts.Annotations, newSts.Annotations, prevAnnotations)
+				vmv1beta1.AddFinalizer(newSts, &currentSts)
+
 				if err := rclient.Update(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
 				}

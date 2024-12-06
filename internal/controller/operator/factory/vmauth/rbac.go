@@ -4,36 +4,42 @@ import (
 	"context"
 	"fmt"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
-
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 // createVMAuthSecretAccess creates rbac rule for watching secret changes with vmauth configuration
-func createVMAuthSecretAccess(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
-	if err := ensureVMAuthRoleExist(ctx, cr, rclient); err != nil {
+func createVMAuthSecretAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
+	if err := ensureVMAuthRoleExist(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot check vmauth role: %w", err)
 	}
-	if err := ensureVMAuthRBExist(ctx, cr, rclient); err != nil {
+	if err := ensureVMAuthRBExist(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot check vmauth role binding: %w", err)
 	}
 	return nil
 }
 
-func ensureVMAuthRoleExist(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
-	role := buildVMAuthRole(cr)
-	return reconcile.Role(ctx, rclient, role)
+func ensureVMAuthRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
+	var prevRole *rbacv1.Role
+	if prevCR != nil {
+		prevRole = buildRole(prevCR)
+	}
+	return reconcile.Role(ctx, rclient, buildRole(cr), prevRole)
 }
 
-func ensureVMAuthRBExist(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
-	roleBinding := buildVMAuthRoleBinding(cr)
-	return reconcile.RoleBinding(ctx, rclient, roleBinding)
+func ensureVMAuthRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
+	var prevRB *rbacv1.RoleBinding
+	if prevCR != nil {
+		prevRB = buildRoleBinding(prevCR)
+	}
+	return reconcile.RoleBinding(ctx, rclient, buildRoleBinding(cr), prevRB)
 }
 
-func buildVMAuthRole(cr *vmv1beta1.VMAuth) *rbacv1.Role {
+func buildRole(cr *vmv1beta1.VMAuth) *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -53,7 +59,7 @@ func buildVMAuthRole(cr *vmv1beta1.VMAuth) *rbacv1.Role {
 	}
 }
 
-func buildVMAuthRoleBinding(cr *vmv1beta1.VMAuth) *rbacv1.RoleBinding {
+func buildRoleBinding(cr *vmv1beta1.VMAuth) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),

@@ -4,18 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // Service - reconcile needed and actual state of service for given crd,
@@ -48,8 +47,8 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		}
 		return nil
 	}
-	existingService := &corev1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, existingService)
+	currentService := &corev1.Service{}
+	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// service not exists, creating it.
@@ -61,36 +60,36 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		}
 		return fmt.Errorf("cannot get service for existing service: %w", err)
 	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, existingService); err != nil {
+	if err := finalize.FreeIfNeeded(ctx, rclient, currentService); err != nil {
 		return err
 	}
 	// invariants
 	switch {
-	case newService.Spec.Type != existingService.Spec.Type:
+	case newService.Spec.Type != currentService.Spec.Type:
 		// type mismatch.
 		// need to remove it and recreate.
-		return recreateService(existingService)
+		return recreateService(currentService)
 	case newService.Spec.ClusterIP != "" &&
 		newService.Spec.ClusterIP != "None" &&
-		newService.Spec.ClusterIP != existingService.Spec.ClusterIP:
+		newService.Spec.ClusterIP != currentService.Spec.ClusterIP:
 		// ip was changed by user, remove old service and create new one.
-		return recreateService(existingService)
-	case newService.Spec.ClusterIP == "None" && existingService.Spec.ClusterIP != "None":
+		return recreateService(currentService)
+	case newService.Spec.ClusterIP == "None" && currentService.Spec.ClusterIP != "None":
 		// serviceType changed from clusterIP to headless
-		return recreateService(existingService)
-	case newService.Spec.ClusterIP == "" && existingService.Spec.ClusterIP == "None":
+		return recreateService(currentService)
+	case newService.Spec.ClusterIP == "" && currentService.Spec.ClusterIP == "None":
 		// serviceType changes from headless to clusterIP
-		return recreateService(existingService)
+		return recreateService(currentService)
 	}
 
 	// keep given clusterIP for service.
 	if newService.Spec.ClusterIP != "None" {
-		newService.Spec.ClusterIP = existingService.Spec.ClusterIP
+		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
 	// keep allocated node ports.
-	if newService.Spec.Type == existingService.Spec.Type {
-		for i := range existingService.Spec.Ports {
-			existPort := existingService.Spec.Ports[i]
+	if newService.Spec.Type == currentService.Spec.Type {
+		for i := range currentService.Spec.Ports {
+			existPort := currentService.Spec.Ports[i]
 			for j := range newService.Spec.Ports {
 				newPort := &newService.Spec.Ports[j]
 				// add missing port, only if its not defined by user.
@@ -101,26 +100,28 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 			}
 		}
 	}
-	if existingService.ResourceVersion != "" {
-		newService.ResourceVersion = existingService.ResourceVersion
+
+	var prevAnnotations map[string]string
+	if prevService != nil {
+		prevAnnotations = prevService.Annotations
 	}
-	newService.Annotations = labels.Merge(existingService.Annotations, newService.Annotations)
-	vmv1beta1.AddFinalizer(newService, existingService)
 
 	rclient.Scheme().Default(newService)
-	isEqual := equality.Semantic.DeepDerivative(newService.Spec, existingService.Spec)
+	isEqual := equality.Semantic.DeepDerivative(newService.Spec, currentService.Spec)
 	if isEqual &&
 		isPrevServiceEqual &&
-		equality.Semantic.DeepEqual(newService.Labels, existingService.Labels) &&
-		equality.Semantic.DeepEqual(newService.Labels, existingService.Labels) {
+		equality.Semantic.DeepEqual(newService.Labels, currentService.Labels) &&
+		isAnnotationsEqual(currentService.Annotations, newService.Annotations, prevAnnotations) {
 		return nil
 	}
 	if prevService != nil {
 		logger.WithContext(ctx).Info("updating service configuration",
 			"is_current_equal", isEqual, "is_prev_equal", isPrevServiceEqual,
 		)
-
 	}
+
+	newService.Annotations = mergeAnnotations(currentService.Annotations, newService.Annotations, prevAnnotations)
+	vmv1beta1.AddFinalizer(newService, currentService)
 
 	err = rclient.Update(ctx, newService)
 	if err != nil {

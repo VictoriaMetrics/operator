@@ -29,12 +29,16 @@ const (
 	streamAggrSecretKey = "config.yaml"
 )
 
-func createVMSingleStorage(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
+func createVMSingleStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	l := logger.WithContext(ctx).WithValues("pvc_for", "vmsingle")
 	ctx = logger.AddToContext(ctx, l)
 	newPvc := makeVMSinglePvc(cr)
+	var prevPVC *corev1.PersistentVolumeClaim
+	if prevCR != nil && prevCR.Spec.Storage != nil {
+		prevPVC = makeVMSinglePvc(prevCR)
+	}
 
-	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc)
+	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC)
 }
 
 func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
@@ -60,21 +64,33 @@ func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 // CreateOrUpdateVMSingle performs an update for single node resource
 func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
 
-	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+	var prevCR *vmv1beta1.VMSingle
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot delete objects from prev state: %w", err)
 	}
+	if err := createOrUpdateVMSingleStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
+	}
 	if cr.IsOwnsServiceAccount() {
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+		var prevSA *corev1.ServiceAccount
+		if prevCR != nil {
+			prevSA = build.ServiceAccount(prevCR)
+		}
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
 
 	if cr.Spec.Storage != nil && cr.Spec.StorageDataPath == "" {
-		if err := createVMSingleStorage(ctx, cr, rclient); err != nil {
+		if err := createVMSingleStorage(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create storage: %w", err)
 		}
 	}
-	svc, err := createOrUpdateVMSingleService(ctx, cr, rclient)
+	svc, err := createOrUpdateVMSingleService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
@@ -86,9 +102,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient
 		}
 	}
 	var prevDeploy *appsv1.Deployment
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil {
 		prevDeploy, err = newDeployForVMSingle(ctx, prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -352,7 +366,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 	return vmSingleSpec, nil
 }
 
-func createOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateVMSingleService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) (*corev1.Service, error) {
 
 	addBackupPort := func(svc *corev1.Service, vmb *vmv1beta1.VMBackup) {
 		if vmb != nil {
@@ -374,6 +388,8 @@ func createOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, 
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+
+			// TODO: @f41gh7 add prev service for proper annotations merge
 		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmsingle: %w", err)
 		}
@@ -383,13 +399,10 @@ func createOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, 
 	}
 
 	var prevService *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			addBackupPort(svc, prevCR.Spec.VMBackup)
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
-
 		})
 	}
 
@@ -402,14 +415,8 @@ func createOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, 
 // buildVMSingleStreamAggrConfig build configmap with stream aggregation config for vmsingle.
 func buildVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       cr.Namespace,
-			Name:            cr.StreamAggrConfigName(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-		},
-		Data: make(map[string]string),
+		ObjectMeta: buildStreamAggrConfigMeta(cr),
+		Data:       make(map[string]string),
 	}
 	if len(cr.Spec.StreamAggrConfig.Rules) > 0 {
 		data, err := yaml.Marshal(cr.Spec.StreamAggrConfig.Rules)
@@ -434,8 +441,18 @@ func buildVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, 
 	return cfgCM, nil
 }
 
-// CreateOrUpdateVMSingleStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
-func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
+func buildStreamAggrConfigMeta(cr *vmv1beta1.VMSingle) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Namespace:       cr.Namespace,
+		Name:            cr.StreamAggrConfigName(),
+		Labels:          cr.AllLabels(),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: cr.AsOwner(),
+	}
+}
+
+// createOrUpdateVMSingleStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
+func createOrUpdateVMSingleStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
@@ -443,11 +460,15 @@ func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.V
 	if err != nil {
 		return err
 	}
-	return reconcile.ConfigMap(ctx, rclient, streamAggrCM)
+	var prevCMMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevCMMeta = ptr.To(buildStreamAggrConfigMeta(prevCR))
+	}
+	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevCMMeta)
 }
 
-func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
-	if cr.ParsedLastAppliedSpec == nil {
+func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
+	if prevCR == nil {
 		return nil
 	}
 	// TODO check storage for nil

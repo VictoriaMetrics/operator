@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // BindFlags binds package flags to the given flagSet
@@ -69,7 +70,7 @@ func init() {
 func getDefaultOptions() controller.Options {
 	optionsInit.Do(func() {
 		defaultOptions = &controller.Options{
-			RateLimiter:             workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 2*time.Minute),
+			RateLimiter:             workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](2*time.Second, 2*time.Minute),
 			CacheSyncTimeout:        *cacheSyncTimeout,
 			MaxConcurrentReconciles: *maxConcurrency,
 		}

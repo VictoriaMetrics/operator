@@ -459,7 +459,6 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `key` | The ConfigMap key to refer to. | _string_ | true |
-| `name` | Name of the referent.<br />This field is effectively required, but due to backwards compatibility is<br />allowed to be empty. Instances of this type with an empty value here are<br />almost certainly wrong.<br />TODO: Add other useful fields. apiVersion, kind, uid?<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names<br />TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896. | _string_ | false |
 
 
 #### ConsulSDConfig

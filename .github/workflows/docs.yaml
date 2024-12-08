@@ -3,9 +3,9 @@ name: Update docs
 on:
   push:
     branches:
-      - 'master'
+      - "master"
     paths:
-      - 'docs/**'
+      - "docs/**"
 
 jobs:
   update-docs:
@@ -50,6 +50,8 @@ jobs:
         id: update
         run: |
           make docs
+          # check for uncommited changes to configs and crds
+          git diff --exit-code
           # Sync markdown files and pictures
           rsync -zarv \
             --include="*/" \

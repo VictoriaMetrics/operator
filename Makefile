@@ -130,7 +130,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-test-e2e: ginkgo-install
+test-e2e: deploy-kind ginkgo-install
 	$(GINKGO_BIN) -procs=$(E2E_TESTS_CONCURRENCY) -timeout=20m ./test/e2e/
 	$(GINKGO_BIN) -procs=$(E2E_TESTS_CONCURRENCY) -timeout=20m ./test/e2e/watchnamespace/
 
@@ -383,7 +383,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
 
 .PHONY: install-tools
-install-tools: envconfig-docs crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest
+install-tools: envconfig-docs crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest ginkgo-install
 
 .PHONY: envconfig-docs
 envconfig-docs: $(ENVCONFIG_DOCS)
@@ -401,8 +401,7 @@ $(CLIENT_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CLIENT_GEN),k8s.io/code-generator/cmd/client-gen,$(CODEGENERATOR_VERSION))
 
 .PHONY: ginkgo-install
-ginkgo-install: $(GINKGO_BIN)
-$(GINKGO_BIN): $(LOCALBIN)
+ginkgo-install:
 	$(call go-install-tool,$(GINKGO_BIN),github.com/onsi/ginkgo/v2/ginkgo,$(GINKGO_VERSION))
 
 .PHONY: lister-gen

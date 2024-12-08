@@ -49,9 +49,6 @@ jobs:
       - name: Update operator docs in VM repo
         id: update
         run: |
-          make manifests
-          # check for uncommited changes crds
-          git diff --exit-code
           make docs
           # Sync markdown files and pictures
           rsync -zarv \

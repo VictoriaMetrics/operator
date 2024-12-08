@@ -195,9 +195,9 @@ var _ = Describe("e2e vmcluster", func() {
 				},
 				func(cr *v1beta1vm.VMCluster) {
 					clusterNsnObjects := map[types.NamespacedName]client.Object{
-						types.NamespacedName{Namespace: cr.Namespace, Name: cr.GetInsertName()}:                           &appsv1.Deployment{},
-						types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.VMStorage.GetNameWithPrefix(cr.Name)}: &appsv1.StatefulSet{},
-						types.NamespacedName{Namespace: cr.Namespace, Name: cr.GetSelectName()}:                           &appsv1.StatefulSet{},
+						{Namespace: cr.Namespace, Name: cr.GetInsertName()}:                           &appsv1.Deployment{},
+						{Namespace: cr.Namespace, Name: cr.Spec.VMStorage.GetNameWithPrefix(cr.Name)}: &appsv1.StatefulSet{},
+						{Namespace: cr.Namespace, Name: cr.GetSelectName()}:                           &appsv1.StatefulSet{},
 					}
 					for nsn, obj := range clusterNsnObjects {
 						By(fmt.Sprintf("verifing object with name: %s", nsn))
@@ -280,9 +280,9 @@ var _ = Describe("e2e vmcluster", func() {
 				},
 				func(cr *v1beta1vm.VMCluster) {
 					clusterNsnObjects := map[types.NamespacedName]client.Object{
-						types.NamespacedName{Namespace: cr.Namespace, Name: cr.GetInsertName()}:                           &appsv1.Deployment{},
-						types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.VMStorage.GetNameWithPrefix(cr.Name)}: &appsv1.StatefulSet{},
-						types.NamespacedName{Namespace: cr.Namespace, Name: cr.GetSelectName()}:                           &appsv1.StatefulSet{},
+						{Namespace: cr.Namespace, Name: cr.GetInsertName()}:                           &appsv1.Deployment{},
+						{Namespace: cr.Namespace, Name: cr.Spec.VMStorage.GetNameWithPrefix(cr.Name)}: &appsv1.StatefulSet{},
+						{Namespace: cr.Namespace, Name: cr.GetSelectName()}:                           &appsv1.StatefulSet{},
 					}
 					for nsn, obj := range clusterNsnObjects {
 						By(fmt.Sprintf("verifing object with name: %s", nsn))

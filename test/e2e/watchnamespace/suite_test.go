@@ -30,10 +30,7 @@ func TestAPIs(t *testing.T) {
 var k8sClient client.Client
 var _ = SynchronizedBeforeSuite(
 	func() {
-		var err error
-		err = os.Setenv(config.WatchNamespaceEnvVar, "default")
-		Expect(err).NotTo(HaveOccurred())
-
+		Expect(os.Setenv(config.WatchNamespaceEnvVar, "default")).NotTo(HaveOccurred())
 		suite.InitOperatorProcess()
 	},
 	func() {

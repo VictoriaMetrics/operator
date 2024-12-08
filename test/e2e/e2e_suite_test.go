@@ -150,12 +150,25 @@ var (
 		})
 	})
 
-	_ = BeforeSuite(func() {
-		suite.Before()
-		k8sClient = suite.K8sClient
-	})
+	_ = SynchronizedBeforeSuite(
+		func() {
+			suite.InitOperatorProcess()
+		},
+		func() {
+			k8sClient = suite.GetClient()
+		},
+	)
 
-	_ = AfterSuite(suite.After)
+	_ = SynchronizedAfterSuite(
+		func() {
+			suite.StopClient()
+		},
+		func() {
+			suite.ShutdownOperatorProcess()
+		},
+	)
+
+	//_ = AfterSuite()
 
 	k8sClient client.Client
 )

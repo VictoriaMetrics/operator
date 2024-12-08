@@ -28,21 +28,29 @@ func TestAPIs(t *testing.T) {
 }
 
 var k8sClient client.Client
-var _ = BeforeSuite(func() {
-	var err error
-	err = os.Setenv(config.WatchNamespaceEnvVar, "default")
-	Expect(err).NotTo(HaveOccurred())
+var _ = SynchronizedBeforeSuite(
+	func() {
+		var err error
+		err = os.Setenv(config.WatchNamespaceEnvVar, "default")
+		Expect(err).NotTo(HaveOccurred())
 
-	suite.Before()
-	k8sClient = suite.K8sClient
+		suite.InitOperatorProcess()
+	},
+	func() {
+		k8sClient = suite.GetClient()
+		testNamespace := corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: excludedNamespace,
+			},
+		}
+		err := k8sClient.Create(context.Background(), &testNamespace)
+		Expect(err == nil || errors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
+	})
 
-	testNamespace := corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: excludedNamespace,
-		},
-	}
-	err = k8sClient.Create(context.Background(), &testNamespace)
-	Expect(err == nil || errors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
-})
-
-var _ = AfterSuite(suite.After)
+var _ = SynchronizedAfterSuite(
+	func() {
+		suite.StopClient()
+	},
+	func() {
+		suite.ShutdownOperatorProcess()
+	})

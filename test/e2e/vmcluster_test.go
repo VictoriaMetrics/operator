@@ -68,13 +68,18 @@ var _ = Describe("e2e vmcluster", func() {
 			}, eventualDeletionTimeout, 1).Should(BeNil())
 		})
 
-		DescribeTable("should create vmcluster", func(name string, cr *v1beta1vm.VMCluster) {
+		DescribeTable("should create vmcluster", func(name string, cr *v1beta1vm.VMCluster, verify func(cr *v1beta1vm.VMCluster)) {
 			namespacedName.Name = name
 			cr.Name = name
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+			if verify != nil {
+				var createdCluster v1beta1vm.VMCluster
+				Expect(k8sClient.Get(ctx, namespacedName, &createdCluster)).To(Succeed())
+				verify(&createdCluster)
+			}
 
 		},
 			Entry("without any componets", "empty", &v1beta1vm.VMCluster{
@@ -83,7 +88,8 @@ var _ = Describe("e2e vmcluster", func() {
 					Name:      namespacedName.Name,
 				},
 				Spec: v1beta1vm.VMClusterSpec{RetentionPeriod: "1"},
-			}),
+			}, nil,
+			),
 			Entry("with all components", "all-services",
 				&v1beta1vm.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -108,6 +114,7 @@ var _ = Describe("e2e vmcluster", func() {
 						},
 					},
 				},
+				nil,
 			),
 			Entry("with vmstorage and vmselect", "with-select", &v1beta1vm.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -127,7 +134,8 @@ var _ = Describe("e2e vmcluster", func() {
 						},
 					},
 				},
-			}),
+			}, nil,
+			),
 			Entry("with vmstorage and vminsert", "with-insert", &v1beta1vm.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -145,7 +153,8 @@ var _ = Describe("e2e vmcluster", func() {
 					},
 					},
 				},
-			}),
+			},
+				nil),
 			Entry("with security enable and without default resources", "all-secure",
 				&v1beta1vm.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -156,7 +165,7 @@ var _ = Describe("e2e vmcluster", func() {
 						RetentionPeriod: "1",
 						VMStorage: &v1beta1vm.VMStorage{
 							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
-								//								UseStrictSecurity:   ptr.To(true),
+								UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
 							},
 							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
@@ -165,7 +174,7 @@ var _ = Describe("e2e vmcluster", func() {
 						},
 						VMSelect: &v1beta1vm.VMSelect{
 							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
-								//							UseStrictSecurity:   ptr.To(true),
+								UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
 							},
 
@@ -175,7 +184,7 @@ var _ = Describe("e2e vmcluster", func() {
 						},
 						VMInsert: &v1beta1vm.VMInsert{
 							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
-								//						UseStrictSecurity:   ptr.To(true),
+								UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
 							},
 							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
@@ -183,6 +192,110 @@ var _ = Describe("e2e vmcluster", func() {
 							},
 						},
 					},
+				},
+				func(cr *v1beta1vm.VMCluster) {
+					clusterNsnObjects := map[types.NamespacedName]client.Object{
+						types.NamespacedName{Namespace: cr.Namespace, Name: cr.GetInsertName()}:                           &appsv1.Deployment{},
+						types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.VMStorage.GetNameWithPrefix(cr.Name)}: &appsv1.StatefulSet{},
+						types.NamespacedName{Namespace: cr.Namespace, Name: cr.GetSelectName()}:                           &appsv1.StatefulSet{},
+					}
+					for nsn, obj := range clusterNsnObjects {
+						By(fmt.Sprintf("verifing object with name: %s", nsn))
+						Expect(k8sClient.Get(ctx, nsn, obj)).To(Succeed())
+						switch t := obj.(type) {
+						case *appsv1.Deployment:
+							assertStrictSecurity(t.Spec.Template.Spec)
+						case *appsv1.StatefulSet:
+							assertStrictSecurity(t.Spec.Template.Spec)
+						default:
+							Fail(fmt.Sprintf("type %T is not expected", t))
+						}
+					}
+				},
+			),
+			Entry("with external security enable and UseStrictSecurity:false", "all-secure-external",
+				&v1beta1vm.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      namespacedName.Name,
+					},
+					Spec: v1beta1vm.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &v1beta1vm.VMStorage{
+							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+								UseDefaultResources: ptr.To(false),
+							},
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+								SecurityContext: &v1beta1vm.SecurityContext{
+									PodSecurityContext: &corev1.PodSecurityContext{
+										RunAsNonRoot: ptr.To(true),
+										RunAsUser:    ptr.To(int64(65534)),
+										RunAsGroup:   ptr.To(int64(65534)),
+									},
+									ContainerSecurityContext: &v1beta1vm.ContainerSecurityContext{
+										Privileged: ptr.To(false),
+									},
+								},
+							},
+						},
+						VMSelect: &v1beta1vm.VMSelect{
+							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+								UseDefaultResources: ptr.To(false),
+							},
+
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+								SecurityContext: &v1beta1vm.SecurityContext{
+									PodSecurityContext: &corev1.PodSecurityContext{
+										RunAsNonRoot: ptr.To(true),
+										RunAsUser:    ptr.To(int64(65534)),
+										RunAsGroup:   ptr.To(int64(65534)),
+									},
+									ContainerSecurityContext: &v1beta1vm.ContainerSecurityContext{
+										Privileged: ptr.To(false),
+									},
+								},
+							},
+						},
+						VMInsert: &v1beta1vm.VMInsert{
+							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+								UseDefaultResources: ptr.To(false),
+							},
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+								SecurityContext: &v1beta1vm.SecurityContext{
+									PodSecurityContext: &corev1.PodSecurityContext{
+										RunAsNonRoot: ptr.To(true),
+										RunAsUser:    ptr.To(int64(65534)),
+										RunAsGroup:   ptr.To(int64(65534)),
+									},
+									ContainerSecurityContext: &v1beta1vm.ContainerSecurityContext{
+										Privileged: ptr.To(false),
+									},
+								},
+							},
+						},
+					},
+				},
+				func(cr *v1beta1vm.VMCluster) {
+					clusterNsnObjects := map[types.NamespacedName]client.Object{
+						types.NamespacedName{Namespace: cr.Namespace, Name: cr.GetInsertName()}:                           &appsv1.Deployment{},
+						types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.VMStorage.GetNameWithPrefix(cr.Name)}: &appsv1.StatefulSet{},
+						types.NamespacedName{Namespace: cr.Namespace, Name: cr.GetSelectName()}:                           &appsv1.StatefulSet{},
+					}
+					for nsn, obj := range clusterNsnObjects {
+						By(fmt.Sprintf("verifing object with name: %s", nsn))
+						Expect(k8sClient.Get(ctx, nsn, obj)).To(Succeed())
+						switch t := obj.(type) {
+						case *appsv1.Deployment:
+							assertStrictSecurity(t.Spec.Template.Spec)
+						case *appsv1.StatefulSet:
+							assertStrictSecurity(t.Spec.Template.Spec)
+						default:
+							Fail(fmt.Sprintf("type %T is not expected", t))
+						}
+					}
 				},
 			),
 		)
@@ -244,10 +357,6 @@ var _ = Describe("e2e vmcluster", func() {
 						Should(Succeed())
 					var updated v1beta1vm.VMCluster
 					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
-					// verify results
-					// workaround for buggy gvk https://github.com/kubernetes-sigs/controller-runtime/issues/1517#issuecomment-844703142
-					gvk, _, _ := k8sClient.Scheme().ObjectKinds(&updated)
-					updated.SetGroupVersionKind(gvk[0])
 					step.verify(&updated)
 				}
 			},
@@ -1162,3 +1271,25 @@ up{baz="bar"} 123
 		)
 	})
 })
+
+func assertStrictSecurity(podSpec corev1.PodSpec) {
+	Expect(podSpec.SecurityContext).NotTo((BeNil()))
+	Expect(podSpec.SecurityContext).NotTo((BeNil()))
+	Expect(podSpec.SecurityContext.RunAsNonRoot).NotTo(BeNil())
+	Expect(*podSpec.SecurityContext.RunAsNonRoot).To(BeTrue())
+	Expect(podSpec.SecurityContext.RunAsUser).NotTo(BeNil())
+	Expect(*podSpec.SecurityContext.RunAsUser).To(Equal(int64(65534)))
+
+	Expect(podSpec.Containers).To(HaveLen(1))
+	for _, cnt := range podSpec.Containers {
+		By(fmt.Sprintf("verifing container name=%q", cnt.Name))
+		Expect(cnt.SecurityContext).NotTo(BeNil())
+		Expect(cnt.SecurityContext.RunAsNonRoot).NotTo(BeNil())
+		Expect(*cnt.SecurityContext.RunAsNonRoot).To(BeTrue())
+		Expect(cnt.SecurityContext.RunAsUser).NotTo(BeNil())
+		Expect(*cnt.SecurityContext.RunAsUser).To(Equal(int64(65534)))
+		Expect(cnt.SecurityContext.Privileged).NotTo(BeNil())
+		Expect(*cnt.SecurityContext.Privileged).To(BeFalse())
+
+	}
+}

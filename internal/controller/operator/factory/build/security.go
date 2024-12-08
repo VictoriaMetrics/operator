@@ -20,6 +20,7 @@ var (
 		RunAsUser:                &containerUserGroup,
 		RunAsGroup:               &containerUserGroup,
 		RunAsNonRoot:             &runNonRoot,
+		Privileged:               ptr.To(false),
 		ReadOnlyRootFilesystem:   ptr.To(true),
 		AllowPrivilegeEscalation: ptr.To(false),
 		Capabilities: &corev1.Capabilities{
@@ -41,14 +42,12 @@ var (
 
 // AddStrictSecuritySettingsToContainers conditionally adds Security settings to given containers
 func AddStrictSecuritySettingsToContainers(p *vmv1beta1.SecurityContext, containers []corev1.Container, enableStrictSecurity bool) {
-	if !enableStrictSecurity {
+	if !enableStrictSecurity && p == nil {
 		return
 	}
 	for idx := range containers {
 		container := &containers[idx]
-		if container.SecurityContext == nil {
-			container.SecurityContext = containerSecurityContext(p)
-		}
+		container.SecurityContext = containerSecurityContext(p)
 	}
 }
 

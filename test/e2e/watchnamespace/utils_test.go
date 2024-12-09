@@ -34,7 +34,7 @@ func DeleteAllObjectsOf(namespace string, listProtos ...client.ObjectList) {
 	}, 60, 1).Should(BeTrue())
 }
 
-func ListObjectsInNamespace(namespace string, listProtos ...client.ObjectList) []client.Object {
+func ListObjectsInNamespace(namespace string, listProtos []client.ObjectList) []client.Object {
 	var result []client.Object
 	for _, listProto := range listProtos {
 		objects := listObjectsByListProto(namespace, listProto)

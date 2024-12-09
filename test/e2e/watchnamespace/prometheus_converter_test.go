@@ -1,6 +1,8 @@
 package watchnamespace
 
 import (
+	"fmt"
+
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -12,11 +14,12 @@ import (
 var _ = Describe("VM Operator", func() {
 	var namespace string
 
+	processIdxSuffix := fmt.Sprintf("-%d", GinkgoParallelProcess())
 	JustBeforeEach(func() {
 		CreateObjects(
 			&monitoringv1.ServiceMonitor{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-service-monitor",
+					Name:      "test-service-monitor" + processIdxSuffix,
 					Namespace: namespace,
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
@@ -27,7 +30,7 @@ var _ = Describe("VM Operator", func() {
 			},
 			&monitoringv1.PodMonitor{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-pod-monitor",
+					Name:      "test-pod-monitor" + processIdxSuffix,
 					Namespace: namespace,
 				},
 				Spec: monitoringv1.PodMonitorSpec{
@@ -38,13 +41,13 @@ var _ = Describe("VM Operator", func() {
 			},
 			&monitoringv1.Probe{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-probe",
+					Name:      "test-probe" + processIdxSuffix,
 					Namespace: namespace,
 				},
 			},
 			&monitoringv1.PrometheusRule{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-prometheus-rule",
+					Name:      "test-prometheus-rule" + processIdxSuffix,
 					Namespace: namespace,
 				},
 			},
@@ -77,11 +80,9 @@ var _ = Describe("VM Operator", func() {
 		})
 
 		It("should convert Prometheus operator objects to VictoriaMetrics operator objects", func() {
-			for _, listProto := range vmObjectListProtos {
-				Eventually(func() []client.Object {
-					return ListObjectsInNamespace(namespace, listProto)
-				}, 60, 1).ShouldNot(BeEmpty())
-			}
+			Eventually(func() []client.Object {
+				return ListObjectsInNamespace(namespace, vmObjectListProtos)
+			}, 60, 1).ShouldNot(BeEmpty())
 		})
 	})
 

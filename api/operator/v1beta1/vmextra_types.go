@@ -721,6 +721,10 @@ type License struct {
 	Key *string `json:"key,omitempty"`
 	// KeyRef is reference to secret with license key for enterprise features.
 	KeyRef *v1.SecretKeySelector `json:"keyRef,omitempty"`
+	// Enforce offline verification of the license key.
+	ForceOffline *bool `json:"forceOffline,omitempty"`
+	// Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+	ReloadInterval *string `json:"reloadInterval,omitempty"`
 }
 
 // IsProvided returns true if license is provided.
@@ -742,6 +746,12 @@ func (l *License) MaybeAddToArgs(args []string, secretMountDir string) []string 
 	}
 	if l.KeyRef != nil {
 		args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(secretMountDir, l.KeyRef.Name, l.KeyRef.Key)))
+	}
+	if l.ForceOffline != nil {
+		args = append(args, fmt.Sprintf("-license.forceOffline=%v", *l.ForceOffline))
+	}
+	if l.ReloadInterval != nil {
+		args = append(args, fmt.Sprintf("-licenseFile.reloadInterval=%s", *l.ReloadInterval))
 	}
 	return args
 }
@@ -774,6 +784,10 @@ func (l *License) sanityCheck() error {
 
 	if l.Key != nil && l.KeyRef != nil {
 		return fmt.Errorf("only one of key or keyRef can be specified")
+	}
+
+	if l.Key != nil && l.ReloadInterval != nil {
+		return fmt.Errorf("reloadInterval can be specified only with keyRef")
 	}
 
 	return nil

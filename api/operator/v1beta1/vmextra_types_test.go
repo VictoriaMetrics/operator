@@ -3,9 +3,13 @@ package v1beta1
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 
 	"gopkg.in/yaml.v2"
+	"k8s.io/utils/ptr"
+
+	v1 "k8s.io/api/core/v1"
 )
 
 func Test_buildPathWithPrefixFlag(t *testing.T) {
@@ -88,6 +92,84 @@ func TestParsingMatch(t *testing.T) {
 			}
 			if !reflect.DeepEqual(match, tt.match) {
 				t.Fatalf("Match.UnmarshalYAML() got wrong result: %v, want: %v", match, tt.match)
+			}
+		})
+	}
+}
+
+func TestLicense_MaybeAddToArgs(t *testing.T) {
+	type args struct {
+		args           []string
+		secretMountDir string
+	}
+	tests := []struct {
+		name    string
+		license License
+		args    args
+		want    []string
+	}{
+		{
+			name: "license key provided",
+			license: License{
+				Key: ptr.To("test-key"),
+			},
+			args: args{
+				args:           []string{},
+				secretMountDir: "/etc/secrets",
+			},
+			want: []string{"-license=test-key"},
+		},
+		{
+			name: "license key provided with force offline",
+			license: License{
+				Key:          ptr.To("test-key"),
+				ForceOffline: ptr.To(true),
+			},
+			args: args{
+				args:           []string{},
+				secretMountDir: "/etc/secrets",
+			},
+			want: []string{"-license=test-key", "-license.forceOffline=true"},
+		},
+		{
+			name: "license key provided with reload interval",
+			license: License{
+				KeyRef: &v1.SecretKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{Name: "license-secret"},
+					Key:                  "license-key",
+				},
+				ReloadInterval: ptr.To("30s"),
+			},
+			args: args{
+				args:           []string{},
+				secretMountDir: "/etc/secrets",
+			},
+			want: []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-licenseFile.reloadInterval=30s"},
+		},
+		{
+			name: "license key provided via secret with force offline",
+			license: License{
+				KeyRef: &v1.SecretKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{Name: "license-secret"},
+					Key:                  "license-key",
+				},
+				ForceOffline: ptr.To(true),
+			},
+			args: args{
+				args:           []string{},
+				secretMountDir: "/etc/secrets",
+			},
+			want: []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-license.forceOffline=true"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.license.MaybeAddToArgs(tt.args.args, tt.args.secretMountDir)
+			slices.Sort(got)
+			slices.Sort(tt.want)
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("License.MaybeAddToArgs() = %v, want %v", got, tt.want)
 			}
 		})
 	}

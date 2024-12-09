@@ -18,6 +18,7 @@ aliases:
 - [vmoperator](https://docs.victoriametrics.com/operator/): bump default version of VictoriaMetrics components to [1.107.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.107.0).
 - [vmoperator](https://docs.victoriametrics.com/operator/): fix the behaviors of `vmagentSpec.ScrapeConfigSelector` and `vmagentSpec.scrapeConfigNamespaceSelector` when `vmagentSpec.selectAllByDefault=false`. Previously, the VMScrapeConfig could be ignored.
 - [vmoperator](https://docs.victoriametrics.com/operator/): fix the behaviors of `xxxNamespaceSelector` when `vmagentSpec.selectAllByDefault=true`. See [this doc](https://docs.victoriametrics.com/operator/resources/vmagent/#scraping) for detailed rules.
+- [vmoperator](https://docs.victoriametrics.com/operator/): add support of `license.forceOffile` and `license.reloadInterval` options. See [this doc](https://docs.victoriametrics.com/enterprise/) for the details.
 
 ## [v0.50.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.50.0) - 22 Nov 2024
 

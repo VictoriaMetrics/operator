@@ -2166,6 +2166,9 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/enterprise)
                 properties:
+                  forceOffline:
+                    description: Enforce offline verification of the license key.
+                    type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/enterprise).
@@ -2196,6 +2199,10 @@ spec:
                     - key
                     type: object
                     x-kubernetes-map-type: atomic
+                  reloadInterval:
+                    description: Interval to be used for checking for license key
+                      changes. Note that this is only applicable when using KeyRef.
+                    type: string
                 type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
@@ -12264,6 +12271,9 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/enterprise)
                 properties:
+                  forceOffline:
+                    description: Enforce offline verification of the license key.
+                    type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/enterprise).
@@ -12294,6 +12304,10 @@ spec:
                     - key
                     type: object
                     x-kubernetes-map-type: atomic
+                  reloadInterval:
+                    description: Interval to be used for checking for license key
+                      changes. Note that this is only applicable when using KeyRef.
+                    type: string
                 type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
@@ -14281,6 +14295,9 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/enterprise)
                 properties:
+                  forceOffline:
+                    description: Enforce offline verification of the license key.
+                    type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/enterprise).
@@ -14311,6 +14328,10 @@ spec:
                     - key
                     type: object
                     x-kubernetes-map-type: atomic
+                  reloadInterval:
+                    description: Interval to be used for checking for license key
+                      changes. Note that this is only applicable when using KeyRef.
+                    type: string
                 type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
@@ -15250,6 +15271,9 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/enterprise)
                 properties:
+                  forceOffline:
+                    description: Enforce offline verification of the license key.
+                    type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/enterprise).
@@ -15280,6 +15304,10 @@ spec:
                     - key
                     type: object
                     x-kubernetes-map-type: atomic
+                  reloadInterval:
+                    description: Interval to be used for checking for license key
+                      changes. Note that this is only applicable when using KeyRef.
+                    type: string
                 type: object
               paused:
                 description: |-
@@ -28020,6 +28048,9 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/enterprise)
                 properties:
+                  forceOffline:
+                    description: Enforce offline verification of the license key.
+                    type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/enterprise).
@@ -28050,6 +28081,10 @@ spec:
                     - key
                     type: object
                     x-kubernetes-map-type: atomic
+                  reloadInterval:
+                    description: Interval to be used for checking for license key
+                      changes. Note that this is only applicable when using KeyRef.
+                    type: string
                 type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod

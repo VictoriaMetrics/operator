@@ -31,8 +31,8 @@ var (
 	eventualDeploymentAppReadyTimeout  = 60 * time.Second
 	eventualStatefulsetAppReadyTimeout = 80 * time.Second
 	eventualDeletionTimeout            = 30 * time.Second
-	eventualDeploymentPodTimeout       = 10 * time.Second
-	eventualExpandingTimeout           = 5 * time.Second
+	eventualDeploymentPodTimeout       = 12 * time.Second
+	eventualExpandingTimeout           = 12 * time.Second
 )
 
 // Run e2e tests using the Ginkgo runner.

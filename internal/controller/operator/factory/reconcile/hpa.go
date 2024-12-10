@@ -10,36 +10,40 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HPA creates or update horizontalPodAutoscaler object
-func HPA(ctx context.Context, rclient client.Client, targetHPA *v2.HorizontalPodAutoscaler) error {
+func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.HorizontalPodAutoscaler) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		var existHPA v2.HorizontalPodAutoscaler
-		if err := rclient.Get(ctx, types.NamespacedName{Name: targetHPA.GetName(), Namespace: targetHPA.GetNamespace()}, &existHPA); err != nil {
+		var currentHPA v2.HorizontalPodAutoscaler
+		if err := rclient.Get(ctx, types.NamespacedName{Name: newHPA.GetName(), Namespace: newHPA.GetNamespace()}, &currentHPA); err != nil {
 			if errors.IsNotFound(err) {
-				return rclient.Create(ctx, targetHPA)
+				return rclient.Create(ctx, newHPA)
 			}
 			return fmt.Errorf("cannot get exist hpa object: %w", err)
 		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &existHPA); err != nil {
+		if err := finalize.FreeIfNeeded(ctx, rclient, &currentHPA); err != nil {
 			return err
 		}
+		var prevAnnotations map[string]string
+		if prevHPA != nil {
+			prevAnnotations = prevHPA.Annotations
+		}
 
-		targetHPA.Annotations = labels.Merge(existHPA.Annotations, targetHPA.Annotations)
-		targetHPA.ResourceVersion = existHPA.ResourceVersion
-		targetHPA.Status = existHPA.Status
-		if equality.Semantic.DeepEqual(targetHPA.Spec, existHPA.Spec) &&
-			equality.Semantic.DeepEqual(targetHPA.Labels, existHPA.Labels) &&
-			equality.Semantic.DeepEqual(targetHPA.Annotations, existHPA.Annotations) {
+		if equality.Semantic.DeepEqual(newHPA.Spec, currentHPA.Spec) &&
+			equality.Semantic.DeepEqual(newHPA.Labels, currentHPA.Labels) &&
+			isAnnotationsEqual(currentHPA.Annotations, newHPA.Annotations, prevAnnotations) {
 			return nil
 		}
-		logger.WithContext(ctx).Info("updating HPA configuration", "hpa_name", targetHPA.Name)
+		logger.WithContext(ctx).Info("updating HPA configuration", "hpa_name", newHPA.Name)
 
-		return rclient.Update(ctx, targetHPA)
+		newHPA.ResourceVersion = currentHPA.ResourceVersion
+		newHPA.Status = currentHPA.Status
+		newHPA.Annotations = mergeAnnotations(currentHPA.Annotations, newHPA.Annotations, prevAnnotations)
+
+		return rclient.Update(ctx, newHPA)
 	})
 }

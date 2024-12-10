@@ -47,7 +47,7 @@ const (
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
 var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
 
-func createOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateVMAgentService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
 
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		if cr.Spec.StatefulMode {
@@ -69,9 +69,7 @@ func createOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 	}
 
 	var prevService *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			if prevCR.Spec.StatefulMode {
 				svc.Spec.ClusterIP = "None"
@@ -90,22 +88,31 @@ func createOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 // CreateOrUpdateVMAgent creates deployment for vmagent and configures it
 // waits for healthy state
 func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+	var prevCR *vmv1beta1.VMAgent
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
 	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("cannot delete objects from prev state: %w", err)
 	}
 	if cr.IsOwnsServiceAccount() {
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+		var prevSA *corev1.ServiceAccount
+		if prevCR != nil {
+			prevSA = build.ServiceAccount(prevCR)
+		}
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !cr.Spec.IngestOnlyMode {
-			if err := createVMAgentK8sAPIAccess(ctx, cr, rclient, config.IsClusterWideAccessAllowed()); err != nil {
+			if err := createVMAgentK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}
 
 	}
 
-	svc, err := createOrUpdateVMAgentService(ctx, cr, rclient)
+	svc, err := createOrUpdateVMAgentService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
@@ -117,21 +124,25 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		}
 	}
 
-	ssCache, err := createOrUpdateConfigurationSecret(ctx, cr, rclient)
+	ssCache, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
 
-	if err := createOrUpdateRelabelConfigsAssets(ctx, cr, rclient); err != nil {
+	if err := createOrUpdateRelabelConfigsAssets(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
 	}
 
-	if err := CreateOrUpdateVMAgentStreamAggrConfig(ctx, cr, rclient); err != nil {
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		err = reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget))
+		var prevPDB *policyv1.PodDisruptionBudget
+		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
+			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
+		}
+		err = reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB)
 		if err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
 		}
@@ -139,9 +150,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 
 	var prevObjectSpec runtime.Object
 
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil {
 		prevObjectSpec, err = newDeployForVMAgent(prevCR, ssCache)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
@@ -679,17 +688,21 @@ func addShardSettingsToVMAgent(shardNum, shardsCount int, dep runtime.Object) {
 	}
 }
 
+func buildRelabelingsAssetsMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Namespace:       cr.Namespace,
+		Name:            cr.RelabelingAssetName(),
+		Labels:          cr.AllLabels(),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: cr.AsOwner(),
+	}
+}
+
 // buildVMAgentRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.
-func buildVMAgentRelabelingsAssets(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
+func buildVMAgentRelabelingsAssets(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       cr.Namespace,
-			Name:            cr.RelabelingAssetName(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-		},
-		Data: make(map[string]string),
+		ObjectMeta: buildRelabelingsAssetsMeta(cr),
+		Data:       make(map[string]string),
 	}
 	// global section
 	if len(cr.Spec.InlineRelabelConfig) > 0 {
@@ -743,28 +756,36 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, cr *vmv1beta1.VMAgent, r
 }
 
 // createOrUpdateRelabelConfigsAssets builds relabeling configs for vmagent at separate configmap, serialized as yaml
-func createOrUpdateRelabelConfigsAssets(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	if !cr.HasAnyRelabellingConfigs() {
 		return nil
 	}
-	assestsCM, err := buildVMAgentRelabelingsAssets(ctx, cr, rclient)
+	assestsCM, err := buildVMAgentRelabelingsAssets(ctx, rclient, cr)
 	if err != nil {
 		return err
 	}
-	return reconcile.ConfigMap(ctx, rclient, assestsCM)
+	var prevConfigMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevConfigMeta = ptr.To(buildRelabelingsAssetsMeta(prevCR))
+	}
+	return reconcile.ConfigMap(ctx, rclient, assestsCM, prevConfigMeta)
 }
 
-// buildVMAgentStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
-func buildVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
+func buildStreamAggrConfigMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Namespace:       cr.Namespace,
+		Name:            cr.StreamAggrConfigName(),
+		Labels:          cr.AllLabels(),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: cr.AsOwner(),
+	}
+}
+
+// buildStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
+func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       cr.Namespace,
-			Name:            cr.StreamAggrConfigName(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-		},
-		Data: make(map[string]string),
+		ObjectMeta: buildStreamAggrConfigMeta(cr),
+		Data:       make(map[string]string),
 	}
 	// global section
 	if cr.Spec.StreamAggrConfig != nil {
@@ -820,20 +841,24 @@ func buildVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 	return cfgCM, nil
 }
 
-// CreateOrUpdateVMAgentStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
-func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+// createOrUpdateStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
+func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	// fast path
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
-	streamAggrCM, err := buildVMAgentStreamAggrConfig(ctx, cr, rclient)
+	streamAggrCM, err := buildStreamAggrConfig(ctx, cr, rclient)
 	if err != nil {
 		return err
 	}
-	return reconcile.ConfigMap(ctx, rclient, streamAggrCM)
+	var prevConfigMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevConfigMeta = ptr.To(buildStreamAggrConfigMeta(prevCR))
+	}
+	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
 }
 
-func createOrUpdateTLSAssets(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, assets map[string]string) error {
+func createOrUpdateTLSAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, assets map[string]string) error {
 	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmagent_tls_assets"))
 
 	tlsAssetsSecret := &corev1.Secret{
@@ -851,7 +876,16 @@ func createOrUpdateTLSAssets(ctx context.Context, cr *vmv1beta1.VMAgent, rclient
 	for key, asset := range assets {
 		tlsAssetsSecret.Data[key] = []byte(asset)
 	}
-	return reconcile.Secret(ctx, rclient, tlsAssetsSecret)
+	var prevSecretMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevSecretMeta = &metav1.ObjectMeta{
+			Name:        prevCR.TLSAssetName(),
+			Labels:      prevCR.AllLabels(),
+			Annotations: prevCR.AnnotationsFiltered(),
+			Namespace:   prevCR.Namespace,
+		}
+	}
+	return reconcile.Secret(ctx, rclient, tlsAssetsSecret, prevSecretMeta)
 }
 
 func addAssetsToCache(

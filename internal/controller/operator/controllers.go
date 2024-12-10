@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // BindFlags binds package flags to the given flagSet
@@ -69,7 +70,7 @@ func init() {
 func getDefaultOptions() controller.Options {
 	optionsInit.Do(func() {
 		defaultOptions = &controller.Options{
-			RateLimiter:             workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 2*time.Minute),
+			RateLimiter:             workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](2*time.Second, 2*time.Minute),
 			CacheSyncTimeout:        *cacheSyncTimeout,
 			MaxConcurrentReconciles: *maxConcurrency,
 		}
@@ -313,23 +314,22 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 
 		return result, err
 	}
-
-	if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusOperational, nil); err != nil {
-		resultErr = fmt.Errorf("failed to update object status: %w", err)
-		return
-	}
 	if specChanged {
-
 		// use patch instead of update, only 1 field must be changed.
 		if err := c.Patch(ctx, object, diffPatch); err != nil {
 			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
 			return
 		}
+
 		if err := createGenericEventForObject(ctx, c, object, "reconcile of object finished successfully"); err != nil {
 			logger.WithContext(ctx).Error(err, " cannot create k8s api event")
 		}
 		logger.WithContext(ctx).Info("object was successfully reconciled")
 
+	}
+	if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusOperational, nil); err != nil {
+		resultErr = fmt.Errorf("failed to update object status: %w", err)
+		return
 	}
 
 	return result, nil

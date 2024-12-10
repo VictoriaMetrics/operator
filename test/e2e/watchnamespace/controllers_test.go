@@ -1,6 +1,7 @@
 package watchnamespace
 
 import (
+	"fmt"
 	"reflect"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -97,7 +98,9 @@ var _ = Describe("Controllers", func() {
 		}
 
 		var objectTypes []formattableType
+		processIdxSuffix := fmt.Sprintf("-%d", GinkgoParallelProcess())
 		for _, object := range objects {
+			object.SetName(object.GetName() + processIdxSuffix)
 			objectTypes = append(objectTypes, formattableType{reflect.TypeOf(object).Elem()})
 		}
 

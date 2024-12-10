@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -275,6 +276,95 @@ var _ = Describe("test  vmagent Controller", func() {
 					Expect(pic[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 
 				}),
+			Entry("by migrating RBAC access", "rbac-migrate",
+				&v1beta1vm.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      namespacedName.Name,
+					},
+					Spec: v1beta1vm.VMAgentSpec{
+						CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{UseDefaultResources: ptr.To(false)},
+						RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+							{URL: "http://some-vm-single:8428"},
+						},
+					},
+				},
+				func() {
+					cr := v1beta1vm.VMAgent{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rbac-migrate",
+							Namespace: namespace,
+						},
+					}
+					roleMeta := metav1.ObjectMeta{
+						Name:       "monitoring:vmagent-cluster-access-" + cr.Name,
+						Namespace:  namespace,
+						Finalizers: []string{v1beta1vm.FinalizerName},
+					}
+					crole := &rbacv1.ClusterRole{ObjectMeta: roleMeta, Rules: []rbacv1.PolicyRule{
+						{APIGroups: []string{""}, Verbs: []string{"GET"}, Resources: []string{"pods"}},
+					}}
+					croleb := &rbacv1.ClusterRoleBinding{
+						ObjectMeta: roleMeta,
+						Subjects: []rbacv1.Subject{
+							{
+								Kind:      rbacv1.ServiceAccountKind,
+								Name:      cr.GetServiceAccountName(),
+								Namespace: cr.GetNamespace(),
+							},
+						},
+						RoleRef: rbacv1.RoleRef{
+							APIGroup: rbacv1.GroupName,
+							Name:     cr.GetClusterRoleName(),
+							Kind:     "ClusterRole",
+						},
+					}
+					Expect(k8sClient.Create(ctx, crole)).To(Succeed())
+					Expect(k8sClient.Create(ctx, croleb)).To(Succeed())
+					// check that access not exist with new version naming
+					newFormatNss := types.NamespacedName{
+						Name:      "monitoring:" + namespace + ":vmagent-" + cr.Name,
+						Namespace: namespace,
+					}
+					Expect(
+						k8sClient.Get(ctx,
+							newFormatNss,
+							&rbacv1.ClusterRole{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+					Expect(
+						k8sClient.Get(ctx,
+							newFormatNss,
+							&rbacv1.ClusterRoleBinding{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+
+				},
+				func(cr *v1beta1vm.VMAgent) {
+					prevFormatName := types.NamespacedName{
+						Name:      "monitoring:vmagent-cluster-access-" + cr.Name,
+						Namespace: namespace,
+					}
+
+					newFormatName := types.NamespacedName{
+						Name:      "monitoring:" + namespace + ":vmagent-" + cr.Name,
+						Namespace: namespace,
+					}
+					Expect(
+						k8sClient.Get(ctx,
+							prevFormatName,
+							&rbacv1.ClusterRole{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+					Expect(
+						k8sClient.Get(ctx,
+							prevFormatName,
+							&rbacv1.ClusterRoleBinding{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+					Expect(
+						k8sClient.Get(ctx,
+							newFormatName,
+							&rbacv1.ClusterRole{})).To(Succeed())
+					Expect(
+						k8sClient.Get(ctx,
+							newFormatName,
+							&rbacv1.ClusterRoleBinding{})).To(Succeed())
+
+				},
+			),
 		)
 		type testStep struct {
 			setup  func(*v1beta1vm.VMAgent)

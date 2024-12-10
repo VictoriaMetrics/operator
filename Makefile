@@ -10,6 +10,7 @@ VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.0,$(TAG:v%=%))
 DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
 OVERLAY ?= config/manager
+E2E_TESTS_CONCURRENCY ?= 5
 
 BUILDINFO="operator-$(DATEINFO_TAG)-$(TAG)"
 
@@ -129,8 +130,10 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-test-e2e: load-kind
-	go test -timeout=20m ./test/e2e/ -v -ginkgo.v
+test-e2e: load-kind ginkgo-install
+	$(GINKGO_BIN) -procs=$(E2E_TESTS_CONCURRENCY) -timeout=20m ./test/e2e/
+	$(GINKGO_BIN) -procs=$(E2E_TESTS_CONCURRENCY) -timeout=20m ./test/e2e/watchnamespace/
+	$(GINKGO_BIN) -procs=$(E2E_TESTS_CONCURRENCY) -timeout=20m ./test/e2e/deploy/
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
@@ -352,6 +355,8 @@ OPM = $(LOCALBIN)/opm-$(OPM_VERSION)
 YQ = $(LOCALBIN)/yq-$(YQ_VERSION)
 ENVCONFIG_DOCS = $(LOCALBIN)/envconfig-docs-$(ENVCONFIG_DOCS_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
+GINKGO_BIN ?= $(LOCALBIN)/ginkgo
+GINKGO_VERSION ?= v2.19.0
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.5.0
@@ -379,7 +384,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
 
 .PHONY: install-tools
-install-tools: envconfig-docs crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest
+install-tools: envconfig-docs crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest ginkgo-install
 
 .PHONY: envconfig-docs
 envconfig-docs: $(ENVCONFIG_DOCS)
@@ -395,6 +400,10 @@ $(CRD_REF_DOCS): $(LOCALBIN)
 client-gen: $(CLIENT_GEN)
 $(CLIENT_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CLIENT_GEN),k8s.io/code-generator/cmd/client-gen,$(CODEGENERATOR_VERSION))
+
+.PHONY: ginkgo-install
+ginkgo-install:
+	$(call go-install-tool,$(GINKGO_BIN),github.com/onsi/ginkgo/v2/ginkgo,$(GINKGO_VERSION))
 
 .PHONY: lister-gen
 lister-gen: $(LISTER_GEN)
@@ -446,6 +455,6 @@ set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
 GOBIN=$(LOCALBIN) go install $${package} ;\
-mv "$$(echo "$(1)" | sed "s/-$(3)$$//")" $(1) ;\
+mv "$$(echo "$(1)" | sed "s/-$(3)$$//")" $(1) || echo "move not needed" ;\
 }
 endef

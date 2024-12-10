@@ -114,7 +114,6 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				continue
 			}
 		}
-
 		if err := vmauth.CreateOrUpdateVMAuthConfig(ctx, r, currentVMAuth); err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot create or update vmauth deploy for vmuser: %w", err)
 		}

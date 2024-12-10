@@ -3,9 +3,9 @@ name: Update docs
 on:
   push:
     branches:
-      - 'master'
+      - "master"
     paths:
-      - 'docs/**'
+      - "docs/**"
 
 jobs:
   update-docs:

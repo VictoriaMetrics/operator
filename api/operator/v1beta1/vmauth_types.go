@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	v12 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -22,6 +20,9 @@ type VMAuthSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	// ManagedMetadata defines metadata that will be added to the all objects
+	// created by operator for the given CustomResource
+	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 	// LogLevel for victoria metrics single to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
@@ -204,17 +205,20 @@ type UserConfigOption struct {
 	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
 }
 
+func (cr *VMAuth) setLastSpec(prevSpec VMAuthSpec) {
+	cr.ParsedLastAppliedSpec = &prevSpec
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAuth) UnmarshalJSON(src []byte) error {
 	type pcr VMAuth
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	prev, err := parseLastAppliedSpec[VMAuthSpec](cr)
-	if err != nil {
+	if err := parseLastAppliedState(cr); err != nil {
 		return err
 	}
-	cr.ParsedLastAppliedSpec = prev
+
 	return nil
 }
 
@@ -327,7 +331,7 @@ func (cr *VMAuth) AsOwner() []metav1.OwnerReference {
 	}
 }
 
-func (cr VMAuth) PodAnnotations() map[string]string {
+func (cr *VMAuth) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
 		for annotation, value := range cr.Spec.PodMetadata.Annotations {
@@ -337,11 +341,21 @@ func (cr VMAuth) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr VMAuth) AnnotationsFiltered() map[string]string {
-	return filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+func (cr *VMAuth) AnnotationsFiltered() map[string]string {
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if cr.Spec.ManagedMetadata != nil {
+		if dst == nil {
+			dst = make(map[string]string)
+		}
+		for k, v := range cr.Spec.ManagedMetadata.Annotations {
+			dst[k] = v
+		}
+	}
+	return dst
 }
 
-func (cr VMAuth) SelectorLabels() map[string]string {
+func (cr *VMAuth) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmauth",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -350,7 +364,7 @@ func (cr VMAuth) SelectorLabels() map[string]string {
 	}
 }
 
-func (cr VMAuth) PodLabels() map[string]string {
+func (cr *VMAuth) PodLabels() map[string]string {
 	lbls := cr.SelectorLabels()
 	if cr.Spec.PodMetadata == nil {
 		return lbls
@@ -358,14 +372,21 @@ func (cr VMAuth) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr VMAuth) AllLabels() map[string]string {
+func (cr *VMAuth) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil {
+	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
-	crLabels := filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
-	return labels.Merge(crLabels, selectorLabels)
+	var result map[string]string
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	if cr.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	}
+	if cr.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	}
+	return labels.Merge(result, selectorLabels)
 }
 
 func (cr VMAuth) PrefixedName() string {
@@ -420,26 +441,12 @@ func (cr *VMAuth) IsUnmanaged() bool {
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VMAuth) LastAppliedSpecAsPatch() (client.Patch, error) {
-	data, err := json.Marshal(cr.Spec)
-	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize specification as json :%w", err)
-	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q}}}`, lastAppliedSpecAnnotationName, data)
-	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
 func (cr *VMAuth) HasSpecChanges() (bool, error) {
-	lastAppliedClusterJSON := cr.Annotations[lastAppliedSpecAnnotationName]
-	if len(lastAppliedClusterJSON) == 0 {
-		return true, nil
-	}
-
-	instanceSpecData, err := json.Marshal(cr.Spec)
-	if err != nil {
-		return true, err
-	}
-	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
+	return hasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VMAuth) Paused() bool {

@@ -304,6 +304,29 @@ spec:
                   this can be useful for debugging of high cardinality issues with
                   log streams; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields
                 type: boolean
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               minReadySeconds:
                 description: |-
                   MinReadySeconds defines a minim number os seconds to wait before starting update next pod
@@ -409,6 +432,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -726,7 +755,7 @@ spec:
                       set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
                       exists.
                       More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/
-                      (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
+                      (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).
                     type: string
                   volumeMode:
                     description: |-
@@ -1560,7 +1589,7 @@ spec:
                             set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
                             exists.
                             More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/
-                            (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
+                            (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).
                           type: string
                         volumeMode:
                           description: |-
@@ -1703,8 +1732,16 @@ spec:
                               status:
                                 type: string
                               type:
-                                description: PersistentVolumeClaimConditionType is
-                                  a valid value of PersistentVolumeClaimCondition.Type
+                                description: |-
+                                  PersistentVolumeClaimConditionType defines the condition of PV claim.
+                                  Valid values are:
+                                    - "Resizing", "FileSystemResizePending"
+
+                                  If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
+                                    - "ControllerResizeError", "NodeResizeError"
+
+                                  If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
+                                    - "ModifyVolumeError", "ModifyingVolume"
                                 type: string
                             required:
                             - status
@@ -1718,13 +1755,13 @@ spec:
                           description: |-
                             currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using.
                             When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim
-                            This is an alpha field and requires enabling VolumeAttributesClass feature.
+                            This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                           type: string
                         modifyVolumeStatus:
                           description: |-
                             ModifyVolumeStatus represents the status object of ControllerModifyVolume operation.
                             When this is unset, there is no ModifyVolume operation being attempted.
-                            This is an alpha field and requires enabling VolumeAttributesClass feature.
+                            This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                           properties:
                             status:
                               description: "status is the status of the ControllerModifyVolume
@@ -1795,6 +1832,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -2225,6 +2268,29 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               maxScrapeInterval:
                 description: |-
                   MaxScrapeInterval allows limiting maximum scrape interval for VMServiceScrape, VMPodScrape and other scrapes
@@ -3786,6 +3852,12 @@ spec:
                             the Pod where this field is used. It makes that resource available
                             inside a container.
                           type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
+                          type: string
                       required:
                       - name
                       type: object
@@ -4609,7 +4681,7 @@ spec:
                               set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
                               exists.
                               More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/
-                              (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
+                              (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).
                             type: string
                           volumeMode:
                             description: |-
@@ -4754,8 +4826,16 @@ spec:
                                 status:
                                   type: string
                                 type:
-                                  description: PersistentVolumeClaimConditionType
-                                    is a valid value of PersistentVolumeClaimCondition.Type
+                                  description: |-
+                                    PersistentVolumeClaimConditionType defines the condition of PV claim.
+                                    Valid values are:
+                                      - "Resizing", "FileSystemResizePending"
+
+                                    If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
+                                      - "ControllerResizeError", "NodeResizeError"
+
+                                    If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
+                                      - "ModifyVolumeError", "ModifyingVolume"
                                   type: string
                               required:
                               - status
@@ -4769,13 +4849,13 @@ spec:
                             description: |-
                               currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using.
                               When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim
-                              This is an alpha field and requires enabling VolumeAttributesClass feature.
+                              This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                             type: string
                           modifyVolumeStatus:
                             description: |-
                               ModifyVolumeStatus represents the status object of ControllerModifyVolume operation.
                               When this is unset, there is no ModifyVolume operation being attempted.
-                              This is an alpha field and requires enabling VolumeAttributesClass feature.
+                              This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                             properties:
                               status:
                                 description: "status is the status of the ControllerModifyVolume
@@ -9739,7 +9819,7 @@ spec:
                             set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
                             exists.
                             More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/
-                            (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
+                            (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).
                           type: string
                         volumeMode:
                           description: |-
@@ -9882,8 +9962,16 @@ spec:
                               status:
                                 type: string
                               type:
-                                description: PersistentVolumeClaimConditionType is
-                                  a valid value of PersistentVolumeClaimCondition.Type
+                                description: |-
+                                  PersistentVolumeClaimConditionType defines the condition of PV claim.
+                                  Valid values are:
+                                    - "Resizing", "FileSystemResizePending"
+
+                                  If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
+                                    - "ControllerResizeError", "NodeResizeError"
+
+                                  If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
+                                    - "ModifyVolumeError", "ModifyingVolume"
                                 type: string
                             required:
                             - status
@@ -9897,13 +9985,13 @@ spec:
                           description: |-
                             currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using.
                             When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim
-                            This is an alpha field and requires enabling VolumeAttributesClass feature.
+                            This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                           type: string
                         modifyVolumeStatus:
                           description: |-
                             ModifyVolumeStatus represents the status object of ControllerModifyVolume operation.
                             When this is unset, there is no ModifyVolume operation being attempted.
-                            This is an alpha field and requires enabling VolumeAttributesClass feature.
+                            This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                           properties:
                             status:
                               description: "status is the status of the ControllerModifyVolume
@@ -10043,6 +10131,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -10644,6 +10738,29 @@ spec:
                 - WARN
                 - ERROR
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               minReadySeconds:
                 description: |-
                   MinReadySeconds defines a minim number os seconds to wait before starting update next pod
@@ -10779,6 +10896,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -11206,7 +11329,7 @@ spec:
                               set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
                               exists.
                               More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/
-                              (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
+                              (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).
                             type: string
                           volumeMode:
                             description: |-
@@ -11351,8 +11474,16 @@ spec:
                                 status:
                                   type: string
                                 type:
-                                  description: PersistentVolumeClaimConditionType
-                                    is a valid value of PersistentVolumeClaimCondition.Type
+                                  description: |-
+                                    PersistentVolumeClaimConditionType defines the condition of PV claim.
+                                    Valid values are:
+                                      - "Resizing", "FileSystemResizePending"
+
+                                    If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
+                                      - "ControllerResizeError", "NodeResizeError"
+
+                                    If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
+                                      - "ModifyVolumeError", "ModifyingVolume"
                                   type: string
                               required:
                               - status
@@ -11366,13 +11497,13 @@ spec:
                             description: |-
                               currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using.
                               When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim
-                              This is an alpha field and requires enabling VolumeAttributesClass feature.
+                              This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                             type: string
                           modifyVolumeStatus:
                             description: |-
                               ModifyVolumeStatus represents the status object of ControllerModifyVolume operation.
                               When this is unset, there is no ModifyVolume operation being attempted.
-                              This is an alpha field and requires enabling VolumeAttributesClass feature.
+                              This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                             properties:
                               status:
                                 description: "status is the status of the ControllerModifyVolume
@@ -11894,6 +12025,12 @@ spec:
                             the Pod where this field is used. It makes that resource available
                             inside a container.
                           type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
+                          type: string
                       required:
                       - name
                       type: object
@@ -12330,6 +12467,29 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               minReadySeconds:
                 description: |-
                   MinReadySeconds defines a minim number os seconds to wait before starting update next pod
@@ -13148,6 +13308,12 @@ spec:
                             the Pod where this field is used. It makes that resource available
                             inside a container.
                           type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
+                          type: string
                       required:
                       - name
                       type: object
@@ -13743,6 +13909,12 @@ spec:
                             the Pod where this field is used. It makes that resource available
                             inside a container.
                           type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
+                          type: string
                       required:
                       - name
                       type: object
@@ -14160,6 +14332,7 @@ spec:
                                                 format: int32
                                                 type: integer
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                         required:
                                         - name
                                         type: object
@@ -14362,6 +14535,29 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               max_concurrent_requests:
                 description: |-
                   MaxConcurrentRequests defines max concurrent requests per user
@@ -14497,6 +14693,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -15309,6 +15511,29 @@ spec:
                       changes. Note that this is only applicable when using KeyRef.
                     type: string
                 type: object
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               paused:
                 description: |-
                   Paused If set to true all actions on the underlying managed objects are not
@@ -15754,6 +15979,12 @@ spec:
                                 Name must match the name of one entry in pod.spec.resourceClaims of
                                 the Pod where this field is used. It makes that resource available
                                 inside a container.
+                              type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
                               type: string
                           required:
                           - name
@@ -16303,7 +16534,7 @@ spec:
                                 set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
                                 exists.
                                 More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/
-                                (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
+                                (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).
                               type: string
                             volumeMode:
                               description: |-
@@ -16451,8 +16682,16 @@ spec:
                                   status:
                                     type: string
                                   type:
-                                    description: PersistentVolumeClaimConditionType
-                                      is a valid value of PersistentVolumeClaimCondition.Type
+                                    description: |-
+                                      PersistentVolumeClaimConditionType defines the condition of PV claim.
+                                      Valid values are:
+                                        - "Resizing", "FileSystemResizePending"
+
+                                      If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
+                                        - "ControllerResizeError", "NodeResizeError"
+
+                                      If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
+                                        - "ModifyVolumeError", "ModifyingVolume"
                                     type: string
                                 required:
                                 - status
@@ -16466,13 +16705,13 @@ spec:
                               description: |-
                                 currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using.
                                 When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim
-                                This is an alpha field and requires enabling VolumeAttributesClass feature.
+                                This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                               type: string
                             modifyVolumeStatus:
                               description: |-
                                 ModifyVolumeStatus represents the status object of ControllerModifyVolume operation.
                                 When this is unset, there is no ModifyVolume operation being attempted.
-                                This is an alpha field and requires enabling VolumeAttributesClass feature.
+                                This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                               properties:
                                 status:
                                   description: "status is the status of the ControllerModifyVolume
@@ -16920,6 +17159,12 @@ spec:
                                 the Pod where this field is used. It makes that resource available
                                 inside a container.
                               type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
+                              type: string
                           required:
                           - name
                           type: object
@@ -17327,7 +17572,7 @@ spec:
                                   set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
                                   exists.
                                   More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/
-                                  (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
+                                  (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).
                                 type: string
                               volumeMode:
                                 description: |-
@@ -17478,8 +17723,16 @@ spec:
                                     status:
                                       type: string
                                     type:
-                                      description: PersistentVolumeClaimConditionType
-                                        is a valid value of PersistentVolumeClaimCondition.Type
+                                      description: |-
+                                        PersistentVolumeClaimConditionType defines the condition of PV claim.
+                                        Valid values are:
+                                          - "Resizing", "FileSystemResizePending"
+
+                                        If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
+                                          - "ControllerResizeError", "NodeResizeError"
+
+                                        If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
+                                          - "ModifyVolumeError", "ModifyingVolume"
                                       type: string
                                   required:
                                   - status
@@ -17493,13 +17746,13 @@ spec:
                                 description: |-
                                   currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using.
                                   When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim
-                                  This is an alpha field and requires enabling VolumeAttributesClass feature.
+                                  This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                                 type: string
                               modifyVolumeStatus:
                                 description: |-
                                   ModifyVolumeStatus represents the status object of ControllerModifyVolume operation.
                                   When this is unset, there is no ModifyVolume operation being attempted.
-                                  This is an alpha field and requires enabling VolumeAttributesClass feature.
+                                  This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                                 properties:
                                   status:
                                     description: "status is the status of the ControllerModifyVolume
@@ -17908,7 +18161,7 @@ spec:
                                 set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
                                 exists.
                                 More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/
-                                (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
+                                (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).
                               type: string
                             volumeMode:
                               description: |-
@@ -18056,8 +18309,16 @@ spec:
                                   status:
                                     type: string
                                   type:
-                                    description: PersistentVolumeClaimConditionType
-                                      is a valid value of PersistentVolumeClaimCondition.Type
+                                    description: |-
+                                      PersistentVolumeClaimConditionType defines the condition of PV claim.
+                                      Valid values are:
+                                        - "Resizing", "FileSystemResizePending"
+
+                                      If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
+                                        - "ControllerResizeError", "NodeResizeError"
+
+                                      If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
+                                        - "ModifyVolumeError", "ModifyingVolume"
                                     type: string
                                 required:
                                 - status
@@ -18071,13 +18332,13 @@ spec:
                               description: |-
                                 currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using.
                                 When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim
-                                This is an alpha field and requires enabling VolumeAttributesClass feature.
+                                This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                               type: string
                             modifyVolumeStatus:
                               description: |-
                                 ModifyVolumeStatus represents the status object of ControllerModifyVolume operation.
                                 When this is unset, there is no ModifyVolume operation being attempted.
-                                This is an alpha field and requires enabling VolumeAttributesClass feature.
+                                This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
                               properties:
                                 status:
                                   description: "status is the status of the ControllerModifyVolume
@@ -18488,6 +18749,12 @@ spec:
                                 Name must match the name of one entry in pod.spec.resourceClaims of
                                 the Pod where this field is used. It makes that resource available
                                 inside a container.
+                              type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
                               type: string
                           required:
                           - name
@@ -18980,6 +19247,12 @@ spec:
                                     Name must match the name of one entry in pod.spec.resourceClaims of
                                     the Pod where this field is used. It makes that resource available
                                     inside a container.
+                                  type: string
+                                request:
+                                  description: |-
+                                    Request is the name chosen for a request in the referenced claim.
+                                    If empty, everything from the claim is made available, otherwise
+                                    only the result of this request.
                                   type: string
                               required:
                               - name
@@ -28106,6 +28379,29 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              managedMetadata:
+                description: |-
+                  ManagedMetadata defines metadata that will be added to the all objects
+                  created by operator for the given CustomResource
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                    type: object
+                type: object
               minReadySeconds:
                 description: |-
                   MinReadySeconds defines a minim number os seconds to wait before starting update next pod
@@ -28211,6 +28507,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -28533,7 +28835,7 @@ spec:
                       set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
                       exists.
                       More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/
-                      (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
+                      (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).
                     type: string
                   volumeMode:
                     description: |-
@@ -29213,6 +29515,12 @@ spec:
                                 Name must match the name of one entry in pod.spec.resourceClaims of
                                 the Pod where this field is used. It makes that resource available
                                 inside a container.
+                              type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
                               type: string
                           required:
                           - name

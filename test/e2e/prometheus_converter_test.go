@@ -301,6 +301,11 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 	Context("e2e prome converter", func() {
 		for _, testCaseIt := range testCases {
 			testCase := testCaseIt
+			// adapt test for parallel execution
+			// https://onsi.github.io/ginkgo/#patterns-for-parallel-integration-specs
+			procSuffix := fmt.Sprintf("-%d", GinkgoParallelProcess())
+			testCase.source.SetName(testCase.source.GetName() + procSuffix)
+			testCase.targetTpl.SetName(testCase.targetTpl.GetName() + procSuffix)
 			ctx := context.Background()
 			Context(fmt.Sprintf("crud %s", testCase.name), func() {
 				AfterEach(func() {

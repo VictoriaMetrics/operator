@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -65,18 +66,22 @@ const (
 var SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 
 var (
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
 	labelFilterPrefixes []string
 	// default ignored annotations
-	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/", "operator.victoriametrics/last-applied-spec"}
+	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
+	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/", "operator.victoriametrics/"}
 )
 
 // SetLabelAndAnnotationPrefixes configures global filtering for child labels and annotations
 // cannot be used concurrently and should be called only once at lib init
+// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
 func SetLabelAndAnnotationPrefixes(labelPrefixes, annotationPrefixes []string) {
 	labelFilterPrefixes = labelPrefixes
 	annotationFilterPrefixes = append(annotationFilterPrefixes, annotationPrefixes...)
 }
 
+// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
 func filterMapKeysByPrefixes(src map[string]string, prefixes []string) map[string]string {
 	dst := make(map[string]string, len(src))
 OUTER:
@@ -1045,16 +1050,50 @@ type ScrapeObjectStatus struct {
 	CurrentSyncError string `json:"-"`
 }
 
-func parseLastAppliedSpec[T any](cr client.Object) (*T, error) {
-	var prevSpec T
-	lastAppliedClusterJSON := cr.GetAnnotations()[lastAppliedSpecAnnotationName]
-	if len(lastAppliedClusterJSON) == 0 {
-		return nil, nil
+type objectWithLastAppliedState[T, ST any] interface {
+	GetAnnotations() map[string]string
+	setLastSpec(ST)
+}
+
+func parseLastAppliedState[T objectWithLastAppliedState[T, ST], ST any](cr T) error {
+	lastAppliedSpecJSON := cr.GetAnnotations()[lastAppliedSpecAnnotationName]
+	if len(lastAppliedSpecJSON) == 0 {
+		return nil
 	}
-	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevSpec); err != nil {
-		return nil, fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", lastAppliedSpecAnnotationName, err)
+	var dst ST
+	if err := json.Unmarshal([]byte(lastAppliedSpecJSON), &dst); err != nil {
+		return fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", lastAppliedSpecAnnotationName, err)
 	}
-	return &prevSpec, nil
+	cr.setLastSpec(dst)
+	return nil
+}
+
+// HasSpecChanges compares single spec with last applied single spec stored in annotation
+func hasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
+	lastAppliedSpecJSON := crMeta.GetAnnotations()[lastAppliedSpecAnnotationName]
+	if len(lastAppliedSpecJSON) == 0 {
+		return true, nil
+	}
+
+	instanceSpecData, err := json.Marshal(spec)
+	if err != nil {
+		return false, err
+	}
+	if !bytes.Equal([]byte(lastAppliedSpecJSON), instanceSpecData) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func lastAppliedChangesAsPatch(crMeta metav1.ObjectMeta, spec any) (client.Patch, error) {
+	data, err := json.Marshal(spec)
+	if err != nil {
+		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json :%w", err)
+	}
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q }}}`, lastAppliedSpecAnnotationName, data)
+	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+
 }
 
 // CommonDefaultableParams contains Application settings
@@ -1377,4 +1416,18 @@ type StatusMetadata struct {
 	// ObservedGeneration defines current generation picked by operator for the
 	// reconcile
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+}
+
+// ManagedObjectsMetadata contains Labels and Annotations
+type ManagedObjectsMetadata struct {
+	// Labels Map of string keys and values that can be used to organize and categorize
+	// (scope and select) objects.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// Annotations is an unstructured key value map stored with a resource that may be
+	// set by external tools to store and retrieve arbitrary metadata. They are not
+	// queryable and should be preserved when modifying objects.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+	Annotations map[string]string `json:"annotations,omitempty"`
 }

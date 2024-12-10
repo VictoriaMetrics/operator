@@ -88,8 +88,9 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 
 	type args struct {
-		sc         *vmv1beta1.SecurityContext
-		containers []corev1.Container
+		sc                *vmv1beta1.SecurityContext
+		containers        []corev1.Container
+		useStrictSecurity bool
 	}
 	tests := []struct {
 		name     string
@@ -99,6 +100,7 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 		{
 			name: "default security",
 			args: args{
+				useStrictSecurity: true,
 				containers: []corev1.Container{
 					{
 						Name: "c1",
@@ -122,6 +124,7 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 		{
 			name: "add from spec",
 			args: args{
+				useStrictSecurity: true,
 				sc: &vmv1beta1.SecurityContext{
 					PodSecurityContext: &corev1.PodSecurityContext{
 						RunAsUser:    ptr.To[int64](1),
@@ -161,8 +164,9 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 		},
 
 		{
-			name: "keep defined context",
+			name: "replace defined context",
 			args: args{
+				useStrictSecurity: true,
 				containers: []corev1.Container{
 					{
 						Name: "c1",
@@ -182,24 +186,19 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 			},
 			expected: []corev1.Container{
 				{
-					Name: "c1",
-					SecurityContext: &corev1.SecurityContext{
-						ReadOnlyRootFilesystem: ptr.To(false),
-					},
+					Name:            "c1",
+					SecurityContext: defaultSecurityContext,
 				},
 				{
-					Name: "c2",
-					SecurityContext: &corev1.SecurityContext{
-						ReadOnlyRootFilesystem: ptr.To(false),
-						RunAsUser:              ptr.To[int64](1000),
-						RunAsGroup:             ptr.To[int64](1000),
-					},
+					Name:            "c2",
+					SecurityContext: defaultSecurityContext,
 				},
 			},
 		},
 		{
-			name: "partially add security context",
+			name: "replace partial security context",
 			args: args{
+				useStrictSecurity: true,
 				containers: []corev1.Container{
 					{
 						Name: "c1",
@@ -214,10 +213,8 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 			},
 			expected: []corev1.Container{
 				{
-					Name: "c1",
-					SecurityContext: &corev1.SecurityContext{
-						ReadOnlyRootFilesystem: ptr.To(false),
-					},
+					Name:            "c1",
+					SecurityContext: defaultSecurityContext,
 				},
 				{
 					Name:            "c2",
@@ -226,8 +223,9 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 			},
 		},
 		{
-			name: "keep security context if external defined",
+			name: "replace security context if external defined",
 			args: args{
+				useStrictSecurity: true,
 				sc: &vmv1beta1.SecurityContext{
 					PodSecurityContext: &corev1.PodSecurityContext{
 						RunAsUser: ptr.To[int64](1000),
@@ -249,7 +247,99 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 				{
 					Name: "c1",
 					SecurityContext: &corev1.SecurityContext{
-						ReadOnlyRootFilesystem: ptr.To(false),
+						RunAsUser: ptr.To[int64](1000),
+					},
+				},
+				{
+					Name: "c2",
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser: ptr.To[int64](1000),
+					},
+				},
+			},
+		},
+		{
+			name: "insecure mode",
+			args: args{
+				useStrictSecurity: false,
+				containers: []corev1.Container{
+					{
+						Name: "c1",
+					},
+					{
+						Name: "c2",
+					},
+				},
+			},
+			expected: []corev1.Container{
+				{
+					Name: "c1",
+				},
+				{
+					Name: "c2",
+				},
+			},
+		},
+		{
+			name: "add external if useStrict is false",
+			args: args{
+				useStrictSecurity: false,
+				sc: &vmv1beta1.SecurityContext{
+					PodSecurityContext: &corev1.PodSecurityContext{
+						RunAsUser: ptr.To[int64](1000),
+					},
+				},
+				containers: []corev1.Container{
+					{
+						Name: "c1",
+					},
+					{
+						Name: "c2",
+					},
+				},
+			},
+			expected: []corev1.Container{
+				{
+					Name: "c1",
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser: ptr.To[int64](1000),
+					},
+				},
+				{
+					Name: "c2",
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser: ptr.To[int64](1000),
+					},
+				},
+			},
+		},
+
+		{
+			name: "replace with external if useStrict is false",
+			args: args{
+				useStrictSecurity: false,
+				sc: &vmv1beta1.SecurityContext{
+					PodSecurityContext: &corev1.PodSecurityContext{
+						RunAsUser: ptr.To[int64](1000),
+					},
+				},
+				containers: []corev1.Container{
+					{
+						Name: "c1",
+						SecurityContext: &corev1.SecurityContext{
+							ReadOnlyRootFilesystem: ptr.To(false),
+						},
+					},
+					{
+						Name: "c2",
+					},
+				},
+			},
+			expected: []corev1.Container{
+				{
+					Name: "c1",
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser: ptr.To[int64](1000),
 					},
 				},
 				{
@@ -263,7 +353,7 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			AddStrictSecuritySettingsToContainers(tt.args.sc, tt.args.containers, true)
+			AddStrictSecuritySettingsToContainers(tt.args.sc, tt.args.containers, tt.args.useStrictSecurity)
 			assert.Equal(t, tt.expected, tt.args.containers)
 		})
 	}

@@ -81,7 +81,7 @@ func TestCreateOrUpdateVLogs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdateVLogs(context.TODO(), tt.args.cr, fclient)
+			err := CreateOrUpdateVLogs(context.TODO(), fclient, tt.args.cr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVLogs() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -169,7 +169,7 @@ func TestCreateOrUpdateVLogsService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateVLogsService(context.TODO(), tt.args.cr, fclient)
+			got, err := createOrUpdateVLogsService(context.TODO(), fclient, tt.args.cr, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVLogsService() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -4,18 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
-
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 var (
@@ -117,119 +114,84 @@ var (
 )
 
 // createVMAgentK8sAPIAccess - creates RBAC access rules for vmagent
-func createVMAgentK8sAPIAccess(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, clusterWide bool) error {
+func createVMAgentK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, clusterWide bool) error {
+
+	if err := migrateRBAC(ctx, rclient, cr, clusterWide); err != nil {
+		return fmt.Errorf("cannot perform RBAC migration: %w", err)
+	}
 	if clusterWide {
-		if err := ensureVMAgentCRExist(ctx, cr, rclient); err != nil {
+		if err := ensureVMAgentCRExist(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
 		}
-		if err := ensureVMAgentCRBExist(ctx, cr, rclient); err != nil {
+		if err := ensureCRBExist(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot ensure state of vmagent's cluster role binding: %w", err)
 		}
 		return nil
 	}
 
-	if err := ensureVMAgentRExist(ctx, cr, rclient); err != nil {
+	if err := ensureRoleExist(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
 	}
-	if err := ensureVMAgentRBExist(ctx, cr, rclient); err != nil {
+	if err := ensureVMAgentRBExist(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot ensure state of vmagent's role binding: %w", err)
 	}
 
 	return nil
 }
 
-func ensureVMAgentCRExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
-	clusterRole := buildVMAgentClusterRole(cr)
-	var existsClusterRole rbacv1.ClusterRole
-
-	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRole.Name}, &existsClusterRole); err != nil {
-		if errors.IsNotFound(err) {
-			// check for possible legacy ClusterRole and clean it, see https://github.com/VictoriaMetrics/operator/pull/1176
-			var orphanedClusterRole rbacv1.ClusterRole
-			err = rclient.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("monitoring:vmagent-cluster-access-%s", cr.Name)}, &orphanedClusterRole)
-			if err != nil {
-				logger.WithContext(ctx).Error(err, "failed to check legacy ClusterRole", "vmagent", cr.Name, "namespace", cr.Namespace)
-			}
-			if orphanedClusterRole.Name != "" {
-				finalize.RemoveFinalizer(ctx, rclient, &orphanedClusterRole)
-				err = rclient.Delete(ctx, &orphanedClusterRole)
-				if err != nil {
-					logger.WithContext(ctx).Error(err, "failed to cleanup legacy ClusterRole", "vmagent", cr.Name, "namespace", cr.Namespace)
-				}
-			}
-
-			return rclient.Create(ctx, clusterRole)
-		}
-		return fmt.Errorf("cannot get exist cluster role for vmagent: %w", err)
+func ensureVMAgentCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+	var prevClusterRole *rbacv1.ClusterRole
+	if prevCR != nil {
+		prevClusterRole = buildClusterRole(prevCR)
 	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &existsClusterRole); err != nil {
-		return err
-	}
-	// TODO compare OwnerReferences
-	// fast path
-	if equality.Semantic.DeepEqual(clusterRole.Rules, existsClusterRole.Rules) &&
-		equality.Semantic.DeepEqual(clusterRole.Labels, existsClusterRole.Labels) &&
-		equality.Semantic.DeepEqual(clusterRole.Annotations, existsClusterRole.Annotations) {
-		return nil
-	}
-	logger.WithContext(ctx).Info("updating VMAgent ClusterRole")
-
-	existsClusterRole.OwnerReferences = clusterRole.OwnerReferences
-	existsClusterRole.Labels = clusterRole.Labels
-	existsClusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, clusterRole.Annotations)
-	existsClusterRole.Rules = clusterRole.Rules
-	vmv1beta1.AddFinalizer(&existsClusterRole, &existsClusterRole)
-	return rclient.Update(ctx, &existsClusterRole)
+	return reconcile.ClusterRole(ctx, rclient, buildClusterRole(cr), prevClusterRole)
 }
 
-func ensureVMAgentCRBExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
-	clusterRoleBinding := buildVMAgentClusterRoleBinding(cr)
-	var existsClusterRoleBinding rbacv1.ClusterRoleBinding
-
-	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRoleBinding.Name}, &existsClusterRoleBinding); err != nil {
-		if errors.IsNotFound(err) {
-			// check for possible legacy ClusterRoleBinding and clean it, see https://github.com/VictoriaMetrics/operator/pull/1176
-			var orphanedClusterRoleBinding rbacv1.ClusterRoleBinding
-			err = rclient.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("monitoring:vmagent-cluster-access-%s", cr.Name)}, &orphanedClusterRoleBinding)
-			if err != nil {
-				logger.WithContext(ctx).Error(err, "failed to check legacy ClusterRoleBinding", "vmagent", cr.Name, "namespace", cr.Namespace)
-			}
-			if orphanedClusterRoleBinding.Name != "" {
-				finalize.RemoveFinalizer(ctx, rclient, &orphanedClusterRoleBinding)
-				err = rclient.Delete(ctx, &orphanedClusterRoleBinding)
-				if err != nil {
-					logger.WithContext(ctx).Error(err, "failed to cleanup legacy ClusterRoleBinding", "vmagent", cr.Name, "namespace", cr.Namespace)
-				}
-			}
-
-			return rclient.Create(ctx, clusterRoleBinding)
-		}
-		return fmt.Errorf("cannot get clusterRoleBinding for vmagent: %w", err)
+func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+	var prevCRB *rbacv1.ClusterRoleBinding
+	if prevCR != nil {
+		prevCRB = buildClusterRoleBinding(prevCR)
 	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &existsClusterRoleBinding); err != nil {
-		return err
-	}
-	// TODO compare OwnerReferences
-
-	// fast path
-	if equality.Semantic.DeepEqual(clusterRoleBinding.Subjects, existsClusterRoleBinding.Subjects) &&
-		equality.Semantic.DeepEqual(clusterRoleBinding.RoleRef, existsClusterRoleBinding.RoleRef) &&
-		equality.Semantic.DeepEqual(clusterRoleBinding.Labels, existsClusterRoleBinding.Labels) &&
-		equality.Semantic.DeepEqual(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations) {
-		return nil
-	}
-	logger.WithContext(ctx).Info("updating VMAgent ClusterRoleBinding")
-
-	existsClusterRoleBinding.OwnerReferences = clusterRoleBinding.OwnerReferences
-	existsClusterRoleBinding.Labels = clusterRoleBinding.Labels
-	existsClusterRoleBinding.Annotations = labels.Merge(existsClusterRoleBinding.Annotations, clusterRoleBinding.Annotations)
-	existsClusterRoleBinding.Subjects = clusterRoleBinding.Subjects
-	existsClusterRoleBinding.RoleRef = clusterRoleBinding.RoleRef
-	vmv1beta1.AddFinalizer(&existsClusterRoleBinding, &existsClusterRoleBinding)
-	return rclient.Update(ctx, &existsClusterRoleBinding)
+	return reconcile.ClusterRoleBinding(ctx, rclient, buildClusterRoleBinding(cr), prevCRB)
 }
 
-func buildVMAgentClusterRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
+// migrateRBAC deletes incorrectly formatted resource names
+// see https://github.com/VictoriaMetrics/operator/issues/891
+// and https://github.com/VictoriaMetrics/operator/pull/1176
+func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, clusterWide bool) error {
+	const prevNamingPrefix = "monitoring:vmagent-cluster-access-"
+	prevVersionName := prevNamingPrefix + cr.Name
+	currentVersionName := cr.GetClusterRoleName()
+
+	// explicitly set namespace via ObjetMeta for unit tests
+	toMigrateObjects := []client.Object{
+		&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Namespace: cr.Namespace}},
+		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Namespace: cr.Namespace}},
+	}
+	if !clusterWide {
+		toMigrateObjects = []client.Object{
+			&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Namespace: cr.Namespace}},
+			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Namespace: cr.Namespace}},
+		}
+	}
+
+	for _, obj := range toMigrateObjects {
+		if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: currentVersionName}, obj); err != nil {
+			if !errors.IsNotFound(err) {
+				return fmt.Errorf("cannot get object: %w", err)
+			}
+			// update name with prev version formatting
+			obj.SetName(prevVersionName)
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, obj); err != nil {
+				return fmt.Errorf("cannot safe delete obj : %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func buildClusterRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
@@ -256,7 +218,7 @@ func buildVMAgentClusterRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBi
 	}
 }
 
-func buildVMAgentClusterRole(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
+func buildClusterRole(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
@@ -272,17 +234,25 @@ func buildVMAgentClusterRole(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 	}
 }
 
-func ensureVMAgentRExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
-	nr := buildVMAgentNamespaceRole(cr)
-	return reconcile.Role(ctx, rclient, nr)
+func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+	nr := buildNamespacedRole(cr)
+	var prevRole *rbacv1.Role
+	if prevCR != nil {
+		prevRole = buildNamespacedRole(prevCR)
+	}
+	return reconcile.Role(ctx, rclient, nr, prevRole)
 }
 
-func ensureVMAgentRBExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
-	rb := buildVMAgentNamespaceRoleBinding(cr)
-	return reconcile.RoleBinding(ctx, rclient, rb)
+func ensureVMAgentRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+	rb := buildNamespacedRoleBinding(cr)
+	var prevRB *rbacv1.RoleBinding
+	if prevCR != nil {
+		prevRB = buildNamespacedRoleBinding(prevCR)
+	}
+	return reconcile.RoleBinding(ctx, rclient, rb, prevRB)
 }
 
-func buildVMAgentNamespaceRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
+func buildNamespacedRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
@@ -296,7 +266,7 @@ func buildVMAgentNamespaceRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
 	}
 }
 
-func buildVMAgentNamespaceRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.RoleBinding {
+func buildNamespacedRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),

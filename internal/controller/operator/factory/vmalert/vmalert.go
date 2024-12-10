@@ -45,7 +45,7 @@ func buildRemoteSecretKey(source, suffix string) string {
 }
 
 // createOrUpdateVMAlertService creates service for vmalert
-func createOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateVMAlertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) (*corev1.Service, error) {
 
 	newService := build.Service(cr, cr.Spec.Port, nil)
 
@@ -61,9 +61,7 @@ func createOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 		return nil, err
 	}
 	var prevService *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
 	}
 
@@ -73,7 +71,7 @@ func createOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 	return newService, nil
 }
 
-func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, ssCache map[string]*authSecret) error {
+func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ssCache map[string]*authSecret) error {
 	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmalert_remote_secrets"))
 
 	s := &corev1.Secret{
@@ -115,17 +113,35 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 	for idx, nf := range cr.Spec.Notifiers {
 		addSecretKeys(buildNotifierKey(idx), nf.HTTPAuth)
 	}
+	var prevSecretMeta *metav1.ObjectMeta
+	if cr.ParsedLastAppliedSpec != nil {
+		prevSecretMeta = &metav1.ObjectMeta{
+			Name:        prevCR.PrefixedName(),
+			Annotations: prevCR.AnnotationsFiltered(),
+			Labels:      prevCR.AllLabels(),
+			Namespace:   prevCR.Namespace,
+		}
+	}
 
-	return reconcile.Secret(ctx, rclient, s)
+	return reconcile.Secret(ctx, rclient, s, prevSecretMeta)
 }
 
 // CreateOrUpdateVMAlert creates vmalert deployment for given CRD
 func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
+	var prevCR *vmv1beta1.VMAlert
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
 	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("cannot delete objects from previous state: %w", err)
 	}
 	if cr.IsOwnsServiceAccount() {
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+		var prevSA *corev1.ServiceAccount
+		if prevCR != nil {
+			prevSA = build.ServiceAccount(prevCR)
+		}
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
@@ -138,11 +154,11 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient c
 		return err
 	}
 	// create secret for remoteSecrets
-	if err := createOrUpdateVMAlertSecret(ctx, rclient, cr, remoteSecrets); err != nil {
+	if err := createOrUpdateVMAlertSecret(ctx, rclient, cr, prevCR, remoteSecrets); err != nil {
 		return err
 	}
 
-	svc, err := createOrUpdateVMAlertService(ctx, cr, rclient)
+	svc, err := createOrUpdateVMAlertService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
@@ -155,19 +171,21 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient c
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget)); err != nil {
+		var prevPDB *policyv1.PodDisruptionBudget
+		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
+			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
+		}
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmalert: %w", err)
 		}
 	}
 
-	err = createOrUpdateTLSAssetsForVMAlert(ctx, cr, rclient)
+	err = createOrUpdateTLSAssetsForVMAlert(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
 	var prevDeploy *appsv1.Deployment
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	if prevCR != nil {
 		prevDeploy, err = newDeployForVMAlert(prevCR, cmNames, remoteSecrets)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -602,7 +620,7 @@ func loadVMAlertRemoteSecrets(
 	return authSecretsBySource, nil
 }
 
-func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) error {
+func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) error {
 	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmalert_tls_assets"))
 
 	assets, err := loadTLSAssetsForVMAlert(ctx, rclient, cr)
@@ -625,7 +643,16 @@ func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, cr *vmv1beta1.VMAler
 	for key, asset := range assets {
 		tlsAssetsSecret.Data[key] = []byte(asset)
 	}
-	return reconcile.Secret(ctx, rclient, tlsAssetsSecret)
+	var prevSecretMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevSecretMeta = &metav1.ObjectMeta{
+			Name:        prevCR.TLSAssetName(),
+			Labels:      prevCR.AllLabels(),
+			Annotations: prevCR.AnnotationsFiltered(),
+			Namespace:   prevCR.Namespace,
+		}
+	}
+	return reconcile.Secret(ctx, rclient, tlsAssetsSecret, prevSecretMeta)
 }
 
 func FetchTLSAssets(ctx context.Context, rclient client.Client, namespace string, tc *vmv1beta1.TLSConfig, assetPathDst map[string]string) error {

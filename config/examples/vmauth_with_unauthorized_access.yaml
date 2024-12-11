@@ -17,10 +17,10 @@ spec:
     limits:
       cpu: "500m"
       memory: "850Mi"
-  unauthorizedAccessConfig:
-  - src_paths:
-    - /*
-    url_prefix:
-    - http://vmsingle:8429/
-    - http://vmsingle-2:8429/
-
+  unauthorizedUserAccess:
+    url_map:
+      - src_paths:
+          - /*
+        url_prefix:
+          - http://vmsingle:8429/
+          - http://vmsingle-2:8429/

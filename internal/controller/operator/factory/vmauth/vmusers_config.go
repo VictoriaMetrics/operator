@@ -427,7 +427,7 @@ func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache m
 
 	secretCache := make(map[string]*corev1.Secret)
 	configmapCache := make(map[string]*corev1.ConfigMap)
-	cb := build.TLSConfigBuilder{
+	cb := &build.TLSConfigBuilder{
 		Ctx:                context.Background(),
 		Client:             rclient,
 		CurrentCRName:      cr.Name,
@@ -457,28 +457,11 @@ func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache m
 		}
 	}
 
-	var unAuthorizedAccess []yaml.MapSlice
-	for _, uc := range cr.Spec.UnauthorizedAccessConfig {
-		urlMap := appendIfNotNull(uc.SrcPaths, "src_paths", yaml.MapSlice{})
-		urlMap = appendIfNotNull(uc.SrcHosts, "src_hosts", urlMap)
-		urlMap = appendIfNotNull(uc.URLPrefix, "url_prefix", urlMap)
-
-		urlMap = addURLMapCommonToYaml(urlMap, uc.URLMapCommon, false)
-		unAuthorizedAccess = append(unAuthorizedAccess, urlMap)
-	}
-	var unAuthorizedAccessOpt []yaml.MapItem
-	var err error
-	unAuthorizedAccessOpt, err = addUserConfigOptionToYaml(unAuthorizedAccessOpt, cr.Spec.UserConfigOption, cb)
+	unAuthorizedAccessValue, err := buildUnauthorizedConfig(cr, cb)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot build unauthorized_user config section: %w", err)
 	}
-	var unAuthorizedAccessValue []yaml.MapItem
-	if len(unAuthorizedAccess) > 0 {
-		unAuthorizedAccessValue = append(unAuthorizedAccessValue, yaml.MapItem{Key: "url_map", Value: unAuthorizedAccess})
-	}
-	if len(unAuthorizedAccessOpt) > 0 {
-		unAuthorizedAccessValue = append(unAuthorizedAccessValue, unAuthorizedAccessOpt...)
-	}
+
 	if len(unAuthorizedAccessValue) > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: unAuthorizedAccessValue})
 	}
@@ -489,7 +472,7 @@ func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache m
 	return ac, nil
 }
 
-func appendIfNotNull(src []string, key string, origin yaml.MapSlice) yaml.MapSlice {
+func appendIfNotEmpty(src []string, key string, origin yaml.MapSlice) yaml.MapSlice {
 	if len(src) > 0 {
 		return append(origin, yaml.MapItem{
 			Key:   key,
@@ -499,13 +482,73 @@ func appendIfNotNull(src []string, key string, origin yaml.MapSlice) yaml.MapSli
 	return origin
 }
 
+func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, cb *build.TLSConfigBuilder) ([]yaml.MapItem, error) {
+	var result []yaml.MapItem
+
+	switch {
+	case cr.Spec.UnauthorizedUserAccess != nil:
+		uua := cr.Spec.UnauthorizedUserAccess
+		if err := uua.Validate(); err != nil {
+			return nil, fmt.Errorf("incorrect spec.UnauthorizedUserAccess syntax: %w", err)
+		}
+		var urlMapYAML []yaml.MapSlice
+		for _, uc := range uua.URLMaps {
+			urlMap := appendIfNotEmpty(uc.SrcPaths, "src_paths", yaml.MapSlice{})
+			urlMap = appendIfNotEmpty(uc.SrcHosts, "src_hosts", urlMap)
+			urlMap = appendIfNotEmpty(uc.URLPrefix, "url_prefix", urlMap)
+			urlMap = addURLMapCommonToYaml(urlMap, uc.URLMapCommon, false)
+			urlMapYAML = append(urlMapYAML, urlMap)
+		}
+		if len(urlMapYAML) > 0 {
+			result = append(result, yaml.MapItem{Key: "url_map", Value: urlMapYAML})
+		}
+		if len(uua.URLPrefix) > 0 {
+			result = append(result, yaml.MapItem{Key: "url_prefix", Value: uua.URLPrefix})
+		}
+		if len(uua.MetricLabels) > 0 {
+			result = append(result, yaml.MapItem{
+				Key:   "metric_labels",
+				Value: uua.MetricLabels,
+			})
+		}
+		var err error
+		result, err = addUserConfigOptionToYaml(result, uua.VMUserConfigOptions, cb)
+		if err != nil {
+			return nil, err
+		}
+
+	case len(cr.Spec.UnauthorizedAccessConfig) > 0:
+		// Deprecated and will be removed at v1.0
+		var urlMapYAML []yaml.MapSlice
+		for _, uc := range cr.Spec.UnauthorizedAccessConfig {
+			urlMap := appendIfNotEmpty(uc.SrcPaths, "src_paths", yaml.MapSlice{})
+			urlMap = appendIfNotEmpty(uc.SrcHosts, "src_hosts", urlMap)
+			urlMap = appendIfNotEmpty(uc.URLPrefix, "url_prefix", urlMap)
+
+			urlMap = addURLMapCommonToYaml(urlMap, uc.URLMapCommon, false)
+			urlMapYAML = append(urlMapYAML, urlMap)
+		}
+		result = append(result, yaml.MapItem{Key: "url_map", Value: urlMapYAML})
+
+		var err error
+		result, err = addUserConfigOptionToYaml(result, cr.Spec.VMUserConfigOptions, cb)
+		if err != nil {
+			return nil, err
+		}
+
+	default:
+		return nil, nil
+	}
+	return result, nil
+}
+
 func addURLMapCommonToYaml(dst yaml.MapSlice, opt vmv1beta1.URLMapCommon, isDefaultRoute bool) yaml.MapSlice {
 	if !isDefaultRoute {
-		dst = appendIfNotNull(opt.SrcQueryArgs, "src_query_args", dst)
-		dst = appendIfNotNull(opt.SrcHeaders, "src_headers", dst)
+		dst = appendIfNotEmpty(opt.SrcQueryArgs, "src_query_args", dst)
+		dst = appendIfNotEmpty(opt.SrcHeaders, "src_headers", dst)
 	}
-	dst = appendIfNotNull(opt.RequestHeaders, "headers", dst)
-	dst = appendIfNotNull(opt.ResponseHeaders, "response_headers", dst)
+	dst = appendIfNotEmpty(opt.RequestHeaders, "headers", dst)
+	dst = appendIfNotEmpty(opt.ResponseHeaders, "response_headers", dst)
 	if opt.DiscoverBackendIPs != nil {
 		dst = append(dst, yaml.MapItem{
 			Key:   "discover_backend_ips",
@@ -537,7 +580,7 @@ func addURLMapCommonToYaml(dst yaml.MapSlice, opt vmv1beta1.URLMapCommon, isDefa
 	return dst
 }
 
-func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.UserConfigOption, cb build.TLSConfigBuilder) (yaml.MapSlice, error) {
+func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOptions, cb *build.TLSConfigBuilder) (yaml.MapSlice, error) {
 	if len(opt.DefaultURLs) > 0 {
 		dst = append(dst, yaml.MapItem{Key: "default_url", Value: opt.DefaultURLs})
 	}
@@ -561,8 +604,8 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.UserConfigOption
 		dst = append(dst, yaml.MapItem{Key: "tls_insecure_skip_verify", Value: v})
 	}
 	dst = addIPFiltersToYaml(dst, opt.IPFilters)
-	dst = appendIfNotNull(opt.Headers, "headers", dst)
-	dst = appendIfNotNull(opt.ResponseHeaders, "response_headers", dst)
+	dst = appendIfNotEmpty(opt.Headers, "headers", dst)
+	dst = appendIfNotEmpty(opt.ResponseHeaders, "response_headers", dst)
 	if opt.DiscoverBackendIPs != nil {
 		dst = append(dst, yaml.MapItem{
 			Key:   "discover_backend_ips",
@@ -772,7 +815,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 
 // this function mutates user and fills missing fields,
 // such password or username.
-func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cb build.TLSConfigBuilder) (yaml.MapSlice, error) {
+func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cb *build.TLSConfigBuilder) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 
 	r, err := genURLMaps(user.Name, user.Spec.TargetRefs, r, crdURLCache)
@@ -802,11 +845,11 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cb build.
 	if user.Spec.BearerToken != nil {
 		token = *user.Spec.BearerToken
 	}
-	r, err = addUserConfigOptionToYaml(r, user.Spec.UserConfigOption, cb)
+	r, err = addUserConfigOptionToYaml(r, user.Spec.VMUserConfigOptions, cb)
 	if err != nil {
 		return nil, err
 	}
-	if len(user.Spec.MetricLabels) != 0 {
+	if len(user.Spec.MetricLabels) > 0 {
 		r = append(r, yaml.MapItem{
 			Key:   "metric_labels",
 			Value: user.Spec.MetricLabels,

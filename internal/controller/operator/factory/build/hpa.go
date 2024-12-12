@@ -20,7 +20,7 @@ func HPA(opts builderOpts, targetRef autoscalingv2.CrossVersionObjectReference, 
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
 			MaxReplicas:    spec.MaxReplicas,
 			MinReplicas:    spec.MinReplicas,
-			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference(targetRef),
+			ScaleTargetRef: targetRef,
 			Metrics:        spec.Metrics,
 			Behavior:       spec.Behaviour,
 		},

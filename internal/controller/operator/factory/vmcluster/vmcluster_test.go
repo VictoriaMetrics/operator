@@ -384,7 +384,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 			if tt.args.cr.Spec.VMInsert != nil {
 				var vminsert appsv1.Deployment
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
 						return err
 					}
 					vminsert.Status.Conditions = append(vminsert.Status.Conditions, appsv1.DeploymentCondition{
@@ -402,7 +402,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 			if tt.args.cr.Spec.VMSelect != nil {
 				var vmselect appsv1.StatefulSet
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
 						return err
 					}
 					vmselect.Status.ReadyReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
@@ -416,7 +416,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 			if tt.args.cr.Spec.VMStorage != nil {
 				var vmstorage appsv1.StatefulSet
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMStorage.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMStorageName(), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
 						return err
 					}
 					vmstorage.Status.ReadyReplicas = *tt.args.cr.Spec.VMStorage.ReplicaCount
@@ -438,17 +438,17 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 				var vmselect, vmstorage appsv1.StatefulSet
 				var vminsert appsv1.Deployment
 				if tt.args.cr.Spec.VMInsert != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
 				if tt.args.cr.Spec.VMSelect != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
 				if tt.args.cr.Spec.VMStorage != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMStorage.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMStorageName(), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}

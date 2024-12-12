@@ -454,6 +454,7 @@ type VMAuthList struct {
 	Items           []VMAuth `json:"items"`
 }
 
+// AsOwner returns owner references with current object as owner
 func (cr *VMAuth) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
@@ -525,41 +526,42 @@ func (cr *VMAuth) AllLabels() map[string]string {
 	return labels.Merge(result, selectorLabels)
 }
 
-func (cr VMAuth) PrefixedName() string {
+func (cr *VMAuth) PrefixedName() string {
 	return fmt.Sprintf("vmauth-%s", cr.Name)
 }
 
-func (cr VMAuth) ConfigSecretName() string {
+func (cr *VMAuth) ConfigSecretName() string {
 	return fmt.Sprintf("vmauth-config-%s", cr.Name)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr VMAuth) GetMetricPath() string {
+func (cr *VMAuth) GetMetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr VMAuth) GetExtraArgs() map[string]string {
+func (cr *VMAuth) GetExtraArgs() map[string]string {
 	return cr.Spec.ExtraArgs
 }
 
 // GetServiceScrape returns overrides for serviceScrape builder
-func (cr VMAuth) GetServiceScrape() *VMServiceScrapeSpec {
+func (cr *VMAuth) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
-func (cr VMAuth) GetServiceAccountName() string {
+func (cr *VMAuth) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
 	}
 	return cr.Spec.ServiceAccountName
 }
 
-func (cr VMAuth) IsOwnsServiceAccount() bool {
+func (cr *VMAuth) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr VMAuth) GetNSName() string {
+// GetNSName implements build.builderOpts interface
+func (cr *VMAuth) GetNSName() string {
 	return cr.GetNamespace()
 }
 

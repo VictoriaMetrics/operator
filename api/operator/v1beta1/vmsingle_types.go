@@ -186,6 +186,7 @@ type VMSingleList struct {
 	Items           []VMSingle `json:"items"`
 }
 
+// AsOwner returns owner references with current object as owner
 func (cr *VMSingle) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
@@ -258,41 +259,42 @@ func (cr *VMSingle) AllLabels() map[string]string {
 	return labels.Merge(result, selectorLabels)
 }
 
-func (cr VMSingle) PrefixedName() string {
+func (cr *VMSingle) PrefixedName() string {
 	return fmt.Sprintf("vmsingle-%s", cr.Name)
 }
 
-func (cr VMSingle) StreamAggrConfigName() string {
+func (cr *VMSingle) StreamAggrConfigName() string {
 	return fmt.Sprintf("stream-aggr-vmsingle-%s", cr.Name)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr VMSingle) GetMetricPath() string {
+func (cr *VMSingle) GetMetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr VMSingle) GetExtraArgs() map[string]string {
+func (cr *VMSingle) GetExtraArgs() map[string]string {
 	return cr.Spec.ExtraArgs
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
-func (cr VMSingle) GetServiceScrape() *VMServiceScrapeSpec {
+func (cr *VMSingle) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
-func (cr VMSingle) GetServiceAccountName() string {
+func (cr *VMSingle) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
 	}
 	return cr.Spec.ServiceAccountName
 }
 
-func (cr VMSingle) IsOwnsServiceAccount() bool {
+func (cr *VMSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr VMSingle) GetNSName() string {
+// GetNSName implements build.builderOpts interface
+func (cr *VMSingle) GetNSName() string {
 	return cr.GetNamespace()
 }
 

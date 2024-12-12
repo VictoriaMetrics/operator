@@ -179,6 +179,7 @@ func (cr *VMUser) TokenRefAsKey() string {
 	return fmt.Sprintf("%s/%s/%s", cr.Namespace, cr.Spec.TokenRef.Name, cr.Spec.TokenRef.Key)
 }
 
+// AsOwner returns owner references with current object as owner
 func (cr *VMUser) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{

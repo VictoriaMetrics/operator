@@ -17,11 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
-
-var log = logf.Log.WithName("client_utils")
 
 var invalidDNS1123Characters = regexp.MustCompile("[^-a-z0-9]+")
 

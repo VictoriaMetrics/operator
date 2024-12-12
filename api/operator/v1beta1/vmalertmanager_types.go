@@ -250,6 +250,7 @@ func (cr *VMAlertmanagerStatus) GetStatusMetadata() *StatusMetadata {
 	return &cr.StatusMetadata
 }
 
+// AsOwner returns owner references with current object as owner
 func (cr *VMAlertmanager) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
@@ -322,26 +323,27 @@ func (cr *VMAlertmanager) AllLabels() map[string]string {
 }
 
 // ConfigSecretName returns configuration secret name for alertmanager
-func (cr VMAlertmanager) ConfigSecretName() string {
+func (cr *VMAlertmanager) ConfigSecretName() string {
 	return fmt.Sprintf("%s-config", cr.PrefixedName())
 }
 
-func (cr VMAlertmanager) PrefixedName() string {
+func (cr *VMAlertmanager) PrefixedName() string {
 	return fmt.Sprintf("vmalertmanager-%s", cr.Name)
 }
 
-func (cr VMAlertmanager) GetServiceAccountName() string {
+func (cr *VMAlertmanager) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
 	}
 	return cr.Spec.ServiceAccountName
 }
 
-func (cr VMAlertmanager) IsOwnsServiceAccount() bool {
+func (cr *VMAlertmanager) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr VMAlertmanager) GetNSName() string {
+// GetNSName implements build.builderOpts interface
+func (cr *VMAlertmanager) GetNSName() string {
 	return cr.GetNamespace()
 }
 
@@ -388,12 +390,12 @@ func (cr *VMAlertmanager) GetMetricPath() string {
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr VMAlertmanager) GetExtraArgs() map[string]string {
+func (cr *VMAlertmanager) GetExtraArgs() map[string]string {
 	return cr.Spec.ExtraArgs
 }
 
 // GetServiceScrape returns overrides for serviceScrape builder
-func (cr VMAlertmanager) GetServiceScrape() *VMServiceScrapeSpec {
+func (cr *VMAlertmanager) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 

@@ -16332,6 +16332,8 @@ spec:
                     type: array
                 type: object
               vmselect:
+                description: VMSelect defines configuration section for vmselect components
+                  of the victoria-metrics cluster
                 properties:
                   affinity:
                     description: Affinity If specified, the pod's scheduling constraints.

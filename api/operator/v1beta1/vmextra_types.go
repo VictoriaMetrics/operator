@@ -1431,3 +1431,13 @@ type ManagedObjectsMetadata struct {
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
+
+// Image defines docker image settings
+type Image struct {
+	// Repository contains name of docker image + it's repository if needed
+	Repository string `json:"repository,omitempty"`
+	// Tag contains desired docker image version
+	Tag string `json:"tag,omitempty"`
+	// PullPolicy describes how to pull docker image
+	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
+}

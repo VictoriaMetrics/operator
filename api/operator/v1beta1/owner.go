@@ -67,6 +67,8 @@ func Init(ctx context.Context, rclient client.Client) error {
 	return nil
 }
 
+// GetCRDAsOwner returns owner references with global CustomResourceDefinition object as owner
+// useful for non-namespaced objects, like clusterRole
 func GetCRDAsOwner(name CRDName) []v1.OwnerReference {
 	crdData := crdCache[name]
 	if crdData == nil {

@@ -205,7 +205,7 @@ type VMAlertNotifierSpec struct {
 }
 
 // NotifierAsMapKey - returns cr name with suffix for notifier token/auth maps.
-func (cr VMAlert) NotifierAsMapKey(i int) string {
+func (cr *VMAlert) NotifierAsMapKey(i int) string {
 	return fmt.Sprintf("vmalert/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
@@ -300,11 +300,11 @@ func (cr *VMAlert) ProbeScheme() string {
 	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
 }
 
-func (cr VMAlert) ProbePort() string {
+func (cr *VMAlert) ProbePort() string {
 	return cr.Spec.Port
 }
 
-func (cr VMAlert) ProbeNeedLiveness() bool {
+func (cr *VMAlert) ProbeNeedLiveness() bool {
 	return true
 }
 
@@ -317,6 +317,7 @@ type VMAlertList struct {
 	Items           []VMAlert `json:"items"`
 }
 
+// AsOwner returns owner references with current object as owner
 func (cr *VMAlert) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
@@ -388,49 +389,50 @@ func (cr *VMAlert) AllLabels() map[string]string {
 	return labels.Merge(result, selectorLabels)
 }
 
-func (cr VMAlert) PrefixedName() string {
+func (cr *VMAlert) PrefixedName() string {
 	return fmt.Sprintf("vmalert-%s", cr.Name)
 }
 
-func (cr VMAlert) TLSAssetName() string {
+func (cr *VMAlert) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmalert-%s", cr.Name)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr VMAlert) GetMetricPath() string {
+func (cr *VMAlert) GetMetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr VMAlert) GetExtraArgs() map[string]string {
+func (cr *VMAlert) GetExtraArgs() map[string]string {
 	return cr.Spec.ExtraArgs
 }
 
 // GetServiceScrape returns overrides for serviceScrape builder
-func (cr VMAlert) GetServiceScrape() *VMServiceScrapeSpec {
+func (cr *VMAlert) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
-func (cr VMAlert) NeedDedupRules() bool {
+func (cr *VMAlert) NeedDedupRules() bool {
 	return cr.ObjectMeta.Annotations[MetaVMAlertDeduplicateRulesKey] != ""
 }
 
-func (cr VMAlert) GetServiceAccountName() string {
+func (cr *VMAlert) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
 	}
 	return cr.Spec.ServiceAccountName
 }
 
-func (cr VMAlert) IsOwnsServiceAccount() bool {
+func (cr *VMAlert) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr VMAlert) GetNSName() string {
+// GetNSName implements build.builderOpts interface
+func (cr *VMAlert) GetNSName() string {
 	return cr.GetNamespace()
 }
 
-func (cr VMAlert) RulesConfigMapSelector() client.ListOption {
+func (cr *VMAlert) RulesConfigMapSelector() client.ListOption {
 	return &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{"vmalert-name": cr.Name}),
 		Namespace:     cr.Namespace,

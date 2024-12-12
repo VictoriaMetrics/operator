@@ -85,7 +85,7 @@ type VMClusterSpec struct {
 }
 
 // VMAuthLBSelectorLabels defines selector labels for vmauth balancer
-func (cr VMCluster) VMAuthLBSelectorLabels() map[string]string {
+func (cr *VMCluster) VMAuthLBSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmclusterlb-vmauth-balancer",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -95,7 +95,7 @@ func (cr VMCluster) VMAuthLBSelectorLabels() map[string]string {
 }
 
 // GetVMAuthLBName returns prefixed name for the loadbalanacer components
-func (cr VMCluster) GetVMAuthLBName() string {
+func (cr *VMCluster) GetVMAuthLBName() string {
 	return fmt.Sprintf("vmclusterlb-%s", cr.Name)
 }
 
@@ -154,6 +154,7 @@ type VMCluster struct {
 	Status VMClusterStatus `json:"status,omitempty"`
 }
 
+// AsOwner returns owner references with current object as owner
 func (c *VMCluster) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
@@ -193,6 +194,7 @@ func init() {
 	SchemeBuilder.Register(&VMCluster{}, &VMClusterList{})
 }
 
+// VMSelect defines configuration section for vmselect components of the victoria-metrics cluster
 type VMSelect struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -251,12 +253,12 @@ type VMSelect struct {
 	CommonApplicationDeploymentParams `json:",inline"`
 }
 
-// GetSelectLBName returns headless proxy service name for select component
-func (cr VMCluster) GetSelectLBName() string {
-	return PrefixedName(cr.Name, "vmselectinternal")
+// GetVMSelectLBName returns headless proxy service name for select component
+func (cr *VMCluster) GetVMSelectLBName() string {
+	return prefixedName(cr.Name, "vmselectinternal")
 }
 
-func (s VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
+func (cr *VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
 	// The default DNS search path is .svc.<cluster domain>
 	if domain == "" {
 		return fmt.Sprintf("%s-%d.%s.%s:%s,", baseName, podIndex, baseName, namespace, portName)
@@ -264,7 +266,7 @@ func (s VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portN
 	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s,", baseName, podIndex, baseName, namespace, domain, portName)
 }
 
-func PrefixedName(name, prefix string) string {
+func prefixedName(name, prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, name)
 }
 
@@ -329,9 +331,9 @@ type VMInsert struct {
 	CommonApplicationDeploymentParams `json:",inline"`
 }
 
-// GetInsertLBName returns headless proxy service name for insert component
-func (cr VMCluster) GetInsertLBName() string {
-	return PrefixedName(cr.Name, "vminsertinternal")
+// GetVMInsertLBName returns headless proxy service name for insert component
+func (cr VMCluster) GetVMInsertLBName() string {
+	return prefixedName(cr.Name, "vminsertinternal")
 }
 
 func (cr *VMInsert) Probe() *EmbeddedProbes {
@@ -354,14 +356,18 @@ func (cr *VMInsert) ProbeNeedLiveness() bool {
 	return true
 }
 
-// GetInsertName returns vminsert component name
-func (cr VMCluster) GetInsertName() string {
-	return PrefixedName(cr.Name, "vminsert")
+// GetVMInsertName returns vminsert component name
+func (cr *VMCluster) GetVMInsertName() string {
+	return prefixedName(cr.Name, "vminsert")
 }
 
 // GetInsertName returns select component name
-func (cr VMCluster) GetSelectName() string {
-	return PrefixedName(cr.Name, "vmselect")
+func (cr *VMCluster) GetVMSelectName() string {
+	return prefixedName(cr.Name, "vmselect")
+}
+
+func (cr *VMCluster) GetVMStorageName() string {
+	return prefixedName(cr.Name, "vmstorage")
 }
 
 type VMStorage struct {
@@ -516,59 +522,42 @@ func (cr *VMBackup) sanityCheck(l *License) error {
 	return nil
 }
 
+// VMRestore defines config options for vmrestore start-up
 type VMRestore struct {
 	// OnStart defines configuration for restore on pod start
 	// +optional
 	OnStart *VMRestoreOnStartConfig `json:"onStart,omitempty"`
 }
 
+// VMRestoreOnStartConfig controls vmrestore setting
 type VMRestoreOnStartConfig struct {
 	// Enabled defines if restore on start enabled
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-func (s VMStorage) BuildPodName(baseName string, podIndex int32, namespace string, portName string, domain string) string {
-	// The default DNS search path is .svc.<cluster domain>
-	if domain == "" {
-		return fmt.Sprintf("%s-%d.%s.%s:%s,", baseName, podIndex, baseName, namespace, portName)
-	}
-	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s,", baseName, podIndex, baseName, namespace, domain, portName)
-}
-
-func (s VMStorage) GetNameWithPrefix(clusterName string) string {
-	return PrefixedName(clusterName, "vmstorage")
-}
-
-func (s VMStorage) GetStorageVolumeName() string {
-	if s.Storage != nil && s.Storage.VolumeClaimTemplate.Name != "" {
-		return s.Storage.VolumeClaimTemplate.Name
+// GetStorageVolumeName returns formatted name for vmstorage volume
+func (cr *VMStorage) GetStorageVolumeName() string {
+	if cr.Storage != nil && cr.Storage.VolumeClaimTemplate.Name != "" {
+		return cr.Storage.VolumeClaimTemplate.Name
 	}
 	return "vmstorage-db"
 }
 
-func (s VMSelect) GetCacheMountVolumeName() string {
-	storageSpec := s.StorageSpec
+// GetCacheMountVolumeName returns formatted name for vmselect volume
+func (cr *VMSelect) GetCacheMountVolumeName() string {
+	storageSpec := cr.StorageSpec
 	if storageSpec == nil {
-		storageSpec = s.Storage
+		storageSpec = cr.Storage
 	}
 	if storageSpec != nil && storageSpec.VolumeClaimTemplate.Name != "" {
 		return storageSpec.VolumeClaimTemplate.Name
 	}
-	return PrefixedName("cachedir", "vmselect")
+	return prefixedName("cachedir", "vmselect")
 }
 
-// Image defines docker image settings
-type Image struct {
-	// Repository contains name of docker image + it's repository if needed
-	Repository string `json:"repository,omitempty"`
-	// Tag contains desired docker image version
-	Tag string `json:"tag,omitempty"`
-	// PullPolicy describes how to pull docker image
-	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
-}
-
-func (cr VMCluster) VMSelectSelectorLabels() map[string]string {
+// VMSelectSelectorLabels returns selector labels for vmselect cluster component
+func (cr *VMCluster) VMSelectSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmselect",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -577,7 +566,8 @@ func (cr VMCluster) VMSelectSelectorLabels() map[string]string {
 	}
 }
 
-func (cr VMCluster) VMSelectPodLabels() map[string]string {
+// VMSelectPodLabels returns pod labels for vmselect cluster component
+func (cr *VMCluster) VMSelectPodLabels() map[string]string {
 	selectorLabels := cr.VMSelectSelectorLabels()
 	if cr.Spec.VMSelect == nil || cr.Spec.VMSelect.PodMetadata == nil {
 		return selectorLabels
@@ -585,7 +575,8 @@ func (cr VMCluster) VMSelectPodLabels() map[string]string {
 	return labels.Merge(cr.Spec.VMSelect.PodMetadata.Labels, selectorLabels)
 }
 
-func (cr VMCluster) VMInsertSelectorLabels() map[string]string {
+// VMInsertSelectorLabels returns selector labels for vminsert cluster component
+func (cr *VMCluster) VMInsertSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vminsert",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -594,7 +585,8 @@ func (cr VMCluster) VMInsertSelectorLabels() map[string]string {
 	}
 }
 
-func (cr VMCluster) VMInsertPodLabels() map[string]string {
+// VMInsertPodLabels returns pod labels for vminsert cluster component
+func (cr *VMCluster) VMInsertPodLabels() map[string]string {
 	selectorLabels := cr.VMInsertSelectorLabels()
 	if cr.Spec.VMInsert == nil || cr.Spec.VMInsert.PodMetadata == nil {
 		return selectorLabels
@@ -602,6 +594,7 @@ func (cr VMCluster) VMInsertPodLabels() map[string]string {
 	return labels.Merge(cr.Spec.VMInsert.PodMetadata.Labels, selectorLabels)
 }
 
+// VMStorageSelectorLabels  returns pod labels for vmstorage cluster component
 func (cr VMCluster) VMStorageSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmstorage",
@@ -611,7 +604,17 @@ func (cr VMCluster) VMStorageSelectorLabels() map[string]string {
 	}
 }
 
-func (cr VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
+// VMStoragePodLabels returns pod labels for the vmstorage cluster component
+func (cr *VMCluster) VMStoragePodLabels() map[string]string {
+	selectorLabels := cr.VMStorageSelectorLabels()
+	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
+		return selectorLabels
+	}
+	return labels.Merge(cr.Spec.VMStorage.PodMetadata.Labels, selectorLabels)
+}
+
+// AvailableStorageNodeIDs returns ids of the storage nodes for the provided component
+func (cr *VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	var result []int32
 	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.ReplicaCount == nil {
 		return result
@@ -638,19 +641,14 @@ func (cr VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	return result
 }
 
-func (cr *VMCluster) VMStoragePodLabels() map[string]string {
-	selectorLabels := cr.VMStorageSelectorLabels()
-	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
-		return selectorLabels
-	}
-	return labels.Merge(cr.Spec.VMStorage.PodMetadata.Labels, selectorLabels)
-}
+var globalClusterLabels = map[string]string{"app.kubernetes.io/part-of": "vmcluster"}
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr *VMCluster) FinalLabels(selectorLabels map[string]string) map[string]string {
-	// fast path
+	baseLabels := labels.Merge(globalClusterLabels, selectorLabels)
 	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
-		return selectorLabels
+		// fast path
+		return baseLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
@@ -660,9 +658,10 @@ func (cr *VMCluster) FinalLabels(selectorLabels map[string]string) map[string]st
 	if cr.Spec.ManagedMetadata != nil {
 		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
 	}
-	return labels.Merge(result, selectorLabels)
+	return labels.Merge(result, baseLabels)
 }
 
+// VMSelectPodAnnotations returns pod annotations for vmselect cluster component
 func (cr *VMCluster) VMSelectPodAnnotations() map[string]string {
 	if cr.Spec.VMSelect == nil || cr.Spec.VMSelect.PodMetadata == nil {
 		return make(map[string]string)
@@ -670,6 +669,7 @@ func (cr *VMCluster) VMSelectPodAnnotations() map[string]string {
 	return cr.Spec.VMSelect.PodMetadata.Annotations
 }
 
+// VMInsertPodAnnotations returns pod annotations for vminsert cluster component
 func (cr *VMCluster) VMInsertPodAnnotations() map[string]string {
 	if cr.Spec.VMInsert == nil || cr.Spec.VMInsert.PodMetadata == nil {
 		return make(map[string]string)
@@ -677,6 +677,7 @@ func (cr *VMCluster) VMInsertPodAnnotations() map[string]string {
 	return cr.Spec.VMInsert.PodMetadata.Annotations
 }
 
+// VMStoragePodAnnotations returns pod annotations for vmstorage cluster component
 func (cr *VMCluster) VMStoragePodAnnotations() map[string]string {
 	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
 		return make(map[string]string)
@@ -684,6 +685,7 @@ func (cr *VMCluster) VMStoragePodAnnotations() map[string]string {
 	return cr.Spec.VMStorage.PodMetadata.Annotations
 }
 
+// AnnotationsFiltered returns global annotations to be applied by objects generate for vmcluster
 func (cr *VMCluster) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
 	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
@@ -767,10 +769,12 @@ func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
 }
 
+// SnapshotCreatePathWithFlags returns url for accessing vmbackupmanager component
 func (cr *VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotCreate))), extraArgs)
 }
 
+// SnapshotDeletePathWithFlags returns url for accessing vmbackupmanager component
 func (cr *VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete))), extraArgs)
 }
@@ -787,6 +791,7 @@ func joinBackupAuthKey(urlPath string, extraArgs map[string]string) string {
 	return urlPath
 }
 
+// GetServiceAccountName returns service account name for all vmcluster components
 func (cr *VMCluster) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
@@ -794,14 +799,17 @@ func (cr *VMCluster) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// IsOwnsServiceAccount checks if built-in service should be used
 func (cr *VMCluster) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
+// PrefixedName format name of the component with hard-coded prefix
 func (cr *VMCluster) PrefixedName() string {
 	return fmt.Sprintf("vmcluster-%s", cr.Name)
 }
 
+// SelectorLabels defines labels for objects generated used by all cluster components
 func (cr *VMCluster) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmcluster",
@@ -809,24 +817,6 @@ func (cr *VMCluster) SelectorLabels() map[string]string {
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
-}
-
-// AllLabels defines global CR labels
-func (cr *VMCluster) AllLabels() map[string]string {
-	selectorLabels := cr.SelectorLabels()
-	// fast path
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
-		return selectorLabels
-	}
-	var result map[string]string
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
-	}
-	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
-	}
-	return labels.Merge(result, selectorLabels)
 }
 
 // AsURL implements stub for interface.
@@ -849,7 +839,7 @@ func (cr *VMCluster) VMSelectURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.GetSelectName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.GetVMSelectName(), cr.Namespace, port)
 }
 
 func (cr *VMCluster) VMInsertURL() string {
@@ -867,7 +857,7 @@ func (cr *VMCluster) VMInsertURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.GetInsertName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.GetVMInsertName(), cr.Namespace, port)
 }
 
 func (cr *VMCluster) VMStorageURL() string {
@@ -885,7 +875,7 @@ func (cr *VMCluster) VMStorageURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMStorage.ExtraArgs), cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMStorage.ExtraArgs), cr.GetVMStorageName(), cr.Namespace, port)
 }
 
 // AsCRDOwner implements interface
@@ -893,7 +883,8 @@ func (cr *VMCluster) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Cluster)
 }
 
-func (cr VMCluster) GetNSName() string {
+// GetNSName implements build.builderOpts interface
+func (cr *VMCluster) GetNSName() string {
 	return cr.GetNamespace()
 }
 

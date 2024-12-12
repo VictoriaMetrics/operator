@@ -3616,7 +3616,7 @@ _Appears in:_
 
 
 
-
+VMRestore defines config options for vmrestore start-up
 
 
 
@@ -3632,7 +3632,7 @@ _Appears in:_
 
 
 
-
+VMRestoreOnStartConfig controls vmrestore setting
 
 
 
@@ -3780,7 +3780,7 @@ _Appears in:_
 
 
 
-
+VMSelect defines configuration section for vmselect components of the victoria-metrics cluster
 
 
 

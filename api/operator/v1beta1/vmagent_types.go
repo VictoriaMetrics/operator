@@ -487,6 +487,7 @@ type VMAgentList struct {
 	Items           []VMAgent `json:"items"`
 }
 
+// AsOwner returns owner references with current object as owner
 func (cr *VMAgent) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
@@ -560,42 +561,42 @@ func (cr *VMAgent) AllLabels() map[string]string {
 	return labels.Merge(result, selectorLabels)
 }
 
-func (cr VMAgent) PrefixedName() string {
+func (cr *VMAgent) PrefixedName() string {
 	return fmt.Sprintf("vmagent-%s", cr.Name)
 }
 
-func (cr VMAgent) TLSAssetName() string {
+func (cr *VMAgent) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name)
 }
 
-func (cr VMAgent) RelabelingAssetName() string {
+func (cr *VMAgent) RelabelingAssetName() string {
 	return fmt.Sprintf("relabelings-assets-vmagent-%s", cr.Name)
 }
 
-func (cr VMAgent) StreamAggrConfigName() string {
+func (cr *VMAgent) StreamAggrConfigName() string {
 	return fmt.Sprintf("stream-aggr-vmagent-%s", cr.Name)
 }
 
-func (cr VMAgent) HealthPath() string {
+func (cr *VMAgent) HealthPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr VMAgent) GetMetricPath() string {
+func (cr *VMAgent) GetMetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr VMAgent) GetExtraArgs() map[string]string {
+func (cr *VMAgent) GetExtraArgs() map[string]string {
 	return cr.Spec.ExtraArgs
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
-func (cr VMAgent) GetServiceScrape() *VMServiceScrapeSpec {
+func (cr *VMAgent) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
-func (cr VMAgent) GetServiceAccountName() string {
+func (cr *VMAgent) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
 	}
@@ -603,15 +604,16 @@ func (cr VMAgent) GetServiceAccountName() string {
 }
 
 // IsOwnsServiceAccount checks if service account owned by CR
-func (cr VMAgent) IsOwnsServiceAccount() bool {
+func (cr *VMAgent) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr VMAgent) GetClusterRoleName() string {
+func (cr *VMAgent) GetClusterRoleName() string {
 	return fmt.Sprintf("monitoring:%s:vmagent-%s", cr.Namespace, cr.Name)
 }
 
-func (cr VMAgent) GetNSName() string {
+// GetNSName implements build.builderOpts interface
+func (cr *VMAgent) GetNSName() string {
 	return cr.GetNamespace()
 }
 
@@ -649,11 +651,11 @@ func (cr *VMAgent) ProbeScheme() string {
 	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
 }
 
-func (cr VMAgent) ProbePort() string {
+func (cr *VMAgent) ProbePort() string {
 	return cr.Spec.Port
 }
 
-func (cr VMAgent) ProbeNeedLiveness() bool {
+func (cr *VMAgent) ProbeNeedLiveness() bool {
 	return true
 }
 

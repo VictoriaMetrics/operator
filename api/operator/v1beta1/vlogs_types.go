@@ -155,6 +155,7 @@ func (r *VLogs) PodAnnotations() map[string]string {
 	return annotations
 }
 
+// AsOwner returns owner references with current object as owner
 func (r *VLogs) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{

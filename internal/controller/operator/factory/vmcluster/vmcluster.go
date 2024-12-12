@@ -45,9 +45,11 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
-			prevSA = build.ServiceAccount(prevCR)
+			b := newOptsBuilder(prevCR, prevCR.PrefixedName(), prevCR.SelectorLabels())
+			prevSA = build.ServiceAccount(b)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		b := newOptsBuilder(cr, cr.PrefixedName(), cr.SelectorLabels())
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(b), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
@@ -178,14 +180,14 @@ func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prev
 }
 
 func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
-	t := &clusterSvcBuilder{
+	b := &optsBuilder{
 		cr,
-		cr.GetSelectName(),
+		cr.GetVMSelectName(),
 		cr.FinalLabels(cr.VMSelectSelectorLabels()),
 		cr.VMSelectSelectorLabels(),
 		cr.Spec.VMSelect.ServiceSpec,
 	}
-	svc := build.Service(t, cr.Spec.VMSelect.Port, func(svc *corev1.Service) {
+	svc := build.Service(b, cr.Spec.VMSelect.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		if cr.Spec.VMSelect.ClusterNativePort != "" {
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
@@ -197,10 +199,10 @@ func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 		}
 	})
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
-		svc.Name = cr.GetSelectLBName()
+		svc.Name = cr.GetVMSelectLBName()
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
-		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetSelectName()
+		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetVMSelectName()
 	}
 
 	return svc
@@ -209,22 +211,23 @@ func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 
 func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) (*corev1.Service, error) {
 
+	var prevService, prevAdditionalService *corev1.Service
+	if prevCR != nil && prevCR.Spec.VMSelect != nil {
+		prevService = buildVMSelectService(prevCR)
+		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.VMSelect.ServiceSpec)
+	}
 	svc := buildVMSelectService(cr)
 	if err := cr.Spec.VMSelect.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(svc, s)
 		if additionalService.Name == svc.Name {
 			return fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, svc.Name)
-		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
+		}
+		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
 			return fmt.Errorf("cannot reconcile service for vmselect: %w", err)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
-	}
-
-	var prevService *corev1.Service
-	if prevCR != nil && prevCR.Spec.VMSelect != nil {
-		prevService = buildVMSelectService(prevCR)
 	}
 
 	if err := reconcile.Service(ctx, rclient, svc, prevService); err != nil {
@@ -235,18 +238,19 @@ func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, c
 		if prevCR != nil && prevCR.Spec.VMSelect != nil {
 			prevPort = prevCR.Spec.VMSelect.Port
 		}
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetSelectName(), cr.Spec.VMSelect.Port, prevPort, "vmselect", cr.VMAuthLBSelectorLabels()); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetVMSelectName(), cr.Spec.VMSelect.Port, prevPort, "vmselect", cr.VMAuthLBSelectorLabels()); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for vmselect: %w", err)
 		}
 	}
 	return svc, nil
 }
 
+// createOrUpdateLBProxyService builds vminsert and vmselect external services to expose vmcluster components for access by vmauth
 func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, svcName, port, prevPort, targetName string, svcSelectorLabels map[string]string) error {
 
 	fls := cr.FinalLabels(svcSelectorLabels)
 	fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: targetName})
-	t := &clusterSvcBuilder{
+	t := &optsBuilder{
 		cr,
 		svcName,
 		fls,
@@ -262,7 +266,7 @@ func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr
 	if prevCR != nil {
 		fls := prevCR.FinalLabels(svcSelectorLabels)
 		fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: targetName})
-		t := &clusterSvcBuilder{
+		t := &optsBuilder{
 			prevCR,
 			svcName,
 			fls,
@@ -299,9 +303,9 @@ func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prev
 }
 
 func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
-	t := &clusterSvcBuilder{
+	t := &optsBuilder{
 		cr,
-		cr.GetInsertName(),
+		cr.GetVMInsertName(),
 		cr.FinalLabels(cr.VMInsertSelectorLabels()),
 		cr.VMInsertSelectorLabels(),
 		cr.Spec.VMInsert.ServiceSpec,
@@ -320,10 +324,10 @@ func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
 		}
 	})
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
-		svc.Name = cr.GetInsertLBName()
+		svc.Name = cr.GetVMInsertLBName()
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
-		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetInsertName()
+		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetVMInsertName()
 	}
 	return svc
 }
@@ -331,21 +335,22 @@ func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
 func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) (*corev1.Service, error) {
 
 	newService := buildVMInsertService(cr)
+	var prevService, prevAdditionalService *corev1.Service
+	if prevCR != nil && prevCR.Spec.VMInsert != nil {
+		prevService = buildVMInsertService(prevCR)
+		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.VMInsert.ServiceSpec)
+	}
 	if err := cr.Spec.VMInsert.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			return fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
-		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
-			// TODO: @f41gh7 use prevCR
+		}
+		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
 			return fmt.Errorf("cannot reconcile vminsert additional service: %w", err)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
-	}
-	var prevService *corev1.Service
-	if prevCR != nil && prevCR.Spec.VMInsert != nil {
-		prevService = buildVMInsertService(prevCR)
 	}
 
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
@@ -358,7 +363,7 @@ func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, c
 		if prevCR != nil && prevCR.Spec.VMInsert != nil {
 			prevPort = prevCR.Spec.VMInsert.Port
 		}
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetInsertName(), cr.Spec.VMInsert.Port, prevPort, "vminsert", cr.VMAuthLBSelectorLabels()); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetVMInsertName(), cr.Spec.VMInsert.Port, prevPort, "vminsert", cr.VMAuthLBSelectorLabels()); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for vminsert: %w", err)
 		}
 	}
@@ -389,12 +394,51 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 }
 
 func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) (*corev1.Service, error) {
-	t := &clusterSvcBuilder{
+	t := &optsBuilder{
 		cr,
-		cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
+		cr.GetVMStorageName(),
 		cr.FinalLabels(cr.VMStorageSelectorLabels()),
 		cr.VMStorageSelectorLabels(),
 		cr.Spec.VMStorage.ServiceSpec,
+	}
+	var prevService, prevAdditionalService *corev1.Service
+	if prevCR != nil && prevCR.Spec.VMStorage != nil {
+		prevT := &optsBuilder{
+			prevCR,
+			prevCR.GetVMStorageName(),
+			prevCR.FinalLabels(prevCR.VMStorageSelectorLabels()),
+			prevCR.VMStorageSelectorLabels(),
+			prevCR.Spec.VMStorage.ServiceSpec,
+		}
+
+		prevService = build.Service(prevT, prevCR.Spec.VMStorage.Port, func(svc *corev1.Service) {
+			svc.Spec.ClusterIP = "None"
+			svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
+				{
+					Name:       "vminsert",
+					Protocol:   "TCP",
+					Port:       intstr.Parse(prevCR.Spec.VMStorage.VMInsertPort).IntVal,
+					TargetPort: intstr.Parse(prevCR.Spec.VMStorage.VMInsertPort),
+				},
+				{
+					Name:       "vmselect",
+					Protocol:   "TCP",
+					Port:       intstr.Parse(prevCR.Spec.VMStorage.VMSelectPort).IntVal,
+					TargetPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort),
+				},
+			}...)
+			if prevCR.Spec.VMStorage.VMBackup != nil {
+				parsedPort := intstr.Parse(prevCR.Spec.VMStorage.VMBackup.Port)
+				svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+					Name:       "vmbackupmanager",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       parsedPort.IntVal,
+					TargetPort: parsedPort,
+				})
+			}
+		})
+		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.VMStorage.ServiceSpec)
+
 	}
 	newHeadless := build.Service(t, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
@@ -427,50 +471,13 @@ func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, 
 		additionalService := build.AdditionalServiceFromDefault(newHeadless, s)
 		if additionalService.Name == newHeadless.Name {
 			return fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
-		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
-			// TODO: @f41gh7 use prevCR
+		}
+		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
 			return fmt.Errorf("cannot reconcile vmstorage additional service: %w", err)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
-	}
-	var prevService *corev1.Service
-	if prevCR != nil && prevCR.Spec.VMStorage != nil {
-		prevT := &clusterSvcBuilder{
-			prevCR,
-			prevCR.Spec.VMStorage.GetNameWithPrefix(prevCR.Name),
-			prevCR.FinalLabels(prevCR.VMStorageSelectorLabels()),
-			prevCR.VMStorageSelectorLabels(),
-			prevCR.Spec.VMStorage.ServiceSpec,
-		}
-
-		prevService = build.Service(prevT, prevCR.Spec.VMStorage.Port, func(svc *corev1.Service) {
-			svc.Spec.ClusterIP = "None"
-			svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
-				{
-					Name:       "vminsert",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(prevCR.Spec.VMStorage.VMInsertPort).IntVal,
-					TargetPort: intstr.Parse(prevCR.Spec.VMStorage.VMInsertPort),
-				},
-				{
-					Name:       "vmselect",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(prevCR.Spec.VMStorage.VMSelectPort).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort),
-				},
-			}...)
-			if prevCR.Spec.VMStorage.VMBackup != nil {
-				parsedPort := intstr.Parse(prevCR.Spec.VMStorage.VMBackup.Port)
-				svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-					Name:       "vmbackupmanager",
-					Protocol:   corev1.ProtocolTCP,
-					Port:       parsedPort.IntVal,
-					TargetPort: parsedPort,
-				})
-			}
-		})
 	}
 
 	if err := reconcile.Service(ctx, rclient, newHeadless, prevService); err != nil {
@@ -487,7 +494,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetSelectName(),
+			Name:            cr.GetVMSelectName(),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
 			Annotations:     cr.AnnotationsFiltered(),
@@ -502,7 +509,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 				Type: cr.Spec.VMSelect.RollingUpdateStrategy,
 			},
 			Template:    *podSpec,
-			ServiceName: cr.GetSelectName(),
+			ServiceName: cr.GetVMSelectName(),
 		},
 	}
 	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false), &cr.Spec.VMSelect.CommonApplicationDeploymentParams)
@@ -554,7 +561,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 
 		storageArg := "-storageNode="
 		for _, i := range cr.AvailableStorageNodeIDs("select") {
-			storageArg += cr.Spec.VMStorage.BuildPodName(cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName)
+			storageArg += build.PodDNSAddress(cr.GetVMStorageName(), i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName)
 		}
 		storageArg = strings.TrimSuffix(storageArg, ",")
 		args = append(args, storageArg)
@@ -566,7 +573,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		selectArg := "-selectNode="
 		vmselectCount := *cr.Spec.VMSelect.ReplicaCount
 		for i := int32(0); i < vmselectCount; i++ {
-			selectArg += cr.Spec.VMSelect.BuildPodName(cr.GetSelectName(), i, cr.Namespace, cr.Spec.VMSelect.Port, cr.Spec.ClusterDomainName)
+			selectArg += cr.Spec.VMSelect.BuildPodName(cr.GetVMSelectName(), i, cr.Namespace, cr.Spec.VMSelect.Port, cr.Spec.ClusterDomainName)
 		}
 		selectArg = strings.TrimSuffix(selectArg, ",")
 		args = append(args, selectArg)
@@ -687,11 +694,11 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 }
 
 func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	t := newOptsBuilder(cr, cr.GetSelectName(), cr.VMSelectSelectorLabels())
+	t := newOptsBuilder(cr, cr.GetVMSelectName(), cr.VMSelectSelectorLabels())
 	pdb := build.PodDisruptionBudget(t, cr.Spec.VMSelect.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VMSelect.PodDisruptionBudget != nil {
-		t = newOptsBuilder(prevCR, prevCR.GetSelectName(), prevCR.VMSelectSelectorLabels())
+		t = newOptsBuilder(prevCR, prevCR.GetVMSelectName(), prevCR.VMSelectSelectorLabels())
 		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.VMSelect.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
@@ -710,7 +717,7 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 	}
 	stsSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetInsertName(),
+			Name:            cr.GetVMInsertName(),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMInsertSelectorLabels()),
 			Annotations:     cr.AnnotationsFiltered(),
@@ -754,7 +761,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil {
 		storageArg := "-storageNode="
 		for _, i := range cr.AvailableStorageNodeIDs("insert") {
-			storageArg += cr.Spec.VMStorage.BuildPodName(cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName)
+			storageArg += build.PodDNSAddress(cr.GetVMStorageName(), i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName)
 		}
 		storageArg = strings.TrimSuffix(storageArg, ",")
 
@@ -883,11 +890,11 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 }
 
 func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	t := newOptsBuilder(cr, cr.GetInsertName(), cr.VMInsertSelectorLabels())
+	t := newOptsBuilder(cr, cr.GetVMInsertName(), cr.VMInsertSelectorLabels())
 	pdb := build.PodDisruptionBudget(t, cr.Spec.VMInsert.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VMInsert.PodDisruptionBudget != nil {
-		t = newOptsBuilder(prevCR, prevCR.GetInsertName(), prevCR.VMInsertSelectorLabels())
+		t = newOptsBuilder(prevCR, prevCR.GetVMInsertName(), prevCR.VMInsertSelectorLabels())
 		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.VMInsert.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
@@ -902,7 +909,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
+			Name:            cr.GetVMStorageName(),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
 			Annotations:     cr.AnnotationsFiltered(),
@@ -917,7 +924,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 				Type: cr.Spec.VMStorage.RollingUpdateStrategy,
 			},
 			Template:    *podSpec,
-			ServiceName: cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
+			ServiceName: cr.GetVMStorageName(),
 		},
 	}
 	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
@@ -1119,11 +1126,11 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 }
 
 func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	t := newOptsBuilder(cr, cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.VMStorageSelectorLabels())
+	t := newOptsBuilder(cr, cr.GetVMStorageName(), cr.VMStorageSelectorLabels())
 	pdb := build.PodDisruptionBudget(t, cr.Spec.VMStorage.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VMStorage.PodDisruptionBudget != nil {
-		t = newOptsBuilder(prevCR, prevCR.Spec.VMStorage.GetNameWithPrefix(prevCR.Name), prevCR.VMStorageSelectorLabels())
+		t = newOptsBuilder(prevCR, prevCR.GetVMStorageName(), prevCR.VMStorageSelectorLabels())
 		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.VMStorage.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
@@ -1134,15 +1141,15 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, p
 		return nil
 	}
 	targetRef := autoscalingv2.CrossVersionObjectReference{
-		Name:       cr.GetInsertName(),
+		Name:       cr.GetVMInsertName(),
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	}
-	t := newOptsBuilder(cr, cr.GetInsertName(), cr.VMInsertSelectorLabels())
+	t := newOptsBuilder(cr, cr.GetVMInsertName(), cr.VMInsertSelectorLabels())
 	newHPA := build.HPA(t, targetRef, cr.Spec.VMInsert.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMInsert.HPA != nil {
-		t = newOptsBuilder(prevCR, prevCR.GetInsertName(), prevCR.VMInsertSelectorLabels())
+		t = newOptsBuilder(prevCR, prevCR.GetVMInsertName(), prevCR.VMInsertSelectorLabels())
 		prevHPA = build.HPA(t, targetRef, prevCR.Spec.VMInsert.HPA)
 	}
 	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
@@ -1153,22 +1160,22 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, p
 		return nil
 	}
 	targetRef := autoscalingv2.CrossVersionObjectReference{
-		Name:       cr.GetSelectName(),
+		Name:       cr.GetVMSelectName(),
 		Kind:       "StatefulSet",
 		APIVersion: "apps/v1",
 	}
-	b := newOptsBuilder(cr, cr.GetSelectName(), cr.VMSelectSelectorLabels())
+	b := newOptsBuilder(cr, cr.GetVMSelectName(), cr.VMSelectSelectorLabels())
 	defaultHPA := build.HPA(b, targetRef, cr.Spec.VMSelect.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMSelect.HPA != nil {
-		b := newOptsBuilder(prevCR, prevCR.GetSelectName(), prevCR.VMSelectSelectorLabels())
+		b := newOptsBuilder(prevCR, prevCR.GetVMSelectName(), prevCR.VMSelectSelectorLabels())
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMSelect.HPA)
 	}
 
 	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
 }
 
-type clusterSvcBuilder struct {
+type optsBuilder struct {
 	*vmv1beta1.VMCluster
 	prefixedName      string
 	finalLabels       map[string]string
@@ -1177,22 +1184,22 @@ type clusterSvcBuilder struct {
 }
 
 // PrefixedName implements build.svcBuilderArgs interface
-func (csb *clusterSvcBuilder) PrefixedName() string {
+func (csb *optsBuilder) PrefixedName() string {
 	return csb.prefixedName
 }
 
 // AllLabels implements build.svcBuilderArgs interface
-func (csb *clusterSvcBuilder) AllLabels() map[string]string {
+func (csb *optsBuilder) AllLabels() map[string]string {
 	return csb.finalLabels
 }
 
 // SelectorLabels implements build.svcBuilderArgs interface
-func (csb *clusterSvcBuilder) SelectorLabels() map[string]string {
+func (csb *optsBuilder) SelectorLabels() map[string]string {
 	return csb.selectorLabels
 }
 
 // GetAdditionalService implements build.svcBuilderArgs interface
-func (csb *clusterSvcBuilder) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
+func (csb *optsBuilder) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return csb.additionalService
 }
 
@@ -1214,7 +1221,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				return fmt.Errorf("cannot remove storage from prev state: %w", err)
 			}
 		} else {
-			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: prevSt.GetNameWithPrefix(cr.Name)}
+			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: cr.GetVMStorageName()}
 			if vmst.PodDisruptionBudget == nil && prevSt.PodDisruptionBudget != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev storage: %w", err)
@@ -1226,7 +1233,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				}
 			}
 			prevSvc, currSvc := prevSt.ServiceSpec, vmst.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, vmst.GetNameWithPrefix(cr.Name), cr.Namespace, prevSvc, currSvc); err != nil {
+			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetVMStorageName(), cr.Namespace, prevSvc, currSvc); err != nil {
 				return fmt.Errorf("cannot remove vmstorage additional service: %w", err)
 			}
 		}
@@ -1239,7 +1246,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			}
 		} else {
 			commonObjMeta := metav1.ObjectMeta{
-				Namespace: cr.Namespace, Name: cr.GetSelectName()}
+				Namespace: cr.Namespace, Name: cr.GetVMSelectName()}
 			if vmse.PodDisruptionBudget == nil && prevSe.PodDisruptionBudget != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev select: %w", err)
@@ -1256,7 +1263,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				}
 			}
 			prevSvc, currSvc := prevSe.ServiceSpec, vmse.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetSelectName(), cr.Namespace, prevSvc, currSvc); err != nil {
+			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetVMSelectName(), cr.Namespace, prevSvc, currSvc); err != nil {
 				return fmt.Errorf("cannot remove vmselect additional service: %w", err)
 			}
 		}
@@ -1271,7 +1278,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			// remove service scrape because service was renamed
 			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: cr.GetSelectName(), Namespace: cr.Namespace},
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMSelectName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for non-lb select svc: %w", err)
 				}
@@ -1283,14 +1290,14 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			!prevSpec.RequestsLoadBalancer.DisableSelectBalancing &&
 			cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-				Name:      cr.GetSelectLBName(),
+				Name:      cr.GetVMSelectLBName(),
 				Namespace: cr.Namespace,
 			}}); err != nil {
 				return fmt.Errorf("cannot remove vmselect lb service: %w", err)
 			}
 			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: cr.GetSelectLBName(), Namespace: cr.Namespace},
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMSelectLBName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for lb select svc: %w", err)
 				}
@@ -1305,7 +1312,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			}
 		} else {
 
-			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: cr.GetInsertName()}
+			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: cr.GetVMInsertName()}
 			if vmis.PodDisruptionBudget == nil && prevIs.PodDisruptionBudget != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev insert: %w", err)
@@ -1322,7 +1329,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				}
 			}
 			prevSvc, currSvc := prevIs.ServiceSpec, vmis.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetInsertName(), cr.Namespace, prevSvc, currSvc); err != nil {
+			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetVMInsertName(), cr.Namespace, prevSvc, currSvc); err != nil {
 				return fmt.Errorf("cannot remove vminsert additional service: %w", err)
 			}
 		}
@@ -1337,7 +1344,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			// remove service scrape because service was renamed
 			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: cr.GetInsertName(), Namespace: cr.Namespace},
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMInsertName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for non-lb insert svc: %w", err)
 				}
@@ -1349,14 +1356,14 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			!prevSpec.RequestsLoadBalancer.DisableInsertBalancing &&
 			cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-				Name:      cr.GetInsertLBName(),
+				Name:      cr.GetVMInsertLBName(),
 				Namespace: cr.Namespace,
 			}}); err != nil {
 				return fmt.Errorf("cannot remove vminsert lb service: %w", err)
 			}
 			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: cr.GetInsertLBName(), Namespace: cr.Namespace},
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMInsertLBName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for lb vminsert svc: %w", err)
 				}
@@ -1424,8 +1431,8 @@ unauthorized_user:
     - "/.*"
     url_prefix: "http://srv+%s.%s:%s"
     discover_backend_ips: true
-      `, cr.GetInsertLBName(), targetHostSuffix, insertPort,
-			cr.GetSelectLBName(), targetHostSuffix, selectPort,
+      `, cr.GetVMInsertLBName(), targetHostSuffix, insertPort,
+			cr.GetVMSelectLBName(), targetHostSuffix, selectPort,
 		)},
 	}
 	return lbScrt
@@ -1539,7 +1546,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	// it's caused by multiple services pointed to the same pods
 	fls := cr.FinalLabels(lbls)
 	fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: "vmauth"})
-	t := &clusterSvcBuilder{
+	t := &optsBuilder{
 		VMCluster:         cr,
 		prefixedName:      cr.GetVMAuthLBName(),
 		finalLabels:       fls,
@@ -1611,8 +1618,8 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
-func newOptsBuilder(cr *vmv1beta1.VMCluster, name string, selectorLabels map[string]string) *clusterSvcBuilder {
-	return &clusterSvcBuilder{
+func newOptsBuilder(cr *vmv1beta1.VMCluster, name string, selectorLabels map[string]string) *optsBuilder {
+	return &optsBuilder{
 		VMCluster:      cr,
 		prefixedName:   name,
 		finalLabels:    cr.FinalLabels(selectorLabels),

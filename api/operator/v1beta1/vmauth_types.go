@@ -202,7 +202,7 @@ func validateURLPrefix(urlPrefixStr string) error {
 		return fmt.Errorf("unsupported scheme for `url_prefix: %q`: %q; must be `http` or `https`", urlPrefix, urlPrefix.Scheme)
 	}
 	if urlPrefix.Host == "" {
-		return fmt.Errorf("missing hostname in `url_prefix %q`", urlPrefix.Host)
+		return fmt.Errorf("missing hostname in `url_prefix %q`", urlPrefix)
 	}
 	return nil
 }

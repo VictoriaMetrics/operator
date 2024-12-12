@@ -37,6 +37,9 @@ func (r *VMAlert) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAlert{}
 
 func (r *VMAlert) sanityCheck() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
 	if r.Spec.Datasource.URL == "" {
 		return fmt.Errorf("spec.datasource.url cannot be empty")
 	}

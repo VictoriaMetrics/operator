@@ -41,6 +41,10 @@ func (r *VMSingle) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMSingle{}
 
 func (r *VMSingle) sanityCheck() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
+
 	if r.Spec.VMBackup != nil {
 		if err := r.Spec.VMBackup.sanityCheck(r.Spec.License); err != nil {
 			return err

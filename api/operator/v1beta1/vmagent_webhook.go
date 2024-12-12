@@ -64,6 +64,9 @@ func checkRelabelConfigs(src []RelabelConfig) error {
 }
 
 func (r *VMAgent) sanityCheck() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
 	if len(r.Spec.RemoteWrite) == 0 {
 		return fmt.Errorf("spec.remoteWrite cannot be empty array, provide at least one remoteWrite")
 	}

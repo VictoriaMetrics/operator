@@ -40,6 +40,9 @@ func (r *VLogs) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VLogs{}
 
 func (r *VLogs) sanityCheck() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
 	return nil
 }
 

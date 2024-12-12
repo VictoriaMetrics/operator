@@ -43,6 +43,9 @@ var _ webhook.Validator = &VMCluster{}
 func (r *VMCluster) sanityCheck() error {
 	if r.Spec.VMSelect != nil {
 		vms := r.Spec.VMSelect
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == r.GetVMSelectName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", r.GetVMSelectName())
+		}
 		if vms.HPA != nil {
 			if err := vms.HPA.sanityCheck(); err != nil {
 				return err
@@ -54,15 +57,30 @@ func (r *VMCluster) sanityCheck() error {
 	}
 	if r.Spec.VMInsert != nil {
 		vmi := r.Spec.VMInsert
+		if vmi.ServiceSpec != nil && vmi.ServiceSpec.Name == r.GetVMInsertName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", r.GetVMInsertName())
+		}
 		if vmi.HPA != nil {
 			if err := vmi.HPA.sanityCheck(); err != nil {
 				return err
 			}
 		}
 	}
-	if r.Spec.VMStorage != nil && r.Spec.VMStorage.VMBackup != nil {
-		if err := r.Spec.VMStorage.VMBackup.sanityCheck(r.Spec.License); err != nil {
-			return err
+	if r.Spec.VMStorage != nil {
+		vms := r.Spec.VMStorage
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == r.GetVMInsertName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", r.GetVMStorageName())
+		}
+		if r.Spec.VMStorage.VMBackup != nil {
+			if err := r.Spec.VMStorage.VMBackup.sanityCheck(r.Spec.License); err != nil {
+				return err
+			}
+		}
+	}
+	if r.Spec.RequestsLoadBalancer.Enabled {
+		rlb := r.Spec.RequestsLoadBalancer.Spec
+		if rlb.AdditionalServiceSpec != nil && rlb.AdditionalServiceSpec.Name == r.GetVMAuthLBName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", r.GetVMAuthLBName())
 		}
 	}
 

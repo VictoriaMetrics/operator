@@ -36,6 +36,9 @@ func (r *VMAuth) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *VMAuth) sanityCheck() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
 	if r.Spec.Ingress != nil {
 		// check ingress
 		// TlsHosts and TlsSecretName are both needed if one of them is used

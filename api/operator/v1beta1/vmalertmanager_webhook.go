@@ -42,6 +42,9 @@ func (r *VMAlertmanager) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAlertmanager{}
 
 func (r *VMAlertmanager) sanityCheck() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
 	for idx, matchers := range r.Spec.EnforcedTopRouteMatchers {
 		_, err := labels.ParseMatchers(matchers)
 		if err != nil {

@@ -80,7 +80,29 @@ var _ = Describe("VMAuth Webhook", func() {
             - url_prefix: http://some-url-2
             default_url: 
             - http://url-1
-        `, `incorrect r.spec.UnauthorizedUserAccess syntax: incorrect url_map at idx=1: incorrect url_map config at least of one src_paths,src_hosts,src_query_args or src_headers must be defined`),
+        `, `incorrect r.spec.UnauthorizedUserAccess syntax: incorrect url_map at idx=1: incorrect url_map config at least of one src_paths,src_hosts,src_query_args or src_headers must be defined`,
+			),
+			Entry("both unauthorizedUserAccessSpec and UnauthorizedUserAccess defined", `
+        apiVersion: v1 
+        kind: VMAuth
+        metadata:
+          name: must-fail
+        spec:
+         unauthorizedAccessConfig: 
+         - url_prefix: http://some-url
+           src_paths: ["/path-1"]
+         - url_prefix: http://some-url-2
+           src_paths: ["/path-1"]
+         unauthorizedUserAccessSpec:
+            metric_labels:
+                label: 12fsaf-value
+            url_map:
+            - url_prefix: http://some-url
+              src_paths: ["/path-1"]
+            default_url: 
+            - http://url-1
+        `, "at most one option can be used `spec.unauthorizedAccessConfig` or `spec.unauthorizedUserAccessSpec`, got both",
+			),
 		)
 	})
 })

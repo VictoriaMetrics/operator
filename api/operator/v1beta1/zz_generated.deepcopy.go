@@ -4770,8 +4770,8 @@ func (in *VMAuthUnauthorizedUserAccessSpec) DeepCopyInto(out *VMAuthUnauthorized
 		*out = make(StringOrArray, len(*in))
 		copy(*out, *in)
 	}
-	if in.URLMaps != nil {
-		in, out := &in.URLMaps, &out.URLMaps
+	if in.URLMap != nil {
+		in, out := &in.URLMap, &out.URLMap
 		*out = make([]UnauthorizedAccessConfigURLMap, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

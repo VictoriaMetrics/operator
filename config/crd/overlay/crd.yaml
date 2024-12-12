@@ -15082,7 +15082,9 @@ spec:
                     type: object
                   url_map:
                     items:
-                      description: UnauthorizedAccessConfigURLMap defines
+                      description: |-
+                        UnauthorizedAccessConfigURLMap defines element of url_map routing configuration
+                        For UnauthorizedAccessConfig and VMAuthUnauthorizedUserAccessSpec.URLMap
                       properties:
                         discover_backend_ips:
                           description: DiscoverBackendIPs instructs discovering URLPrefix

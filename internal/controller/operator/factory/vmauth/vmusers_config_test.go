@@ -1979,7 +1979,7 @@ unauthorized_user:
 					Spec: vmv1beta1.VMAuthSpec{
 						SelectAllByDefault: true,
 						UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
-							URLMaps: []vmv1beta1.UnauthorizedAccessConfigURLMap{
+							URLMap: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									SrcPaths:  []string{"/api/v1/query", "/api/v1/query_range", "/api/v1/label/[^/]+/values"},
 									SrcHosts:  []string{"app1.my-host.com"},

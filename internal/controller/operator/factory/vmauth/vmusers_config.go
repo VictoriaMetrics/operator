@@ -492,7 +492,7 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, cb *build.TLSConfigBuilder) (
 			return nil, fmt.Errorf("incorrect spec.UnauthorizedUserAccess syntax: %w", err)
 		}
 		var urlMapYAML []yaml.MapSlice
-		for _, uc := range uua.URLMaps {
+		for _, uc := range uua.URLMap {
 			urlMap := appendIfNotEmpty(uc.SrcPaths, "src_paths", yaml.MapSlice{})
 			urlMap = appendIfNotEmpty(uc.SrcHosts, "src_hosts", urlMap)
 			urlMap = appendIfNotEmpty(uc.URLPrefix, "url_prefix", urlMap)

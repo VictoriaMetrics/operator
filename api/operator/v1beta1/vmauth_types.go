@@ -118,7 +118,7 @@ type VMAuthUnauthorizedUserAccessSpec struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	URLPrefix StringOrArray                    `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
-	URLMaps   []UnauthorizedAccessConfigURLMap `json:"url_map,omitempty" yaml:"url_map,omitempty"`
+	URLMap    []UnauthorizedAccessConfigURLMap `json:"url_map,omitempty" yaml:"url_map,omitempty"`
 
 	VMUserConfigOptions `json:",inline" yaml:",inline"`
 	// MetricLabels - additional labels for metrics exported by vmauth for given user.
@@ -129,10 +129,10 @@ type VMAuthUnauthorizedUserAccessSpec struct {
 // Validate performs semantic syntax validation
 func (vmuua *VMAuthUnauthorizedUserAccessSpec) Validate() error {
 
-	if len(vmuua.URLMaps) == 0 && len(vmuua.URLPrefix) == 0 {
+	if len(vmuua.URLMap) == 0 && len(vmuua.URLPrefix) == 0 {
 		return fmt.Errorf("at least one of `url_map` or `url_prefix` must be defined")
 	}
-	for idx, urlMap := range vmuua.URLMaps {
+	for idx, urlMap := range vmuua.URLMap {
 		if err := urlMap.Validate(); err != nil {
 			return fmt.Errorf("incorrect url_map at idx=%d: %w", idx, err)
 		}
@@ -159,7 +159,8 @@ func (vmuua *VMAuthUnauthorizedUserAccessSpec) Validate() error {
 	return nil
 }
 
-// UnauthorizedAccessConfigURLMap defines
+// UnauthorizedAccessConfigURLMap defines element of url_map routing configuration
+// For UnauthorizedAccessConfig and VMAuthUnauthorizedUserAccessSpec.URLMap
 type UnauthorizedAccessConfigURLMap struct {
 	// SrcPaths is an optional list of regular expressions, which must match the request path.
 	SrcPaths []string `json:"src_paths,omitempty" yaml:"src_paths,omitempty"`

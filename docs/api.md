@@ -2395,7 +2395,8 @@ _Appears in:_
 
 
 
-UnauthorizedAccessConfigURLMap defines
+UnauthorizedAccessConfigURLMap defines element of url_map routing configuration
+For UnauthorizedAccessConfig and VMAuthUnauthorizedUserAccessSpec.URLMap
 
 
 

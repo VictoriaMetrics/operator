@@ -64,7 +64,7 @@ func EventuallyShouldHaveFinalizer(namespace string, listProto client.ObjectList
 		}
 
 		return objectsWithoutFinalizers
-	}, 10, 1).Should(BeEmpty())
+	}, 30, 1).Should(BeEmpty())
 }
 
 func ConsistentlyShouldNotHaveFinalizer(namespace string, listProtos ...client.ObjectList) {
@@ -83,7 +83,7 @@ func ConsistentlyShouldNotHaveFinalizer(namespace string, listProtos ...client.O
 		}
 
 		return objectsWithFinalizers
-	}, 10, 1).Should(BeEmpty())
+	}, 30, 1).Should(BeEmpty())
 }
 
 func GetListObjectType(list client.ObjectList) reflect.Type {

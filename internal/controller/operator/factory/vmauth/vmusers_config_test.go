@@ -248,7 +248,7 @@ bearer_token: secret-token
 						Name:     ptr.To("user1"),
 						UserName: ptr.To("basic"),
 						Password: ptr.To("pass"),
-						UserConfigOption: vmv1beta1.UserConfigOption{
+						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 							IPFilters: vmv1beta1.VMUserIPFilters{
 								AllowList: []string{"127.0.0.1"},
 							},
@@ -301,7 +301,7 @@ password: pass
 						Name:     ptr.To("user1"),
 						UserName: ptr.To("basic"),
 						Password: ptr.To("pass"),
-						UserConfigOption: vmv1beta1.UserConfigOption{
+						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 							Headers:               []string{"H1:V1", "H2:V2"},
 							ResponseHeaders:       []string{"RH1:V3", "RH2:V4"},
 							MaxConcurrentRequests: ptr.To(400),
@@ -372,7 +372,7 @@ password: pass
 						Name:     ptr.To("user1"),
 						UserName: ptr.To("basic"),
 						Password: ptr.To("pass"),
-						UserConfigOption: vmv1beta1.UserConfigOption{
+						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 							LoadBalancingPolicy:    ptr.To("first_available"),
 							DropSrcPathPrefixParts: ptr.To(1),
 							TLSConfig: &vmv1beta1.TLSConfig{
@@ -458,7 +458,7 @@ password: pass
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache, build.TLSConfigBuilder{})
+			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache, &build.TLSConfigBuilder{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("genUserCfg() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1227,7 +1227,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 								TargetPathSuffix: "/prometheus?extra_label=key=value",
 							},
 						},
-						UserConfigOption: vmv1beta1.UserConfigOption{
+						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
 							TLSConfig: &vmv1beta1.TLSConfig{
 								CA: vmv1beta1.SecretOrConfigMap{
@@ -1343,7 +1343,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 								},
 							},
 						},
-						UserConfigOption: vmv1beta1.UserConfigOption{
+						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
 							TLSConfig: &vmv1beta1.TLSConfig{
 								CAFile:             "/path/to/tls/root/ca",
@@ -1516,7 +1516,7 @@ unauthorized_user:
 					},
 					Spec: vmv1beta1.VMUserSpec{
 						BearerToken: ptr.To("bearer-token-2"),
-						UserConfigOption: vmv1beta1.UserConfigOption{
+						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 							MaxConcurrentRequests: ptr.To(500),
 							RetryStatusCodes:      []int{400, 500},
 							ResponseHeaders:       []string{"H1:V1"},
@@ -1637,7 +1637,7 @@ unauthorized_user:
 								},
 							},
 						},
-						UserConfigOption: vmv1beta1.UserConfigOption{
+						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
 							TLSConfig: &vmv1beta1.TLSConfig{
 								CAFile:             "/path/to/tls/root/ca",
@@ -1685,7 +1685,7 @@ unauthorized_user:
 					},
 					Spec: vmv1beta1.VMUserSpec{
 						GeneratePassword: true,
-						UserConfigOption: vmv1beta1.UserConfigOption{
+						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 							MaxConcurrentRequests: ptr.To(500),
 							RetryStatusCodes:      []int{400, 500},
 							ResponseHeaders:       []string{"H1:V1"},
@@ -1966,6 +1966,175 @@ unauthorized_user:
 - url_prefix:
   - http://vmagent-test.default.svc:8429
   bearer_token: bearer-token-2
+`,
+		},
+		{
+			name: "with full unauthorizedUserAccessSpec",
+			args: args{
+				vmauth: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
+						UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+							URLMap: []vmv1beta1.UnauthorizedAccessConfigURLMap{
+								{
+									SrcPaths:  []string{"/api/v1/query", "/api/v1/query_range", "/api/v1/label/[^/]+/values"},
+									SrcHosts:  []string{"app1.my-host.com"},
+									URLPrefix: []string{"http://vmselect1:8481/select/42/prometheus", "http://vmselect2:8481/select/42/prometheus"},
+									URLMapCommon: vmv1beta1.URLMapCommon{
+										SrcQueryArgs:        []string{"db=foo"},
+										SrcHeaders:          []string{"TenantID: 123:456"},
+										DiscoverBackendIPs:  ptr.To(true),
+										RequestHeaders:      []string{"X-Scope-OrgID: abc"},
+										ResponseHeaders:     []string{"X-Server-Hostname: a"},
+										RetryStatusCodes:    []int{500, 502},
+										LoadBalancingPolicy: ptr.To("first_available"),
+									},
+								},
+								{
+									SrcPaths:  []string{"/app1/.*"},
+									URLPrefix: []string{"http://app1-backend/"},
+									URLMapCommon: vmv1beta1.URLMapCommon{
+										DropSrcPathPrefixParts: ptr.To(1),
+									},
+								},
+							},
+							MetricLabels: map[string]string{"label": "value"},
+							URLPrefix:    []string{"http://some-url"},
+							VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+								DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CAFile:             "/path/to/tls/root/ca",
+									CertFile:           "/path/to/tls/cert",
+									KeyFile:            "/path/to/tls/key",
+									ServerName:         "foo.bar.com",
+									InsecureSkipVerify: true,
+								},
+								IPFilters: vmv1beta1.VMUserIPFilters{
+									AllowList: []string{"192.168.0.1/24"},
+									DenyList:  []string{"10.0.0.43"},
+								},
+								DiscoverBackendIPs:     ptr.To(false),
+								Headers:                []string{"X-Scope-OrgID: cba"},
+								ResponseHeaders:        []string{"X-Server-Hostname: b"},
+								RetryStatusCodes:       []int{503},
+								LoadBalancingPolicy:    ptr.To("least_loaded"),
+								MaxConcurrentRequests:  ptr.To(150),
+								DropSrcPathPrefixParts: ptr.To(2),
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("bearer"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-2",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-token-2"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+			},
+			want: `users:
+- url_prefix:
+  - http://some-static
+  name: user1
+  bearer_token: bearer
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  bearer_token: bearer-token-2
+unauthorized_user:
+  url_map:
+  - src_paths:
+    - /api/v1/query
+    - /api/v1/query_range
+    - /api/v1/label/[^/]+/values
+    src_hosts:
+    - app1.my-host.com
+    url_prefix:
+    - http://vmselect1:8481/select/42/prometheus
+    - http://vmselect2:8481/select/42/prometheus
+    src_query_args:
+    - db=foo
+    src_headers:
+    - 'TenantID: 123:456'
+    headers:
+    - 'X-Scope-OrgID: abc'
+    response_headers:
+    - 'X-Server-Hostname: a'
+    discover_backend_ips: true
+    retry_status_codes:
+    - 500
+    - 502
+    load_balancing_policy: first_available
+  - src_paths:
+    - /app1/.*
+    url_prefix:
+    - http://app1-backend/
+    drop_src_path_prefix_parts: 1
+  url_prefix: http://some-url
+  metric_labels:
+    label: value
+  default_url:
+  - https://default1:8888/unsupported_url_handler
+  - https://default2:8888/unsupported_url_handler
+  tls_ca_file: /path/to/tls/root/ca
+  tls_cert_file: /path/to/tls/cert
+  tls_key_file: /path/to/tls/key
+  tls_server_name: foo.bar.com
+  tls_insecure_skip_verify: true
+  ip_filters:
+    allow_list:
+    - 192.168.0.1/24
+    deny_list:
+    - 10.0.0.43
+  headers:
+  - 'X-Scope-OrgID: cba'
+  response_headers:
+  - 'X-Server-Hostname: b'
+  discover_backend_ips: false
+  retry_status_codes:
+  - 503
+  max_concurrent_requests: 150
+  load_balancing_policy: least_loaded
+  drop_src_path_prefix_parts: 2
 `,
 		},
 	}

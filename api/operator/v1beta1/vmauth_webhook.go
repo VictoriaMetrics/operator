@@ -18,12 +18,15 @@ package v1beta1
 
 import (
 	"fmt"
+	"regexp"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
+
+var labelNameRegexp = regexp.MustCompile("^[a-zA-Z_:.][a-zA-Z0-9_:.]*$")
 
 // SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMAuth) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -59,6 +62,26 @@ func (r *VMAuth) sanityCheck() error {
 				r.Spec.ExternalConfig.SecretRef.Name, r.Spec.ExternalConfig.SecretRef.Key)
 		}
 	}
+	if len(r.Spec.UnauthorizedAccessConfig) > 0 && r.Spec.UnauthorizedUserAccessSpec != nil {
+		return fmt.Errorf("at most one option can be used `spec.unauthorizedAccessConfig` or `spec.unauthorizedUserAccessSpec`, got both")
+	}
+	if len(r.Spec.UnauthorizedAccessConfig) > 0 {
+		for _, urlMap := range r.Spec.UnauthorizedAccessConfig {
+			if err := urlMap.Validate(); err != nil {
+				return fmt.Errorf("incorrect r.spec.UnauthorizedAccessConfig: %w", err)
+			}
+		}
+		if err := r.Spec.VMUserConfigOptions.Validate(); err != nil {
+			return fmt.Errorf("incorrect r.spec UnauthorizedAccessConfig options: %w", err)
+		}
+	}
+
+	if r.Spec.UnauthorizedUserAccessSpec != nil {
+		if err := r.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
+			return fmt.Errorf("incorrect r.spec.UnauthorizedUserAccess syntax: %w", err)
+		}
+	}
+
 	return nil
 }
 

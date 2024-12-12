@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	v12 "k8s.io/api/networking/v1"
@@ -19,55 +20,73 @@ type VMAuthSpec struct {
 	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
-	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty" yaml:"podMetadata,omitempty"`
 	// ManagedMetadata defines metadata that will be added to the all objects
 	// created by operator for the given CustomResource
-	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty" yaml:"managedMetadata,omitempty"`
 	// LogLevel for victoria metrics single to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
-	LogLevel string `json:"logLevel,omitempty"`
+	LogLevel string `json:"logLevel,omitempty" yaml:"logLevel,omitempty"`
 	// LogFormat for VMAuth to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
-	LogFormat string `json:"logFormat,omitempty"`
+	LogFormat string `json:"logFormat,omitempty" yaml:"logFormat,omitempty"`
 	// SelectAllByDefault changes default behavior for empty CRD selectors, such userSelector.
 	// with selectAllByDefault: true and empty userSelector and userNamespaceSelector
 	// Operator selects all exist users
 	// with selectAllByDefault: false - selects nothing
 	// +optional
-	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
+	SelectAllByDefault bool `json:"selectAllByDefault,omitempty" yaml:"selectAllByDefault,omitempty"`
 	// UserSelector defines VMUser to be selected for config file generation.
 	// Works in combination with NamespaceSelector.
 	// NamespaceSelector nil - only objects at VMAuth namespace.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
-	UserSelector *metav1.LabelSelector `json:"userSelector,omitempty"`
+	UserSelector *metav1.LabelSelector `json:"userSelector,omitempty" yaml:"userSelector,omitempty"`
 	// UserNamespaceSelector Namespaces to be selected for  VMAuth discovery.
 	// Works in combination with Selector.
 	// NamespaceSelector nil - only objects at VMAuth namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
-	UserNamespaceSelector *metav1.LabelSelector `json:"userNamespaceSelector,omitempty"`
+	UserNamespaceSelector *metav1.LabelSelector `json:"userNamespaceSelector,omitempty" yaml:"userNamespaceSelector,omitempty"`
 
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
-	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty" yaml:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmauth VMServiceScrape spec
 	// +optional
-	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty" yaml:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty" yaml:"podDisruptionBudget,omitempty"`
 	// Ingress enables ingress configuration for VMAuth.
 	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
 	// LivenessProbe that will be added to VMAuth pod
 	*EmbeddedProbes `json:",inline"`
 	// UnauthorizedAccessConfig configures access for un authorized users
+	//
+	// Deprecated, use unauthorizedUserAccessSpec instead
+	// will be removed at v1.0 release
+	// +deprecated
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	UnauthorizedAccessConfig []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty" yaml:"unauthorizedAccessConfig,omitempty"`
+	// UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config
 	// +optional
-	UnauthorizedAccessConfig []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty"`
-	UserConfigOption         `json:",inline"`
+	UnauthorizedUserAccessSpec *VMAuthUnauthorizedUserAccessSpec `json:"unauthorizedUserAccessSpec,omitempty" yaml:"unauthorizedUserAccessSpec,omitempty"`
+	// IPFilters global access ip filters
+	// supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth/#ip-filters)
+	// +optional
+	// will be added after removal of VMUserConfigOptions
+	// currently it has collision with inlined fields
+	// IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+	// will be removed at v1.0 release
+	// +deprecated
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	VMUserConfigOptions `json:",inline" yaml:",inline"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/enterprise)
@@ -79,43 +98,126 @@ type VMAuthSpec struct {
 	// It must be created and managed manually.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
 	// Deprecated, use externalConfig.secretRef instead
-	ConfigSecret string `json:"configSecret,omitempty"`
+	ConfigSecret string `json:"configSecret,omitempty" yaml:"configSecret,omitempty"`
 	// ExternalConfig defines a source of external VMAuth configuration.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
 	// +optional
-	ExternalConfig `json:"externalConfig,omitempty"`
+	ExternalConfig `json:"externalConfig,omitempty" yaml:"externalConfig,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
 
-	CommonDefaultableParams           `json:",inline,omitempty"`
-	CommonConfigReloaderParams        `json:",inline,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	CommonDefaultableParams           `json:",inline,omitempty" yaml:",inline"`
+	CommonConfigReloaderParams        `json:",inline,omitempty" yaml:",inline"`
+	CommonApplicationDeploymentParams `json:",inline,omitempty" yaml:",inline"`
 }
 
+// VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
+type VMAuthUnauthorizedUserAccessSpec struct {
+	// URLPrefix defines prefix prefix for destination
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	URLPrefix StringOrArray                    `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
+	URLMap    []UnauthorizedAccessConfigURLMap `json:"url_map,omitempty" yaml:"url_map,omitempty"`
+
+	VMUserConfigOptions `json:",inline" yaml:",inline"`
+	// MetricLabels - additional labels for metrics exported by vmauth for given user.
+	// +optional
+	MetricLabels map[string]string `json:"metric_labels,omitempty" yaml:"metric_labels"`
+}
+
+// Validate performs semantic syntax validation
+func (vmuua *VMAuthUnauthorizedUserAccessSpec) Validate() error {
+
+	if len(vmuua.URLMap) == 0 && len(vmuua.URLPrefix) == 0 {
+		return fmt.Errorf("at least one of `url_map` or `url_prefix` must be defined")
+	}
+	for idx, urlMap := range vmuua.URLMap {
+		if err := urlMap.Validate(); err != nil {
+			return fmt.Errorf("incorrect url_map at idx=%d: %w", idx, err)
+		}
+	}
+	for _, urlPrefix := range vmuua.URLPrefix {
+		if err := validateURLPrefix(urlPrefix); err != nil {
+			return err
+		}
+	}
+	if vmuua.TLSConfig != nil {
+		if err := vmuua.TLSConfig.Validate(); err != nil {
+			return fmt.Errorf("incorrect tlsConfig for UnauthorizedUserAccess: %w", err)
+		}
+	}
+	for k := range vmuua.MetricLabels {
+		if !labelNameRegexp.Match([]byte(k)) {
+			return fmt.Errorf("incorrect metricLabelName=%q, must match pattern=%q", k, labelNameRegexp)
+		}
+	}
+	if err := vmuua.VMUserConfigOptions.Validate(); err != nil {
+		return fmt.Errorf("incorrect UnauthorizedUserAccess options: %w", err)
+	}
+
+	return nil
+}
+
+// UnauthorizedAccessConfigURLMap defines element of url_map routing configuration
+// For UnauthorizedAccessConfig and VMAuthUnauthorizedUserAccessSpec.URLMap
 type UnauthorizedAccessConfigURLMap struct {
 	// SrcPaths is an optional list of regular expressions, which must match the request path.
-	SrcPaths []string `json:"src_paths,omitempty"`
+	SrcPaths []string `json:"src_paths,omitempty" yaml:"src_paths,omitempty"`
 
 	// SrcHosts is an optional list of regular expressions, which must match the request hostname.
-	SrcHosts []string `json:"src_hosts,omitempty"`
+	SrcHosts []string `json:"src_hosts,omitempty" yaml:"src_hosts,omitempty"`
 
 	// UrlPrefix contains backend url prefixes for the proxied request url.
-	URLPrefix []string `json:"url_prefix,omitempty"`
+	// URLPrefix defines prefix prefix for destination
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	URLPrefix StringOrArray `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
 
-	URLMapCommon `json:",omitempty"`
+	URLMapCommon `json:",omitempty" yaml:",inline"`
+}
+
+// Validate performs syntax logic validation
+func (uac *UnauthorizedAccessConfigURLMap) Validate() error {
+	if len(uac.SrcPaths) == 0 && len(uac.SrcHosts) == 0 && len(uac.SrcQueryArgs) == 0 && len(uac.URLMapCommon.SrcQueryArgs) == 0 {
+		return fmt.Errorf("incorrect url_map config at least of one src_paths,src_hosts,src_query_args or src_headers must be defined")
+	}
+	if len(uac.URLPrefix) == 0 {
+		return fmt.Errorf("url_prefix cannot be empty for url_map")
+	}
+	for idx, urlPrefix := range uac.URLPrefix {
+		if err := validateURLPrefix(urlPrefix); err != nil {
+			return fmt.Errorf("incorrect url_prefix=%q at idx: %d: %w", urlPrefix, idx, err)
+		}
+	}
+	return nil
+}
+
+func validateURLPrefix(urlPrefixStr string) error {
+	urlPrefix, err := url.Parse(urlPrefixStr)
+	if err != nil {
+		return err
+	}
+	// Validate urlPrefix
+	if urlPrefix.Scheme != "http" && urlPrefix.Scheme != "https" {
+		return fmt.Errorf("unsupported scheme for `url_prefix: %q`: %q; must be `http` or `https`", urlPrefix, urlPrefix.Scheme)
+	}
+	if urlPrefix.Host == "" {
+		return fmt.Errorf("missing hostname in `url_prefix %q`", urlPrefix)
+	}
+	return nil
 }
 
 // URLMapCommon contains common fields for unauthorized user and user in vmuser
 type URLMapCommon struct {
 	// SrcQueryArgs is an optional list of query args, which must match request URL query args.
-	SrcQueryArgs []string `json:"src_query_args,omitempty"`
+	SrcQueryArgs []string `json:"src_query_args,omitempty" yaml:"src_query_args,omitempty"`
 
 	// SrcHeaders is an optional list of headers, which must match request headers.
-	SrcHeaders []string `json:"src_headers,omitempty"`
+	SrcHeaders []string `json:"src_headers,omitempty" yaml:"src_headers,omitempty"`
 
 	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
-	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty"`
+	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty" yaml:"discover_backend_ips,omitempty"`
 
 	// RequestHeaders represent additional http headers, that vmauth uses
 	// in form of ["header_key: header_value"]
@@ -123,49 +225,51 @@ type URLMapCommon struct {
 	// ["header_key: value1,value2"]
 	// it's available since 1.68.0 version of vmauth
 	// +optional
-	RequestHeaders []string `json:"headers,omitempty"`
+	RequestHeaders []string `json:"headers,omitempty" yaml:"headers,omitempty"`
 	// ResponseHeaders represent additional http headers, that vmauth adds for request response
 	// in form of ["header_key: header_value"]
 	// multiple values for header key:
 	// ["header_key: value1,value2"]
 	// it's available since 1.93.0 version of vmauth
 	// +optional
-	ResponseHeaders []string `json:"response_headers,omitempty"`
+	ResponseHeaders []string `json:"response_headers,omitempty" yaml:"response_headers,omitempty"`
 
 	// RetryStatusCodes defines http status codes in numeric format for request retries
 	// Can be defined per target or at VMUser.spec level
 	// e.g. [429,503]
 	// +optional
-	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+	RetryStatusCodes []int `json:"retry_status_codes,omitempty" yaml:"retry_status_codes,omitempty"`
 
 	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
 	// Supported policies: least_loaded, first_available.
 	// See [here](https://docs.victoriametrics.com/vmauth#load-balancing) for more details (default "least_loaded")
 	// +optional
 	// +kubebuilder:validation:Enum=least_loaded;first_available
-	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
+	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty" yaml:"load_balancing_policy,omitempty"`
 
 	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
 	// See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details.
 	// +optional
-	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
+	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty" yaml:"drop_src_path_prefix_parts,omitempty"`
 }
 
-type UserConfigOption struct {
+// VMUserConfigOptions defines configuration options for VMUser object
+type VMUserConfigOptions struct {
 	// DefaultURLs backend url for non-matching paths filter
 	// usually used for default backend with error message
-	DefaultURLs []string `json:"default_url,omitempty"`
+	DefaultURLs []string `json:"default_url,omitempty" yaml:"default_url,omitempty"`
 
+	// TLSConfig defines tls configuration for the backend connection
 	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty" yaml:"tlsConfig,omitempty"`
 
 	// IPFilters defines per target src ip filters
 	// supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth/#ip-filters)
 	// +optional
-	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+	IPFilters VMUserIPFilters `json:"ip_filters,omitempty" yaml:"ip_filters,omitempty"`
 
 	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
-	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty"`
+	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty" yaml:"discover_backend_ips,omitempty"`
 
 	// Headers represent additional http headers, that vmauth uses
 	// in form of ["header_key: header_value"]
@@ -180,29 +284,61 @@ type UserConfigOption struct {
 	// ["header_key: value1,value2"]
 	// it's available since 1.93.0 version of vmauth
 	// +optional
-	ResponseHeaders []string `json:"response_headers,omitempty"`
+	ResponseHeaders []string `json:"response_headers,omitempty" yaml:"response_headers,omitempty"`
 
 	// RetryStatusCodes defines http status codes in numeric format for request retries
 	// e.g. [429,503]
 	// +optional
-	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+	RetryStatusCodes []int `json:"retry_status_codes,omitempty" yaml:"retry_status_codes,omitempty"`
 
 	// MaxConcurrentRequests defines max concurrent requests per user
 	// 300 is default value for vmauth
 	// +optional
-	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
+	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty" yaml:"max_concurrent_requests,omitempty"`
 
 	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
 	// Supported policies: least_loaded, first_available.
 	// See [here](https://docs.victoriametrics.com/vmauth#load-balancing) for more details (default "least_loaded")
 	// +optional
 	// +kubebuilder:validation:Enum=least_loaded;first_available
-	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
+	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty" yaml:"load_balancing_policy,omitempty"`
 
 	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
 	// See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details.
 	// +optional
-	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
+	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty" yaml:"drop_src_path_prefix_parts,omitempty"`
+}
+
+// Validate performs semantic syntax validation
+func (vuopts *VMUserConfigOptions) Validate() error {
+	for _, durl := range vuopts.DefaultURLs {
+		if err := validateURLPrefix(durl); err != nil {
+			return fmt.Errorf("unexpected spec.default_url=%q: %w", durl, err)
+		}
+	}
+	if vuopts.TLSConfig != nil {
+		if err := vuopts.TLSConfig.Validate(); err != nil {
+			return err
+		}
+	}
+	if err := validateHTTPHeaders(vuopts.Headers); err != nil {
+		return fmt.Errorf("incorrect 'headers' syntax: %w", err)
+	}
+	if err := validateHTTPHeaders(vuopts.ResponseHeaders); err != nil {
+		return fmt.Errorf("incorrect 'response_headers' syntax: %w", err)
+	}
+	return nil
+}
+
+func validateHTTPHeaders(headerValues []string) error {
+	for _, headerValue := range headerValues {
+		idx := strings.IndexByte(headerValue, ':')
+		if idx <= 0 {
+			return fmt.Errorf("expected colon separated header: value, got=%q", headerValue)
+		}
+	}
+
+	return nil
 }
 
 func (cr *VMAuth) setLastSpec(prevSpec VMAuthSpec) {
@@ -236,23 +372,23 @@ func (cr *VMAuthSpec) UnmarshalJSON(src []byte) error {
 type EmbeddedIngress struct {
 	// ClassName defines ingress class name for VMAuth
 	// +optional
-	ClassName *string `json:"class_name,omitempty"`
+	ClassName *string `json:"class_name,omitempty" yaml:"class_name,omitempty"`
 	//  EmbeddedObjectMetadata adds labels and annotations for object.
 	EmbeddedObjectMetadata `json:",inline"`
 	// TlsHosts configures TLS access for ingress, tlsSecretName must be defined for it.
-	TlsHosts []string `json:"tlsHosts,omitempty"`
+	TlsHosts []string `json:"tlsHosts,omitempty" yaml:"tlsHosts,omitempty"`
 	// TlsSecretName defines secretname at the VMAuth namespace with cert and key
 	// https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
 	// +optional
-	TlsSecretName string `json:"tlsSecretName,omitempty"`
+	TlsSecretName string `json:"tlsSecretName,omitempty" yaml:"tlsSecretName,omitempty"`
 	// ExtraRules - additional rules for ingress,
 	// must be checked for correctness by user.
 	// +optional
-	ExtraRules []v12.IngressRule `json:"extraRules,omitempty"`
+	ExtraRules []v12.IngressRule `json:"extraRules,omitempty" yaml:"extraRules,omitempty"`
 	// ExtraTLS - additional TLS configuration for ingress
 	// must be checked for correctness by user.
 	// +optional
-	ExtraTLS []v12.IngressTLS `json:"extraTls,omitempty"`
+	ExtraTLS []v12.IngressTLS `json:"extraTls,omitempty" yaml:"extraTls,omitempty"`
 	// Host defines ingress host parameter for default rule
 	// It will be used, only if TlsHosts is empty
 	// +optional

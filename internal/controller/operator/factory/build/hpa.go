@@ -11,9 +11,9 @@ import (
 func HPA(opts builderOpts, targetRef autoscalingv2.CrossVersionObjectReference, spec *vmv1beta1.EmbeddedHPA) *autoscalingv2.HorizontalPodAutoscaler {
 	return &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      targetRef.Name,
-			Namespace: opts.GetNamespace(),
-			// TODO: @f41gh7 add annotations
+			Name:            targetRef.Name,
+			Namespace:       opts.GetNamespace(),
+			Annotations:     opts.AnnotationsFiltered(),
 			Labels:          opts.AllLabels(),
 			OwnerReferences: opts.AsOwner(),
 		},

@@ -11,8 +11,8 @@ import (
 func PodDisruptionBudget(cr builderOpts, spec *vmv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1.PodDisruptionBudget {
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: cr.PrefixedName(),
-			// TODO: @f41gh7 add annotations
+			Name:            cr.PrefixedName(),
+			Annotations:     cr.AnnotationsFiltered(),
 			Labels:          cr.AllLabels(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.GetNSName(),

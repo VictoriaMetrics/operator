@@ -38,7 +38,7 @@ type VMUserSpec struct {
 	// TargetRefs - reference to endpoints, which user may access.
 	TargetRefs []TargetRef `json:"targetRefs"`
 
-	UserConfigOption `json:",inline"`
+	VMUserConfigOptions `json:",inline"`
 
 	// MetricLabels - additional labels for metrics exported by vmauth for given user.
 	// +optional

@@ -64,6 +64,16 @@ func (r *VMUser) sanityCheck() error {
 			if targetRef.Static.URL == "" && len(targetRef.Static.URLs) == 0 {
 				return fmt.Errorf("for targetRef.static url or urls option must be set at idx=%d", i)
 			}
+			if targetRef.Static.URL != "" {
+				if err := validateURLPrefix(targetRef.Static.URL); err != nil {
+					return fmt.Errorf("incorrect static.url: %w", err)
+				}
+			}
+			for _, staticURL := range targetRef.Static.URLs {
+				if err := validateURLPrefix(staticURL); err != nil {
+					return fmt.Errorf("incorrect value at static.urls: %w", err)
+				}
+			}
 		}
 		if targetRef.CRD != nil {
 			switch targetRef.CRD.Kind {
@@ -75,31 +85,26 @@ func (r *VMUser) sanityCheck() error {
 				return fmt.Errorf("crd.name and crd.namespace cannot be empty")
 			}
 		}
-		if err := parseHeaders(targetRef.ResponseHeaders); err != nil {
+		if err := validateHTTPHeaders(targetRef.ResponseHeaders); err != nil {
 			return fmt.Errorf("failed to parse targetRef response headers :%w", err)
 		}
-		if err := parseHeaders(targetRef.RequestHeaders); err != nil {
+		if err := validateHTTPHeaders(targetRef.RequestHeaders); err != nil {
 			return fmt.Errorf("failed to parse targetRef headers :%w", err)
 		}
 		if isRetryCodesSet && len(targetRef.RetryStatusCodes) > 0 {
 			return fmt.Errorf("retry_status_codes already set at VMUser.spec level")
 		}
 	}
-	if err := parseHeaders(r.Spec.Headers); err != nil {
+	for k := range r.Spec.MetricLabels {
+		if !labelNameRegexp.MatchString(k) {
+			return fmt.Errorf("incorrect metricLabels key=%q, must match pattern=%q", k, labelNameRegexp)
+		}
+	}
+	if err := validateHTTPHeaders(r.Spec.Headers); err != nil {
 		return fmt.Errorf("failed to parse vmuser headers: %w", err)
 	}
-	if err := parseHeaders(r.Spec.ResponseHeaders); err != nil {
+	if err := validateHTTPHeaders(r.Spec.ResponseHeaders); err != nil {
 		return fmt.Errorf("failed to parse vmuser response headers: %w", err)
-	}
-	return nil
-}
-
-func parseHeaders(src []string) error {
-	for idx, s := range src {
-		n := strings.IndexByte(s, ':')
-		if n < 0 {
-			return fmt.Errorf("missing speparator char ':' between Name and Value in the header: %q at idx: %d; expected format - 'Name: Value'", s, idx)
-		}
 	}
 	return nil
 }

@@ -1399,11 +1399,11 @@ func buildStatusPatch(currentStatus interface{}) (client.Patch, error) {
 type ExternalConfig struct {
 	// SecretRef defines selector for externally managed secret which contains configuration
 	// +optional
-	SecretRef *v1.SecretKeySelector `json:"secretRef,omitempty"`
+	SecretRef *v1.SecretKeySelector `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
 	// LocalPath contains static path to a config, which is managed externally for cases
 	// when using secrets is not applicable, e.g.: Vault sidecar.
 	// +optional
-	LocalPath string `json:"localPath,omitempty"`
+	LocalPath string `json:"localPath,omitempty" yaml:"localPath,omitempty"`
 }
 
 // StatusMetadata holds metadata of application update status

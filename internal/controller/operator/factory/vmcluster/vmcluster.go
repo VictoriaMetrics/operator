@@ -573,7 +573,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		selectArg := "-selectNode="
 		vmselectCount := *cr.Spec.VMSelect.ReplicaCount
 		for i := int32(0); i < vmselectCount; i++ {
-			selectArg += cr.Spec.VMSelect.BuildPodName(cr.GetVMSelectName(), i, cr.Namespace, cr.Spec.VMSelect.Port, cr.Spec.ClusterDomainName)
+			selectArg += build.PodDNSAddress(cr.GetVMSelectName(), i, cr.Namespace, cr.Spec.VMSelect.Port, cr.Spec.ClusterDomainName)
 		}
 		selectArg = strings.TrimSuffix(selectArg, ",")
 		args = append(args, selectArg)

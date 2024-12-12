@@ -49,6 +49,16 @@ var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
 
 func createOrUpdateVMAgentService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
 
+	var prevService, prevAdditionalService *corev1.Service
+	if prevCR != nil {
+		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			if prevCR.Spec.StatefulMode {
+				svc.Spec.ClusterIP = "None"
+			}
+			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
+		})
+		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, cr.Spec.ServiceSpec)
+	}
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		if cr.Spec.StatefulMode {
 			svc.Spec.ClusterIP = "None"
@@ -59,24 +69,14 @@ func createOrUpdateVMAgentService(ctx context.Context, rclient client.Client, cr
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, cr.Spec.ServiceSpec)
 		if additionalService.Name == newService.Name {
-			logger.WithContext(ctx).Error(fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
+			return fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		}
+		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmagent: %w", err)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
-	}
-
-	var prevService *corev1.Service
-	if prevCR != nil {
-		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
-			if prevCR.Spec.StatefulMode {
-				svc.Spec.ClusterIP = "None"
-			}
-			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
-
-		})
 	}
 
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {

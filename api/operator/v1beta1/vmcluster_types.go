@@ -258,14 +258,6 @@ func (cr *VMCluster) GetVMSelectLBName() string {
 	return prefixedName(cr.Name, "vmselectinternal")
 }
 
-func (cr *VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
-	// The default DNS search path is .svc.<cluster domain>
-	if domain == "" {
-		return fmt.Sprintf("%s-%d.%s.%s:%s,", baseName, podIndex, baseName, namespace, portName)
-	}
-	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s,", baseName, podIndex, baseName, namespace, domain, portName)
-}
-
 func prefixedName(name, prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, name)
 }
@@ -641,11 +633,9 @@ func (cr *VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	return result
 }
 
-var globalClusterLabels = map[string]string{"app.kubernetes.io/part-of": "vmcluster"}
-
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr *VMCluster) FinalLabels(selectorLabels map[string]string) map[string]string {
-	baseLabels := labels.Merge(globalClusterLabels, selectorLabels)
+	baseLabels := selectorLabels
 	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
 		// fast path
 		return baseLabels

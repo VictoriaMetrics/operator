@@ -9,13 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -27,6 +20,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 const (
@@ -60,7 +59,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 			}
 		}
 	}
-	svc, err := createOrUpdateVMAuthService(ctx, cr, rclient)
+	svc, err := createOrUpdateVMAuthService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return fmt.Errorf("cannot create or update vmauth service :%w", err)
 	}
@@ -569,24 +568,24 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 }
 
 // createOrUpdateVMAuthService creates service for VMAuth
-func createOrUpdateVMAuthService(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) (*corev1.Service, error) {
+func createOrUpdateVMAuthService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) (*corev1.Service, error) {
+	var prevService, prevAdditionalService *corev1.Service
+	if prevCR != nil {
+		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
+		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
+	}
 	newService := build.Service(cr, cr.Spec.Port, nil)
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
-			logger.WithContext(ctx).Error(fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
+			return fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		}
+		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmauth: %w", err)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
-	}
-	var prevService *corev1.Service
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR := cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
-		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
 	}
 
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {

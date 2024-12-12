@@ -98,7 +98,7 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 			},
 		)
 	})
-	var prevService *corev1.Service
+	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevPort, err := strconv.ParseInt(prevCR.Port(), 10, 32)
 		if err != nil {
@@ -122,14 +122,15 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 				},
 			)
 		})
+		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, cr.Spec.ServiceSpec)
 	}
 
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
-			logger.WithContext(ctx).Error(fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
-			// TODO: @f41gh7 check prevCR
+			return fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		}
+		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmalertmanager: %w", err)
 		}
 		return nil

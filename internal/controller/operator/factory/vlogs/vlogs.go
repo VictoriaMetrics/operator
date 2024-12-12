@@ -291,23 +291,24 @@ func makeSpecForVLogs(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 
 // createOrUpdateVLogsService creates service for vlogs
 func createOrUpdateVLogsService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VLogs) (*corev1.Service, error) {
-	newService := build.Service(cr, cr.Spec.Port, nil)
+	var prevService, prevAdditionalService *corev1.Service
+	if prevCR != nil {
+		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
+		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
+	}
 
+	newService := build.Service(cr, cr.Spec.Port, nil)
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
-			logger.WithContext(ctx).Error(fmt.Errorf("vlogs additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
-			// TODO: f41gh7 add prevCR
+			return fmt.Errorf("vlogs additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		}
+		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vlogs: %w", err)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
-	}
-	var prevService *corev1.Service
-	if prevCR != nil {
-		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
 	}
 
 	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {

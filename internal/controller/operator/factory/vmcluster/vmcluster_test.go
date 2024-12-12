@@ -9,7 +9,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -493,14 +493,7 @@ func TestCreatOrUpdateClusterServices(t *testing.T) {
 		if err := yaml.Unmarshal([]byte(wantSvcYAML), &wantService); err != nil {
 			t.Fatalf("BUG: expect service definition at yaml: %q", err)
 		}
-		gotYAML, err := yaml.Marshal(actualService)
-		if err != nil {
-			t.Fatalf("BUG: cannot serialize service as yaml")
-		}
-		if !cmp.Equal(&actualService, &wantService) {
-			diff := cmp.Diff(&actualService, &wantService)
-			t.Fatalf("not expected service, diff: \n%s\ngot yaml:\n%s", diff, string(gotYAML))
-		}
+		assert.Equal(t, wantService, actualService)
 	}
 
 	f("storage", &vmv1beta1.VMCluster{
@@ -517,6 +510,7 @@ objectmeta:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmstorage
+        app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
         - apiversion: ""
@@ -581,6 +575,7 @@ objectmeta:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmstorage
+        app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
         - apiversion: ""
@@ -643,6 +638,7 @@ objectmeta:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmselect
+        app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
         - apiversion: ""
@@ -683,6 +679,7 @@ objectmeta:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmselect
+        app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
         - apiversion: ""
@@ -729,6 +726,7 @@ objectmeta:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
+        app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
         - apiversion: ""
@@ -784,6 +782,7 @@ objectmeta:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
+        app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
         - apiversion: ""
@@ -868,6 +867,7 @@ objectmeta:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
+        app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     annotations:
       "service.beta.kubernetes.io/aws-load-balancer-type": "external"
@@ -958,6 +958,7 @@ objectmeta:
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
+        app.kubernetes.io/part-of: vmcluster
         operator.victoriametrics.com/vmauthlb-proxy-job-name: vminsert-test
     annotations:
       "service.beta.kubernetes.io/aws-load-balancer-type": "external"

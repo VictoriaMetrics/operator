@@ -22,7 +22,7 @@ package v1beta1
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/autoscaling/v2beta2"
+	"k8s.io/api/autoscaling/v2"
 	"k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -973,14 +973,14 @@ func (in *EmbeddedHPA) DeepCopyInto(out *EmbeddedHPA) {
 	}
 	if in.Metrics != nil {
 		in, out := &in.Metrics, &out.Metrics
-		*out = make([]v2beta2.MetricSpec, len(*in))
+		*out = make([]v2.MetricSpec, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Behaviour != nil {
 		in, out := &in.Behaviour, &out.Behaviour
-		*out = new(v2beta2.HorizontalPodAutoscalerBehavior)
+		*out = new(v2.HorizontalPodAutoscalerBehavior)
 		(*in).DeepCopyInto(*out)
 	}
 }

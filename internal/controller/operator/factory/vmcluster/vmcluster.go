@@ -7,14 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	appsv1 "k8s.io/api/apps/v1"
-	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/api/autoscaling/v2beta2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 const (
@@ -687,11 +687,11 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 }
 
 func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	t := newSvcBuilder(cr, cr.GetSelectName(), cr.VMSelectSelectorLabels())
+	t := newOptsBuilder(cr, cr.GetSelectName(), cr.VMSelectSelectorLabels())
 	pdb := build.PodDisruptionBudget(t, cr.Spec.VMSelect.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VMSelect.PodDisruptionBudget != nil {
-		t = newSvcBuilder(prevCR, prevCR.GetSelectName(), prevCR.VMSelectSelectorLabels())
+		t = newOptsBuilder(prevCR, prevCR.GetSelectName(), prevCR.VMSelectSelectorLabels())
 		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.VMSelect.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
@@ -883,11 +883,11 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 }
 
 func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	t := newSvcBuilder(cr, cr.GetInsertName(), cr.VMInsertSelectorLabels())
+	t := newOptsBuilder(cr, cr.GetInsertName(), cr.VMInsertSelectorLabels())
 	pdb := build.PodDisruptionBudget(t, cr.Spec.VMInsert.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VMInsert.PodDisruptionBudget != nil {
-		t = newSvcBuilder(prevCR, prevCR.GetInsertName(), prevCR.VMInsertSelectorLabels())
+		t = newOptsBuilder(prevCR, prevCR.GetInsertName(), prevCR.VMInsertSelectorLabels())
 		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.VMInsert.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
@@ -1119,11 +1119,11 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 }
 
 func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	t := newSvcBuilder(cr, cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.VMStorageSelectorLabels())
+	t := newOptsBuilder(cr, cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.VMStorageSelectorLabels())
 	pdb := build.PodDisruptionBudget(t, cr.Spec.VMStorage.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VMStorage.PodDisruptionBudget != nil {
-		t = newSvcBuilder(prevCR, prevCR.Spec.VMStorage.GetNameWithPrefix(prevCR.Name), prevCR.VMStorageSelectorLabels())
+		t = newOptsBuilder(prevCR, prevCR.Spec.VMStorage.GetNameWithPrefix(prevCR.Name), prevCR.VMStorageSelectorLabels())
 		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.VMStorage.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
@@ -1133,32 +1133,36 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.VMInsert.HPA == nil {
 		return nil
 	}
-	targetRef := v2beta2.CrossVersionObjectReference{
+	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       cr.GetInsertName(),
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	}
-	defaultHPA := build.HPA(targetRef, cr.Spec.VMInsert.HPA, cr.AsOwner(), cr.VMInsertSelectorLabels(), cr.Namespace)
-	var prevHPA *v2.HorizontalPodAutoscaler
+	t := newOptsBuilder(cr, cr.GetInsertName(), cr.VMInsertSelectorLabels())
+	newHPA := build.HPA(t, targetRef, cr.Spec.VMInsert.HPA)
+	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMInsert.HPA != nil {
-		prevHPA = build.HPA(targetRef, prevCR.Spec.VMInsert.HPA, cr.AsOwner(), prevCR.VMInsertSelectorLabels(), cr.Namespace)
+		t = newOptsBuilder(prevCR, prevCR.GetInsertName(), prevCR.VMInsertSelectorLabels())
+		prevHPA = build.HPA(t, targetRef, prevCR.Spec.VMInsert.HPA)
 	}
-	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
+	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
 }
 
 func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	if cr.Spec.VMSelect.HPA == nil {
 		return nil
 	}
-	targetRef := v2beta2.CrossVersionObjectReference{
+	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       cr.GetSelectName(),
 		Kind:       "StatefulSet",
 		APIVersion: "apps/v1",
 	}
-	defaultHPA := build.HPA(targetRef, cr.Spec.VMSelect.HPA, cr.AsOwner(), cr.VMSelectSelectorLabels(), cr.Namespace)
-	var prevHPA *v2.HorizontalPodAutoscaler
+	b := newOptsBuilder(cr, cr.GetSelectName(), cr.VMSelectSelectorLabels())
+	defaultHPA := build.HPA(b, targetRef, cr.Spec.VMSelect.HPA)
+	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMSelect.HPA != nil {
-		prevHPA = build.HPA(targetRef, prevCR.Spec.VMSelect.HPA, cr.AsOwner(), prevCR.VMSelectSelectorLabels(), cr.Namespace)
+		b := newOptsBuilder(prevCR, prevCR.GetSelectName(), prevCR.VMSelectSelectorLabels())
+		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMSelect.HPA)
 	}
 
 	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
@@ -1242,7 +1246,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				}
 			}
 			if vmse.HPA == nil && prevSe.HPA != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &v2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove HPA from prev select: %w", err)
 				}
 			}
@@ -1308,7 +1312,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				}
 			}
 			if vmis.HPA == nil && prevIs.HPA != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &v2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove HPA from prev insert: %w", err)
 				}
 			}
@@ -1597,17 +1601,17 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 
-	t := newSvcBuilder(cr, cr.GetVMAuthLBName(), cr.VMAuthLBSelectorLabels())
+	t := newOptsBuilder(cr, cr.GetVMAuthLBName(), cr.VMAuthLBSelectorLabels())
 	pdb := build.PodDisruptionBudget(t, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		t = newSvcBuilder(prevCR, prevCR.GetVMAuthLBName(), prevCR.VMAuthLBSelectorLabels())
+		t = newOptsBuilder(prevCR, prevCR.GetVMAuthLBName(), prevCR.VMAuthLBSelectorLabels())
 		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
-func newSvcBuilder(cr *vmv1beta1.VMCluster, name string, selectorLabels map[string]string) *clusterSvcBuilder {
+func newOptsBuilder(cr *vmv1beta1.VMCluster, name string, selectorLabels map[string]string) *clusterSvcBuilder {
 	return &clusterSvcBuilder{
 		VMCluster:      cr,
 		prefixedName:   name,

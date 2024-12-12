@@ -682,9 +682,9 @@ _Appears in:_
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
-| `behaviour` |  | _[HorizontalPodAutoscalerBehavior](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#horizontalpodautoscalerbehavior-v2beta2-autoscaling)_ | true |
+| `behaviour` |  | _[HorizontalPodAutoscalerBehavior](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#horizontalpodautoscalerbehavior-v2-autoscaling)_ | true |
 | `maxReplicas` |  | _integer_ | true |
-| `metrics` |  | _[MetricSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#metricspec-v2beta2-autoscaling) array_ | true |
+| `metrics` |  | _[MetricSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#metricspec-v2-autoscaling) array_ | true |
 | `minReplicas` |  | _integer_ | true |
 
 

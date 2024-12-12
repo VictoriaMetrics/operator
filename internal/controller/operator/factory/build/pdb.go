@@ -8,7 +8,7 @@ import (
 )
 
 // PodDisruptionBudget creates object for given CRD
-func PodDisruptionBudget(cr svcBuilderArgs, spec *vmv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1.PodDisruptionBudget {
+func PodDisruptionBudget(cr builderOpts, spec *vmv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1.PodDisruptionBudget {
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: cr.PrefixedName(),

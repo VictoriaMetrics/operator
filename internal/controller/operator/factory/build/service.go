@@ -6,19 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type svcBuilderArgs interface {
-	client.Object
-	PrefixedName() string
-	AnnotationsFiltered() map[string]string
-	AllLabels() map[string]string
-	SelectorLabels() map[string]string
-	AsOwner() []metav1.OwnerReference
-	GetNSName() string
-	GetAdditionalService() *vmv1beta1.AdditionalServiceSpec
-}
 
 // AdditionalServiceFromDefault builds service from given exist service and overrides params if needed
 func AdditionalServiceFromDefault(defaultSvc *corev1.Service, svcSpec *vmv1beta1.AdditionalServiceSpec) *corev1.Service {
@@ -50,7 +38,7 @@ func AdditionalServiceFromDefault(defaultSvc *corev1.Service, svcSpec *vmv1beta1
 }
 
 // Service builds service for the given args and applies optional callback for it
-func Service(cr svcBuilderArgs, defaultPort string, setOptions func(svc *corev1.Service)) *corev1.Service {
+func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Service)) *corev1.Service {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),

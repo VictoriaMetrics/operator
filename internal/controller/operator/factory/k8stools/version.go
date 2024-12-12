@@ -1,7 +1,6 @@
 package k8stools
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -47,23 +46,4 @@ func IsFSGroupChangePolicySupported() bool {
 		return true
 	}
 	return false
-}
-
-// MustConvertObjectVersionsJSON objects with json serialize and deserialize
-// it could be used only for converting BETA apis to Stable version
-func MustConvertObjectVersionsJSON[A, B any](src *A, objectName string) *B {
-	var dst B
-	if src == nil {
-		return nil
-	}
-	srcB, err := json.Marshal(src)
-	if err != nil {
-		log.Error(err, "BUG, cannot serialize object for API", "APIObject", objectName, "object", src)
-		return nil
-	}
-	if err := json.Unmarshal(srcB, &dst); err != nil {
-		log.Error(err, "BUG, cannot parse object for API", "APIObject", objectName, "object", string(srcB))
-		return nil
-	}
-	return &dst
 }

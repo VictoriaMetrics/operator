@@ -1969,7 +1969,7 @@ unauthorized_user:
 `,
 		},
 		{
-			name: "with full unauthorizedUserAccess",
+			name: "with full unauthorizedUserAccessSpec",
 			args: args{
 				vmauth: &vmv1beta1.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1978,7 +1978,7 @@ unauthorized_user:
 					},
 					Spec: vmv1beta1.VMAuthSpec{
 						SelectAllByDefault: true,
-						UnauthorizedUserAccess: &vmv1beta1.VMAuthUnauthorizedUserAccess{
+						UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
 							URLMaps: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									SrcPaths:  []string{"/api/v1/query", "/api/v1/query_range", "/api/v1/label/[^/]+/values"},

@@ -14843,12 +14843,12 @@ spec:
                 description: |-
                   UnauthorizedAccessConfig configures access for un authorized users
 
-                  Deprecated, use unauthorizedUserAccess instead
+                  Deprecated, use unauthorizedUserAccessSpec instead
                   will be removed at v1.0 release
                 x-kubernetes-preserve-unknown-fields: true
-              unauthorizedUserAccess:
-                description: UnauthorizedUserAccess defines unauthorized_user config
-                  section of vmauth config
+              unauthorizedUserAccessSpec:
+                description: UnauthorizedUserAccessSpec defines unauthorized_user
+                  config section of vmauth config
                 properties:
                   default_url:
                     description: |-

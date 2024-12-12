@@ -486,8 +486,8 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, cb *build.TLSConfigBuilder) (
 	var result []yaml.MapItem
 
 	switch {
-	case cr.Spec.UnauthorizedUserAccess != nil:
-		uua := cr.Spec.UnauthorizedUserAccess
+	case cr.Spec.UnauthorizedUserAccessSpec != nil:
+		uua := cr.Spec.UnauthorizedUserAccessSpec
 		if err := uua.Validate(); err != nil {
 			return nil, fmt.Errorf("incorrect spec.UnauthorizedUserAccess syntax: %w", err)
 		}

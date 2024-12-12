@@ -48,7 +48,7 @@ var _ = Describe("VMAuth Webhook", func() {
         metadata:
           name: must-fail
         spec:
-         unauthorizedUserAccess:
+         unauthorizedUserAccessSpec:
             default_url: 
             - http://url-1
         `, "incorrect r.spec.UnauthorizedUserAccess syntax: at least one of `url_map` or `url_prefix` must be defined"),
@@ -58,7 +58,7 @@ var _ = Describe("VMAuth Webhook", func() {
         metadata:
           name: must-fail
         spec:
-         unauthorizedUserAccess:
+         unauthorizedUserAccessSpec:
             metric_labels:
                 124124asff: 12fsaf
             url_prefix: http://some-dst
@@ -71,7 +71,7 @@ var _ = Describe("VMAuth Webhook", func() {
         metadata:
           name: must-fail
         spec:
-         unauthorizedUserAccess:
+         unauthorizedUserAccessSpec:
             metric_labels:
                 label: 12fsaf-value
             url_map:

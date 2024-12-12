@@ -17,7 +17,7 @@ spec:
     limits:
       cpu: "500m"
       memory: "850Mi"
-  unauthorizedUserAccess:
+  unauthorizedUserAccessSpec:
     url_map:
       - src_paths:
           - /*

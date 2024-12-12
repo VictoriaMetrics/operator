@@ -2100,7 +2100,7 @@ _Appears in:_
 - [RelabelConfig](#relabelconfig)
 - [StreamAggrRule](#streamaggrrule)
 - [UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap)
-- [VMAuthUnauthorizedUserAccess](#vmauthunauthorizeduseraccess)
+- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
 
 
 
@@ -2158,7 +2158,7 @@ _Appears in:_
 - [VMAlertRemoteReadSpec](#vmalertremotereadspec)
 - [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
 - [VMAuthSpec](#vmauthspec)
-- [VMAuthUnauthorizedUserAccess](#vmauthunauthorizeduseraccess)
+- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
 - [VMNodeScrapeSpec](#vmnodescrapespec)
 - [VMProbeSpec](#vmprobespec)
 - [VMScrapeConfigSpec](#vmscrapeconfigspec)
@@ -2401,7 +2401,7 @@ UnauthorizedAccessConfigURLMap defines
 
 _Appears in:_
 - [VMAuthSpec](#vmauthspec)
-- [VMAuthUnauthorizedUserAccess](#vmauthunauthorizeduseraccess)
+- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
@@ -3206,8 +3206,8 @@ _Appears in:_
 | `tlsConfig` | TLSConfig defines tls configuration for the backend connection | _[TLSConfig](#tlsconfig)_ | false |
 | `tolerations` | Tolerations If specified, the pod's tolerations. | _[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#toleration-v1-core) array_ | false |
 | `topologySpreadConstraints` | TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ | _[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#topologyspreadconstraint-v1-core) array_ | false |
-| `unauthorizedAccessConfig` | UnauthorizedAccessConfig configures access for un authorized users<br /><br />Deprecated, use unauthorizedUserAccess instead<br />will be removed at v1.0 release | _[UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap) array_ | true |
-| `unauthorizedUserAccess` | UnauthorizedUserAccess defines unauthorized_user config section of vmauth config | _[VMAuthUnauthorizedUserAccess](#vmauthunauthorizeduseraccess)_ | false |
+| `unauthorizedAccessConfig` | UnauthorizedAccessConfig configures access for un authorized users<br /><br />Deprecated, use unauthorizedUserAccessSpec instead<br />will be removed at v1.0 release | _[UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap) array_ | true |
+| `unauthorizedUserAccessSpec` | UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config | _[VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)_ | false |
 | `useDefaultResources` | UseDefaultResources controls resource settings<br />By default, operator sets built-in resource requirements | _boolean_ | false |
 | `useStrictSecurity` | UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions | _boolean_ | false |
 | `useVMConfigReloader` | UseVMConfigReloader replaces prometheus-like config-reloader<br />with vm one. It uses secrets watch instead of file watch<br />which greatly increases speed of config updates | _boolean_ | false |
@@ -3219,11 +3219,11 @@ _Appears in:_
 
 
 
-#### VMAuthUnauthorizedUserAccess
+#### VMAuthUnauthorizedUserAccessSpec
 
 
 
-VMAuthUnauthorizedUserAccess defines unauthorized_user section configuration for vmauth
+VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
 
 
 
@@ -4107,7 +4107,7 @@ VMUserConfigOptions defines configuration options for VMUser object
 
 _Appears in:_
 - [VMAuthSpec](#vmauthspec)
-- [VMAuthUnauthorizedUserAccess](#vmauthunauthorizeduseraccess)
+- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
 - [VMUserSpec](#vmuserspec)
 
 | Field | Description | Scheme | Required |
@@ -4135,7 +4135,7 @@ supported only with enterprise version of [vmauth](https://docs.victoriametrics.
 
 _Appears in:_
 - [VMAuthSpec](#vmauthspec)
-- [VMAuthUnauthorizedUserAccess](#vmauthunauthorizeduseraccess)
+- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
 - [VMUserConfigOptions](#vmuserconfigoptions)
 - [VMUserSpec](#vmuserspec)
 

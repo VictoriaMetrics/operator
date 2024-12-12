@@ -74,8 +74,8 @@ func (r *VMAuth) sanityCheck() error {
 		}
 	}
 
-	if r.Spec.UnauthorizedUserAccess != nil {
-		if err := r.Spec.UnauthorizedUserAccess.Validate(); err != nil {
+	if r.Spec.UnauthorizedUserAccessSpec != nil {
+		if err := r.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
 			return fmt.Errorf("incorrect r.spec.UnauthorizedUserAccess syntax: %w", err)
 		}
 	}

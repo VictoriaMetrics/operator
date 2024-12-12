@@ -88,7 +88,7 @@ spec:
 
 ## Unauthorized access
 
-You can configure `VMAuth` to allow unauthorized access for specified routes with `unauthorizedUserAccess` field.
+You can configure `VMAuth` to allow unauthorized access for specified routes with `unauthorizedUserAccessSpec` field.
 
 For instance:
 
@@ -98,7 +98,7 @@ kind: VMAuth
 metadata:
   name: vmauth-unauthorized-example
 spec:
-  unauthorizedUserAccess:
+  unauthorizedUserAccessSpec:
     - src_paths: ["/metrics"]
       url_prefix:
         - http://vmsingle-example.default.svc:8428
@@ -106,7 +106,7 @@ spec:
 
 In this example every user can access `/metrics` route and get vmsingle metrics without authorization.
 
-In addition, `unauthorizedUserAccess` in [Enterprise version](#enterprise-features) supports [IP Filters](#ip-filters) 
+In addition, `unauthorizedUserAccessSpec` in [Enterprise version](#enterprise-features) supports [IP Filters](#ip-filters) 
 with `ip_filters` field.
 
 ## High availability
@@ -242,7 +242,7 @@ spec:
     deny_list:
       - 5.6.7.8
   # allow read vmsingle metrics without authorization for users from internal network
-  unauthorizedUserAccess:
+  unauthorizedUserAccessSpec:
     url_map:
     - src_paths: ["/metrics"]
       url_prefix: ["http://vmsingle-example.default.svc:8428"]

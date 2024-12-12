@@ -16,11 +16,11 @@ aliases:
 **Update note 1: `labels` and `annotations` inheritance is deprecated and will be remove at upcoming `v0.52.0` release. It's recommend to move all needed labels and annotations to the `spec.managedMetadata` fields.
 Operator will preserve `annotations`, but any changes to it will be ignored. `labels` inherited from `CRD.metata.labels` will be removed after upgrade to `v0.52.0`.**
 
-**Update note 2: `VMAuth.spec.unauthorizedAccessConfig` is deprecated in favour of `VMAuth.spec.unauthorizedUserAccess`. Operator still serves deprecated fields until `v1.0` release.**
+**Update note 2: `VMAuth.spec.unauthorizedAccessConfig` is deprecated in favour of `VMAuth.spec.unauthorizedUserAccessSpec`. Operator still serves deprecated fields until `v1.0` release.**
 
-**Update note 3: The following fields: `[default_url,tlsConfig,discover_backend_ips,headers,response_headers,retry_status_codes,max_concurrent_requests,load_balancing_policy,drop_src_path_prefix_parts]` are deprecated at `VMAuth.spec.` in favour of `VMAuth.spec.unauthorizedUserAccess`. Operator still serves deprecated fields until `v1.0` release.**
+**Update note 3: The following fields: `[default_url,tlsConfig,discover_backend_ips,headers,response_headers,retry_status_codes,max_concurrent_requests,load_balancing_policy,drop_src_path_prefix_parts]` are deprecated at `VMAuth.spec.` in favour of `VMAuth.spec.unauthorizedUserAccessSpec`. Operator still serves deprecated fields until `v1.0` release.**
 
-- [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): adds new `spec` setting `unauthorizedUserAccess` that replaces `unauthorizedAccessConfig` and inlined fields from `VMUserConfigOptions`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1168) for details.  
+- [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): adds new `spec` setting `unauthorizedUserAccessSpec` that replaces `unauthorizedAccessConfig` and inlined fields from `VMUserConfigOptions`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1168) for details.  
 - [vmoperator](https://docs.victoriametrics.com/operator/): bump default version of VictoriaMetrics components to [1.107.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.107.0).
 - [vmoperator](https://docs.victoriametrics.com/operator/): fix the behaviors of `vmagentSpec.ScrapeConfigSelector` and `vmagentSpec.scrapeConfigNamespaceSelector` when `vmagentSpec.selectAllByDefault=false`. Previously, the VMScrapeConfig could be ignored.
 - [vmoperator](https://docs.victoriametrics.com/operator/): fix the behaviors of `xxxNamespaceSelector` when `vmagentSpec.selectAllByDefault=true`. See [this doc](https://docs.victoriametrics.com/operator/resources/vmagent/#scraping) for detailed rules.

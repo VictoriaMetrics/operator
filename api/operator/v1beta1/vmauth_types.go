@@ -67,15 +67,15 @@ type VMAuthSpec struct {
 	*EmbeddedProbes `json:",inline"`
 	// UnauthorizedAccessConfig configures access for un authorized users
 	//
-	// Deprecated, use unauthorizedUserAccess instead
+	// Deprecated, use unauthorizedUserAccessSpec instead
 	// will be removed at v1.0 release
 	// +deprecated
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	UnauthorizedAccessConfig []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty" yaml:"unauthorizedAccessConfig,omitempty"`
-	// UnauthorizedUserAccess defines unauthorized_user config section of vmauth config
+	// UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config
 	// +optional
-	UnauthorizedUserAccess *VMAuthUnauthorizedUserAccess `json:"unauthorizedUserAccess,omitempty" yaml:"unauthorizedUserAccess,omitempty"`
+	UnauthorizedUserAccessSpec *VMAuthUnauthorizedUserAccessSpec `json:"unauthorizedUserAccessSpec,omitempty" yaml:"unauthorizedUserAccessSpec,omitempty"`
 	// IPFilters global access ip filters
 	// supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth/#ip-filters)
 	// +optional
@@ -112,8 +112,8 @@ type VMAuthSpec struct {
 	CommonApplicationDeploymentParams `json:",inline,omitempty" yaml:",inline"`
 }
 
-// VMAuthUnauthorizedUserAccess defines unauthorized_user section configuration for vmauth
-type VMAuthUnauthorizedUserAccess struct {
+// VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
+type VMAuthUnauthorizedUserAccessSpec struct {
 	// URLPrefix defines prefix prefix for destination
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -127,7 +127,7 @@ type VMAuthUnauthorizedUserAccess struct {
 }
 
 // Validate performs semantic syntax validation
-func (vmuua *VMAuthUnauthorizedUserAccess) Validate() error {
+func (vmuua *VMAuthUnauthorizedUserAccessSpec) Validate() error {
 
 	if len(vmuua.URLMaps) == 0 && len(vmuua.URLPrefix) == 0 {
 		return fmt.Errorf("at least one of `url_map` or `url_prefix` must be defined")

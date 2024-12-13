@@ -20,7 +20,7 @@ linters:
   disable-all: true
   enable:
     - dupl
-    - exportloopref
+    - copyloopvar
     - ginkgolinter
     - gofmt
     - goimports

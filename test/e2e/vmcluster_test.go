@@ -41,7 +41,7 @@ var _ = Describe("e2e vmcluster", func() {
 				Namespace: namespace,
 			})).To(Succeed())
 			return len(unDeletedObjects.Items) == 0
-		}, eventualDeletionTimeout).Should(BeTrue())
+		}, eventualDeletionTimeout).WithContext(ctx).Should(BeTrue())
 
 	})
 
@@ -65,7 +65,7 @@ var _ = Describe("e2e vmcluster", func() {
 					return nil
 				}
 				return fmt.Errorf("want NotFound error, got: %w", err)
-			}, eventualDeletionTimeout, 1).Should(BeNil())
+			}, eventualDeletionTimeout, 1).WithContext(ctx).Should(Succeed())
 		})
 
 		DescribeTable("should create vmcluster", func(name string, cr *v1beta1vm.VMCluster, verify func(cr *v1beta1vm.VMCluster)) {
@@ -74,7 +74,7 @@ var _ = Describe("e2e vmcluster", func() {
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMCluster{}, namespacedName)
-			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 			if verify != nil {
 				var createdCluster v1beta1vm.VMCluster
 				Expect(k8sClient.Get(ctx, namespacedName, &createdCluster)).To(Succeed())
@@ -148,9 +148,10 @@ var _ = Describe("e2e vmcluster", func() {
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
-					VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					},
+					VMInsert: &v1beta1vm.VMInsert{
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
 					},
 				},
 			},
@@ -314,7 +315,7 @@ var _ = Describe("e2e vmcluster", func() {
 					Namespace: namespace,
 				}, &v1beta1vm.VMCluster{})
 
-			}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "want not found error"))
+			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(errors.IsNotFound, "want not found error"))
 		})
 
 		type testStep struct {
@@ -332,8 +333,7 @@ var _ = Describe("e2e vmcluster", func() {
 				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, initCR, namespacedName)
-				}, eventualStatefulsetAppReadyTimeout).
-					Should(Succeed())
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 				for _, step := range steps {
 					if step.setup != nil {
 						step.setup(initCR)
@@ -346,15 +346,13 @@ var _ = Describe("e2e vmcluster", func() {
 						}
 						step.modify(&toUpdate)
 						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).Should(Succeed())
+					}, eventualExpandingTimeout).WithContext(ctx).Should(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusExpanding(ctx, k8sClient, initCR, namespacedName)
-					}, eventualStatefulsetAppReadyTimeout).
-						Should(Succeed())
+					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, initCR, namespacedName)
-					}, eventualStatefulsetAppReadyTimeout).
-						Should(Succeed())
+					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 					var updated v1beta1vm.VMCluster
 					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 					step.verify(&updated)
@@ -478,9 +476,10 @@ var _ = Describe("e2e vmcluster", func() {
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &v1beta1vm.VMInsert{
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},

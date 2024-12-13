@@ -19,12 +19,12 @@ func selectScrapeConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient clie
 
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ScrapeConfigNamespaceSelector, cr.Spec.ScrapeConfigSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMScrapeConfigList) {
-			for _, item := range list.Items {
+			for i := range list.Items {
+				item := &list.Items[i]
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
-				item := item
-				scrapeConfigsCombined = append(scrapeConfigsCombined, &item)
+				scrapeConfigsCombined = append(scrapeConfigsCombined, item)
 				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 			}
 		}); err != nil {
@@ -44,12 +44,12 @@ func selectPodScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client
 
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.PodScrapeNamespaceSelector, cr.Spec.PodScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMPodScrapeList) {
-			for _, item := range list.Items {
+			for i := range list.Items {
+				item := &list.Items[i]
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
-				item := item
-				podScrapesCombined = append(podScrapesCombined, &item)
+				podScrapesCombined = append(podScrapesCombined, item)
 				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 			}
 		}); err != nil {
@@ -69,12 +69,12 @@ func selectVMProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ProbeNamespaceSelector, cr.Spec.ProbeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMProbeList) {
-			for _, item := range list.Items {
+			for i := range list.Items {
+				item := &list.Items[i]
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
-				item := item
-				probesCombined = append(probesCombined, &item)
+				probesCombined = append(probesCombined, item)
 				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 			}
 		}); err != nil {
@@ -101,12 +101,12 @@ func selectVMNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient,
 		cr.Spec.NodeScrapeNamespaceSelector, cr.Spec.NodeScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault, func(list *vmv1beta1.VMNodeScrapeList) {
-			for _, item := range list.Items {
+			for i := range list.Items {
+				item := &list.Items[i]
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
-				item := item
-				nodesCombined = append(nodesCombined, &item)
+				nodesCombined = append(nodesCombined, item)
 				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 
 			}
@@ -127,12 +127,12 @@ func selectStaticScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.StaticScrapeNamespaceSelector, cr.Spec.StaticScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMStaticScrapeList) {
-			for _, item := range list.Items {
+			for i := range list.Items {
+				item := &list.Items[i]
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
-				item := item
-				staticScrapesCombined = append(staticScrapesCombined, &item)
+				staticScrapesCombined = append(staticScrapesCombined, item)
 				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 			}
 		}); err != nil {
@@ -151,14 +151,14 @@ func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 	var serviceScrapeNamespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ServiceScrapeNamespaceSelector, cr.Spec.ServiceScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMServiceScrapeList) {
-			for _, item := range list.Items {
+			for i := range list.Items {
+				item := &list.Items[i]
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
-				rclient.Scheme().Default(&item)
-				item := item
+				rclient.Scheme().Default(item)
 				serviceScrapeNamespacedNames = append(serviceScrapeNamespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-				servScrapesCombined = append(servScrapesCombined, &item)
+				servScrapesCombined = append(servScrapesCombined, item)
 			}
 		}); err != nil {
 		return nil, err

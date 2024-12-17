@@ -178,7 +178,7 @@ var _ = Describe("test vmuser Controller", func() {
 							var vmuser v1beta1vm.VMUser
 							Expect(k8sClient.Get(ctx, nsn, &vmuser)).To(Succeed())
 							Expect(vmuser.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusFailed))
-							Expect(len(vmuser.Status.Conditions) > 0).To(BeTrue())
+							Expect(vmuser.Status.Conditions).NotTo(BeEmpty())
 						}
 					},
 				},
@@ -191,7 +191,7 @@ var _ = Describe("test vmuser Controller", func() {
 							},
 							StringData: map[string]string{"password": "password"},
 						}
-						Expect(k8sClient.Create(ctx, &passwordSecret))
+						Expect(k8sClient.Create(ctx, &passwordSecret)).To(Succeed())
 						DeferCleanup(func() {
 							Expect(k8sClient.Delete(ctx, &passwordSecret)).To(Succeed())
 						})

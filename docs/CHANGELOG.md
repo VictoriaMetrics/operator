@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+## [v0.51.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.51.0) - 17 Dec 2024
+
 **Update note 1: `labels` and `annotations` inheritance is deprecated and will be remove at upcoming `v0.52.0` release. It's recommend to move all needed labels and annotations to the `spec.managedMetadata` fields.
 Operator will preserve `annotations`, but any changes to it will be ignored. `labels` inherited from `CRD.metata.labels` will be removed after upgrade to `v0.52.0`.**
 

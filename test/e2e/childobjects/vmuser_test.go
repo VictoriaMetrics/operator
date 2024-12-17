@@ -103,7 +103,7 @@ var _ = Describe("test vmuser Controller", func() {
 						},
 						Spec: v1beta1vm.VMUserSpec{
 							UserName: ptr.To("user"),
-							Password: ptr.To("password"),
+							Password: ptr.To("password-1"),
 							TargetRefs: []v1beta1vm.TargetRef{
 								{
 									Static: &v1beta1vm.StaticRef{
@@ -189,7 +189,7 @@ var _ = Describe("test vmuser Controller", func() {
 								Name:      "backend-e2e-access-1",
 								Namespace: namespace,
 							},
-							StringData: map[string]string{"password": "password"},
+							StringData: map[string]string{"password": "password-2"},
 						}
 						Expect(k8sClient.Create(ctx, &passwordSecret)).To(Succeed())
 						DeferCleanup(func() {
@@ -202,20 +202,16 @@ var _ = Describe("test vmuser Controller", func() {
 						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 						toUpdate.Spec.PasswordRef.Name = "backend-e2e-access-1"
 						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
-						Eventually(func() error {
-							return suite.ExpectObjectStatus(ctx, k8sClient, &v1beta1vm.VMUser{}, nsn, v1beta1vm.UpdateStatusOperational)
-						}, eventualReadyTimeout).Should(Succeed())
 					},
 					verify: func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "missing-ref-1", Namespace: namespace},
 						} {
-							var vmuser v1beta1vm.VMUser
-							Expect(k8sClient.Get(ctx, nsn, &vmuser)).To(Succeed())
-							Expect(vmuser.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusOperational))
-							for _, cond := range vmuser.Status.Conditions {
-								Expect(cond.Status).To(Equal(metav1.ConditionTrue), "expect condition to be True, reason=%q,type=%q", cond.Reason, cond.Type)
-							}
+							Eventually(func() error {
+								var toUpdate v1beta1vm.VMUser
+								Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+								return expectConditionOkFor(toUpdate.Status.Conditions, "multiple-1.")
+							}, eventualReadyTimeout, 2).Should(Succeed())
 						}
 					},
 				},

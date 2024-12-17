@@ -60,7 +60,7 @@ func StatusForChildObjects[T any, PT interface {
 		} else {
 			currCound.Status = "False"
 			currCound.Message = st.CurrentSyncError
-			errors = append(errors, fmt.Sprintf("parent=%s config=namespace/name=%s/%s error text: %s", parentObjectName, childObject.GetNamespace(), childObject.GetName(), st.Reason))
+			errors = append(errors, fmt.Sprintf("parent=%s config=namespace/name=%s/%s error text: %s", parentObjectName, childObject.GetNamespace(), childObject.GetName(), st.CurrentSyncError))
 		}
 		if err := updateChildStatusConditions[T](ctx, rclient, childObject, currCound); err != nil {
 			return err

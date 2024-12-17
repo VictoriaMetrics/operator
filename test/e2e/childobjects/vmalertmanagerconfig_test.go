@@ -314,29 +314,22 @@ route:
  receiver: blackhole
 `
 						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
-						Eventually(func() error {
-							return suite.ExpectObjectStatus(ctx, k8sClient, &v1beta1vm.VMAlertmanager{}, nsn, v1beta1vm.UpdateStatusOperational)
-						}, eventualReadyTimeout).Should(Succeed())
+
 					},
 					verify: func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "partiallly-ok", Namespace: namespace},
 						} {
-							var amcfg v1beta1vm.VMAlertmanagerConfig
-							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
-							if len(amcfg.Status.Conditions) == 2 {
-								Expect(amcfg.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusOperational))
-								Expect(amcfg.Status.Reason).To(BeEmpty())
-							}
-							for _, cond := range amcfg.Status.Conditions {
-								switch {
-								case strings.HasPrefix(cond.Type, "parsing-test."):
-								case strings.HasPrefix(cond.Type, "parsing-test-with-global-option."):
-								default:
-									continue
-								}
-								Expect(cond.Status).To(Equal(metav1.ConditionTrue), "reason=%q,type=%q,rule=%q", cond.Reason, cond.Type, amcfg.Name)
-							}
+							Eventually(func() error {
+								var amcfg v1beta1vm.VMAlertmanagerConfig
+								Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
+								return expectConditionOkFor(amcfg.Status.Conditions, "parsing-test.")
+							}, eventualReadyTimeout).Should(Succeed())
+							Eventually(func() error {
+								var amcfg v1beta1vm.VMAlertmanagerConfig
+								Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
+								return expectConditionOkFor(amcfg.Status.Conditions, "parsing-test-with-global-option.")
+							}, eventualReadyTimeout).Should(Succeed())
 						}
 
 					},

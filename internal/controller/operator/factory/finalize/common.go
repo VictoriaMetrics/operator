@@ -42,6 +42,9 @@ func patchReplaceFinalizers(ctx context.Context, rclient client.Client, instance
 		return fmt.Errorf("cannot marshal finalizers patch for=%q: %w", instance.GetName(), err)
 	}
 	if err := rclient.Patch(ctx, instance, client.RawPatch(types.JSONPatchType, patchData)); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
 		return fmt.Errorf("cannot patch finalizers for object=%q with name=%q: %w", instance.GetObjectKind().GroupVersionKind(), instance.GetName(), err)
 	}
 	return nil

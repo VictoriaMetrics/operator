@@ -1,12 +1,16 @@
 package childobjects
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
-	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
 const eventualDeletionTimeout = 20
@@ -34,3 +38,15 @@ var _ = SynchronizedAfterSuite(
 	func() {
 		suite.ShutdownOperatorProcess()
 	})
+
+func expectConditionOkFor(conds []v1beta1vm.Condition, typeCondtains string) error {
+	for _, cond := range conds {
+		if strings.Contains(cond.Type, typeCondtains) {
+			if cond.Status == "True" {
+				return nil
+			}
+			return fmt.Errorf("unexpected status=%q for type=%q with message=%q", cond.Status, cond.Type, cond.Message)
+		}
+	}
+	return fmt.Errorf("expected condition not found")
+}

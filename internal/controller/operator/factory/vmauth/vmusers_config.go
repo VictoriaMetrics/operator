@@ -143,6 +143,9 @@ func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []*
 	for i := range secrets {
 		secret := secrets[i]
 		if err := rclient.Create(ctx, secret); err != nil {
+			if errors.IsAlreadyExists(err) {
+				continue
+			}
 			return err
 		}
 	}

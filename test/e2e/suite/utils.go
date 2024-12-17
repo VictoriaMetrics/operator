@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,7 +40,11 @@ func ExpectObjectStatus(ctx context.Context,
 		return fmt.Errorf("expected generation: %d be greater than: %d", obs.Status.ObservedGeneration, object.GetGeneration())
 	}
 	if obs.Status.UpdateStatus != status {
-		return fmt.Errorf("not expected object status=%q", obs.Status.UpdateStatus)
+		var conds []string
+		for _, cond := range obs.Status.Conditions {
+			conds = append(conds, fmt.Sprintf("type=%s,message=%q,generation=%d,status=%q", cond.Type, cond.Message, cond.ObservedGeneration, cond.Status))
+		}
+		return fmt.Errorf("not expected object status=%q, reason=%q,conditions=%s", obs.Status.UpdateStatus, obs.Status.Reason, strings.Join(conds, ","))
 	}
 
 	return nil

@@ -771,6 +771,15 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 				Value: ref.Hosts,
 			})
 		}
+		if ref.URLMapCommon.DiscoverBackendIPs != nil {
+			urlMap = append(urlMap, yaml.MapItem{
+				Key:   "discover_backend_ips",
+				Value: *ref.URLMapCommon.DiscoverBackendIPs,
+			},
+			)
+		}
+		urlMap = appendIfNotEmpty(ref.URLMapCommon.SrcHeaders, "src_headers", urlMap)
+		urlMap = appendIfNotEmpty(ref.URLMapCommon.SrcQueryArgs, "src_query_args", urlMap)
 		if len(ref.URLMapCommon.RequestHeaders) > 0 {
 			urlMap = append(urlMap, yaml.MapItem{
 				Key:   "headers",

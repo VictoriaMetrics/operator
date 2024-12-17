@@ -365,7 +365,7 @@ password: pass
 `,
 		},
 		{
-			name: "with load_balancing_policy and drop_src_path_prefix_parts and tls_insecure_skip_verify",
+			name: "with all URLMapCommon options and tls_insecure_skip_verify",
 			args: args{
 				user: &vmv1beta1.VMUser{
 					Spec: vmv1beta1.VMUserSpec{
@@ -389,6 +389,12 @@ password: pass
 									"/select/0/graphite",
 								},
 								URLMapCommon: vmv1beta1.URLMapCommon{
+									SrcQueryArgs:           []string{"foo=bar"},
+									SrcHeaders:             []string{"H1:V1"},
+									DiscoverBackendIPs:     ptr.To(true),
+									RequestHeaders:         []string{"X-Scope-OrgID: abc"},
+									ResponseHeaders:        []string{"RH1:V3"},
+									RetryStatusCodes:       []int{502, 503},
 									LoadBalancingPolicy:    ptr.To("first_available"),
 									DropSrcPathPrefixParts: ptr.To(2),
 								},
@@ -411,6 +417,18 @@ password: pass
   src_paths:
   - /select/0/prometheus
   - /select/0/graphite
+  discover_backend_ips: true
+  src_headers:
+  - H1:V1
+  src_query_args:
+  - foo=bar
+  headers:
+  - 'X-Scope-OrgID: abc'
+  response_headers:
+  - RH1:V3
+  retry_status_codes:
+  - 502
+  - 503
   drop_src_path_prefix_parts: 2
   load_balancing_policy: first_available
 - url_prefix:

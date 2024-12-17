@@ -120,6 +120,28 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		stss: statics,
 		scss: scrapeConfigs,
 	}
+	// filter out all service scrapes that access
+	// the file system.
+	// TODO: @f41gh7 properly check file system for other components
+	// with additional function
+	// keep it for backward-compatibility
+	var brokenServiceScrapes []*vmv1beta1.VMServiceScrape
+	if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		var cnt int
+	OUTER:
+		for _, sm := range sos.sss {
+			for _, endpoint := range sm.Spec.Endpoints {
+				if err := testForArbitraryFSAccess(endpoint.EndpointAuth); err != nil {
+					sm.Status.CurrentSyncError = err.Error()
+					brokenServiceScrapes = append(brokenServiceScrapes, sm)
+					continue OUTER
+				}
+			}
+			sos.sss[cnt] = sm
+			cnt++
+		}
+		sos.sss = sos.sss[:cnt]
+	}
 
 	ssCache, err := loadScrapeSecrets(ctx, rclient, sos, cr.Namespace, cr.Spec.APIServerConfig, cr.Spec.RemoteWrite)
 	if err != nil {
@@ -134,6 +156,8 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 	if err != nil {
 		return nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
 	}
+	// TODO: @f41gh7  move it to the separate function
+	sos.sssBroken = append(sos.sssBroken, brokenServiceScrapes...)
 
 	// Update secret based on the most recent configuration.
 	generatedConfig, err := generateConfig(
@@ -158,7 +182,6 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		return nil, fmt.Errorf("cannot gzip config for vmagent: %w", err)
 	}
 	s.Data[vmagentGzippedFilename] = buf.Bytes()
-	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmagent promscrape config"))
 
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
@@ -790,14 +813,14 @@ func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointSc
 	}
 	originDurationMs, err := metricsql.DurationValue(originInterval, 0)
 	if err != nil {
-		logger.WithContext(ctx).Error(err, "cannot parse duration value during limiting interval, using original value: %s", originInterval)
+		logger.WithContext(ctx).Error(err, fmt.Sprintf("cannot parse duration value during limiting interval, using original value: %s", originInterval))
 		return
 	}
 
 	if minIntervalStr != nil {
 		parsedMinMs, err := metricsql.DurationValue(*minIntervalStr, 0)
 		if err != nil {
-			logger.WithContext(ctx).Error(err, "cannot parse minScrapeInterval: %s, using original value: %s", *minIntervalStr, originInterval)
+			logger.WithContext(ctx).Error(err, fmt.Sprintf("cannot parse minScrapeInterval: %s, using original value: %s", *minIntervalStr, originInterval))
 			return
 		}
 		if parsedMinMs >= originDurationMs {
@@ -808,7 +831,7 @@ func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointSc
 	if maxIntervalStr != nil {
 		parsedMaxMs, err := metricsql.DurationValue(*maxIntervalStr, 0)
 		if err != nil {
-			logger.WithContext(ctx).Error(err, "cannot parse maxScrapeInterval: %s, using origin value: %s", *maxIntervalStr, originInterval)
+			logger.WithContext(ctx).Error(err, fmt.Sprintf("cannot parse maxScrapeInterval: %s, using origin value: %s", *maxIntervalStr, originInterval))
 			return
 		}
 		if parsedMaxMs < originDurationMs {

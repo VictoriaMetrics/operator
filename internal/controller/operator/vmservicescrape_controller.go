@@ -41,7 +41,7 @@ type VMServiceScrapeReconciler struct {
 // Init implements crdController interface
 func (r *VMServiceScrapeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMServiceScrape")
+	r.Log = l.WithName("controller.VMServiceScrape")
 	r.OriginScheme = sc
 }
 
@@ -86,7 +86,7 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			continue
 		}
 		currentVMagent := &vmagentItem
-		reqLogger := reqLogger.WithValues("parent_vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
+		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
 		ctx := logger.AddToContext(ctx, reqLogger)
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.

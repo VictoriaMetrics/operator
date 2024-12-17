@@ -41,7 +41,7 @@ type VMRuleReconciler struct {
 // Init implements crdController interface
 func (r *VMRuleReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMRule")
+	r.Log = l.WithName("controller.VMRule")
 	r.OriginScheme = sc
 }
 
@@ -86,7 +86,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			continue
 		}
 		currVMAlert := &vmalertItem
-		reqLogger := reqLogger.WithValues("parent_vmalert", currVMAlert.Name, "parent_namespace", currVMAlert.Namespace)
+		reqLogger := reqLogger.WithValues("vmalert", currVMAlert.Name, "parent_namespace", currVMAlert.Namespace)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
 		// only check selector when deleting object,

@@ -165,7 +165,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	stsNames := make(map[string]struct{})
 	if cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
 		shardsCount := *cr.Spec.ShardCount
-		logger.WithContext(ctx).Info("using cluster version of VMAgent with", "shards", shardsCount)
+		logger.WithContext(ctx).Info(fmt.Sprintf("using cluster version of VMAgent with shards count=%d", shardsCount))
 		for shardNum := 0; shardNum < shardsCount; shardNum++ {
 			shardedDeploy := newDeploy.DeepCopyObject()
 			var prevShardedObject runtime.Object
@@ -859,8 +859,6 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 }
 
 func createOrUpdateTLSAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, assets map[string]string) error {
-	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmagent_tls_assets"))
-
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.TLSAssetName(),

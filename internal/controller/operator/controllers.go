@@ -120,7 +120,7 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object objec
 		return originResult, nil
 	case errors.As(err, &pe):
 		if err := object.SetUpdateStatusTo(ctx, rclient, vmv1beta1.UpdateStatusFailed, err); err != nil {
-			logger.WithContext(ctx).Error(err, "failed to status with parsing error")
+			logger.WithContext(ctx).Error(err, "failed to update status with parsing error")
 		}
 		parseObjectErrorsTotal.WithLabelValues(pe.controller, fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())).Inc()
 	case errors.As(err, &ge):

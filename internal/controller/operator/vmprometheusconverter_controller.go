@@ -5,6 +5,19 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/converter"
@@ -12,20 +25,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-
-	"golang.org/x/sync/errgroup"
-	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/tools/cache"
 )
+
+var converterLogger = logf.Log.WithName("controller.PrometheusConverter")
 
 const (
 	// MetaMergeStrategyLabel merge strategy by default prefer prometheus meta labels
@@ -236,7 +238,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 }
 
 func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface, apiGroupVersion, kind string) {
-	l := log.WithValues("group", apiGroupVersion, "kind", kind)
+	l := converterLogger.WithValues("discovery_group", apiGroupVersion, "discovery_kind", kind)
 	l.Info("waiting for api resource")
 	tick := time.NewTicker(time.Second * 5)
 	for {
@@ -272,13 +274,13 @@ func (c *ConverterController) runInformerWithDiscovery(ctx context.Context, grou
 // Start implements interface.
 func (c *ConverterController) Start(ctx context.Context) error {
 	var errG errgroup.Group
-	log.Info("starting prometheus converter")
+	converterLogger.Info("starting prometheus converter")
 	c.Run(ctx, &errG)
 	go func() {
-		log.Info("waiting for prometheus converter to stop")
+		converterLogger.Info("waiting for prometheus converter to stop")
 		err := errG.Wait()
 		if err != nil {
-			log.Error(err, "error occurred at prometheus converter")
+			converterLogger.Error(err, "error occurred at prometheus converter")
 		}
 	}()
 	return nil
@@ -322,7 +324,7 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group) {
 // CreatePrometheusRule converts prometheus rule to vmrule
 func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 	promRule := rule.(*promv1.PrometheusRule)
-	l := log.WithValues("kind", "alertRule", "name", promRule.Name, "ns", promRule.Namespace)
+	l := converterLogger.WithValues("vmrule", promRule.Name, "namespace", promRule.Namespace)
 	cr := converter.ConvertPromRule(promRule, c.baseConf)
 
 	err := c.rclient.Create(context.Background(), cr)
@@ -331,7 +333,7 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 			c.UpdatePrometheusRule(nil, promRule)
 			return
 		}
-		l.Error(err, "cannot create AlertRule from Prometheusrule")
+		l.Error(err, "cannot create VMRule from PrometheusRule")
 		return
 	}
 }
@@ -339,7 +341,7 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 // UpdatePrometheusRule updates vmrule
 func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 	promRuleNew := new.(*promv1.PrometheusRule)
-	l := log.WithValues("kind", "VMRule", "name", promRuleNew.Name, "ns", promRuleNew.Namespace)
+	l := converterLogger.WithValues("vmrule", promRuleNew.Name, "namespace", promRuleNew.Namespace)
 	vmRule := converter.ConvertPromRule(promRuleNew, c.baseConf)
 	ctx := context.Background()
 	existingVMRule := &vmv1beta1.VMRule{}
@@ -380,7 +382,8 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 // CreateServiceMonitor converts ServiceMonitor to VMServiceScrape
 func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 	serviceMon := service.(*promv1.ServiceMonitor)
-	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMon.Name, "ns", serviceMon.Namespace)
+
+	l := converterLogger.WithValues("vmservicescrape", serviceMon.Name, "namespace", serviceMon.Namespace)
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMon, c.baseConf)
 	err := c.rclient.Create(context.Background(), vmServiceScrape)
 	if err != nil {
@@ -388,7 +391,7 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 			c.UpdateServiceMonitor(nil, serviceMon)
 			return
 		}
-		l.Error(err, "cannot create vmServiceScrape")
+		l.Error(err, "cannot create VMServiceScrape")
 		return
 	}
 }
@@ -396,7 +399,7 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 // UpdateServiceMonitor updates VMServiceMonitor
 func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 	serviceMonNew := new.(*promv1.ServiceMonitor)
-	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMonNew.Name, "ns", serviceMonNew.Namespace)
+	l := converterLogger.WithValues("vmservicescrape", serviceMonNew.Name, "namespace", serviceMonNew.Namespace)
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMonNew, c.baseConf)
 	existingVMServiceScrape := &vmv1beta1.VMServiceScrape{}
 	ctx := context.Background()
@@ -407,7 +410,7 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 				return
 			}
 		}
-		l.Error(err, "cannot get existing vmServiceScrape")
+		l.Error(err, "cannot get existing VMServiceScrape")
 		return
 	}
 
@@ -430,7 +433,7 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 
 	err = c.rclient.Update(ctx, existingVMServiceScrape)
 	if err != nil {
-		l.Error(err, "cannot update")
+		l.Error(err, "cannot update VMServiceScrape")
 		return
 	}
 }
@@ -438,7 +441,7 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 // CreatePodMonitor converts PodMonitor to VMPodScrape
 func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 	podMonitor := pod.(*promv1.PodMonitor)
-	l := log.WithValues("kind", "podScrape", "name", podMonitor.Name, "ns", podMonitor.Namespace)
+	l := converterLogger.WithValues("vmpodscrape", podMonitor.Name, "namespace", podMonitor.Namespace)
 	podScrape := converter.ConvertPodMonitor(podMonitor, c.baseConf)
 	err := c.rclient.Create(c.ctx, podScrape)
 	if err != nil {
@@ -446,7 +449,7 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 			c.UpdatePodMonitor(nil, podMonitor)
 			return
 		}
-		l.Error(err, "cannot create podScrape")
+		l.Error(err, "cannot create VMPodScrape")
 		return
 	}
 }
@@ -454,7 +457,7 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 // UpdatePodMonitor updates VMPodScrape
 func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 	podMonitorNew := new.(*promv1.PodMonitor)
-	l := log.WithValues("kind", "podScrape", "name", podMonitorNew.Name, "ns", podMonitorNew.Namespace)
+	l := converterLogger.WithValues("vmpodscrape", podMonitorNew.Name, "namespace", podMonitorNew.Namespace)
 	podScrape := converter.ConvertPodMonitor(podMonitorNew, c.baseConf)
 	ctx := context.Background()
 	existingVMPodScrape := &vmv1beta1.VMPodScrape{}
@@ -465,7 +468,7 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 				return
 			}
 		}
-		l.Error(err, "cannot get existing podMonitor")
+		l.Error(err, "cannot get existing VMPodScrape")
 		return
 	}
 	if existingVMPodScrape.Annotations[IgnoreConversionLabel] == IgnoreConversion {
@@ -487,7 +490,7 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 
 	err = c.rclient.Update(ctx, existingVMPodScrape)
 	if err != nil {
-		l.Error(err, "cannot update podScrape")
+		l.Error(err, "cannot update VMPodScrape")
 		return
 	}
 }
@@ -503,16 +506,16 @@ func (c *ConverterController) CreateAlertmanagerConfig(new interface{}) {
 		err = fmt.Errorf("BUG: scrape config of type %T is not supported", promAMc)
 	}
 	if err != nil {
-		log.Error(err, "cannot convert alertmanager config")
+		converterLogger.Error(err, "cannot convert alertmanager config")
 		return
 	}
-	l := log.WithValues("kind", "vmAlertmanagerConfig", "name", vmAMc.Name, "ns", vmAMc.Namespace)
+	l := converterLogger.WithValues("vmalertmanagerconfig", vmAMc.Name, "namespace", vmAMc.Namespace)
 	if err := c.rclient.Create(context.Background(), vmAMc); err != nil {
 		if errors.IsAlreadyExists(err) {
 			c.UpdateAlertmanagerConfig(nil, new)
 			return
 		}
-		l.Error(err, "cannot create vmServiceScrape")
+		l.Error(err, "cannot create VMAlertmanagerConfig")
 		return
 	}
 }
@@ -528,10 +531,10 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 		err = fmt.Errorf("BUG: alertmanager config of type %T is not supported", new)
 	}
 	if err != nil {
-		log.Error(err, "cannot convert alertmanager config at update")
+		converterLogger.Error(err, "cannot convert alertmanager config at update")
 		return
 	}
-	l := log.WithValues("kind", "vmAlertmanagerConfig", "name", vmAMc.Name, "ns", vmAMc.Namespace)
+	l := converterLogger.WithValues("vmalertmanagerconfig", vmAMc.Name, "namespace", vmAMc.Namespace)
 	existAlertmanagerConfig := &vmv1beta1.VMAlertmanagerConfig{}
 	ctx := context.Background()
 	if err := c.rclient.Get(ctx, types.NamespacedName{Name: vmAMc.Name, Namespace: vmAMc.Namespace}, existAlertmanagerConfig); err != nil {
@@ -540,7 +543,7 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 				return
 			}
 		}
-		l.Error(err, "cannot get existing vmalertmanagerconfig")
+		l.Error(err, "cannot get existing VMAlertmanagerConfig")
 		return
 	}
 
@@ -564,7 +567,7 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 
 	err = c.rclient.Update(ctx, existAlertmanagerConfig)
 	if err != nil {
-		l.Error(err, "cannot update exist alertmanager config")
+		l.Error(err, "cannot update exist VMAlertmanagerConfig")
 		return
 	}
 }
@@ -611,7 +614,7 @@ func getMetaMergeStrategy(vmMeta map[string]string) string {
 // CreateProbe converts Probe to VMProbe
 func (c *ConverterController) CreateProbe(obj interface{}) {
 	probe := obj.(*promv1.Probe)
-	l := log.WithValues("kind", "vmProbe", "name", probe.Name, "ns", probe.Namespace)
+	l := converterLogger.WithValues("vmprobe", probe.Name, "namespace", probe.Namespace)
 	vmProbe := converter.ConvertProbe(probe, c.baseConf)
 	err := c.rclient.Create(c.ctx, vmProbe)
 	if err != nil {
@@ -619,7 +622,7 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 			c.UpdateProbe(nil, probe)
 			return
 		}
-		l.Error(err, "cannot create vmProbe")
+		l.Error(err, "cannot create VMProbe")
 		return
 	}
 }
@@ -627,7 +630,7 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 // UpdateProbe updates VMProbe
 func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	probeNew := new.(*promv1.Probe)
-	l := log.WithValues("kind", "vmProbe", "name", probeNew.Name, "ns", probeNew.Namespace)
+	l := converterLogger.WithValues("vmprobe", probeNew.Name, "namespace", probeNew.Namespace)
 	vmProbe := converter.ConvertProbe(probeNew, c.baseConf)
 	ctx := context.Background()
 	existingVMProbe := &vmv1beta1.VMProbe{}
@@ -638,7 +641,7 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 				return
 			}
 		}
-		l.Error(err, "cannot get existing vmProbe")
+		l.Error(err, "cannot get existing VMProbe")
 		return
 	}
 	if existingVMProbe.Annotations[IgnoreConversionLabel] == IgnoreConversion {
@@ -660,7 +663,7 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	existingVMProbe.Spec = vmProbe.Spec
 	err = c.rclient.Update(ctx, existingVMProbe)
 	if err != nil {
-		l.Error(err, "cannot update vmProbe")
+		l.Error(err, "cannot update VMProbe")
 		return
 	}
 }
@@ -674,10 +677,10 @@ func (c *ConverterController) CreateScrapeConfig(scrapeConfig interface{}) {
 		vmScrapeConfig = converterv1alpha1.ConvertScrapeConfig(promScrapeConfig, c.baseConf)
 	default:
 		err = fmt.Errorf("BUG: scrape config of type %T is not supported", promScrapeConfig)
-		log.Error(err, "cannot parse promscrapeConfig for create")
+		converterLogger.Error(err, "cannot parse promscrapeConfig for create")
 		return
 	}
-	l := log.WithValues("kind", "vmScrapeConfig", "name", vmScrapeConfig.Name, "ns", vmScrapeConfig.Namespace)
+	l := converterLogger.WithValues("vmscrapeconfig", vmScrapeConfig.Name, "namespace", vmScrapeConfig.Namespace)
 	err = c.rclient.Create(context.Background(), vmScrapeConfig)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
@@ -698,10 +701,10 @@ func (c *ConverterController) UpdateScrapeConfig(_, newObj interface{}) {
 		vmScrapeConfig = converterv1alpha1.ConvertScrapeConfig(promScrapeConfig, c.baseConf)
 	default:
 		err = fmt.Errorf("BUG: scrape config of type %T is not supported", promScrapeConfig)
-		log.Error(err, "cannot parse promScrapeConfig for update")
+		converterLogger.Error(err, "cannot parse promScrapeConfig for update")
 		return
 	}
-	l := log.WithValues("kind", "vmScrapeConfig", "name", vmScrapeConfig.Name, "ns", vmScrapeConfig.Namespace)
+	l := converterLogger.WithValues("vmscrapeconfig", vmScrapeConfig.Name, "namespace", vmScrapeConfig.Namespace)
 	existingVMScrapeConfig := &vmv1beta1.VMScrapeConfig{}
 	ctx := context.Background()
 	err = c.rclient.Get(ctx, types.NamespacedName{Name: vmScrapeConfig.Name, Namespace: vmScrapeConfig.Namespace}, existingVMScrapeConfig)
@@ -711,7 +714,7 @@ func (c *ConverterController) UpdateScrapeConfig(_, newObj interface{}) {
 				return
 			}
 		}
-		l.Error(err, "cannot get existing vmScrapeConfig")
+		l.Error(err, "cannot get existing VMScrapeConfig")
 		return
 	}
 
@@ -733,7 +736,7 @@ func (c *ConverterController) UpdateScrapeConfig(_, newObj interface{}) {
 	existingVMScrapeConfig.Spec = vmScrapeConfig.Spec
 	err = c.rclient.Update(ctx, existingVMScrapeConfig)
 	if err != nil {
-		l.Error(err, "cannot update vmScrapeConfig")
+		l.Error(err, "cannot update VMScrapeConfig")
 		return
 	}
 }

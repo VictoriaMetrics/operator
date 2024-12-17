@@ -45,7 +45,7 @@ type VMAlertmanagerConfigReconciler struct {
 // Init implements crdController interface
 func (r *VMAlertmanagerConfigReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMAlertmanagerConfig")
+	r.Log = l.WithName("controller.VMAlertmanagerConfig")
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -89,7 +89,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 			continue
 		}
 
-		l := l.WithValues("parent_alertmanager", am.Name, "parent_namespace", am.Namespace)
+		l := l.WithValues("vmalertmanager", am.Name, "parent_namespace", am.Namespace)
 		ctx := logger.AddToContext(ctx, l)
 
 		// only check selector when deleting object,

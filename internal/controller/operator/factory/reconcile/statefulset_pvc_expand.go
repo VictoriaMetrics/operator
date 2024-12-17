@@ -39,6 +39,7 @@ import (
 // Other solution, to check orphaned objects by selector.
 // Lets leave it as this for now and handle later.
 func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, existingSTS *appsv1.StatefulSet) (bool, bool, error) {
+	l := logger.WithContext(ctx)
 	handleRemove := func() error {
 		// removes finalizer from exist sts, it allows to delete it
 		if err := finalize.RemoveFinalizer(ctx, rclient, existingSTS); err != nil {
@@ -79,7 +80,7 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 		if actualPVC == nil && newPVC == nil {
 			return false
 		}
-		// one of pvc is not nil
+		// one of pvcs are not nil
 		hasNotNilPVC := (actualPVC == nil && newPVC != nil) || (actualPVC != nil && newPVC == nil)
 		if hasNotNilPVC {
 			return true
@@ -89,15 +90,17 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 			sizeDiff := resource.NewQuantity(0, resource.BinarySI)
 			sizeDiff.Add(*newPVC.Spec.Resources.Requests.Storage())
 			sizeDiff.Sub(*actualPVC.Spec.Resources.Requests.Storage())
-			logger.WithContext(ctx).Info("must re-recreate sts, its pvc claim was changed", "size-diff", sizeDiff.String())
+			l.Info(fmt.Sprintf("must re-recreate sts, its pvc claim size=%s was changed", sizeDiff.String()))
 			return true
 		}
 
 		// compare meta and spec for pvc
-		if !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Labels, actualPVC.ObjectMeta.Labels) || !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Annotations, actualPVC.ObjectMeta.Annotations) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
+		if !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Labels, actualPVC.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepEqual(newPVC.ObjectMeta.Annotations, actualPVC.ObjectMeta.Annotations) ||
+			!equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
 			diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
 			specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)
-			logger.WithContext(ctx).Info("pvc changes detected", "metaDiff", diff, "specDiff", specDiff, "pvc", newPVC.Name)
+			l.Info(fmt.Sprintf("changes detected for PVC=%s metaDiff=%v, specDiff=%v", newPVC.Name, strings.Join(diff, ","), strings.Join(specDiff, ",")))
 			return true
 		}
 
@@ -106,18 +109,18 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 
 	// if vct got added, removed or changed, recreate the sts
 	if len(newSTS.Spec.VolumeClaimTemplates) != len(existingSTS.Spec.VolumeClaimTemplates) {
-		logger.WithContext(ctx).Info("VolumeClaimTemplates for statefulset was changed, recreating it", "sts", newSTS.Name)
+		l.Info("VolumeClaimTemplates count changes, recreating statefulset")
 		return true, true, handleRemove()
 	}
 	var vctChanged bool
 	for _, newVCT := range newSTS.Spec.VolumeClaimTemplates {
 		actualPVC := getPVCFromSTS(newVCT.Name, existingSTS)
 		if actualPVC == nil {
-			logger.WithContext(ctx).Info("VolumeClaimTemplate for statefulset was changed, recreating it", "sts", newSTS.Name, "VolumeClaimTemplates", newVCT.Name)
+			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s was not found at VolumeClaimTemplates, recreating statefulset", newVCT.Name))
 			return true, true, handleRemove()
 		}
 		if needRecreateOnStorageChange(actualPVC, &newVCT) {
-			logger.WithContext(ctx).Info("VolumeClaimTemplate for statefulset was changed, recreating it", "sts", newSTS.Name, "VolumeClaimTemplates", newVCT.Name)
+			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s have some changes, recreating StatefulSet", newVCT.Name))
 			vctChanged = true
 		}
 	}
@@ -130,6 +133,7 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 		newSTS.Spec.UpdateStrategy != existingSTS.Spec.UpdateStrategy ||
 		!ptr.Equal(newSTS.Spec.RevisionHistoryLimit, existingSTS.Spec.RevisionHistoryLimit) ||
 		!isPVClaimPolicyEqual(newSTS.Spec.PersistentVolumeClaimRetentionPolicy, existingSTS.Spec.PersistentVolumeClaimRetentionPolicy) {
+		l.Info("Unchangeable fields at StatefulSet spec were changed, recreating Statefulset")
 		return true, false, handleRemove()
 	}
 	if newSTS.Spec.ServiceName != existingSTS.Spec.ServiceName {
@@ -165,6 +169,7 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 	if sts.Spec.Replicas != nil && *sts.Spec.Replicas == 0 {
 		return nil
 	}
+	l := logger.WithContext(ctx)
 	targetClaimsByName := make(map[string]corev1.PersistentVolumeClaim)
 	for _, stsClaim := range sts.Spec.VolumeClaimTemplates {
 		targetClaimsByName[fmt.Sprintf("%s-%s", stsClaim.Name, sts.Name)] = stsClaim
@@ -184,22 +189,22 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 	for _, pvc := range pvcs.Items {
 		idx := strings.LastIndexByte(pvc.Name, '-')
 		if idx <= 0 {
-			return fmt.Errorf("not expected name for pvc=%q, it must have - as separator for sts=%q", pvc.Name, sts.Name)
+			return fmt.Errorf("not expected name for PVC=%q, it must have - as separator for sts=%q", pvc.Name, sts.Name)
 		}
 		// pvc created by sts always has name of CLAIM_NAME-STS_NAME-REPLICA_IDX
 		stsClaimName := pvc.Name[:idx]
 		stsClaim, ok := targetClaimsByName[stsClaimName]
 		if !ok {
-			logger.WithContext(ctx).Info("cannot find target pvc in new statefulset, please check if the old one is still needed", "pvc", pvc.Name, "sts", sts.Name, "claimName", stsClaimName)
+			l.Info(fmt.Sprintf("possible BUG, cannot find target PVC=%s in new statefulset by claim name=%s", pvc.Name, stsClaimName))
 			continue
 		}
 		// check if pvc need to grow
 		newSize := stsClaim.Spec.Resources.Requests.Storage()
 		oldSize := pvc.Spec.Resources.Requests.Storage()
-		if !mayGrow(ctx, newSize, oldSize) {
+		if !mayGrow(ctx, &pvc, newSize, oldSize) {
 			continue
 		}
-		logger.WithContext(ctx).Info("need to expand pvc size", "name", pvc.Name, "from", oldSize, "to", newSize)
+		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", pvc.Name, oldSize, newSize))
 		// check if storage class is expandable
 		isExpandable, err := isStorageClassExpandable(ctx, rclient, &stsClaim)
 		if err != nil {
@@ -207,7 +212,7 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 		}
 		if !isExpandable {
 			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
-			logger.WithContext(ctx).Info("storage class for PVC doesn't support live resizing", "pvc", pvc.Name)
+			l.Info(fmt.Sprintf("storage class=%s for PVC=%s doesn't support live resizing", ptr.Deref(pvc.Spec.StorageClassName, "default"), pvc.Name))
 			continue
 		}
 		err = growPVCs(ctx, rclient, newSize, &pvc)
@@ -235,9 +240,9 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	// fast path at single namespace mode, listing storage classes is disabled
 	if !config.IsClusterWideAccessAllowed() {
 		// don't return error to caller, since there is no point to requeue and reconcile this
-		logger.WithContext(ctx).Info("cannot detect if storageClass expandable at single namespace mode"+
-			"need to expand PVC manually or enforce resizing by adding specific annotation to true",
-			"pvc annotation", vmv1beta1.PVCExpandableLabel)
+		logger.WithContext(ctx).Info(fmt.Sprintf("cannot detect if storageClass expandable at single namespace mode"+
+			`need to expand PVC manually or enforce resizing by adding annotation %s: "true" to PVC`,
+			vmv1beta1.PVCExpandableLabel))
 		return false, nil
 	}
 	var isNotDefault bool
@@ -286,7 +291,7 @@ func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantit
 }
 
 // checks if pvc needs to be resized.
-func mayGrow(ctx context.Context, newSize, existSize *resource.Quantity) bool {
+func mayGrow(ctx context.Context, pvc *corev1.PersistentVolumeClaim, newSize, existSize *resource.Quantity) bool {
 	if newSize == nil || existSize == nil {
 		return false
 	}
@@ -297,7 +302,8 @@ func mayGrow(ctx context.Context, newSize, existSize *resource.Quantity) bool {
 		// do no return error
 		// probably, user updated pvc manually
 		// without applying this changes to the configuration.
-		logger.WithContext(ctx).Error(fmt.Errorf("cannot decrease pvc size, want: %s, got: %s", newSize.String(), existSize.String()), "update pvc manually")
+		logger.WithContext(ctx).Error(fmt.Errorf("cannot decrease PVC=%s size from=%s to=%s", pvc.Name, newSize.String(), existSize.String()),
+			"cannot decrease PVC size, please check VolumeClaimTemplate configuration")
 		return false
 	default: // increase
 		return true

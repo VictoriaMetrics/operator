@@ -655,11 +655,8 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 					err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, false, func(ctx context.Context) (done bool, err error) {
 						var sts appsv1.StatefulSet
 						if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: fmt.Sprintf("vmagent-%s", tt.args.cr.Name)}, &sts); err != nil {
-
-							println("updating to err ", err.Error())
 							return false, nil
 						}
-						println("updating to ,t ", *tt.args.cr.Spec.ReplicaCount)
 						sts.Status.ReadyReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
 						sts.Status.UpdatedReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
 						sts.Status.CurrentReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)

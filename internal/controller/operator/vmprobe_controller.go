@@ -41,7 +41,7 @@ type VMProbeReconciler struct {
 // Init implements crdController interface
 func (r *VMProbeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMProbe")
+	r.Log = l.WithName("controller.VMProbe")
 	r.OriginScheme = sc
 }
 
@@ -86,7 +86,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 			continue
 		}
 		currentVMagent := &vmagentItem
-		reqLogger := reqLogger.WithValues("parent_vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
+		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
 		// only check selector when deleting object,

@@ -441,8 +441,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 // CreateAMConfig - check if secret with config exist,
 // if not create with predefined or user value.
 func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
-	l := logger.WithContext(ctx).WithValues("secret_for", "vmalertmanager config")
-	ctx = logger.AddToContext(ctx, l)
+	l := logger.WithContext(ctx)
 	var prevCR *vmv1beta1.VMAlertmanager
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -631,7 +630,7 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, &s); err != nil {
 		// return nil for backward compatibility
 		if errors.IsNotFound(err) {
-			logger.WithContext(ctx).Error(err, "alertmanager config secret doens't exist, default config is used", "secret", secretName, "secret_namespace", ns)
+			logger.WithContext(ctx).Error(err, fmt.Sprintf("alertmanager config secret=%q doens't exist at namespace=%q, default config is used", secretName, ns))
 			return nil, nil
 		}
 		return nil, fmt.Errorf("cannot get secret: %s at ns: %s, err: %w", secretName, ns, err)

@@ -3,13 +3,14 @@ package converter
 import (
 	"strings"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	ctrl "sigs.k8s.io/controller-runtime"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 	prometheusConfigmapDir = "/etc/prometheus/configmaps"
 )
 
-var log = ctrl.Log.WithValues("controller", "prometheus.converter")
+var log = logf.Log.WithName("controller.PrometheusConverter")
 
 // ConvertPromRule creates VMRule from PrometheusRule
 func ConvertPromRule(prom *promv1.PrometheusRule, conf *config.BaseOperatorConf) *vmv1beta1.VMRule {
@@ -506,7 +507,7 @@ func filterUnsupportedRelabelCfg(relabelCfgs []*vmv1beta1.RelabelConfig) []*vmv1
 		switch r.Action {
 		case "keep", "hashmod", "drop":
 			if len(r.SourceLabels) == 0 {
-				log.Info("filtering unsupported relabelConfig", "action", r.Action, "reason", "source labels are empty")
+				log.Info("filtering unsupported format of relabelConfig", "action", r.Action, "reason", "source labels are empty")
 				continue
 			}
 		}

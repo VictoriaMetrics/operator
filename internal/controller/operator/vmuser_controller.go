@@ -45,7 +45,7 @@ type VMUserReconciler struct {
 // Init implements crdController interface
 func (r *VMUserReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMUser")
+	r.Log = l.WithName("controller.VMUser")
 	r.OriginScheme = sc
 }
 
@@ -99,7 +99,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		// reconcile users for given vmauth.
 		currentVMAuth := &vmauthItem
-		l = l.WithValues("parent_vmauth", currentVMAuth.Name, "parent_namespace", currentVMAuth.Namespace)
+		l = l.WithValues("vmauth", currentVMAuth.Name, "parent_namespace", currentVMAuth.Namespace)
 		ctx := logger.AddToContext(ctx, l)
 
 		// only check selector when deleting object,

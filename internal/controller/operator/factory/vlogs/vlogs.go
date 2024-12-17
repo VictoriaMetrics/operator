@@ -10,7 +10,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,8 +27,6 @@ const (
 )
 
 func createVLogsStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VLogs) error {
-	l := logger.WithContext(ctx).WithValues("pvc_for", "vlogs")
-	ctx = logger.AddToContext(ctx, l)
 	newPvc := makeVLogsPvc(cr)
 	var prevPVC *corev1.PersistentVolumeClaim
 	if prevCR != nil && prevCR.Spec.Storage != nil {

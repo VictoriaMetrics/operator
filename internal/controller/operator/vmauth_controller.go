@@ -45,7 +45,7 @@ type VMAuthReconciler struct {
 // Init implements crdController interface
 func (r *VMAuthReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMAuth")
+	r.Log = l.WithName("controller.VMAuth")
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }

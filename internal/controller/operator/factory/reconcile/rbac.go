@@ -20,6 +20,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbac
 	var currentRB rbacv1.RoleBinding
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newRB.Namespace, Name: newRB.Name}, &currentRB); err != nil {
 		if errors.IsNotFound(err) {
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new RoleBinding=%s", newRB.Name))
 			return rclient.Create(ctx, newRB)
 		}
 		return fmt.Errorf("cannot get exist rolebinding: %w", err)
@@ -39,7 +40,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbac
 		isAnnotationsEqual(currentRB.Annotations, newRB.Annotations, prevAnnotations) {
 		return nil
 	}
-	logger.WithContext(ctx).Info("updating rolebinding configuration", "rolebinding_name", newRB.Name)
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating rolebinding=%s configuration", newRB.Name))
 
 	currentRB.Annotations = mergeAnnotations(currentRB.Annotations, newRB.Annotations, prevAnnotations)
 	currentRB.Labels = newRB.Labels
@@ -56,6 +57,9 @@ func Role(ctx context.Context, rclient client.Client, newRL, prevRL *rbacv1.Role
 	var currentRL rbacv1.Role
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newRL.Namespace, Name: newRL.Name}, &currentRL); err != nil {
 		if errors.IsNotFound(err) {
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Role=%s", newRL.Name))
+
+			logger.WithContext(ctx).Info("creating new Role")
 			return rclient.Create(ctx, newRL)
 		}
 		return fmt.Errorf("cannot get exist role: %w", err)
@@ -73,7 +77,7 @@ func Role(ctx context.Context, rclient client.Client, newRL, prevRL *rbacv1.Role
 		isAnnotationsEqual(currentRL.Annotations, newRL.Annotations, prevAnnotations) {
 		return nil
 	}
-	logger.WithContext(ctx).Info("updating role configuration", "role_name", newRL.Name)
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating role=%s configuration", newRL.Name))
 
 	currentRL.Annotations = mergeAnnotations(currentRL.Annotations, newRL.Annotations, prevAnnotations)
 	currentRL.Labels = newRL.Labels
@@ -90,6 +94,9 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newCRB, prev
 
 	if err := rclient.Get(ctx, types.NamespacedName{Name: newCRB.Name, Namespace: newCRB.Namespace}, &currentCRB); err != nil {
 		if errors.IsNotFound(err) {
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRoleBinding=%s", newCRB.Name))
+
+			logger.WithContext(ctx).Info("creating new ClusterRoleBinding")
 			return rclient.Create(ctx, newCRB)
 		}
 		return fmt.Errorf("cannot get crb: %w", err)
@@ -121,11 +128,13 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newCRB, prev
 
 }
 
+// ClusterRole reconciles cluster role object
 func ClusterRole(ctx context.Context, rclient client.Client, newClusterRole, prevClusterRole *rbacv1.ClusterRole) error {
 	var currentClusterRole rbacv1.ClusterRole
 
 	if err := rclient.Get(ctx, types.NamespacedName{Name: newClusterRole.Name, Namespace: newClusterRole.Namespace}, &currentClusterRole); err != nil {
 		if errors.IsNotFound(err) {
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRole=%s", newClusterRole.Name))
 			return rclient.Create(ctx, newClusterRole)
 		}
 		return fmt.Errorf("cannot get exist cluster role: %w", err)

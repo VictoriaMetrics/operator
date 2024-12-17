@@ -32,7 +32,7 @@ func selectScrapeConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient clie
 	}
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMScrapeConfig]{target: scrapeConfigsCombined, sorter: namespacedNames})
 	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info("selected scrapeConfigs", "scrapeConfigs", strings.Join(namespacedNames, ","))
+		logger.WithContext(ctx).Info(fmt.Sprintf("selected scrapeConfigs=%s", strings.Join(namespacedNames, ",")))
 	}
 
 	return scrapeConfigsCombined, nil
@@ -58,7 +58,7 @@ func selectPodScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client
 
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMPodScrape]{target: podScrapesCombined, sorter: namespacedNames})
 	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info("selected PodScrapes", "podscrapes", strings.Join(namespacedNames, ","))
+		logger.WithContext(ctx).Info(fmt.Sprintf("selected PodScrapes=%s", strings.Join(namespacedNames, ",")))
 	}
 
 	return podScrapesCombined, nil
@@ -83,7 +83,7 @@ func selectVMProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMProbe]{target: probesCombined, sorter: namespacedNames})
 	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info("selected VMProbes", "vmProbes", strings.Join(namespacedNames, ","))
+		logger.WithContext(ctx).Info(fmt.Sprintf("selected VMProbes=%s", strings.Join(namespacedNames, ",")))
 	}
 
 	return probesCombined, nil
@@ -116,7 +116,7 @@ func selectVMNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMNodeScrape]{target: nodesCombined, sorter: namespacedNames})
 	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info("selected VMNodeScrapes", "VMNodeScrapes", strings.Join(namespacedNames, ","))
+		logger.WithContext(ctx).Info(fmt.Sprintf("selected VMNodeScrapes=%s", strings.Join(namespacedNames, ",")))
 	}
 
 	return nodesCombined, nil
@@ -140,7 +140,7 @@ func selectStaticScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 	}
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMStaticScrape]{target: staticScrapesCombined, sorter: namespacedNames})
 	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info("selected StaticScrapes", "staticScrapes", strings.Join(namespacedNames, ","))
+		logger.WithContext(ctx).Info(fmt.Sprintf("selected StaticScrapes=%s", strings.Join(namespacedNames, ",")))
 	}
 
 	return staticScrapesCombined, nil
@@ -164,34 +164,10 @@ func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 		return nil, err
 	}
 
-	// filter out all service scrapes that access
-	// the file system.
-	// TODO this restriction applies only ServiceScrape, make it global to any other objects
-	if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
-		var cnt int
-	OUTER:
-		for idx, sm := range servScrapesCombined {
-			for _, endpoint := range sm.Spec.Endpoints {
-				if err := testForArbitraryFSAccess(endpoint.EndpointAuth); err != nil {
-					logger.WithContext(ctx).Info("skipping vmservicescrape",
-						"error", err.Error(),
-						"vmservicescrape", serviceScrapeNamespacedNames[idx],
-					)
-					continue OUTER
-				}
-			}
-			servScrapesCombined[cnt] = sm
-			serviceScrapeNamespacedNames[cnt] = serviceScrapeNamespacedNames[idx]
-			cnt++
-		}
-		servScrapesCombined = servScrapesCombined[:cnt]
-		serviceScrapeNamespacedNames = serviceScrapeNamespacedNames[:cnt]
-	}
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMServiceScrape]{sorter: serviceScrapeNamespacedNames, target: servScrapesCombined})
 
 	if len(serviceScrapeNamespacedNames) > 0 {
-		logger.WithContext(ctx).Info("selected ServiceScrapes", "servicescrapes",
-			strings.Join(serviceScrapeNamespacedNames, ","))
+		logger.WithContext(ctx).Info(fmt.Sprintf("selected ServiceScrapes=%s", strings.Join(serviceScrapeNamespacedNames, ",")))
 	}
 
 	return servScrapesCombined, nil

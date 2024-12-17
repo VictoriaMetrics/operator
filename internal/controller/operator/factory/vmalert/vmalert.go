@@ -75,8 +75,6 @@ func createOrUpdateVMAlertService(ctx context.Context, rclient client.Client, cr
 }
 
 func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ssCache map[string]*authSecret) error {
-	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmalert_remote_secrets"))
-
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -624,8 +622,6 @@ func loadVMAlertRemoteSecrets(
 }
 
 func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) error {
-	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmalert_tls_assets"))
-
 	assets, err := loadTLSAssetsForVMAlert(ctx, rclient, cr)
 	if err != nil {
 		return fmt.Errorf("cannot load tls assets: %w", err)
@@ -1022,7 +1018,7 @@ func discoverNotifierIfNeeded(ctx context.Context, rclient client.Client, cr *vm
 		sort.Slice(additionalNotifiers, func(i, j int) bool {
 			return additionalNotifiers[i].URL > additionalNotifiers[j].URL
 		})
-		logger.WithContext(ctx).Info("additional notifiers with sd selectors", "len", len(additionalNotifiers))
+		logger.WithContext(ctx).Info(fmt.Sprintf("additional notifiers=%d with sd selectors", len(additionalNotifiers)))
 	}
 	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
 	return nil

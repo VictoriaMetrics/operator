@@ -41,7 +41,7 @@ type VMPodScrapeReconciler struct {
 // Init implements crdController interface
 func (r *VMPodScrapeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMPodScrape")
+	r.Log = l.WithName("controller.VMPodScrape")
 	r.OriginScheme = sc
 }
 
@@ -87,7 +87,7 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			continue
 		}
 		currentVMagent := &vmagentItem
-		reqLogger := reqLogger.WithValues("parent_vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
+		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
 		// only check selector when deleting object,

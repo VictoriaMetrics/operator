@@ -122,7 +122,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 	// update secrets.
 	for i := range toUpdate {
 		secret := toUpdate[i]
-		logger.WithContext(ctx).Info("updating vmuser secret configuration", "secret_name", secret.Name)
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating vmuser secret=%s configuration", secret.Name))
 
 		if err := rclient.Update(ctx, secret); err != nil {
 			return nil, err
@@ -908,7 +908,7 @@ func selectVMUsers(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cli
 	for k := range res {
 		vmUsers = append(vmUsers, res[k].Name)
 	}
-	logger.WithContext(ctx).Info("selected VMUsers", "vmusers", strings.Join(vmUsers, ","))
+	logger.WithContext(ctx).Info(fmt.Sprintf("selected VMUsers=%s", strings.Join(vmUsers, ",")))
 
 	return res, nil
 }

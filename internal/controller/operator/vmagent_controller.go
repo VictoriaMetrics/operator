@@ -51,7 +51,7 @@ type VMAgentReconciler struct {
 // Init implements crdController interface
 func (r *VMAgentReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMAgent")
+	r.Log = l.WithName("controller.VMAgent")
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }

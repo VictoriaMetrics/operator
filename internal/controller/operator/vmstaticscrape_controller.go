@@ -25,7 +25,7 @@ type VMStaticScrapeReconciler struct {
 // Init implements crdController interface
 func (r *VMStaticScrapeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMStaticScrape")
+	r.Log = l.WithName("controller.VMStaticScrape")
 	r.OriginScheme = sc
 }
 
@@ -66,7 +66,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			continue
 		}
 		currentVMagent := &vmagentItem
-		reqLogger := reqLogger.WithValues("parent_vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
+		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
 		// only check selector when deleting object,

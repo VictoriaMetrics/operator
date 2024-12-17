@@ -66,7 +66,6 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 	if cr.IsUnmanaged() {
 		return nil, nil
 	}
-	l := logger.WithContext(ctx).WithValues("configmap_for", "vmalert_rules")
 	newRules, err := selectRulesUpdateStatus(ctx, cr, rclient)
 	if err != nil {
 		return nil, err
@@ -91,10 +90,13 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 	}
 
 	if len(currentCMs) == 0 {
-		l.Info("no Rule configmap found, creating new one")
 		for _, cm := range newConfigMaps {
-			err := rclient.Create(ctx, &cm, &client.CreateOptions{})
+			logger.WithContext(ctx).Info(fmt.Sprintf("configmap=%s for rules was not found, creating new one", cm.Name))
+			err := rclient.Create(ctx, &cm)
 			if err != nil {
+				if errors.IsAlreadyExists(err) {
+					continue
+				}
 				return nil, fmt.Errorf("failed to create Configmap: %s, err: %w", cm.Name, err)
 			}
 		}
@@ -113,8 +115,12 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 	// compute diff for current and needed rules configmaps.
 	toCreate, toUpdate := rulesCMDiff(currentCMs, newConfigMaps)
 	for _, cm := range toCreate {
+		logger.WithContext(ctx).Info(fmt.Sprintf("creating additional configmap=%s for rules", cm.Name))
 		err = rclient.Create(ctx, &cm)
 		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				continue
+			}
 			return nil, fmt.Errorf("failed to create new rules Configmap: %s, err: %w", cm.Name, err)
 		}
 	}
@@ -122,7 +128,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 		if err := finalize.FreeIfNeeded(ctx, rclient, &cm); err != nil {
 			return nil, err
 		}
-		logger.WithContext(ctx).Info("updating configmap configuration", "cm_name", cm.Name)
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating configmap=%s configuration", cm.Name))
 		err = rclient.Update(ctx, &cm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update rules Configmap: %s, err: %w", cm.Name, err)
@@ -131,11 +137,10 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 
 	if len(toCreate) > 0 || len(toUpdate) > 0 {
 		// trigger sync for configmap
-		logger.WithContext(ctx).Info("triggered pod config reload by changing annotation")
-
+		logger.WithContext(ctx).Info("triggering pod config reload by changing annotation")
 		err = k8stools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace)
 		if err != nil {
-			l.Error(err, "failed to update pod cm-sync annotation")
+			logger.WithContext(ctx).Error(err, "failed to update vmalert pod cm-sync annotation")
 		}
 	}
 
@@ -236,9 +241,8 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 		return nil, fmt.Errorf("cannot update bad rules statuses: %w", err)
 	}
 
-	logger.WithContext(ctx).Info("selected Rules",
-		"rules", strings.Join(ruleNames, ","),
-		"invalid rules", len(badRules),
+	logger.WithContext(ctx).Info(fmt.Sprintf("selected Rules=%s, invalid rules count: %d",
+		strings.Join(ruleNames, ","), len(badRules)),
 	)
 
 	return rules, nil
@@ -347,7 +351,7 @@ func deduplicateRules(ctx context.Context, origin []*vmv1beta1.VMRule) []*vmv1be
 			for _, rule := range grp.Rules {
 				ruleID := calculateRuleID(rule)
 				if _, ok := uniqRules[ruleID]; ok {
-					logger.WithContext(ctx).Info("duplicate rule found", "rule", rule)
+					logger.WithContext(ctx).Info(fmt.Sprintf("duplicate rule=%q found at group=%q for vmuser=%q", rule.Expr, grp.Name, vmRule.Name))
 				} else {
 					uniqRules[ruleID] = struct{}{}
 					rules = append(rules, rule)

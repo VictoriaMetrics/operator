@@ -70,6 +70,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		var currentSts appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
 			if errors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", newSts.Name))
 				if err = rclient.Create(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot create new sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 				}
@@ -113,11 +114,8 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				isAnnotationsEqual(currentSts.Annotations, newSts.Annotations, prevAnnotations)
 
 			if !shouldSkipUpdate {
-				logger.WithContext(ctx).Info("updating statefulset configuration",
-					"sts_name", newSts.Name,
-					"is_prev_equal", isPrevEqual,
-					"is_current_equal", isEqual,
-					"is_prev_nil", prevSts == nil)
+				logger.WithContext(ctx).Info("updating statefulset=%s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
+					newSts.Name, isEqual, isPrevEqual, prevSts == nil)
 
 				newSts.Annotations = mergeAnnotations(currentSts.Annotations, newSts.Annotations, prevAnnotations)
 				vmv1beta1.AddFinalizer(newSts, &currentSts)
@@ -189,13 +187,13 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	}
 
 	stsVersion := sts.Status.UpdateRevision
-	l := logger.WithContext(ctx).WithValues("controller", "sts.rollingupdate", "desiredVersion", stsVersion, "podMustRecreate", podMustRecreate, "sts.name", sts.Name)
+	l := logger.WithContext(ctx)
 	// fast path
 	if neededPodCount < 1 {
 		l.Info("sts has 0 replicas configured, nothing to update")
 		return nil
 	}
-	l.Info("check if pod update needed")
+	l.Info(fmt.Sprintf("check if pod update needed to desiredVersion=%s, podMustRecreate=%v", stsVersion, podMustRecreate))
 	podList := &corev1.PodList{}
 	labelSelector := labels.SelectorFromSet(podLabels)
 	listOps := &client.ListOptions{Namespace: ns, LabelSelector: labelSelector}
@@ -209,10 +207,9 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	switch {
 	// sanity check, should help to catch possible bugs
 	case len(podList.Items) > neededPodCount:
-		l.Info("unexpected count of pods for sts. "+
+		l.Info(fmt.Sprintf("unexpected count of pods=%d, want pod count=%d for sts. "+
 			"It seems like configuration of stateful wasn't correct and kubernetes cannot create pod,"+
-			" check kubectl events to find out source of problem",
-			"sts", sts.Name, "wantCount", neededPodCount, "actualCount", len(podList.Items), "namespace", ns)
+			" check kubectl events to find out source of problem", len(podList.Items), neededPodCount))
 	// usual case when some param misconfigured
 	// or kubernetes for some reason cannot create pod
 	// it's better to fail fast
@@ -256,7 +253,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	if !updatedNeeded {
 		l.Info("no pod needs to be updated")
 		if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
-			logger.WithContext(ctx).Info("update sts.Status.CurrentRevision", "sts", sts.Name, "currentRevision", sts.Status.CurrentRevision, "desiredRevision", sts.Status.UpdateRevision)
+			logger.WithContext(ctx).Info(fmt.Sprintf("update statefulSet.Status.CurrentRevision from revision=%s to desired revision=%s", sts.Status.CurrentRevision, sts.Status.UpdateRevision))
 			sts.Status.CurrentRevision = sts.Status.UpdateRevision
 			if err := rclient.Status().Update(ctx, sts); err != nil {
 				return fmt.Errorf("cannot update sts currentRevision after sts updated finished, err: %w", err)
@@ -265,21 +262,19 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		return nil
 	}
 
-	l.Info("check with updated but not ready pods", "updated pods count",
-		len(updatedPods), "desired version", stsVersion)
+	l.Info(fmt.Sprintf("discovered already updated pods=%d, pods needed to be update=%d", len(updatedPods), len(podsForUpdate)))
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
-		l.Info("checking ready status for already updated pod to desired version", "pod", pod.Name)
+		l.Info(fmt.Sprintf("checking ready status for already updated pod=%s to revision version=%s", pod.Name, stsVersion))
 		err := waitForPodReady(ctx, rclient, ns, pod.Name, sts.Spec.MinReadySeconds)
 		if err != nil {
 			return fmt.Errorf("cannot wait for pod ready state for already updated pod: %w", err)
 		}
 	}
 
-	l.Info("update outdated pods", "updated pods count", len(podsForUpdate), "desired version", stsVersion)
 	// perform update for not updated pods
 	for _, pod := range podsForUpdate {
-		l.Info("updating pod", "pod", pod.Name)
+		l.Info(fmt.Sprintf("updating pod=%s revision label=%s", pod.Name, pod.Labels[podRevisionLabel]))
 		// we have to delete pod and wait for it readiness
 		err := rclient.Delete(ctx, &pod)
 		if err != nil {
@@ -289,11 +284,11 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		if err != nil {
 			return fmt.Errorf("cannot wait for pod ready state during re-creation: %w", err)
 		}
-		l.Info("pod was updated successfully", "pod", pod.Name)
+		l.Info(fmt.Sprintf("pod=%s was updated successfully", pod.Name))
 	}
 
 	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
-		logger.WithContext(ctx).Info("update sts.Status.CurrentRevision", "sts", sts.Name, "currentRevision", sts.Status.CurrentRevision, "desiredRevision", sts.Status.UpdateRevision)
+		l.Info(fmt.Sprintf("finishing statefulset update by changing status from revision=%s to desired revision=%s ", sts.Status.CurrentRevision, sts.Status.UpdateRevision))
 		sts.Status.CurrentRevision = sts.Status.UpdateRevision
 		if err := rclient.Status().Update(ctx, sts); err != nil {
 			return fmt.Errorf("cannot update sts currentRevision after sts updated finished, err: %w", err)
@@ -332,7 +327,6 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 			return false, fmt.Errorf("cannot get pod: %q: %w", podName, err)
 		}
 		if PodIsReady(pod, minReadySeconds) {
-			logger.WithContext(ctx).Info("pod update finished with revision", "pod", pod.Name, "revision", pod.Labels[podRevisionLabel])
 			return true, nil
 		}
 		return false, nil

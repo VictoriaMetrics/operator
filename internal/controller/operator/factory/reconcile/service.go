@@ -43,6 +43,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 			return fmt.Errorf("cannot delete service at recreate: %w", err)
 		}
 		if err := rclient.Create(ctx, newService); err != nil {
+			logger.WithContext(ctx).Info(fmt.Sprintf("create new Service=%s", newService.Name))
 			return fmt.Errorf("cannot create service at recreate: %w", err)
 		}
 		return nil
@@ -114,11 +115,9 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		isAnnotationsEqual(currentService.Annotations, newService.Annotations, prevAnnotations) {
 		return nil
 	}
-	if prevService != nil {
-		logger.WithContext(ctx).Info("updating service configuration",
-			"is_current_equal", isEqual, "is_prev_equal", isPrevServiceEqual,
-		)
-	}
+
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating service=%s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
+		newService.Name, isEqual, isPrevServiceEqual, prevService == nil))
 
 	newService.Annotations = mergeAnnotations(currentService.Annotations, newService.Annotations, prevAnnotations)
 	vmv1beta1.AddFinalizer(newService, currentService)

@@ -67,7 +67,7 @@ func StatusForChildObjects[T any, PT interface {
 		}
 	}
 	if len(errors) > 0 {
-		logger.WithContext(ctx).Error(fmt.Errorf("%s have errors", parentObjectName), "skip resources for config generation", "child_object_errors", strings.Join(errors, ","))
+		logger.WithContext(ctx).Error(fmt.Errorf("%s have errors", parentObjectName), fmt.Sprintf("skip config generation for resources: %s", strings.Join(errors, ",")))
 	}
 	return nil
 }

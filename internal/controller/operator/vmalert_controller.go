@@ -47,7 +47,7 @@ type VMAlertReconciler struct {
 // Init implements crdController interface
 func (r *VMAlertReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMAlert")
+	r.Log = l.WithName("controller.VMAlert")
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }

@@ -14,10 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-var log = logf.Log.WithName("controller")
 
 // VMClusterReconciler reconciles a VMCluster object
 type VMClusterReconciler struct {
@@ -30,7 +27,7 @@ type VMClusterReconciler struct {
 // Init implements crdController interface
 func (r *VMClusterReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller").WithName("VMCluster")
+	r.Log = l.WithName("controller.VMCluster")
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -46,7 +43,7 @@ func (r *VMClusterReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters/finalizers,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := log.WithValues("vmcluster", request.Name, "namespace", request.Namespace)
+	reqLogger := r.Log.WithValues("vmcluster", request.Name, "namespace", request.Namespace)
 	ctx = logger.AddToContext(ctx, reqLogger)
 	instance := &vmv1beta1.VMCluster{}
 

@@ -26,16 +26,16 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: newPVC.Namespace, Name: newPVC.Name}, currentPVC)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("creating new pvc")
+			l.Info(fmt.Sprintf("creating new PVC=%s", newPVC.Name))
 			if err := rclient.Create(ctx, newPVC); err != nil {
-				return fmt.Errorf("cannot create new pvc: %w", err)
+				return fmt.Errorf("cannot create new PVC: %w", err)
 			}
 			return nil
 		}
-		return fmt.Errorf("cannot get existing pvc: %w", err)
+		return fmt.Errorf("cannot get existing PVC: %w", err)
 	}
 	if !currentPVC.DeletionTimestamp.IsZero() {
-		l.Info("pvc has non zero DeletionTimestamp, skip update." +
+		l.Info("PVC has non zero DeletionTimestamp, skip update." +
 			" To fix this, make backup for this pvc, delete pvc finalizers and restore from backup.")
 		return nil
 	}
@@ -46,7 +46,7 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 		prevAnnotations = prevPVC.Annotations
 	}
 
-	isResizeNeeded := mayGrow(ctx, newSize, oldSize)
+	isResizeNeeded := mayGrow(ctx, newPVC, newSize, oldSize)
 	if !isResizeNeeded &&
 		equality.Semantic.DeepEqual(newPVC.Labels, currentPVC.Labels) &&
 		isAnnotationsEqual(currentPVC.Annotations, newPVC.Annotations, prevAnnotations) {
@@ -56,15 +56,15 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 		// check if storage class is expandable
 		isExpandable, err := isStorageClassExpandable(ctx, rclient, newPVC)
 		if err != nil {
-			return fmt.Errorf("failed to check storageClass expandability for pvc %s: %v", newPVC.Name, err)
+			return fmt.Errorf("failed to check storageClass expandability for PVC=%s: %v", newPVC.Name, err)
 		}
 		if !isExpandable {
 			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
-			logger.WithContext(ctx).Info("storage class for PVC doesn't support live resizing", "pvc", newPVC.Name)
+			logger.WithContext(ctx).Info(fmt.Sprintf("storage class for PVC=%s doesn't support live resizing", newPVC.Name))
 			return nil
 		}
 	}
-	logger.WithContext(ctx).Info("updating PersistentVolumeClaim configuration")
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating PVC=%s configuration", newPVC.Name))
 
 	newPVC.Annotations = mergeAnnotations(currentPVC.Annotations, newPVC.Annotations, prevAnnotations)
 

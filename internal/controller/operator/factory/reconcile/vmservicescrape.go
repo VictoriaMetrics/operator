@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,6 +22,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: vss.Namespace, Name: vss.Name}, &existVSS)
 		if err != nil {
 			if errors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("create VMServiceScrape=%s", vss.Name))
 				return rclient.Create(ctx, vss)
 			}
 			return err
@@ -34,8 +36,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 			equality.Semantic.DeepEqual(vss.Annotations, existVSS.Annotations) {
 			return nil
 		}
-		// do not allow to add 3rd party annotations and labels
-		// since operator owns this resource
+		// TODO: @f41gh7 allow 3rd party applications to add annotations for generated VMServiceScrape
 		existVSS.Annotations = vss.Annotations
 		existVSS.Spec = vss.Spec
 		existVSS.Labels = vss.Labels

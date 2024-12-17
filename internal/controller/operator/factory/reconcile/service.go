@@ -42,8 +42,8 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		if err := finalize.SafeDelete(ctx, rclient, svc); err != nil {
 			return fmt.Errorf("cannot delete service at recreate: %w", err)
 		}
+		logger.WithContext(ctx).Info(fmt.Sprintf("recreating new Service %s", newService.Name))
 		if err := rclient.Create(ctx, newService); err != nil {
-			logger.WithContext(ctx).Info(fmt.Sprintf("create new Service=%s", newService.Name))
 			return fmt.Errorf("cannot create service at recreate: %w", err)
 		}
 		return nil
@@ -52,7 +52,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// service not exists, creating it.
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Service %s", newService.Name))
 			err := rclient.Create(ctx, newService)
 			if err != nil {
 				return fmt.Errorf("cannot create new service: %w", err)
@@ -116,7 +116,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		return nil
 	}
 
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating service=%s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating service %s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
 		newService.Name, isEqual, isPrevServiceEqual, prevService == nil))
 
 	newService.Annotations = mergeAnnotations(currentService.Annotations, newService.Annotations, prevAnnotations)

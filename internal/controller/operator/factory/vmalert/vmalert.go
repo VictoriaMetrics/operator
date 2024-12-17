@@ -1018,7 +1018,7 @@ func discoverNotifierIfNeeded(ctx context.Context, rclient client.Client, cr *vm
 		sort.Slice(additionalNotifiers, func(i, j int) bool {
 			return additionalNotifiers[i].URL > additionalNotifiers[j].URL
 		})
-		logger.WithContext(ctx).Info(fmt.Sprintf("additional notifiers=%d with sd selectors", len(additionalNotifiers)))
+		logger.WithContext(ctx).Info(fmt.Sprintf("additional notifiers count=%d discovered with sd selectors", len(additionalNotifiers)))
 	}
 	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
 	return nil

@@ -20,7 +20,7 @@ func ConfigMap(ctx context.Context, rclient client.Client, newCM *corev1.ConfigM
 	var currentCM corev1.ConfigMap
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newCM.Namespace, Name: newCM.Name}, &currentCM); err != nil {
 		if errors.IsNotFound(err) {
-			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ConfigMap=%s", newCM.Name))
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ConfigMap %s", newCM.Name))
 			return rclient.Create(ctx, newCM)
 		}
 	}
@@ -37,7 +37,7 @@ func ConfigMap(ctx context.Context, rclient client.Client, newCM *corev1.ConfigM
 	newCM.Annotations = mergeAnnotations(currentCM.Annotations, newCM.Annotations, prevAnnotations)
 
 	vmv1beta1.AddFinalizer(newCM, &currentCM)
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating configmap=%s configuration", newCM.Name))
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s configuration", newCM.Name))
 
 	return rclient.Update(ctx, newCM)
 }

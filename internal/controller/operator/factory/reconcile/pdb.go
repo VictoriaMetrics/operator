@@ -22,7 +22,7 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: newPDB.Namespace, Name: newPDB.Name}, currentPdb)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new PDB=%s", newPDB.Name))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new PDB %s", newPDB.Name))
 				return rclient.Create(ctx, newPDB)
 			}
 			return fmt.Errorf("cannot get existing pdb: %s, err: %w", newPDB.Name, err)
@@ -41,7 +41,7 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 			isAnnotationsEqual(currentPdb.Annotations, newPDB.Annotations, prevAnnotations) {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating PDB=%s configuration", newPDB.Name))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating PDB %s configuration", newPDB.Name))
 
 		// for some reason Status is not marked as status sub-resource at PDB CRD
 		newPDB.Status = currentPdb.Status

@@ -34,7 +34,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 		err := rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, &currentDeploy)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Deployment=%s", newDeploy.Name))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Deployment %s", newDeploy.Name))
 				if err := rclient.Create(ctx, newDeploy); err != nil {
 					return fmt.Errorf("cannot create new deployment for app: %s, err: %w", newDeploy.Name, err)
 				}
@@ -60,7 +60,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			isAnnotationsEqual(currentDeploy.Annotations, newDeploy.Annotations, prevAnnotations) {
 			return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating deployment=%s configuration"+
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Deployment %s configuration"+
 			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",
 			newDeploy.Name, isPrevEqual, isEqual, prevDeploy == nil))
 

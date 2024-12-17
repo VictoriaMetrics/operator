@@ -22,10 +22,10 @@ func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *c
 		var currentSA corev1.ServiceAccount
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newSA.Name, Namespace: newSA.Namespace}, &currentSA); err != nil {
 			if errors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ServiceAccount=%s", newSA.Name))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ServiceAccount %s", newSA.Name))
 				return rclient.Create(ctx, newSA)
 			}
-			return fmt.Errorf("cannot get ServiceAccount for given CRD Object=%q, err=%w", newSA.Name, err)
+			return fmt.Errorf("cannot get ServiceAccount: %w", err)
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSA); err != nil {
 			return err
@@ -38,7 +38,7 @@ func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *c
 			isAnnotationsEqual(currentSA.Annotations, newSA.Annotations, prevAnnotations) {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount=%s metadata", newSA.Name))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount %s metadata", newSA.Name))
 
 		currentSA.Annotations = mergeAnnotations(currentSA.Annotations, newSA.Annotations, prevAnnotations)
 		currentSA.Labels = newSA.Labels

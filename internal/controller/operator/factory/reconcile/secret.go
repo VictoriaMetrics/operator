@@ -21,7 +21,7 @@ func Secret(ctx context.Context, rclient client.Client, newS *corev1.Secret, pre
 
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newS.Namespace, Name: newS.Name}, &currentS); err != nil {
 		if errors.IsNotFound(err) {
-			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Secret=%s", newS.Name))
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Secret %s", newS.Name))
 			return rclient.Create(ctx, newS)
 		}
 		return err
@@ -39,7 +39,7 @@ func Secret(ctx context.Context, rclient client.Client, newS *corev1.Secret, pre
 		isAnnotationsEqual(currentS.Annotations, newS.Annotations, prevAnnotations) {
 		return nil
 	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating configuration secret=%s", newS.Name))
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating configuration Secret %s", newS.Name))
 
 	newS.Annotations = mergeAnnotations(currentS.Annotations, newS.Annotations, prevAnnotations)
 	newS.ResourceVersion = currentS.ResourceVersion

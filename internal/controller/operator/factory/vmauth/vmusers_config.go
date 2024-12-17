@@ -122,7 +122,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 	// update secrets.
 	for i := range toUpdate {
 		secret := toUpdate[i]
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating vmuser secret=%s configuration", secret.Name))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating vmuser secret %s configuration", secret.Name))
 
 		if err := rclient.Update(ctx, secret); err != nil {
 			return nil, err
@@ -902,7 +902,7 @@ func genPassword() (string, error) {
 // selects vmusers for given vmauth.
 func selectVMUsers(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) ([]*vmv1beta1.VMUser, error) {
 	var res []*vmv1beta1.VMUser
-
+	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMUserList) {
 			for _, item := range list.Items {
@@ -911,16 +911,15 @@ func selectVMUsers(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cli
 				}
 				item.Status.ObservedGeneration = item.GetGeneration()
 				res = append(res, item.DeepCopy())
+				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 			}
 		}); err != nil {
 		return nil, err
 	}
 
-	var vmUsers []string
-	for k := range res {
-		vmUsers = append(vmUsers, res[k].Name)
+	if len(namespacedNames) > 0 {
+		logger.WithContext(ctx).Info(fmt.Sprintf("selected VMUsers count=%d %s", len(namespacedNames), strings.Join(namespacedNames, ",")))
 	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("selected VMUsers=%s", strings.Join(vmUsers, ",")))
 
 	return res, nil
 }

@@ -91,7 +91,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 
 	if len(currentCMs) == 0 {
 		for _, cm := range newConfigMaps {
-			logger.WithContext(ctx).Info(fmt.Sprintf("configmap=%s for rules was not found, creating new one", cm.Name))
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ConfigMap %s for rules", cm.Name))
 			err := rclient.Create(ctx, &cm)
 			if err != nil {
 				if errors.IsAlreadyExists(err) {
@@ -128,7 +128,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 		if err := finalize.FreeIfNeeded(ctx, rclient, &cm); err != nil {
 			return nil, err
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating configmap=%s configuration", cm.Name))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s configuration", cm.Name))
 		err = rclient.Update(ctx, &cm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update rules Configmap: %s, err: %w", cm.Name, err)
@@ -183,13 +183,15 @@ func rulesCMDiff(currentCMs []corev1.ConfigMap, newCMs []corev1.ConfigMap) (toCr
 
 func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) (map[string]string, error) {
 	var vmRules []*vmv1beta1.VMRule
+	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMRuleList) {
 			for _, item := range list.Items {
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
-				vmRules = append(vmRules, item)
+				vmRules = append(vmRules, item.DeepCopy())
+				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 			}
 		}); err != nil {
 		return nil, err
@@ -241,9 +243,10 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 		return nil, fmt.Errorf("cannot update bad rules statuses: %w", err)
 	}
 
-	logger.WithContext(ctx).Info(fmt.Sprintf("selected Rules=%s, invalid rules count: %d",
-		strings.Join(ruleNames, ","), len(badRules)),
-	)
+	if len(namespacedNames) > 0 {
+		logger.WithContext(ctx).Info(fmt.Sprintf("selected Rules count=d, invalid rules count=%d, namespaced names %s",
+			len(namespacedNames), len(badRules), strings.Join(namespacedNames, ",")))
+	}
 
 	return rules, nil
 }
@@ -351,7 +354,7 @@ func deduplicateRules(ctx context.Context, origin []*vmv1beta1.VMRule) []*vmv1be
 			for _, rule := range grp.Rules {
 				ruleID := calculateRuleID(rule)
 				if _, ok := uniqRules[ruleID]; ok {
-					logger.WithContext(ctx).Info(fmt.Sprintf("duplicate rule=%q found at group=%q for vmuser=%q", rule.Expr, grp.Name, vmRule.Name))
+					logger.WithContext(ctx).Info(fmt.Sprintf("duplicate rule=%q found at group=%q for vmrule=%q", rule.Expr, grp.Name, vmRule.Name))
 				} else {
 					uniqRules[ruleID] = struct{}{}
 					rules = append(rules, rule)

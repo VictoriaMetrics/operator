@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -26,7 +27,7 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: newPVC.Namespace, Name: newPVC.Name}, currentPVC)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info(fmt.Sprintf("creating new PVC=%s", newPVC.Name))
+			l.Info(fmt.Sprintf("creating new PVC %s", newPVC.Name))
 			if err := rclient.Create(ctx, newPVC); err != nil {
 				return fmt.Errorf("cannot create new PVC: %w", err)
 			}
@@ -56,15 +57,15 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 		// check if storage class is expandable
 		isExpandable, err := isStorageClassExpandable(ctx, rclient, newPVC)
 		if err != nil {
-			return fmt.Errorf("failed to check storageClass expandability for PVC=%s: %v", newPVC.Name, err)
+			return fmt.Errorf("failed to check storageClass expandability for PVC %s: %v", newPVC.Name, err)
 		}
 		if !isExpandable {
 			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
-			logger.WithContext(ctx).Info(fmt.Sprintf("storage class for PVC=%s doesn't support live resizing", newPVC.Name))
+			logger.WithContext(ctx).Info(fmt.Sprintf("storageClass %s for PVC %s doesn't support live resizing", ptr.Deref(newPVC.Spec.StorageClassName, "default"), newPVC.Name))
 			return nil
 		}
 	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating PVC=%s configuration", newPVC.Name))
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating PVC %s configuration", newPVC.Name))
 
 	newPVC.Annotations = mergeAnnotations(currentPVC.Annotations, newPVC.Annotations, prevAnnotations)
 

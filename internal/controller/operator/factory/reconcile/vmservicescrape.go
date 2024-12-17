@@ -22,7 +22,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: vss.Namespace, Name: vss.Name}, &existVSS)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("create VMServiceScrape=%s", vss.Name))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating VMServiceScrape %s", vss.Name))
 				return rclient.Create(ctx, vss)
 			}
 			return err
@@ -40,7 +40,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 		existVSS.Annotations = vss.Annotations
 		existVSS.Spec = vss.Spec
 		existVSS.Labels = vss.Labels
-		logger.WithContext(ctx).Info("updating vmservicescrape for CRD object")
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMServiceScrape %s for CRD object", vss.Name))
 
 		return rclient.Update(ctx, &existVSS)
 	})

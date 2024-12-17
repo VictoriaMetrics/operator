@@ -21,6 +21,7 @@ func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.Horizon
 		var currentHPA v2.HorizontalPodAutoscaler
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newHPA.GetName(), Namespace: newHPA.GetNamespace()}, &currentHPA); err != nil {
 			if errors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating HPA %s configuration", newHPA.Name))
 				return rclient.Create(ctx, newHPA)
 			}
 			return fmt.Errorf("cannot get exist hpa object: %w", err)
@@ -38,7 +39,7 @@ func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.Horizon
 			isAnnotationsEqual(currentHPA.Annotations, newHPA.Annotations, prevAnnotations) {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating HPA=%s configuration", newHPA.Name))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating HPA %s configuration", newHPA.Name))
 
 		newHPA.ResourceVersion = currentHPA.ResourceVersion
 		newHPA.Status = currentHPA.Status

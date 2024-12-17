@@ -70,7 +70,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		var currentSts appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
 			if errors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", newSts.Name))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet %s", newSts.Name))
 				if err = rclient.Create(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot create new sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 				}
@@ -114,8 +114,8 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				isAnnotationsEqual(currentSts.Annotations, newSts.Annotations, prevAnnotations)
 
 			if !shouldSkipUpdate {
-				logger.WithContext(ctx).Info("updating statefulset=%s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
-					newSts.Name, isEqual, isPrevEqual, prevSts == nil)
+				logger.WithContext(ctx).Info(fmt.Sprintf("updating statefulset %s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
+					newSts.Name, isEqual, isPrevEqual, prevSts == nil))
 
 				newSts.Annotations = mergeAnnotations(currentSts.Annotations, newSts.Annotations, prevAnnotations)
 				vmv1beta1.AddFinalizer(newSts, &currentSts)
@@ -253,7 +253,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	if !updatedNeeded {
 		l.Info("no pod needs to be updated")
 		if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
-			logger.WithContext(ctx).Info(fmt.Sprintf("update statefulSet.Status.CurrentRevision from revision=%s to desired revision=%s", sts.Status.CurrentRevision, sts.Status.UpdateRevision))
+			logger.WithContext(ctx).Info(fmt.Sprintf("update statefulSet.Status.CurrentRevision from revision=%q to desired revision=%q", sts.Status.CurrentRevision, sts.Status.UpdateRevision))
 			sts.Status.CurrentRevision = sts.Status.UpdateRevision
 			if err := rclient.Status().Update(ctx, sts); err != nil {
 				return fmt.Errorf("cannot update sts currentRevision after sts updated finished, err: %w", err)
@@ -265,7 +265,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	l.Info(fmt.Sprintf("discovered already updated pods=%d, pods needed to be update=%d", len(updatedPods), len(podsForUpdate)))
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
-		l.Info(fmt.Sprintf("checking ready status for already updated pod=%s to revision version=%s", pod.Name, stsVersion))
+		l.Info(fmt.Sprintf("checking ready status for already updated pod %s to revision version=%q", pod.Name, stsVersion))
 		err := waitForPodReady(ctx, rclient, ns, pod.Name, sts.Spec.MinReadySeconds)
 		if err != nil {
 			return fmt.Errorf("cannot wait for pod ready state for already updated pod: %w", err)
@@ -274,7 +274,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 
 	// perform update for not updated pods
 	for _, pod := range podsForUpdate {
-		l.Info(fmt.Sprintf("updating pod=%s revision label=%s", pod.Name, pod.Labels[podRevisionLabel]))
+		l.Info(fmt.Sprintf("updating pod=%s revision label=%q", pod.Name, pod.Labels[podRevisionLabel]))
 		// we have to delete pod and wait for it readiness
 		err := rclient.Delete(ctx, &pod)
 		if err != nil {
@@ -284,11 +284,11 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		if err != nil {
 			return fmt.Errorf("cannot wait for pod ready state during re-creation: %w", err)
 		}
-		l.Info(fmt.Sprintf("pod=%s was updated successfully", pod.Name))
+		l.Info(fmt.Sprintf("pod %s was updated successfully", pod.Name))
 	}
 
 	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
-		l.Info(fmt.Sprintf("finishing statefulset update by changing status from revision=%s to desired revision=%s ", sts.Status.CurrentRevision, sts.Status.UpdateRevision))
+		l.Info(fmt.Sprintf("finishing statefulset update by changing status from revision=%q to desired revision=%q", sts.Status.CurrentRevision, sts.Status.UpdateRevision))
 		sts.Status.CurrentRevision = sts.Status.UpdateRevision
 		if err := rclient.Status().Update(ctx, sts); err != nil {
 			return fmt.Errorf("cannot update sts currentRevision after sts updated finished, err: %w", err)

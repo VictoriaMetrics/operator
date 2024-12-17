@@ -14,7 +14,7 @@ spec:
         containerPort: 8055
     serviceSpec:
       # expose additional port with default service
-      userAsDefault: true
+      useAsDefault: true
       spec:
         ports:
         - name: extra-port
@@ -45,7 +45,7 @@ spec:
       metadata:
         annotations:
           my-cloud-provide-annotation: value
-      userAsDefault: true
+      useAsDefault: true
       spec:
         type: LoadBalancer
     resources:

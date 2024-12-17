@@ -148,7 +148,7 @@ func ClusterRole(ctx context.Context, rclient client.Client, newClusterRole, pre
 		isAnnotationsEqual(currentClusterRole.Annotations, newClusterRole.Annotations, prevAnnotations) {
 		return nil
 	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRole", newClusterRole.Name))
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRole %s", newClusterRole.Name))
 
 	currentClusterRole.OwnerReferences = newClusterRole.OwnerReferences
 	currentClusterRole.Labels = newClusterRole.Labels

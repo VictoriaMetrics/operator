@@ -222,12 +222,6 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
 	}
 	vmRules = vmRules[:cnt]
-
-	ruleNames := make([]string, 0, len(rules))
-	for name := range rules {
-		ruleNames = append(ruleNames, name)
-	}
-
 	if len(rules) == 0 {
 		// inject default rule
 		// it's needed to start vmalert.
@@ -244,7 +238,7 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 	}
 
 	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info(fmt.Sprintf("selected Rules count=d, invalid rules count=%d, namespaced names %s",
+		logger.WithContext(ctx).Info(fmt.Sprintf("selected Rules count=%d, invalid rules count=%d, namespaced names %s",
 			len(namespacedNames), len(badRules), strings.Join(namespacedNames, ",")))
 	}
 

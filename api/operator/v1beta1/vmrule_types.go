@@ -126,12 +126,12 @@ type Rule struct {
 
 // VMRuleStatus defines the observed state of VMRule
 type VMRuleStatus struct {
-	// Status defines CRD processing status
-	Status UpdateStatus `json:"status,omitempty"`
-	// LastSyncError contains error message for unsuccessful config generation
-	LastSyncError string `json:"lastSyncError,omitempty"`
-	// CurrentSyncError holds an error occured during reconcile loop
-	CurrentSyncError string `json:"-"`
+	StatusMetadata `json:",inline"`
+}
+
+// GetStatusMetadata implements reconcile.objectWithStatus interface
+func (cr *VMRule) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VMRule defines rule records for vmalert application
@@ -140,8 +140,8 @@ type VMRuleStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmrules,scope=Namespaced
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
-// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.reason"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type VMRule struct {

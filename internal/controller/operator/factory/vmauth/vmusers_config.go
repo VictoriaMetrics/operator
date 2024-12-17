@@ -16,6 +16,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -127,32 +128,13 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 			return nil, err
 		}
 	}
-	for _, user := range sus.users {
-		// restore status back to normal
-		if user.Status.Status != vmv1beta1.UpdateStatusOperational {
-			pt := client.RawPatch(types.MergePatchType,
-				[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  "" ,"status": %q } }`, vmv1beta1.UpdateStatusOperational)))
-			if err := rclient.Status().Patch(ctx, user, pt); err != nil {
-				return nil, fmt.Errorf("failed to patch status of vmuser=%q: %w", user.Name, err)
-			}
-		}
-	}
-	var errContexts []string
-	for _, brokenUser := range sus.brokenVMUsers {
-		errContexts = append(errContexts, fmt.Sprintf("namespace/name=%s/%s,err=%s", brokenUser.Namespace, brokenUser.Name, brokenUser.Status.CurrentSyncError))
-		if brokenUser.Status.CurrentSyncError == brokenUser.Status.LastSyncError {
-			continue
-		}
 
-		// patch update status
-		pt := client.RawPatch(types.MergePatchType,
-			[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  %q , "status": %q} }`, brokenUser.Status.CurrentSyncError, vmv1beta1.UpdateStatusFailed)))
-		if err := rclient.Status().Patch(ctx, brokenUser, pt); err != nil {
-			return nil, fmt.Errorf("failed to patch status of broken vmuser=%q: %w", brokenUser.Name, err)
-		}
+	parentObject := fmt.Sprintf("%s.%s.vmauth", vmauth.GetName(), vmauth.GetNamespace())
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.users); err != nil {
+		return nil, fmt.Errorf("cannot update statuses for vmusers: %w", err)
 	}
-	if len(errContexts) > 0 {
-		logger.WithContext(ctx).Error(fmt.Errorf("vmauth has broken vmuser configurations"), strings.Join(errContexts, ","))
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.brokenVMUsers); err != nil {
+		return nil, fmt.Errorf("cannot update statuses for broken vmusers: %w", err)
 	}
 	return cfg, nil
 }
@@ -915,6 +897,7 @@ func selectVMUsers(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cli
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
+				item.Status.ObservedGeneration = item.GetGeneration()
 				res = append(res, item.DeepCopy())
 			}
 		}); err != nil {

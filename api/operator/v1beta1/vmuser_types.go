@@ -131,21 +131,15 @@ type TargetRefBasicAuth struct {
 
 // VMUserStatus defines the observed state of VMUser
 type VMUserStatus struct {
-	// Status defines update status of resource
-	Status UpdateStatus `json:"status,omitempty"`
-	// LastSyncError contains error message for unsuccessful config generation
-	// for given user
-	LastSyncError string `json:"lastSyncError,omitempty"`
-	// CurrentSyncError holds an error occured during reconcile loop
-	CurrentSyncError string `json:"-"`
+	StatusMetadata `json:",inline"`
 }
 
 // VMUser is the Schema for the vmusers API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
-// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.reason"
 // +genclient
 type VMUser struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -225,6 +219,11 @@ func (cr VMUser) AllLabels() map[string]string {
 		}
 	}
 	return labels
+}
+
+// GetStatusMetadata implements reconcile.objectWithStatus interface
+func (cr *VMUser) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 func init() {

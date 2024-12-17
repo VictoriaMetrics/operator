@@ -12,6 +12,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/ghodss/yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
@@ -225,38 +226,20 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 		// it's needed to start vmalert.
 		rules["default-vmalert.yaml"] = defAlert
 	}
-	var errors []string
-	for _, bRule := range badRules {
-		errors = append(errors, fmt.Sprintf("namespace/name=%s/%s,err=%s", bRule.Namespace, bRule.Name, bRule.Status.CurrentSyncError))
-		if bRule.Status.CurrentSyncError == bRule.Status.LastSyncError {
-			continue
-		}
-		// patch update status
-		pt := client.RawPatch(types.MergePatchType,
-			[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  %q , "status": %q} }`, bRule.Status.CurrentSyncError, vmv1beta1.UpdateStatusFailed)))
-		if err := rclient.Status().Patch(ctx, bRule, pt); err != nil {
-			return nil, fmt.Errorf("failed to patch status of broken vmrule=%q: %w", bRule.Name, err)
-		}
-	}
-	if len(errors) > 0 {
-		logger.WithContext(ctx).Error(fmt.Errorf("errors: %s", strings.Join(errors, ";")), "invalid vmrules detected during parsing")
-	}
 	badConfigsTotal.Add(float64(len(badRules)))
+
+	parentObject := fmt.Sprintf("%s.%s.vmalert", cr.Name, cr.Namespace)
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, vmRules); err != nil {
+		return nil, err
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, badRules); err != nil {
+		return nil, fmt.Errorf("cannot update bad rules statuses: %w", err)
+	}
 
 	logger.WithContext(ctx).Info("selected Rules",
 		"rules", strings.Join(ruleNames, ","),
 		"invalid rules", len(badRules),
 	)
-	for _, rule := range vmRules {
-		// restore status back to normal
-		if rule.Status.Status != vmv1beta1.UpdateStatusOperational {
-			pt := client.RawPatch(types.MergePatchType,
-				[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  "", "status": %q } }`, vmv1beta1.UpdateStatusOperational)))
-			if err := rclient.Status().Patch(ctx, rule, pt); err != nil {
-				return nil, fmt.Errorf("failed to patch status of vmuser=%q: %w", rule.Name, err)
-			}
-		}
-	}
 
 	return rules, nil
 }

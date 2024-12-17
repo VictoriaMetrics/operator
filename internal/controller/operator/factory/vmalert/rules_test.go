@@ -292,7 +292,7 @@ groups:
 						if !item.DeletionTimestamp.IsZero() {
 							continue
 						}
-						if item.Status.Status != vmv1beta1.UpdateStatusOperational {
+						if item.Status.UpdateStatus != vmv1beta1.UpdateStatusOperational {
 							badRules = append(badRules, item)
 						}
 					}
@@ -302,7 +302,7 @@ groups:
 			if len(badRules) > 0 {
 				t.Logf("got rules with bad non-operational status: %d", len(badRules))
 				for _, br := range badRules {
-					t.Fatalf("rule=%s status=%s sync error=%s ", br.Name, br.Status.Status, br.Status.LastSyncError)
+					t.Fatalf("rule=%s status=%s sync error=%s ", br.Name, br.Status.UpdateStatus, br.Status.Reason)
 				}
 			}
 		})

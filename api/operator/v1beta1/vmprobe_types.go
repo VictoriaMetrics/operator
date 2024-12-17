@@ -96,8 +96,8 @@ type VMProberSpec struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
-// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.reason"
 // +genclient
 // +k8s:openapi-gen=true
 type VMProbe struct {
@@ -127,9 +127,9 @@ func (cr VMProbe) AsMapKey() string {
 	return fmt.Sprintf("probeScrape/%s/%s", cr.Namespace, cr.Name)
 }
 
-// GetStatus returns scrape object status
-func (cr *VMProbe) GetStatus() *ScrapeObjectStatus {
-	return &cr.Status
+// GetStatusMetadata implements reconcile.objectWithStatus interface
+func (cr *VMProbe) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 func init() {

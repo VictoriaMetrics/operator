@@ -2,11 +2,7 @@ package e2e
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-
-	operator "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,6 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	operator "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
 func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]string) string {
@@ -52,45 +52,13 @@ func expectObjectStatusExpanding(ctx context.Context,
 	rclient client.Client,
 	object client.Object,
 	name types.NamespacedName) error {
-	return expectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusExpanding)
+	return suite.ExpectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusExpanding)
 }
 func expectObjectStatusOperational(ctx context.Context,
 	rclient client.Client,
 	object client.Object,
 	name types.NamespacedName) error {
-	return expectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusOperational)
-}
-
-//nolint:dupl,lll
-func expectObjectStatus(ctx context.Context,
-	rclient client.Client,
-	object client.Object,
-	name types.NamespacedName,
-	status operator.UpdateStatus) error {
-	if err := rclient.Get(ctx, name, object); err != nil {
-		return err
-	}
-	jsD, err := json.Marshal(object)
-	if err != nil {
-		return err
-	}
-	type objectStatus struct {
-		Status struct {
-			operator.StatusMetadata `json:",inline"`
-		} `json:"status"`
-	}
-	var obs objectStatus
-	if err := json.Unmarshal(jsD, &obs); err != nil {
-		return err
-	}
-	if object.GetGeneration() > obs.Status.ObservedGeneration {
-		return fmt.Errorf("expected generation: %d be greater than: %d", obs.Status.ObservedGeneration, object.GetGeneration())
-	}
-	if obs.Status.UpdateStatus != status {
-		return fmt.Errorf("not expected object status=%q", obs.Status.UpdateStatus)
-	}
-
-	return nil
+	return suite.ExpectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusOperational)
 }
 
 type httpRequestOpts struct {

@@ -29,8 +29,8 @@ import (
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmscrapeconfigs,scope=Namespaced
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
-// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.reason"
 // +genclient
 type VMScrapeConfig struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -509,9 +509,9 @@ func (cr VMScrapeConfig) AsMapKey(prefix string, i int) string {
 	return fmt.Sprintf("scrapeConfig/%s/%s/%s/%d", cr.Namespace, cr.Name, prefix, i)
 }
 
-// GetStatus returns scrape object status
-func (cr *VMScrapeConfig) GetStatus() *ScrapeObjectStatus {
-	return &cr.Status
+// GetStatusMetadata implements reconcile.objectWithStatus interface
+func (cr *VMScrapeConfig) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 func init() {

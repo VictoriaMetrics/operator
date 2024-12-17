@@ -8,13 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +18,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 const (
@@ -652,6 +652,7 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
+				item.Status.ObservedGeneration = item.Generation
 				if item.Spec.ParsingError != "" {
 					item.Status.CurrentSyncError = item.Spec.ParsingError
 					badCfgs = append(badCfgs, &item)
@@ -675,10 +676,13 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 	parsedCfg.brokenAMCfgs = append(parsedCfg.brokenAMCfgs, badCfgs...)
 	l.Info("selected alertmanager configs",
 		"len", len(amCfgs), "invalid configs", len(parsedCfg.brokenAMCfgs))
-	if err := updateConfigsStatuses(ctx, rclient, cr, parsedCfg.amcfgs, parsedCfg.brokenAMCfgs); err != nil {
+	parent := fmt.Sprintf("%s.%s.vmalertmanager", cr.Name, cr.Namespace)
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, parsedCfg.amcfgs); err != nil {
 		return nil, fmt.Errorf("failed to update vmalertmanagerConfigs statuses: %w", err)
 	}
-
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, parsedCfg.brokenAMCfgs); err != nil {
+		return nil, fmt.Errorf("failed to update broken vmalertmanagerConfigs statuses: %w", err)
+	}
 	badConfigsTotal.Add(float64(len(badCfgs)))
 	return parsedCfg.data, nil
 }
@@ -689,69 +693,4 @@ func subPathForStorage(s *vmv1beta1.StorageSpec) string {
 	}
 
 	return "alertmanager-db"
-}
-
-const (
-	errorStatusUpdateTTL = 5 * time.Minute
-	errorStatusExpireTTL = 15 * time.Minute
-)
-
-// performs status update for given alertmanager configs
-func updateConfigsStatuses(ctx context.Context, rclient client.Client, amCR *vmv1beta1.VMAlertmanager, okConfigs, badconfig []*vmv1beta1.VMAlertmanagerConfig) error {
-	var errors []string
-
-	alertmanagerNamespacedName := fmt.Sprintf("%s/%s", amCR.Namespace, amCR.Name)
-	for _, badCfg := range badconfig {
-
-		// change status only at different error
-		if badCfg.Status.CurrentSyncError != "" && badCfg.Status.CurrentSyncError != badCfg.Status.LastSyncError {
-			// allow to change message only to single alertmanager
-			if badCfg.Status.LastErrorParentAlertmanagerName == "" || badCfg.Status.LastErrorParentAlertmanagerName == alertmanagerNamespacedName {
-				// patch update status
-				pt := client.RawPatch(types.MergePatchType,
-					[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  %q , "status": %q, "lastErrorParentAlertmanagerName": %q, "lastSyncErrorTimestamp": %d} }`,
-						badCfg.Status.CurrentSyncError, vmv1beta1.UpdateStatusFailed,
-						alertmanagerNamespacedName, time.Now().Unix())))
-				if err := rclient.Status().Patch(ctx, badCfg, pt); err != nil {
-					return fmt.Errorf("failed to patch status of broken VMAlertmanagerConfig=%q: %w", badCfg.Name, err)
-				}
-			}
-		}
-		// need to update ttl and parent alertmanager name
-		// race condition is possible, but it doesn't really matter.
-		lastTs := time.Unix(badCfg.Status.LastSyncErrorTimestamp, 0)
-		if time.Since(lastTs) > errorStatusUpdateTTL {
-			// update ttl
-			pt := client.RawPatch(types.MergePatchType,
-				[]byte(fmt.Sprintf(`{"status": { "lastErrorParentAlertmanagerName": %q, "lastSyncErrorTimestamp": %d} }`,
-					alertmanagerNamespacedName, time.Now().Unix())))
-			if err := rclient.Status().Patch(ctx, badCfg, pt); err != nil {
-				return fmt.Errorf("failed to patch status of broken VMAlertmanagerConfig=%q: %w", badCfg.Name, err)
-			}
-		}
-
-		errors = append(errors, fmt.Sprintf("parent=%s config=namespace/name=%s/%s error text: %s", alertmanagerNamespacedName, badCfg.Namespace, badCfg.Name, badCfg.Status.CurrentSyncError))
-	}
-	if len(errors) > 0 {
-		logger.WithContext(ctx).Error(fmt.Errorf("VMAlertmanagerConfigs have errors"), "skip it for config generation", "errors", strings.Join(errors, ","))
-	}
-	for _, amCfg := range okConfigs {
-		if amCfg.Status.LastSyncError != "" || amCfg.Status.Status != vmv1beta1.UpdateStatusOperational {
-			if amCfg.Status.LastErrorParentAlertmanagerName != alertmanagerNamespacedName {
-				// transit to ok status only if it's the same alertmanager that set error
-				// ot ttl passed
-				lastTs := time.Unix(amCfg.Status.LastSyncErrorTimestamp, 0)
-				if time.Since(lastTs) < errorStatusExpireTTL {
-					continue
-				}
-			}
-			amCfg.Status.LastSyncError = ""
-			pt := client.RawPatch(types.MergePatchType,
-				[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  "" , "status": %q, "lastSyncErrorTimestamp": 0, "lastErrorParentAlertmanagerName": "" } }`, vmv1beta1.UpdateStatusOperational)))
-			if err := rclient.Status().Patch(ctx, amCfg, pt); err != nil {
-				return fmt.Errorf("failed to patch status of VMAlertmanagerConfig=%q: %w", amCfg.Name, err)
-			}
-		}
-	}
-	return nil
 }

@@ -36,8 +36,8 @@ type VMNodeScrapeSpec struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
-// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.reason"
 // +genclient
 type VMNodeScrape struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -66,9 +66,9 @@ func (cr VMNodeScrape) AsMapKey() string {
 	return fmt.Sprintf("nodeScrape/%s/%s", cr.Namespace, cr.Name)
 }
 
-// GetStatus returns scrape object status
-func (cr *VMNodeScrape) GetStatus() *ScrapeObjectStatus {
-	return &cr.Status
+// GetStatusMetadata implements reconcile.objectWithStatus interface
+func (cr *VMNodeScrape) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 func init() {

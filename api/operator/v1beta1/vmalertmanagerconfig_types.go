@@ -93,26 +93,25 @@ type TimeRange struct {
 	EndTime string `json:"end_time" yaml:"end_time"`
 }
 
+// GetStatusMetadata implements reconcile.objectWithStatus interface
+func (amc *VMAlertmanagerConfig) GetStatusMetadata() *StatusMetadata {
+	return &amc.Status.StatusMetadata
+}
+
 // VMAlertmanagerConfigStatus defines the observed state of VMAlertmanagerConfig
 type VMAlertmanagerConfigStatus struct {
-	// Status defines CRD processing status
-	Status UpdateStatus `json:"status,omitempty"`
-	// LastSyncError contains error message for unsuccessful config generation
-	LastSyncError                   string `json:"lastSyncError,omitempty"`
+	// ObservedGeneration defines current generation picked by operator for the
+	// reconcile
+	StatusMetadata                  `json:",inline"`
 	LastErrorParentAlertmanagerName string `json:"lastErrorParentAlertmanagerName,omitempty"`
-	// LastSyncErrorTimestamp defines time when error occured
-	LastSyncErrorTimestamp int64 `json:"lastSyncErrorTimestamp,omitempty"`
-	// CurrentSyncError holds an error occured during reconcile loop
-	CurrentSyncError string `json:"-"`
 }
 
 // VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
-// +kubebuilder:printcolumn:name="VMAlertmanager Error",type="string",JSONPath=".status.lastErrorParentAlertmanagerName"
-// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.reason"
 // +genclient
 // +k8s:openapi-gen=true
 type VMAlertmanagerConfig struct {

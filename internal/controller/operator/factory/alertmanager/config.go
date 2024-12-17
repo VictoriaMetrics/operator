@@ -110,6 +110,7 @@ OUTER:
 
 		route, err := buildRoute(amcKey, amcKey.Spec.Route, true, alertmanagerCR)
 		if err != nil {
+			// TODO: @f41gh7 looks like this error is impossible
 			result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
 			amcKey.Status.CurrentSyncError = err.Error()
 			continue

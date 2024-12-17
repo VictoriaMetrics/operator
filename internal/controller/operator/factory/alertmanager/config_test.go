@@ -1533,8 +1533,8 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 				t.Fatalf("cannot select configs: %s", err)
 			}
 			for _, amc := range amCfgs {
-				if amc.Status.LastSyncError != "" {
-					t.Errorf("unexpected sync error: %s", amc.Status.LastSyncError)
+				if amc.Status.Reason != "" {
+					t.Errorf("unexpected sync error: %s", amc.Status.Reason)
 				}
 			}
 

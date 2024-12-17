@@ -47,8 +47,8 @@ type VMPodScrapeSpec struct {
 // +kubebuilder:resource:path=vmpodscrapes,scope=Namespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
-// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.reason"
 // +genclient
 type VMPodScrape struct {
 	metav1.TypeMeta `json:",inline"`
@@ -113,9 +113,9 @@ func (cr *VMPodScrape) AsMapKey(i int) string {
 	return fmt.Sprintf("podScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
-// GetStatus returns scrape object status
-func (cr *VMPodScrape) GetStatus() *ScrapeObjectStatus {
-	return &cr.Status
+// GetStatusMetadata implements reconcile.objectWithStatus interface
+func (cr *VMPodScrape) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 func init() {

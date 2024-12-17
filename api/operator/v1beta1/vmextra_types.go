@@ -62,6 +62,13 @@ const (
 	RelabelingConfigDir = "/etc/vm/relabeling"
 )
 
+const (
+	// ConditionParsingReason defines reason for child objects
+	ConditionParsingReason = "ConfigParsedAndApplied"
+	// ConditionDomainTypeAppliedSuffix defines type suffix for ConditionParsingReason reason
+	ConditionDomainTypeAppliedSuffix = ".victoriametrics.com/Applied"
+)
+
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 
@@ -1039,15 +1046,7 @@ type TLSClientConfig struct {
 
 // ScrapeObjectStatus defines the observed state of ScrapeObjects
 type ScrapeObjectStatus struct {
-	// ObservedGeneration defines current generation picked by operator for the
-	// reconcile
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
-	// Status defines update status of resource
-	Status UpdateStatus `json:"status,omitempty"`
-	// LastSyncError contains error message for unsuccessful config generation
-	LastSyncError string `json:"lastSyncError,omitempty"`
-	// CurrentSyncError holds an error occured during reconcile loop
-	CurrentSyncError string `json:"-"`
+	StatusMetadata `json:",inline"`
 }
 
 type objectWithLastAppliedState[T, ST any] interface {
@@ -1410,12 +1409,22 @@ type ExternalConfig struct {
 // +k8s:openapi-gen=true
 type StatusMetadata struct {
 	// UpdateStatus defines a status for update rollout
+	//
 	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
-	// Reason defines fail reason for reconcile process
+	// Reason defines human readadble error reason
+	//
 	Reason string `json:"reason,omitempty"`
 	// ObservedGeneration defines current generation picked by operator for the
 	// reconcile
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// CurrentSyncError holds an error occured during reconcile loop
+	CurrentSyncError string `json:"-"`
+	// Known .status.conditions.type are: "Available", "Progressing", and "Degraded"
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=type
+	Conditions []Condition `json:"conditions,omitempty"`
 }
 
 // ManagedObjectsMetadata contains Labels and Annotations
@@ -1440,4 +1449,52 @@ type Image struct {
 	Tag string `json:"tag,omitempty"`
 	// PullPolicy describes how to pull docker image
 	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
+}
+
+// Condition defines status condition of the resource
+type Condition struct {
+	// Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
+	// +required
+	// +kubebuilder:validation:MaxLength=316
+	Type string `json:"type"`
+	// status of the condition, one of True, False, Unknown.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=True;False;Unknown
+	Status metav1.ConditionStatus `json:"status"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,3,opt,name=observedGeneration"`
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Format=date-time
+	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
+	// LastUpdateTime is the last time of given type update.
+	// This value is used for status TTL update and removal
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Format=date-time
+	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
+
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MaxLength=1024
+	// +kubebuilder:validation:MinLength=1
+	Reason string `json:"reason"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	// +optional
+	// +kubebuilder:validation:MaxLength=32768
+	Message string `json:"message,omitempty"`
 }

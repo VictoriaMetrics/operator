@@ -51,13 +51,19 @@ type scrapesSecretsCache struct {
 }
 
 type scrapeObjects struct {
-	sss        []*vmv1beta1.VMServiceScrape
-	pss        []*vmv1beta1.VMPodScrape
-	stss       []*vmv1beta1.VMStaticScrape
-	nss        []*vmv1beta1.VMNodeScrape
-	prss       []*vmv1beta1.VMProbe
-	scss       []*vmv1beta1.VMScrapeConfig
-	badObjects []scrapeObjectWithStatus
+	sss              []*vmv1beta1.VMServiceScrape
+	pss              []*vmv1beta1.VMPodScrape
+	stss             []*vmv1beta1.VMStaticScrape
+	nss              []*vmv1beta1.VMNodeScrape
+	prss             []*vmv1beta1.VMProbe
+	scss             []*vmv1beta1.VMScrapeConfig
+	sssBroken        []*vmv1beta1.VMServiceScrape
+	pssBroken        []*vmv1beta1.VMPodScrape
+	stssBroken       []*vmv1beta1.VMStaticScrape
+	nssBroken        []*vmv1beta1.VMNodeScrape
+	prssBroken       []*vmv1beta1.VMProbe
+	scssBroken       []*vmv1beta1.VMScrapeConfig
+	totalBrokenCount int
 }
 
 // CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
@@ -161,71 +167,66 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta); err != nil {
 		return nil, fmt.Errorf("cannot reconcile vmagent config secret: %w", err)
 	}
-	if err := updateStatusesForScrapeObjects(ctx, rclient, sos); err != nil {
+	if err := updateStatusesForScrapeObjects(ctx, rclient, cr, sos); err != nil {
 		return nil, err
 	}
 
 	return ssCache, nil
 }
 
-func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, sos *scrapeObjects) error {
-	if len(sos.badObjects) > 0 {
-		var errorContexts []string
-		for _, bo := range sos.badObjects {
-			vmagentSecretFetchErrsTotal.Inc()
-			errorContexts = append(errorContexts, fmt.Sprintf("object=%s/%s/%s: sync error: %s", bo.GetObjectKind().GroupVersionKind().Kind, bo.GetNamespace(), bo.GetName(), bo.GetStatus().CurrentSyncError))
-		}
-		logger.WithContext(ctx).Error(fmt.Errorf("found invalid secret references at objects"), "excluding it from configuration", "object_errors", strings.Join(errorContexts, ","))
-	}
-	if err := updateStatusForEach(ctx, rclient, sos.badObjects, vmv1beta1.UpdateStatusFailed); err != nil {
+func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, sos *scrapeObjects) error {
+
+	vmagentSecretFetchErrsTotal.Add(float64(sos.totalBrokenCount))
+
+	parentObject := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nssBroken); err != nil {
 		return fmt.Errorf("cannot update statuses for bad scrape objects: %w", err)
 	}
-	if err := updateStatusForEach(ctx, rclient, sos.sss, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.sss); err != nil {
 		return fmt.Errorf("cannot update statuses for service scrape objects: %w", err)
 	}
-	if err := updateStatusForEach(ctx, rclient, sos.pss, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.pss); err != nil {
 		return fmt.Errorf("cannot update statuses for pod scrape objects: %w", err)
 	}
-	if err := updateStatusForEach(ctx, rclient, sos.nss, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.pssBroken); err != nil {
+		return fmt.Errorf("cannot update statuses for pod scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nss); err != nil {
 		return fmt.Errorf("cannot update statuses for node scrape objects: %w", err)
 	}
-	if err := updateStatusForEach(ctx, rclient, sos.prss, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nssBroken); err != nil {
+		return fmt.Errorf("cannot update statuses for node scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.prss); err != nil {
 		return fmt.Errorf("cannot update statuses for probe scrape objects: %w", err)
 	}
-	if err := updateStatusForEach(ctx, rclient, sos.stss, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.prssBroken); err != nil {
+		return fmt.Errorf("cannot update statuses for probe scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.stss); err != nil {
 		return fmt.Errorf("cannot update statuses for static scrape objects: %w", err)
 	}
-	if err := updateStatusForEach(ctx, rclient, sos.scss, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.stssBroken); err != nil {
+		return fmt.Errorf("cannot update statuses for static scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.scss); err != nil {
 		return fmt.Errorf("cannot update statuses for scrapeconfig scrape objects: %w", err)
 	}
-
-	return nil
-}
-
-func updateStatusForEach[T scrapeObjectWithStatus](ctx context.Context, rclient client.Client, iterable []T, desiredStatus vmv1beta1.UpdateStatus) error {
-	for _, so := range iterable {
-		cs := so.GetStatus()
-		if cs.Status != desiredStatus {
-			// patch update status
-			pt := client.RawPatch(types.MergePatchType,
-				[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  %q , "status": %q} }`, cs.CurrentSyncError, desiredStatus)))
-			if err := rclient.Status().Patch(ctx, so, pt); err != nil {
-				return fmt.Errorf("failed to patch status of broken scrape object=%q: %w", so.GetName(), err)
-			}
-		}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.scssBroken); err != nil {
+		return fmt.Errorf("cannot update statuses for scrapeconfig scrape objects: %w", err)
 	}
 	return nil
 }
 
 type scrapeObjectWithStatus interface {
 	client.Object
-	GetStatus() *vmv1beta1.ScrapeObjectStatus
+	GetStatusMetadata() *vmv1beta1.StatusMetadata
 }
 
 // returned objects with not found links have erased type
-func forEachCollectSkipNotFound[T scrapeObjectWithStatus](src []T, apply func(s T) error) ([]T, []scrapeObjectWithStatus, error) {
+func forEachCollectSkipNotFound[T scrapeObjectWithStatus](src []T, apply func(s T) error) ([]T, []T, error) {
 	var cnt int
-	var notNotFoundLinks []scrapeObjectWithStatus
+	var notNotFoundLinks []T
 	for _, o := range src {
 		if err := apply(o); err != nil {
 			var ne *k8stools.KeyNotFoundError
@@ -237,7 +238,7 @@ func forEachCollectSkipNotFound[T scrapeObjectWithStatus](src []T, apply func(s 
 			default:
 				return nil, nil, err
 			}
-			st := o.GetStatus()
+			st := o.GetStatusMetadata()
 			st.CurrentSyncError = fmt.Sprintf("cannot find refrenced object: %s", err)
 			continue
 		}
@@ -247,7 +248,6 @@ func forEachCollectSkipNotFound[T scrapeObjectWithStatus](src []T, apply func(s 
 	src = src[:cnt]
 	return src, notNotFoundLinks, nil
 }
-
 func loadSecretsToCacheFrom(ctx context.Context, rclient client.Client, ep *vmv1beta1.EndpointAuth, cacheKey, namespace string, ss *scrapesSecretsCache) error {
 	if ep.BasicAuth != nil {
 		credentials, err := loadBasicAuthSecretFromAPI(ctx, rclient, ep.BasicAuth, namespace, ss.nsSecretCache)
@@ -304,9 +304,7 @@ func loadScrapeSecrets(
 		tlsAssets:            map[string]string{},
 	}
 	var err error
-	var badObjects []scrapeObjectWithStatus
-	var tempBo []scrapeObjectWithStatus
-	sos.sss, tempBo, err = forEachCollectSkipNotFound(sos.sss, func(mon *vmv1beta1.VMServiceScrape) error {
+	sos.sss, sos.sssBroken, err = forEachCollectSkipNotFound(sos.sss, func(mon *vmv1beta1.VMServiceScrape) error {
 		for i, ep := range mon.Spec.Endpoints {
 			if err := loadSecretsToCacheFrom(ctx, rclient, &ep.EndpointAuth, mon.AsMapKey(i), mon.Namespace, ssCache); err != nil {
 				return err
@@ -331,9 +329,8 @@ func loadScrapeSecrets(
 	if err != nil {
 		return nil, err
 	}
-	badObjects = append(badObjects, tempBo...)
 
-	sos.nss, tempBo, err = forEachCollectSkipNotFound(sos.nss, func(node *vmv1beta1.VMNodeScrape) error {
+	sos.nss, sos.nssBroken, err = forEachCollectSkipNotFound(sos.nss, func(node *vmv1beta1.VMNodeScrape) error {
 		if err := loadSecretsToCacheFrom(ctx, rclient, &node.Spec.EndpointAuth, node.AsMapKey(), node.Namespace, ssCache); err != nil {
 			return err
 		}
@@ -356,9 +353,8 @@ func loadScrapeSecrets(
 	if err != nil {
 		return nil, err
 	}
-	badObjects = append(badObjects, tempBo...)
 
-	sos.pss, tempBo, err = forEachCollectSkipNotFound(sos.pss, func(pod *vmv1beta1.VMPodScrape) error {
+	sos.pss, sos.pssBroken, err = forEachCollectSkipNotFound(sos.pss, func(pod *vmv1beta1.VMPodScrape) error {
 		for i, ep := range pod.Spec.PodMetricsEndpoints {
 			if err := loadSecretsToCacheFrom(ctx, rclient, &ep.EndpointAuth, pod.AsMapKey(i), pod.Namespace, ssCache); err != nil {
 				return err
@@ -383,9 +379,8 @@ func loadScrapeSecrets(
 	if err != nil {
 		return nil, err
 	}
-	badObjects = append(badObjects, tempBo...)
 
-	sos.prss, tempBo, err = forEachCollectSkipNotFound(sos.prss, func(probe *vmv1beta1.VMProbe) error {
+	sos.prss, sos.prssBroken, err = forEachCollectSkipNotFound(sos.prss, func(probe *vmv1beta1.VMProbe) error {
 		if err := loadSecretsToCacheFrom(ctx, rclient, &probe.Spec.EndpointAuth, probe.AsMapKey(), probe.Namespace, ssCache); err != nil {
 			return err
 		}
@@ -407,9 +402,8 @@ func loadScrapeSecrets(
 	if err != nil {
 		return nil, err
 	}
-	badObjects = append(badObjects, tempBo...)
 
-	sos.stss, tempBo, err = forEachCollectSkipNotFound(sos.stss, func(staticCfg *vmv1beta1.VMStaticScrape) error {
+	sos.stss, sos.stssBroken, err = forEachCollectSkipNotFound(sos.stss, func(staticCfg *vmv1beta1.VMStaticScrape) error {
 		for i, ep := range staticCfg.Spec.TargetEndpoints {
 			if err := loadSecretsToCacheFrom(ctx, rclient, &ep.EndpointAuth, staticCfg.AsMapKey(i), staticCfg.Namespace, ssCache); err != nil {
 				return err
@@ -434,9 +428,8 @@ func loadScrapeSecrets(
 	if err != nil {
 		return nil, err
 	}
-	badObjects = append(badObjects, tempBo...)
 
-	sos.scss, tempBo, err = forEachCollectSkipNotFound(sos.scss, func(scrapeConfig *vmv1beta1.VMScrapeConfig) error {
+	sos.scss, sos.scssBroken, err = forEachCollectSkipNotFound(sos.scss, func(scrapeConfig *vmv1beta1.VMScrapeConfig) error {
 		if err := loadSecretsToCacheFrom(ctx, rclient, &scrapeConfig.Spec.EndpointAuth, scrapeConfig.AsMapKey("", 0), scrapeConfig.Namespace, ssCache); err != nil {
 			return err
 		}
@@ -626,8 +619,6 @@ func loadScrapeSecrets(
 		return nil, err
 	}
 
-	badObjects = append(badObjects, tempBo...)
-
 	// load apiserver basic auth secret
 	// no need to filter out misconfiguration
 	// it's VMAgent owner responsibility
@@ -681,7 +672,6 @@ func loadScrapeSecrets(
 		}
 
 	}
-	sos.badObjects = badObjects
 
 	return ssCache, nil
 }

@@ -445,6 +445,38 @@ _Appears in:_
 | `useStrictSecurity` | UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions | _boolean_ | false |
 
 
+#### Condition
+
+
+
+Condition defines status condition of the resource
+
+
+
+_Appears in:_
+- [ScrapeObjectStatus](#scrapeobjectstatus)
+- [StatusMetadata](#statusmetadata)
+- [VLogsStatus](#vlogsstatus)
+- [VMAgentStatus](#vmagentstatus)
+- [VMAlertStatus](#vmalertstatus)
+- [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus)
+- [VMAlertmanagerStatus](#vmalertmanagerstatus)
+- [VMAuthStatus](#vmauthstatus)
+- [VMClusterStatus](#vmclusterstatus)
+- [VMRuleStatus](#vmrulestatus)
+- [VMSingleStatus](#vmsinglestatus)
+- [VMUserStatus](#vmuserstatus)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `lastTransitionTime` | lastTransitionTime is the last time the condition transitioned from one status to another. | _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#time-v1-meta)_ | true |
+| `lastUpdateTime` | LastUpdateTime is the last time of given type update.<br />This value is used for status TTL update and removal | _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#time-v1-meta)_ | true |
+| `message` | message is a human readable message indicating details about the transition.<br />This may be an empty string. | _string_ | false |
+| `observedGeneration` | observedGeneration represents the .metadata.generation that the condition was set based upon.<br />For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br />with respect to the current state of the instance. | _integer_ | false |
+| `reason` | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br />Producers of specific condition types may define expected values and meanings for this field,<br />and whether the values are considered a guaranteed API.<br />The value should be a CamelCase string.<br />This field may not be empty. | _string_ | true |
+| `type` | Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase. | _string_ | true |
+
+
 #### ConfigMapKeyReference
 
 
@@ -1996,18 +2028,23 @@ StatusMetadata holds metadata of application update status
 
 
 _Appears in:_
+- [ScrapeObjectStatus](#scrapeobjectstatus)
 - [VLogsStatus](#vlogsstatus)
 - [VMAgentStatus](#vmagentstatus)
 - [VMAlertStatus](#vmalertstatus)
+- [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus)
 - [VMAlertmanagerStatus](#vmalertmanagerstatus)
 - [VMAuthStatus](#vmauthstatus)
 - [VMClusterStatus](#vmclusterstatus)
+- [VMRuleStatus](#vmrulestatus)
 - [VMSingleStatus](#vmsinglestatus)
+- [VMUserStatus](#vmuserstatus)
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
+| `conditions` | Known .status.conditions.type are: "Available", "Progressing", and "Degraded" | _[Condition](#condition) array_ | true |
 | `observedGeneration` | ObservedGeneration defines current generation picked by operator for the<br />reconcile | _integer_ | true |
-| `reason` | Reason defines fail reason for reconcile process | _string_ | true |
+| `reason` | Reason defines human readadble error reason | _string_ | true |
 | `updateStatus` | UpdateStatus defines a status for update rollout | _[UpdateStatus](#updatestatus)_ | true |
 
 
@@ -2421,14 +2458,18 @@ UpdateStatus defines status for application
 
 
 _Appears in:_
+- [ScrapeObjectStatus](#scrapeobjectstatus)
 - [StatusMetadata](#statusmetadata)
 - [VLogsStatus](#vlogsstatus)
 - [VMAgentStatus](#vmagentstatus)
 - [VMAlertStatus](#vmalertstatus)
+- [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus)
 - [VMAlertmanagerStatus](#vmalertmanagerstatus)
 - [VMAuthStatus](#vmauthstatus)
 - [VMClusterStatus](#vmclusterstatus)
+- [VMRuleStatus](#vmrulestatus)
 - [VMSingleStatus](#vmsinglestatus)
+- [VMUserStatus](#vmuserstatus)
 
 
 

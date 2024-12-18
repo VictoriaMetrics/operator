@@ -110,10 +110,16 @@ func setConditionTo(dst []vmv1beta1.Condition, cond vmv1beta1.Condition) []vmv1b
 	ttl := statusUpdateTTL + jitter
 	for idx, c := range dst {
 		if c.Type == cond.Type {
+			var forceLastTimeUpdate bool
 			if c.Status == cond.Status {
 				cond.LastTransitionTime = c.LastTransitionTime
+			} else {
+				forceLastTimeUpdate = true
 			}
-			if time.Since(c.LastUpdateTime.Time) <= ttl {
+			if c.ObservedGeneration != cond.ObservedGeneration {
+				forceLastTimeUpdate = true
+			}
+			if time.Since(c.LastUpdateTime.Time) <= ttl && !forceLastTimeUpdate {
 				cond.LastUpdateTime = c.LastUpdateTime
 			}
 			dst[idx] = cond

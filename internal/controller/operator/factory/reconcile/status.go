@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"reflect"
 	"sort"
 	"strings"
@@ -19,8 +20,8 @@ import (
 
 const (
 	// TODO: @f41gh7 make configurable
-	statusUpdateTTL = 5 * time.Minute
-	statusExpireTTL = 15 * time.Minute
+	statusUpdateTTL = 7 * time.Minute
+	statusExpireTTL = 20 * time.Minute
 )
 
 type objectWithStatus interface {
@@ -102,12 +103,17 @@ func updateChildStatusConditions[T any, PT interface {
 }
 
 func setConditionTo(dst []vmv1beta1.Condition, cond vmv1beta1.Condition) []vmv1beta1.Condition {
+	// update TTL with jitter in order to reduce load on kubernetes API server
+	// jitter should cover configured resync period (60s default value)
+	// it also reduce propbability of concurrent update requests
+	jitter := jitterForDuration(2 * time.Minute)
+	ttl := statusUpdateTTL + jitter
 	for idx, c := range dst {
 		if c.Type == cond.Type {
 			if c.Status == cond.Status {
 				cond.LastTransitionTime = c.LastTransitionTime
 			}
-			if time.Since(c.LastTransitionTime.Time) <= statusUpdateTTL {
+			if time.Since(c.LastUpdateTime.Time) <= ttl {
 				cond.LastUpdateTime = c.LastUpdateTime
 			}
 			dst[idx] = cond
@@ -120,9 +126,14 @@ func setConditionTo(dst []vmv1beta1.Condition, cond vmv1beta1.Condition) []vmv1b
 
 func removeStaleConditionsBySuffix(src []vmv1beta1.Condition, domainTypeSuffix string) []vmv1beta1.Condition {
 	tmp := src[:0]
+	// update TTL with jitter in order to reduce load on kubernetes API server
+	// jitter should cover configured resync period (60s default value)
+	// it also reduce propbability of concurrent update requests
+	jitter := jitterForDuration(3 * time.Minute)
+	ttl := statusExpireTTL + jitter
 	for _, cond := range src {
 		if strings.HasSuffix(cond.Type, domainTypeSuffix) {
-			if time.Since(cond.LastUpdateTime.Time) > statusExpireTTL {
+			if time.Since(cond.LastUpdateTime.Time) > ttl {
 				continue
 			}
 		}
@@ -145,4 +156,10 @@ func writeAggregatedStatus(stm *vmv1beta1.StatusMetadata, domainTypeSuffix strin
 		stm.UpdateStatus = vmv1beta1.UpdateStatusFailed
 		stm.Reason = errorMessages[0]
 	}
+}
+
+func jitterForDuration(d time.Duration) time.Duration {
+	dv := d / 2
+	p := float64(rand.Uint32()) / (1 << 32)
+	return time.Duration(p * float64(dv))
 }

@@ -81,7 +81,7 @@ type BaseOperatorConf struct {
 
 	VLogsDefault struct {
 		Image   string `default:"victoriametrics/victoria-logs"`
-		Version string `default:"v0.32.0-victorialogs"`
+		Version string `default:"v1.3.2-victorialogs"`
 		// ignored
 		ConfigReloadImage   string `ignored:"true"`
 		Port                string `default:"9428"`

@@ -351,6 +351,10 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 					if labels == nil {
 						labels = make(map[string]string)
 					}
+					// Use this hack to trigger update manually for GenerationChange predicate
+					// It's not a problem for production workloads
+					// Since operator performs period syncs for parent objects
+					source.SetGeneration(source.GetGeneration() + 1)
 					labels["testKey"] = "testValue"
 					source.SetLabels(labels)
 

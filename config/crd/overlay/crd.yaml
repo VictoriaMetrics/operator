@@ -15179,6 +15179,14 @@ spec:
                       DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
                       See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details.
                     type: integer
+                  dump_request_on_errors:
+                    description: |-
+                      DumpRequestOnErrors instructs vmauth to return detailed request params to the client
+                      if routing rules don't allow to forward request to the backends.
+                      Useful for debugging `src_hosts` and `src_headers` based routing rules
+
+                      available since v1.107.0 vmauth version
+                    type: boolean
                   headers:
                     description: |-
                       Headers represent additional http headers, that vmauth uses
@@ -31816,6 +31824,14 @@ spec:
                   DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
                   See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details.
                 type: integer
+              dump_request_on_errors:
+                description: |-
+                  DumpRequestOnErrors instructs vmauth to return detailed request params to the client
+                  if routing rules don't allow to forward request to the backends.
+                  Useful for debugging `src_hosts` and `src_headers` based routing rules
+
+                  available since v1.107.0 vmauth version
+                type: boolean
               generatePassword:
                 description: |-
                   GeneratePassword instructs operator to generate password for user

@@ -307,6 +307,14 @@ type VMUserConfigOptions struct {
 	// See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details.
 	// +optional
 	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty" yaml:"drop_src_path_prefix_parts,omitempty"`
+
+	// DumpRequestOnErrors instructs vmauth to return detailed request params to the client
+	// if routing rules don't allow to forward request to the backends.
+	// Useful for debugging `src_hosts` and `src_headers` based routing rules
+	//
+	// available since v1.107.0 vmauth version
+	// +optional
+	DumpRequestOnErrors *bool `json:"dump_request_on_errors,omitempty"`
 }
 
 // Validate performs semantic syntax validation

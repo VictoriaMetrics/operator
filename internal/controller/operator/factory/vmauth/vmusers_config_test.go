@@ -2042,6 +2042,7 @@ unauthorized_user:
 								LoadBalancingPolicy:    ptr.To("least_loaded"),
 								MaxConcurrentRequests:  ptr.To(150),
 								DropSrcPathPrefixParts: ptr.To(2),
+								DumpRequestOnErrors:    ptr.To(true),
 							},
 						},
 					},
@@ -2153,6 +2154,7 @@ unauthorized_user:
   max_concurrent_requests: 150
   load_balancing_policy: least_loaded
   drop_src_path_prefix_parts: 2
+  dump_request_on_errors: true
 `,
 		},
 	}

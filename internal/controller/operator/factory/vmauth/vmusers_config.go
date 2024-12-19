@@ -626,6 +626,12 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 		},
 		)
 	}
+	if opt.DumpRequestOnErrors != nil {
+		dst = append(dst, yaml.MapItem{
+			Key:   "dump_request_on_errors",
+			Value: *opt.DumpRequestOnErrors,
+		})
+	}
 	return dst, nil
 }
 

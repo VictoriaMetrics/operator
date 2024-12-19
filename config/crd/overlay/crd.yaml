@@ -5,16 +5,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vlogs.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: system
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VLogs
@@ -1066,16 +1056,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vmagents.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: vm
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VMAgent
@@ -5735,16 +5715,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vmalertmanagerconfigs.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: vm
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VMAlertmanagerConfig
@@ -9722,16 +9692,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vmalertmanagers.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: vm
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VMAlertmanager
@@ -12173,16 +12133,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vmalerts.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: vm
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VMAlert
@@ -14121,16 +14071,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vmauths.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: system
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VMAuth
@@ -15780,16 +15720,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vmclusters.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: vm
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VMCluster
@@ -23401,16 +23331,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vmrules.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: vm
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VMRule
@@ -28894,16 +28814,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vmsingles.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: vm
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VMSingle
@@ -31747,16 +31657,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   name: vmusers.operator.victoriametrics.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: vm
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: operator.victoriametrics.com
   names:
     kind: VMUser

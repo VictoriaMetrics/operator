@@ -53,16 +53,16 @@ patches:
   target:
     kind: CustomResourceDefinition
     name: vlogs.operator.victoriametrics.com
-- path: patches/webhook_in_operator_vmagents.yaml
-- path: patches/webhook_in_operator_vmsingles.yaml
-- path: patches/webhook_in_operator_vmalertmanagers.yaml
-- path: patches/webhook_in_operator_vmalerts.yaml
-- path: patches/webhook_in_operator_vmalertmanagerconfigs.yaml
-- path: patches/webhook_in_operator_vmauths.yaml
-- path: patches/webhook_in_operator_vmclusters.yaml
-- path: patches/webhook_in_operator_vmrules.yaml
-- path: patches/webhook_in_operator_vmusers.yaml
-- path: patches/webhook_in_operator_vlogs.yaml
+# - path: patches/webhook_in_operator_vmagents.yaml
+# - path: patches/webhook_in_operator_vmsingles.yaml
+# - path: patches/webhook_in_operator_vmalertmanagers.yaml
+# - path: patches/webhook_in_operator_vmalerts.yaml
+# - path: patches/webhook_in_operator_vmalertmanagerconfigs.yaml
+# - path: patches/webhook_in_operator_vmauths.yaml
+# - path: patches/webhook_in_operator_vmclusters.yaml
+# - path: patches/webhook_in_operator_vmrules.yaml
+# - path: patches/webhook_in_operator_vmusers.yaml
+# - path: patches/webhook_in_operator_vlogs.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.

@@ -276,6 +276,7 @@ kubernetes_sd_configs:
 								TokenRef:   &corev1.SecretKeySelector{Key: "consul_token"},
 								Datacenter: ptr.To("dc1"),
 								NodeMeta:   map[string]string{"worker": "1"},
+								Filter:     `filter=NodeMeta.os == "linux"`,
 							},
 						},
 						DNSSDConfigs: []vmv1beta1.DNSSDConfig{
@@ -353,6 +354,7 @@ consul_sd_configs:
   datacenter: dc1
   node_meta:
     worker: "1"
+  filter: filter=NodeMeta.os == "linux"
 dns_sd_configs:
 - names:
   - vmagent-0.vmagent.default.svc.cluster.local

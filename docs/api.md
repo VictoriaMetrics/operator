@@ -511,6 +511,7 @@ _Appears in:_
 | `authorization` | Authorization header to use on every scrape request. | _[Authorization](#authorization)_ | false |
 | `basicAuth` | BasicAuth information to use on every scrape request. | _[BasicAuth](#basicauth)_ | false |
 | `datacenter` | Consul Datacenter name, if not provided it will use the local Consul Agent Datacenter. | _string_ | false |
+| `filter` | Filter defines filter for /v1/catalog/services requests<br />See https://developer.hashicorp.com/consul/api-docs/features/filtering | _string_ | false |
 | `followRedirects` | Configure whether HTTP requests follow HTTP 3xx redirects.<br />If unset, use its default value. | _boolean_ | false |
 | `namespace` | Namespaces are only supported in Consul Enterprise. | _string_ | false |
 | `nodeMeta` | Node metadata key/value pairs to filter nodes for a given service. | _object (keys:string, values:string)_ | false |

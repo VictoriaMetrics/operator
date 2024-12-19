@@ -312,6 +312,12 @@ func generateScrapeConfig(
 					Value: config.AllowStale,
 				})
 			}
+			if len(config.Filter) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{
+					Key:   "filter",
+					Value: config.Filter,
+				})
+			}
 
 			if config.BasicAuth != nil {
 				var bac yaml.MapSlice

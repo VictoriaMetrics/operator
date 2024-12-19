@@ -238,6 +238,10 @@ type ConsulSDConfig struct {
 	// If unset, use its default value.
 	// +optional
 	AllowStale *bool `json:"allowStale,omitempty"`
+	// Filter defines filter for /v1/catalog/services requests
+	// See https://developer.hashicorp.com/consul/api-docs/features/filtering
+	// +optional
+	Filter string `json:"filter,omitempty"`
 	// BasicAuth information to use on every scrape request.
 	// +optional
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`

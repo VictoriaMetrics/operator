@@ -3,6 +3,7 @@ fbc:
   enabled: true
 packagemanifestClusterVersionLabel: auto
 addReviewers: true
+updateGraph: replaces-mode
 reviewers:
 - f41gh7
 - AndrewChubatiuk

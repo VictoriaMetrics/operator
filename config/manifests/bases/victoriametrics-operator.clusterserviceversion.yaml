@@ -37,7 +37,9 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: VLogs is the Schema for the vlogs API
+    - description: |-
+        VLogs is fast, cost-effective and scalable logs database.
+        VLogs is the Schema for the vlogs API
       displayName: VLogs
       kind: VLogs
       name: vlogs.operator.victoriametrics.com

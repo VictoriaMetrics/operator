@@ -223,10 +223,10 @@ olm: operator-sdk opm yq docs
 		-q --overwrite --version $(VERSION) \
 		--channels=beta --default-channel=beta --output-dir=bundle/$(VERSION)
 	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
-	cp config/manifests/ci.yaml bundle/
+	cp config/manifests/ci.*.yaml bundle/
 	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO):$(TAG)"' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
-	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.16"' \
+	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.18"' \
 		bundle/$(VERSION)/metadata/annotations.yaml
 	$(if $(findstring localhost,$(REGISTRY)), \
 		$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) .; \

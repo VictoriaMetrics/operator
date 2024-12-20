@@ -17,8 +17,10 @@ jobs:
         repo:
           - fork: VictoriaMetrics/operatorhub-operators
             upstream: k8s-operatorhub/community-operators
+            catalog: default
           - fork: VictoriaMetrics/openshift-community-operators-prod
             upstream: redhat-openshift-ecosystem/community-operators-prod
+            catalog: fbc
     steps:
       - name: Check out OperatorHub operators repo fork
         uses: actions/checkout@v4
@@ -55,7 +57,13 @@ jobs:
           export REPLACE_VERSION=$(find __k8s-operatorhub-repo/operators/victoriametrics-operator/* -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -1)
           yq -i '.spec.replaces = "victoriametrics-operator.v" + strenv(REPLACE_VERSION)' $MANIFEST_PATH
           mkdir -p __k8s-operatorhub-repo/operators/victoriametrics-operator
+          mv bundle/ci.${{ matrix.repo.catalog }}.yaml bundle/ci.yaml
+          rm bundle/ci.*.yaml
           mv bundle/* __k8s-operatorhub-repo/operators/victoriametrics-operator/
+          if [ -f __k8s-operatorhub-repo/operators/victoriametrics-operator/Makefile ]; then
+            cd __k8s-operatorhub-repo/operators/victoriametrics-operator
+            make catalogs
+          fi
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6

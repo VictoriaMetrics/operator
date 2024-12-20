@@ -4,7 +4,7 @@ updateGraph: replaces-mode
 packagemanifestClusterVersionLabel: auto
 addReviewers: true
 reviewers:
-  - f41gh7
-  - AndrewChubatiuk
-  - Haleygo
-  - victoriametrics-bot
+- f41gh7
+- AndrewChubatiuk
+- Haleygo
+- victoriametrics-bot

@@ -27,6 +27,12 @@ jobs:
           - fork: VictoriaMetrics/openshift-community-operators-prod
             upstream: redhat-openshift-ecosystem/community-operators-prod
     steps:
+      - name: Sync forks
+        run: |
+          gh repo sync {{ matrix.repo.fork }}
+          env:
+            GITHUB_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
+
       - name: Check out OperatorHub operators repo fork
         uses: actions/checkout@v4
         with:

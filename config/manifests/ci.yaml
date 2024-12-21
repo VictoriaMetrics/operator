@@ -1,5 +1,4 @@
 ---
-updateGraph: replaces-mode
 packagemanifestClusterVersionLabel: auto
 addReviewers: true
 reviewers:

@@ -435,11 +435,11 @@ type VMAgentStatus struct {
 	Selector string `json:"selector,omitempty"`
 	// ReplicaCount Total number of pods targeted by this VMAgent
 	Replicas int32 `json:"replicas,omitempty"`
-	// Deprecated
+	// deprecated and will be removed at v0.52.0
 	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
-	// Deprecated
+	// deprecated and will be removed at v0.52.0
 	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
-	// Deprecated
+	// deprecated and will be removed at v0.52.0
 	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
 	StatusMetadata      `json:",inline"`
 }

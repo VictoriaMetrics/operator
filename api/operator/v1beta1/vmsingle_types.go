@@ -123,15 +123,17 @@ func (cr *VMSingleSpec) UnmarshalJSON(src []byte) error {
 // VMSingleStatus defines the observed state of VMSingle
 // +k8s:openapi-gen=true
 type VMSingleStatus struct {
-	// ReplicaCount Total number of non-terminated pods targeted by this VMSingle.
+	// deprecated and will be removed at v0.52.0
 	Replicas int32 `json:"replicas,omitempty"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VMSingle.
+	// deprecated and will be removed at v0.52.0
 	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
-	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMSingle.
+	// deprecated and will be removed at v0.52.0
 	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VMSingle.
+	// deprecated and will be removed at v0.52.0
 	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
 	StatusMetadata      `json:",inline"`
+	// LegacyStatus is deprecated and will be removed at v0.52.0 version
+	LegacyStatus UpdateStatus `json:"singleStatus,omitempty"`
 }
 
 // VMSingle  is fast, cost-effective and scalable time-series database.
@@ -340,6 +342,9 @@ func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, r client.Client, stat
 		cr:           cr,
 		crStatus:     &cr.Status,
 		maybeErr:     maybeErr,
+		mutateCurrentBeforeCompare: func(vs *VMSingleStatus) {
+			vs.LegacyStatus = status
+		},
 	})
 }
 

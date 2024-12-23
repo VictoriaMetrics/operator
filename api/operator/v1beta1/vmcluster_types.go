@@ -175,6 +175,8 @@ type VMClusterStatus struct {
 	// Deprecated.
 	LastSync       string `json:"lastSync,omitempty"`
 	StatusMetadata `json:",inline"`
+	// LegacyStatus is deprecated and will be removed at v0.52.0 version
+	LegacyStatus UpdateStatus `json:"clusterStatus,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -923,6 +925,9 @@ func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, sta
 		cr:           cr,
 		crStatus:     &cr.Status,
 		maybeErr:     maybeErr,
+		mutateCurrentBeforeCompare: func(vs *VMClusterStatus) {
+			vs.LegacyStatus = status
+		},
 	})
 }
 

@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): keep `resourceVersion` and other significant `metadata` fields during `update` objects requests. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1200) for details.
+* BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/) and [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): restore deprecated fields `status.clusterStatus` and `status.singleStatus` removed at `v0.51.0`. Those deprecated fields will be removed at upcoming `v0.52.0` version.
 
 ## [v0.51.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.51.0)
 

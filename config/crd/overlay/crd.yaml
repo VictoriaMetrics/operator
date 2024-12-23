@@ -952,7 +952,7 @@ spec:
             description: VLogsStatus defines the observed state of VLogs
             properties:
               availableReplicas:
-                description: deprecated
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
               conditions:
@@ -1028,18 +1028,17 @@ spec:
                 description: Reason defines human readadble error reason
                 type: string
               replicas:
-                description: deprecated
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
               unavailableReplicas:
-                description: deprecated
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
                 type: string
               updatedReplicas:
-                description: deprecated
                 format: int32
                 type: integer
             type: object
@@ -5599,7 +5598,7 @@ spec:
             description: VMAgentStatus defines the observed state of VMAgent
             properties:
               availableReplicas:
-                description: Deprecated
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
               conditions:
@@ -5687,14 +5686,14 @@ spec:
                 format: int32
                 type: integer
               unavailableReplicas:
-                description: Deprecated
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
                 type: string
               updatedReplicas:
-                description: Deprecated
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
             type: object
@@ -19811,6 +19810,10 @@ spec:
           status:
             description: VMClusterStatus defines the observed state of VMCluster
             properties:
+              clusterStatus:
+                description: LegacyStatus is deprecated and will be removed at v0.52.0
+                  version
+                type: string
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
                   and "Degraded"'
@@ -30497,8 +30500,7 @@ spec:
             description: VMSingleStatus defines the observed state of VMSingle
             properties:
               availableReplicas:
-                description: AvailableReplicas Total number of available pods (ready
-                  for at least minReadySeconds) targeted by this VMSingle.
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
               conditions:
@@ -30574,21 +30576,22 @@ spec:
                 description: Reason defines human readadble error reason
                 type: string
               replicas:
-                description: ReplicaCount Total number of non-terminated pods targeted
-                  by this VMSingle.
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
+              singleStatus:
+                description: LegacyStatus is deprecated and will be removed at v0.52.0
+                  version
+                type: string
               unavailableReplicas:
-                description: UnavailableReplicas Total number of unavailable pods
-                  targeted by this VMSingle.
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
                 type: string
               updatedReplicas:
-                description: UpdatedReplicas Total number of non-terminated pods targeted
-                  by this VMSingle.
+                description: deprecated and will be removed at v0.52.0
                 format: int32
                 type: integer
             type: object

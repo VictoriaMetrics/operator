@@ -18,28 +18,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 //nolint:dupl,lll
 var _ = Describe("test  vmagent Controller", func() {
 	ctx := context.Background()
-	It("must clean up previous test resutls", func() {
-		ctx = context.Background()
-		// clean up before tests
-		Expect(k8sClient.DeleteAllOf(ctx, &v1beta1vm.VMAgent{}, &client.DeleteAllOfOptions{
-			ListOptions: client.ListOptions{
-				Namespace: namespace,
-			},
-		})).To(Succeed())
-		Eventually(func() bool {
-			var unDeletedObjects v1beta1vm.VMAgentList
-			Expect(k8sClient.List(ctx, &unDeletedObjects, &client.ListOptions{
-				Namespace: namespace,
-			})).To(Succeed())
-			return len(unDeletedObjects.Items) == 0
-		}, eventualDeletionTimeout).Should(BeTrue())
-	})
 	Context("e2e vmagent", func() {
 		namespace := "default"
 		namespacedName := types.NamespacedName{

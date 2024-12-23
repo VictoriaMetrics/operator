@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 //nolint:dupl
@@ -27,23 +26,6 @@ var _ = Describe("test vmauth Controller", func() {
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}
-		It("must clean up previous test resutls", func() {
-			ctx = context.Background()
-			// clean up before tests
-			Expect(k8sClient.DeleteAllOf(ctx, &v1beta1vm.VMAuth{}, &client.DeleteAllOfOptions{
-				ListOptions: client.ListOptions{
-					Namespace: namespace,
-				},
-			})).To(Succeed())
-			Eventually(func() bool {
-				var unDeletedObjects v1beta1vm.VMAuthList
-				Expect(k8sClient.List(ctx, &unDeletedObjects, &client.ListOptions{
-					Namespace: namespace,
-				})).To(Succeed())
-				return len(unDeletedObjects.Items) == 0
-			}, eventualDeletionTimeout).Should(BeTrue())
-
-		})
 
 		Context("crud", func() {
 
@@ -136,6 +118,7 @@ var _ = Describe("test vmauth Controller", func() {
 			}
 			DescribeTable("should update exist vmauth",
 				func(name string, initCR *v1beta1vm.VMAuth, steps ...testStep) {
+
 					initCR.Name = name
 					initCR.Namespace = namespace
 					namespacedName.Name = name

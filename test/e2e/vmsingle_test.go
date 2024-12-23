@@ -21,23 +21,6 @@ import (
 
 //nolint:dupl,lll
 var _ = Describe("test  vmsingle Controller", func() {
-	It("must clean up previous test resutls", func() {
-		ctx := context.Background()
-		// clean up before tests
-		Expect(k8sClient.DeleteAllOf(ctx, &vmv1beta1.VMSingle{}, &client.DeleteAllOfOptions{
-			ListOptions: client.ListOptions{
-				Namespace: namespace,
-			},
-		})).To(Succeed())
-		Eventually(func() bool {
-			var unDeletedObjects vmv1beta1.VMSingleList
-			Expect(k8sClient.List(ctx, &unDeletedObjects, &client.ListOptions{
-				Namespace: namespace,
-			})).To(Succeed())
-			return len(unDeletedObjects.Items) == 0
-		}, eventualDeletionTimeout).Should(BeTrue())
-
-	})
 
 	Context("e2e vmsingle", func() {
 		var ctx context.Context

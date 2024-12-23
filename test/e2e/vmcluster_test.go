@@ -27,24 +27,6 @@ var _ = Describe("e2e vmcluster", func() {
 	namespacedName := types.NamespacedName{
 		Namespace: namespace,
 	}
-	It("must clean up previous test resutls", func() {
-		ctx = context.Background()
-		// clean up before tests
-		Expect(k8sClient.DeleteAllOf(ctx, &v1beta1vm.VMCluster{}, &client.DeleteAllOfOptions{
-			ListOptions: client.ListOptions{
-				Namespace: namespace,
-			},
-		})).To(Succeed())
-		Eventually(func() bool {
-			var unDeletedObjects v1beta1vm.VMClusterList
-			Expect(k8sClient.List(ctx, &unDeletedObjects, &client.ListOptions{
-				Namespace: namespace,
-			})).To(Succeed())
-			return len(unDeletedObjects.Items) == 0
-		}, eventualDeletionTimeout).WithContext(ctx).Should(BeTrue())
-
-	})
-
 	Context("create", func() {
 		JustBeforeEach(func() {
 			ctx = context.Background()

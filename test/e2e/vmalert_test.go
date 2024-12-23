@@ -13,28 +13,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 //nolint:dupl
 var _ = Describe("test  vmalert Controller", func() {
 	ctx := context.Background()
-	It("must clean up previous test resutls", func() {
-		ctx = context.Background()
-		// clean up before tests
-		Expect(k8sClient.DeleteAllOf(ctx, &v1beta1vm.VMAlert{}, &client.DeleteAllOfOptions{
-			ListOptions: client.ListOptions{
-				Namespace: namespace,
-			},
-		})).To(Succeed())
-		Eventually(func() bool {
-			var unDeletedObjects v1beta1vm.VMAlertList
-			Expect(k8sClient.List(ctx, &unDeletedObjects, &client.ListOptions{
-				Namespace: namespace,
-			})).To(Succeed())
-			return len(unDeletedObjects.Items) == 0
-		}, eventualDeletionTimeout).Should(BeTrue())
-	})
 
 	Context("e2e vmalert", func() {
 		namespace := "default"

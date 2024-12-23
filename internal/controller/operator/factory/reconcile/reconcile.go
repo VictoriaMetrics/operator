@@ -1,6 +1,8 @@
 package reconcile
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -81,4 +83,26 @@ func cloneSignificantMetadata(newObj, currObj client.Object) {
 	newObj.SetCreationTimestamp(currObj.GetCreationTimestamp())
 	newObj.SetUID(currObj.GetUID())
 	newObj.SetSelfLink(currObj.GetSelfLink())
+}
+
+// IsErrorWaitTimeout determines if the err is an error which indicates that timeout for app
+// transition into Ready state reached and should be continued at the next reconcile loop
+func IsErrorWaitTimeout(err error) bool {
+	var et *errWaitReady
+	return errors.As(err, &et)
+}
+
+type errWaitReady struct {
+	origin error
+}
+
+// Error implements errors.Error interface
+func (err *errWaitReady) Error() string {
+	return fmt.Sprintf(": %q",
+		err.origin)
+}
+
+// Unwrap implements error.Unwrap interface
+func (err *errWaitReady) Unwrap() error {
+	return err.origin
 }

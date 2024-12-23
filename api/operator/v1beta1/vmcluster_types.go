@@ -926,7 +926,7 @@ func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, sta
 		crStatus:     &cr.Status,
 		maybeErr:     maybeErr,
 		mutateCurrentBeforeCompare: func(vs *VMClusterStatus) {
-			vs.LegacyStatus = status
+			vs.LegacyStatus = vs.UpdateStatus
 		},
 	})
 }

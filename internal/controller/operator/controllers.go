@@ -9,9 +9,6 @@ import (
 	"sync"
 	"time"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +22,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	operatorreconcile "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 // BindFlags binds package flags to the given flagSet
@@ -270,6 +272,9 @@ func createGenericEventForObject(ctx context.Context, c client.Client, object cl
 	return nil
 }
 
+// TODO :@f41gh7 replace object with generic type
+// it allows to use DeepClone method to prevent hidden object updates
+// made by controller-runtime client
 func reconcileAndTrackStatus(ctx context.Context, c client.Client, object objectWithStatusTrack, cb func() (ctrl.Result, error)) (result ctrl.Result, resultErr error) {
 	if object.Paused() {
 		if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusPaused, nil); err != nil {
@@ -285,13 +290,25 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 	}
 	var diffPatch client.Patch
 	if specChanged {
+		// TODO: @f41gh7 replace error prone patch
+		// with client.Status.Update()
+		// it should simplify code
+		// and reduce surface of possible errors
 		diffPatch, err = object.LastAppliedSpecAsPatch()
 		if err != nil {
 			resultErr = fmt.Errorf("cannot parse last applied spec for cluster: %w", err)
 			return
 		}
+
 		if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusExpanding, nil); err != nil {
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
+			return
+		}
+		// update lastAppliedSpec as soon as operator receives it
+		// it allows to properly build diff with previous object state
+		// and rollback bad configurations
+		if err := c.Patch(ctx, object, diffPatch); err != nil {
+			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
 			return
 		}
 		if err := createGenericEventForObject(ctx, c, object, "starting object update"); err != nil {
@@ -307,7 +324,11 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 		if apierrors.IsConflict(err) {
 			return
 		}
-		if updateErr := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusFailed, err); updateErr != nil {
+		desiredStatus := vmv1beta1.UpdateStatusFailed
+		if operatorreconcile.IsErrorWaitTimeout(err) {
+			desiredStatus = vmv1beta1.UpdateStatusExpanding
+		}
+		if updateErr := object.SetUpdateStatusTo(ctx, c, desiredStatus, err); updateErr != nil {
 			resultErr = fmt.Errorf("failed to update object status: %q, origin err: %w", updateErr, err)
 			return
 		}
@@ -315,17 +336,10 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 		return result, err
 	}
 	if specChanged {
-		// use patch instead of update, only 1 field must be changed.
-		if err := c.Patch(ctx, object, diffPatch); err != nil {
-			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
-			return
-		}
-
 		if err := createGenericEventForObject(ctx, c, object, "reconcile of object finished successfully"); err != nil {
 			logger.WithContext(ctx).Error(err, " cannot create k8s api event")
 		}
 		logger.WithContext(ctx).Info("object was successfully reconciled")
-
 	}
 	if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusOperational, nil); err != nil {
 		resultErr = fmt.Errorf("failed to update object status: %w", err)

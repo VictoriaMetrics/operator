@@ -1331,6 +1331,7 @@ func updateObjectStatus[T client.Object, ST any](ctx context.Context, rclient cl
 	currentStatus := opts.crStatus
 	prevStatus := opts.crStatus.DeepCopy()
 	currMeta := currentStatus.GetStatusMetadata()
+	newUpdateStatus := opts.actualStatus
 	switch opts.actualStatus {
 	case UpdateStatusExpanding, UpdateStatusPaused:
 	case UpdateStatusFailed:
@@ -1344,7 +1345,6 @@ func updateObjectStatus[T client.Object, ST any](ctx context.Context, rclient cl
 	}
 
 	currMeta.ObservedGeneration = opts.cr.GetGeneration()
-
 	if opts.mutateCurrentBeforeCompare != nil {
 		opts.mutateCurrentBeforeCompare(opts.crStatus.(ST))
 	}
@@ -1353,7 +1353,7 @@ func updateObjectStatus[T client.Object, ST any](ctx context.Context, rclient cl
 	if equality.Semantic.DeepEqual(currentStatus, prevStatus) && currMeta.UpdateStatus == opts.actualStatus {
 		return nil
 	}
-	currMeta.UpdateStatus = opts.actualStatus
+	currMeta.UpdateStatus = newUpdateStatus
 
 	pr, err := buildStatusPatch(currentStatus)
 	if err != nil {

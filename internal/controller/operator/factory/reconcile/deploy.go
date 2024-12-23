@@ -79,6 +79,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 
 // waitDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
 func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1.Deployment, deadline time.Duration) error {
+	var isErrDealine bool
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, false, func(ctx context.Context) (done bool, err error) {
 		var actualDeploy appsv1.Deployment
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: dep.Namespace, Name: dep.Name}, &actualDeploy); err != nil {
@@ -94,7 +95,8 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 		}
 		cond := getDeploymentCondition(actualDeploy.Status, appsv1.DeploymentProgressing)
 		if cond != nil && cond.Reason == "ProgressDeadlineExceeded" {
-			return false, fmt.Errorf("deployment %s/%s has exceeded its progress deadline", dep.Namespace, dep.Name)
+			isErrDealine = true
+			return true, fmt.Errorf("deployment %s/%s has exceeded its progress deadline", dep.Namespace, dep.Name)
 		}
 		if actualDeploy.Spec.Replicas != nil && actualDeploy.Status.UpdatedReplicas < *actualDeploy.Spec.Replicas {
 			// Waiting for deployment rollout to finish: part of new replicas have been updated...
@@ -111,7 +113,11 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 		return true, nil
 	})
 	if err != nil {
-		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for deployment to become ready: %w", err), dep.Namespace, labels.SelectorFromSet(dep.Spec.Selector.MatchLabels), dep.Spec.MinReadySeconds)
+		podErr := reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for deployment to become ready: %w", err), dep.Namespace, labels.SelectorFromSet(dep.Spec.Selector.MatchLabels), dep.Spec.MinReadySeconds)
+		if isErrDealine {
+			return err
+		}
+		return &errWaitReady{origin: podErr}
 	}
 	return nil
 }

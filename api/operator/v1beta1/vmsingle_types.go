@@ -343,7 +343,7 @@ func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, r client.Client, stat
 		crStatus:     &cr.Status,
 		maybeErr:     maybeErr,
 		mutateCurrentBeforeCompare: func(vs *VMSingleStatus) {
-			vs.LegacyStatus = status
+			vs.LegacyStatus = vs.UpdateStatus
 		},
 	})
 }

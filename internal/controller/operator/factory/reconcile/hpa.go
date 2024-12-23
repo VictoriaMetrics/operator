@@ -39,11 +39,12 @@ func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.Horizon
 			isAnnotationsEqual(currentHPA.Annotations, newHPA.Annotations, prevAnnotations) {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating HPA %s configuration", newHPA.Name))
 
-		newHPA.ResourceVersion = currentHPA.ResourceVersion
-		newHPA.Status = currentHPA.Status
 		newHPA.Annotations = mergeAnnotations(currentHPA.Annotations, newHPA.Annotations, prevAnnotations)
+		cloneSignificantMetadata(newHPA, &currentHPA)
+		newHPA.Status = currentHPA.Status
+
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating HPA %s configuration", newHPA.Name))
 
 		return rclient.Update(ctx, newHPA)
 	})

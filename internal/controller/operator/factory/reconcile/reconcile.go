@@ -2,6 +2,8 @@ package reconcile
 
 import (
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -66,4 +68,17 @@ func isAnnotationsEqual(currentA, newA, prevA map[string]string) bool {
 		}
 	}
 	return true
+}
+
+func cloneSignificantMetadata(newObj, currObj client.Object) {
+	// empty ResourceVersion for some resources produces the following error
+	// is invalid: metadata.resourceVersion: Invalid value: 0x0: must be specified for an update
+	// so keep it from current resource
+	//
+	newObj.SetResourceVersion(currObj.GetResourceVersion())
+	// Keep common metadata for consistency sake
+	newObj.SetGeneration(currObj.GetGeneration())
+	newObj.SetCreationTimestamp(currObj.GetCreationTimestamp())
+	newObj.SetUID(currObj.GetUID())
+	newObj.SetSelfLink(currObj.GetSelfLink())
 }

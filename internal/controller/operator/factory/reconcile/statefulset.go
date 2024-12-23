@@ -114,11 +114,13 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				isAnnotationsEqual(currentSts.Annotations, newSts.Annotations, prevAnnotations)
 
 			if !shouldSkipUpdate {
+
+				vmv1beta1.AddFinalizer(newSts, &currentSts)
+				newSts.Annotations = mergeAnnotations(currentSts.Annotations, newSts.Annotations, prevAnnotations)
+				cloneSignificantMetadata(newSts, &currentSts)
+
 				logger.WithContext(ctx).Info(fmt.Sprintf("updating statefulset %s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
 					newSts.Name, isEqual, isPrevEqual, prevSts == nil))
-
-				newSts.Annotations = mergeAnnotations(currentSts.Annotations, newSts.Annotations, prevAnnotations)
-				vmv1beta1.AddFinalizer(newSts, &currentSts)
 
 				if err := rclient.Update(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)

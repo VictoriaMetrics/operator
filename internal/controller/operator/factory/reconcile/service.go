@@ -116,11 +116,12 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		return nil
 	}
 
+	vmv1beta1.AddFinalizer(newService, currentService)
+	newService.Annotations = mergeAnnotations(currentService.Annotations, newService.Annotations, prevAnnotations)
+	cloneSignificantMetadata(newService, currentService)
+
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating service %s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
 		newService.Name, isEqual, isPrevServiceEqual, prevService == nil))
-
-	newService.Annotations = mergeAnnotations(currentService.Annotations, newService.Annotations, prevAnnotations)
-	vmv1beta1.AddFinalizer(newService, currentService)
 
 	err = rclient.Update(ctx, newService)
 	if err != nil {

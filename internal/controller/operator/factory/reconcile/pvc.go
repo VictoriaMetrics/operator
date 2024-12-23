@@ -65,15 +65,17 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 			return nil
 		}
 	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating PVC %s configuration", newPVC.Name))
-
-	newPVC.Annotations = mergeAnnotations(currentPVC.Annotations, newPVC.Annotations, prevAnnotations)
 
 	newResources := newPVC.Spec.Resources.DeepCopy()
 	// keep old spec with new resource requests
 	newPVC.Spec = currentPVC.Spec
 	newPVC.Spec.Resources = *newResources
+
 	vmv1beta1.AddFinalizer(newPVC, currentPVC)
+	newPVC.Annotations = mergeAnnotations(currentPVC.Annotations, newPVC.Annotations, prevAnnotations)
+	cloneSignificantMetadata(newPVC, currentPVC)
+
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating PVC %s configuration", newPVC.Name))
 
 	if err := rclient.Update(ctx, newPVC); err != nil {
 		return err

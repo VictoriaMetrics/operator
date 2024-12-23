@@ -60,13 +60,15 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			isAnnotationsEqual(currentDeploy.Annotations, newDeploy.Annotations, prevAnnotations) {
 			return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 		}
+
+		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
+		newDeploy.Annotations = mergeAnnotations(currentDeploy.Annotations, newDeploy.Annotations, prevAnnotations)
+		cloneSignificantMetadata(newDeploy, &currentDeploy)
+
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating Deployment %s configuration"+
 			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",
 			newDeploy.Name, isPrevEqual, isEqual, prevDeploy == nil))
 
-		newDeploy.Annotations = mergeAnnotations(currentDeploy.Annotations, newDeploy.Annotations, prevAnnotations)
-
-		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
 		if err := rclient.Update(ctx, newDeploy); err != nil {
 			return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)
 		}

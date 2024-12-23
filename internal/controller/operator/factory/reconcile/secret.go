@@ -39,10 +39,11 @@ func Secret(ctx context.Context, rclient client.Client, newS *corev1.Secret, pre
 		isAnnotationsEqual(currentS.Annotations, newS.Annotations, prevAnnotations) {
 		return nil
 	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating configuration Secret %s", newS.Name))
 
 	newS.Annotations = mergeAnnotations(currentS.Annotations, newS.Annotations, prevAnnotations)
-	newS.ResourceVersion = currentS.ResourceVersion
+	cloneSignificantMetadata(newS, &currentS)
+
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating configuration Secret %s", newS.Name))
 
 	return rclient.Update(ctx, newS)
 }

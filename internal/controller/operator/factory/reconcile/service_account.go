@@ -38,11 +38,11 @@ func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *c
 			isAnnotationsEqual(currentSA.Annotations, newSA.Annotations, prevAnnotations) {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount %s metadata", newSA.Name))
-
-		currentSA.Annotations = mergeAnnotations(currentSA.Annotations, newSA.Annotations, prevAnnotations)
 		currentSA.Labels = newSA.Labels
+		currentSA.Annotations = mergeAnnotations(currentSA.Annotations, newSA.Annotations, prevAnnotations)
 		vmv1beta1.AddFinalizer(&currentSA, &currentSA)
+
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount %s metadata", newSA.Name))
 
 		return rclient.Update(ctx, &currentSA)
 	})

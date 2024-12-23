@@ -34,9 +34,10 @@ func ConfigMap(ctx context.Context, rclient client.Client, newCM *corev1.ConfigM
 		return nil
 	}
 
+	vmv1beta1.AddFinalizer(newCM, &currentCM)
+	cloneSignificantMetadata(newCM, &currentCM)
 	newCM.Annotations = mergeAnnotations(currentCM.Annotations, newCM.Annotations, prevAnnotations)
 
-	vmv1beta1.AddFinalizer(newCM, &currentCM)
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s configuration", newCM.Name))
 
 	return rclient.Update(ctx, newCM)

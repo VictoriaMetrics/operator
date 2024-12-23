@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): keep `resourceVersion` and other significant `metadata` fields during `update` objects requests. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1200) for details.
 
 ## [v0.51.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.51.0)
 

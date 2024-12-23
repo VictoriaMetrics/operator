@@ -43,10 +43,7 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 		}
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating PDB %s configuration", newPDB.Name))
 
-		// empty ResourceVersion for some reason produces the following error
-		// is invalid: metadata.resourceVersion: Invalid value: 0x0: must be specified for an update
-		// so keep it from current resource
-		newPDB.ObjectMeta.ResourceVersion = currentPdb.ResourceVersion
+		cloneSignificantMetadata(newPDB, currentPdb)
 		// for some reason Status is not marked as status sub-resource at PDB CRD
 		newPDB.Status = currentPdb.Status
 		newPDB.Annotations = mergeAnnotations(currentPdb.Annotations, newPDB.Annotations, prevAnnotations)

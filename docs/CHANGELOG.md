@@ -13,6 +13,13 @@ aliases:
 
 ## tip
 
+## [v0.51.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.51.2)
+
+**Release date:** 23 Dec 2024
+
+![AppVersion: v1.108.1](https://img.shields.io/badge/v1.108.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fchangelog%23v11070)
+![AppVersion: v1.3.2](https://img.shields.io/badge/v1.3.2-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v132)
+
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): keep `resourceVersion` and other significant `metadata` fields during `update` objects requests. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1200) for details.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly update `updateStatus: failed` field. It fixes excessive errors logging and amount of created Kubernetes `Events`.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): Properly rollback incorrect object configuration. Previously diff for objects could be calculate incorrectly and update request could be skipped.

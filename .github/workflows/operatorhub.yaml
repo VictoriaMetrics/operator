@@ -31,7 +31,7 @@ jobs:
         run: |
           gh repo sync ${{ matrix.repo.fork }}
           env:
-            GITHUB_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
+            GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
 
       - name: Check out OperatorHub operators repo fork
         uses: actions/checkout@v4

@@ -63,6 +63,7 @@ jobs:
       - name: Add operatorhub bundle
         id: update
         run: |
+          mkdir -p catalogs
           OPERATOR_DIR=__k8s-operatorhub-repo/operators/victoriametrics-operator
           mkdir -p ${OPERATOR_DIR}
           export PREV_VERSION=$(find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -2 | tail -1)
@@ -97,7 +98,7 @@ jobs:
         if: ${{ steps.update.outputs.VERSION != '' }}
         uses: peter-evans/create-pull-request@v6
         with:
-          add-paths: operators/victoriametrics-operator
+          add-paths: operators/victoriametrics-operator,catalogs
           commit-message: 'victoriametrics-operator: ${{ steps.update.outputs.VERSION }}'
           signoff: true
           committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"

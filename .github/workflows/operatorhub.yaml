@@ -77,21 +77,19 @@ jobs:
             else
               yq -i '.updateGraph = "replaces-mode"' ${OPERATOR_DIR}/ci.yaml
             fi
-          else
-            if [ -f ${OPERATOR_DIR}/Makefile ]; then
-              cd ${OPERATOR_DIR}
-              export NEW_ENTRY="victoriametrics-operator.v${LATEST_VERSION}"
-              export OLD_ENTRY="victoriametrics-operator.v${PREV_VERSION}"
-              export BUNDLE_IMAGE="quay.io/community-operator-pipeline-prod/victoriametrics-operator:${LATEST_VERSION}"
-              find catalog-templates \
-                -path "*.yaml" \
-                -exec yq -i -I2 '.entries |= .[] |= select(. | has("entries")).entries += [{"name": strenv(NEW_ENTRY), "replaces": strenv(OLD_ENTRY)}]' {} \;
-              find catalog-templates \
-                -path "*.yaml" \
-                -exec yq -i -I2 '.entries |= . += [{"image": strenv(BUNDLE_IMAGE), "schema": "olm.bundle"}]' {} \;
-              make catalogs
-              export VERSION=${LATEST_VERSION}
-            end
+          elif [ -f ${OPERATOR_DIR}/Makefile ]; then
+            cd ${OPERATOR_DIR}
+            export NEW_ENTRY="victoriametrics-operator.v${LATEST_VERSION}"
+            export OLD_ENTRY="victoriametrics-operator.v${PREV_VERSION}"
+            export BUNDLE_IMAGE="quay.io/community-operator-pipeline-prod/victoriametrics-operator:${LATEST_VERSION}"
+            find catalog-templates \
+              -path "*.yaml" \
+              -exec yq -i -I2 '.entries |= .[] |= select(. | has("entries")).entries += [{"name": strenv(NEW_ENTRY), "replaces": strenv(OLD_ENTRY)}]' {} \;
+            find catalog-templates \
+              -path "*.yaml" \
+              -exec yq -i -I2 '.entries |= . += [{"image": strenv(BUNDLE_IMAGE), "schema": "olm.bundle"}]' {} \;
+            make catalogs
+            export VERSION=${LATEST_VERSION}
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 

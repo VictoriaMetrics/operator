@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "cspell": "cspell"
+  },
   "devDependencies": {
     "@cspell/dict-aws": "^4.0.2",
     "@cspell/dict-data-science": "^2.0.1",

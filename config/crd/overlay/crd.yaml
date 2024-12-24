@@ -1025,7 +1025,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               replicas:
                 description: deprecated and will be removed at v0.52.0
@@ -5671,7 +5671,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               replicas:
                 description: ReplicaCount Total number of pods targeted by this VMAgent
@@ -9672,7 +9672,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -12111,7 +12111,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -14039,7 +14039,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               replicas:
                 description: Deprecated
@@ -15700,7 +15700,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -19887,7 +19887,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateFailCount:
                 description: Deprecated.
@@ -20958,7 +20958,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -22105,7 +22105,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -23313,7 +23313,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -23603,7 +23603,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -27636,7 +27636,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -28796,7 +28796,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -30573,7 +30573,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               replicas:
                 description: deprecated and will be removed at v0.52.0
@@ -31641,7 +31641,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
@@ -32276,7 +32276,7 @@ spec:
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readadble error reason
+                description: Reason defines human readable error reason
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout

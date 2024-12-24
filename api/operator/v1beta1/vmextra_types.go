@@ -1411,7 +1411,7 @@ type StatusMetadata struct {
 	// UpdateStatus defines a status for update rollout
 	//
 	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
-	// Reason defines human readadble error reason
+	// Reason defines human readable error reason
 	//
 	Reason string `json:"reason,omitempty"`
 	// ObservedGeneration defines current generation picked by operator for the

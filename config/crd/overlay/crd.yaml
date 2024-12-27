@@ -319,7 +319,7 @@ spec:
                 type: object
               minReadySeconds:
                 description: |-
-                  MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                  MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
                   if previous in healthy state
                   Has no effect for VLogs and VMSingle
                 format: int32
@@ -2340,7 +2340,7 @@ spec:
                 type: string
               minReadySeconds:
                 description: |-
-                  MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                  MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
                   if previous in healthy state
                   Has no effect for VLogs and VMSingle
                 format: int32
@@ -10909,7 +10909,7 @@ spec:
                 type: object
               minReadySeconds:
                 description: |-
-                  MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                  MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
                   if previous in healthy state
                   Has no effect for VLogs and VMSingle
                 format: int32
@@ -12691,7 +12691,7 @@ spec:
                 type: object
               minReadySeconds:
                 description: |-
-                  MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                  MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
                   if previous in healthy state
                   Has no effect for VLogs and VMSingle
                 format: int32
@@ -14763,7 +14763,7 @@ spec:
                 type: object
               minReadySeconds:
                 description: |-
-                  MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                  MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
                   if previous in healthy state
                   Has no effect for VLogs and VMSingle
                 format: int32
@@ -16190,7 +16190,7 @@ spec:
                     type: string
                   minReadySeconds:
                     description: |-
-                      MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                      MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
                       if previous in healthy state
                       Has no effect for VLogs and VMSingle
                     format: int32
@@ -17329,7 +17329,7 @@ spec:
                     type: string
                   minReadySeconds:
                     description: |-
-                      MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                      MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
                       if previous in healthy state
                       Has no effect for VLogs and VMSingle
                     format: int32
@@ -18962,7 +18962,7 @@ spec:
                     type: array
                   minReadySeconds:
                     description: |-
-                      MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                      MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
                       if previous in healthy state
                       Has no effect for VLogs and VMSingle
                     format: int32
@@ -29176,7 +29176,7 @@ spec:
                 type: object
               minReadySeconds:
                 description: |-
-                  MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                  MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
                   if previous in healthy state
                   Has no effect for VLogs and VMSingle
                 format: int32

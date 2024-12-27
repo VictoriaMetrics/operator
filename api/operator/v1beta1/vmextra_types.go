@@ -1211,7 +1211,7 @@ type CommonApplicationDeploymentParams struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
-	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+	// MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
 	// if previous in healthy state
 	// Has no effect for VLogs and VMSingle
 	// +optional

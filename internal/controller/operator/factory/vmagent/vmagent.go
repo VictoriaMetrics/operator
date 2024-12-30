@@ -374,6 +374,10 @@ func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
 		cr.Spec.ServiceSpec.Spec.ClusterIP == corev1.ClusterIPNone {
 		return cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName())
 	}
+	// special case for sharded mode
+	if cr.Spec.ShardCount != nil {
+		return cr.PrefixedName()
+	}
 	return ""
 }
 

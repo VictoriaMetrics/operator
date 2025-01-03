@@ -51,11 +51,24 @@ func (r *VMSingle) sanityCheck() error {
 		}
 	}
 	if r.Spec.StorageDataPath != "" {
-		if len(r.Spec.VolumeMounts) == 0 {
-			return fmt.Errorf("spec.volumeMounts must have at least 1 value for spec.storageDataPath=%q", r.Spec.StorageDataPath)
-		}
 		if len(r.Spec.Volumes) == 0 {
 			return fmt.Errorf("spec.volumes must have at least 1 value for spec.storageDataPath=%q", r.Spec.StorageDataPath)
+		}
+		var storageVolumeFound bool
+		for _, volume := range r.Spec.Volumes {
+			if volume.Name == "data" {
+				storageVolumeFound = true
+				break
+			}
+		}
+		if r.Spec.VMBackup != nil {
+			if !storageVolumeFound {
+				return fmt.Errorf("spec.volumes must have at least 1 value with `name: data` for spec.storageDataPath=%q."+
+					" It's required by operator to correctly mount backup volumeMount", r.Spec.StorageDataPath)
+			}
+		}
+		if len(r.Spec.VolumeMounts) == 0 && !storageVolumeFound {
+			return fmt.Errorf("spec.volumeMounts must have at least 1 value OR spec.volumes must have volume.name `data` for spec.storageDataPath=%q", r.Spec.StorageDataPath)
 		}
 	}
 	return nil

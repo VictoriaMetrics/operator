@@ -3,13 +3,9 @@ package e2e
 import (
 	"context"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -17,6 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 )
 
 //nolint:dupl,lll
@@ -210,6 +209,68 @@ var _ = Describe("test  vmsingle Controller", func() {
 						Expect(ts.Containers).To(HaveLen(1))
 						Expect(ts.Volumes).To(BeEmpty())
 						Expect(ts.Containers[0].VolumeMounts).To(BeEmpty())
+					}),
+				Entry("with external volume", "externalvolume",
+					&vmv1beta1.VMSingle{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+						},
+						Spec: vmv1beta1.VMSingleSpec{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+								Volumes: []corev1.Volume{
+									{
+										Name: "data",
+										VolumeSource: corev1.VolumeSource{
+											EmptyDir: &corev1.EmptyDirVolumeSource{},
+										},
+									},
+									{
+										Name: "backup",
+										VolumeSource: corev1.VolumeSource{
+											EmptyDir: &corev1.EmptyDirVolumeSource{},
+										},
+									},
+									{
+										Name: "unused",
+										VolumeSource: corev1.VolumeSource{
+											EmptyDir: &corev1.EmptyDirVolumeSource{},
+										},
+									},
+								},
+								VolumeMounts: []corev1.VolumeMount{
+									{
+										Name:      "unused",
+										MountPath: "/opt/unused/mountpoint",
+									},
+								},
+							},
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+								UseStrictSecurity: ptr.To(false),
+							},
+							RetentionPeriod:      "1",
+							RemovePvcAfterDelete: true,
+							StorageDataPath:      "/custom-path/internal/dir",
+							Storage:              &corev1.PersistentVolumeClaimSpec{},
+							VMBackup: &vmv1beta1.VMBackup{
+								AcceptEULA:   true,
+								Destination:  "fs:///opt/backup",
+								VolumeMounts: []corev1.VolumeMount{{Name: "backup", MountPath: "/opt/backup"}},
+							},
+						},
+					},
+					func(cr *vmv1beta1.VMSingle) {
+						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						var createdDeploy appsv1.Deployment
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						ts := createdDeploy.Spec.Template.Spec
+						Expect(ts.Containers).To(HaveLen(2))
+						Expect(ts.Volumes).To(HaveLen(3))
+						Expect(ts.Containers[0].VolumeMounts).To(HaveLen(2))
+						Expect(ts.Containers[0].VolumeMounts[0].Name).To(Equal("data"))
+						Expect(ts.Containers[1].VolumeMounts).To(HaveLen(2))
+						Expect(ts.Containers[1].VolumeMounts[0].Name).To(Equal("data"))
+						Expect(ts.Containers[1].VolumeMounts[1].Name).To(Equal("backup"))
 					}),
 			)
 

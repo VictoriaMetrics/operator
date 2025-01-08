@@ -63,7 +63,7 @@ jobs:
       - name: Add operatorhub bundle
         id: update
         run: |
-          mkdir -p catalogs
+          mkdir -p __k8s-operatorhub-repo/catalogs
           OPERATOR_DIR=__k8s-operatorhub-repo/operators/victoriametrics-operator
           mkdir -p ${OPERATOR_DIR}
           export PREV_VERSION=$(find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -2 | tail -1)

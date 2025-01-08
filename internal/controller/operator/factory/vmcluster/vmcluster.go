@@ -1524,9 +1524,10 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 					Labels: cr.VMAuthLBSelectorLabels(),
 				},
 				Spec: corev1.PodSpec{
-					Volumes:        volumes,
-					InitContainers: spec.InitContainers,
-					Containers:     containers,
+					Volumes:            volumes,
+					InitContainers:     spec.InitContainers,
+					Containers:         containers,
+					ServiceAccountName: cr.GetServiceAccountName(),
 				},
 			},
 		},

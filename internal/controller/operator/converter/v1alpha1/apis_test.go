@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/google/go-cmp/cmp"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 func TestConvertAlertmanagerConfig(t *testing.T) {
@@ -127,13 +128,13 @@ func TestConvertScrapeConfig(t *testing.T) {
 							{
 								Action:      "LabelMap",
 								Regex:       vmv1beta1.StringOrArray{"__meta_kubernetes_pod_label_(.+)"},
-								Replacement: "foo_$1",
+								Replacement: ptr.To("foo_$1"),
 							},
 						},
 						MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
 							{
 								SourceLabels: []string{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
-								Separator:    ":",
+								Separator:    ptr.To(":"),
 								TargetLabel:  "host_port",
 							},
 						},

@@ -152,7 +152,7 @@ type RelabelConfig struct {
 	SourceLabels []string `json:"sourceLabels,omitempty" yaml:"-"`
 	// Separator placed between concatenated source label values. default is ';'.
 	// +optional
-	Separator string `json:"separator,omitempty" yaml:"separator,omitempty"`
+	Separator *string `json:"separator,omitempty" yaml:"separator,omitempty"`
 	// Label to which the resulting value is written in a replace action.
 	// It is mandatory for replace actions. Regex capture groups are available.
 	// +optional
@@ -170,7 +170,7 @@ type RelabelConfig struct {
 	// Replacement value against which a regex replace is performed if the
 	// regular expression matches. Regex capture groups are available. Default is '$1'
 	// +optional
-	Replacement string `json:"replacement,omitempty" yaml:"replacement,omitempty"`
+	Replacement *string `json:"replacement,omitempty" yaml:"replacement,omitempty"`
 	// Action to perform based on regex matching. Default is 'replace'
 	// +optional
 	Action string `json:"action,omitempty" yaml:"action,omitempty"`

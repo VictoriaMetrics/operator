@@ -1081,7 +1081,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 									InsecureSkipVerify: true,
 								},
 								InlineUrlRelabelConfig: []vmv1beta1.RelabelConfig{
-									{TargetLabel: "rw-1", Replacement: "present"},
+									{TargetLabel: "rw-1", Replacement: ptr.To("present")},
 								},
 							},
 							{
@@ -1097,12 +1097,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 									InsecureSkipVerify: true,
 								},
 								InlineUrlRelabelConfig: []vmv1beta1.RelabelConfig{
-									{TargetLabel: "rw-2", Replacement: "present"},
+									{TargetLabel: "rw-2", Replacement: ptr.To("present")},
 								},
 							},
 						},
 						InlineRelabelConfig: []vmv1beta1.RelabelConfig{
-							{TargetLabel: "dst", Replacement: "ok"},
+							{TargetLabel: "dst", Replacement: ptr.To("ok")},
 						},
 					},
 				},

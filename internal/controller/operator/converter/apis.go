@@ -304,20 +304,12 @@ func ConvertRelabelConfig(promRelabelConfig []promv1.RelabelConfig) []*vmv1beta1
 		return res
 	}
 	for idx, relabel := range promRelabelConfig {
-		var separator string
-		if relabel.Separator != nil {
-			separator = *relabel.Separator
-		}
-		var replacement string
-		if relabel.Replacement != nil {
-			replacement = *relabel.Replacement
-		}
 		relabelCfg = append(relabelCfg, &vmv1beta1.RelabelConfig{
 			SourceLabels: sourceLabelsToStringSlice(relabel.SourceLabels),
-			Separator:    separator,
+			Separator:    relabel.Separator,
 			TargetLabel:  relabel.TargetLabel,
 			Modulus:      relabel.Modulus,
-			Replacement:  replacement,
+			Replacement:  relabel.Replacement,
 			Action:       relabel.Action,
 		})
 		if len(relabel.Regex) > 0 {

@@ -1147,8 +1147,8 @@ func generateRelabelConfig(rc *vmv1beta1.RelabelConfig) yaml.MapSlice {
 		relabeling = append(relabeling, yaml.MapItem{Key: "source_labels", Value: rc.SourceLabels})
 	}
 
-	if rc.Separator != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "separator", Value: rc.Separator})
+	if rc.Separator != nil {
+		relabeling = append(relabeling, yaml.MapItem{Key: "separator", Value: *rc.Separator})
 	}
 
 	if rc.TargetLabel != "" {
@@ -1168,8 +1168,8 @@ func generateRelabelConfig(rc *vmv1beta1.RelabelConfig) yaml.MapSlice {
 		relabeling = append(relabeling, yaml.MapItem{Key: "modulus", Value: rc.Modulus})
 	}
 
-	if rc.Replacement != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "replacement", Value: rc.Replacement})
+	if rc.Replacement != nil {
+		relabeling = append(relabeling, yaml.MapItem{Key: "replacement", Value: *rc.Replacement})
 	}
 
 	if rc.Action != "" {

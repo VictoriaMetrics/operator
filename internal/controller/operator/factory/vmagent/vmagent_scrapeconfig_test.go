@@ -162,6 +162,29 @@ labels:
   job: $1
 `,
 		},
+		{
+			name: "with empty replacement and separator",
+			args: args{rc: &vmv1beta1.RelabelConfig{
+				UnderScoreTargetLabel:  "address",
+				UnderScoreSourceLabels: []string{"__address__"},
+				Action:                 "graphite",
+				Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
+				Match:                  `foo.*.*.bar`,
+				Separator:              ptr.To(""),
+				Replacement:            ptr.To(""),
+			}},
+			want: `source_labels:
+- __address__
+separator: ""
+target_label: address
+replacement: ""
+action: graphite
+match: foo.*.*.bar
+labels:
+  instance: ${2}:8080
+  job: $1
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

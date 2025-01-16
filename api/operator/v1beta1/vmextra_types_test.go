@@ -1,11 +1,13 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"slices"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	"k8s.io/utils/ptr"
 
@@ -173,4 +175,52 @@ func TestLicense_MaybeAddToArgs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStringOrArrayMarshal(t *testing.T) {
+	f := func(src *StringOrArray, marshalF func(any) ([]byte, error), expected string) {
+		t.Helper()
+		got, err := marshalF(src)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		assert.Equal(t, expected, string(got))
+	}
+
+	f(&StringOrArray{"1", "2", "3"}, json.Marshal, `["1","2","3"]`)
+	f(&StringOrArray{"1"}, json.Marshal, `"1"`)
+	f(&StringOrArray{}, json.Marshal, `""`)
+	f(&StringOrArray{"1", "2", "3"}, yaml.Marshal, `- "1"
+- "2"
+- "3"
+`)
+	f(&StringOrArray{"1"}, yaml.Marshal, `"1"
+`)
+	f(&StringOrArray{}, yaml.Marshal, `""
+`)
+
+}
+
+func TestStringOrArrayUnMarshal(t *testing.T) {
+	f := func(src string, unmarshalF func([]byte, any) error, expected StringOrArray) {
+		t.Helper()
+		var got StringOrArray
+		if err := unmarshalF([]byte(src), &got); err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		assert.Equal(t, expected, got)
+	}
+	f(`["1","2","3"]`, json.Unmarshal, StringOrArray{"1", "2", "3"})
+	f(`"1"`, json.Unmarshal, StringOrArray{"1"})
+	f(`""`, json.Unmarshal, StringOrArray{""})
+	f(`- "1"
+- "2"
+- "3"
+`, yaml.Unmarshal, StringOrArray{"1", "2", "3"})
+
+	f(`"1"
+`, yaml.Unmarshal, StringOrArray{"1"})
+	f(`""
+`, yaml.Unmarshal, StringOrArray{""})
+
 }

@@ -659,6 +659,7 @@ type KeyValue struct {
 // StringOrArray is a helper type for storing string or array of string.
 type StringOrArray []string
 
+// MarshalYAML implements yaml.Marshaller interface
 func (m StringOrArray) MarshalYAML() (interface{}, error) {
 	switch len(m) {
 	case 0:
@@ -670,6 +671,7 @@ func (m StringOrArray) MarshalYAML() (interface{}, error) {
 	}
 }
 
+// UnmarshalYAML implements   yaml.Unmarshaler interface
 func (m *StringOrArray) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var raw any
 	if err := unmarshal(&raw); err != nil {
@@ -698,6 +700,7 @@ func (m *StringOrArray) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 }
 
+// UnmarshalJSON implements json.Unmarshaller interface
 func (m *StringOrArray) UnmarshalJSON(data []byte) error {
 	var raw any
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -721,6 +724,22 @@ func (m *StringOrArray) UnmarshalJSON(data []byte) error {
 		return nil
 	default:
 		return &json.UnmarshalTypeError{Value: string(data), Type: rawType}
+	}
+}
+
+// MarshalJSON implements json.Marshaller interface
+func (m *StringOrArray) MarshalJSON() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	ms := *m
+	switch {
+	case len(ms) == 0:
+		return json.Marshal("")
+	case len(ms) == 1:
+		return json.Marshal(ms[0])
+	default:
+		return json.Marshal([]string(ms))
 	}
 }
 

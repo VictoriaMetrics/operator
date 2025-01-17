@@ -373,9 +373,10 @@ type GCESDConfig struct {
 	// +required
 	Project string `json:"project"`
 	// The zone of the scrape targets. If you need multiple zones use multiple GCESDConfigs.
-	// +kubebuilder:validation:MinLength:=1
 	// +required
-	Zone string `json:"zone"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Zone StringOrArray `json:"zone"`
 	// Filter can be used optionally to filter the instance list by other criteria
 	// Syntax of this filter is described in the filter query parameter section:
 	// https://cloud.google.com/compute/docs/reference/latest/instances/list

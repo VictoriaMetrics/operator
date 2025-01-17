@@ -307,7 +307,12 @@ kubernetes_sd_configs:
 						GCESDConfigs: []vmv1beta1.GCESDConfig{
 							{
 								Project:      "eu-project",
-								Zone:         "zone-a",
+								Zone:         vmv1beta1.StringOrArray{"zone-a"},
+								TagSeparator: ptr.To("/"),
+							},
+							{
+								Project:      "us-project",
+								Zone:         vmv1beta1.StringOrArray{"zone-b", "zone-c"},
 								TagSeparator: ptr.To("/"),
 							},
 						},
@@ -376,6 +381,11 @@ azure_sd_configs:
 gce_sd_configs:
 - project: eu-project
   zone: zone-a
+  tag_separator: /
+- project: us-project
+  zone:
+  - zone-b
+  - zone-c
   tag_separator: /
 openstack_sd_configs:
 - role: instance

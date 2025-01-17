@@ -25307,8 +25307,7 @@ spec:
                     zone:
                       description: The zone of the scrape targets. If you need multiple
                         zones use multiple GCESDConfigs.
-                      minLength: 1
-                      type: string
+                      x-kubernetes-preserve-unknown-fields: true
                   required:
                   - project
                   - zone

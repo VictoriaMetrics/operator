@@ -333,6 +333,35 @@ func TestConvertScrapeConfig(t *testing.T) {
 				Spec: vmv1beta1.VMScrapeConfigSpec{},
 			},
 		},
+		{
+			name: "with gce sd config",
+			args: args{
+				scrapeConfig: &promv1alpha1.ScrapeConfig{
+					Spec: promv1alpha1.ScrapeConfigSpec{
+						GCESDConfigs: []promv1alpha1.GCESDConfig{
+							{
+								Project:      "eu-project",
+								Zone:         "zone-1",
+								TagSeparator: ptr.To(""),
+								Port:         ptr.To(80),
+							},
+						},
+					},
+				},
+			},
+			want: vmv1beta1.VMScrapeConfig{
+				Spec: vmv1beta1.VMScrapeConfigSpec{
+					GCESDConfigs: []vmv1beta1.GCESDConfig{
+						{
+							Project:      "eu-project",
+							Zone:         vmv1beta1.StringOrArray{"zone-1"},
+							TagSeparator: ptr.To(""),
+							Port:         ptr.To(80),
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

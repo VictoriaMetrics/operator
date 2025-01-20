@@ -124,7 +124,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		}
 	}
 
-	ssCache, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR)
+	ssCache, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, nil)
 	if err != nil {
 		return err
 	}

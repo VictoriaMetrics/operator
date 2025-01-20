@@ -2160,8 +2160,15 @@ unauthorized_user:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth, map[string]string{})
+			// fetch exist users for vmauth.
+			sus, err := selectVMUsers(ctx, testClient, tt.args.vmauth)
+			if err != nil {
+				t.Fatalf("unexpected error at selectVMUsers: %s", err)
+			}
+
+			got, err := buildVMAuthConfig(ctx, testClient, tt.args.vmauth, sus, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -2169,7 +2176,12 @@ unauthorized_user:
 			if !assert.Equal(t, tt.want, string(got)) {
 				return
 			}
-			got2, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth, map[string]string{})
+			// fetch exist users for vmauth.
+			sus, err = selectVMUsers(ctx, testClient, tt.args.vmauth)
+			if err != nil {
+				t.Fatalf("unexpected error at selectVMUsers: %s", err)
+			}
+			got2, err := buildVMAuthConfig(ctx, testClient, tt.args.vmauth, sus, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return

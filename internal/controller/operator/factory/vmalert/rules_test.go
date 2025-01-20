@@ -274,7 +274,7 @@ groups:
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := selectRulesUpdateStatus(ctx, tt.args.p, fclient)
+			got, _, err := selectRulesContent(ctx, fclient, tt.args.p)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectRules() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -282,27 +282,6 @@ groups:
 			for ruleName, content := range got {
 				if !assert.Equal(t, tt.want[ruleName], content) {
 					t.Errorf("SelectRules() got = %v, want %v", content, tt.want[ruleName])
-				}
-			}
-			cr := tt.args.p
-			var badRules []*vmv1beta1.VMRule
-			if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, fclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
-				func(list *vmv1beta1.VMRuleList) {
-					for _, item := range list.Items {
-						if !item.DeletionTimestamp.IsZero() {
-							continue
-						}
-						if item.Status.UpdateStatus != vmv1beta1.UpdateStatusOperational {
-							badRules = append(badRules, item)
-						}
-					}
-				}); err != nil {
-				t.Fatalf("cannot list vmrules after select: %s", err)
-			}
-			if len(badRules) > 0 {
-				t.Logf("got rules with bad non-operational status: %d", len(badRules))
-				for _, br := range badRules {
-					t.Fatalf("rule=%s status=%s sync error=%s ", br.Name, br.Status.UpdateStatus, br.Status.Reason)
 				}
 			}
 		})
@@ -345,7 +324,7 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateRuleConfigMaps(context.TODO(), tt.args.cr, fclient)
+			got, err := CreateOrUpdateRuleConfigMaps(context.TODO(), fclient, tt.args.cr, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateRuleConfigMaps() error = %v, wantErr %v", err, tt.wantErr)
 				return

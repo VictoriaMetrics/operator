@@ -1204,7 +1204,7 @@ scrape_configs:
 				}()
 			}
 			build.AddDefaults(testClient.Scheme())
-			if _, err := createOrUpdateConfigurationSecret(context.TODO(), testClient, tt.args.cr, nil); (err != nil) != tt.wantErr {
+			if _, err := createOrUpdateConfigurationSecret(context.TODO(), testClient, tt.args.cr, nil, nil); (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateConfigurationSecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var expectSecret corev1.Secret

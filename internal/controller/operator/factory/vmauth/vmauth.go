@@ -72,7 +72,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 		}
 	}
 
-	if err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr); err != nil {
+	if err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr, nil); err != nil {
 		return err
 	}
 
@@ -316,7 +316,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 }
 
 // CreateOrUpdateVMAuthConfig configuration secret for vmauth.
-func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
+func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth, childObject *vmv1beta1.VMUser) error {
 	// fast path
 	if cr.Spec.ExternalConfig.SecretRef != nil || cr.Spec.ExternalConfig.LocalPath != "" {
 		return nil
@@ -332,11 +332,13 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 			vmAuthConfigNameGz: {},
 		},
 	}
-
-	// name of tls object and it's value
-	// e.g. namespace_secret_name_secret_key
+	// fetch exist users for vmauth.
+	sus, err := selectVMUsers(ctx, rclient, cr)
+	if err != nil {
+		return err
+	}
 	tlsAssets := make(map[string]string)
-	generatedConfig, err := buildVMAuthConfig(ctx, rclient, cr, tlsAssets)
+	generatedConfig, err := buildVMAuthConfig(ctx, rclient, cr, sus, tlsAssets)
 	if err != nil {
 		return err
 	}
@@ -353,7 +355,31 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildConfigSecretMeta(prevCR))
 	}
-	return reconcile.Secret(ctx, rclient, s, prevSecretMeta)
+	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta); err != nil {
+		return err
+	}
+	parentObject := fmt.Sprintf("%s.%s.vmauth", cr.GetName(), cr.GetNamespace())
+	if childObject != nil {
+		// fast path
+		for _, u := range sus.users {
+			if u.Name == childObject.Name && u.Namespace == childObject.Namespace {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMUser{u})
+			}
+		}
+		for _, u := range sus.brokenVMUsers {
+			if u.Name == childObject.Name && u.Namespace == childObject.Namespace {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMUser{u})
+			}
+		}
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.users); err != nil {
+		return fmt.Errorf("cannot update statuses for vmusers: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.brokenVMUsers); err != nil {
+		return fmt.Errorf("cannot update statuses for broken vmusers: %w", err)
+	}
+
+	return nil
 }
 
 func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {

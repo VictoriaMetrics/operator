@@ -107,7 +107,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			}
 		}
 
-		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, currentVMagent, r); err != nil {
+		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, r, currentVMagent, instance); err != nil {
 			continue
 		}
 	}

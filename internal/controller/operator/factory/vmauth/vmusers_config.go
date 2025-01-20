@@ -16,7 +16,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -86,13 +85,7 @@ func (sus *skipableVMUsers) sort() {
 }
 
 // builds vmauth config.
-func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, tlsAssets map[string]string) ([]byte, error) {
-	// fetch exist users for vmauth.
-	users, err := selectVMUsers(ctx, vmauth, rclient)
-	if err != nil {
-		return nil, err
-	}
-	sus := &skipableVMUsers{users: users}
+func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, sus *skipableVMUsers, tlsAssets map[string]string) ([]byte, error) {
 
 	// loads info about exist operator object kind for crdRef.
 	crdCache, err := fetchCRDRefURLs(ctx, rclient, sus)
@@ -129,13 +122,6 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 		}
 	}
 
-	parentObject := fmt.Sprintf("%s.%s.vmauth", vmauth.GetName(), vmauth.GetNamespace())
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.users); err != nil {
-		return nil, fmt.Errorf("cannot update statuses for vmusers: %w", err)
-	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.brokenVMUsers); err != nil {
-		return nil, fmt.Errorf("cannot update statuses for broken vmusers: %w", err)
-	}
 	return cfg, nil
 }
 
@@ -906,7 +892,7 @@ func genPassword() (string, error) {
 }
 
 // selects vmusers for given vmauth.
-func selectVMUsers(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) ([]*vmv1beta1.VMUser, error) {
+func selectVMUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) (*skipableVMUsers, error) {
 	var res []*vmv1beta1.VMUser
 	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
@@ -927,7 +913,7 @@ func selectVMUsers(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cli
 		logger.WithContext(ctx).Info(fmt.Sprintf("selected VMUsers count=%d %s", len(namespacedNames), strings.Join(namespacedNames, ",")))
 	}
 
-	return res, nil
+	return &skipableVMUsers{users: res}, nil
 }
 
 // note, username and password must be filled by operator

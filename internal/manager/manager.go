@@ -107,6 +107,8 @@ var (
 	loggerJSONFields = managerFlags.String("loggerJSONFields", "", "Allows renaming fields in JSON formatted logs"+
 		`Example: "ts:timestamp,msg:message" renames "ts" to "timestamp" and "msg" to "message".`+
 		"Supported fields: ts, level, caller, msg")
+	statusUpdateTTL = managerFlags.Duration("controller.statusLastUpdateTimeTTL", time.Hour, "Configures TTL for LastUpdateTime status.condtions fields. "+
+		"It's used to detect stale parent objects on child objects. Like VMAlert->VMRule .status.Conditions.Type")
 )
 
 func init() {
@@ -183,7 +185,7 @@ func RunManager(ctx context.Context) error {
 	}
 
 	reconcile.InitDeadlines(baseConfig.PodWaitReadyIntervalCheck, baseConfig.AppReadyTimeout, baseConfig.PodWaitReadyTimeout)
-
+	reconcile.SetStatusUpdateTTL(*statusUpdateTTL)
 	config := ctrl.GetConfigOrDie()
 	config.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(float32(*clientQPS), *clientBurst)
 

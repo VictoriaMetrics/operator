@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -12,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,7 +60,7 @@ const (
 // and create VictoriaMetrics objects
 type ConverterController struct {
 	ctx             context.Context
-	baseClient      *kubernetes.Clientset
+	sd              *sharedAPIDiscoverer
 	rclient         client.WithWatch
 	ruleInf         cache.SharedInformer
 	podInf          cache.SharedInformer
@@ -74,10 +74,13 @@ type ConverterController struct {
 // NewConverterController builder for vmprometheusconverter service
 func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientset, rclient client.WithWatch, resyncPeriod time.Duration, baseConf *config.BaseOperatorConf) (*ConverterController, error) {
 	c := &ConverterController{
-		ctx:        ctx,
-		baseClient: baseClient,
-		rclient:    rclient,
-		baseConf:   baseConf,
+		ctx:      ctx,
+		rclient:  rclient,
+		baseConf: baseConf,
+		sd: &sharedAPIDiscoverer{
+			baseClient:       baseClient,
+			kindReadyByGroup: map[string]map[string]chan struct{}{},
+		},
 	}
 
 	c.ruleInf = cache.NewSharedIndexInformer(
@@ -237,36 +240,8 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 	return c, nil
 }
 
-func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface, apiGroupVersion, kind string) {
-	l := converterLogger.WithValues("discovery_group", apiGroupVersion, "discovery_kind", kind)
-	l.Info("waiting for api resource")
-	tick := time.NewTicker(time.Second * 5)
-	for {
-		select {
-		case <-tick.C:
-			api, err := client.ServerResourcesForGroupVersion(apiGroupVersion)
-			if err != nil {
-				if !errors.IsNotFound(err) {
-					l.Error(err, "cannot get server resource for api group version")
-				}
-				continue
-			}
-			for _, r := range api.APIResources {
-				if r.Kind != kind {
-					continue
-				}
-				l.Info("api resource is ready")
-				return
-			}
-		case <-ctx.Done():
-			l.Info("context was canceled")
-			return
-		}
-	}
-}
-
 func (c *ConverterController) runInformerWithDiscovery(ctx context.Context, group, kind string, runInformer func(<-chan struct{})) error {
-	waitForAPIResource(ctx, c.baseClient, group, kind)
+	c.sd.waitForAPIReady(ctx, group, kind)
 	runInformer(ctx.Done())
 	return nil
 }
@@ -745,4 +720,78 @@ func isMetaEqual(left, right metav1.Object) bool {
 	return equality.Semantic.DeepEqual(left.GetLabels(), right.GetLabels()) &&
 		equality.Semantic.DeepEqual(left.GetAnnotations(), right.GetAnnotations()) &&
 		equality.Semantic.DeepEqual(left.GetOwnerReferences(), right.GetOwnerReferences())
+}
+
+// sharedAPIDiscoverer must reduce GET API calls for kubernetes api server
+// it will perform 1 single GET request per group
+type sharedAPIDiscoverer struct {
+	baseClient *kubernetes.Clientset
+
+	mu               sync.Mutex
+	kindReadyByGroup map[string]map[string]chan struct{}
+}
+
+func (s *sharedAPIDiscoverer) waitForAPIReady(ctx context.Context, group, kind string) {
+	l := converterLogger.WithValues("discovery_group", group, "discovery_kind", kind)
+	l.Info("waiting for api resource")
+	ready := s.subscribeForGroupKind(ctx, group, kind)
+	select {
+	case <-ready:
+		l.Info("object discovered")
+	case <-ctx.Done():
+	}
+}
+
+func (s *sharedAPIDiscoverer) subscribeForGroupKind(ctx context.Context, group, kind string) chan struct{} {
+	dst := make(chan struct{})
+	s.mu.Lock()
+	gp, ok := s.kindReadyByGroup[group]
+	if ok {
+		if _, ok := gp[kind]; ok {
+			panic(fmt.Sprintf("unexpected double subsribe for kind=%q,group=%q", kind, group))
+		}
+		gp[kind] = dst
+	} else {
+		gp = map[string]chan struct{}{
+			kind: dst,
+		}
+		s.kindReadyByGroup[group] = gp
+		go s.startPollFor(ctx, group)
+	}
+	s.mu.Unlock()
+	return dst
+}
+
+func (s *sharedAPIDiscoverer) startPollFor(ctx context.Context, group string) {
+	tick := time.NewTicker(time.Second * 5)
+	for {
+		select {
+		case <-tick.C:
+			api, err := s.baseClient.ServerResourcesForGroupVersion(group)
+			if err != nil {
+				if !errors.IsNotFound(err) {
+					converterLogger.Error(err, "cannot get server resource for api group version")
+				}
+				continue
+			}
+			s.mu.Lock()
+			for _, r := range api.APIResources {
+				notify, ok := s.kindReadyByGroup[group][r.Kind]
+				if ok {
+					notify <- struct{}{}
+					delete(s.kindReadyByGroup[group], r.Kind)
+				}
+			}
+			l := len(s.kindReadyByGroup[group])
+			s.mu.Unlock()
+			if l == 0 {
+				// no subscribers left
+				// exit
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+
 }

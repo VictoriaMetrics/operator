@@ -69,6 +69,9 @@ var (
 	startedAt = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_start_timestamp", Help: "unixtimestamp"}, func() float64 {
 		return float64(startTime.Unix())
 	})
+	clientQPSLimit = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "operator_rest_client_qps_limit", Help: "rest client max query per second limit"}, func() float64 {
+		return float64(*clientQPS)
+	})
 	scheme              = runtime.NewScheme()
 	setupLog            = ctrl.Log.WithName("setup")
 	leaderElect         = managerFlags.Bool("leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
@@ -93,8 +96,8 @@ var (
 	printDefaults                 = managerFlags.Bool("printDefaults", false, "print all variables with their default values and exit")
 	printFormat                   = managerFlags.String("printFormat", "table", "output format for --printDefaults. Can be table, json, yaml or list")
 	promCRDResyncPeriod           = managerFlags.Duration("controller.prometheusCRD.resyncPeriod", 0, "Configures resync period for prometheus CRD converter. Disabled by default")
-	clientQPS                     = managerFlags.Int("client.qps", 5, "defines K8s client QPS")
-	clientBurst                   = managerFlags.Int("client.burst", 10, "defines K8s client burst")
+	clientQPS                     = managerFlags.Int("client.qps", 50, "defines K8s client QPS. The value should be increased for the cluster with large number of objects > 10_000.")
+	clientBurst                   = managerFlags.Int("client.burst", 100, "defines K8s client burst")
 	wasCacheSynced                = uint32(0)
 	disableCacheForObjects        = managerFlags.String("controller.disableCacheFor", "", "disables client for cache for API resources. Supported objects - namespace,pod,secret,configmap,deployment,statefulset")
 	disableSecretKeySpaceTrim     = managerFlags.Bool("disableSecretKeySpaceTrim", false, "disables trim of space at Secret/Configmap value content. It's a common mistake to put new line to the base64 encoded secret value.")

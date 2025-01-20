@@ -342,9 +342,10 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 }
 
 func podStatusesToError(origin error, pod *corev1.Pod) error {
+	var hasCrashedContainers bool
 	var conditions []string
 	for _, cond := range pod.Status.Conditions {
-		conditions = append(conditions, fmt.Sprintf("name=%q,status=%q,message=%q", cond.Type, cond.Status, cond.Message))
+		conditions = append(conditions, fmt.Sprintf("name=%s,status=%s,message=%s", cond.Type, cond.Status, cond.Message))
 	}
 
 	stateToString := func(state corev1.ContainerState) string {
@@ -352,20 +353,44 @@ func podStatusesToError(origin error, pod *corev1.Pod) error {
 		case state.Running != nil:
 			return fmt.Sprintf("running since: %s", state.Running.StartedAt)
 		case state.Terminated != nil:
-			return fmt.Sprintf("terminated reason=%q, exit_code=%d", state.Terminated.Message, state.Terminated.ExitCode)
+			return fmt.Sprintf("terminated message=%s, exit_code=%d, reason=%s", state.Terminated.Message, state.Terminated.ExitCode, state.Terminated.Reason)
 		case state.Waiting != nil:
-			return fmt.Sprintf("waiting with reason=%q", state.Waiting.Reason)
+			return fmt.Sprintf("waiting with reason=%s, message=%s", state.Waiting.Reason, state.Waiting.Message)
 		}
-		return "container at waiting state"
+		return ""
 	}
-	for _, condStatus := range pod.Status.ContainerStatuses {
-		conditions = append(conditions, fmt.Sprintf("name=%q,is_ready=%v,restart_count=%d,state=%s", condStatus.Name, condStatus.Ready, condStatus.RestartCount, stateToString(condStatus.State)))
+	isCrashed := func(st corev1.ContainerStatus) bool {
+		if st.RestartCount > 0 && st.LastTerminationState.Terminated != nil && st.State.Waiting != nil {
+			return true
+		}
+		if st.State.Waiting != nil && st.State.Waiting.Reason != "PodInitializing" && st.State.Waiting.Message != "" {
+			return true
+		}
+		return false
 	}
-	for _, condStatus := range pod.Status.InitContainerStatuses {
-		conditions = append(conditions, fmt.Sprintf("name=%q,is_ready=%v,restart_count=%d,state=%s", condStatus.Name, condStatus.Ready, condStatus.RestartCount, stateToString(condStatus.State)))
+	var containerStates []string
+	addContainerStatus := func(namePrefix string, css []corev1.ContainerStatus) {
+		for _, condStatus := range css {
+			stateMsg := stateToString(condStatus.LastTerminationState)
+			if stateMsg == "" {
+				stateMsg = stateToString(condStatus.State)
+			}
+			if stateMsg == "" {
+				continue
+			}
+			if isCrashed(condStatus) {
+				hasCrashedContainers = true
+			}
+			containerStates = append(containerStates, fmt.Sprintf("%sname=[%s],is_ready=%v,restart_count=%d,state=%s", namePrefix, condStatus.Name, condStatus.Ready, condStatus.RestartCount, stateMsg))
+		}
 	}
-
-	return fmt.Errorf("origin_Err=%w,podPhase=%q,conditions=%s", origin, pod.Status.Phase, strings.Join(conditions, ","))
+	addContainerStatus("", pod.Status.ContainerStatuses)
+	addContainerStatus("init_container_", pod.Status.InitContainerStatuses)
+	err := fmt.Errorf("origin_Err=%w,podPhase=%s,pod conditions=%s,pod statuses = %s", origin, pod.Status.Phase, strings.Join(conditions, ","), strings.Join(containerStates, ","))
+	if hasCrashedContainers {
+		return err
+	}
+	return &errWaitReady{origin: err}
 }
 
 func sortStsPodsByID(src []corev1.Pod) error {

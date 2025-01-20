@@ -117,7 +117,7 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 		if isErrDealine {
 			return err
 		}
-		return &errWaitReady{origin: podErr}
+		return podErr
 	}
 	return nil
 }

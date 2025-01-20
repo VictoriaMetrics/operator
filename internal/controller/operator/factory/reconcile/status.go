@@ -18,11 +18,17 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-const (
-	// TODO: @f41gh7 make configurable
-	statusUpdateTTL = 7 * time.Minute
-	statusExpireTTL = 20 * time.Minute
+var (
+	statusUpdateTTL = 60 * time.Minute
+	statusExpireTTL = 3 * statusUpdateTTL
 )
+
+// SetStatusUpdateTTL configures TTL for LastUpdateTime field
+//
+// Higher value decreases load on Kubernetes API server
+func SetStatusUpdateTTL(v time.Duration) {
+	statusExpireTTL = v
+}
 
 type objectWithStatus interface {
 	client.Object
@@ -46,8 +52,10 @@ func StatusForChildObjects[T any, PT interface {
 		panic(fmt.Sprintf("BUG: unexpected format for parentObjectName=%q, want name.namespace.resource", parentObjectName))
 	}
 	typeName := parentObjectName + vmv1beta1.ConditionDomainTypeAppliedSuffix
-	ctm := metav1.Now()
 	for _, childObject := range childObjects {
+		// update current time on each cycle
+		// due to possible throttling at API server
+		ctm := metav1.Now()
 		st := childObject.GetStatusMetadata()
 		currCound := vmv1beta1.Condition{
 			Type:               typeName,
@@ -106,8 +114,7 @@ func setConditionTo(dst []vmv1beta1.Condition, cond vmv1beta1.Condition) []vmv1b
 	// update TTL with jitter in order to reduce load on kubernetes API server
 	// jitter should cover configured resync period (60s default value)
 	// it also reduce propbability of concurrent update requests
-	jitter := jitterForDuration(2 * time.Minute)
-	ttl := statusUpdateTTL + jitter
+	ttl := jitterForDuration(statusUpdateTTL)
 	for idx, c := range dst {
 		if c.Type == cond.Type {
 			var forceLastTimeUpdate bool
@@ -135,8 +142,7 @@ func removeStaleConditionsBySuffix(src []vmv1beta1.Condition, domainTypeSuffix s
 	// update TTL with jitter in order to reduce load on kubernetes API server
 	// jitter should cover configured resync period (60s default value)
 	// it also reduce propbability of concurrent update requests
-	jitter := jitterForDuration(3 * time.Minute)
-	ttl := statusExpireTTL + jitter
+	ttl := statusExpireTTL + jitterForDuration(statusUpdateTTL)
 	for _, cond := range src {
 		if strings.HasSuffix(cond.Type, domainTypeSuffix) {
 			if time.Since(cond.LastUpdateTime.Time) > ttl {
@@ -164,8 +170,9 @@ func writeAggregatedStatus(stm *vmv1beta1.StatusMetadata, domainTypeSuffix strin
 	}
 }
 
+// adds 50% jitter to the given duration
 func jitterForDuration(d time.Duration) time.Duration {
 	dv := d / 2
 	p := float64(rand.Uint32()) / (1 << 32)
-	return time.Duration(p * float64(dv))
+	return d + time.Duration(p*float64(dv))
 }

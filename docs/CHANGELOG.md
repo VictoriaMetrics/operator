@@ -18,6 +18,7 @@ aliases:
 * FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): allow multiple values for `zone` at `gceSDConfigs`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1217) for details.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): decrease latency of generated configuration updates. Previously, configuration was update after status of child objects were changed. It could take significant time at large scale. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1220) for details.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): reduce load on Kubernetes API server at prometheus-converter client.
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): change default value for `client.qps=50` and `client.burst=100` in order to improve operator performance on scale. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1220) for details.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly build `relabelConfigs` with empty string values for `separator` and `replacement` fields. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1214) for details.
 * BUGFIX: [converter]((https://docs.victoriametrics.com/operator/migration/#objects-conversion)): properly format `regex` single value expression at Prometheus Operator CRD `relabelings` and `metricsRelabelings`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1219) for details.

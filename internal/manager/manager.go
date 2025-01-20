@@ -170,7 +170,7 @@ func RunManager(ctx context.Context) error {
 
 	setupLog.Info("starting VictoriaMetrics operator", "build version", buildinfo.Version, "short_version", versionRe.FindString(buildinfo.Version))
 	r := metrics.Registry
-	r.MustRegister(appVersion, uptime, startedAt)
+	r.MustRegister(appVersion, uptime, startedAt, clientQPSLimit)
 	setupRuntimeMetrics(r)
 	addRestClientMetrics(r)
 	setupLog.Info("Registering Components.")

@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -473,7 +472,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	case cr.Spec.ConfigRawYaml != "":
 		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
 	}
-	mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, l, tlsAssets)
+	mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, tlsAssets)
 	if err != nil {
 		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 	}
@@ -665,9 +664,10 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	return nil, fmt.Errorf("cannot find alertmanager config key: %q at secret: %q", alertmanagerSecretConfigKey, secretName)
 }
 
-func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, l logr.Logger, tlsAssets map[string]string) (*parsedConfig, error) {
+func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, tlsAssets map[string]string) (*parsedConfig, error) {
 	var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 	var badCfgs []*vmv1beta1.VMAlertmanagerConfig
+	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(ams *vmv1beta1.VMAlertmanagerConfigList) {
 			for i := range ams.Items {
@@ -675,6 +675,7 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}
+				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 				item.Status.ObservedGeneration = item.Generation
 				if item.Spec.ParsingError != "" {
 					item.Status.CurrentSyncError = item.Spec.ParsingError
@@ -697,8 +698,7 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 		return nil, err
 	}
 	parsedCfg.brokenAMCfgs = append(parsedCfg.brokenAMCfgs, badCfgs...)
-	l.Info("selected alertmanager configs",
-		"len", len(amCfgs), "invalid configs", len(parsedCfg.brokenAMCfgs))
+	logger.SelectedObjects(ctx, "VMAlertmanagerConfigs", len(parsedCfg.amcfgs), len(parsedCfg.brokenAMCfgs), namespacedNames)
 	badConfigsTotal.Add(float64(len(badCfgs)))
 	return parsedCfg, nil
 }

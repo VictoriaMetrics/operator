@@ -25,6 +25,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
@@ -358,6 +359,8 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta); err != nil {
 		return err
 	}
+	logger.SelectedObjects(ctx, "VMUsers", len(sus.namespacedNames), len(sus.brokenVMUsers), sus.namespacedNames)
+
 	parentObject := fmt.Sprintf("%s.%s.vmauth", cr.GetName(), cr.GetNamespace())
 	if childObject != nil {
 		// fast path

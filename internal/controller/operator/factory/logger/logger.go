@@ -2,6 +2,8 @@ package logger
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
@@ -79,4 +81,17 @@ func WithContext(ctx context.Context) logr.Logger {
 // AddToContext adds given logger into context
 func AddToContext(ctx context.Context, origin logr.Logger) context.Context {
 	return context.WithValue(ctx, contextKey, origin)
+}
+
+// SelectedObjects formats and prints into log message selected objects for config reconcile
+func SelectedObjects(ctx context.Context, objectName string, selected, broken int, namespacedNames []string) {
+	if len(namespacedNames) == 0 {
+		return
+	}
+	formattedNames := "too large to display"
+	if len(namespacedNames) < 250 {
+		formattedNames = strings.Join(namespacedNames, ",")
+	}
+	WithContext(ctx).Info(fmt.Sprintf("selected %s count=%d, invalid rules count=%d, namespaced names %s",
+		objectName, len(namespacedNames), broken, formattedNames))
 }

@@ -29,9 +29,10 @@ import (
 // implementation should has as less implementation details of vmusers as possible
 // potentially it could be re-used later for scrape objects/vmalert rules.
 type skipableVMUsers struct {
-	stopIter      bool
-	users         []*vmv1beta1.VMUser
-	brokenVMUsers []*vmv1beta1.VMUser
+	stopIter        bool
+	users           []*vmv1beta1.VMUser
+	brokenVMUsers   []*vmv1beta1.VMUser
+	namespacedNames []string
 }
 
 // visitAll visits all users objects
@@ -908,12 +909,7 @@ func selectVMUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMA
 		}); err != nil {
 		return nil, err
 	}
-
-	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info(fmt.Sprintf("selected VMUsers count=%d %s", len(namespacedNames), strings.Join(namespacedNames, ",")))
-	}
-
-	return &skipableVMUsers{users: res}, nil
+	return &skipableVMUsers{users: res, namespacedNames: namespacedNames}, nil
 }
 
 // note, username and password must be filled by operator

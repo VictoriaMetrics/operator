@@ -6,7 +6,6 @@ import (
 	"hash/fnv"
 	"sort"
 	"strconv"
-	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
@@ -232,10 +231,7 @@ func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta
 		}
 		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
 	}
-	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info(fmt.Sprintf("selected Rules count=%d, invalid rules count=%d, namespaced names %s",
-			len(namespacedNames), brokenRulesCnt, strings.Join(namespacedNames, ",")))
-	}
+	logger.SelectedObjects(ctx, "VMRules", len(namespacedNames), brokenRulesCnt, namespacedNames)
 	badConfigsTotal.Add(float64(brokenRulesCnt))
 	return rules, vmRules, nil
 }

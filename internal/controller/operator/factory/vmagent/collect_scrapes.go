@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -31,9 +30,7 @@ func selectScrapeConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient clie
 		return nil, err
 	}
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMScrapeConfig]{target: scrapeConfigsCombined, sorter: namespacedNames})
-	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info(fmt.Sprintf("selected scrapeConfigs count=%d %s", len(namespacedNames), strings.Join(namespacedNames, ",")))
-	}
+	logger.SelectedObjects(ctx, "VMScrapeConfigs", len(namespacedNames), 0, namespacedNames)
 
 	return scrapeConfigsCombined, nil
 }
@@ -57,9 +54,7 @@ func selectPodScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client
 	}
 
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMPodScrape]{target: podScrapesCombined, sorter: namespacedNames})
-	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info(fmt.Sprintf("selected PodScrapes count=%d %s", len(namespacedNames), strings.Join(namespacedNames, ",")))
-	}
+	logger.SelectedObjects(ctx, "VMPodScrapes", len(namespacedNames), 0, namespacedNames)
 
 	return podScrapesCombined, nil
 }
@@ -82,10 +77,7 @@ func selectVMProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	}
 
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMProbe]{target: probesCombined, sorter: namespacedNames})
-	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info(fmt.Sprintf("selected VMProbes count=%d %s", len(namespacedNames), strings.Join(namespacedNames, ",")))
-	}
-
+	logger.SelectedObjects(ctx, "VMProbes", len(namespacedNames), 0, namespacedNames)
 	return probesCombined, nil
 }
 
@@ -115,9 +107,7 @@ func selectVMNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 	}
 
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMNodeScrape]{target: nodesCombined, sorter: namespacedNames})
-	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info(fmt.Sprintf("selected VMNodeScrapes count=%d %s", len(namespacedNames), strings.Join(namespacedNames, ",")))
-	}
+	logger.SelectedObjects(ctx, "VMNodeScrapes", len(namespacedNames), 0, namespacedNames)
 
 	return nodesCombined, nil
 }
@@ -139,16 +129,14 @@ func selectStaticScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 		return nil, err
 	}
 	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMStaticScrape]{target: staticScrapesCombined, sorter: namespacedNames})
-	if len(namespacedNames) > 0 {
-		logger.WithContext(ctx).Info(fmt.Sprintf("selected StaticScrapes count=%d %s", len(namespacedNames), strings.Join(namespacedNames, ",")))
-	}
+	logger.SelectedObjects(ctx, "VMStaticScrape", len(namespacedNames), 0, namespacedNames)
 
 	return staticScrapesCombined, nil
 }
 
 func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMServiceScrape, error) {
 	var servScrapesCombined []*vmv1beta1.VMServiceScrape
-	var serviceScrapeNamespacedNames []string
+	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ServiceScrapeNamespaceSelector, cr.Spec.ServiceScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMServiceScrapeList) {
 			for i := range list.Items {
@@ -157,18 +145,15 @@ func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 					continue
 				}
 				rclient.Scheme().Default(item)
-				serviceScrapeNamespacedNames = append(serviceScrapeNamespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 				servScrapesCombined = append(servScrapesCombined, item)
 			}
 		}); err != nil {
 		return nil, err
 	}
 
-	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMServiceScrape]{sorter: serviceScrapeNamespacedNames, target: servScrapesCombined})
-
-	if len(serviceScrapeNamespacedNames) > 0 {
-		logger.WithContext(ctx).Info(fmt.Sprintf("selected ServiceScrapes count=%d %s", len(serviceScrapeNamespacedNames), strings.Join(serviceScrapeNamespacedNames, ",")))
-	}
+	sort.Sort(&namespacedNameSorter[*vmv1beta1.VMServiceScrape]{sorter: namespacedNames, target: servScrapesCombined})
+	logger.SelectedObjects(ctx, "VMServiceScrape", len(namespacedNames), 0, namespacedNames)
 
 	return servScrapesCombined, nil
 }

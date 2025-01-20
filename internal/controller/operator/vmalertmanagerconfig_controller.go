@@ -106,7 +106,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 				continue
 			}
 		}
-		if err := alertmanager.CreateAMConfig(ctx, am, r.Client); err != nil {
+		if err := alertmanager.CreateOrUpdateConfig(ctx, r.Client, am, &instance); err != nil {
 			continue
 		}
 	}

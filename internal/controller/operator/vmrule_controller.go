@@ -104,11 +104,10 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			}
 		}
 
-		_, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r)
+		_, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, currVMAlert, instance)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot update rules configmaps: %w", err)
 		}
-
 	}
 	return
 }

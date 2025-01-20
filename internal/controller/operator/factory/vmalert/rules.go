@@ -45,32 +45,21 @@ var (
 	}
 )
 
-var defAlert = `
-groups:
-- name: vmAlertGroup
-  rules:
-     - alert: error writing to remote
-       for: 1m
-       expr: rate(vmalert_remotewrite_errors_total[1m]) > 0
-       labels:
-         host: "{{ $labels.instance }}"
-       annotations:
-         summary: " error writing to remote writer from vmaler{{ $value|humanize }}"
-         description: "error writing to remote writer from vmaler {{$labels}}"
-         back: "error rate is ok at vmalert "
-`
-
 // CreateOrUpdateRuleConfigMaps conditionally selects vmrules and stores content at configmaps
-func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) ([]string, error) {
+func CreateOrUpdateRuleConfigMaps(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule) ([]string, error) {
 	// fast path
 	if cr.IsUnmanaged() {
 		return nil, nil
 	}
-	newRules, err := selectRulesUpdateStatus(ctx, cr, rclient)
+	newRules, err := reconcileVMAlertConfig(ctx, rclient, cr, childCR)
 	if err != nil {
 		return nil, err
 	}
 
+	return newRules, nil
+}
+
+func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, newRules map[string]string) ([]string, error) {
 	newConfigMaps := makeRulesConfigMaps(cr, newRules)
 	currentCMs := make([]corev1.ConfigMap, len(newConfigMaps))
 	for idx, cm := range newConfigMaps {
@@ -116,8 +105,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 	toCreate, toUpdate := rulesCMDiff(currentCMs, newConfigMaps)
 	for _, cm := range toCreate {
 		logger.WithContext(ctx).Info(fmt.Sprintf("creating additional configmap=%s for rules", cm.Name))
-		err = rclient.Create(ctx, &cm)
-		if err != nil {
+		if err := rclient.Create(ctx, &cm); err != nil {
 			if errors.IsAlreadyExists(err) {
 				continue
 			}
@@ -129,8 +117,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 			return nil, err
 		}
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s configuration", cm.Name))
-		err = rclient.Update(ctx, &cm)
-		if err != nil {
+		if err := rclient.Update(ctx, &cm); err != nil {
 			return nil, fmt.Errorf("failed to update rules Configmap: %s, err: %w", cm.Name, err)
 		}
 	}
@@ -138,12 +125,10 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 	if len(toCreate) > 0 || len(toUpdate) > 0 {
 		// trigger sync for configmap
 		logger.WithContext(ctx).Info("triggering pod config reload by changing annotation")
-		err = k8stools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace)
-		if err != nil {
+		if err := k8stools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace); err != nil {
 			logger.WithContext(ctx).Error(err, "failed to update vmalert pod cm-sync annotation")
 		}
 	}
-
 	return newConfigMapNames, nil
 }
 
@@ -181,7 +166,36 @@ func rulesCMDiff(currentCMs []corev1.ConfigMap, newCMs []corev1.ConfigMap) (toCr
 	return toCreate, toUpdate
 }
 
-func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) (map[string]string, error) {
+func reconcileVMAlertConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule) ([]string, error) {
+	rulesData, vmRules, err := selectRulesContent(ctx, rclient, cr)
+	if err != nil {
+		return nil, err
+	}
+	// peform config maps content update
+	ruleCMNames, err := reconcileConfigsData(ctx, rclient, cr, rulesData)
+	if err != nil {
+		return nil, err
+	}
+	parentObject := fmt.Sprintf("%s.%s.vmalert", cr.Name, cr.Namespace)
+	if childCR != nil {
+		for _, rule := range vmRules {
+			if rule.Name == childCR.Name && rule.Namespace == childCR.Namespace {
+				// fast path update a single object that triggered event
+				// it should be fast path for the most cases
+				if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMRule{rule}); err != nil {
+					return nil, err
+				}
+				return ruleCMNames, nil
+			}
+		}
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, vmRules); err != nil {
+		return nil, err
+	}
+	return ruleCMNames, nil
+}
+
+func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (map[string]string, []*vmv1beta1.VMRule, error) {
 	var vmRules []*vmv1beta1.VMRule
 	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
@@ -194,7 +208,7 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 			}
 		}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	rules := make(map[string]string, len(vmRules))
@@ -203,46 +217,27 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 		logger.WithContext(ctx).Info("deduplicating vmalert rules")
 		vmRules = deduplicateRules(ctx, vmRules)
 	}
-	var badRules []*vmv1beta1.VMRule
-	var cnt int
+	var brokenRulesCnt int
 	for _, pRule := range vmRules {
 		if err := pRule.Validate(); err != nil {
 			pRule.Status.CurrentSyncError = err.Error()
-			badRules = append(badRules, pRule)
+			brokenRulesCnt++
 			continue
 		}
 		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {
 			pRule.Status.CurrentSyncError = fmt.Sprintf("cannot generate content for rule: %s, err :%s", pRule.Name, err)
-			badRules = append(badRules, pRule)
+			brokenRulesCnt++
 			continue
 		}
-		vmRules[cnt] = pRule
-		cnt++
 		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
 	}
-	vmRules = vmRules[:cnt]
-	if len(rules) == 0 {
-		// inject default rule
-		// it's needed to start vmalert.
-		rules["default-vmalert.yaml"] = defAlert
-	}
-	badConfigsTotal.Add(float64(len(badRules)))
-
-	parentObject := fmt.Sprintf("%s.%s.vmalert", cr.Name, cr.Namespace)
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, vmRules); err != nil {
-		return nil, err
-	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, badRules); err != nil {
-		return nil, fmt.Errorf("cannot update bad rules statuses: %w", err)
-	}
-
 	if len(namespacedNames) > 0 {
 		logger.WithContext(ctx).Info(fmt.Sprintf("selected Rules count=%d, invalid rules count=%d, namespaced names %s",
-			len(namespacedNames), len(badRules), strings.Join(namespacedNames, ",")))
+			len(namespacedNames), brokenRulesCnt, strings.Join(namespacedNames, ",")))
 	}
-
-	return rules, nil
+	badConfigsTotal.Add(float64(brokenRulesCnt))
+	return rules, vmRules, nil
 }
 
 func generateContent(promRule vmv1beta1.VMRuleSpec, enforcedNsLabel, ns string) (string, error) {

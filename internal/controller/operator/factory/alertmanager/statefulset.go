@@ -438,9 +438,9 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 	}, nil
 }
 
-// CreateAMConfig - check if secret with config exist,
+// CreateOrUpdateConfig - check if secret with config exist,
 // if not create with predefined or user value.
-func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
+func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, childCR *vmv1beta1.VMAlertmanagerConfig) error {
 	l := logger.WithContext(ctx)
 	var prevCR *vmv1beta1.VMAlertmanager
 	if cr.ParsedLastAppliedSpec != nil {
@@ -477,7 +477,12 @@ func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient c
 	if err != nil {
 		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 	}
-	alertmananagerConfig = mergedCfg
+	alertmananagerConfig = mergedCfg.data
+	// apply default config to be able just start alertmanager
+	if len(alertmananagerConfig) == 0 {
+		alertmananagerConfig = []byte(defaultAMConfig)
+	}
+
 	webCfg, err := buildWebServerConfigYAML(ctx, rclient, cr, tlsAssets)
 	if err != nil {
 		return fmt.Errorf("cannot build webserver config: %w", err)
@@ -486,11 +491,6 @@ func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient c
 	gossipCfg, err := buildGossipConfigYAML(ctx, rclient, cr, tlsAssets)
 	if err != nil {
 		return fmt.Errorf("cannot build gossip config: %w", err)
-	}
-
-	// apply default config to be able just start alertmanager
-	if len(alertmananagerConfig) == 0 {
-		alertmananagerConfig = []byte(defaultAMConfig)
 	}
 
 	// add templates from CR to alermanager config
@@ -507,16 +507,10 @@ func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient c
 	}
 
 	newAMSecretConfig := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.ConfigSecretName(),
-			Namespace:       cr.Namespace,
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-		},
-		Data: map[string][]byte{alertmanagerSecretConfigKey: alertmananagerConfig},
-	}
+		ObjectMeta: *buildConfgSecretMeta(cr),
+		Data: map[string][]byte{
+			alertmanagerSecretConfigKey: alertmananagerConfig,
+		}}
 	if cr.Spec.WebConfig != nil {
 		newAMSecretConfig.Data[webserverConfigKey] = webCfg
 	}
@@ -530,17 +524,47 @@ func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient c
 
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
-		prevSecretMeta = &metav1.ObjectMeta{
-			Name:            prevCR.ConfigSecretName(),
-			Namespace:       prevCR.Namespace,
-			Labels:          prevCR.AllLabels(),
-			Annotations:     prevCR.AnnotationsFiltered(),
-			OwnerReferences: prevCR.AsOwner(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-		}
+		prevSecretMeta = buildConfgSecretMeta(prevCR)
 	}
 
-	return reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta)
+	if err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta); err != nil {
+		return err
+	}
+
+	parent := fmt.Sprintf("%s.%s.vmalertmanager", cr.Name, cr.Namespace)
+
+	if childCR != nil {
+		// fast path update only single object
+		for _, amc := range mergedCfg.amcfgs {
+			if amc.Name == childCR.Name && amc.Namespace == childCR.Namespace {
+				return reconcile.StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMAlertmanagerConfig{amc})
+			}
+		}
+		for _, amc := range mergedCfg.brokenAMCfgs {
+			if amc.Name == childCR.Name && amc.Namespace == childCR.Namespace {
+				return reconcile.StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMAlertmanagerConfig{amc})
+			}
+		}
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, mergedCfg.amcfgs); err != nil {
+		return fmt.Errorf("failed to update vmalertmanagerConfigs statuses: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, mergedCfg.brokenAMCfgs); err != nil {
+		return fmt.Errorf("failed to update broken vmalertmanagerConfigs statuses: %w", err)
+	}
+	return nil
+}
+
+func buildConfgSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
+	return &metav1.ObjectMeta{
+		Name:            cr.ConfigSecretName(),
+		Namespace:       cr.Namespace,
+		Labels:          cr.AllLabels(),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: cr.AsOwner(),
+		Finalizers:      []string{vmv1beta1.FinalizerName},
+	}
+
 }
 
 func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
@@ -641,7 +665,7 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	return nil, fmt.Errorf("cannot find alertmanager config key: %q at secret: %q", alertmanagerSecretConfigKey, secretName)
 }
 
-func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, l logr.Logger, tlsAssets map[string]string) ([]byte, error) {
+func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, l logr.Logger, tlsAssets map[string]string) (*parsedConfig, error) {
 	var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 	var badCfgs []*vmv1beta1.VMAlertmanagerConfig
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
@@ -675,15 +699,8 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 	parsedCfg.brokenAMCfgs = append(parsedCfg.brokenAMCfgs, badCfgs...)
 	l.Info("selected alertmanager configs",
 		"len", len(amCfgs), "invalid configs", len(parsedCfg.brokenAMCfgs))
-	parent := fmt.Sprintf("%s.%s.vmalertmanager", cr.Name, cr.Namespace)
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, parsedCfg.amcfgs); err != nil {
-		return nil, fmt.Errorf("failed to update vmalertmanagerConfigs statuses: %w", err)
-	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, parsedCfg.brokenAMCfgs); err != nil {
-		return nil, fmt.Errorf("failed to update broken vmalertmanagerConfigs statuses: %w", err)
-	}
 	badConfigsTotal.Add(float64(len(badCfgs)))
-	return parsedCfg.data, nil
+	return parsedCfg, nil
 }
 
 func subPathForStorage(s *vmv1beta1.StorageSpec) string {

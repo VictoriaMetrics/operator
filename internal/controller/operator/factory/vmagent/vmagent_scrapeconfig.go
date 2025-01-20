@@ -67,19 +67,19 @@ type scrapeObjects struct {
 }
 
 // CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
-func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+func CreateOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
 	var prevCR *vmv1beta1.VMAgent
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
-	if _, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR); err != nil {
+	if _, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, childObject); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*scrapesSecretsCache, error) {
+func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object) (*scrapesSecretsCache, error) {
 	if cr.Spec.IngestOnlyMode {
 		return nil, nil
 	}
@@ -190,53 +190,126 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta); err != nil {
 		return nil, fmt.Errorf("cannot reconcile vmagent config secret: %w", err)
 	}
-	if err := updateStatusesForScrapeObjects(ctx, rclient, cr, sos); err != nil {
+	if err := updateStatusesForScrapeObjects(ctx, rclient, cr, sos, childObject); err != nil {
 		return nil, err
 	}
 
 	return ssCache, nil
 }
 
-func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, sos *scrapeObjects) error {
+func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, sos *scrapeObjects, childObject client.Object) error {
 
 	vmagentSecretFetchErrsTotal.Add(float64(sos.totalBrokenCount))
 
 	parentObject := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nssBroken); err != nil {
-		return fmt.Errorf("cannot update statuses for bad scrape objects: %w", err)
+	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
+		// fast path
+		switch t := childObject.(type) {
+		case *vmv1beta1.VMStaticScrape:
+			for _, o := range sos.stss {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMStaticScrape{o})
+				}
+			}
+			for _, o := range sos.stssBroken {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMStaticScrape{o})
+				}
+			}
+
+		case *vmv1beta1.VMProbe:
+			for _, o := range sos.prss {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMProbe{o})
+				}
+			}
+			for _, o := range sos.prssBroken {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMProbe{o})
+				}
+			}
+		case *vmv1beta1.VMScrapeConfig:
+			for _, o := range sos.scss {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMScrapeConfig{o})
+				}
+			}
+			for _, o := range sos.scssBroken {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMScrapeConfig{o})
+				}
+			}
+
+		case *vmv1beta1.VMNodeScrape:
+			for _, o := range sos.nss {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMNodeScrape{o})
+				}
+			}
+			for _, o := range sos.nssBroken {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMNodeScrape{o})
+				}
+			}
+		case *vmv1beta1.VMPodScrape:
+			for _, o := range sos.pss {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMPodScrape{o})
+				}
+			}
+			for _, o := range sos.pssBroken {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMPodScrape{o})
+				}
+			}
+		case *vmv1beta1.VMServiceScrape:
+			for _, o := range sos.sss {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMServiceScrape{o})
+				}
+			}
+			for _, o := range sos.sssBroken {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMServiceScrape{o})
+				}
+			}
+		}
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.sss); err != nil {
 		return fmt.Errorf("cannot update statuses for service scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.sssBroken); err != nil {
+		return fmt.Errorf("cannot update statuses for broken scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.pss); err != nil {
 		return fmt.Errorf("cannot update statuses for pod scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.pssBroken); err != nil {
-		return fmt.Errorf("cannot update statuses for pod scrape objects: %w", err)
+		return fmt.Errorf("cannot update statuses for broken pod scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nss); err != nil {
 		return fmt.Errorf("cannot update statuses for node scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nssBroken); err != nil {
-		return fmt.Errorf("cannot update statuses for node scrape objects: %w", err)
+		return fmt.Errorf("cannot update statuses for broken node scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.prss); err != nil {
 		return fmt.Errorf("cannot update statuses for probe scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.prssBroken); err != nil {
-		return fmt.Errorf("cannot update statuses for probe scrape objects: %w", err)
+		return fmt.Errorf("cannot update statuses for broken probe scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.stss); err != nil {
 		return fmt.Errorf("cannot update statuses for static scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.stssBroken); err != nil {
-		return fmt.Errorf("cannot update statuses for static scrape objects: %w", err)
+		return fmt.Errorf("cannot update statuses for broken static scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.scss); err != nil {
 		return fmt.Errorf("cannot update statuses for scrapeconfig scrape objects: %w", err)
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.scssBroken); err != nil {
-		return fmt.Errorf("cannot update statuses for scrapeconfig scrape objects: %w", err)
+		return fmt.Errorf("cannot update statuses for broken scrapeconfig scrape objects: %w", err)
 	}
 	return nil
 }

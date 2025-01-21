@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 type testVMServiceScrapeForServiceWithSpecArgs struct {
@@ -40,7 +41,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			name: "custom selector",
 			args: testVMServiceScrapeForServiceWithSpecArgs{
 				metricPath:      "/metrics",
-				filterPortNames: []string{"http"},
+				filterPortNames: []string{"http-2"},
 				service: &corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "vmagent-svc",
@@ -74,7 +75,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			name: "multiple ports with filter",
 			args: testVMServiceScrapeForServiceWithSpecArgs{
 				metricPath:      "/metrics",
-				filterPortNames: []string{"http"},
+				filterPortNames: []string{"http-5"},
 				service: &corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "vmagent-svc",
@@ -104,10 +105,59 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "with extra metric labels",
+			name: "multiple ports with vmbackup filter",
 			args: testVMServiceScrapeForServiceWithSpecArgs{
 				metricPath:      "/metrics",
-				filterPortNames: []string{"http"},
+				filterPortNames: []string{"vmbackup"},
+				service: &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "vmagent-svc",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name: "http",
+							},
+							{
+								Name: "vmbackup",
+							},
+						},
+					},
+				},
+			},
+			wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
+				Endpoints: []vmv1beta1.Endpoint{
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics",
+						},
+						Port: "http",
+					},
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics",
+						},
+						Port: "vmbackup",
+						EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+							RelabelConfigs: []*vmv1beta1.RelabelConfig{
+								{
+									SourceLabels: []string{"job"},
+									TargetLabel:  "job",
+									Regex:        vmv1beta1.StringOrArray{"(.+)"},
+									Replacement:  ptr.To("${1}-vmbackup"),
+								},
+							},
+						},
+					},
+				},
+				Selector: metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{Key: vmv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist}}},
+			},
+		},
+
+		{
+			name: "with extra metric labels",
+			args: testVMServiceScrapeForServiceWithSpecArgs{
+				metricPath: "/metrics",
 				service: &corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "vmagent-svc",
@@ -143,8 +193,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 		{
 			name: "with extra endpoints",
 			args: testVMServiceScrapeForServiceWithSpecArgs{
-				metricPath:      "/metrics",
-				filterPortNames: []string{"http"},
+				metricPath: "/metrics",
 				service: &corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "vmagent-svc",

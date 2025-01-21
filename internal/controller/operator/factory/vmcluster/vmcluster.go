@@ -77,7 +77,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 			return err
 		}
 		if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, false) {
-			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.VMStorage, "http", "vmbackupmanager"))
+			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.VMStorage, "vmbackupmanager"))
 			if err != nil {
 				return fmt.Errorf("cannot create VMServiceScrape for vmStorage: %w", err)
 			}
@@ -104,7 +104,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 		}
 		if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
 
-			svs := build.VMServiceScrapeForServiceWithSpec(selectSvc, cr.Spec.VMSelect, "http")
+			svs := build.VMServiceScrapeForServiceWithSpec(selectSvc, cr.Spec.VMSelect)
 			if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 				// for backward compatibility we must keep job label value
 				svs.Spec.JobLabel = vmauthLBServiceProxyJobNameLabel
@@ -133,7 +133,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 			return err
 		}
 		if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
-			svs := build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.VMInsert, "http")
+			svs := build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.VMInsert)
 			if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 				// for backward compatibility we must keep job label value
 				svs.Spec.JobLabel = vmauthLBServiceProxyJobNameLabel
@@ -1565,7 +1565,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb service: %w", err)
 	}
-	svs := build.VMServiceScrapeForServiceWithSpec(svc, &cr.Spec.RequestsLoadBalancer.Spec, "http")
+	svs := build.VMServiceScrapeForServiceWithSpec(svc, &cr.Spec.RequestsLoadBalancer.Spec)
 	svs.Spec.Selector.MatchLabels[vmauthLBServiceProxyTargetLabel] = "vmauth"
 	if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)

@@ -94,7 +94,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient
 	}
 
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
+		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr, "vmbackupmanager"))
 		if err != nil {
 			return fmt.Errorf("cannot create serviceScrape for vmsingle: %w", err)
 		}

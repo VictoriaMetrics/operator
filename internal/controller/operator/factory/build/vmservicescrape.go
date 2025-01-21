@@ -3,9 +3,11 @@ package build
 import (
 	"strings"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 type serviceScrapeBuilder interface {
@@ -26,17 +28,19 @@ func VMServiceScrapeForAlertmanager(service *v1.Service, amCR *vmv1beta1.VMAlert
 			"tls": "true",
 		}
 	}
-	return vmServiceScrapeForServiceWithSpec(service, amCR.GetServiceScrape(), extraArgs, amCR.GetMetricPath(), "http")
+	return vmServiceScrapeForServiceWithSpec(service, amCR.GetServiceScrape(), extraArgs, amCR.GetMetricPath())
 }
 
-func VMServiceScrapeForServiceWithSpec(service *v1.Service, builder serviceScrapeBuilder, filterPortNames ...string) *vmv1beta1.VMServiceScrape {
+// VMServiceScrapeForServiceWithSpec creates corresponding object with `http` port endpoint obtained from given service
+// add additionalPortNames to the monitoring if needed
+func VMServiceScrapeForServiceWithSpec(service *v1.Service, builder serviceScrapeBuilder, additionalPortNames ...string) *vmv1beta1.VMServiceScrape {
 	serviceScrapeSpec, extraArgs, metricPath := builder.GetServiceScrape(), builder.GetExtraArgs(), builder.GetMetricPath()
-	return vmServiceScrapeForServiceWithSpec(service, serviceScrapeSpec, extraArgs, metricPath, filterPortNames...)
+	return vmServiceScrapeForServiceWithSpec(service, serviceScrapeSpec, extraArgs, metricPath, additionalPortNames...)
 }
 
 // VMServiceScrapeForServiceWithSpec build VMServiceScrape for given service with optional spec
 // optionally could filter out ports from service
-func vmServiceScrapeForServiceWithSpec(service *v1.Service, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]string, metricPath string, filterPortNames ...string) *vmv1beta1.VMServiceScrape {
+func vmServiceScrapeForServiceWithSpec(service *v1.Service, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]string, metricPath string, additionalPortNames ...string) *vmv1beta1.VMServiceScrape {
 	var endPoints []vmv1beta1.Endpoint
 	var isTLS bool
 	v, ok := extraArgs["tls"]
@@ -51,20 +55,40 @@ func vmServiceScrapeForServiceWithSpec(service *v1.Service, serviceScrapeSpec *v
 	}
 	authKey := extraArgs["metricsAuthKey"]
 
+	const defaultPortName = "http"
 	for _, servicePort := range service.Spec.Ports {
-		var nameMatched bool
-		for _, filter := range filterPortNames {
-			if servicePort.Name == filter {
-				nameMatched = true
-				break
-			}
-		}
-		if len(filterPortNames) > 0 && !nameMatched {
+		// fast path - filter all unmatched ports
+		if servicePort.Name != defaultPortName && len(additionalPortNames) == 0 {
 			continue
 		}
 
+		var extraRelabelingRules vmv1beta1.EndpointRelabelings
+		if servicePort.Name != defaultPortName {
+			// check service for extra ports
+			var nameMatched bool
+			for _, filter := range additionalPortNames {
+				if servicePort.Name == filter {
+					nameMatched = true
+					// add a relabeling rule to avoid job collision
+					extraRelabelingRules.RelabelConfigs = []*vmv1beta1.RelabelConfig{
+						{
+							SourceLabels: []string{"job"},
+							TargetLabel:  "job",
+							Regex:        vmv1beta1.StringOrArray{"(.+)"},
+							Replacement:  ptr.To("${1}-" + filter),
+						},
+					}
+					break
+				}
+			}
+			if !nameMatched {
+				continue
+			}
+		}
+
 		ep := vmv1beta1.Endpoint{
-			Port: servicePort.Name,
+			Port:                servicePort.Name,
+			EndpointRelabelings: extraRelabelingRules,
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 				Path: metricPath,
 			},

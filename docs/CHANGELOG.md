@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to v1.109.1 version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VictoriaLogs app to v1.6.1 version
 
 * FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): allow multiple values for `zone` at `gceSDConfigs`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1217) for details.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): decrease latency of generated configuration updates. Previously, configuration was update after status of child objects were changed. It could take significant time at large scale. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1220) for details.

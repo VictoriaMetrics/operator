@@ -13,6 +13,13 @@ aliases:
 
 ## tip
 
+## [v0.52.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.52.0)
+
+**Release date:** 21 Jan 2025
+
+![AppVersion: v1.109.1](https://img.shields.io/badge/v1.109.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fchangelog%23v11091)
+![AppVersion: v1.6.1](https://img.shields.io/badge/v1.6.1-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v161)
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to v1.109.1 version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VictoriaLogs app to v1.6.1 version
 

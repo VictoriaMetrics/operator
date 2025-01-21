@@ -103,9 +103,10 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		// if sts wasn't recreated, update it first
 		// before making call for performRollingUpdateOnSts
 		if !stsRecreated {
-			var prevAnnotations map[string]string
+			var prevAnnotations, prevTemplateAnnotations map[string]string
 			if prevSts != nil {
 				prevAnnotations = prevSts.Annotations
+				prevTemplateAnnotations = prevSts.Spec.Template.Annotations
 			}
 			isEqual := equality.Semantic.DeepDerivative(newSts.Spec, currentSts.Spec)
 			shouldSkipUpdate := isPrevEqual &&
@@ -117,6 +118,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 
 				vmv1beta1.AddFinalizer(newSts, &currentSts)
 				newSts.Annotations = mergeAnnotations(currentSts.Annotations, newSts.Annotations, prevAnnotations)
+				newSts.Spec.Template.Annotations = mergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations, prevTemplateAnnotations)
 				cloneSignificantMetadata(newSts, &currentSts)
 
 				logger.WithContext(ctx).Info(fmt.Sprintf("updating statefulset %s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",

@@ -1,0 +1,51 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: cluster-access-ro
+  namespace: default
+spec:
+  username: simple-user
+  password: simple-password
+  disable_secret_creation: true
+  targetRefs:
+    - crd:
+        kind: VMCluster/vmselect
+        name: main
+        namespace: default
+      paths: ["/select.*"]
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: cluster-access-rw
+  namespace: default
+spec:
+  username: simple-user
+  password: simple-password-2
+  disable_secret_creation: true
+  targetRefs:
+    - crd:
+        kind: VMCluster/vminsert
+        name: main
+        namespace: default
+      paths: ["/insert.*"]
+    - crd:
+        kind: VMCluster/vmselect
+        name: main
+        namespace: default
+      paths: [".*"]
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: main
+  namespace: default
+spec:
+  retentionPeriod: "4"
+  replicationFactor: 1
+  vminsert:
+    replicaCount: 1
+  vmselect:
+    replicaCount: 1
+  vmstorage:
+    replicaCount: 1

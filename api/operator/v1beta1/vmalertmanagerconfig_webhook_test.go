@@ -419,6 +419,7 @@ var _ = Describe("VMAlertmanagerConfig Webhook", func() {
                 key: secret
               chat_id: 1234
               parse_mode: HTML
+              message_thread_id: 15
           route:
             receiver: tg
         `),

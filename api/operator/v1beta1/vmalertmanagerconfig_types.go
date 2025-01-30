@@ -295,6 +295,9 @@ type TelegramConfig struct {
 	BotToken *v1.SecretKeySelector `json:"bot_token" yaml:"bot_token"`
 	// ChatID is ID of the chat where to send the messages.
 	ChatID int `json:"chat_id" yaml:"chat_id"`
+	// MessageThreadID defines ID of the message thread where to send the messages.
+	// +optional
+	MessageThreadID int `json:"message_thread_id,omitempty"`
 	// Message is templated message
 	// +optional
 	Message string `json:"message,omitempty"`

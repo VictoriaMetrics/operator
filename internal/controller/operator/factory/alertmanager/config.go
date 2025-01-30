@@ -702,7 +702,9 @@ func (cb *configBuilder) buildTelegram(tg vmv1beta1.TelegramConfig) error {
 		temp = append(temp, yaml.MapItem{Key: "disable_notifications", Value: *tg.DisableNotifications})
 	}
 	temp = append(temp, yaml.MapItem{Key: "chat_id", Value: tg.ChatID})
-
+	if tg.MessageThreadID > 0 {
+		temp = append(temp, yaml.MapItem{Key: "message_thread_id", Value: tg.MessageThreadID})
+	}
 	toYaml := func(key string, src string) {
 		if len(src) > 0 {
 			temp = append(temp, yaml.MapItem{Key: key, Value: src})

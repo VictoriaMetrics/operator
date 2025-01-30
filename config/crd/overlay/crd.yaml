@@ -8025,6 +8025,10 @@ spec:
                           message:
                             description: Message is templated message
                             type: string
+                          message_thread_id:
+                            description: MessageThreadID defines ID of the message
+                              thread where to send the messages.
+                            type: integer
                           parse_mode:
                             description: |-
                               ParseMode for telegram message,

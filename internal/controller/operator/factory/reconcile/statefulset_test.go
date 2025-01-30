@@ -20,8 +20,9 @@ import (
 
 func Test_waitForPodReady(t *testing.T) {
 	type args struct {
-		ns      string
-		podName string
+		ns             string
+		podName        string
+		desiredVersion string
 	}
 	tests := []struct {
 		name              string
@@ -91,12 +92,82 @@ func Test_waitForPodReady(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "with desiredVersion",
+			args: args{
+				ns:             "default",
+				podName:        "vmselect-example-0",
+				desiredVersion: "some-version",
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect-example-0",
+						Namespace: "default",
+						Labels: map[string]string{
+							podRevisionLabel: "some-version",
+						},
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{Status: "True", Type: corev1.PodReady},
+						},
+						Phase: corev1.PodRunning,
+					},
+				},
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect-example-1",
+						Namespace: "default",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{},
+						Phase:      corev1.PodPending,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "with missing desiredVersion",
+			args: args{
+				ns:             "default",
+				podName:        "vmselect-example-0",
+				desiredVersion: "some-version",
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect-example-0",
+						Namespace: "default",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{Status: "True", Type: corev1.PodReady},
+						},
+						Phase: corev1.PodRunning,
+					},
+				},
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect-example-1",
+						Namespace: "default",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{},
+						Phase:      corev1.PodPending,
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			if err := waitForPodReady(context.Background(), fclient, tt.args.ns, tt.args.podName, 0); (err != nil) != tt.wantErr {
+			nsn := types.NamespacedName{Namespace: tt.args.ns, Name: tt.args.podName}
+			if err := waitForPodReady(context.Background(), fclient, nsn, tt.args.desiredVersion, 0); (err != nil) != tt.wantErr {
 				t.Errorf("waitForPodReady() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

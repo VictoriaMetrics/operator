@@ -19,6 +19,7 @@ aliases:
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly check `Pod` state during `StatefulSet` rolling upgrade procedure. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1227) for details.
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly upscale on `shardCount` change. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1224) for details.
+* BUGFIX: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): properly apply `vmuser` changes. See [this PR](https://github.com/VictoriaMetrics/operator/pull/1231) for details.
 
 ## [v0.52.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.52.0)
 

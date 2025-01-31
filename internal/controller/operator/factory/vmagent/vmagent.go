@@ -3,6 +3,7 @@ package vmagent
 import (
 	"context"
 	"fmt"
+	"iter"
 	"path"
 	"sort"
 	"strconv"
@@ -148,10 +149,10 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		}
 	}
 
-	var prevObjectSpec runtime.Object
+	var prevDeploy runtime.Object
 
 	if prevCR != nil {
-		prevObjectSpec, err = newDeployForVMAgent(prevCR, ssCache)
+		prevDeploy, err = newDeployForVMAgent(prevCR, ssCache)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 		}
@@ -161,122 +162,147 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
+	if cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
+		return createOrUpdateShardedDeploy(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
+	}
+	return createOrUpdateDeploy(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
+}
+
+func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, _ *vmv1beta1.VMAgent, newDeploy, prevObjectSpec runtime.Object) error {
 	deploymentNames := make(map[string]struct{})
 	stsNames := make(map[string]struct{})
-	if cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
-		shardsCount := *cr.Spec.ShardCount
-		logger.WithContext(ctx).Info(fmt.Sprintf("using cluster version of VMAgent with shards count=%d", shardsCount))
-		for shardNum := 0; shardNum < shardsCount; shardNum++ {
-			shardedDeploy := newDeploy.DeepCopyObject()
-			var prevShardedObject runtime.Object
-			addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy)
-			if prevObjectSpec != nil {
-				prevShardedObject = prevObjectSpec.DeepCopyObject()
-				addShardSettingsToVMAgent(shardNum, shardsCount, prevShardedObject)
-			}
-			placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
-			switch shardedDeploy := shardedDeploy.(type) {
-			case *appsv1.Deployment:
-				var prevDeploy *appsv1.Deployment
-				shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
-				if err != nil {
-					return fmt.Errorf("cannot fill placeholders for deployment sharded vmagent: %w", err)
-				}
-				if prevShardedObject != nil {
-					// prev object could be deployment due to switching from statefulmode
-					prevObjApp, ok := prevShardedObject.(*appsv1.Deployment)
-					if ok {
-						prevDeploy = prevObjApp
-						prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
-						if err != nil {
-							return fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent: %w", err)
-						}
 
-					}
-				}
-				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, prevDeploy, false); err != nil {
-					return err
-				}
-				deploymentNames[shardedDeploy.Name] = struct{}{}
-			case *appsv1.StatefulSet:
-				var prevSts *appsv1.StatefulSet
-				shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
+	var err error
+	switch newDeploy := newDeploy.(type) {
+	case *appsv1.Deployment:
+		var prevDeploy *appsv1.Deployment
+		if prevObjectSpec != nil {
+			prevAppObject, ok := prevObjectSpec.(*appsv1.Deployment)
+			if ok {
+				prevDeploy = prevAppObject
+				prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, defaultPlaceholders)
 				if err != nil {
-					return fmt.Errorf("cannot fill placeholders for sts in sharded vmagent: %w", err)
+					return fmt.Errorf("cannot fill placeholders for prev deployment in vmagent: %w", err)
 				}
-				if prevShardedObject != nil {
-					// prev object could be deployment due to switching to statefulmode
-					prevObjApp, ok := prevShardedObject.(*appsv1.StatefulSet)
-					if ok {
-						prevSts = prevObjApp
-						prevSts, err = k8stools.RenderPlaceholders(prevSts, placeholders)
-						if err != nil {
-							return fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent: %w", err)
-						}
-
-					}
-				}
-				stsOpts := reconcile.STSOptions{
-					HasClaim: len(shardedDeploy.Spec.VolumeClaimTemplates) > 0,
-					SelectorLabels: func() map[string]string {
-						selectorLabels := cr.SelectorLabels()
-						selectorLabels["shard-num"] = strconv.Itoa(shardNum)
-						return selectorLabels
-					},
-				}
-				if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, prevSts); err != nil {
-					return err
-				}
-				stsNames[shardedDeploy.Name] = struct{}{}
 			}
 		}
-	} else {
-		switch newDeploy := newDeploy.(type) {
+
+		newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
+		if err != nil {
+			return fmt.Errorf("cannot fill placeholders for deployment in vmagent: %w", err)
+		}
+		if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false); err != nil {
+			return err
+		}
+		deploymentNames[newDeploy.Name] = struct{}{}
+	case *appsv1.StatefulSet:
+		var prevSTS *appsv1.StatefulSet
+		if prevObjectSpec != nil {
+			prevAppObject, ok := prevObjectSpec.(*appsv1.StatefulSet)
+			if ok {
+				prevSTS = prevAppObject
+				prevSTS, err = k8stools.RenderPlaceholders(prevSTS, defaultPlaceholders)
+				if err != nil {
+					return fmt.Errorf("cannot fill placeholders for prev sts in vmagent: %w", err)
+				}
+			}
+		}
+		newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
+		if err != nil {
+			return fmt.Errorf("cannot fill placeholders for sts in vmagent: %w", err)
+		}
+		stsOpts := reconcile.STSOptions{
+			HasClaim:       len(newDeploy.Spec.VolumeClaimTemplates) > 0,
+			SelectorLabels: cr.SelectorLabels,
+		}
+		if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, prevSTS); err != nil {
+			return err
+		}
+		stsNames[newDeploy.Name] = struct{}{}
+	}
+	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
+		return err
+	}
+	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsNames); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, newDeploy, prevDeploy runtime.Object) error {
+	deploymentNames := make(map[string]struct{})
+	var err error
+	stsNames := make(map[string]struct{})
+	shardsCount := *cr.Spec.ShardCount
+	logger.WithContext(ctx).Info(fmt.Sprintf("using cluster version of VMAgent with shards count=%d", shardsCount))
+
+	isUpscaling := false
+	if prevCR != nil && prevCR.Spec.ShardCount != nil {
+		if *prevCR.Spec.ShardCount < shardsCount {
+			logger.WithContext(ctx).Info(fmt.Sprintf("VMAgent shard upscaling from=%d to=%d", *prevCR.Spec.ShardCount, shardsCount))
+			isUpscaling = true
+		}
+	}
+	for shardNum := range shardNumIter(isUpscaling, shardsCount) {
+		shardedDeploy := newDeploy.DeepCopyObject()
+		var prevShardedObject runtime.Object
+		addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy)
+		if prevDeploy != nil {
+			prevShardedObject = prevDeploy.DeepCopyObject()
+			addShardSettingsToVMAgent(shardNum, shardsCount, prevShardedObject)
+		}
+		placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
+		switch shardedDeploy := shardedDeploy.(type) {
 		case *appsv1.Deployment:
 			var prevDeploy *appsv1.Deployment
-			if prevObjectSpec != nil {
-				prevAppObject, ok := prevObjectSpec.(*appsv1.Deployment)
+			shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
+			if err != nil {
+				return fmt.Errorf("cannot fill placeholders for deployment sharded vmagent: %w", err)
+			}
+			if prevShardedObject != nil {
+				// prev object could be deployment due to switching from statefulmode
+				prevObjApp, ok := prevShardedObject.(*appsv1.Deployment)
 				if ok {
-					prevDeploy = prevAppObject
-					prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, defaultPlaceholders)
+					prevDeploy = prevObjApp
+					prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
 					if err != nil {
-						return fmt.Errorf("cannot fill placeholders for prev deployment in vmagent: %w", err)
+						return fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent: %w", err)
 					}
 				}
 			}
-
-			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
-			if err != nil {
-				return fmt.Errorf("cannot fill placeholders for deployment in vmagent: %w", err)
-			}
-			if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false); err != nil {
+			if err := reconcile.Deployment(ctx, rclient, shardedDeploy, prevDeploy, false); err != nil {
 				return err
 			}
-			deploymentNames[newDeploy.Name] = struct{}{}
+			deploymentNames[shardedDeploy.Name] = struct{}{}
 		case *appsv1.StatefulSet:
-			var prevSTS *appsv1.StatefulSet
-			if prevObjectSpec != nil {
-				prevAppObject, ok := prevObjectSpec.(*appsv1.StatefulSet)
+			var prevSts *appsv1.StatefulSet
+			shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
+			if err != nil {
+				return fmt.Errorf("cannot fill placeholders for sts in sharded vmagent: %w", err)
+			}
+			if prevShardedObject != nil {
+				// prev object could be deployment due to switching to statefulmode
+				prevObjApp, ok := prevShardedObject.(*appsv1.StatefulSet)
 				if ok {
-					prevSTS = prevAppObject
-					prevSTS, err = k8stools.RenderPlaceholders(prevSTS, defaultPlaceholders)
+					prevSts = prevObjApp
+					prevSts, err = k8stools.RenderPlaceholders(prevSts, placeholders)
 					if err != nil {
-						return fmt.Errorf("cannot fill placeholders for prev sts in vmagent: %w", err)
+						return fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent: %w", err)
 					}
 				}
-			}
-			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
-			if err != nil {
-				return fmt.Errorf("cannot fill placeholders for sts in vmagent: %w", err)
 			}
 			stsOpts := reconcile.STSOptions{
-				HasClaim:       len(newDeploy.Spec.VolumeClaimTemplates) > 0,
-				SelectorLabels: cr.SelectorLabels,
+				HasClaim: len(shardedDeploy.Spec.VolumeClaimTemplates) > 0,
+				SelectorLabels: func() map[string]string {
+					selectorLabels := cr.SelectorLabels()
+					selectorLabels["shard-num"] = strconv.Itoa(shardNum)
+					return selectorLabels
+				},
 			}
-			if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, prevSTS); err != nil {
+			if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, prevSts); err != nil {
 				return err
 			}
-			stsNames[newDeploy.Name] = struct{}{}
+			stsNames[shardedDeploy.Name] = struct{}{}
 		}
 	}
 	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
@@ -285,8 +311,27 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsNames); err != nil {
 		return err
 	}
-
 	return nil
+}
+
+func shardNumIter(backward bool, shardCount int) iter.Seq[int] {
+	if backward {
+		return func(yield func(int) bool) {
+			for shardCount >= 0 {
+				shardCount--
+				if !yield(shardCount) {
+					return
+				}
+			}
+		}
+	}
+	return func(yield func(int) bool) {
+		for i := 0; i < shardCount; i++ {
+			if !yield(i) {
+				return
+			}
+		}
+	}
 }
 
 // newDeployForVMAgent builds vmagent deployment spec.

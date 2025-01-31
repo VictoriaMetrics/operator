@@ -581,7 +581,7 @@ func (cr *VMAuth) AsCRDOwner() []metav1.OwnerReference {
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAuth) IsUnmanaged() bool {
 	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) ||
-		cr.Spec.ExternalConfig.SecretRef == nil ||
+		cr.Spec.ExternalConfig.SecretRef != nil ||
 		cr.Spec.ExternalConfig.LocalPath != ""
 }
 

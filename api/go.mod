@@ -1,6 +1,6 @@
 module github.com/VictoriaMetrics/operator/api
 
-go 1.23.1
+go 1.23.5
 
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.107.0

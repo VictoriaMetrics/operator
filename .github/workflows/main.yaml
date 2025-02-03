@@ -1,5 +1,4 @@
 name: Build and Test
-
 # This workflow will run on master branch and on any pull requests targeting master
 on:
   push:
@@ -21,6 +20,10 @@ jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     steps:
       - name: Free space
         run: |

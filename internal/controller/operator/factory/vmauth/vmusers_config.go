@@ -316,6 +316,7 @@ var crdNameToObject = map[string]objectWithURL{
 	"VMAgent":  &vmv1beta1.VMAgent{},
 	"VMAlert":  &vmv1beta1.VMAlert{},
 	"VMSingle": &vmv1beta1.VMSingle{},
+	"VLogs":    &vmv1beta1.VLogs{},
 	// keep both variants for backward-compatibility
 	"VMAlertmanager":      &vmv1beta1.VMAlertmanager{},
 	"VMAlertManager":      &vmv1beta1.VMAlertmanager{},

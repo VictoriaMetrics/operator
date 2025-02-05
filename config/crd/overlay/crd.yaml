@@ -31857,6 +31857,7 @@ spec:
                           - VMAgent
                           - VMAlert
                           - VMSingle
+                          - VLogs
                           - VMAlertManager
                           - VMAlertmanager
                           - VMCluster/vmselect

@@ -143,6 +143,15 @@ bearer_token: secret-token
 							},
 							{
 								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLogs",
+									Namespace: "monitoring",
+									Name:      "db",
+								},
+								Paths: []string{"/logs/v1.*"},
+							},
+
+							{
+								CRD: &vmv1beta1.CRDRef{
 									Kind:      "VMSingle",
 									Namespace: "monitoring",
 									Name:      "db",
@@ -154,6 +163,7 @@ bearer_token: secret-token
 				crdURLCache: map[string]string{
 					"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
 					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+					"VLogs/monitoring/db":     "http://vlogs-b.monitoring.svc:8482",
 				},
 			},
 			want: `url_map:
@@ -169,6 +179,10 @@ bearer_token: secret-token
   - http://vmcluster-remote.mydomain.com:8401/insert/0/prometheus?extra_label=key%3Dvalue
   src_paths:
   - /.*
+- url_prefix:
+  - http://vlogs-b.monitoring.svc:8482
+  src_paths:
+  - /logs/v1.*
 - url_prefix:
   - http://vmsingle-b.monitoring.svc:8429
   src_paths:

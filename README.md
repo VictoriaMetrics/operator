@@ -54,9 +54,6 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 - security [doc](https://docs.victoriametrics.com/operator/security.html)
 - resource validation [doc](https://docs.victoriametrics.com/operator/resources-validation.html)
 
-  NOTE documentations was moved into main VictoriaMetrics repo [link](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/operator)
-  All changes must be done there.
-
 ## Configuration
 
  Operator configured by env variables, list of it can be found at [link](https://docs.victoriametrics.com/operator/vars.html)

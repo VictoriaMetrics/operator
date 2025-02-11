@@ -3,9 +3,11 @@ name: Update docs
 on:
   push:
     branches:
-      - "master"
+      - 'master'
     paths:
-      - "docs/**"
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/docs.yaml'
 
 jobs:
   update-docs:
@@ -14,21 +16,18 @@ jobs:
       name: docs
       url: https://docs.victoriametrics.com/
     steps:
-      - name: Check out operator code
+      - name: Checkout operator repo
         uses: actions/checkout@v4
         with:
-          repository: VictoriaMetrics/operator
-          ref: master
-          token: ${{ secrets.VM_BOT_GH_TOKEN }}
-          path: __vm-operator-repo
+          path: __vm-operator
 
-      - name: Check out VM code
+      - name: Checkout docs repo
         uses: actions/checkout@v4
         with:
-          repository: VictoriaMetrics/VictoriaMetrics
-          ref: master
+          repository: VictoriaMetrics/vmdocs
+          ref: main
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
-          path: __vm-docs-repo
+          path: __vm-docs
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -44,9 +43,9 @@ jobs:
           passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
           git_user_signingkey: true
           git_commit_gpgsign: true
-          workdir: __vm-docs-repo
+          git_config_global: true
 
-      - name: Update operator docs in VM repo
+      - name: Copy docs
         id: update
         run: |
           make docs
@@ -56,20 +55,20 @@ jobs:
             --include="*.webp" \
             --include="*.md" \
             --exclude="*" \
-            docs/ ../__vm-docs-repo/docs/operator/
-          echo "BUILDTIME=$(date +%s)" >> $GITHUB_OUTPUT
+            docs/ ../__vm-docs/content/operator/
           echo "SHORT_SHA=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
-        working-directory: __vm-operator-repo
+        working-directory: __vm-operator
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
-        with:
-          add-paths: docs/operator
-          commit-message: Automatic update operator docs from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}
-          signoff: true
-          committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"
-          path: __vm-docs-repo
-          branch: operator-docs-update-${{ steps.update.outputs.BUILDTIME }}
-          token: ${{ secrets.VM_BOT_GH_TOKEN }}
-          delete-branch: true
-          title: Automatic update operator docs from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}
+      - name: Push to vmdocs
+        run: |
+          git config --global user.name "${{ steps.import-gpg.outputs.email }}"
+          git config --global user.email "${{ steps.import-gpg.outputs.email }}"
+          if [[ -n $(git status --porcelain) ]]; then
+            git add content/helm
+            git commit -S -m "sync docs with VictoriaMetrics/operator commit: ${{ steps.update.outputs.SHORT_SHA }}"
+            git push
+          fi
+        working-directory: __vm-docs
+        env:
+          GH_TOKEN: "${{ secrets.VM_BOT_GH_TOKEN }}"
+          GITHUB_TOKEN: "${{ secrets.VM_BOT_GH_TOKEN }}"

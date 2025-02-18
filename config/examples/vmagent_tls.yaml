@@ -3,39 +3,44 @@ kind: VMAgent
 metadata:
   name: example-vmagent-tls
 spec:
-  serviceScrapeNamespaceSelector: {}
-  serviceScrapeSelector: {}
-  podScrapeNamespaceSelector: {}
-  podScrapeSelector: {}
-  probeSelector: {}
-  probeNamespaceSelector: {}
-  staticScrapeSelector: {}
-  staticScrapeNamespaceSelector: {}
+  selectAllByDefault: true
   replicaCount: 1
-  serviceAccountName: vmagent
   secrets:
-  - remote-tls
+    - remote-tls
+  image:
+    tag: v1.111.0
   extraArgs:
-    memory.allowedPercent: "40"
+    tls: "true"
+    tlsCertFile: /etc/vm/secrets/remote-tls/cert
+    tlsKeyFile: /etc/vm/secrets/remote-tls/key
+  useVMConfigReloader: true
+  serviceScrapeSpec:
+    endpoints:
+      - port: http
+        scheme: https
+        tlsConfig:
+          caFile: "/etc/vm/secrets/remote-tls/ca"
+          certFile: "/etc/vm/secrets/remote-tls/cert"
+          keyFile: "/etc/vm/secrets/remote-tls/key"
   remoteWrite:
-  - url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429/api/v1/write"
-    tlsConfig:
-      ca:
-        secret:
+    - url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429/api/v1/write"
+      tlsConfig:
+        ca:
+          secret:
+            name: remote-tls
+            key: ca
+        cert:
+          secret:
+            name: remote-tls
+            key: cert
+        keySecret:
           name: remote-tls
-          key: ca
-      cert:
-        secret:
-          name: remote-tls
-          key: cert
-      keySecret:
-        name: remote-tls
-        key: key
-  - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
-    tlsConfig:
-      caFile: "/etc/vm/secrets/remote-tls/ca"
-      certFile: "/etc/vm/secrets/remote-tls/cert"
-      keyFile: "/etc/vm/secrets/remote-tls/key"
+          key: key
+    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+      tlsConfig:
+        caFile: "/etc/vm/secrets/remote-tls/ca"
+        certFile: "/etc/vm/secrets/remote-tls/cert"
+        keyFile: "/etc/vm/secrets/remote-tls/key"
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
@@ -43,19 +48,20 @@ metadata:
   name: example-scrape-tls
 spec:
   endpoints:
-  - port: http
-    tlsConfig:
-      ca:
-        secret:
+    - port: http
+      scheme: https
+      tlsConfig:
+        ca:
+          secret:
+            name: remote-tls
+            key: ca
+        cert:
+          secret:
+            name: remote-tls
+            key: cert
+        keySecret:
           name: remote-tls
-          key: ca
-      cert:
-        secret:
-          name: remote-tls
-          key: cert
-      keySecret:
-        name: remote-tls
-        key: key
+          key: key
   namespaceSelector: {}
   selector:
     matchLabels:
@@ -68,7 +74,6 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: remote-tls
-  namespace: vm
 stringData:
   ca: |
     -----BEGIN CERTIFICATE-----

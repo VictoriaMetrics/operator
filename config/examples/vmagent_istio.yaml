@@ -16,16 +16,38 @@ spec:
       sidecar.istio.io/userVolumeMount: '[{"name": "istio-certs", "mountPath": "/etc/istio-certs/"}]'
       traffic.sidecar.istio.io/includeOutboundIPRanges: ""
   remoteWrite:
-  - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
   selectAllByDefault: true
+  extraEnvs:
+    - name: POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+  serviceScrapeSpec:
+    endpoints:
+      - path: /metrics
+        port: http
+        scheme: https
+        # use special workaround for local endpoint scrape
+        # rewrite scheme to http, if pod IP is equal to local pod IP
+        # it allows to have multiple vmagent replicas with istio
+        relabelingConfig:
+          - source_labels: [__meta_kubernetes_pod_ip]
+            regex: "%{POD_IP}"
+            target_label: __scheme
+            replacement: http
+        tlsConfig:
+          caFile: /etc/istio-certs/root-cert.pem
+          certFile: /etc/istio-certs/cert-chain.pem
+          keyFile: /etc/prom-certs/cert-chain.pem
   volumeMounts:
-  - mountPath: /etc/istio-certs/
-    name: istio-certs
-    readOnly: true
+    - mountPath: /etc/istio-certs/
+      name: istio-certs
+      readOnly: true
   volumes:
-  - emptyDir:
-      medium: Memory
-    name: istio-certs
+    - emptyDir:
+        medium: Memory
+      name: istio-certs
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
@@ -35,15 +57,14 @@ metadata:
   name: test-app
 spec:
   endpoints:
-  - port: http
-    scheme: https
-    tlsConfig:
-      ca: {}
-      caFile: /etc/istio-certs/root-cert.pem
-      cert: {}
-      certFile: /etc/istio-certs/cert-chain.pem
-      insecureSkipVerify: true
-      keyFile: /etc/istio-certs/key.pem
+    - port: http
+      scheme: https
+      tlsConfig:
+        ca: {}
+        caFile: /etc/istio-certs/root-cert.pem
+        cert: {}
+        certFile: /etc/istio-certs/cert-chain.pem
+        keyFile: /etc/prom-certs/cert-chain.pem
   namespaceSelector: {}
   selector:
     matchLabels:

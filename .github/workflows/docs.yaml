@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: docs
-      url: https://docs.victoriametrics.com/
+      url: https://docs.victoriametrics.com/operator
     steps:
       - name: Checkout operator repo
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
           git config --global user.name "${{ steps.import-gpg.outputs.email }}"
           git config --global user.email "${{ steps.import-gpg.outputs.email }}"
           if [[ -n $(git status --porcelain) ]]; then
-            git add content/helm
+            git add content/operator
             git commit -S -m "sync docs with VictoriaMetrics/operator commit: ${{ steps.update.outputs.SHORT_SHA }}"
             git push
           fi

@@ -1,5 +1,6 @@
 # Image URL to use all building/pushing image targets
 REGISTRY ?= docker.io
+PUBLISH_REGISTRIES ?= docker.io quay.io
 REPO = operator
 ROOT ?= ./cmd
 ORG ?= victoriametrics
@@ -198,7 +199,9 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 		--build-arg ROOT=$(ROOT) \
 		--build-arg BUILDINFO=$(BUILDINFO) \
 		${DOCKER_BUILD_ARGS} \
-		--tag $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
+		$(foreach registry,$(PUBLISH_REGISTRIES), \
+		--tag $(registry)/$(ORG)/$(REPO):$(TAG) \
+		) \
 		-f Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm vm-builder
 	rm Dockerfile.cross

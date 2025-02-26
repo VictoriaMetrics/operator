@@ -23,11 +23,11 @@ _Appears in:_
 {{- end }}
 
 {{ if $type.Members -}}
-| Field | Description | Scheme | Required |
-| --- | --- | --- | --- |
+| Field | Description |
+| --- | --- |
 {{ if $type.GVK -}}
-| `apiVersion` _string_ | `{{ $type.GVK.Group }}/{{ $type.GVK.Version }}` | | |
-| `kind` _string_ | `{{ $type.GVK.Kind }}` | | |
+| `apiVersion` _string_ | `{{ $type.GVK.Group }}/{{ $type.GVK.Version }}` |
+| `kind` _string_ | `{{ $type.GVK.Kind }}` |
 {{ end -}}
 {{- $members := default dict -}}
 {{- range $member := $type.Members -}}
@@ -36,7 +36,8 @@ _Appears in:_
 {{- $memberKeys := (keys $members | sortAlpha) -}}
 {{ range $memberKeys -}}
 {{- $member := index $members . -}}
-| `{{ $member.Name }}` | {{ template "type_members" $member }} | _{{ markdownRenderType $member.Type }}_ | {{ not $member.Markers.optional }} |
+{{- $id := lower (printf "%s-%s" $type.Name $member.Name) -}}
+| <a href="#{{ $id }}"><code id="{{ $id }}">{{ $member.Name }}</code></a><br/>_{{ markdownRenderType $member.Type }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{ end }}{{ template "type_members" $member }} |
 {{ end -}}
 
 {{- end -}}

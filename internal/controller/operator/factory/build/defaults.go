@@ -40,7 +40,17 @@ func addStatefulsetDefaults(objI interface{}) {
 	if obj.Spec.UpdateStrategy.Type == "" {
 		obj.Spec.UpdateStrategy.Type = appsv1.OnDeleteStatefulSetStrategyType
 	}
-	// special case for vm operator defaults
+
+	if obj.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType {
+		if obj.Spec.UpdateStrategy.RollingUpdate == nil {
+			// UpdateStrategy.RollingUpdate will take default values below.
+			obj.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{}
+		}
+		if obj.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
+			obj.Spec.UpdateStrategy.RollingUpdate.Partition = ptr.To[int32](0)
+		}
+	}
+
 	if obj.Spec.PodManagementPolicy == "" {
 		obj.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
 		if obj.Spec.MinReadySeconds > 0 || obj.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType {
@@ -49,23 +59,6 @@ func addStatefulsetDefaults(objI interface{}) {
 	}
 	if obj.Spec.Template.Spec.SecurityContext == nil {
 		obj.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
-	}
-
-	if obj.Spec.UpdateStrategy.Type == "" {
-		obj.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-
-		if obj.Spec.UpdateStrategy.RollingUpdate == nil {
-			// UpdateStrategy.RollingUpdate will take default values below.
-			obj.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{}
-		}
-	}
-
-	if obj.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType &&
-		obj.Spec.UpdateStrategy.RollingUpdate != nil {
-
-		if obj.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
-			obj.Spec.UpdateStrategy.RollingUpdate.Partition = ptr.To[int32](0)
-		}
 	}
 
 	if obj.Spec.Replicas == nil {

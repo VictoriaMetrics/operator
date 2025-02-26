@@ -118,7 +118,7 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			}
 		}
-		ConfigReloaderCPU    string `default:"100m"`
+		ConfigReloaderCPU    string `default:"10m"`
 		ConfigReloaderMemory string `default:"25Mi"`
 	}
 
@@ -144,7 +144,7 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			}
 		}
-		ConfigReloaderCPU    string `default:"100m"`
+		ConfigReloaderCPU    string `default:"10m"`
 		ConfigReloaderMemory string `default:"25Mi"`
 	}
 
@@ -224,7 +224,7 @@ type BaseOperatorConf struct {
 
 	VMAlertManager struct {
 		ConfigReloaderImage          string `default:"jimmidyson/configmap-reload:v0.3.0"`
-		ConfigReloaderCPU            string `default:"100m"`
+		ConfigReloaderCPU            string `default:"10m"`
 		ConfigReloaderMemory         string `default:"25Mi"`
 		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager"`
 		AlertManagerVersion          string `default:"v0.27.0"`
@@ -275,7 +275,7 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			}
 		}
-		ConfigReloaderCPU    string `default:"100m"`
+		ConfigReloaderCPU    string `default:"10m"`
 		ConfigReloaderMemory string `default:"25Mi"`
 	}
 

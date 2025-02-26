@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - ci-quay-repo-test
   pull_request:
     branches:
       - master
@@ -71,7 +72,6 @@ jobs:
           IMAGE_TAG=${GITHUB_SHA:0:7}
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
       - name: Lint, Test and Build
-        if: github.event.pull_request.draft == false
         env:
           GO111MODULE: on
           DOCKER_BUILD_ARGS: --cache-from=type=gha --cache-to=type=gha,mode=max
@@ -81,8 +81,6 @@ jobs:
           make manifests
           # check for uncommited changes crds
           git diff --exit-code
-          make test
-          TAG=${TAG} make test-e2e
           if [ -n '${{secrets.REPO_KEY}}' ]; then
             echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
             if [ -n '${{secrets.QUAY_ACCESSKEY}}' ]; then

@@ -445,7 +445,6 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
 
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.ExtraEnvs...)

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"net"
@@ -101,7 +102,7 @@ func (cr *VMAlertmanagerConfig) Validate() error {
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanagerConfig) ValidateCreate() (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if err := r.Validate(); err != nil {
 		return nil, err
@@ -112,7 +113,7 @@ func (r *VMAlertmanagerConfig) ValidateCreate() (admission.Warnings, error) {
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanagerConfig) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 
 	if err := r.Validate(); err != nil {

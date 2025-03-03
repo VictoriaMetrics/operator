@@ -17,7 +17,9 @@ limitations under the License.
 package v1beta1
 
 import (
+	"errors"
 	"fmt"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -46,7 +48,7 @@ func (r *VLogs) sanityCheck() error {
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VLogs) ValidateCreate() (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
 		return nil, nil
@@ -60,7 +62,7 @@ func (r *VLogs) ValidateCreate() (admission.Warnings, error) {
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VLogs) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
 		return nil, nil

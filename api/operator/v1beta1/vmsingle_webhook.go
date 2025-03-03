@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"errors"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -74,7 +75,7 @@ func (r *VMSingle) sanityCheck() error {
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMSingle) ValidateCreate() (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
 		return nil, nil
@@ -89,7 +90,7 @@ func (r *VMSingle) ValidateCreate() (admission.Warnings, error) {
 func (r *VMSingle) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	vmsinglelog.Info("validate update", "name", r.Name)
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
 		return nil, nil

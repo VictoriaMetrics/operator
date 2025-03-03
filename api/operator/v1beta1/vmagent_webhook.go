@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/envtemplate"
@@ -95,7 +96,7 @@ func (r *VMAgent) sanityCheck() error {
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAgent) ValidateCreate() (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
 		return nil, nil
@@ -109,7 +110,7 @@ func (r *VMAgent) ValidateCreate() (admission.Warnings, error) {
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAgent) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
 		return nil, nil

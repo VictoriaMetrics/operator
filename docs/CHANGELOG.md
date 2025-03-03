@@ -18,7 +18,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to v1.112.0 version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated `Kubernetes` libraries to `v1.32.2` version and `controller-runtime` to `v0.20.2` version.
 
-
+* FEATURE: upgrade Go builder from Go1.23.4 to Go1.24. See [Go1.24 release notes](https://tip.golang.org/doc/go1.24).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): deprecate `aPIServerConfig` in favor of `apiServerConfig`. `aPIServerConfig` will be removed at `v0.56.0` release. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1239) for details
 * FEATURE: [vmpodscrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/): add `portNumber` to `podMetricEndpoints`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1251) for details.
 

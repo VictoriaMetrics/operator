@@ -49,7 +49,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23.4"
+          go-version: "1.24.0"
         id: go
 
       - name: Run Trivy vulnerability scanner in repo mode

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/prometheus/alertmanager/pkg/labels"
@@ -110,7 +111,7 @@ func (r *VMAlertmanager) sanityCheck() error {
 func (r *VMAlertmanager) ValidateCreate() (admission.Warnings, error) {
 	vmalertmanagerlog.Info("validate create", "name", r.Name)
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
 		return nil, nil
@@ -124,7 +125,7 @@ func (r *VMAlertmanager) ValidateCreate() (admission.Warnings, error) {
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanager) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return nil, fmt.Errorf(r.Spec.ParsingError)
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
 		return nil, nil

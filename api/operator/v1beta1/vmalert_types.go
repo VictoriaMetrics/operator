@@ -247,15 +247,7 @@ type VMAlertRemoteWriteSpec struct {
 // VMAlertStatus defines the observed state of VMAlert
 // +k8s:openapi-gen=true
 type VMAlertStatus struct {
-	// Deprecated
-	Replicas int32 `json:"replicas,omitempty"`
-	// Deprecated
-	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
-	// Deprecated
-	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
-	// Deprecated
-	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
-	StatusMetadata      `json:",inline"`
+	StatusMetadata `json:",inline"`
 }
 
 // GetStatusMetadata returns metadata for object status

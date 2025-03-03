@@ -95,14 +95,7 @@ type VLogsSpec struct {
 
 // VLogsStatus defines the observed state of VLogs
 type VLogsStatus struct {
-	// deprecated and will be removed at v0.52.0
-	Replicas        int32 `json:"replicas,omitempty"`
-	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
-	// deprecated and will be removed at v0.52.0
-	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
-	// deprecated and will be removed at v0.52.0
-	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
-	StatusMetadata      `json:",inline"`
+	StatusMetadata `json:",inline"`
 }
 
 // GetStatusMetadata returns metadata for object status

@@ -123,15 +123,7 @@ func (cr *VMSingleSpec) UnmarshalJSON(src []byte) error {
 // VMSingleStatus defines the observed state of VMSingle
 // +k8s:openapi-gen=true
 type VMSingleStatus struct {
-	// deprecated and will be removed at v0.52.0
-	Replicas int32 `json:"replicas,omitempty"`
-	// deprecated and will be removed at v0.52.0
-	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
-	// deprecated and will be removed at v0.52.0
-	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
-	// deprecated and will be removed at v0.52.0
-	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
-	StatusMetadata      `json:",inline"`
+	StatusMetadata `json:",inline"`
 	// LegacyStatus is deprecated and will be removed at v0.52.0 version
 	LegacyStatus UpdateStatus `json:"singleStatus,omitempty"`
 }

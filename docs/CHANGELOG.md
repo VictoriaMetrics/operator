@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+**Update note 1: remove deprecated fields `Replicas`, `UpdateReplicas`, `AvailableReplicas` and `UnAvailableReplicas` from `vlogs`, `vmsingle`,`vmagent`, `vmalert`  objects `.status`.
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to v1.112.0 version
 
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): deprecate `aPIServerConfig` in favor of `apiServerConfig`. `aPIServerConfig` will be removed at `v0.56.0` release. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1239) for details

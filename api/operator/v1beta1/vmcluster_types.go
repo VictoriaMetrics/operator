@@ -170,10 +170,6 @@ func (c *VMCluster) AsOwner() []metav1.OwnerReference {
 
 // VMClusterStatus defines the observed state of VMCluster
 type VMClusterStatus struct {
-	// Deprecated.
-	UpdateFailCount int `json:"updateFailCount"`
-	// Deprecated.
-	LastSync       string `json:"lastSync,omitempty"`
 	StatusMetadata `json:",inline"`
 	// LegacyStatus is deprecated and will be removed at v0.52.0 version
 	LegacyStatus UpdateStatus `json:"clusterStatus,omitempty"`

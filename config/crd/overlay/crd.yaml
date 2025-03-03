@@ -951,10 +951,6 @@ spec:
           status:
             description: VLogsStatus defines the observed state of VLogs
             properties:
-              availableReplicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
                   and "Degraded"'
@@ -1027,20 +1023,9 @@ spec:
               reason:
                 description: Reason defines human readable error reason
                 type: string
-              replicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
-              unavailableReplicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
                 type: string
-              updatedReplicas:
-                format: int32
-                type: integer
             type: object
         type: object
     served: true
@@ -1107,6 +1092,49 @@ spec:
             description: VMAgentSpec defines the desired state of VMAgent
             properties:
               aPIServerConfig:
+                description: |-
+                  APIServerConfig allows specifying a host and auth methods to access apiserver.
+                  If left empty, VMAgent is assumed to run inside of the cluster
+                  and will discover API servers automatically and use the pod's CA certificate
+                  and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
+                  aPIServerConfig is deprecated use apiServerConfig instead
+                required:
+                - host
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              additionalScrapeConfigs:
+                description: |-
+                  AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
+                  is valid. Note that using this feature may expose the possibility to
+                  break upgrades of VMAgent. It is advised to review VMAgent release
+                  notes to ensure that no incompatible scrape configs are going to break
+                  VMAgent after the upgrade.
+                properties:
+                  key:
+                    description: The key of the secret to select from.  Must be a
+                      valid secret key.
+                    type: string
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  optional:
+                    description: Specify whether the Secret or its key must be defined
+                    type: boolean
+                required:
+                - key
+                type: object
+                x-kubernetes-map-type: atomic
+              affinity:
+                description: Affinity If specified, the pod's scheduling constraints.
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              apiServerConfig:
                 description: |-
                   APIServerConfig allows specifying a host and auth methods to access apiserver.
                   If left empty, VMAgent is assumed to run inside of the cluster
@@ -1375,38 +1403,6 @@ spec:
                 required:
                 - host
                 type: object
-              additionalScrapeConfigs:
-                description: |-
-                  AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
-                  is valid. Note that using this feature may expose the possibility to
-                  break upgrades of VMAgent. It is advised to review VMAgent release
-                  notes to ensure that no incompatible scrape configs are going to break
-                  VMAgent after the upgrade.
-                properties:
-                  key:
-                    description: The key of the secret to select from.  Must be a
-                      valid secret key.
-                    type: string
-                  name:
-                    default: ""
-                    description: |-
-                      Name of the referent.
-                      This field is effectively required, but due to backwards compatibility is
-                      allowed to be empty. Instances of this type with an empty value here are
-                      almost certainly wrong.
-                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                    type: string
-                  optional:
-                    description: Specify whether the Secret or its key must be defined
-                    type: boolean
-                required:
-                - key
-                type: object
-                x-kubernetes-map-type: atomic
-              affinity:
-                description: Affinity If specified, the pod's scheduling constraints.
-                type: object
-                x-kubernetes-preserve-unknown-fields: true
               arbitraryFSAccessThroughSMs:
                 description: |-
                   ArbitraryFSAccessThroughSMs configures whether configuration
@@ -5597,10 +5593,6 @@ spec:
           status:
             description: VMAgentStatus defines the observed state of VMAgent
             properties:
-              availableReplicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
                   and "Degraded"'
@@ -5685,17 +5677,9 @@ spec:
                   with uniq scrape targets
                 format: int32
                 type: integer
-              unavailableReplicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
                 type: string
-              updatedReplicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
             type: object
         type: object
     served: true
@@ -13969,10 +13953,6 @@ spec:
           status:
             description: VMAlertStatus defines the observed state of VMAlert
             properties:
-              availableReplicas:
-                description: Deprecated
-                format: int32
-                type: integer
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
                   and "Degraded"'
@@ -14045,21 +14025,9 @@ spec:
               reason:
                 description: Reason defines human readable error reason
                 type: string
-              replicas:
-                description: Deprecated
-                format: int32
-                type: integer
-              unavailableReplicas:
-                description: Deprecated
-                format: int32
-                type: integer
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
                 type: string
-              updatedReplicas:
-                description: Deprecated
-                format: int32
-                type: integer
             type: object
         type: object
     served: true
@@ -19881,9 +19849,6 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
-              lastSync:
-                description: Deprecated.
-                type: string
               observedGeneration:
                 description: |-
                   ObservedGeneration defines current generation picked by operator for the
@@ -19893,14 +19858,9 @@ spec:
               reason:
                 description: Reason defines human readable error reason
                 type: string
-              updateFailCount:
-                description: Deprecated.
-                type: integer
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
                 type: string
-            required:
-            - updateFailCount
             type: object
         required:
         - spec
@@ -30502,10 +30462,6 @@ spec:
           status:
             description: VMSingleStatus defines the observed state of VMSingle
             properties:
-              availableReplicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
                   and "Degraded"'
@@ -30578,25 +30534,13 @@ spec:
               reason:
                 description: Reason defines human readable error reason
                 type: string
-              replicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
               singleStatus:
                 description: LegacyStatus is deprecated and will be removed at v0.52.0
                   version
                 type: string
-              unavailableReplicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
               updateStatus:
                 description: UpdateStatus defines a status for update rollout
                 type: string
-              updatedReplicas:
-                description: deprecated and will be removed at v0.52.0
-                format: int32
-                type: integer
             type: object
         type: object
     served: true

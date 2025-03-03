@@ -27,7 +27,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -39,8 +38,6 @@ func (r *VMAlertmanagerConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmalertmanagerconfig,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,verbs=create;update,versions=v1beta1,name=vvmalertmanagerconfig.kb.io,admissionReviewVersions=v1
-
-var _ webhook.Validator = &VMAlertmanagerConfig{}
 
 // Validate performs logical validation
 func (cr *VMAlertmanagerConfig) Validate() error {

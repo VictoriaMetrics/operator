@@ -21,7 +21,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -33,8 +32,6 @@ func (r *VMAlert) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmalert,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmalerts,verbs=create;update,versions=v1beta1,name=vvmalert.kb.io,admissionReviewVersions=v1
-
-var _ webhook.Validator = &VMAlert{}
 
 func (r *VMAlert) sanityCheck() error {
 	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {

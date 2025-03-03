@@ -106,9 +106,12 @@ spec:
                         of a pod.
                       properties:
                         name:
-                          description: Required.
+                          description: |-
+                            Name is this DNS resolver option's name.
+                            Required.
                           type: string
                         value:
+                          description: Value is this DNS resolver option's value.
                           type: string
                       type: object
                     type: array
@@ -1768,18 +1771,15 @@ spec:
                                   persistent volume is being resized.
                                 type: string
                               status:
+                                description: |-
+                                  Status is the status of the condition.
+                                  Can be True, False, Unknown.
+                                  More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=state%20of%20pvc-,conditions.status,-(string)%2C%20required
                                 type: string
                               type:
                                 description: |-
-                                  PersistentVolumeClaimConditionType defines the condition of PV claim.
-                                  Valid values are:
-                                    - "Resizing", "FileSystemResizePending"
-
-                                  If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
-                                    - "ControllerResizeError", "NodeResizeError"
-
-                                  If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
-                                    - "ModifyVolumeError", "ModifyingVolume"
+                                  Type is the type of the condition.
+                                  More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=set%20to%20%27ResizeStarted%27.-,PersistentVolumeClaimCondition,-contains%20details%20about
                                 type: string
                             required:
                             - status
@@ -1955,9 +1955,12 @@ spec:
                         of a pod.
                       properties:
                         name:
-                          description: Required.
+                          description: |-
+                            Name is this DNS resolver option's name.
+                            Required.
                           type: string
                         value:
+                          description: Value is this DNS resolver option's value.
                           type: string
                       type: object
                     type: array
@@ -4862,18 +4865,15 @@ spec:
                                     persistent volume is being resized.
                                   type: string
                                 status:
+                                  description: |-
+                                    Status is the status of the condition.
+                                    Can be True, False, Unknown.
+                                    More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=state%20of%20pvc-,conditions.status,-(string)%2C%20required
                                   type: string
                                 type:
                                   description: |-
-                                    PersistentVolumeClaimConditionType defines the condition of PV claim.
-                                    Valid values are:
-                                      - "Resizing", "FileSystemResizePending"
-
-                                    If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
-                                      - "ControllerResizeError", "NodeResizeError"
-
-                                    If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
-                                      - "ModifyVolumeError", "ModifyingVolume"
+                                    Type is the type of the condition.
+                                    More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=set%20to%20%27ResizeStarted%27.-,PersistentVolumeClaimCondition,-contains%20details%20about
                                   type: string
                               required:
                               - status
@@ -10094,18 +10094,15 @@ spec:
                                   persistent volume is being resized.
                                 type: string
                               status:
+                                description: |-
+                                  Status is the status of the condition.
+                                  Can be True, False, Unknown.
+                                  More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=state%20of%20pvc-,conditions.status,-(string)%2C%20required
                                 type: string
                               type:
                                 description: |-
-                                  PersistentVolumeClaimConditionType defines the condition of PV claim.
-                                  Valid values are:
-                                    - "Resizing", "FileSystemResizePending"
-
-                                  If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
-                                    - "ControllerResizeError", "NodeResizeError"
-
-                                  If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
-                                    - "ModifyVolumeError", "ModifyingVolume"
+                                  Type is the type of the condition.
+                                  More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=set%20to%20%27ResizeStarted%27.-,PersistentVolumeClaimCondition,-contains%20details%20about
                                 type: string
                             required:
                             - status
@@ -10419,9 +10416,12 @@ spec:
                         of a pod.
                       properties:
                         name:
-                          description: Required.
+                          description: |-
+                            Name is this DNS resolver option's name.
+                            Required.
                           type: string
                         value:
+                          description: Value is this DNS resolver option's value.
                           type: string
                       type: object
                     type: array
@@ -11606,18 +11606,15 @@ spec:
                                     persistent volume is being resized.
                                   type: string
                                 status:
+                                  description: |-
+                                    Status is the status of the condition.
+                                    Can be True, False, Unknown.
+                                    More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=state%20of%20pvc-,conditions.status,-(string)%2C%20required
                                   type: string
                                 type:
                                   description: |-
-                                    PersistentVolumeClaimConditionType defines the condition of PV claim.
-                                    Valid values are:
-                                      - "Resizing", "FileSystemResizePending"
-
-                                    If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
-                                      - "ControllerResizeError", "NodeResizeError"
-
-                                    If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
-                                      - "ModifyVolumeError", "ModifyingVolume"
+                                    Type is the type of the condition.
+                                    More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=set%20to%20%27ResizeStarted%27.-,PersistentVolumeClaimCondition,-contains%20details%20about
                                   type: string
                               required:
                               - status
@@ -12417,9 +12414,12 @@ spec:
                         of a pod.
                       properties:
                         name:
-                          description: Required.
+                          description: |-
+                            Name is this DNS resolver option's name.
+                            Required.
                           type: string
                         value:
+                          description: Value is this DNS resolver option's value.
                           type: string
                       type: object
                     type: array
@@ -14226,9 +14226,12 @@ spec:
                         of a pod.
                       properties:
                         name:
-                          description: Required.
+                          description: |-
+                            Name is this DNS resolver option's name.
+                            Required.
                           type: string
                         value:
+                          description: Value is this DNS resolver option's value.
                           type: string
                       type: object
                     type: array
@@ -15961,9 +15964,12 @@ spec:
                             of a pod.
                           properties:
                             name:
-                              description: Required.
+                              description: |-
+                                Name is this DNS resolver option's name.
+                                Required.
                               type: string
                             value:
+                              description: Value is this DNS resolver option's value.
                               type: string
                           type: object
                         type: array
@@ -16994,18 +17000,15 @@ spec:
                                       persistent volume is being resized.
                                     type: string
                                   status:
+                                    description: |-
+                                      Status is the status of the condition.
+                                      Can be True, False, Unknown.
+                                      More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=state%20of%20pvc-,conditions.status,-(string)%2C%20required
                                     type: string
                                   type:
                                     description: |-
-                                      PersistentVolumeClaimConditionType defines the condition of PV claim.
-                                      Valid values are:
-                                        - "Resizing", "FileSystemResizePending"
-
-                                      If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
-                                        - "ControllerResizeError", "NodeResizeError"
-
-                                      If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
-                                        - "ModifyVolumeError", "ModifyingVolume"
+                                      Type is the type of the condition.
+                                      More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=set%20to%20%27ResizeStarted%27.-,PersistentVolumeClaimCondition,-contains%20details%20about
                                     type: string
                                 required:
                                 - status
@@ -17115,9 +17118,12 @@ spec:
                             of a pod.
                           properties:
                             name:
-                              description: Required.
+                              description: |-
+                                Name is this DNS resolver option's name.
+                                Required.
                               type: string
                             value:
+                              description: Value is this DNS resolver option's value.
                               type: string
                           type: object
                         type: array
@@ -18035,18 +18041,15 @@ spec:
                                         persistent volume is being resized.
                                       type: string
                                     status:
+                                      description: |-
+                                        Status is the status of the condition.
+                                        Can be True, False, Unknown.
+                                        More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=state%20of%20pvc-,conditions.status,-(string)%2C%20required
                                       type: string
                                     type:
                                       description: |-
-                                        PersistentVolumeClaimConditionType defines the condition of PV claim.
-                                        Valid values are:
-                                          - "Resizing", "FileSystemResizePending"
-
-                                        If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
-                                          - "ControllerResizeError", "NodeResizeError"
-
-                                        If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
-                                          - "ModifyVolumeError", "ModifyingVolume"
+                                        Type is the type of the condition.
+                                        More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=set%20to%20%27ResizeStarted%27.-,PersistentVolumeClaimCondition,-contains%20details%20about
                                       type: string
                                   required:
                                   - status
@@ -18621,18 +18624,15 @@ spec:
                                       persistent volume is being resized.
                                     type: string
                                   status:
+                                    description: |-
+                                      Status is the status of the condition.
+                                      Can be True, False, Unknown.
+                                      More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=state%20of%20pvc-,conditions.status,-(string)%2C%20required
                                     type: string
                                   type:
                                     description: |-
-                                      PersistentVolumeClaimConditionType defines the condition of PV claim.
-                                      Valid values are:
-                                        - "Resizing", "FileSystemResizePending"
-
-                                      If RecoverVolumeExpansionFailure feature gate is enabled, then following additional values can be expected:
-                                        - "ControllerResizeError", "NodeResizeError"
-
-                                      If VolumeAttributesClass feature gate is enabled, then following additional values can be expected:
-                                        - "ModifyVolumeError", "ModifyingVolume"
+                                      Type is the type of the condition.
+                                      More info: https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#:~:text=set%20to%20%27ResizeStarted%27.-,PersistentVolumeClaimCondition,-contains%20details%20about
                                     type: string
                                 required:
                                 - status
@@ -18737,9 +18737,12 @@ spec:
                             of a pod.
                           properties:
                             name:
-                              description: Required.
+                              description: |-
+                                Name is this DNS resolver option's name.
+                                Required.
                               type: string
                             value:
+                              description: Value is this DNS resolver option's value.
                               type: string
                           type: object
                         type: array
@@ -21374,6 +21377,13 @@ spec:
                     port:
                       description: Name of the port exposed at Pod.
                       type: string
+                    portNumber:
+                      description: PortNumber defines the `Pod` port number which
+                        exposes the endpoint.
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -21487,8 +21497,8 @@ spec:
                       - type: integer
                       - type: string
                       description: |-
-                        TargetPort
-                        Name or number of the pod port this endpoint refers to. Mutually exclusive with port.
+                        TargetPort defines name or number of the pod port this endpoint refers to.
+                        Mutually exclusive with Port and PortNumber.
                       x-kubernetes-int-or-string: true
                     tlsConfig:
                       description: TLSConfig configuration to use when scraping the
@@ -28879,9 +28889,12 @@ spec:
                         of a pod.
                       properties:
                         name:
-                          description: Required.
+                          description: |-
+                            Name is this DNS resolver option's name.
+                            Required.
                           type: string
                         value:
+                          description: Value is this DNS resolver option's value.
                           type: string
                       type: object
                     type: array

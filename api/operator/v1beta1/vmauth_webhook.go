@@ -22,7 +22,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -89,8 +88,6 @@ func (r *VMAuth) sanityCheck() error {
 }
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmauth,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmauths,verbs=create;update,versions=v1beta1,name=vvmauth.kb.io,admissionReviewVersions=v1
-
-var _ webhook.Validator = &VMAuth{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAuth) ValidateCreate() (admission.Warnings, error) {

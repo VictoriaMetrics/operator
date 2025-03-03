@@ -24,7 +24,6 @@ import (
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -36,8 +35,6 @@ func (r *VMAgent) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmagent,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmagents,verbs=create;update,versions=v1beta1,name=vvmagent.kb.io,admissionReviewVersions=v1
-
-var _ webhook.Validator = &VMAgent{}
 
 func checkRelabelConfigs(src []RelabelConfig) error {
 	for i := range src {

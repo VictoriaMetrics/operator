@@ -205,10 +205,10 @@ func TestConvertScrapeConfig(t *testing.T) {
 						KubernetesSDConfigs: []promv1alpha1.KubernetesSDConfig{
 							{
 								APIServer: ptr.To("http://1.2.3.4"),
-								Role:      promv1alpha1.Role("pod"),
+								Role:      promv1alpha1.KubernetesRole("pod"),
 								Selectors: []promv1alpha1.K8SSelectorConfig{
 									{
-										Label: "app=test",
+										Label: ptr.To("app=test"),
 									},
 								},
 							},
@@ -271,13 +271,13 @@ func TestConvertScrapeConfig(t *testing.T) {
 								Region:    ptr.To("us-west-1"),
 								AccessKey: &corev1.SecretKeySelector{Key: "accesskey"},
 								SecretKey: &corev1.SecretKeySelector{Key: "secret"},
-								Filters: []*promv1alpha1.EC2Filter{
+								Filters: []promv1alpha1.Filter{
 									{
 										Name:   "f1",
 										Values: []string{"1"},
 									},
 								},
-								Port: ptr.To(80),
+								Port: ptr.To[int32](80),
 							},
 						},
 					},
@@ -343,7 +343,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 								Project:      "eu-project",
 								Zone:         "zone-1",
 								TagSeparator: ptr.To(""),
-								Port:         ptr.To(80),
+								Port:         ptr.To[int32](80),
 							},
 						},
 					},

@@ -21,7 +21,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -37,8 +36,6 @@ func (r *VMUser) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmuser,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmusers,verbs=create;update,versions=v1beta1,name=vvmuser.kb.io,admissionReviewVersions=v1
-
-var _ webhook.Validator = &VMUser{}
 
 func (r *VMUser) sanityCheck() error {
 	if r.Spec.UserName != nil && r.Spec.BearerToken != nil {

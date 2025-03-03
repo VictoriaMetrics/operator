@@ -485,9 +485,13 @@ func convertHTTPConfig(prom *promv1alpha1.HTTPConfig) *vmv1beta1.HTTPConfig {
 		BasicAuth:         converter.ConvertBasicAuth(prom.BasicAuth),
 		BearerTokenSecret: prom.BearerTokenSecret,
 		TLSConfig:         converter.ConvertSafeTLSConfig(prom.TLSConfig),
-		ProxyURL:          prom.ProxyURL,
+		ProxyURL:          ptr.Deref(prom.ProxyURL, ""),
 		Authorization:     converter.ConvertAuthorization(prom.Authorization, nil),
 		OAuth2:            converter.ConvertOAuth(prom.OAuth2),
+	}
+	// Add fallback to proxyUrl
+	if len(hc.ProxyURL) == 0 && prom.ProxyURLOriginal != nil {
+		hc.ProxyURL = *prom.ProxyURLOriginal
 	}
 	return hc
 }

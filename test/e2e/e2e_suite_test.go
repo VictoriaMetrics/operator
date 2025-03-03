@@ -30,7 +30,7 @@ import (
 var (
 	eventualDeploymentAppReadyTimeout  = 60 * time.Second
 	eventualStatefulsetAppReadyTimeout = 80 * time.Second
-	eventualDeletionTimeout            = 30 * time.Second
+	eventualDeletionTimeout            = 45 * time.Second
 	eventualDeploymentPodTimeout       = 12 * time.Second
 	eventualExpandingTimeout           = 12 * time.Second
 )

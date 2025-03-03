@@ -73,9 +73,14 @@ type VMPodScrapeList struct {
 type PodMetricsEndpoint struct {
 	// Name of the port exposed at Pod.
 	// +optional
-	Port string `json:"port,omitempty"`
-	// TargetPort
-	// Name or number of the pod port this endpoint refers to. Mutually exclusive with port.
+	Port *string `json:"port,omitempty"`
+	// PortNumber defines the `Pod` port number which exposes the endpoint.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	// +optional
+	PortNumber *int32 `json:"portNumber,omitempty"`
+	// TargetPort defines name or number of the pod port this endpoint refers to.
+	// Mutually exclusive with Port and PortNumber.
 	// +optional
 	TargetPort           *intstr.IntOrString `json:"targetPort,omitempty"`
 	EndpointRelabelings  `json:",inline"`

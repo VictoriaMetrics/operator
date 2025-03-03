@@ -39,7 +39,7 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 						Path: "/metric",
 					},
-					Port: "web",
+					Port: ptr.To("web"),
 					AttachMetadata: vmv1beta1.AttachMetadata{
 						Node: ptr.To(true),
 					},
@@ -93,7 +93,7 @@ relabel_configs:
 					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 						Path: "/metric",
 					},
-					Port: "web",
+					Port: ptr.To("web"),
 					AttachMetadata: vmv1beta1.AttachMetadata{
 						Node: ptr.To(true),
 					},
@@ -162,7 +162,7 @@ relabel_configs:
 					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 						Path: "/metric",
 					},
-					Port: "web",
+					Port: ptr.To("web"),
 				},
 				ssCache: &scrapesSecretsCache{},
 			},
@@ -212,6 +212,77 @@ relabel_configs:
   replacement: default/test-1
 - target_label: endpoint
   replacement: web
+`,
+		},
+		{
+			name: "with portNumber",
+			args: args{
+				m: &vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{
+						NamespaceSelector: vmv1beta1.NamespaceSelector{
+							Any: true,
+						},
+						Selector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"label-1": "value-1",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "some-label",
+									Operator: metav1.LabelSelectorOpExists,
+								},
+							},
+						},
+					},
+				},
+				ep: vmv1beta1.PodMetricsEndpoint{
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path: "/metric",
+					},
+					PortNumber: ptr.To[int32](8081),
+				},
+				ssCache: &scrapesSecretsCache{},
+			},
+			want: `job_name: podScrape/default/test-1/0
+kubernetes_sd_configs:
+- role: pod
+  selectors:
+  - role: pod
+    label: label-1=value-1
+honor_labels: false
+metrics_path: /metric
+relabel_configs:
+- action: drop
+  source_labels:
+  - __meta_kubernetes_pod_phase
+  regex: (Failed|Succeeded)
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_label_label_1
+  regex: value-1
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_labelpresent_some_label
+  regex: "true"
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_container_port_number
+  regex: 8081
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- target_label: job
+  replacement: default/test-1
 `,
 		},
 	}

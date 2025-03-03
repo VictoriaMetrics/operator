@@ -758,7 +758,7 @@ func Test_loadTLSAssets(t *testing.T) {
 						Spec: vmv1beta1.VMPodScrapeSpec{
 							PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
 								{
-									Port: "8080",
+									Port: ptr.To("8080"),
 									EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 										VMScrapeParams: &vmv1beta1.VMScrapeParams{
 											ProxyClientConfig: &vmv1beta1.ProxyAuth{

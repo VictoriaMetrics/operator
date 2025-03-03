@@ -192,7 +192,7 @@ var (
 				Spec: monitoringv1.PodMonitorSpec{
 					PodMetricsEndpoints: []monitoringv1.PodMetricsEndpoint{
 						{
-							Port: "8081",
+							Port: ptr.To("8081"),
 						},
 					},
 				},
@@ -209,8 +209,8 @@ var (
 					return fmt.Errorf("unexpected number of endpoints, want 1, got: %d", len(ps.Spec.PodMetricsEndpoints))
 				}
 				endpoint := ps.Spec.PodMetricsEndpoints[0]
-				if endpoint.Port != "8081" {
-					return fmt.Errorf("unexpected endpoint port, want 8081, got: %s", endpoint.Port)
+				if *endpoint.Port != "8081" {
+					return fmt.Errorf("unexpected endpoint port, want 8081, got: %s", *endpoint.Port)
 				}
 				return nil
 			},

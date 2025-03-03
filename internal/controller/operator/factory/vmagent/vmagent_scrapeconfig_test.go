@@ -321,7 +321,7 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 						SampleLimit: 10,
 						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
 							{
-								Port: "805",
+								Port: ptr.To("805"),
 								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 									Path: "/metrics-3",
 
@@ -356,7 +356,7 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 								},
 							},
 							{
-								Port: "801",
+								Port: ptr.To("801"),
 								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 									Path: "/metrics-5",
 								},
@@ -805,7 +805,7 @@ scrape_configs:
 						SampleLimit: 10,
 						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
 							{
-								Port: "805",
+								Port: ptr.To("805"),
 								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 									Path: "/metrics-3",
 									VMScrapeParams: &vmv1beta1.VMScrapeParams{
@@ -822,7 +822,7 @@ scrape_configs:
 								},
 							},
 							{
-								Port: "801",
+								Port: ptr.To("801"),
 								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 									Path: "/metrics-5",
 								},
@@ -844,7 +844,7 @@ scrape_configs:
 								},
 							},
 							{
-								Port: "801",
+								Port: ptr.To("801"),
 								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 									Path: "/metrics-5-good",
 								},
@@ -871,7 +871,7 @@ scrape_configs:
 						},
 						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
 							{
-								Port: "8011",
+								Port: ptr.To("8011"),
 								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 									Path: "/metrics-1-good",
 								},

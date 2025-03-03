@@ -330,7 +330,8 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 			safeTLS = promEndPoint.TLSConfig
 		}
 		ep := vmv1beta1.PodMetricsEndpoint{
-			Port: promEndPoint.Port,
+			Port:       promEndPoint.Port,
+			PortNumber: promEndPoint.PortNumber,
 			// Unless prometheus deletes TargetPort, we have to support it for backward compatibility
 			//nolint:staticcheck
 			TargetPort: promEndPoint.TargetPort,

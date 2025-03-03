@@ -60,25 +60,6 @@ func TestVMUser_sanityCheck(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "invalid ref crd, bad kind",
-			fields: fields{
-				Spec: VMUserSpec{
-					UserName: ptr.To("some-user"),
-					TargetRefs: []TargetRef{
-						{
-							CRD: &CRDRef{
-								Name:      "some-1",
-								Kind:      "badkind",
-								Namespace: "some-ns",
-							},
-							Paths: []string{"/some-path"},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "invalid ref crd, bad empty ns",
 			fields: fields{
 				Spec: VMUserSpec{

@@ -65,3 +65,8 @@
   value: true
 - op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/serviceScrapeSpec/properties
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/aPIServerConfig/properties
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/aPIServerConfig/x-kubernetes-preserve-unknown-fields
+  value: true

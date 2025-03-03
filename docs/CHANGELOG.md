@@ -15,6 +15,8 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to v1.112.0 version
 
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): deprecate `aPIServerConfig` in favor of `apiServerConfig`. `aPIServerConfig` will be removed at `v0.56.0` release. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1239) for details
+
 ## [v0.53.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.53.0)
 
 **Release date:** 05 Feb 2025

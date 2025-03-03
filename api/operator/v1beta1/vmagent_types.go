@@ -74,8 +74,17 @@ type VMAgentSpec struct {
 	// If left empty, VMAgent is assumed to run inside of the cluster
 	// and will discover API servers automatically and use the pod's CA certificate
 	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
+	// aPIServerConfig is deprecated use apiServerConfig instead
+	// +deprecated
 	// +optional
-	APIServerConfig *APIServerConfig `json:"aPIServerConfig,omitempty"`
+	APIServerConfigDeprecated *APIServerConfig `json:"aPIServerConfig,omitempty"`
+	// APIServerConfig allows specifying a host and auth methods to access apiserver.
+	// If left empty, VMAgent is assumed to run inside of the cluster
+	// and will discover API servers automatically and use the pod's CA certificate
+	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
+	// +optional
+	APIServerConfig *APIServerConfig `json:"apiServerConfig,omitempty"`
+
 	// VMAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance
 	// name. Defaults to the value of `prometheus`. External label will
 	// _not_ be added when value is set to empty string (`""`).
@@ -316,6 +325,10 @@ func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
+	// TODO: remove it at v0.56.0 release
+	if cr.Spec.APIServerConfigDeprecated != nil && cr.Spec.APIServerConfig == nil {
+		cr.Spec.APIServerConfig = cr.Spec.APIServerConfigDeprecated
+	}
 	if err := parseLastAppliedState(cr); err != nil {
 		return err
 	}
@@ -434,14 +447,8 @@ type VMAgentStatus struct {
 	// Selector string form of label value set for autoscaling
 	Selector string `json:"selector,omitempty"`
 	// ReplicaCount Total number of pods targeted by this VMAgent
-	Replicas int32 `json:"replicas,omitempty"`
-	// deprecated and will be removed at v0.52.0
-	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
-	// deprecated and will be removed at v0.52.0
-	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
-	// deprecated and will be removed at v0.52.0
-	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
-	StatusMetadata      `json:",inline"`
+	Replicas       int32 `json:"replicas,omitempty"`
+	StatusMetadata `json:",inline"`
 }
 
 // GetStatusMetadata returns metadata for object status

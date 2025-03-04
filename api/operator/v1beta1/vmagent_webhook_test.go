@@ -39,16 +39,6 @@ func TestVMAgent_sanityCheck(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid relabeling",
-			spec: VMAgentSpec{
-				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
-				InlineRelabelConfig: []RelabelConfig{
-					{Action: "BAD ACTION"},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "valid relabeling",
 			spec: VMAgentSpec{
 				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},

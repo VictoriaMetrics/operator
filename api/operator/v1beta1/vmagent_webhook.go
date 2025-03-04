@@ -21,8 +21,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/envtemplate"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promrelabel"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -42,26 +40,8 @@ func (r *VMAgent) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmagent,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmagents,verbs=create;update,versions=v1beta1,name=vvmagent.kb.io,admissionReviewVersions=v1
 
 func checkRelabelConfigs(src []RelabelConfig) error {
-	for i := range src {
-		currSrc := &src[i]
-		if len(currSrc.UnderScoreSourceLabels) == 0 {
-			currSrc.UnderScoreSourceLabels = currSrc.SourceLabels
-		}
-		if len(currSrc.UnderScoreTargetLabel) == 0 {
-			currSrc.UnderScoreTargetLabel = currSrc.TargetLabel
-		}
-	}
-	prc, err := yaml.Marshal(src)
-	if err != nil {
-		return fmt.Errorf("cannot parse relabelConfigs as yaml: %w", err)
-	}
-	prc, err = envtemplate.ReplaceBytes(prc)
-	if err != nil {
-		return fmt.Errorf("cannot replace envs: %w", err)
-	}
-	if _, err := promrelabel.ParseRelabelConfigsData(prc); err != nil {
-		return fmt.Errorf("cannot parse relabelConfigs: %w", err)
-	}
+	// TODO: restore check when issue will be fixed at golang
+	// https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6911
 	return nil
 }
 

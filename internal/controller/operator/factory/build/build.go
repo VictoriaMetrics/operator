@@ -8,6 +8,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// MustSkipRuntimeValidation defines wether runtime object validation must be skipped
+// the most usual case for it, if webhook validation is configured
+var MustSkipRuntimeValidation bool
+
+// SetSkipRuntimeValidation configures MustSkipRuntimeValidation param
+func SetSkipRuntimeValidation(mustSkip bool) {
+	MustSkipRuntimeValidation = mustSkip
+}
+
 type builderOpts interface {
 	client.Object
 	PrefixedName() string

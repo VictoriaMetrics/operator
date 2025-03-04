@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -218,10 +219,12 @@ func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta
 	}
 	var brokenRulesCnt int
 	for _, pRule := range vmRules {
-		if err := pRule.Validate(); err != nil {
-			pRule.Status.CurrentSyncError = err.Error()
-			brokenRulesCnt++
-			continue
+		if !build.MustSkipRuntimeValidation {
+			if err := pRule.Validate(); err != nil {
+				pRule.Status.CurrentSyncError = err.Error()
+				brokenRulesCnt++
+				continue
+			}
 		}
 		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {

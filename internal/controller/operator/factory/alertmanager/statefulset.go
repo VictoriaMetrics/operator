@@ -682,10 +682,13 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 					badCfgs = append(badCfgs, &item)
 					continue
 				}
-				if err := item.Validate(); err != nil {
-					item.Status.CurrentSyncError = err.Error()
-					badCfgs = append(badCfgs, &item)
-					continue
+				if !build.MustSkipRuntimeValidation {
+					if err := item.Validate(); err != nil {
+						item.Status.CurrentSyncError = err.Error()
+						badCfgs = append(badCfgs, &item)
+						continue
+					}
+
 				}
 				amCfgs = append(amCfgs, &item)
 			}

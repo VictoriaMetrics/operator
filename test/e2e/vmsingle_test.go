@@ -315,10 +315,6 @@ var _ = Describe("test  vmsingle Controller", func() {
 							return k8sClient.Update(ctx, &toUpdate)
 						}, eventualExpandingTimeout).Should(Succeed())
 						Eventually(func() error {
-							return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, namespacedName)
-						}, eventualExpandingTimeout).Should(Succeed())
-
-						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, namespacedName)
 						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 

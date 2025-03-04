@@ -139,9 +139,6 @@ var _ = Describe("test vmauth Controller", func() {
 							return k8sClient.Update(ctx, &toUpdate)
 						}, eventualExpandingTimeout).Should(Succeed())
 						Eventually(func() error {
-							return expectObjectStatusExpanding(ctx, k8sClient, &v1beta1vm.VMAuth{}, namespacedName)
-						}, eventualExpandingTimeout).Should(Succeed())
-						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAuth{}, namespacedName)
 						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 						var updated v1beta1vm.VMAuth

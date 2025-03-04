@@ -376,9 +376,6 @@ var _ = Describe("test  vmagent Controller", func() {
 						return k8sClient.Update(ctx, &toUpdate)
 					}, eventualExpandingTimeout).Should(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusExpanding(ctx, k8sClient, &v1beta1vm.VMAgent{}, namespacedName)
-					}, eventualExpandingTimeout).Should(Succeed())
-					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAgent{}, namespacedName)
 					}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 					// verify

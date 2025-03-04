@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -26,23 +27,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+var vmauthValidator admission.CustomValidator = &VMAuth{}
+
 var labelNameRegexp = regexp.MustCompile("^[a-zA-Z_:.][a-zA-Z0-9_:.]*$")
 
 // SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMAuth) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithValidator(r).
 		Complete()
 }
 
-func (r *VMAuth) sanityCheck() error {
-	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+func (cr *VMAuth) sanityCheck() error {
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
 	}
-	if r.Spec.Ingress != nil {
+	if cr.Spec.Ingress != nil {
 		// check ingress
 		// TlsHosts and TlsSecretName are both needed if one of them is used
-		ing := r.Spec.Ingress
+		ing := cr.Spec.Ingress
 		if len(ing.TlsHosts) > 0 && ing.TlsSecretName == "" {
 			return fmt.Errorf("spec.ingress.tlsSecretName cannot be empty with non-empty spec.ingress.tlsHosts")
 		}
@@ -50,37 +54,37 @@ func (r *VMAuth) sanityCheck() error {
 			return fmt.Errorf("spec.ingress.tlsHosts cannot be empty with non-empty spec.ingress.tlsSecretName")
 		}
 	}
-	if r.Spec.ConfigSecret != "" && r.Spec.ExternalConfig.SecretRef != nil {
+	if cr.Spec.ConfigSecret != "" && cr.Spec.ExternalConfig.SecretRef != nil {
 		return fmt.Errorf("spec.configSecret and spec.externalConfig.secretRef cannot be used at the same time")
 	}
-	if r.Spec.ExternalConfig.SecretRef != nil && r.Spec.ExternalConfig.LocalPath != "" {
+	if cr.Spec.ExternalConfig.SecretRef != nil && cr.Spec.ExternalConfig.LocalPath != "" {
 		return fmt.Errorf("at most one option can be used for externalConfig: spec.configSecret or spec.externalConfig.secretRef")
 	}
-	if r.Spec.ExternalConfig.SecretRef != nil {
-		if r.Spec.ExternalConfig.SecretRef.Name == r.PrefixedName() {
-			return fmt.Errorf("spec.externalConfig.secretRef cannot be equal to the vmauth-config-CR_NAME=%q, it's operator reserved value", r.ConfigSecretName())
+	if cr.Spec.ExternalConfig.SecretRef != nil {
+		if cr.Spec.ExternalConfig.SecretRef.Name == cr.PrefixedName() {
+			return fmt.Errorf("spec.externalConfig.secretRef cannot be equal to the vmauth-config-CR_NAME=%q, it's operator reserved value", cr.ConfigSecretName())
 		}
-		if r.Spec.ExternalConfig.SecretRef.Name == "" || r.Spec.ExternalConfig.SecretRef.Key == "" {
+		if cr.Spec.ExternalConfig.SecretRef.Name == "" || cr.Spec.ExternalConfig.SecretRef.Key == "" {
 			return fmt.Errorf("name=%q and key=%q fields must be non-empty for spec.externalConfig.secretRef",
-				r.Spec.ExternalConfig.SecretRef.Name, r.Spec.ExternalConfig.SecretRef.Key)
+				cr.Spec.ExternalConfig.SecretRef.Name, cr.Spec.ExternalConfig.SecretRef.Key)
 		}
 	}
-	if len(r.Spec.UnauthorizedAccessConfig) > 0 && r.Spec.UnauthorizedUserAccessSpec != nil {
+	if len(cr.Spec.UnauthorizedAccessConfig) > 0 && cr.Spec.UnauthorizedUserAccessSpec != nil {
 		return fmt.Errorf("at most one option can be used `spec.unauthorizedAccessConfig` or `spec.unauthorizedUserAccessSpec`, got both")
 	}
-	if len(r.Spec.UnauthorizedAccessConfig) > 0 {
-		for _, urlMap := range r.Spec.UnauthorizedAccessConfig {
+	if len(cr.Spec.UnauthorizedAccessConfig) > 0 {
+		for _, urlMap := range cr.Spec.UnauthorizedAccessConfig {
 			if err := urlMap.Validate(); err != nil {
 				return fmt.Errorf("incorrect r.spec.UnauthorizedAccessConfig: %w", err)
 			}
 		}
-		if err := r.Spec.VMUserConfigOptions.Validate(); err != nil {
+		if err := cr.Spec.VMUserConfigOptions.Validate(); err != nil {
 			return fmt.Errorf("incorrect r.spec UnauthorizedAccessConfig options: %w", err)
 		}
 	}
 
-	if r.Spec.UnauthorizedUserAccessSpec != nil {
-		if err := r.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
+	if cr.Spec.UnauthorizedUserAccessSpec != nil {
+		if err := cr.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
 			return fmt.Errorf("incorrect r.spec.UnauthorizedUserAccess syntax: %w", err)
 		}
 	}
@@ -91,7 +95,11 @@ func (r *VMAuth) sanityCheck() error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmauth,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmauths,verbs=create;update,versions=v1beta1,name=vvmauth.kb.io,admissionReviewVersions=v1
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAuth) ValidateCreate() (admission.Warnings, error) {
+func (cr *VMAuth) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*VMAuth)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+	}
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -105,7 +113,12 @@ func (r *VMAuth) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAuth) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *VMAuth) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*VMAuth)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+	}
+
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -119,6 +132,6 @@ func (r *VMAuth) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAuth) ValidateDelete() (admission.Warnings, error) {
+func (r *VMAuth) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

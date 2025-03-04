@@ -27,7 +27,6 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -48,6 +47,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -171,7 +171,6 @@ func RunManager(ctx context.Context) error {
 	setupLog.Info("starting VictoriaMetrics operator", "build version", buildinfo.Version, "short_version", versionRe.FindString(buildinfo.Version))
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt, clientQPSLimit)
-	setupRuntimeMetrics(r)
 	addRestClientMetrics(r)
 	setupLog.Info("Registering Components.")
 	var watchNsCacheByName map[string]cache.Config
@@ -270,6 +269,7 @@ func RunManager(ctx context.Context) error {
 			l.Error(err, "cannot register webhooks")
 			return err
 		}
+		build.SetSkipRuntimeValidation(true)
 	}
 	vmv1beta1.SetLabelAndAnnotationPrefixes(baseConfig.FilterChildLabelPrefixes, baseConfig.FilterChildAnnotationPrefixes)
 
@@ -322,17 +322,22 @@ func RunManager(ctx context.Context) error {
 	return nil
 }
 
+type objectWithWebhookSetup interface {
+	runtime.Object
+	SetupWebhookWithManager(mgr ctrl.Manager) error
+	admission.CustomValidator
+}
+
 func addWebhooks(mgr ctrl.Manager) error {
-	f := func(objs []client.Object) error {
-		var err error
+	f := func(objs []objectWithWebhookSetup) error {
 		for _, obj := range objs {
-			if err = ctrl.NewWebhookManagedBy(mgr).For(obj).Complete(); err != nil {
+			if err := obj.SetupWebhookWithManager(mgr); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
-	return f([]client.Object{
+	return f([]objectWithWebhookSetup{
 		&vmv1beta1.VMAgent{},
 		&vmv1beta1.VMAlert{},
 		&vmv1beta1.VMSingle{},
@@ -396,16 +401,6 @@ var cacheClientObjectsByName = map[string]client.Object{
 	"statefulset": &appsv1.StatefulSet{},
 }
 
-var runtimeMetrics = []string{
-	"/sched/latencies:seconds",
-	"/sync/mutex/wait/total:seconds",
-	"/cpu/classes/gc/mark/assist:cpu-seconds",
-	"/cpu/classes/gc/total:cpu-seconds",
-	"/sched/pauses/total/gc:seconds",
-	"/cpu/classes/scavenge/total:cpu-seconds",
-	"/gc/gomemlimit:bytes",
-}
-
 // runtime-contoller doesn't expose this metric
 // due to high cardinality
 var restClientLatency = prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "rest_client_request_duration_seconds"}, []string{"method", "api"})
@@ -440,23 +435,6 @@ func addRestClientMetrics(r metrics.RegistererGatherer) {
 	// replace global go-client RequestLatency metric
 	restmetrics.RequestLatency = &latencyMetricWrapper{collector: restClientLatency}
 	r.Register(restClientLatency)
-}
-
-func setupRuntimeMetrics(r metrics.RegistererGatherer) {
-	// do not use default go metrics added by controller-runtime
-	r.Unregister(collectors.NewGoCollector())
-	// add metrics in align with VictoriaMetrics/metrics package
-	rules := make([]collectors.GoRuntimeMetricsRule, len(runtimeMetrics))
-	for idx, rule := range runtimeMetrics {
-		rules[idx].Matcher = regexp.MustCompile(rule)
-	}
-	r.MustRegister(
-		collectors.NewGoCollector(
-			collectors.WithGoCollectorRuntimeMetrics(
-				rules...,
-			)),
-	)
-
 }
 
 type crdController interface {

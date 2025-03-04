@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,32 +25,31 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-var supportedCRDKinds = []string{
-	"VMAgent", "VMAlert", "VMAlertmanager", "VMSingle", "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage",
-}
+var vmuserValidator admission.CustomValidator = &VMUser{}
 
 // SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMUser) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithValidator(r).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmuser,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmusers,verbs=create;update,versions=v1beta1,name=vvmuser.kb.io,admissionReviewVersions=v1
 
-func (r *VMUser) sanityCheck() error {
-	if r.Spec.UserName != nil && r.Spec.BearerToken != nil {
+func (cr *VMUser) sanityCheck() error {
+	if cr.Spec.UserName != nil && cr.Spec.BearerToken != nil {
 		return fmt.Errorf("one of spec.username and spec.bearerToken must be defined for user, got both")
 	}
-	if r.Spec.PasswordRef != nil && r.Spec.Password != nil {
+	if cr.Spec.PasswordRef != nil && cr.Spec.Password != nil {
 		return fmt.Errorf("one of spec.password or spec.passwordRef must be used for user, got both")
 	}
-	if len(r.Spec.TargetRefs) == 0 {
+	if len(cr.Spec.TargetRefs) == 0 {
 		return fmt.Errorf("at least 1 TargetRef must be provided for spec.targetRefs")
 	}
-	isRetryCodesSet := len(r.Spec.RetryStatusCodes) > 0
-	for i := range r.Spec.TargetRefs {
-		targetRef := r.Spec.TargetRefs[i]
+	isRetryCodesSet := len(cr.Spec.RetryStatusCodes) > 0
+	for i := range cr.Spec.TargetRefs {
+		targetRef := cr.Spec.TargetRefs[i]
 		if targetRef.CRD != nil && targetRef.Static != nil {
 			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got both")
 		}
@@ -86,22 +86,26 @@ func (r *VMUser) sanityCheck() error {
 			return fmt.Errorf("retry_status_codes already set at VMUser.spec level")
 		}
 	}
-	for k := range r.Spec.MetricLabels {
+	for k := range cr.Spec.MetricLabels {
 		if !labelNameRegexp.MatchString(k) {
 			return fmt.Errorf("incorrect metricLabels key=%q, must match pattern=%q", k, labelNameRegexp)
 		}
 	}
-	if err := validateHTTPHeaders(r.Spec.Headers); err != nil {
+	if err := validateHTTPHeaders(cr.Spec.Headers); err != nil {
 		return fmt.Errorf("failed to parse vmuser headers: %w", err)
 	}
-	if err := validateHTTPHeaders(r.Spec.ResponseHeaders); err != nil {
+	if err := validateHTTPHeaders(cr.Spec.ResponseHeaders); err != nil {
 		return fmt.Errorf("failed to parse vmuser response headers: %w", err)
 	}
 	return nil
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMUser) ValidateCreate() (admission.Warnings, error) {
+func (cr *VMUser) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*VMUser)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+	}
 	if mustSkipValidation(r) {
 		return nil, nil
 	}
@@ -112,7 +116,11 @@ func (r *VMUser) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMUser) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (cr *VMUser) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*VMUser)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+	}
 	if mustSkipValidation(r) {
 		return nil, nil
 	}
@@ -123,6 +131,6 @@ func (r *VMUser) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMUser) ValidateDelete() (admission.Warnings, error) {
+func (r *VMUser) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -30,42 +31,45 @@ import (
 // log is for logging in this package.
 var vmalertmanagerlog = logf.Log.WithName("vmalertmanager-resource")
 
+var vmAlertmanagerValidator admission.CustomValidator = &VMAlertmanager{}
+
 // SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMAlertmanager) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithValidator(r).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmalertmanager,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmalertmanagers,verbs=create;update,versions=v1beta1,name=vvmalertmanager.kb.io,admissionReviewVersions=v1
 
-func (r *VMAlertmanager) sanityCheck() error {
-	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+func (cr *VMAlertmanager) sanityCheck() error {
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
 	}
-	for idx, matchers := range r.Spec.EnforcedTopRouteMatchers {
+	for idx, matchers := range cr.Spec.EnforcedTopRouteMatchers {
 		_, err := labels.ParseMatchers(matchers)
 		if err != nil {
 			fmt.Errorf("incorrect EnforcedTopRouteMatchers=%q at idx=%d: %w", matchers, idx, err)
 		}
 	}
 
-	if len(r.Spec.ConfigRawYaml) > 0 {
-		if err := ValidateAlertmanagerConfigSpec([]byte(r.Spec.ConfigRawYaml)); err != nil {
+	if len(cr.Spec.ConfigRawYaml) > 0 {
+		if err := ValidateAlertmanagerConfigSpec([]byte(cr.Spec.ConfigRawYaml)); err != nil {
 			return fmt.Errorf("bad config syntax at spec.configRawYaml: %w", err)
 		}
 	}
-	if r.Spec.ConfigSecret == r.ConfigSecretName() {
+	if cr.Spec.ConfigSecret == cr.ConfigSecretName() {
 		return fmt.Errorf("spec.configSecret uses the same name as built-in config secret used by operator. Please change it's name")
 	}
-	if r.Spec.WebConfig != nil {
-		if r.Spec.WebConfig.HTTPServerConfig != nil {
-			if r.Spec.WebConfig.HTTPServerConfig.HTTP2 && r.Spec.WebConfig.TLSServerConfig == nil {
+	if cr.Spec.WebConfig != nil {
+		if cr.Spec.WebConfig.HTTPServerConfig != nil {
+			if cr.Spec.WebConfig.HTTPServerConfig.HTTP2 && cr.Spec.WebConfig.TLSServerConfig == nil {
 				return fmt.Errorf("with enabled http2 for webserver, tls_server_config must be defined")
 			}
 		}
-		if r.Spec.WebConfig.TLSServerConfig != nil {
-			tc := r.Spec.WebConfig.TLSServerConfig
+		if cr.Spec.WebConfig.TLSServerConfig != nil {
+			tc := cr.Spec.WebConfig.TLSServerConfig
 			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
 				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
 			}
@@ -79,9 +83,9 @@ func (r *VMAlertmanager) sanityCheck() error {
 			}
 		}
 	}
-	if r.Spec.GossipConfig != nil {
-		if r.Spec.GossipConfig.TLSServerConfig != nil {
-			tc := r.Spec.GossipConfig.TLSServerConfig
+	if cr.Spec.GossipConfig != nil {
+		if cr.Spec.GossipConfig.TLSServerConfig != nil {
+			tc := cr.Spec.GossipConfig.TLSServerConfig
 			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
 				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
 			}
@@ -94,8 +98,8 @@ func (r *VMAlertmanager) sanityCheck() error {
 				}
 			}
 		}
-		if r.Spec.GossipConfig.TLSClientConfig != nil {
-			tc := r.Spec.GossipConfig.TLSClientConfig
+		if cr.Spec.GossipConfig.TLSClientConfig != nil {
+			tc := cr.Spec.GossipConfig.TLSClientConfig
 			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
 				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_client_config")
 			}
@@ -108,8 +112,13 @@ func (r *VMAlertmanager) sanityCheck() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanager) ValidateCreate() (admission.Warnings, error) {
+func (cr *VMAlertmanager) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*VMAlertmanager)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+	}
 	vmalertmanagerlog.Info("validate create", "name", r.Name)
+
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -123,7 +132,12 @@ func (r *VMAlertmanager) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanager) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (cr *VMAlertmanager) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*VMAlertmanager)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+	}
+
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -137,6 +151,6 @@ func (r *VMAlertmanager) ValidateUpdate(old runtime.Object) (admission.Warnings,
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanager) ValidateDelete() (admission.Warnings, error) {
+func (r *VMAlertmanager) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

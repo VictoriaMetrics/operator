@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html/template"
@@ -31,10 +32,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+var vmAlertmanagerConfigValidator admission.CustomValidator = &VMAlertmanagerConfig{}
+
 // SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMAlertmanagerConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithValidator(r).
 		Complete()
 }
 
@@ -100,7 +104,12 @@ func (cr *VMAlertmanagerConfig) Validate() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanagerConfig) ValidateCreate() (admission.Warnings, error) {
+func (cr *VMAlertmanagerConfig) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*VMAlertmanagerConfig)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+	}
+
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -111,7 +120,11 @@ func (r *VMAlertmanagerConfig) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanagerConfig) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *VMAlertmanagerConfig) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*VMAlertmanagerConfig)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+	}
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -123,7 +136,7 @@ func (r *VMAlertmanagerConfig) ValidateUpdate(old runtime.Object) (admission.War
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanagerConfig) ValidateDelete() (admission.Warnings, error) {
+func (r *VMAlertmanagerConfig) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -28,10 +29,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+var vmagentValidator admission.CustomValidator = &VMAgent{}
+
 // SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMAgent) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithValidator(r).
 		Complete()
 }
 
@@ -93,8 +97,8 @@ func (r *VMAgent) sanityCheck() error {
 	return nil
 }
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAgent) ValidateCreate() (admission.Warnings, error) {
+// ValidateCreate(_ context.Context, cr runtime.Object) implements webhook.Validator so a webhook will be registered for the type
+func (r *VMAgent) ValidateCreate(_ context.Context, cr runtime.Object) (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -108,7 +112,7 @@ func (r *VMAgent) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAgent) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *VMAgent) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -122,6 +126,6 @@ func (r *VMAgent) ValidateUpdate(old runtime.Object) (admission.Warnings, error)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAgent) ValidateDelete() (admission.Warnings, error) {
+func (r *VMAgent) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

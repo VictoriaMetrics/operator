@@ -109,18 +109,18 @@ type ArbitraryFSAccessThroughSMsConfig struct {
 }
 
 // AsProxyKey builds key for proxy cache maps
-func (cr VMPodScrape) AsProxyKey(i int) string {
-	return fmt.Sprintf("podScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
+func (r *VMPodScrape) AsProxyKey(i int) string {
+	return fmt.Sprintf("podScrapeProxy/%s/%s/%d", r.Namespace, r.Name, i)
 }
 
 // AsMapKey builds key for cache secret map
-func (cr *VMPodScrape) AsMapKey(i int) string {
-	return fmt.Sprintf("podScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
+func (r *VMPodScrape) AsMapKey(i int) string {
+	return fmt.Sprintf("podScrape/%s/%s/%d", r.Namespace, r.Name, i)
 }
 
 // GetStatusMetadata implements reconcile.objectWithStatus interface
-func (cr *VMPodScrape) GetStatusMetadata() *StatusMetadata {
-	return &cr.Status.StatusMetadata
+func (r *VMPodScrape) GetStatusMetadata() *StatusMetadata {
+	return &r.Status.StatusMetadata
 }
 
 func init() {

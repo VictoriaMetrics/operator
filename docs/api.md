@@ -1835,6 +1835,29 @@ _Appears in:_
 
 
 
+#### ServiceAccount
+
+
+
+ServiceAcccount contains ServiceAccount settings for application
+
+
+
+_Appears in:_
+- [VLogsSpec](#vlogsspec)
+- [VMAgentSpec](#vmagentspec)
+- [VMAlertSpec](#vmalertspec)
+- [VMAlertmanagerSpec](#vmalertmanagerspec)
+- [VMAuthSpec](#vmauthspec)
+- [VMClusterSpec](#vmclusterspec)
+- [VMSingleSpec](#vmsinglespec)
+
+| Field | Description |
+| --- | --- |
+| <a href="#serviceaccount-automountserviceaccounttoken"><code id="serviceaccount-automountserviceaccounttoken">automountServiceAccountToken</code></a><br/>_boolean_ | _(Optional)_<br/> |
+| <a href="#serviceaccount-serviceaccountname"><code id="serviceaccount-serviceaccountname">serviceAccountName</code></a><br/>_string_ | _(Optional)_<br/>Name is the name of the ServiceAccount to use to run the pods |
+
+
 #### Sigv4Config
 
 
@@ -2547,7 +2570,6 @@ _Appears in:_
 | <a href="#vlogsspec-schedulername"><code id="vlogsspec-schedulername">schedulerName</code></a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
 | <a href="#vlogsspec-secrets"><code id="vlogsspec-secrets">secrets</code></a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
 | <a href="#vlogsspec-securitycontext"><code id="vlogsspec-securitycontext">securityContext</code></a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
-| <a href="#vlogsspec-serviceaccountname"><code id="vlogsspec-serviceaccountname">serviceAccountName</code></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | <a href="#vlogsspec-servicescrapespec"><code id="vlogsspec-servicescrapespec">serviceScrapeSpec</code></a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vlogs VMServiceScrape spec |
 | <a href="#vlogsspec-servicespec"><code id="vlogsspec-servicespec">serviceSpec</code></a><br/>_[AdditionalServiceSpec](#additionalservicespec)_ | _(Optional)_<br/>ServiceSpec that will be added to vlogs service spec |
 | <a href="#vlogsspec-storage"><code id="vlogsspec-storage">storage</code></a><br/>_[PersistentVolumeClaimSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#persistentvolumeclaimspec-v1-core)_ | _(Optional)_<br/>Storage is the definition of how storage will be used by the VLogs<br />by default it`s empty dir |
@@ -2737,7 +2759,6 @@ _Appears in:_
 | <a href="#vmagentspec-secrets"><code id="vmagentspec-secrets">secrets</code></a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
 | <a href="#vmagentspec-securitycontext"><code id="vmagentspec-securitycontext">securityContext</code></a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
 | <a href="#vmagentspec-selectallbydefault"><code id="vmagentspec-selectallbydefault">selectAllByDefault</code></a><br/>_boolean_ | _(Optional)_<br/>SelectAllByDefault changes default behavior for empty CRD selectors, such ServiceScrapeSelector.<br />with selectAllByDefault: true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector<br />Operator selects all exist serviceScrapes<br />with selectAllByDefault: false - selects nothing |
-| <a href="#vmagentspec-serviceaccountname"><code id="vmagentspec-serviceaccountname">serviceAccountName</code></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | <a href="#vmagentspec-servicescrapenamespaceselector"><code id="vmagentspec-servicescrapenamespaceselector">serviceScrapeNamespaceSelector</code></a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>ServiceScrapeNamespaceSelector Namespaces to be selected for VMServiceScrape discovery.<br />Works in combination with Selector.<br />NamespaceSelector nil - only objects at VMAgent namespace.<br />Selector nil - only objects at NamespaceSelector namespaces.<br />If both nil - behaviour controlled by selectAllByDefault |
 | <a href="#vmagentspec-servicescraperelabeltemplate"><code id="vmagentspec-servicescraperelabeltemplate">serviceScrapeRelabelTemplate</code></a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>ServiceScrapeRelabelTemplate defines relabel config, that will be added to each VMServiceScrape.<br />it's useful for adding specific labels to all targets |
 | <a href="#vmagentspec-servicescrapeselector"><code id="vmagentspec-servicescrapeselector">serviceScrapeSelector</code></a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery.<br />Works in combination with NamespaceSelector.<br />NamespaceSelector nil - only objects at VMAgent namespace.<br />Selector nil - only objects at NamespaceSelector namespaces.<br />If both nil - behaviour controlled by selectAllByDefault |
@@ -2932,7 +2953,6 @@ _Appears in:_
 | <a href="#vmalertspec-secrets"><code id="vmalertspec-secrets">secrets</code></a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
 | <a href="#vmalertspec-securitycontext"><code id="vmalertspec-securitycontext">securityContext</code></a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
 | <a href="#vmalertspec-selectallbydefault"><code id="vmalertspec-selectallbydefault">selectAllByDefault</code></a><br/>_boolean_ | _(Optional)_<br/>SelectAllByDefault changes default behavior for empty CRD selectors, such RuleSelector.<br />with selectAllByDefault: true and empty serviceScrapeSelector and RuleNamespaceSelector<br />Operator selects all exist serviceScrapes<br />with selectAllByDefault: false - selects nothing |
-| <a href="#vmalertspec-serviceaccountname"><code id="vmalertspec-serviceaccountname">serviceAccountName</code></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | <a href="#vmalertspec-servicescrapespec"><code id="vmalertspec-servicescrapespec">serviceScrapeSpec</code></a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vmalert VMServiceScrape spec |
 | <a href="#vmalertspec-servicespec"><code id="vmalertspec-servicespec">serviceSpec</code></a><br/>_[AdditionalServiceSpec](#additionalservicespec)_ | _(Optional)_<br/>ServiceSpec that will be added to vmalert service spec |
 | <a href="#vmalertspec-terminationgraceperiodseconds"><code id="vmalertspec-terminationgraceperiodseconds">terminationGracePeriodSeconds</code></a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
@@ -3074,7 +3094,6 @@ _Appears in:_
 | <a href="#vmalertmanagerspec-secrets"><code id="vmalertmanagerspec-secrets">secrets</code></a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
 | <a href="#vmalertmanagerspec-securitycontext"><code id="vmalertmanagerspec-securitycontext">securityContext</code></a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
 | <a href="#vmalertmanagerspec-selectallbydefault"><code id="vmalertmanagerspec-selectallbydefault">selectAllByDefault</code></a><br/>_boolean_ | _(Optional)_<br/>SelectAllByDefault changes default behavior for empty CRD selectors, such ConfigSelector.<br />with selectAllByDefault: true and undefined ConfigSelector and ConfigNamespaceSelector<br />Operator selects all exist alertManagerConfigs<br />with selectAllByDefault: false - selects nothing |
-| <a href="#vmalertmanagerspec-serviceaccountname"><code id="vmalertmanagerspec-serviceaccountname">serviceAccountName</code></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | <a href="#vmalertmanagerspec-servicescrapespec"><code id="vmalertmanagerspec-servicescrapespec">serviceScrapeSpec</code></a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vmalertmanager VMServiceScrape spec |
 | <a href="#vmalertmanagerspec-servicespec"><code id="vmalertmanagerspec-servicespec">serviceSpec</code></a><br/>_[AdditionalServiceSpec](#additionalservicespec)_ | _(Optional)_<br/>ServiceSpec that will be added to vmalertmanager service spec |
 | <a href="#vmalertmanagerspec-storage"><code id="vmalertmanagerspec-storage">storage</code></a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>Storage is the definition of how storage will be used by the VMAlertmanager<br />instances. |
@@ -3249,7 +3268,6 @@ _Appears in:_
 | <a href="#vmauthspec-secrets"><code id="vmauthspec-secrets">secrets</code></a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
 | <a href="#vmauthspec-securitycontext"><code id="vmauthspec-securitycontext">securityContext</code></a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
 | <a href="#vmauthspec-selectallbydefault"><code id="vmauthspec-selectallbydefault">selectAllByDefault</code></a><br/>_boolean_ | _(Optional)_<br/>SelectAllByDefault changes default behavior for empty CRD selectors, such userSelector.<br />with selectAllByDefault: true and empty userSelector and userNamespaceSelector<br />Operator selects all exist users<br />with selectAllByDefault: false - selects nothing |
-| <a href="#vmauthspec-serviceaccountname"><code id="vmauthspec-serviceaccountname">serviceAccountName</code></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | <a href="#vmauthspec-servicescrapespec"><code id="vmauthspec-servicescrapespec">serviceScrapeSpec</code></a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vmauth VMServiceScrape spec |
 | <a href="#vmauthspec-servicespec"><code id="vmauthspec-servicespec">serviceSpec</code></a><br/>_[AdditionalServiceSpec](#additionalservicespec)_ | _(Optional)_<br/>ServiceSpec that will be added to vmsingle service spec |
 | <a href="#vmauthspec-terminationgraceperiodseconds"><code id="vmauthspec-terminationgraceperiodseconds">terminationGracePeriodSeconds</code></a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
@@ -3376,7 +3394,6 @@ _Appears in:_
 | <a href="#vmclusterspec-replicationfactor"><code id="vmclusterspec-replicationfactor">replicationFactor</code></a><br/>_integer_ | _(Optional)_<br/>ReplicationFactor defines how many copies of data make among<br />distinct storage nodes |
 | <a href="#vmclusterspec-requestsloadbalancer"><code id="vmclusterspec-requestsloadbalancer">requestsLoadBalancer</code></a><br/>_[VMAuthLoadBalancer](#vmauthloadbalancer)_ | RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests<br />it helps to evenly spread load across pods<br />usually it's not possible with kubernetes TCP based service |
 | <a href="#vmclusterspec-retentionperiod"><code id="vmclusterspec-retentionperiod">retentionPeriod</code></a><br/>_string_ | RetentionPeriod for the stored metrics<br />Note VictoriaMetrics has data/ and indexdb/ folders<br />metrics from data/ removed eventually as soon as partition leaves retention period<br />reverse index data at indexdb rotates once at the half of configured<br />[retention period](https://docs.victoriametrics.com/Single-server-VictoriaMetrics/#retention) |
-| <a href="#vmclusterspec-serviceaccountname"><code id="vmclusterspec-serviceaccountname">serviceAccountName</code></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the<br />VMSelect, VMStorage and VMInsert Pods. |
 | <a href="#vmclusterspec-usestrictsecurity"><code id="vmclusterspec-usestrictsecurity">useStrictSecurity</code></a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | <a href="#vmclusterspec-vminsert"><code id="vmclusterspec-vminsert">vminsert</code></a><br/>_[VMInsert](#vminsert)_ | _(Optional)_<br/> |
 | <a href="#vmclusterspec-vmselect"><code id="vmclusterspec-vmselect">vmselect</code></a><br/>_[VMSelect](#vmselect)_ | _(Optional)_<br/> |
@@ -4010,7 +4027,6 @@ _Appears in:_
 | <a href="#vmsinglespec-schedulername"><code id="vmsinglespec-schedulername">schedulerName</code></a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
 | <a href="#vmsinglespec-secrets"><code id="vmsinglespec-secrets">secrets</code></a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
 | <a href="#vmsinglespec-securitycontext"><code id="vmsinglespec-securitycontext">securityContext</code></a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
-| <a href="#vmsinglespec-serviceaccountname"><code id="vmsinglespec-serviceaccountname">serviceAccountName</code></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | <a href="#vmsinglespec-servicescrapespec"><code id="vmsinglespec-servicescrapespec">serviceScrapeSpec</code></a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vmsingle VMServiceScrape spec |
 | <a href="#vmsinglespec-servicespec"><code id="vmsinglespec-servicespec">serviceSpec</code></a><br/>_[AdditionalServiceSpec](#additionalservicespec)_ | _(Optional)_<br/>ServiceSpec that will be added to vmsingle service spec |
 | <a href="#vmsinglespec-storage"><code id="vmsinglespec-storage">storage</code></a><br/>_[PersistentVolumeClaimSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#persistentvolumeclaimspec-v1-core)_ | _(Optional)_<br/>Storage is the definition of how storage will be used by the VMSingle<br />by default it`s empty dir<br />this option is ignored if storageDataPath is set |

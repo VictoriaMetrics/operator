@@ -80,30 +80,28 @@ type VMSingleSpec struct {
 	// StreamAggrConfig defines stream aggregation configuration for VMSingle
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
 
-	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	*ServiceAccount `json:",inline,omitempty"`
 
 	CommonDefaultableParams           `json:",inline"`
 	CommonApplicationDeploymentParams `json:",inline"`
 }
 
 // HasAnyStreamAggrRule checks if vmsingle has any defined aggregation rules
-func (cr *VMSingle) HasAnyStreamAggrRule() bool {
-	return cr.Spec.StreamAggrConfig.HasAnyRule()
+func (r *VMSingle) HasAnyStreamAggrRule() bool {
+	return r.Spec.StreamAggrConfig.HasAnyRule()
 }
 
-func (cr *VMSingle) setLastSpec(prevSpec VMSingleSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
+func (r *VMSingle) setLastSpec(prevSpec VMSingleSpec) {
+	r.ParsedLastAppliedSpec = &prevSpec
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMSingle) UnmarshalJSON(src []byte) error {
-	type pcr VMSingle
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+func (r *VMSingle) UnmarshalJSON(src []byte) error {
+	type pr VMSingle
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
 		return err
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := parseLastAppliedState(r); err != nil {
 		return err
 	}
 
@@ -111,10 +109,10 @@ func (cr *VMSingle) UnmarshalJSON(src []byte) error {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMSingleSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMSingleSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmsingle spec: %s, err: %s", string(src), err)
+func (r *VMSingleSpec) UnmarshalJSON(src []byte) error {
+	type pr VMSingleSpec
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
+		r.ParsingError = fmt.Sprintf("cannot parse vmsingle spec: %s, err: %s", string(src), err)
 		return nil
 	}
 	return nil
@@ -152,23 +150,23 @@ type VMSingle struct {
 	Status VMSingleStatus `json:"status,omitempty"`
 }
 
-func (cr *VMSingle) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
+func (r *VMSingle) Probe() *EmbeddedProbes {
+	return r.Spec.EmbeddedProbes
 }
 
-func (cr *VMSingle) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+func (r *VMSingle) ProbePath() string {
+	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, healthPath)
 }
 
-func (cr *VMSingle) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+func (r *VMSingle) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(r.Spec.ExtraArgs))
 }
 
-func (cr *VMSingle) ProbePort() string {
-	return cr.Spec.Port
+func (r *VMSingle) ProbePort() string {
+	return r.Spec.Port
 }
 
-func (cr *VMSingle) ProbeNeedLiveness() bool {
+func (r *VMSingle) ProbeNeedLiveness() bool {
 	return false
 }
 
@@ -181,37 +179,37 @@ type VMSingleList struct {
 }
 
 // AsOwner returns owner references with current object as owner
-func (cr *VMSingle) AsOwner() []metav1.OwnerReference {
+func (r *VMSingle) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
-			APIVersion:         cr.APIVersion,
-			Kind:               cr.Kind,
-			Name:               cr.Name,
-			UID:                cr.UID,
+			APIVersion:         r.APIVersion,
+			Kind:               r.Kind,
+			Name:               r.Name,
+			UID:                r.UID,
 			Controller:         ptr.To(true),
 			BlockOwnerDeletion: ptr.To(true),
 		},
 	}
 }
 
-func (cr *VMSingle) PodAnnotations() map[string]string {
+func (r *VMSingle) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
-	if cr.Spec.PodMetadata != nil {
-		for annotation, value := range cr.Spec.PodMetadata.Annotations {
+	if r.Spec.PodMetadata != nil {
+		for annotation, value := range r.Spec.PodMetadata.Annotations {
 			annotations[annotation] = value
 		}
 	}
 	return annotations
 }
 
-func (cr *VMSingle) AnnotationsFiltered() map[string]string {
+func (r *VMSingle) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
-	if cr.Spec.ManagedMetadata != nil {
+	dst := filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if r.Spec.ManagedMetadata != nil {
 		if dst == nil {
 			dst = make(map[string]string)
 		}
-		for k, v := range cr.Spec.ManagedMetadata.Annotations {
+		for k, v := range r.Spec.ManagedMetadata.Annotations {
 			dst[k] = v
 		}
 	}
@@ -219,120 +217,164 @@ func (cr *VMSingle) AnnotationsFiltered() map[string]string {
 
 }
 
-func (cr *VMSingle) SelectorLabels() map[string]string {
+func (r *VMSingle) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmsingle",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
-func (cr *VMSingle) PodLabels() map[string]string {
-	lbls := cr.SelectorLabels()
-	if cr.Spec.PodMetadata == nil {
+func (r *VMSingle) PodLabels() map[string]string {
+	lbls := r.SelectorLabels()
+	if r.Spec.PodMetadata == nil {
 		return lbls
 	}
-	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
+	return labels.Merge(r.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr *VMSingle) AllLabels() map[string]string {
-	selectorLabels := cr.SelectorLabels()
+func (r *VMSingle) AllLabels() map[string]string {
+	selectorLabels := r.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+	if r.ObjectMeta.Labels == nil && r.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	if r.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
 	}
-	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	if r.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, r.Spec.ManagedMetadata.Labels)
 	}
 	return labels.Merge(result, selectorLabels)
 }
 
-func (cr *VMSingle) PrefixedName() string {
-	return fmt.Sprintf("vmsingle-%s", cr.Name)
+func (r *VMSingle) PrefixedName() string {
+	return fmt.Sprintf("vmsingle-%s", r.Name)
 }
 
-func (cr *VMSingle) StreamAggrConfigName() string {
-	return fmt.Sprintf("stream-aggr-vmsingle-%s", cr.Name)
+func (r *VMSingle) StreamAggrConfigName() string {
+	return fmt.Sprintf("stream-aggr-vmsingle-%s", r.Name)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr *VMSingle) GetMetricPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+func (r *VMSingle) GetMetricPath() string {
+	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMSingle) GetExtraArgs() map[string]string {
-	return cr.Spec.ExtraArgs
+func (r *VMSingle) GetExtraArgs() map[string]string {
+	return r.Spec.ExtraArgs
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
-func (cr *VMSingle) GetServiceScrape() *VMServiceScrapeSpec {
-	return cr.Spec.ServiceScrapeSpec
+func (r *VMSingle) GetServiceScrape() *VMServiceScrapeSpec {
+	return r.Spec.ServiceScrapeSpec
 }
 
-func (cr *VMSingle) GetServiceAccountName() string {
-	if cr.Spec.ServiceAccountName == "" {
-		return cr.PrefixedName()
+func (r *VMSingle) GetServiceAccount() *ServiceAccount {
+	sa := r.Spec.ServiceAccount
+	if sa == nil {
+		sa = &ServiceAccount{
+			Name:           r.PrefixedName(),
+			AutomountToken: true,
+		}
 	}
-	return cr.Spec.ServiceAccountName
+	return sa
 }
 
-func (cr *VMSingle) IsOwnsServiceAccount() bool {
-	return cr.Spec.ServiceAccountName == ""
+func (r *VMSingle) IsOwnsServiceAccount() bool {
+	if r.Spec.ServiceAccount != nil && r.Spec.ServiceAccount.Name != "" {
+		return r.Spec.ServiceAccount.Name == ""
+	}
+	return false
 }
 
 // GetNSName implements build.builderOpts interface
-func (cr *VMSingle) GetNSName() string {
-	return cr.GetNamespace()
+func (r *VMSingle) GetNSName() string {
+	return r.GetNamespace()
 }
 
-func (cr *VMSingle) AsURL() string {
-	port := cr.Spec.Port
+func (r *VMSingle) AsURL() string {
+	port := r.Spec.Port
 	if port == "" {
 		port = "8429"
 	}
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
-		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.UseAsDefault {
+		for _, svcPort := range r.Spec.ServiceSpec.Spec.Ports {
 			if svcPort.Name == "http" {
 				port = fmt.Sprintf("%d", svcPort.Port)
 				break
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(r.Spec.ExtraArgs), r.PrefixedName(), r.Namespace, port)
 }
 
 // AsCRDOwner implements interface
-func (cr *VMSingle) AsCRDOwner() []metav1.OwnerReference {
+func (r *VMSingle) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Single)
 }
 
 // LastAppliedSpecAsPatch return last applied single spec as patch annotation
-func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+func (r *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
+	return lastAppliedChangesAsPatch(r.ObjectMeta, r.Spec)
 }
 
 // HasSpecChanges compares single spec with last applied single spec stored in annotation
-func (cr *VMSingle) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+func (r *VMSingle) HasSpecChanges() (bool, error) {
+	return hasStateChanges(r.ObjectMeta, r.Spec)
 }
 
-func (cr *VMSingle) Paused() bool {
-	return cr.Spec.Paused
+func (r *VMSingle) Paused() bool {
+	return r.Spec.Paused
+}
+
+func (r *VMSingle) Validate() error {
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
+
+	if r.Spec.VMBackup != nil {
+		if err := r.Spec.VMBackup.validate(r.Spec.License); err != nil {
+			return err
+		}
+	}
+	if r.Spec.StorageDataPath != "" {
+		if len(r.Spec.Volumes) == 0 {
+			return fmt.Errorf("spec.volumes must have at least 1 value for spec.storageDataPath=%q", r.Spec.StorageDataPath)
+		}
+		var storageVolumeFound bool
+		for _, volume := range r.Spec.Volumes {
+			if volume.Name == "data" {
+				storageVolumeFound = true
+				break
+			}
+		}
+		if r.Spec.VMBackup != nil {
+			if !storageVolumeFound {
+				return fmt.Errorf("spec.volumes must have at least 1 value with `name: data` for spec.storageDataPath=%q."+
+					" It's required by operator to correctly mount backup volumeMount", r.Spec.StorageDataPath)
+			}
+		}
+		if len(r.Spec.VolumeMounts) == 0 && !storageVolumeFound {
+			return fmt.Errorf("spec.volumeMounts must have at least 1 value OR spec.volumes must have volume.name `data` for spec.storageDataPath=%q", r.Spec.StorageDataPath)
+		}
+	}
+	return nil
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMSingle, *VMSingleStatus]{
+func (r *VMSingle) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMSingle, *VMSingleStatus]{
 		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
+		r:            r,
+		rStatus:      &r.Status,
 		maybeErr:     maybeErr,
 		mutateCurrentBeforeCompare: func(vs *VMSingleStatus) {
 			vs.LegacyStatus = vs.UpdateStatus
@@ -341,13 +383,13 @@ func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, r client.Client, stat
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMSingleStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (r *VMSingleStatus) GetStatusMetadata() *StatusMetadata {
+	return &r.StatusMetadata
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VMSingle) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.Spec.ServiceSpec
+func (r *VMSingle) GetAdditionalService() *AdditionalServiceSpec {
+	return r.Spec.ServiceSpec
 }
 
 func init() {

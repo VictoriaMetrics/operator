@@ -685,7 +685,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 			Volumes:            volumes,
 			InitContainers:     cr.Spec.VMSelect.InitContainers,
 			Containers:         containers,
-			ServiceAccountName: cr.GetServiceAccountName(),
+			ServiceAccountName: cr.GetServiceAccount().Name,
 			RestartPolicy:      "Always",
 		},
 	}
@@ -882,7 +882,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 			Volumes:            volumes,
 			InitContainers:     cr.Spec.VMInsert.InitContainers,
 			Containers:         containers,
-			ServiceAccountName: cr.GetServiceAccountName(),
+			ServiceAccountName: cr.GetServiceAccount().Name,
 		},
 	}
 
@@ -1118,7 +1118,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 			Volumes:            volumes,
 			InitContainers:     ic,
 			Containers:         containers,
-			ServiceAccountName: cr.GetServiceAccountName(),
+			ServiceAccountName: cr.GetServiceAccount().Name,
 		},
 	}
 
@@ -1527,7 +1527,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 					Volumes:            volumes,
 					InitContainers:     spec.InitContainers,
 					Containers:         containers,
-					ServiceAccountName: cr.GetServiceAccountName(),
+					ServiceAccountName: cr.GetServiceAccount().Name,
 				},
 			},
 		},

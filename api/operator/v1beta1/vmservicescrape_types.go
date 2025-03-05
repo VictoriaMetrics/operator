@@ -131,18 +131,18 @@ type Endpoint struct {
 }
 
 // AsProxyKey builds key for proxy cache maps
-func (cr VMServiceScrape) AsProxyKey(i int) string {
-	return fmt.Sprintf("serviceScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
+func (r *VMServiceScrape) AsProxyKey(i int) string {
+	return fmt.Sprintf("serviceScrapeProxy/%s/%s/%d", r.Namespace, r.Name, i)
 }
 
-// AsMapKey - returns cr name with suffix for token/auth maps.
-func (cr VMServiceScrape) AsMapKey(i int) string {
-	return fmt.Sprintf("serviceScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
+// AsMapKey - returns r name with suffix for token/auth maps.
+func (r *VMServiceScrape) AsMapKey(i int) string {
+	return fmt.Sprintf("serviceScrape/%s/%s/%d", r.Namespace, r.Name, i)
 }
 
 // GetStatusMetadata implements reconcile.objectWithStatus interface
-func (cr *VMServiceScrape) GetStatusMetadata() *StatusMetadata {
-	return &cr.Status.StatusMetadata
+func (r *VMServiceScrape) GetStatusMetadata() *StatusMetadata {
+	return &r.Status.StatusMetadata
 }
 
 func init() {

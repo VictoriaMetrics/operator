@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestVMAgent_sanityCheck(t *testing.T) {
+func TestVMAgent_Validate(t *testing.T) {
 
 	tests := []struct {
 		name    string
@@ -68,11 +68,11 @@ func TestVMAgent_sanityCheck(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cr := &VMAgent{
+			r := &VMAgent{
 				Spec: tt.spec,
 			}
-			if err := cr.sanityCheck(); (err != nil) != tt.wantErr {
-				t.Errorf("sanityCheck() error = %v, wantErr %v", err, tt.wantErr)
+			if err := r.Validate(); (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -305,9 +307,7 @@ type VMAgentSpec struct {
 	// +optional
 	License *License `json:"license,omitempty"`
 
-	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	*ServiceAccount `json:",inline,omitempty"`
 
 	VMAgentSecurityEnforcements       `json:",inline"`
 	CommonDefaultableParams           `json:",inline,omitempty"`
@@ -315,31 +315,66 @@ type VMAgentSpec struct {
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
-func (cr *VMAgent) setLastSpec(prevSpec VMAgentSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
+func (r *VMAgent) setLastSpec(prevSpec VMAgentSpec) {
+	r.ParsedLastAppliedSpec = &prevSpec
+}
+
+func (r *VMAgent) Validate() error {
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
+	if len(r.Spec.RemoteWrite) == 0 {
+		return fmt.Errorf("spec.remoteWrite cannot be empty array, provide at least one remoteWrite")
+	}
+	if r.Spec.InlineScrapeConfig != "" {
+		var inlineCfg yaml.MapSlice
+		if err := yaml.Unmarshal([]byte(r.Spec.InlineScrapeConfig), &inlineCfg); err != nil {
+			return fmt.Errorf("bad r.spec.inlineScrapeConfig it must be valid yaml, err :%w", err)
+		}
+	}
+	if len(r.Spec.InlineRelabelConfig) > 0 {
+		if err := checkRelabelConfigs(r.Spec.InlineRelabelConfig); err != nil {
+			return err
+		}
+	}
+	for idx, rw := range r.Spec.RemoteWrite {
+		if rw.URL == "" {
+			return fmt.Errorf("remoteWrite.url cannot be empty at idx: %d", idx)
+		}
+		if len(rw.InlineUrlRelabelConfig) > 0 {
+			if err := checkRelabelConfigs(rw.InlineUrlRelabelConfig); err != nil {
+				return fmt.Errorf("bad urlRelabelingConfig at idx: %d, err: %w", idx, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAgent) UnmarshalJSON(src []byte) error {
-	type pcr VMAgent
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+func (r *VMAgent) UnmarshalJSON(src []byte) error {
+	type pr VMAgent
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
 		return err
 	}
 	// TODO: remove it at v0.56.0 release
-	if cr.Spec.APIServerConfigDeprecated != nil && cr.Spec.APIServerConfig == nil {
-		cr.Spec.APIServerConfig = cr.Spec.APIServerConfigDeprecated
+	if r.Spec.APIServerConfigDeprecated != nil && r.Spec.APIServerConfig == nil {
+		r.Spec.APIServerConfig = r.Spec.APIServerConfigDeprecated
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := parseLastAppliedState(r); err != nil {
 		return err
 	}
 	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAgentSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMAgentSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmagent spec: %s, err: %s", string(src), err)
+func (r *VMAgentSpec) UnmarshalJSON(src []byte) error {
+	type pr VMAgentSpec
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
+		r.ParsingError = fmt.Sprintf("cannot parse vmagent spec: %s, err: %s", string(src), err)
 		return nil
 	}
 	return nil
@@ -425,17 +460,17 @@ type VMAgentRemoteWriteSpec struct {
 }
 
 // AsMapKey key for internal cache map
-func (rw *VMAgentRemoteWriteSpec) AsMapKey() string {
-	return fmt.Sprintf("remoteWrite-%s", rw.URL)
+func (r *VMAgentRemoteWriteSpec) AsMapKey() string {
+	return fmt.Sprintf("remoteWrite-%s", r.URL)
 }
 
 // AsSecretKey key for kubernetes secret data
-func (rw *VMAgentRemoteWriteSpec) AsSecretKey(idx int, suffix string) string {
+func (r *VMAgentRemoteWriteSpec) AsSecretKey(idx int, suffix string) string {
 	return fmt.Sprintf("RWS_%d-SECRET-%s", idx, strings.ToUpper(suffix))
 }
 
 // AsConfigMapKey key for kubernetes configmap
-func (rw *VMAgentRemoteWriteSpec) AsConfigMapKey(idx int, suffix string) string {
+func (r *VMAgentRemoteWriteSpec) AsConfigMapKey(idx int, suffix string) string {
 	return fmt.Sprintf("RWS_%d-CM-%s", idx, strings.ToUpper(suffix))
 }
 
@@ -452,8 +487,8 @@ type VMAgentStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAgentStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (r *VMAgentStatus) GetStatusMetadata() *StatusMetadata {
+	return &r.StatusMetadata
 }
 
 // +genclient
@@ -495,37 +530,37 @@ type VMAgentList struct {
 }
 
 // AsOwner returns owner references with current object as owner
-func (cr *VMAgent) AsOwner() []metav1.OwnerReference {
+func (r *VMAgent) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
-			APIVersion:         cr.APIVersion,
-			Kind:               cr.Kind,
-			Name:               cr.Name,
-			UID:                cr.UID,
+			APIVersion:         r.APIVersion,
+			Kind:               r.Kind,
+			Name:               r.Name,
+			UID:                r.UID,
 			Controller:         ptr.To(true),
 			BlockOwnerDeletion: ptr.To(true),
 		},
 	}
 }
 
-func (cr *VMAgent) PodAnnotations() map[string]string {
+func (r *VMAgent) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
-	if cr.Spec.PodMetadata != nil {
-		for annotation, value := range cr.Spec.PodMetadata.Annotations {
+	if r.Spec.PodMetadata != nil {
+		for annotation, value := range r.Spec.PodMetadata.Annotations {
 			annotations[annotation] = value
 		}
 	}
 	return annotations
 }
 
-func (cr *VMAgent) AnnotationsFiltered() map[string]string {
+func (r *VMAgent) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
-	if cr.Spec.ManagedMetadata != nil {
+	dst := filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if r.Spec.ManagedMetadata != nil {
 		if dst == nil {
 			dst = make(map[string]string)
 		}
-		for k, v := range cr.Spec.ManagedMetadata.Annotations {
+		for k, v := range r.Spec.ManagedMetadata.Annotations {
 			dst[k] = v
 		}
 	}
@@ -533,234 +568,240 @@ func (cr *VMAgent) AnnotationsFiltered() map[string]string {
 	return dst
 }
 
-func (cr *VMAgent) SelectorLabels() map[string]string {
+func (r *VMAgent) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmagent",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
-func (cr *VMAgent) PodLabels() map[string]string {
-	lbls := cr.SelectorLabels()
-	if cr.Spec.PodMetadata == nil {
+func (r *VMAgent) PodLabels() map[string]string {
+	lbls := r.SelectorLabels()
+	if r.Spec.PodMetadata == nil {
 		return lbls
 	}
 
-	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
+	return labels.Merge(r.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr *VMAgent) AllLabels() map[string]string {
-	selectorLabels := cr.SelectorLabels()
+func (r *VMAgent) AllLabels() map[string]string {
+	selectorLabels := r.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+	if r.ObjectMeta.Labels == nil && r.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	if r.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
 	}
-	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	if r.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, r.Spec.ManagedMetadata.Labels)
 	}
 	return labels.Merge(result, selectorLabels)
 }
 
-func (cr *VMAgent) PrefixedName() string {
-	return fmt.Sprintf("vmagent-%s", cr.Name)
+func (r *VMAgent) PrefixedName() string {
+	return fmt.Sprintf("vmagent-%s", r.Name)
 }
 
-func (cr *VMAgent) TLSAssetName() string {
-	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name)
+func (r *VMAgent) TLSAssetName() string {
+	return fmt.Sprintf("tls-assets-vmagent-%s", r.Name)
 }
 
-func (cr *VMAgent) RelabelingAssetName() string {
-	return fmt.Sprintf("relabelings-assets-vmagent-%s", cr.Name)
+func (r *VMAgent) RelabelingAssetName() string {
+	return fmt.Sprintf("relabelings-assets-vmagent-%s", r.Name)
 }
 
-func (cr *VMAgent) StreamAggrConfigName() string {
-	return fmt.Sprintf("stream-aggr-vmagent-%s", cr.Name)
+func (r *VMAgent) StreamAggrConfigName() string {
+	return fmt.Sprintf("stream-aggr-vmagent-%s", r.Name)
 }
 
-func (cr *VMAgent) HealthPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+func (r *VMAgent) HealthPath() string {
+	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, healthPath)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr *VMAgent) GetMetricPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+func (r *VMAgent) GetMetricPath() string {
+	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMAgent) GetExtraArgs() map[string]string {
-	return cr.Spec.ExtraArgs
+func (r *VMAgent) GetExtraArgs() map[string]string {
+	return r.Spec.ExtraArgs
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
-func (cr *VMAgent) GetServiceScrape() *VMServiceScrapeSpec {
-	return cr.Spec.ServiceScrapeSpec
+func (r *VMAgent) GetServiceScrape() *VMServiceScrapeSpec {
+	return r.Spec.ServiceScrapeSpec
 }
 
-func (cr *VMAgent) GetServiceAccountName() string {
-	if cr.Spec.ServiceAccountName == "" {
-		return cr.PrefixedName()
+func (r *VMAgent) GetServiceAccount() *ServiceAccount {
+	sa := r.Spec.ServiceAccount
+	if sa == nil {
+		sa = &ServiceAccount{
+			Name:           r.PrefixedName(),
+			AutomountToken: true,
+		}
 	}
-	return cr.Spec.ServiceAccountName
+	return sa
 }
 
-// IsOwnsServiceAccount checks if service account owned by CR
-func (cr *VMAgent) IsOwnsServiceAccount() bool {
-	return cr.Spec.ServiceAccountName == ""
+func (r *VMAgent) IsOwnsServiceAccount() bool {
+	if r.Spec.ServiceAccount != nil && r.Spec.ServiceAccount.Name != "" {
+		return r.Spec.ServiceAccount.Name == ""
+	}
+	return false
 }
 
-func (cr *VMAgent) GetClusterRoleName() string {
-	return fmt.Sprintf("monitoring:%s:vmagent-%s", cr.Namespace, cr.Name)
+func (r *VMAgent) GetClusterRoleName() string {
+	return fmt.Sprintf("monitoring:%s:vmagent-%s", r.Namespace, r.Name)
 }
 
 // GetNSName implements build.builderOpts interface
-func (cr *VMAgent) GetNSName() string {
-	return cr.GetNamespace()
+func (r *VMAgent) GetNSName() string {
+	return r.GetNamespace()
 }
 
 // AsURL - returns url for http access
-func (cr *VMAgent) AsURL() string {
-	port := cr.Spec.Port
+func (r *VMAgent) AsURL() string {
+	port := r.Spec.Port
 	if port == "" {
 		port = "8429"
 	}
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
-		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.UseAsDefault {
+		for _, svcPort := range r.Spec.ServiceSpec.Spec.Ports {
 			if svcPort.Name == "http" {
 				port = fmt.Sprintf("%d", svcPort.Port)
 				break
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(r.Spec.ExtraArgs), r.PrefixedName(), r.Namespace, port)
 }
 
 // AsCRDOwner implements interface
-func (cr *VMAgent) AsCRDOwner() []metav1.OwnerReference {
+func (r *VMAgent) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Agent)
 }
 
-func (cr *VMAgent) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
+func (r *VMAgent) Probe() *EmbeddedProbes {
+	return r.Spec.EmbeddedProbes
 }
 
-func (cr *VMAgent) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+func (r *VMAgent) ProbePath() string {
+	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, healthPath)
 }
 
-func (cr *VMAgent) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+func (r *VMAgent) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(r.Spec.ExtraArgs))
 }
 
-func (cr *VMAgent) ProbePort() string {
-	return cr.Spec.Port
+func (r *VMAgent) ProbePort() string {
+	return r.Spec.Port
 }
 
-func (cr *VMAgent) ProbeNeedLiveness() bool {
+func (r *VMAgent) ProbeNeedLiveness() bool {
 	return true
 }
 
 // IsUnmanaged checks if object should managed any config objects
-func (cr *VMAgent) IsUnmanaged() bool {
+func (r *VMAgent) IsUnmanaged() bool {
 	// fast path
-	if cr.Spec.IngestOnlyMode {
+	if r.Spec.IngestOnlyMode {
 		return true
 	}
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.NodeScrapeSelector == nil && cr.Spec.NodeScrapeNamespaceSelector == nil &&
-		cr.Spec.ServiceScrapeSelector == nil && cr.Spec.ServiceScrapeNamespaceSelector == nil &&
-		cr.Spec.PodScrapeSelector == nil && cr.Spec.PodScrapeNamespaceSelector == nil &&
-		cr.Spec.ProbeSelector == nil && cr.Spec.ProbeNamespaceSelector == nil &&
-		cr.Spec.StaticScrapeSelector == nil && cr.Spec.StaticScrapeNamespaceSelector == nil &&
-		cr.Spec.ScrapeConfigSelector == nil && cr.Spec.ScrapeConfigNamespaceSelector == nil
+	return !r.Spec.SelectAllByDefault &&
+		r.Spec.NodeScrapeSelector == nil && r.Spec.NodeScrapeNamespaceSelector == nil &&
+		r.Spec.ServiceScrapeSelector == nil && r.Spec.ServiceScrapeNamespaceSelector == nil &&
+		r.Spec.PodScrapeSelector == nil && r.Spec.PodScrapeNamespaceSelector == nil &&
+		r.Spec.ProbeSelector == nil && r.Spec.ProbeNamespaceSelector == nil &&
+		r.Spec.StaticScrapeSelector == nil && r.Spec.StaticScrapeNamespaceSelector == nil &&
+		r.Spec.ScrapeConfigSelector == nil && r.Spec.ScrapeConfigNamespaceSelector == nil
 }
 
 // IsNodeScrapeUnmanaged checks if vmagent should managed any VMNodeScrape objects
-func (cr *VMAgent) IsNodeScrapeUnmanaged() bool {
+func (r *VMAgent) IsNodeScrapeUnmanaged() bool {
 	// fast path
-	if cr.Spec.IngestOnlyMode {
+	if r.Spec.IngestOnlyMode {
 		return true
 	}
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.NodeScrapeSelector == nil && cr.Spec.NodeScrapeNamespaceSelector == nil
+	return !r.Spec.SelectAllByDefault &&
+		r.Spec.NodeScrapeSelector == nil && r.Spec.NodeScrapeNamespaceSelector == nil
 }
 
 // IsServiceScrapeUnmanaged checks if vmagent should managed any VMServiceScrape objects
-func (cr *VMAgent) IsServiceScrapeUnmanaged() bool {
+func (r *VMAgent) IsServiceScrapeUnmanaged() bool {
 	// fast path
-	if cr.Spec.IngestOnlyMode {
+	if r.Spec.IngestOnlyMode {
 		return true
 	}
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.ServiceScrapeSelector == nil && cr.Spec.ServiceScrapeNamespaceSelector == nil
+	return !r.Spec.SelectAllByDefault &&
+		r.Spec.ServiceScrapeSelector == nil && r.Spec.ServiceScrapeNamespaceSelector == nil
 }
 
 // IsUnmanaged checks if vmagent should managed any VMPodScrape objects
-func (cr *VMAgent) IsPodScrapeUnmanaged() bool {
+func (r *VMAgent) IsPodScrapeUnmanaged() bool {
 	// fast path
-	if cr.Spec.IngestOnlyMode {
+	if r.Spec.IngestOnlyMode {
 		return true
 	}
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.PodScrapeSelector == nil && cr.Spec.PodScrapeNamespaceSelector == nil
+	return !r.Spec.SelectAllByDefault &&
+		r.Spec.PodScrapeSelector == nil && r.Spec.PodScrapeNamespaceSelector == nil
 }
 
 // IsProbeUnmanaged checks if vmagent should managed any VMProbe objects
-func (cr *VMAgent) IsProbeUnmanaged() bool {
+func (r *VMAgent) IsProbeUnmanaged() bool {
 	// fast path
-	if cr.Spec.IngestOnlyMode {
+	if r.Spec.IngestOnlyMode {
 		return true
 	}
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.ProbeSelector == nil && cr.Spec.ProbeNamespaceSelector == nil
+	return !r.Spec.SelectAllByDefault &&
+		r.Spec.ProbeSelector == nil && r.Spec.ProbeNamespaceSelector == nil
 }
 
 // IsStaticScrapeUnmanaged checks if vmagent should managed any VMStaticScrape objects
-func (cr *VMAgent) IsStaticScrapeUnmanaged() bool {
+func (r *VMAgent) IsStaticScrapeUnmanaged() bool {
 	// fast path
-	if cr.Spec.IngestOnlyMode {
+	if r.Spec.IngestOnlyMode {
 		return true
 	}
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.StaticScrapeSelector == nil && cr.Spec.StaticScrapeNamespaceSelector == nil
+	return !r.Spec.SelectAllByDefault &&
+		r.Spec.StaticScrapeSelector == nil && r.Spec.StaticScrapeNamespaceSelector == nil
 }
 
 // IsScrapeConfigUnmanaged checks if vmagent should managed any VMScrapeConfig objects
-func (cr *VMAgent) IsScrapeConfigUnmanaged() bool {
+func (r *VMAgent) IsScrapeConfigUnmanaged() bool {
 	// fast path
-	if cr.Spec.IngestOnlyMode {
+	if r.Spec.IngestOnlyMode {
 		return true
 	}
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.ScrapeConfigSelector == nil && cr.Spec.ScrapeConfigNamespaceSelector == nil
+	return !r.Spec.SelectAllByDefault &&
+		r.Spec.ScrapeConfigSelector == nil && r.Spec.ScrapeConfigNamespaceSelector == nil
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMAgent) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+func (r *VMAgent) LastAppliedSpecAsPatch() (client.Patch, error) {
+	return lastAppliedChangesAsPatch(r.ObjectMeta, r.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMAgent) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+func (r *VMAgent) HasSpecChanges() (bool, error) {
+	return hasStateChanges(r.ObjectMeta, r.Spec)
 }
 
-func (cr *VMAgent) Paused() bool {
-	return cr.Spec.Paused
+func (r *VMAgent) Paused() bool {
+	return r.Spec.Paused
 }
 
 // HasAnyRelabellingConfigs checks if vmagent has any defined relabeling rules
-func (cr *VMAgent) HasAnyRelabellingConfigs() bool {
-	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
+func (r *VMAgent) HasAnyRelabellingConfigs() bool {
+	if r.Spec.RelabelConfig != nil || len(r.Spec.InlineRelabelConfig) > 0 {
 		return true
 	}
-	for _, rw := range cr.Spec.RemoteWrite {
+	for _, rw := range r.Spec.RemoteWrite {
 		if rw.UrlRelabelConfig != nil || len(rw.InlineUrlRelabelConfig) > 0 {
 			return true
 		}
@@ -770,11 +811,11 @@ func (cr *VMAgent) HasAnyRelabellingConfigs() bool {
 }
 
 // HasAnyStreamAggrRule checks if vmagent has any defined aggregation rules
-func (cr *VMAgent) HasAnyStreamAggrRule() bool {
-	if cr.Spec.StreamAggrConfig.HasAnyRule() {
+func (r *VMAgent) HasAnyStreamAggrRule() bool {
+	if r.Spec.StreamAggrConfig.HasAnyRule() {
 		return true
 	}
-	for _, rw := range cr.Spec.RemoteWrite {
+	for _, rw := range r.Spec.RemoteWrite {
 		if rw.StreamAggrConfig.HasAnyRule() {
 			return true
 		}
@@ -784,31 +825,37 @@ func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAgent, *VMAgentStatus]{
+func (r *VMAgent) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAgent, *VMAgentStatus]{
 		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
+		r:            r,
+		rStatus:      &r.Status,
 		maybeErr:     maybeErr,
 		mutateCurrentBeforeCompare: func(vs *VMAgentStatus) {
 			replicaCount := int32(0)
-			if cr.Spec.ReplicaCount != nil {
-				replicaCount = *cr.Spec.ReplicaCount
+			if r.Spec.ReplicaCount != nil {
+				replicaCount = *r.Spec.ReplicaCount
 			}
 			var shardCnt int32
-			if cr.Spec.ShardCount != nil {
-				shardCnt = int32(*cr.Spec.ShardCount)
+			if r.Spec.ShardCount != nil {
+				shardCnt = int32(*r.Spec.ShardCount)
 			}
 			vs.Replicas = replicaCount
 			vs.Shards = shardCnt
-			vs.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
+			vs.Selector = labels.SelectorFromSet(r.SelectorLabels()).String()
 		},
 	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.Spec.ServiceSpec
+func (r *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
+	return r.Spec.ServiceSpec
+}
+
+func checkRelabelConfigs(src []RelabelConfig) error {
+	// TODO: restore check when issue will be fixed at golang
+	// https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6911
+	return nil
 }
 
 // APIServerConfig defines a host and auth methods to access apiserver.

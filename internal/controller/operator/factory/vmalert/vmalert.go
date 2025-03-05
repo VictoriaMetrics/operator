@@ -404,7 +404,7 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 				Annotations: cr.PodAnnotations(),
 			},
 			Spec: corev1.PodSpec{
-				ServiceAccountName: cr.GetServiceAccountName(),
+				ServiceAccountName: cr.GetServiceAccount().Name,
 				InitContainers:     cr.Spec.InitContainers,
 				Containers:         containers,
 				Volumes:            volumes,

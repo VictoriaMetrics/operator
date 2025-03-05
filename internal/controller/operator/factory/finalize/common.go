@@ -19,7 +19,7 @@ type crdObject interface {
 	AnnotationsFiltered() map[string]string
 	GetLabels() map[string]string
 	PrefixedName() string
-	GetServiceAccountName() string
+	GetServiceAccount() *vmv1beta1.ServiceAccount
 	IsOwnsServiceAccount() bool
 	GetNSName() string
 }
@@ -124,10 +124,10 @@ func deleteSA(ctx context.Context, rclient client.Client, crd crdObject) error {
 	if !crd.IsOwnsServiceAccount() {
 		return nil
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ServiceAccount{}, crd.GetServiceAccountName(), crd.GetNSName()); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ServiceAccount{}, crd.GetServiceAccount().Name, crd.GetNSName()); err != nil {
 		return err
 	}
-	return SafeDelete(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: crd.GetNSName(), Name: crd.GetServiceAccountName()}})
+	return SafeDelete(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: crd.GetNSName(), Name: crd.GetServiceAccount().Name}})
 }
 
 func finalizePBD(ctx context.Context, rclient client.Client, crd crdObject) error {

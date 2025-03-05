@@ -8,7 +8,7 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func TestVMUser_sanityCheck(t *testing.T) {
+func TestVMUser_Validate(t *testing.T) {
 	type fields struct {
 		TypeMeta   v1.TypeMeta
 		ObjectMeta v1.ObjectMeta
@@ -120,14 +120,14 @@ func TestVMUser_sanityCheck(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cr := &VMUser{
+			r := &VMUser{
 				TypeMeta:   tt.fields.TypeMeta,
 				ObjectMeta: tt.fields.ObjectMeta,
 				Spec:       tt.fields.Spec,
 				Status:     tt.fields.Status,
 			}
-			if err := cr.sanityCheck(); (err != nil) != tt.wantErr {
-				t.Errorf("sanityCheck() error = %v, wantErr %v", err, tt.wantErr)
+			if err := r.Validate(); (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

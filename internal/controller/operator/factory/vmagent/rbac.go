@@ -206,7 +206,7 @@ func buildClusterRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      rbacv1.ServiceAccountKind,
-				Name:      cr.GetServiceAccountName(),
+				Name:      cr.GetServiceAccount().Name,
 				Namespace: cr.GetNamespace(),
 			},
 		},
@@ -279,7 +279,7 @@ func buildNamespacedRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.RoleBinding {
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      rbacv1.ServiceAccountKind,
-				Name:      cr.GetServiceAccountName(),
+				Name:      cr.GetServiceAccount().Name,
 				Namespace: cr.GetNamespace(),
 			},
 		},

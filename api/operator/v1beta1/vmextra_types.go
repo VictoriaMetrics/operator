@@ -103,9 +103,9 @@ OUTER:
 	return dst
 }
 
-// skip validation, if object has annotation.
-func mustSkipValidation(cr client.Object) bool {
-	return cr.GetAnnotations()[SkipValidationAnnotation] == SkipValidationValue
+// mustSkipValidation skips validation, if object has annotation.
+func mustSkipValidation(r client.Object) bool {
+	return r.GetAnnotations()[SkipValidationAnnotation] == SkipValidationValue
 }
 
 // AddFinalizer conditionally adds vm-operator finalizer to the dst object
@@ -468,11 +468,11 @@ type EmbeddedHPA struct {
 	Behaviour   *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behaviour,omitempty"`
 }
 
-func (cr *EmbeddedHPA) sanityCheck() error {
-	if cr.MinReplicas != nil && *cr.MinReplicas > cr.MaxReplicas {
+func (r *EmbeddedHPA) validate() error {
+	if r.MinReplicas != nil && *r.MinReplicas > r.MaxReplicas {
 		return fmt.Errorf("minReplicas cannot be greater then maxReplicas")
 	}
-	if cr.Behaviour == nil && len(cr.Metrics) == 0 {
+	if r.Behaviour == nil && len(r.Metrics) == 0 {
 		return fmt.Errorf("at least behaviour or metrics property must be configuread")
 	}
 	return nil
@@ -766,65 +766,65 @@ type License struct {
 }
 
 // IsProvided returns true if license is provided.
-func (l *License) IsProvided() bool {
-	if l == nil {
+func (r *License) IsProvided() bool {
+	if r == nil {
 		return false
 	}
 
-	return l.Key != nil || l.KeyRef != nil
+	return r.Key != nil || r.KeyRef != nil
 }
 
 // MaybeAddToArgs conditionally adds license commandline args into given args
-func (l *License) MaybeAddToArgs(args []string, secretMountDir string) []string {
-	if l == nil || !l.IsProvided() {
+func (r *License) MaybeAddToArgs(args []string, secretMountDir string) []string {
+	if r == nil || !r.IsProvided() {
 		return args
 	}
-	if l.Key != nil {
-		args = append(args, fmt.Sprintf("-license=%s", *l.Key))
+	if r.Key != nil {
+		args = append(args, fmt.Sprintf("-license=%s", *r.Key))
 	}
-	if l.KeyRef != nil {
-		args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(secretMountDir, l.KeyRef.Name, l.KeyRef.Key)))
+	if r.KeyRef != nil {
+		args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(secretMountDir, r.KeyRef.Name, r.KeyRef.Key)))
 	}
-	if l.ForceOffline != nil {
-		args = append(args, fmt.Sprintf("-license.forceOffline=%v", *l.ForceOffline))
+	if r.ForceOffline != nil {
+		args = append(args, fmt.Sprintf("-license.forceOffline=%v", *r.ForceOffline))
 	}
-	if l.ReloadInterval != nil {
-		args = append(args, fmt.Sprintf("-licenseFile.reloadInterval=%s", *l.ReloadInterval))
+	if r.ReloadInterval != nil {
+		args = append(args, fmt.Sprintf("-licenseFile.reloadInterval=%s", *r.ReloadInterval))
 	}
 	return args
 }
 
 // MaybeAddToVolumes conditionally mounts secret with license key into given volumes and mounts
-func (l *License) MaybeAddToVolumes(volumes []v1.Volume, mounts []v1.VolumeMount, secretMountDir string) ([]v1.Volume, []v1.VolumeMount) {
-	if l == nil || l.KeyRef == nil {
+func (r *License) MaybeAddToVolumes(volumes []v1.Volume, mounts []v1.VolumeMount, secretMountDir string) ([]v1.Volume, []v1.VolumeMount) {
+	if r == nil || r.KeyRef == nil {
 		return volumes, mounts
 	}
 	volumes = append(volumes, v1.Volume{
 		Name: "license",
 		VolumeSource: v1.VolumeSource{
 			Secret: &v1.SecretVolumeSource{
-				SecretName: l.KeyRef.Name,
+				SecretName: r.KeyRef.Name,
 			},
 		},
 	})
 	mounts = append(mounts, v1.VolumeMount{
 		Name:      "license",
 		ReadOnly:  true,
-		MountPath: path.Join(secretMountDir, l.KeyRef.Name),
+		MountPath: path.Join(secretMountDir, r.KeyRef.Name),
 	})
 	return volumes, mounts
 }
 
-func (l *License) sanityCheck() error {
-	if !l.IsProvided() {
+func (r *License) validate() error {
+	if !r.IsProvided() {
 		return nil
 	}
 
-	if l.Key != nil && l.KeyRef != nil {
+	if r.Key != nil && r.KeyRef != nil {
 		return fmt.Errorf("only one of key or keyRef can be specified")
 	}
 
-	if l.Key != nil && l.ReloadInterval != nil {
+	if r.Key != nil && r.ReloadInterval != nil {
 		return fmt.Errorf("reloadInterval can be specified only with keyRef")
 	}
 
@@ -873,32 +873,32 @@ type TLSConfig struct {
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty" yaml:"insecure_skip_verify,omitempty"`
 }
 
-func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
-	if c.CAFile != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.CAFile))
-	} else if c.CA.PrefixedName() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.CA.PrefixedName(), c.CA.Key())))
+func (r *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
+	if r.CAFile != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, r.CAFile))
+	} else if r.CA.PrefixedName() != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, r.BuildAssetPath(pathPrefix, r.CA.PrefixedName(), r.CA.Key())))
 	}
-	if c.CertFile != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.CertFile))
-	} else if c.Cert.PrefixedName() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.Cert.PrefixedName(), c.Cert.Key())))
+	if r.CertFile != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, r.CertFile))
+	} else if r.Cert.PrefixedName() != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, r.BuildAssetPath(pathPrefix, r.Cert.PrefixedName(), r.Cert.Key())))
 	}
-	if c.KeyFile != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.KeyFile))
-	} else if c.KeySecret != nil {
-		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.KeySecret.Name, c.KeySecret.Key)))
+	if r.KeyFile != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, r.KeyFile))
+	} else if r.KeySecret != nil {
+		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, r.BuildAssetPath(pathPrefix, r.KeySecret.Name, r.KeySecret.Key)))
 	}
-	if c.ServerName != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsServerName=%s", prefix, c.ServerName))
+	if r.ServerName != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsServerName=%s", prefix, r.ServerName))
 	}
-	if c.InsecureSkipVerify {
-		args = append(args, fmt.Sprintf("-%s.tlsInsecureSkipVerify=%v", prefix, c.InsecureSkipVerify))
+	if r.InsecureSkipVerify {
+		args = append(args, fmt.Sprintf("-%s.tlsInsecureSkipVerify=%v", prefix, r.InsecureSkipVerify))
 	}
 	return args
 }
 
-// TLSConfigValidationError is returned by TLSConfig.Validate() on semantically
+// TLSConfigValidationError is returned by TLSConfig.validate() on semantically
 // invalid tls configurations.
 // +k8s:openapi-gen=false
 type TLSConfigValidationError struct {
@@ -909,13 +909,13 @@ func (e *TLSConfigValidationError) Error() string {
 	return e.err
 }
 
-// Validate semantically validates the given TLSConfig.
+// validate semantically validates the given TLSConfig.
 func (c *TLSConfig) Validate() error {
 	if c.CA != (SecretOrConfigMap{}) {
 		if c.CAFile != "" {
 			return &TLSConfigValidationError{"tls config can not both specify CAFile and CA"}
 		}
-		if err := c.CA.Validate(); err != nil {
+		if err := c.CA.validate(); err != nil {
 			return err
 		}
 	}
@@ -924,7 +924,7 @@ func (c *TLSConfig) Validate() error {
 		if c.CertFile != "" {
 			return &TLSConfigValidationError{"tls config can not both specify CertFile and Cert"}
 		}
-		if err := c.Cert.Validate(); err != nil {
+		if err := c.Cert.validate(); err != nil {
 			return err
 		}
 	}
@@ -936,7 +936,7 @@ func (c *TLSConfig) Validate() error {
 	return nil
 }
 
-// SecretOrConfigMapValidationError is returned by SecretOrConfigMap.Validate()
+// SecretOrConfigMapValidationError is returned by SecretOrConfigMap.validate()
 // on semantically invalid configurations.
 // +k8s:openapi-gen=false
 type SecretOrConfigMapValidationError struct {
@@ -947,8 +947,8 @@ func (e *SecretOrConfigMapValidationError) Error() string {
 	return e.err
 }
 
-// Validate semantically validates the given TLSConfig.
-func (c *SecretOrConfigMap) Validate() error {
+// validate semantically validates the given TLSConfig.
+func (c *SecretOrConfigMap) validate() error {
 	if c.Secret != nil && c.ConfigMap != nil {
 		return &SecretOrConfigMapValidationError{"SecretOrConfigMap can not specify both Secret and ConfigMap"}
 	}
@@ -1080,8 +1080,8 @@ type objectWithLastAppliedState[T, ST any] interface {
 	setLastSpec(ST)
 }
 
-func parseLastAppliedState[T objectWithLastAppliedState[T, ST], ST any](cr T) error {
-	lastAppliedSpecJSON := cr.GetAnnotations()[lastAppliedSpecAnnotationName]
+func parseLastAppliedState[T objectWithLastAppliedState[T, ST], ST any](c T) error {
+	lastAppliedSpecJSON := c.GetAnnotations()[lastAppliedSpecAnnotationName]
 	if len(lastAppliedSpecJSON) == 0 {
 		return nil
 	}
@@ -1089,13 +1089,13 @@ func parseLastAppliedState[T objectWithLastAppliedState[T, ST], ST any](cr T) er
 	if err := json.Unmarshal([]byte(lastAppliedSpecJSON), &dst); err != nil {
 		return fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", lastAppliedSpecAnnotationName, err)
 	}
-	cr.setLastSpec(dst)
+	c.setLastSpec(dst)
 	return nil
 }
 
 // HasSpecChanges compares single spec with last applied single spec stored in annotation
-func hasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
-	lastAppliedSpecJSON := crMeta.GetAnnotations()[lastAppliedSpecAnnotationName]
+func hasStateChanges(rMeta metav1.ObjectMeta, spec any) (bool, error) {
+	lastAppliedSpecJSON := rMeta.GetAnnotations()[lastAppliedSpecAnnotationName]
 	if len(lastAppliedSpecJSON) == 0 {
 		return true, nil
 	}
@@ -1111,7 +1111,7 @@ func hasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
 	return false, nil
 }
 
-func lastAppliedChangesAsPatch(crMeta metav1.ObjectMeta, spec any) (client.Patch, error) {
+func lastAppliedChangesAsPatch(rMeta metav1.ObjectMeta, spec any) (client.Patch, error) {
 	data, err := json.Marshal(spec)
 	if err != nil {
 		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json :%w", err)
@@ -1119,6 +1119,15 @@ func lastAppliedChangesAsPatch(crMeta metav1.ObjectMeta, spec any) (client.Patch
 	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q }}}`, lastAppliedSpecAnnotationName, data)
 	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
 
+}
+
+// ServiceAcccount contains ServiceAccount settings for application
+type ServiceAccount struct {
+	// Name is the name of the ServiceAccount to use to run the pods
+	// +optional
+	Name string `json:"serviceAccountName,omitempty"`
+	// +optional
+	AutomountToken bool `json:"automountServiceAccountToken,omitempty"`
 }
 
 // CommonDefaultableParams contains Application settings
@@ -1347,15 +1356,15 @@ type objectStatusWithDeepCopy[ST any] interface {
 
 type patchStatusOpts[T client.Object, ST any] struct {
 	actualStatus               UpdateStatus
-	cr                         objectWithDeepCopy[T]
-	crStatus                   objectStatusWithDeepCopy[ST]
+	r                          objectWithDeepCopy[T]
+	rStatus                    objectStatusWithDeepCopy[ST]
 	maybeErr                   error
 	mutateCurrentBeforeCompare func(ST)
 }
 
 func updateObjectStatus[T client.Object, ST any](ctx context.Context, rclient client.Client, opts *patchStatusOpts[T, ST]) error {
-	currentStatus := opts.crStatus
-	prevStatus := opts.crStatus.DeepCopy()
+	currentStatus := opts.rStatus
+	prevStatus := opts.rStatus.DeepCopy()
 	currMeta := currentStatus.GetStatusMetadata()
 	newUpdateStatus := opts.actualStatus
 	switch opts.actualStatus {
@@ -1370,9 +1379,9 @@ func updateObjectStatus[T client.Object, ST any](ctx context.Context, rclient cl
 		panic(fmt.Sprintf("BUG: not expected status=%q", opts.actualStatus))
 	}
 
-	currMeta.ObservedGeneration = opts.cr.GetGeneration()
+	currMeta.ObservedGeneration = opts.r.GetGeneration()
 	if opts.mutateCurrentBeforeCompare != nil {
-		opts.mutateCurrentBeforeCompare(opts.crStatus.(ST))
+		opts.mutateCurrentBeforeCompare(opts.rStatus.(ST))
 	}
 	// compare before send update request
 	// it reduces load at kubernetes api-server
@@ -1388,12 +1397,12 @@ func updateObjectStatus[T client.Object, ST any](ctx context.Context, rclient cl
 	// make a deep copy before passing object to Patch function
 	// it reload state of the object from API server
 	// which is not desired behaviour
-	objecToUpdate := opts.cr.DeepCopy()
+	objecToUpdate := opts.r.DeepCopy()
 	if err := rclient.Status().Patch(ctx, objecToUpdate, pr); err != nil {
 		return fmt.Errorf("cannot update resource status with patch: %w", err)
 	}
 	// Update ResourceVersion in order to resolve future conflicts
-	opts.cr.SetResourceVersion(objecToUpdate.GetResourceVersion())
+	opts.r.SetResourceVersion(objecToUpdate.GetResourceVersion())
 
 	return nil
 }

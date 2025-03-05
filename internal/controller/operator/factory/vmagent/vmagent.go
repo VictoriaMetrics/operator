@@ -698,7 +698,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 		Volumes:            volumes,
 		InitContainers:     ic,
 		Containers:         containers,
-		ServiceAccountName: cr.GetServiceAccountName(),
+		ServiceAccountName: cr.GetServiceAccount().Name,
 	}, nil
 }
 

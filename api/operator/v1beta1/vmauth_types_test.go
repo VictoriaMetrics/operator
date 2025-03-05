@@ -17,7 +17,7 @@ var _ = Describe("VMAuth Webhook", func() {
 				cfgJSON, err := json.Marshal(amc)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(json.Unmarshal(cfgJSON, &amc)).ShouldNot(HaveOccurred())
-				Expect(amc.sanityCheck()).To(MatchError(wantErrText))
+				Expect(amc.Validate()).To(MatchError(wantErrText))
 			},
 			Entry("invalid ingress", `
         apiVersion: v1 

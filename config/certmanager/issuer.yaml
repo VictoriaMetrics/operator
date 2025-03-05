@@ -8,6 +8,6 @@ metadata:
     app.kubernetes.io/name: vm-operator
     app.kubernetes.io/managed-by: kustomize
   name: selfsigned-issuer
-  namespace: vm
+  namespace: system
 spec:
   selfSigned: {}

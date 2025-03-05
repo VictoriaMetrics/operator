@@ -10,6 +10,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var supportedCRDKinds = []string{
+	"VMAgent", "VMAlert", "VMAlertmanager", "VMSingle", "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage",
+}
+
 // VMUserSpec defines the desired state of VMUser
 type VMUserSpec struct {
 	// Name of the VMUser object.
@@ -98,14 +102,14 @@ type CRDRef struct {
 }
 
 // AddRefToObj adds reference to given object and return it.
-func (cr *CRDRef) AddRefToObj(obj client.Object) client.Object {
-	obj.SetName(cr.Name)
-	obj.SetNamespace(cr.Namespace)
+func (r *CRDRef) AddRefToObj(obj client.Object) client.Object {
+	obj.SetName(r.Name)
+	obj.SetNamespace(r.Namespace)
 	return obj
 }
 
-func (cr *CRDRef) AsKey() string {
-	return fmt.Sprintf("%s/%s/%s", cr.Kind, cr.Namespace, cr.Name)
+func (r *CRDRef) AsKey() string {
+	return fmt.Sprintf("%s/%s/%s", r.Kind, r.Namespace, r.Name)
 }
 
 // StaticRef - user-defined routing host address.
@@ -159,37 +163,37 @@ type VMUserList struct {
 }
 
 // SecretName builds secret name for VMUser.
-func (cr *VMUser) SecretName() string {
-	return fmt.Sprintf("vmuser-%s", cr.Name)
+func (r *VMUser) SecretName() string {
+	return fmt.Sprintf("vmuser-%s", r.Name)
 }
 
 // PasswordRefAsKey - builds key for passwordRef cache
-func (cr *VMUser) PasswordRefAsKey() string {
-	return fmt.Sprintf("%s/%s/%s", cr.Namespace, cr.Spec.PasswordRef.Name, cr.Spec.PasswordRef.Key)
+func (r *VMUser) PasswordRefAsKey() string {
+	return fmt.Sprintf("%s/%s/%s", r.Namespace, r.Spec.PasswordRef.Name, r.Spec.PasswordRef.Key)
 }
 
 // TokenRefAsKey - builds key for passwordRef cache
-func (cr *VMUser) TokenRefAsKey() string {
-	return fmt.Sprintf("%s/%s/%s", cr.Namespace, cr.Spec.TokenRef.Name, cr.Spec.TokenRef.Key)
+func (r *VMUser) TokenRefAsKey() string {
+	return fmt.Sprintf("%s/%s/%s", r.Namespace, r.Spec.TokenRef.Name, r.Spec.TokenRef.Key)
 }
 
 // AsOwner returns owner references with current object as owner
-func (cr *VMUser) AsOwner() []metav1.OwnerReference {
+func (r *VMUser) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
-			APIVersion:         cr.APIVersion,
-			Kind:               cr.Kind,
-			Name:               cr.Name,
-			UID:                cr.UID,
+			APIVersion:         r.APIVersion,
+			Kind:               r.Kind,
+			Name:               r.Name,
+			UID:                r.UID,
 			Controller:         ptr.To(true),
 			BlockOwnerDeletion: ptr.To(true),
 		},
 	}
 }
 
-func (cr VMUser) AnnotationsFiltered() map[string]string {
+func (r VMUser) AnnotationsFiltered() map[string]string {
 	annotations := make(map[string]string)
-	for annotation, value := range cr.Annotations {
+	for annotation, value := range r.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
 			annotations[annotation] = value
 		}
@@ -197,20 +201,20 @@ func (cr VMUser) AnnotationsFiltered() map[string]string {
 	return annotations
 }
 
-func (cr VMUser) SelectorLabels() map[string]string {
+func (r VMUser) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmuser",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
 // AllLabels returns combined labels for VMUser
-func (cr VMUser) AllLabels() map[string]string {
-	labels := cr.SelectorLabels()
-	if cr.Labels != nil {
-		for label, value := range cr.Labels {
+func (r VMUser) AllLabels() map[string]string {
+	labels := r.SelectorLabels()
+	if r.Labels != nil {
+		for label, value := range r.Labels {
 			if _, ok := labels[label]; ok {
 				// forbid changes for selector labels
 				continue
@@ -222,8 +226,79 @@ func (cr VMUser) AllLabels() map[string]string {
 }
 
 // GetStatusMetadata implements reconcile.objectWithStatus interface
-func (cr *VMUser) GetStatusMetadata() *StatusMetadata {
-	return &cr.Status.StatusMetadata
+func (r *VMUser) GetStatusMetadata() *StatusMetadata {
+	return &r.Status.StatusMetadata
+}
+
+func (r *VMUser) Validate() error {
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if r.Spec.UserName != nil && r.Spec.BearerToken != nil {
+		return fmt.Errorf("one of spec.username and spec.bearerToken must be defined for user, got both")
+	}
+	if r.Spec.PasswordRef != nil && r.Spec.Password != nil {
+		return fmt.Errorf("one of spec.password or spec.passwordRef must be used for user, got both")
+	}
+	if len(r.Spec.TargetRefs) == 0 {
+		return fmt.Errorf("at least 1 TargetRef must be provided for spec.targetRefs")
+	}
+	isRetryCodesSet := len(r.Spec.RetryStatusCodes) > 0
+	for i := range r.Spec.TargetRefs {
+		targetRef := r.Spec.TargetRefs[i]
+		if targetRef.CRD != nil && targetRef.Static != nil {
+			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got both")
+		}
+		if targetRef.CRD == nil && targetRef.Static == nil {
+			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got none")
+		}
+		if targetRef.Static != nil {
+			if targetRef.Static.URL == "" && len(targetRef.Static.URLs) == 0 {
+				return fmt.Errorf("for targetRef.static url or urls option must be set at idx=%d", i)
+			}
+			if targetRef.Static.URL != "" {
+				if err := validateURLPrefix(targetRef.Static.URL); err != nil {
+					return fmt.Errorf("incorrect static.url: %w", err)
+				}
+			}
+			for _, staticURL := range targetRef.Static.URLs {
+				if err := validateURLPrefix(staticURL); err != nil {
+					return fmt.Errorf("incorrect value at static.urls: %w", err)
+				}
+			}
+		}
+		if targetRef.CRD != nil {
+			switch targetRef.CRD.Kind {
+			case "VMAgent", "VMAlert", "VMAlertmanager", "VMSingle", "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage":
+			default:
+				return fmt.Errorf("unsupported crd.kind for target ref, got: `%s`, want one of: `%s`", targetRef.CRD.Kind, strings.Join(supportedCRDKinds, ","))
+			}
+			if targetRef.CRD.Namespace == "" || targetRef.CRD.Name == "" {
+				return fmt.Errorf("crd.name and crd.namespace cannot be empty")
+			}
+		}
+		if err := validateHTTPHeaders(targetRef.ResponseHeaders); err != nil {
+			return fmt.Errorf("failed to parse targetRef response headers :%w", err)
+		}
+		if err := validateHTTPHeaders(targetRef.RequestHeaders); err != nil {
+			return fmt.Errorf("failed to parse targetRef headers :%w", err)
+		}
+		if isRetryCodesSet && len(targetRef.RetryStatusCodes) > 0 {
+			return fmt.Errorf("retry_status_codes already set at VMUser.spec level")
+		}
+	}
+	for k := range r.Spec.MetricLabels {
+		if !labelNameRegexp.MatchString(k) {
+			return fmt.Errorf("incorrect metricLabels key=%q, must match pattern=%q", k, labelNameRegexp)
+		}
+	}
+	if err := validateHTTPHeaders(r.Spec.Headers); err != nil {
+		return fmt.Errorf("failed to parse vmuser headers: %w", err)
+	}
+	if err := validateHTTPHeaders(r.Spec.ResponseHeaders); err != nil {
+		return fmt.Errorf("failed to parse vmuser response headers: %w", err)
+	}
+	return nil
 }
 
 func init() {

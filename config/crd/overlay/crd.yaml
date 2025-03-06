@@ -3359,6 +3359,10 @@ spec:
                           items:
                             type: string
                           type: array
+                        enableWindows:
+                          description: EnableWindows enables aggregating data in separate
+                            windows
+                          type: boolean
                         ignoreFirstIntervals:
                           description: IgnoreFirstIntervals instructs to ignore first
                             interval
@@ -3399,6 +3403,10 @@ spec:
                                 items:
                                   type: string
                                 type: array
+                              enable_windows:
+                                description: EnableWindows enables aggregating data
+                                  in separate windows
+                                type: boolean
                               flush_on_shutdown:
                                 description: |-
                                   FlushOnShutdown defines whether to flush the aggregation state on process termination
@@ -5143,6 +5151,10 @@ spec:
                     items:
                       type: string
                     type: array
+                  enableWindows:
+                    description: EnableWindows enables aggregating data in separate
+                      windows
+                    type: boolean
                   ignoreFirstIntervals:
                     description: IgnoreFirstIntervals instructs to ignore first interval
                     type: integer
@@ -5181,6 +5193,10 @@ spec:
                           items:
                             type: string
                           type: array
+                        enable_windows:
+                          description: EnableWindows enables aggregating data in separate
+                            windows
+                          type: boolean
                         flush_on_shutdown:
                           description: |-
                             FlushOnShutdown defines whether to flush the aggregation state on process termination
@@ -29673,6 +29689,10 @@ spec:
                     items:
                       type: string
                     type: array
+                  enableWindows:
+                    description: EnableWindows enables aggregating data in separate
+                      windows
+                    type: boolean
                   ignoreFirstIntervals:
                     description: IgnoreFirstIntervals instructs to ignore first interval
                     type: integer
@@ -29711,6 +29731,10 @@ spec:
                           items:
                             type: string
                           type: array
+                        enable_windows:
+                          description: EnableWindows enables aggregating data in separate
+                            windows
+                          type: boolean
                         flush_on_shutdown:
                           description: |-
                             FlushOnShutdown defines whether to flush the aggregation state on process termination

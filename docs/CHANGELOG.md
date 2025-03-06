@@ -21,6 +21,7 @@ aliases:
 * FEATURE: upgrade Go builder from Go1.23.4 to Go1.24. See [Go1.24 release notes](https://tip.golang.org/doc/go1.24).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): deprecate `aPIServerConfig` in favor of `apiServerConfig`. `aPIServerConfig` will be removed at `v0.56.0` release. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1239) for details
 * FEATURE: [vmpodscrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/): add `portNumber` to `podMetricEndpoints`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1251) for details.
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support stream aggregation `enableWindows`.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce request latency for `validtion` webhook. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1094) for details.
 * BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): properly validate `targetRef.crd.kind`. Previously it incorrectly forbid `VLogs` reference. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1241) for details. 

@@ -633,6 +633,9 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 		if cr.Spec.StreamAggrConfig.IgnoreOldSamples {
 			args = append(args, "-streamAggr.ignoreOldSamples=true")
 		}
+		if cr.Spec.StreamAggrConfig.EnableWindows {
+			args = append(args, "-streamAggr.enableWindows=true")
+		}
 	}
 
 	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
@@ -1147,6 +1150,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	streamAggrDropInputLabels := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInputLabels="}
 	streamAggrIgnoreFirstIntervals := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreFirstIntervals="}
 	streamAggrIgnoreOldSamples := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreOldSamples="}
+	streamAggrEnableWindows := remoteFlag{flagSetting: "-remoteWrite.steamAggr.enableWindows="}
 	maxDiskUsagePerURL := remoteFlag{flagSetting: "-remoteWrite.maxDiskUsagePerURL="}
 	forceVMProto := remoteFlag{flagSetting: "-remoteWrite.forceVMProto="}
 
@@ -1316,7 +1320,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 
 		var dedupIntVal, streamConfVal string
-		var keepInputVal, dropInputVal, ignoreOldSamples bool
+		var keepInputVal, dropInputVal, ignoreOldSamples, enableWindows bool
 		var ignoreFirstIntervalsVal int
 		if rws.StreamAggrConfig != nil {
 			if rws.StreamAggrConfig.HasAnyRule() {
@@ -1349,6 +1353,10 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 			if ignoreOldSamples {
 				streamAggrIgnoreOldSamples.isNotNull = true
 			}
+			enableWindows = rws.StreamAggrConfig.EnableWindows
+			if enableWindows {
+				streamAggrEnableWindows.isNotNull = true
+			}
 		}
 		streamAggrConfig.flagSetting += fmt.Sprintf("%s,", streamConfVal)
 		streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", keepInputVal)
@@ -1356,6 +1364,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", dedupIntVal)
 		streamAggrIgnoreFirstIntervals.flagSetting += fmt.Sprintf("%d,", ignoreFirstIntervalsVal)
 		streamAggrIgnoreOldSamples.flagSetting += fmt.Sprintf("%v,", ignoreOldSamples)
+		streamAggrEnableWindows.flagSetting += fmt.Sprintf("%v", enableWindows)
 
 		if maxDiskUsagePerURL.isNotNull {
 			if rws.MaxDiskUsage != nil {
@@ -1374,7 +1383,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
 	remoteArgs = append(remoteArgs, headers, authPasswordFile)
-	remoteArgs = append(remoteArgs, streamAggrConfig, streamAggrKeepInput, streamAggrDedupInterval, streamAggrDropInput, streamAggrDropInputLabels, streamAggrIgnoreFirstIntervals, streamAggrIgnoreOldSamples)
+	remoteArgs = append(remoteArgs, streamAggrConfig, streamAggrKeepInput, streamAggrDedupInterval, streamAggrDropInput, streamAggrDropInputLabels, streamAggrIgnoreFirstIntervals, streamAggrIgnoreOldSamples, streamAggrEnableWindows)
 	remoteArgs = append(remoteArgs, maxDiskUsagePerURL, forceVMProto)
 
 	for _, remoteArgType := range remoteArgs {

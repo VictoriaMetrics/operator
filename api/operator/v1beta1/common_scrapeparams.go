@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promrelabel"
+
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -300,4 +302,22 @@ type EndpointRelabelings struct {
 	// RelabelConfigs to apply to samples during service discovery.
 	// +optional
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
+}
+
+func (r *EndpointRelabelings) validate() error {
+	data, err := json.Marshal(r.MetricRelabelConfigs)
+	if err != nil {
+		return fmt.Errorf("failed to validate metricRelabelConfigs: %w", err)
+	}
+	if _, err = promrelabel.ParseRelabelConfigsData(data); err != nil {
+		return err
+	}
+	data, err = json.Marshal(r.RelabelConfigs)
+	if err != nil {
+		return fmt.Errorf("failed to validate metricRelabelConfigs: %w", err)
+	}
+	if _, err = promrelabel.ParseRelabelConfigsData(data); err != nil {
+		return err
+	}
+	return nil
 }

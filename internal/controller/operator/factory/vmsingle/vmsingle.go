@@ -266,6 +266,9 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 		if cr.Spec.StreamAggrConfig.IgnoreOldSamples {
 			args = append(args, "--streamAggr.ignoreOldSamples=true")
 		}
+		if cr.Spec.StreamAggrConfig.EnableWindows {
+			args = append(args, "--streamAggr.enableWindows=true")
+		}
 	}
 
 	// deduplication can work without stream aggregation rules

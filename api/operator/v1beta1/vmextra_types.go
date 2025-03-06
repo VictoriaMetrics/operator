@@ -532,6 +532,9 @@ type StreamAggrConfig struct {
 	// IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval.
 	// +optional
 	IgnoreOldSamples bool `json:"ignoreOldSamples,omitempty"`
+	// EnableWindows enables aggregating data in separate windows
+	// +optional
+	EnableWindows bool `json:"enableWindows,omitempty"`
 }
 
 // StreamAggrRule defines the rule in stream aggregation config
@@ -635,6 +638,10 @@ type StreamAggrRule struct {
 	// on the aggregated output before being sent to remote storage.
 	// +optional
 	OutputRelabelConfigs []RelabelConfig `json:"output_relabel_configs,omitempty" yaml:"output_relabel_configs,omitempty"`
+
+	// EnableWindows enables aggregating data in separate windows
+	// +optional
+	EnableWindows bool `json:"enable_windows,omitempty" yaml:"enable_windows,omitempty"`
 }
 
 // HasAnyRule returns true if there is at least one aggregation rule

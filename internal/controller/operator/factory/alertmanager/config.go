@@ -1126,7 +1126,8 @@ func (cb *configBuilder) buildEmail(email vmv1beta1.EmailConfig) error {
 	// add tls config in any case
 	// require_tls is true by default and it could be managed via global configuration
 	if email.TLSConfig != nil {
-		s, err := cb.BuildTLSConfig(email.TLSConfig, tlsAssetsDir)
+		tcb := cb.TLSConfigBuilder
+		s, err := tcb.BuildTLSConfig(email.TLSConfig, tlsAssetsDir)
 		if err != nil {
 			return err
 		}
@@ -1247,7 +1248,8 @@ func (cb *configBuilder) buildOpsGenie(og vmv1beta1.OpsGenieConfig) error {
 }
 
 func (cb *configBuilder) fetchSecretValue(selector *corev1.SecretKeySelector) (string, error) {
-	return k8stools.GetCredFromSecret(cb.Ctx, cb.Client, cb.CurrentCRNamespace, selector, selector.Name, cb.SecretCache)
+	tcb := cb.TLSConfigBuilder
+	return k8stools.GetCredFromSecret(tcb.Ctx, tcb.Client, tcb.CurrentCRNamespace, selector, selector.Name, tcb.SecretCache)
 }
 
 func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.MapSlice, error) {
@@ -1257,7 +1259,8 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 		return nil, nil
 	}
 	if httpCfg.TLSConfig != nil {
-		tls, err := cb.BuildTLSConfig(httpCfg.TLSConfig, tlsAssetsDir)
+		tcb := cb.TLSConfigBuilder
+		tls, err := tcb.BuildTLSConfig(httpCfg.TLSConfig, tlsAssetsDir)
 		if err != nil {
 			return nil, err
 		}
@@ -1325,7 +1328,8 @@ func (cb *configBuilder) buildOAuth2(oauth2 *vmv1beta1.OAuth2) (yaml.MapSlice, e
 	switch {
 	case oauth2.ClientID.ConfigMap != nil:
 		var cm corev1.ConfigMap
-		if err := cb.Get(cb.Ctx, types.NamespacedName{Namespace: cb.CurrentCRNamespace, Name: oauth2.ClientID.ConfigMap.Name}, &cm); err != nil {
+		tcb := cb.TLSConfigBuilder
+		if err := tcb.Get(tcb.Ctx, types.NamespacedName{Namespace: tcb.CurrentCRNamespace, Name: oauth2.ClientID.ConfigMap.Name}, &cm); err != nil {
 			return nil, fmt.Errorf("cannot fetch configmap for oauth2.client_id: %w", err)
 		}
 		p, ok := cm.Data[oauth2.ClientID.ConfigMap.Key]

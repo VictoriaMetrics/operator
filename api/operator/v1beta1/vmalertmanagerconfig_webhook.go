@@ -45,19 +45,19 @@ func (r *VMAlertmanagerConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmalertmanagerconfig,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,verbs=create;update,versions=v1beta1,name=vvmalertmanagerconfig.kb.io,admissionReviewVersions=v1
 
 // Validate performs logical validation
-func (cr *VMAlertmanagerConfig) Validate() error {
-	if mustSkipValidation(cr) {
+func (r *VMAlertmanagerConfig) Validate() error {
+	if mustSkipValidation(r) {
 		return nil
 	}
-	validateSpec := cr.DeepCopy()
-	if cr.Spec.Route == nil {
+	validateSpec := r.DeepCopy()
+	if r.Spec.Route == nil {
 		return fmt.Errorf("no routes provided")
 	}
-	if cr.Spec.Route.Receiver == "" {
+	if r.Spec.Route.Receiver == "" {
 		return fmt.Errorf("root route reciever cannot be empty")
 	}
 
-	for idx, recv := range cr.Spec.Receivers {
+	for idx, recv := range r.Spec.Receivers {
 		if err := validateReceiver(recv); err != nil {
 			return fmt.Errorf("receiver at idx=%d is invalid: %w", idx, err)
 		}
@@ -68,33 +68,33 @@ func (cr *VMAlertmanagerConfig) Validate() error {
 	}
 
 	names := map[string]struct{}{}
-	for _, rcv := range cr.Spec.Receivers {
+	for _, rcv := range r.Spec.Receivers {
 		if _, ok := names[rcv.Name]; ok {
 			return fmt.Errorf("notification config name %q is not unique", rcv.Name)
 		}
 		names[rcv.Name] = struct{}{}
 	}
 
-	if _, ok := names[cr.Spec.Route.Receiver]; !ok {
-		return fmt.Errorf("receiver=%q for spec root not found at receivers", cr.Spec.Route.Receiver)
+	if _, ok := names[r.Spec.Route.Receiver]; !ok {
+		return fmt.Errorf("receiver=%q for spec root not found at receivers", r.Spec.Route.Receiver)
 	}
 
-	tiNames, err := validateTimeIntervals(cr.Spec.TimeIntervals)
+	tiNames, err := validateTimeIntervals(r.Spec.TimeIntervals)
 	if err != nil {
 		return err
 	}
 
-	for _, ti := range cr.Spec.Route.ActiveTimeIntervals {
+	for _, ti := range r.Spec.Route.ActiveTimeIntervals {
 		if _, ok := tiNames[ti]; !ok {
 			return fmt.Errorf("undefined active time interval %q used in root route", ti)
 		}
 	}
-	for _, ti := range cr.Spec.Route.MuteTimeIntervals {
+	for _, ti := range r.Spec.Route.MuteTimeIntervals {
 		if _, ok := tiNames[ti]; !ok {
 			return fmt.Errorf("undefined mute time interval %q used in root route", ti)
 		}
 	}
-	for idx, sr := range cr.Spec.Route.Routes {
+	for idx, sr := range r.Spec.Route.Routes {
 		if err := checkRouteReceiver(sr, names, tiNames); err != nil {
 			return fmt.Errorf("subRoute=%d is not valid: %w", idx, err)
 		}
@@ -104,7 +104,7 @@ func (cr *VMAlertmanagerConfig) Validate() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMAlertmanagerConfig) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*VMAlertmanagerConfig) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*VMAlertmanagerConfig)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
@@ -120,7 +120,7 @@ func (cr *VMAlertmanagerConfig) ValidateCreate(_ context.Context, obj runtime.Ob
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanagerConfig) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*VMAlertmanagerConfig) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*VMAlertmanagerConfig)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
@@ -136,7 +136,7 @@ func (r *VMAlertmanagerConfig) ValidateUpdate(_ context.Context, oldObj, newObj 
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanagerConfig) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VMAlertmanagerConfig) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 

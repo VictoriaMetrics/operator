@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,20 +52,21 @@ func (r *VMRule) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmrule,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmrules,verbs=create;update,versions=v1beta1,name=vvmrule.kb.io,admissionReviewVersions=v1
 
 // Validate performs symantic validation of object
-func (cr *VMRule) Validate() error {
-	if mustSkipValidation(cr) {
+func (r *VMRule) Validate() error {
+	if mustSkipValidation(r) {
 		return nil
 	}
 	initVMAlertTemplatesOnce.Do(func() {
-		if err := templates.Load(nil, false); err != nil {
+		testURL, _ := url.Parse("http://test:8429")
+		if err := templates.Load(nil, *testURL); err != nil {
 			panic(fmt.Sprintf("cannot init vmalert templates for validation: %s", err))
 		}
 	})
 	uniqNames := make(map[string]struct{})
 	var totalSize int
-	for i := range cr.Spec.Groups {
+	for i := range r.Spec.Groups {
 		// make a copy
-		group := cr.Spec.Groups[i].DeepCopy()
+		group := r.Spec.Groups[i].DeepCopy()
 		// remove tenant from copy, it's needed to properly validate it with vmalert lib
 		// since tenant is only supported at enterprise code
 		if group.Tenant != "" {
@@ -73,7 +75,7 @@ func (cr *VMRule) Validate() error {
 			}
 			group.Tenant = ""
 		}
-		errContext := fmt.Sprintf("VMRule: %s/%s group: %s", cr.Namespace, cr.Name, group.Name)
+		errContext := fmt.Sprintf("VMRule: %s/%s group: %s", r.Namespace, r.Name, group.Name)
 		if _, ok := uniqNames[group.Name]; ok {
 			return fmt.Errorf("duplicate group name: %s", errContext)
 		}
@@ -98,7 +100,7 @@ func (cr *VMRule) Validate() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMRule) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*VMRule) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*VMRule)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
@@ -111,7 +113,7 @@ func (cr *VMRule) ValidateCreate(_ context.Context, obj runtime.Object) (admissi
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMRule) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*VMRule) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*VMRule)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
@@ -125,7 +127,7 @@ func (cr *VMRule) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Objec
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMRule) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VMRule) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 

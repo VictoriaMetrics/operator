@@ -38,26 +38,26 @@ func (r *VMAlert) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmalert,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmalerts,verbs=create;update,versions=v1beta1,name=vvmalert.kb.io,admissionReviewVersions=v1
 
-func (cr *VMAlert) sanityCheck() error {
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+func (r *VMAlert) sanityCheck() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
 	}
-	if cr.Spec.Datasource.URL == "" {
+	if r.Spec.Datasource.URL == "" {
 		return fmt.Errorf("spec.datasource.url cannot be empty")
 	}
 
-	if cr.Spec.Notifier != nil {
-		if cr.Spec.Notifier.URL == "" && cr.Spec.Notifier.Selector == nil {
+	if r.Spec.Notifier != nil {
+		if r.Spec.Notifier.URL == "" && r.Spec.Notifier.Selector == nil {
 			return fmt.Errorf("spec.notifier.url and spec.notifier.selector cannot be empty at the same time, provide at least one setting")
 		}
 	}
-	for idx, nt := range cr.Spec.Notifiers {
+	for idx, nt := range r.Spec.Notifiers {
 		if nt.URL == "" && nt.Selector == nil {
 			return fmt.Errorf("notifier.url is empty and selector is not set, provide at least once for spec.notifiers at idx: %d", idx)
 		}
 	}
-	if _, ok := cr.Spec.ExtraArgs["notifier.blackhole"]; !ok {
-		if cr.Spec.Notifier == nil && len(cr.Spec.Notifiers) == 0 && cr.Spec.NotifierConfigRef == nil {
+	if _, ok := r.Spec.ExtraArgs["notifier.blackhole"]; !ok {
+		if r.Spec.Notifier == nil && len(r.Spec.Notifiers) == 0 && r.Spec.NotifierConfigRef == nil {
 			return fmt.Errorf("vmalert should have at least one notifier.url or enable `-notifier.blackhole`")
 		}
 	}
@@ -66,7 +66,7 @@ func (cr *VMAlert) sanityCheck() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMAlert) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*VMAlert) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*VMAlert)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
@@ -84,7 +84,7 @@ func (cr *VMAlert) ValidateCreate(_ context.Context, obj runtime.Object) (admiss
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMAlert) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*VMAlert) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*VMAlert)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
@@ -103,6 +103,6 @@ func (cr *VMAlert) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Obje
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlert) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VMAlert) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

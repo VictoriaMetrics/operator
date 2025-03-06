@@ -66,6 +66,9 @@ resources:
   kind: VMPodScrape
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
     namespaced: true
@@ -87,6 +90,9 @@ resources:
   kind: VMServiceScrape
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
     namespaced: true
@@ -129,6 +135,9 @@ resources:
   kind: VMNodeScrape
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
     namespaced: true
@@ -138,6 +147,9 @@ resources:
   kind: VMStaticScrape
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
     namespaced: true
@@ -171,6 +183,9 @@ resources:
   kind: VMScrapeConfig
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
     namespaced: true

@@ -108,6 +108,19 @@ type ArbitraryFSAccessThroughSMsConfig struct {
 	Deny bool `json:"deny,omitempty"`
 }
 
+// Validate returns error if CR is invalid
+func (cr *VMPodScrape) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	for _, endpoint := range cr.Spec.PodMetricsEndpoints {
+		if err := endpoint.EndpointRelabelings.validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // AsProxyKey builds key for proxy cache maps
 func (cr *VMPodScrape) AsProxyKey(i int) string {
 	return fmt.Sprintf("podScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)

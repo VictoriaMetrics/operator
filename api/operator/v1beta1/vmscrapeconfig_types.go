@@ -504,6 +504,14 @@ type VMScrapeConfigList struct {
 	Items           []VMScrapeConfig `json:"items"`
 }
 
+// Validate returns error if CR is invalid
+func (cr *VMScrapeConfig) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	return cr.Spec.EndpointRelabelings.validate()
+}
+
 // AsProxyKey builds key for proxy cache maps
 func (cr *VMScrapeConfig) AsProxyKey(prefix string, i int) string {
 	return fmt.Sprintf("scrapeConfigProxy/%s/%s/%s/%d", cr.Namespace, cr.Name, prefix, i)

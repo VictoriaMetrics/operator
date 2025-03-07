@@ -26,8 +26,8 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): add RBAC access to [/metrics/slis](https://kubernetes.io/docs/reference/instrumentation/slis/). See [this issue](https://github.com/VictoriaMetrics/operator/issues/1252) for details.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Introduce possible labels breaking changes to kustomize configs. See [this commit](https://github.com/VictoriaMetrics/operator/commit/7a947ae80ef72ca94765cf8a5db1ebb100842775).
 
-* BUGFOX: [vmoperator](https://docs.victoriametrics.com/operator/): Properly generate kustomize config for validation webhook. See [this commit](https://github.com/VictoriaMetrics/operator/commit/40e91d66440db52bf1cbfa9cc41f18f4879dbff0).
-* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce request latency for `validtion` webhook. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1094) for details.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): Properly generate kustomize config for validation webhook. See [this commit](https://github.com/VictoriaMetrics/operator/commit/40e91d66440db52bf1cbfa9cc41f18f4879dbff0).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce request latency for `validation` webhook. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1094) for details.
 * BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): properly validate `targetRef.crd.kind`. Previously it incorrectly forbid `VLogs` reference. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1241) for details. 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): reduce CPU and memory usage at large scale. Now operator could skip expensive runtime validation for `VMRule` and `VMAlertmanagerConfig` objects if `-webhook.enable` is set. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1245) for details.
 

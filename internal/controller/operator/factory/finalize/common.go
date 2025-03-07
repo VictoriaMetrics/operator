@@ -25,7 +25,7 @@ type crdObject interface {
 }
 
 func patchReplaceFinalizers(ctx context.Context, rclient client.Client, instance client.Object) error {
-	op := []map[string]interface{}{
+	op := []map[string]any{
 		{
 			"op":    "replace",
 			"path":  "/metadata/finalizers",

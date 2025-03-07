@@ -6,7 +6,7 @@ domain: victoriametrics.com
 layout:
 - go.kubebuilder.io/v4
 multigroup: true
-projectName: victoriametrics-operator
+projectName: vm-operator
 repo: github.com/VictoriaMetrics/operator
 resources:
 - api:

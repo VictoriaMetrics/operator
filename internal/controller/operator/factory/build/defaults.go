@@ -33,7 +33,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 
 // defaults according to
 // https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/apps/v1/defaults.go
-func addStatefulsetDefaults(objI interface{}) {
+func addStatefulsetDefaults(objI any) {
 	obj := objI.(*appsv1.StatefulSet)
 
 	// special case for vm operator defaults
@@ -73,7 +73,7 @@ func addStatefulsetDefaults(objI interface{}) {
 
 // defaults according to
 // https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/apps/v1/defaults.go
-func addDeploymentDefaults(objI interface{}) {
+func addDeploymentDefaults(objI any) {
 	obj := objI.(*appsv1.Deployment)
 	// Set DeploymentSpec.Replicas to 1 if it is not set.
 	if obj.Spec.Replicas == nil {
@@ -113,7 +113,7 @@ func addDeploymentDefaults(objI interface{}) {
 
 // defaults according to
 // https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/v1/defaults.go
-func addServiceDefaults(objI interface{}) {
+func addServiceDefaults(objI any) {
 	obj := objI.(*corev1.Service)
 	if obj.Spec.SessionAffinity == "" {
 		obj.Spec.SessionAffinity = corev1.ServiceAffinityNone
@@ -169,7 +169,7 @@ func isExternallyAccessible(service *corev1.Service) bool {
 		(service.Spec.Type == corev1.ServiceTypeClusterIP && len(service.Spec.ExternalIPs) > 0)
 }
 
-func addVMAuthDefaults(objI interface{}) {
+func addVMAuthDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAuth)
 	c := getCfg()
 
@@ -187,7 +187,7 @@ func addVMAuthDefaults(objI interface{}) {
 	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
 
-func addVMAlertDefaults(objI interface{}) {
+func addVMAlertDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAlert)
 	c := getCfg()
 
@@ -199,7 +199,7 @@ func addVMAlertDefaults(objI interface{}) {
 	}
 }
 
-func addVMAgentDefaults(objI interface{}) {
+func addVMAgentDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAgent)
 	c := getCfg()
 
@@ -208,7 +208,7 @@ func addVMAgentDefaults(objI interface{}) {
 	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
 
-func addVMSingleDefaults(objI interface{}) {
+func addVMSingleDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMSingle)
 	c := getCfg()
 	useBackupDefaultResources := c.VMBackup.UseDefaultResources
@@ -236,7 +236,7 @@ func addVMSingleDefaults(objI interface{}) {
 	addDefaultsToVMBackup(cr.Spec.VMBackup, useBackupDefaultResources, backupDefaults)
 }
 
-func addVlogsDefaults(objI interface{}) {
+func addVlogsDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VLogs)
 	c := getCfg()
 
@@ -244,7 +244,7 @@ func addVlogsDefaults(objI interface{}) {
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
 }
 
-func addVMAlertmanagerDefaults(objI interface{}) {
+func addVMAlertmanagerDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAlertmanager)
 	c := getCfg()
 
@@ -293,7 +293,7 @@ const (
 
 var defaultTerminationGracePeriod = int64(30)
 
-func addVMClusterDefaults(objI interface{}) {
+func addVMClusterDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMCluster)
 	c := getCfg()
 
@@ -576,7 +576,7 @@ func addDefaultsToVMBackup(cr *vmv1beta1.VMBackup, useDefaultResources bool, app
 	cr.Resources = Resources(cr.Resources, config.Resource(appDefaults.Resource), useDefaultResources)
 }
 
-func addVMServiceScrapeDefaults(objI interface{}) {
+func addVMServiceScrapeDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMServiceScrape)
 	if cr == nil {
 		return

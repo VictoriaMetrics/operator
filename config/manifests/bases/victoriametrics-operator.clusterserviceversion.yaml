@@ -670,6 +670,7 @@ spec:
           - get
         - nonResourceURLs:
           - /metrics
+          - /metrics/slis
           verbs:
           - get
         serviceAccountName: vm-operator

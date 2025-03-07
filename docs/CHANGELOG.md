@@ -22,6 +22,8 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): deprecate `aPIServerConfig` in favor of `apiServerConfig`. `aPIServerConfig` will be removed at `v0.56.0` release. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1239) for details
 * FEATURE: [vmpodscrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/): add `portNumber` to `podMetricEndpoints`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1251) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support stream aggregation `enableWindows`.
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): add RBAC access to [/metrics/slis](https://kubernetes.io/docs/reference/instrumentation/slis/). See [this issue](https://github.com/VictoriaMetrics/operator/issues/1252) for details.
+
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce request latency for `validtion` webhook. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1094) for details.
 * BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): properly validate `targetRef.crd.kind`. Previously it incorrectly forbid `VLogs` reference. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1241) for details. 

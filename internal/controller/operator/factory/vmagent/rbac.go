@@ -98,7 +98,7 @@ var (
 			},
 		},
 		{
-			NonResourceURLs: []string{"/metrics", "/metrics/resources"},
+			NonResourceURLs: []string{"/metrics", "/metrics/resources", "/metrics/slis"},
 			Verbs:           []string{"get", "list", "watch"},
 		},
 		{

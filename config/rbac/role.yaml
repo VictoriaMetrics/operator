@@ -9,6 +9,7 @@ rules:
 - nonResourceURLs:
   - /metrics
   - /metrics/resources
+  - /metrics/slis
   verbs:
   - get
   - watch

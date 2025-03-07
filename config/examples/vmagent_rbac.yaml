@@ -24,7 +24,7 @@ rules:
   - namespaces
   - configmaps
   verbs: ["get"]
-- nonResourceURLs: ["/metrics", "/metrics/resources"]
+- nonResourceURLs: ["/metrics", "/metrics/resources","/metrics/slis"]
   verbs: ["get"]
 - apiGroups:
   - route.openshift.io

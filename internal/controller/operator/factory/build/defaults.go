@@ -540,8 +540,8 @@ func addDefaluesToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 			Mem string
 			Cpu string
 		}{
-			Cpu: appDefaults.ConfigReloaderCPU,
-			Mem: appDefaults.ConfigReloaderMemory,
+			Cpu: config.UnLimitedResource,
+			Mem: config.UnLimitedResource,
 		},
 		Request: struct {
 			Mem string

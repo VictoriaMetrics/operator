@@ -333,7 +333,7 @@ type globalAlertmanagerConfig struct {
 }
 
 type alertmanagerConfig struct {
-	Global        interface{}     `yaml:"global,omitempty" json:"global,omitempty"`
+	Global        any             `yaml:"global,omitempty" json:"global,omitempty"`
 	Route         *route          `yaml:"route,omitempty" json:"route,omitempty"`
 	InhibitRules  []yaml.MapSlice `yaml:"inhibit_rules,omitempty" json:"inhibit_rules,omitempty"`
 	Receivers     []yaml.MapSlice `yaml:"receivers,omitempty" json:"receivers,omitempty"`

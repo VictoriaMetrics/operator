@@ -5,7 +5,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   labels:
-    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/name: vm-operator
     app.kubernetes.io/managed-by: kustomize
   name: allow-webhook-traffic
   namespace: system
@@ -13,7 +13,7 @@ spec:
   podSelector:
     matchLabels:
       control-plane: controller-manager
-      app.kubernetes.io/name: victoriametrics-operator
+      app.kubernetes.io/name: vm-operator
   policyTypes:
     - Ingress
   ingress:

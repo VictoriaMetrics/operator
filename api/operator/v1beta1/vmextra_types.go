@@ -667,7 +667,7 @@ type KeyValue struct {
 type StringOrArray []string
 
 // MarshalYAML implements yaml.Marshaller interface
-func (m StringOrArray) MarshalYAML() (interface{}, error) {
+func (m StringOrArray) MarshalYAML() (any, error) {
 	switch len(m) {
 	case 0:
 		return "", nil
@@ -679,7 +679,7 @@ func (m StringOrArray) MarshalYAML() (interface{}, error) {
 }
 
 // UnmarshalYAML implements   yaml.Unmarshaler interface
-func (m *StringOrArray) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (m *StringOrArray) UnmarshalYAML(unmarshal func(any) error) error {
 	var raw any
 	if err := unmarshal(&raw); err != nil {
 		return fmt.Errorf("cannot unmarshal StringOrArray: %w", err)
@@ -1398,11 +1398,11 @@ func updateObjectStatus[T client.Object, ST any](ctx context.Context, rclient cl
 	return nil
 }
 
-func buildStatusPatch(currentStatus interface{}) (client.Patch, error) {
+func buildStatusPatch(currentStatus any) (client.Patch, error) {
 	type patch struct {
-		OP    string      `json:"op"`
-		Path  string      `json:"path"`
-		Value interface{} `json:"value"`
+		OP    string `json:"op"`
+		Path  string `json:"path"`
+		Value any    `json:"value"`
 	}
 	ops := []patch{
 		{

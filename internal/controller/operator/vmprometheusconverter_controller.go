@@ -297,7 +297,7 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group) {
 }
 
 // CreatePrometheusRule converts prometheus rule to vmrule
-func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
+func (c *ConverterController) CreatePrometheusRule(rule any) {
 	promRule := rule.(*promv1.PrometheusRule)
 	l := converterLogger.WithValues("vmrule", promRule.Name, "namespace", promRule.Namespace)
 	cr := converter.ConvertPromRule(promRule, c.baseConf)
@@ -314,7 +314,7 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 }
 
 // UpdatePrometheusRule updates vmrule
-func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
+func (c *ConverterController) UpdatePrometheusRule(_old, new any) {
 	promRuleNew := new.(*promv1.PrometheusRule)
 	l := converterLogger.WithValues("vmrule", promRuleNew.Name, "namespace", promRuleNew.Namespace)
 	vmRule := converter.ConvertPromRule(promRuleNew, c.baseConf)
@@ -355,7 +355,7 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 }
 
 // CreateServiceMonitor converts ServiceMonitor to VMServiceScrape
-func (c *ConverterController) CreateServiceMonitor(service interface{}) {
+func (c *ConverterController) CreateServiceMonitor(service any) {
 	serviceMon := service.(*promv1.ServiceMonitor)
 
 	l := converterLogger.WithValues("vmservicescrape", serviceMon.Name, "namespace", serviceMon.Namespace)
@@ -372,7 +372,7 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 }
 
 // UpdateServiceMonitor updates VMServiceMonitor
-func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
+func (c *ConverterController) UpdateServiceMonitor(_, new any) {
 	serviceMonNew := new.(*promv1.ServiceMonitor)
 	l := converterLogger.WithValues("vmservicescrape", serviceMonNew.Name, "namespace", serviceMonNew.Namespace)
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMonNew, c.baseConf)
@@ -414,7 +414,7 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 }
 
 // CreatePodMonitor converts PodMonitor to VMPodScrape
-func (c *ConverterController) CreatePodMonitor(pod interface{}) {
+func (c *ConverterController) CreatePodMonitor(pod any) {
 	podMonitor := pod.(*promv1.PodMonitor)
 	l := converterLogger.WithValues("vmpodscrape", podMonitor.Name, "namespace", podMonitor.Namespace)
 	podScrape := converter.ConvertPodMonitor(podMonitor, c.baseConf)
@@ -430,7 +430,7 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 }
 
 // UpdatePodMonitor updates VMPodScrape
-func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
+func (c *ConverterController) UpdatePodMonitor(_, new any) {
 	podMonitorNew := new.(*promv1.PodMonitor)
 	l := converterLogger.WithValues("vmpodscrape", podMonitorNew.Name, "namespace", podMonitorNew.Namespace)
 	podScrape := converter.ConvertPodMonitor(podMonitorNew, c.baseConf)
@@ -471,7 +471,7 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 }
 
 // CreateAlertmanagerConfig converts AlertmanagerConfig to VMAlertmanagerConfig
-func (c *ConverterController) CreateAlertmanagerConfig(new interface{}) {
+func (c *ConverterController) CreateAlertmanagerConfig(new any) {
 	var vmAMc *vmv1beta1.VMAlertmanagerConfig
 	var err error
 	switch promAMc := new.(type) {
@@ -496,7 +496,7 @@ func (c *ConverterController) CreateAlertmanagerConfig(new interface{}) {
 }
 
 // UpdateAlertmanagerConfig updates VMAlertmanagerConfig
-func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
+func (c *ConverterController) UpdateAlertmanagerConfig(_, new any) {
 	var vmAMc *vmv1beta1.VMAlertmanagerConfig
 	var err error
 	switch promAMc := new.(type) {
@@ -587,7 +587,7 @@ func getMetaMergeStrategy(vmMeta map[string]string) string {
 }
 
 // CreateProbe converts Probe to VMProbe
-func (c *ConverterController) CreateProbe(obj interface{}) {
+func (c *ConverterController) CreateProbe(obj any) {
 	probe := obj.(*promv1.Probe)
 	l := converterLogger.WithValues("vmprobe", probe.Name, "namespace", probe.Namespace)
 	vmProbe := converter.ConvertProbe(probe, c.baseConf)
@@ -603,7 +603,7 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 }
 
 // UpdateProbe updates VMProbe
-func (c *ConverterController) UpdateProbe(_, new interface{}) {
+func (c *ConverterController) UpdateProbe(_, new any) {
 	probeNew := new.(*promv1.Probe)
 	l := converterLogger.WithValues("vmprobe", probeNew.Name, "namespace", probeNew.Namespace)
 	vmProbe := converter.ConvertProbe(probeNew, c.baseConf)
@@ -644,7 +644,7 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 }
 
 // CreateScrapeConfig converts ServiceMonitor to VMScrapeConfig
-func (c *ConverterController) CreateScrapeConfig(scrapeConfig interface{}) {
+func (c *ConverterController) CreateScrapeConfig(scrapeConfig any) {
 	var vmScrapeConfig *vmv1beta1.VMScrapeConfig
 	var err error
 	switch promScrapeConfig := scrapeConfig.(type) {
@@ -668,7 +668,7 @@ func (c *ConverterController) CreateScrapeConfig(scrapeConfig interface{}) {
 }
 
 // UpdateScrapeConfig updates VMScrapeConfig
-func (c *ConverterController) UpdateScrapeConfig(_, newObj interface{}) {
+func (c *ConverterController) UpdateScrapeConfig(_, newObj any) {
 	var vmScrapeConfig *vmv1beta1.VMScrapeConfig
 	var err error
 	switch promScrapeConfig := newObj.(type) {

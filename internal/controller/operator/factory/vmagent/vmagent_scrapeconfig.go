@@ -1401,7 +1401,7 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *vmv1beta1.VMScrapePara
 	if cfg == nil {
 		return r
 	}
-	toYaml := func(key string, src interface{}) {
+	toYaml := func(key string, src any) {
 		if src == nil || reflect.ValueOf(src).IsNil() {
 			return
 		}

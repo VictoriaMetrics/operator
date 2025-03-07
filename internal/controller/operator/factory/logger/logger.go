@@ -44,19 +44,19 @@ func (lw *Logger) Enabled(level int) bool {
 }
 
 // Info implements logr.Logger
-func (lw *Logger) Info(level int, msg string, keysAndValues ...interface{}) {
+func (lw *Logger) Info(level int, msg string, keysAndValues ...any) {
 	lw.messageCounter.WithLabelValues("info").Inc()
 	lw.origin.Info(level, msg, keysAndValues...)
 }
 
 // Error implements logr.Logger
-func (lw *Logger) Error(err error, msg string, keysAndValues ...interface{}) {
+func (lw *Logger) Error(err error, msg string, keysAndValues ...any) {
 	lw.messageCounter.WithLabelValues("error").Inc()
 	lw.origin.Error(err, msg, keysAndValues...)
 }
 
 // WithValues implements logr.Logger
-func (lw *Logger) WithValues(keysAndValues ...interface{}) logr.LogSink {
+func (lw *Logger) WithValues(keysAndValues ...any) logr.LogSink {
 	l := *lw
 	l.origin = l.origin.WithValues(keysAndValues...)
 	return &l

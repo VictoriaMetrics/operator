@@ -24,11 +24,11 @@ type TLSConfigBuilder struct {
 
 // BuildTLSConfig return map with paths to tls config keys
 // let caller to use their own json tag
-func (cb *TLSConfigBuilder) BuildTLSConfig(tlsCfg *vmv1beta1.TLSConfig, tlsAssetsDir string) (map[string]interface{}, error) {
+func (cb *TLSConfigBuilder) BuildTLSConfig(tlsCfg *vmv1beta1.TLSConfig, tlsAssetsDir string) (map[string]any, error) {
 	if tlsCfg == nil {
 		return nil, nil
 	}
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	pathPrefix := path.Join(tlsAssetsDir, cb.CurrentCRNamespace)
 
 	// if using SecretOrConfigMap, data will be fetched from secrets or configmap,

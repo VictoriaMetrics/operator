@@ -1,35 +1,24 @@
 # The following manifests contain a self-signed issuer CR and a certificate CR.
 # More document can be found at https://docs.cert-manager.io
-# WARNING: Targets CertManager v1.0. Check https://cert-manager.io/docs/installation/upgrading/ for breaking changes.
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  labels:
-    app.kubernetes.io/name: vm-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: selfsigned-issuer
-  namespace: vm
-spec:
-  selfSigned: {}
----
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   labels:
-    app.kubernetes.io/name: certificate
+    app.kubernetes.io/name: vm-operator
     app.kubernetes.io/instance: vm-serving-cert
     app.kubernetes.io/component: certificate
     app.kubernetes.io/created-by: vm-operator
     app.kubernetes.io/part-of: vm-operator
     app.kubernetes.io/managed-by: kustomize
-  name: serving-cert # this name should match the one appeared in kustomizeconfig.yaml
-  namespace: vm
+  name: serving-cert  # this name should match the one appeared in kustomizeconfig.yaml
+  namespace: system
 spec:
   # SERVICE_NAME and SERVICE_NAMESPACE will be substituted by kustomize
+  # replacements in the config/default/kustomization.yaml file.
   dnsNames:
   - SERVICE_NAME.SERVICE_NAMESPACE.svc
   - SERVICE_NAME.SERVICE_NAMESPACE.svc.cluster.local
   issuerRef:
     kind: Issuer
     name: selfsigned-issuer
-  secretName: webhook-serving-cert # this secret will not be prefixed, since it's not managed by kustomize
+  secretName: webhook-server-cert

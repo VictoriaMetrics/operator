@@ -42,15 +42,15 @@ func (r *VLogs) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vlogs,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vlogs,verbs=create;update,versions=v1beta1,name=vvlogs.kb.io,admissionReviewVersions=v1
 
-func (cr *VLogs) sanityCheck() error {
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+func (r *VLogs) sanityCheck() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
 	}
 	return nil
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VLogs) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*VLogs) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*VLogs)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
@@ -68,7 +68,7 @@ func (cr *VLogs) ValidateCreate(_ context.Context, obj runtime.Object) (admissio
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VLogs) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*VLogs) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*VLogs)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
@@ -87,6 +87,6 @@ func (r *VLogs) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VLogs) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VLogs) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

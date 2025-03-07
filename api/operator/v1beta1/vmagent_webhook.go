@@ -78,7 +78,11 @@ func (r *VMAgent) sanityCheck() error {
 }
 
 // ValidateCreate(_ context.Context, cr runtime.Object) implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAgent) ValidateCreate(_ context.Context, cr runtime.Object) (admission.Warnings, error) {
+func (*VMAgent) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*VMAgent)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+	}
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -92,7 +96,11 @@ func (r *VMAgent) ValidateCreate(_ context.Context, cr runtime.Object) (admissio
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAgent) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*VMAgent) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*VMAgent)
+	if !ok {
+		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+	}
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
@@ -106,6 +114,6 @@ func (r *VMAgent) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Objec
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAgent) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VMAgent) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

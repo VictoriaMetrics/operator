@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/managed-by: kustomize
+  name: allow-metrics-traffic
+  namespace: system
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: controller-manager
+      app.kubernetes.io/name: test
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            metrics: enabled
+      ports:
+        - port: 8443
+          protocol: TCP

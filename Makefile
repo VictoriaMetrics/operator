@@ -23,7 +23,7 @@ REPODIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 WORKDIR := $(REPODIR)/..
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.30.0
+ENVTEST_K8S_VERSION = 1.32.0
 PLATFORM = $(shell uname -o)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -131,7 +131,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-test-e2e: load-kind ginkgo-install
+test-e2e: load-kind ginkgo
 	$(GINKGO_BIN) -timeout=30m ./test/e2e/
 	$(GINKGO_BIN) -procs=1 -timeout=20m ./test/e2e/childobjects/
 	$(GINKGO_BIN) -procs=$(E2E_TESTS_CONCURRENCY) -timeout=20m ./test/e2e/watchnamespace/
@@ -360,20 +360,20 @@ OPM = $(LOCALBIN)/opm-$(OPM_VERSION)
 YQ = $(LOCALBIN)/yq-$(YQ_VERSION)
 ENVCONFIG_DOCS = $(LOCALBIN)/envconfig-docs-$(ENVCONFIG_DOCS_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
-GINKGO_BIN ?= $(LOCALBIN)/ginkgo
-GINKGO_VERSION ?= v2.19.0
+GINKGO_BIN ?= $(LOCALBIN)/ginkgo-$(GINKGO_VERSION)
+GINKGO_VERSION ?= v2.23.0
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.5.0
-CONTROLLER_TOOLS_VERSION ?= v0.16.5
-ENVTEST_VERSION ?= release-0.19
+KUSTOMIZE_VERSION ?= v5.6.0
+CONTROLLER_TOOLS_VERSION ?= v0.17.2
+ENVTEST_VERSION ?= release-0.20
 GOLANGCI_LINT_VERSION ?= v1.64.6
-CODEGENERATOR_VERSION ?= v0.31.4
-KIND_VERSION ?= v0.25.0
-OLM_VERSION ?= 0.30.0
-OPERATOR_SDK_VERSION ?= v1.38.0
-OPM_VERSION ?= v1.49.0
-YQ_VERSION ?= v4.44.6
+CODEGENERATOR_VERSION ?= v0.32.4
+KIND_VERSION ?= v0.27.0
+OLM_VERSION ?= 0.31.0
+OPERATOR_SDK_VERSION ?= v1.39.1
+OPM_VERSION ?= v1.51.0
+YQ_VERSION ?= v4.45.1
 
 ENVCONFIG_DOCS_VERSION ?= 746866a6303f8e7e610d39389aa951b3c0d97123
 CRD_REF_DOCS_VERSION ?= latest
@@ -389,7 +389,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
 
 .PHONY: install-tools
-install-tools: envconfig-docs crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest ginkgo-install
+install-tools: envconfig-docs crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest ginkgo
 
 .PHONY: envconfig-docs
 envconfig-docs: $(ENVCONFIG_DOCS)
@@ -406,8 +406,8 @@ client-gen: $(CLIENT_GEN)
 $(CLIENT_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CLIENT_GEN),k8s.io/code-generator/cmd/client-gen,$(CODEGENERATOR_VERSION))
 
-.PHONY: ginkgo-install
-ginkgo-install:
+.PHONY: ginkgo
+ginkgo:
 	$(call go-install-tool,$(GINKGO_BIN),github.com/onsi/ginkgo/v2/ginkgo,$(GINKGO_VERSION))
 
 .PHONY: lister-gen

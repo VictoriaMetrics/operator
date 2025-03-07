@@ -42,42 +42,42 @@ func (r *VMSingle) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmsingle,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmsingles,verbs=create;update,versions=v1beta1,name=vvmsingle.kb.io,admissionReviewVersions=v1
 
-func (cr *VMSingle) sanityCheck() error {
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+func (r *VMSingle) sanityCheck() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
 	}
 
-	if cr.Spec.VMBackup != nil {
-		if err := cr.Spec.VMBackup.sanityCheck(cr.Spec.License); err != nil {
+	if r.Spec.VMBackup != nil {
+		if err := r.Spec.VMBackup.sanityCheck(r.Spec.License); err != nil {
 			return err
 		}
 	}
-	if cr.Spec.StorageDataPath != "" {
-		if len(cr.Spec.Volumes) == 0 {
-			return fmt.Errorf("spec.volumes must have at least 1 value for spec.storageDataPath=%q", cr.Spec.StorageDataPath)
+	if r.Spec.StorageDataPath != "" {
+		if len(r.Spec.Volumes) == 0 {
+			return fmt.Errorf("spec.volumes must have at least 1 value for spec.storageDataPath=%q", r.Spec.StorageDataPath)
 		}
 		var storageVolumeFound bool
-		for _, volume := range cr.Spec.Volumes {
+		for _, volume := range r.Spec.Volumes {
 			if volume.Name == "data" {
 				storageVolumeFound = true
 				break
 			}
 		}
-		if cr.Spec.VMBackup != nil {
+		if r.Spec.VMBackup != nil {
 			if !storageVolumeFound {
 				return fmt.Errorf("spec.volumes must have at least 1 value with `name: data` for spec.storageDataPath=%q."+
-					" It's required by operator to correctly mount backup volumeMount", cr.Spec.StorageDataPath)
+					" It's required by operator to correctly mount backup volumeMount", r.Spec.StorageDataPath)
 			}
 		}
-		if len(cr.Spec.VolumeMounts) == 0 && !storageVolumeFound {
-			return fmt.Errorf("spec.volumeMounts must have at least 1 value OR spec.volumes must have volume.name `data` for spec.storageDataPath=%q", cr.Spec.StorageDataPath)
+		if len(r.Spec.VolumeMounts) == 0 && !storageVolumeFound {
+			return fmt.Errorf("spec.volumeMounts must have at least 1 value OR spec.volumes must have volume.name `data` for spec.storageDataPath=%q", r.Spec.StorageDataPath)
 		}
 	}
 	return nil
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMSingle) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*VMSingle) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*VMSingle)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
@@ -95,7 +95,7 @@ func (cr *VMSingle) ValidateCreate(_ context.Context, obj runtime.Object) (admis
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMSingle) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*VMSingle) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*VMSingle)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
@@ -114,6 +114,6 @@ func (cr *VMSingle) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Obj
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMSingle) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VMSingle) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

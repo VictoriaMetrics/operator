@@ -19,7 +19,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 - api:
@@ -32,7 +31,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 - api:
@@ -45,7 +43,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 - api:
@@ -58,7 +55,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 - api:
@@ -80,7 +76,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 - api:
@@ -102,7 +97,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 - api:
@@ -115,7 +109,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 - api:
@@ -155,7 +148,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 - api:
@@ -168,7 +160,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 - api:
@@ -190,7 +181,6 @@ resources:
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
   webhooks:
-    conversion: false
     validation: true
     webhookVersion: v1
 version: "3"

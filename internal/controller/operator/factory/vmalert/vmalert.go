@@ -91,16 +91,16 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr,
 			return
 		}
 		if ha.BasicAuth != nil && ba.BasicAuthCredentials != nil {
-			if len(ba.Password) > 0 {
-				s.Data[buildRemoteSecretKey(sourcePrefix, basicAuthPasswordKey)] = []byte(ba.Password)
+			if len(ba.BasicAuthCredentials.Password) > 0 {
+				s.Data[buildRemoteSecretKey(sourcePrefix, basicAuthPasswordKey)] = []byte(ba.BasicAuthCredentials.Password)
 			}
 		}
 		if ha.BearerAuth != nil && len(ba.bearerValue) > 0 {
 			s.Data[buildRemoteSecretKey(sourcePrefix, bearerTokenKey)] = []byte(ba.bearerValue)
 		}
 		if ha.OAuth2 != nil && ba.OAuthCreds != nil {
-			if len(ba.ClientSecret) > 0 {
-				s.Data[buildRemoteSecretKey(sourcePrefix, oauth2SecretKey)] = []byte(ba.ClientSecret)
+			if len(ba.OAuthCreds.ClientSecret) > 0 {
+				s.Data[buildRemoteSecretKey(sourcePrefix, oauth2SecretKey)] = []byte(ba.OAuthCreds.ClientSecret)
 			}
 		}
 	}
@@ -431,8 +431,8 @@ func buildVMAlertAuthArgs(args []string, flagPrefix string, ha vmv1beta1.HTTPAut
 	if s, ok := remoteSecrets[flagPrefix]; ok {
 		// safety checks must be performed by previous code
 		if ha.BasicAuth != nil {
-			args = append(args, fmt.Sprintf("-%s.basicAuth.username=%s", flagPrefix, s.Username))
-			if len(s.Password) > 0 {
+			args = append(args, fmt.Sprintf("-%s.basicAuth.username=%s", flagPrefix, s.BasicAuthCredentials.Username))
+			if len(s.BasicAuthCredentials.Password) > 0 {
 				args = append(args, fmt.Sprintf("-%s.basicAuth.passwordFile=%s", flagPrefix, path.Join(vmalertConfigSecretsDir, buildRemoteSecretKey(flagPrefix, basicAuthPasswordKey))))
 			}
 			if len(ha.BasicAuth.PasswordFile) > 0 {
@@ -850,8 +850,8 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 				panic("secret for basic notifier cannot be nil")
 			}
 			authUser.isNotNull = true
-			user = s.Username
-			if len(s.Password) > 0 {
+			user = s.BasicAuthCredentials.Username
+			if len(s.BasicAuthCredentials.Password) > 0 {
 				passFile = path.Join(vmalertConfigSecretsDir, buildRemoteSecretKey(buildNotifierKey(i), basicAuthPasswordKey))
 				authPasswordFile.isNotNull = true
 			}
@@ -887,9 +887,9 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 				oauth2TokenURL.isNotNull = true
 				tokenURL = nt.OAuth2.TokenURL
 			}
-			clientID = s.ClientID
+			clientID = s.OAuthCreds.ClientID
 			oauth2ClientID.isNotNull = true
-			if len(s.ClientSecret) > 0 {
+			if len(s.OAuthCreds.ClientSecret) > 0 {
 				oauth2SecretFile.isNotNull = true
 				secretFile = path.Join(vmalertConfigSecretsDir, buildRemoteSecretKey(buildNotifierKey(i), oauth2SecretKey))
 			} else {

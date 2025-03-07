@@ -21,10 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
 var (

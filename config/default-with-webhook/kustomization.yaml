@@ -8,25 +8,6 @@ patches:
   target:
     kind: Deployment
 - path: webhookcainjection_patch.yaml
-
-# [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER' prefix.
-# Uncomment the following replacements to add the cert-manager CA injection annotations
-#      - select:
-#          kind: MutatingWebhookConfiguration
-#        fieldPaths:
-#          - .metadata.annotations.[cert-manager.io/inject-ca-from]
-#        options:
-#          delimiter: '/'
-#          index: 0
-#          create: true
-#      - select:
-#          kind: MutatingWebhookConfiguration
-#        fieldPaths:
-#          - .metadata.annotations.[cert-manager.io/inject-ca-from]
-#        options:
-#          delimiter: '/'
-#          index: 1
-#          create: true
 replacements:
 - source:
     fieldPath: .metadata.namespace
@@ -38,15 +19,17 @@ replacements:
   - fieldPaths:
     - .metadata.annotations.[cert-manager.io/inject-ca-from]
     options:
-      create: true
       delimiter: /
+      index: 0
+      create: true
     select:
       kind: ValidatingWebhookConfiguration
   - fieldPaths:
     - .metadata.annotations.[cert-manager.io/inject-ca-from]
     options:
-      create: true
       delimiter: /
+      index: 0
+      create: true
     select:
       kind: CustomResourceDefinition
 - source:
@@ -59,17 +42,17 @@ replacements:
   - fieldPaths:
     - .metadata.annotations.[cert-manager.io/inject-ca-from]
     options:
-      create: true
       delimiter: /
       index: 1
+      create: true
     select:
       kind: ValidatingWebhookConfiguration
   - fieldPaths:
     - .metadata.annotations.[cert-manager.io/inject-ca-from]
     options:
-      create: true
       delimiter: /
       index: 1
+      create: true
     select:
       kind: CustomResourceDefinition
 - source:

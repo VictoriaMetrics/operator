@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync/atomic"
@@ -41,6 +42,7 @@ import (
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -75,20 +77,21 @@ var (
 	scheme              = runtime.NewScheme()
 	setupLog            = ctrl.Log.WithName("setup")
 	leaderElect         = managerFlags.Bool("leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	enableWebhooks      = managerFlags.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
+	enableWebhook       = managerFlags.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
 	webhookPort         = managerFlags.Int("webhook.port", defaultWebhookPort, "port to start webhook server on")
 	disableCRDOwnership = managerFlags.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
-	webhooksDir         = managerFlags.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
+	webhookCertDir      = managerFlags.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
 	webhookCertName     = managerFlags.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
-	webhookKeyName      = managerFlags.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	webhookCertKey      = managerFlags.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
 	tlsEnable           = managerFlags.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
-	tlsCertsDir         = managerFlags.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
+	tlsCertDir          = managerFlags.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
 	tlsCertName         = managerFlags.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
-	tlsKeyName          = managerFlags.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
+	tlsCertKey          = managerFlags.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
 	mtlsEnable          = managerFlags.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set. ")
 	mtlsCAFile          = managerFlags.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
 		"By default the host system TLS Root CA is used for client certificate verification. ")
-	metricsBindAddress            = managerFlags.String("metrics-bind-address", defaultMetricsAddr, "The address the metric endpoint binds to.")
+	metricsAddr                   = managerFlags.String("metrics-bind-address", defaultMetricsAddr, "The address the metric endpoint binds to.")
+	secureMetrics                 = managerFlags.Bool("metrics-secure", false, "If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	pprofAddr                     = managerFlags.String("pprof-addr", ":8435", "The address for pprof/debug API. Empty value disables server")
 	probeAddr                     = managerFlags.String("health-probe-bind-address", ":8081", "The address the probes (health, ready) binds to.")
 	defaultKubernetesMinorVersion = managerFlags.Uint64("default.kubernetesVersion.minor", 21, "Minor version of kubernetes server, if operator cannot parse actual kubernetes response")
@@ -129,6 +132,8 @@ func RunManager(ctx context.Context) error {
 		StacktraceLevel: zapcore.PanicLevel,
 	}
 
+	var tlsOpts []func(*tls.Config)
+
 	opts.BindFlags(managerFlags)
 	vmcontroller.BindFlags(managerFlags)
 	managerFlags.Parse(os.Args[1:])
@@ -168,6 +173,81 @@ func RunManager(ctx context.Context) error {
 	klog.SetLogger(l)
 	ctrl.SetLogger(l)
 
+	// Create watchers for metrics and webhooks certificates
+	var metricsCertWatcher, webhookCertWatcher *certwatcher.CertWatcher
+
+	// Initial webhook TLS options
+	webhookTLSOpts := tlsOpts
+
+	if *enableWebhook {
+		setupLog.Info("Initializing webhook certificate watcher using provided certificates",
+			"webhook.certDir", webhookCertDir, "webhook.certName", webhookCertName, "webhook.keyName", webhookCertKey)
+
+		var err error
+		webhookCertWatcher, err = certwatcher.New(
+			filepath.Join(*webhookCertDir, *webhookCertName),
+			filepath.Join(*webhookCertDir, *webhookCertKey),
+		)
+		if err != nil {
+			setupLog.Error(err, "Failed to initialize webhook certificate watcher")
+			os.Exit(1)
+		}
+
+		webhookTLSOpts = append(webhookTLSOpts, func(config *tls.Config) {
+			config.GetCertificate = webhookCertWatcher.GetCertificate
+		})
+	}
+
+	webhookServer := webhook.NewServer(webhook.Options{
+		Port:    *webhookPort,
+		TLSOpts: webhookTLSOpts,
+	})
+
+	metricsServerOptions := metricsserver.Options{
+		BindAddress:   *metricsAddr,
+		SecureServing: *secureMetrics,
+		TLSOpts:       tlsOpts,
+		ExtraHandlers: map[string]http.Handler{},
+	}
+
+	if *tlsEnable {
+		if tlsCertDir != nil && len(*tlsCertDir) > 0 {
+			setupLog.Info("Initializing metrics certificate watcher using provided certificates",
+				"tls.certDir", tlsCertDir, "tls.certName", tlsCertName, "tls.keyName", tlsCertKey)
+
+			var err error
+			metricsCertWatcher, err = certwatcher.New(
+				filepath.Join(*tlsCertDir, *tlsCertName),
+				filepath.Join(*tlsCertDir, *tlsCertKey),
+			)
+			if err != nil {
+				setupLog.Error(err, "to initialize metrics certificate watcher", "error", err)
+				os.Exit(1)
+			}
+
+			metricsServerOptions.TLSOpts = append(metricsServerOptions.TLSOpts, func(config *tls.Config) {
+				config.GetCertificate = metricsCertWatcher.GetCertificate
+			})
+		}
+		if *mtlsEnable {
+			metricsServerOptions.TLSOpts = append(metricsServerOptions.TLSOpts, func(cfg *tls.Config) {
+				cfg.ClientAuth = tls.RequireAndVerifyClientCert
+				if *mtlsCAFile != "" {
+					cp := x509.NewCertPool()
+					caFile := path.Join(*tlsCertDir, *mtlsCAFile)
+					caPEM, err := os.ReadFile(caFile)
+					if err != nil {
+						panic(fmt.Sprintf("cannot read tlsCAFile=%q: %s", caFile, err))
+					}
+					if !cp.AppendCertsFromPEM(caPEM) {
+						panic(fmt.Sprintf("cannot parse data for tlsCAFile=%q: %s", caFile, caPEM))
+					}
+					cfg.ClientCAs = cp
+				}
+			})
+		}
+	}
+
 	setupLog.Info("starting VictoriaMetrics operator", "build version", buildinfo.Version, "short_version", versionRe.FindString(buildinfo.Version))
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt, clientQPSLimit)
@@ -193,30 +273,16 @@ func RunManager(ctx context.Context) error {
 		return fmt.Errorf("cannot build cache options for manager: %w", err)
 	}
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
-		Logger: ctrl.Log.WithName("manager"),
-		Scheme: scheme,
-		Metrics: metricsserver.Options{
-			SecureServing: *tlsEnable,
-			BindAddress:   *metricsBindAddress,
-			CertDir:       *tlsCertsDir,
-			CertName:      *tlsCertName,
-			KeyName:       *tlsKeyName,
-			TLSOpts:       configureTLS(),
-			ExtraHandlers: map[string]http.Handler{},
-		},
+		Logger:                 ctrl.Log.WithName("manager"),
+		Scheme:                 scheme,
+		Metrics:                metricsServerOptions,
 		HealthProbeBindAddress: *probeAddr,
 		PprofBindAddress:       *pprofAddr,
 		ReadinessEndpointName:  "/ready",
 		LivenessEndpointName:   "/health",
-		// port for webhook
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Port:     *webhookPort,
-			CertDir:  *webhooksDir,
-			CertName: *webhookCertName,
-			KeyName:  *webhookKeyName,
-		}),
-		LeaderElection:   *leaderElect,
-		LeaderElectionID: "57410f0d.victoriametrics.com",
+		WebhookServer:          webhookServer,
+		LeaderElection:         *leaderElect,
+		LeaderElectionID:       "57410f0d.victoriametrics.com",
 		Cache: cache.Options{
 			DefaultNamespaces: watchNsCacheByName,
 		},
@@ -228,6 +294,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to start manager")
 		return err
 	}
+
 	if err := mgr.AddReadyzCheck("ready", func(req *http.Request) error {
 		wasSynced := atomic.LoadUint32(&wasCacheSynced)
 		// fast path
@@ -264,13 +331,15 @@ func RunManager(ctx context.Context) error {
 		}
 	}
 
-	if *enableWebhooks {
-		if err = addWebhooks(mgr); err != nil {
+	if *enableWebhook {
+		if err := addWebhooks(mgr); err != nil {
 			l.Error(err, "cannot register webhooks")
 			return err
 		}
+
 		build.SetSkipRuntimeValidation(true)
 	}
+
 	vmv1beta1.SetLabelAndAnnotationPrefixes(baseConfig.FilterChildLabelPrefixes, baseConfig.FilterChildAnnotationPrefixes)
 
 	if err := initControllers(mgr, ctrl.Log, baseConfig); err != nil {
@@ -349,31 +418,6 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&vmv1beta1.VMUser{},
 		&vmv1beta1.VMRule{},
 	})
-}
-
-func configureTLS() []func(*tls.Config) {
-	var opts []func(*tls.Config)
-	if *mtlsEnable {
-		if !*tlsEnable {
-			panic("-tls.enable flag must be set before using mtls.enable")
-		}
-		opts = append(opts, func(cfg *tls.Config) {
-			cfg.ClientAuth = tls.RequireAndVerifyClientCert
-			if *mtlsCAFile != "" {
-				cp := x509.NewCertPool()
-				caFile := path.Join(*tlsCertsDir, *mtlsCAFile)
-				caPEM, err := os.ReadFile(caFile)
-				if err != nil {
-					panic(fmt.Sprintf("cannot read tlsCAFile=%q: %s", caFile, err))
-				}
-				if !cp.AppendCertsFromPEM(caPEM) {
-					panic(fmt.Sprintf("cannot parse data for tlsCAFile=%q: %s", caFile, caPEM))
-				}
-				cfg.ClientCAs = cp
-			}
-		})
-	}
-	return opts
 }
 
 func getClientCacheOptions(disabledCacheObjects string) (*client.CacheOptions, error) {

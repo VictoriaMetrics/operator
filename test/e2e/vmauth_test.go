@@ -12,6 +12,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -69,6 +70,15 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				}, func(cr *v1beta1vm.VMAuth) {
 					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					ps := dep.Spec.Template.Spec
+					reloaderContainer := ps.Containers[1]
+					Expect(reloaderContainer.Name).To(Equal("config-reloader"))
+					Expect(reloaderContainer.Resources.Limits.Cpu().CmpInt64(0)).To(Equal(0))
+					Expect(reloaderContainer.Resources.Limits.Memory().CmpInt64(0)).To(Equal(0))
+					Expect(reloaderContainer.Resources.Requests.Cpu()).To(Equal(ptr.To(resource.MustParse("10m"))))
+					Expect(reloaderContainer.Resources.Requests.Memory()).To(Equal(ptr.To(resource.MustParse("25Mi"))))
 				}),
 				Entry("with strict security and vm config-reloader", "strict-with-reloader", &v1beta1vm.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{
@@ -107,7 +117,6 @@ var _ = Describe("test vmauth Controller", func() {
 					Expect(ps.Containers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 					Expect(ps.Containers[1].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 					Expect(ps.InitContainers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
-
 				}),
 			)
 

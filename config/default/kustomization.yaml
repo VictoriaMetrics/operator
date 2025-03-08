@@ -9,3 +9,6 @@ patches:
 - path: manager_metrics_patch.yaml
   target:
     kind: Deployment
+- path: manager_webhook_patch.yaml
+  target:
+    kind: Deployment

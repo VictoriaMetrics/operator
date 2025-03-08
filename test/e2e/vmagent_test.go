@@ -292,7 +292,7 @@ var _ = Describe("test  vmagent Controller", func() {
 						Subjects: []rbacv1.Subject{
 							{
 								Kind:      rbacv1.ServiceAccountKind,
-								Name:      cr.GetServiceAccountName(),
+								Name:      cr.GetServiceAccount().Name,
 								Namespace: cr.GetNamespace(),
 							},
 						},

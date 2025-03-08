@@ -88,9 +88,7 @@ type VLogsSpec struct {
 	// LivenessProbe that will be added to VLogs pod
 	*EmbeddedProbes `json:",inline"`
 
-	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	*ServiceAccount `json:",inline,omitempty"`
 }
 
 // VLogsStatus defines the observed state of VLogs
@@ -99,8 +97,8 @@ type VLogsStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLogsStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (r *VLogsStatus) GetStatusMetadata() *StatusMetadata {
+	return &r.StatusMetadata
 }
 
 // VLogs is fast, cost-effective and scalable logs database.
@@ -161,17 +159,17 @@ func (r *VLogs) AsOwner() []metav1.OwnerReference {
 	}
 }
 
-func (cr *VLogs) setLastSpec(prevSpec VLogsSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
+func (r *VLogs) setLastSpec(prevSpec VLogsSpec) {
+	r.ParsedLastAppliedSpec = &prevSpec
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLogs) UnmarshalJSON(src []byte) error {
-	type pcr VLogs
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+func (r *VLogs) UnmarshalJSON(src []byte) error {
+	type pr VLogs
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
 		return err
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := parseLastAppliedState(r); err != nil {
 		return err
 	}
 
@@ -179,10 +177,10 @@ func (cr *VLogs) UnmarshalJSON(src []byte) error {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLogsSpec) UnmarshalJSON(src []byte) error {
-	type pcr VLogsSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vlogs spec: %s, err: %s", string(src), err)
+func (r *VLogsSpec) UnmarshalJSON(src []byte) error {
+	type pr VLogsSpec
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
+		r.ParsingError = fmt.Sprintf("cannot parse vlogs spec: %s, err: %s", string(src), err)
 		return nil
 	}
 	return nil
@@ -256,37 +254,55 @@ func (r *VLogs) AllLabels() map[string]string {
 	return labels.Merge(result, selectorLabels)
 }
 
-func (r VLogs) PrefixedName() string {
+func (r *VLogs) PrefixedName() string {
 	return fmt.Sprintf("vlogs-%s", r.Name)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (r VLogs) GetMetricPath() string {
+func (r *VLogs) GetMetricPath() string {
 	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, metricPath)
 }
 
+// Validate checks if spec is correct
+func (r *VLogs) Validate() error {
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
+	return nil
+}
+
 // GetExtraArgs returns additionally configured command-line arguments
-func (r VLogs) GetExtraArgs() map[string]string {
+func (r *VLogs) GetExtraArgs() map[string]string {
 	return r.Spec.ExtraArgs
 }
 
 // GetServiceScrape returns overrides for serviceScrape builder
-func (r VLogs) GetServiceScrape() *VMServiceScrapeSpec {
+func (r *VLogs) GetServiceScrape() *VMServiceScrapeSpec {
 	return r.Spec.ServiceScrapeSpec
 }
 
-func (r VLogs) GetServiceAccountName() string {
-	if r.Spec.ServiceAccountName == "" {
-		return r.PrefixedName()
+func (r *VLogs) GetServiceAccount() *ServiceAccount {
+	sa := r.Spec.ServiceAccount
+	if sa == nil {
+		sa = &ServiceAccount{
+			Name:           r.PrefixedName(),
+			AutomountToken: true,
+		}
 	}
-	return r.Spec.ServiceAccountName
+	return sa
 }
 
-func (r VLogs) IsOwnsServiceAccount() bool {
-	return r.Spec.ServiceAccountName == ""
+func (r *VLogs) IsOwnsServiceAccount() bool {
+	if r.Spec.ServiceAccount != nil && r.Spec.ServiceAccount.Name != "" {
+		return r.Spec.ServiceAccount.Name == ""
+	}
+	return false
 }
 
-func (r VLogs) GetNSName() string {
+func (r *VLogs) GetNSName() string {
 	return r.GetNamespace()
 }
 
@@ -324,8 +340,8 @@ func (r *VLogs) Paused() bool {
 func (r *VLogs) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
 	return updateObjectStatus(ctx, c, &patchStatusOpts[*VLogs, *VLogsStatus]{
 		actualStatus: status,
-		cr:           r,
-		crStatus:     &r.Status,
+		r:            r,
+		rStatus:      &r.Status,
 		maybeErr:     maybeErr,
 	})
 }

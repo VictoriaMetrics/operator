@@ -279,7 +279,7 @@ func makeSpecForVLogs(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 			Volumes:            volumes,
 			InitContainers:     r.Spec.InitContainers,
 			Containers:         containers,
-			ServiceAccountName: r.GetServiceAccountName(),
+			ServiceAccountName: r.GetServiceAccount().Name,
 		},
 	}
 

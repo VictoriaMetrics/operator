@@ -340,7 +340,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 			Volumes:            volumes,
 			InitContainers:     ic,
 			Containers:         containers,
-			ServiceAccountName: cr.GetServiceAccountName(),
+			ServiceAccountName: cr.GetServiceAccount().Name,
 		},
 	}
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 
+	amlabels "github.com/prometheus/alertmanager/pkg/labels"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -191,26 +192,25 @@ type VMAlertmanagerSpec struct {
 	// GossipConfig defines gossip TLS configuration for Alertmanager cluster
 	// +optional
 	GossipConfig *AlertmanagerGossipConfig `json:"gossipConfig,omitempty"`
-	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	*ServiceAccount `json:",inline,omitempty"`
 
 	CommonDefaultableParams           `json:",inline,omitempty"`
 	CommonConfigReloaderParams        `json:",inline,omitempty"`
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
-func (cr *VMAlertmanager) setLastSpec(prevSpec VMAlertmanagerSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
+func (r *VMAlertmanager) setLastSpec(prevSpec VMAlertmanagerSpec) {
+	r.ParsedLastAppliedSpec = &prevSpec
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAlertmanager) UnmarshalJSON(src []byte) error {
-	type pcr VMAlertmanager
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+func (r *VMAlertmanager) UnmarshalJSON(src []byte) error {
+	type pr VMAlertmanager
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
 		return err
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := parseLastAppliedState(r); err != nil {
 		return err
 	}
 
@@ -218,10 +218,10 @@ func (cr *VMAlertmanager) UnmarshalJSON(src []byte) error {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAlertmanagerSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMAlertmanagerSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmalertmanager spec: %s, err: %s", string(src), err)
+func (r *VMAlertmanagerSpec) UnmarshalJSON(src []byte) error {
+	type pr VMAlertmanagerSpec
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
+		r.ParsingError = fmt.Sprintf("cannot parse vmalertmanager spec: %s, err: %s", string(src), err)
 		return nil
 	}
 	return nil
@@ -246,110 +246,117 @@ type VMAlertmanagerStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAlertmanagerStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (r *VMAlertmanagerStatus) GetStatusMetadata() *StatusMetadata {
+	return &r.StatusMetadata
 }
 
 // AsOwner returns owner references with current object as owner
-func (cr *VMAlertmanager) AsOwner() []metav1.OwnerReference {
+func (r *VMAlertmanager) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
-			APIVersion:         cr.APIVersion,
-			Kind:               cr.Kind,
-			Name:               cr.Name,
-			UID:                cr.UID,
+			APIVersion:         r.APIVersion,
+			Kind:               r.Kind,
+			Name:               r.Name,
+			UID:                r.UID,
 			Controller:         ptr.To(true),
 			BlockOwnerDeletion: ptr.To(true),
 		},
 	}
 }
 
-func (cr *VMAlertmanager) PodAnnotations() map[string]string {
+func (r *VMAlertmanager) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
-	if cr.Spec.PodMetadata != nil {
-		for annotation, value := range cr.Spec.PodMetadata.Annotations {
+	if r.Spec.PodMetadata != nil {
+		for annotation, value := range r.Spec.PodMetadata.Annotations {
 			annotations[annotation] = value
 		}
 	}
 	return annotations
 }
 
-func (cr *VMAlertmanager) AnnotationsFiltered() map[string]string {
+func (r *VMAlertmanager) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
-	if cr.Spec.ManagedMetadata != nil {
+	dst := filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if r.Spec.ManagedMetadata != nil {
 		if dst == nil {
 			dst = make(map[string]string)
 		}
-		for k, v := range cr.Spec.ManagedMetadata.Annotations {
+		for k, v := range r.Spec.ManagedMetadata.Annotations {
 			dst[k] = v
 		}
 	}
 	return dst
 }
 
-func (cr *VMAlertmanager) SelectorLabels() map[string]string {
+func (r *VMAlertmanager) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmalertmanager",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
-func (cr *VMAlertmanager) PodLabels() map[string]string {
-	lbls := cr.SelectorLabels()
-	if cr.Spec.PodMetadata == nil {
+func (r *VMAlertmanager) PodLabels() map[string]string {
+	lbls := r.SelectorLabels()
+	if r.Spec.PodMetadata == nil {
 		return lbls
 	}
-	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
+	return labels.Merge(r.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr *VMAlertmanager) AllLabels() map[string]string {
-	selectorLabels := cr.SelectorLabels()
+func (r *VMAlertmanager) AllLabels() map[string]string {
+	selectorLabels := r.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+	if r.ObjectMeta.Labels == nil && r.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	if r.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
 	}
-	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	if r.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, r.Spec.ManagedMetadata.Labels)
 	}
 	return labels.Merge(result, selectorLabels)
 }
 
 // ConfigSecretName returns configuration secret name for alertmanager
-func (cr *VMAlertmanager) ConfigSecretName() string {
-	return fmt.Sprintf("%s-config", cr.PrefixedName())
+func (r *VMAlertmanager) ConfigSecretName() string {
+	return fmt.Sprintf("%s-config", r.PrefixedName())
 }
 
-func (cr *VMAlertmanager) PrefixedName() string {
-	return fmt.Sprintf("vmalertmanager-%s", cr.Name)
+func (r *VMAlertmanager) PrefixedName() string {
+	return fmt.Sprintf("vmalertmanager-%s", r.Name)
 }
 
-func (cr *VMAlertmanager) GetServiceAccountName() string {
-	if cr.Spec.ServiceAccountName == "" {
-		return cr.PrefixedName()
+func (r *VMAlertmanager) GetServiceAccount() *ServiceAccount {
+	sa := r.Spec.ServiceAccount
+	if sa == nil {
+		sa = &ServiceAccount{
+			Name:           r.PrefixedName(),
+			AutomountToken: true,
+		}
 	}
-	return cr.Spec.ServiceAccountName
+	return sa
 }
 
-func (cr *VMAlertmanager) IsOwnsServiceAccount() bool {
-	return cr.Spec.ServiceAccountName == ""
+func (r *VMAlertmanager) IsOwnsServiceAccount() bool {
+	if r.Spec.ServiceAccount != nil && r.Spec.ServiceAccount.Name != "" {
+		return r.Spec.ServiceAccount.Name == ""
+	}
+	return false
 }
 
 // GetNSName implements build.builderOpts interface
-func (cr *VMAlertmanager) GetNSName() string {
-	return cr.GetNamespace()
+func (r *VMAlertmanager) GetNSName() string {
+	return r.GetNamespace()
 }
 
 // Port returns port for accessing alertmanager
-func (cr *VMAlertmanager) Port() string {
-	port := cr.Spec.Port
+func (r *VMAlertmanager) Port() string {
+	port := r.Spec.Port
 	if port == "" {
 		port = "9093"
 	}
@@ -359,92 +366,92 @@ func (cr *VMAlertmanager) Port() string {
 
 // AsURL returns url for accessing alertmanager
 // via corresponding service
-func (cr *VMAlertmanager) AsURL() string {
-	port := cr.Port()
-	portName := cr.Spec.PortName
+func (r *VMAlertmanager) AsURL() string {
+	port := r.Port()
+	portName := r.Spec.PortName
 	if portName == "" {
 		portName = "web"
 	}
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
-		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.UseAsDefault {
+		for _, svcPort := range r.Spec.ServiceSpec.Spec.Ports {
 			if svcPort.Name == portName {
 				port = fmt.Sprintf("%d", svcPort.Port)
 				break
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", cr.accessScheme(), cr.PrefixedName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", r.accessScheme(), r.PrefixedName(), r.Namespace, port)
 }
 
 // returns fqdn for direct pod access
-func (cr *VMAlertmanager) asPodFQDN(idx int) string {
-	return fmt.Sprintf("%s://%s-%d.%s.%s.svc:%s", cr.accessScheme(), cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace, cr.Port())
+func (r *VMAlertmanager) asPodFQDN(idx int) string {
+	return fmt.Sprintf("%s://%s-%d.%s.%s.svc:%s", r.accessScheme(), r.PrefixedName(), idx, r.PrefixedName(), r.Namespace, r.Port())
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr *VMAlertmanager) GetMetricPath() string {
-	if prefix := cr.Spec.RoutePrefix; prefix != "" {
+func (r *VMAlertmanager) GetMetricPath() string {
+	if prefix := r.Spec.RoutePrefix; prefix != "" {
 		return path.Join(prefix, metricPath)
 	}
 	return metricPath
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr *VMAlertmanager) GetExtraArgs() map[string]string {
-	return cr.Spec.ExtraArgs
+func (r *VMAlertmanager) GetExtraArgs() map[string]string {
+	return r.Spec.ExtraArgs
 }
 
 // GetServiceScrape returns overrides for serviceScrape builder
-func (cr *VMAlertmanager) GetServiceScrape() *VMServiceScrapeSpec {
-	return cr.Spec.ServiceScrapeSpec
+func (r *VMAlertmanager) GetServiceScrape() *VMServiceScrapeSpec {
+	return r.Spec.ServiceScrapeSpec
 }
 
 // AsCRDOwner implements interface
-func (cr *VMAlertmanager) AsCRDOwner() []metav1.OwnerReference {
+func (r *VMAlertmanager) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(AlertManager)
 }
 
 // AsNotifiers converts VMAlertmanager into VMAlertNotifierSpec
-func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
-	var r []VMAlertNotifierSpec
+func (r *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
+	var notifiers []VMAlertNotifierSpec
 	replicaCount := 1
-	if cr.Spec.ReplicaCount != nil {
-		replicaCount = int(*cr.Spec.ReplicaCount)
+	if r.Spec.ReplicaCount != nil {
+		replicaCount = int(*r.Spec.ReplicaCount)
 	}
 	for i := 0; i < replicaCount; i++ {
 		ns := VMAlertNotifierSpec{
-			URL: cr.asPodFQDN(i),
+			URL: r.asPodFQDN(i),
 		}
-		r = append(r, ns)
+		notifiers = append(notifiers, ns)
 	}
-	return r
+	return notifiers
 }
 
-func (cr *VMAlertmanager) GetVolumeName() string {
-	if cr.Spec.Storage != nil && cr.Spec.Storage.VolumeClaimTemplate.Name != "" {
-		return cr.Spec.Storage.VolumeClaimTemplate.Name
+func (r *VMAlertmanager) GetVolumeName() string {
+	if r.Spec.Storage != nil && r.Spec.Storage.VolumeClaimTemplate.Name != "" {
+		return r.Spec.Storage.VolumeClaimTemplate.Name
 	}
-	return fmt.Sprintf("vmalertmanager-%s-db", cr.Name)
+	return fmt.Sprintf("vmalertmanager-%s-db", r.Name)
 }
 
-func (cr *VMAlertmanager) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
+func (r *VMAlertmanager) Probe() *EmbeddedProbes {
+	return r.Spec.EmbeddedProbes
 }
 
-func (cr *VMAlertmanager) ProbePath() string {
+func (r *VMAlertmanager) ProbePath() string {
 	webRoutePrefix := "/"
-	if cr.Spec.RoutePrefix != "" {
-		webRoutePrefix = cr.Spec.RoutePrefix
+	if r.Spec.RoutePrefix != "" {
+		webRoutePrefix = r.Spec.RoutePrefix
 	}
 	return path.Clean(webRoutePrefix + "/-/healthy")
 }
 
-func (cr *VMAlertmanager) ProbePort() string {
-	return cr.Spec.PortName
+func (r *VMAlertmanager) ProbePort() string {
+	return r.Spec.PortName
 }
 
-func (cr *VMAlertmanager) accessScheme() string {
-	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
+func (r *VMAlertmanager) accessScheme() string {
+	if r.Spec.WebConfig != nil && r.Spec.WebConfig.TLSServerConfig != nil {
 		// special case for mTLS
 		return "https"
 	}
@@ -452,44 +459,113 @@ func (cr *VMAlertmanager) accessScheme() string {
 }
 
 // ProbeScheme returns scheme for probe
-func (cr *VMAlertmanager) ProbeScheme() string {
-	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
+func (r *VMAlertmanager) ProbeScheme() string {
+	if r.Spec.WebConfig != nil && r.Spec.WebConfig.TLSServerConfig != nil {
 		return "HTTPS"
 	}
 	return "HTTP"
 }
 
-func (cr *VMAlertmanager) ProbeNeedLiveness() bool {
+func (r *VMAlertmanager) ProbeNeedLiveness() bool {
 	return true
 }
 
 // IsUnmanaged checks if alertmanager should managed any alertmanager config objects
-func (cr *VMAlertmanager) IsUnmanaged() bool {
-	return !cr.Spec.SelectAllByDefault && cr.Spec.ConfigSelector == nil && cr.Spec.ConfigNamespaceSelector == nil
+func (r *VMAlertmanager) IsUnmanaged() bool {
+	return !r.Spec.SelectAllByDefault && r.Spec.ConfigSelector == nil && r.Spec.ConfigNamespaceSelector == nil
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMAlertmanager) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+func (r *VMAlertmanager) LastAppliedSpecAsPatch() (client.Patch, error) {
+	return lastAppliedChangesAsPatch(r.ObjectMeta, r.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMAlertmanager) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+func (r *VMAlertmanager) HasSpecChanges() (bool, error) {
+	return hasStateChanges(r.ObjectMeta, r.Spec)
 }
 
-func (cr *VMAlertmanager) Paused() bool {
-	return cr.Spec.Paused
+func (r *VMAlertmanager) Paused() bool {
+	return r.Spec.Paused
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAlertmanager, *VMAlertmanagerStatus]{
+func (r *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAlertmanager, *VMAlertmanagerStatus]{
 		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
+		r:            r,
+		rStatus:      &r.Status,
 		maybeErr:     maybeErr,
 	})
+}
+
+func (r *VMAlertmanager) Validate() error {
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
+	for idx, matchers := range r.Spec.EnforcedTopRouteMatchers {
+		_, err := amlabels.ParseMatchers(matchers)
+		if err != nil {
+			fmt.Errorf("incorrect EnforcedTopRouteMatchers=%q at idx=%d: %w", matchers, idx, err)
+		}
+	}
+
+	if len(r.Spec.ConfigRawYaml) > 0 {
+		if err := validateAlertmanagerConfigSpec([]byte(r.Spec.ConfigRawYaml)); err != nil {
+			return fmt.Errorf("bad config syntax at spec.configRawYaml: %w", err)
+		}
+	}
+	if r.Spec.ConfigSecret == r.ConfigSecretName() {
+		return fmt.Errorf("spec.configSecret uses the same name as built-in config secret used by operator. Please change it's name")
+	}
+	if r.Spec.WebConfig != nil {
+		if r.Spec.WebConfig.HTTPServerConfig != nil {
+			if r.Spec.WebConfig.HTTPServerConfig.HTTP2 && r.Spec.WebConfig.TLSServerConfig == nil {
+				return fmt.Errorf("with enabled http2 for webserver, tls_server_config must be defined")
+			}
+		}
+		if r.Spec.WebConfig.TLSServerConfig != nil {
+			tc := r.Spec.WebConfig.TLSServerConfig
+			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
+			}
+			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_server_config")
+			}
+			if tc.ClientAuthType == "RequireAndVerifyClientCert" {
+				if tc.ClientCAFile == "" && tc.ClientCASecretRef == nil {
+					return fmt.Errorf("either client_ca_secret_ref or client_ca_file must be set for tls_server_config with enabled RequireAndVerifyClientCert")
+				}
+			}
+		}
+	}
+
+	if r.Spec.GossipConfig != nil {
+		if r.Spec.GossipConfig.TLSServerConfig != nil {
+			tc := r.Spec.GossipConfig.TLSServerConfig
+			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
+			}
+			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_server_config")
+			}
+			if tc.ClientAuthType == "RequireAndVerifyClientCert" {
+				if tc.ClientCAFile == "" && tc.ClientCASecretRef == nil {
+					return fmt.Errorf("either client_ca_secret_ref or client_ca_file must be set for tls_server_config with enabled RequireAndVerifyClientCert")
+				}
+			}
+		}
+		if r.Spec.GossipConfig.TLSClientConfig != nil {
+			tc := r.Spec.GossipConfig.TLSClientConfig
+			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_client_config")
+			}
+			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_client_config")
+			}
+		}
+	}
+	return nil
 }
 
 // AlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager
@@ -526,8 +602,8 @@ type AlertmanagerHTTPConfig struct {
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VMAlertmanager) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.Spec.ServiceSpec
+func (r *VMAlertmanager) GetAdditionalService() *AdditionalServiceSpec {
+	return r.Spec.ServiceSpec
 }
 
 func init() {

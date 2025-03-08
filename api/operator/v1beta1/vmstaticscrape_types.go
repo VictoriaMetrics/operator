@@ -58,18 +58,18 @@ type VMStaticScrapeList struct {
 }
 
 // AsProxyKey builds key for proxy cache maps
-func (cr VMStaticScrape) AsProxyKey(i int) string {
-	return fmt.Sprintf("staticScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
+func (r *VMStaticScrape) AsProxyKey(i int) string {
+	return fmt.Sprintf("staticScrapeProxy/%s/%s/%d", r.Namespace, r.Name, i)
 }
 
 // AsMapKey builds key for cache secret map
-func (cr VMStaticScrape) AsMapKey(i int) string {
-	return fmt.Sprintf("staticScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
+func (r *VMStaticScrape) AsMapKey(i int) string {
+	return fmt.Sprintf("staticScrape/%s/%s/%d", r.Namespace, r.Name, i)
 }
 
 // GetStatusMetadata implements reconcile.objectWithStatus interface
-func (cr *VMStaticScrape) GetStatusMetadata() *StatusMetadata {
-	return &cr.Status.StatusMetadata
+func (r *VMStaticScrape) GetStatusMetadata() *StatusMetadata {
+	return &r.Status.StatusMetadata
 }
 
 func init() {

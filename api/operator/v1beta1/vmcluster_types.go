@@ -31,10 +31,7 @@ type VMClusterSpec struct {
 	// +optional
 	ReplicationFactor *int32 `json:"replicationFactor,omitempty"`
 
-	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VMSelect, VMStorage and VMInsert Pods.
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	*ServiceAccount `json:",inline,omitempty"`
 
 	// ClusterVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
@@ -85,41 +82,41 @@ type VMClusterSpec struct {
 }
 
 // VMAuthLBSelectorLabels defines selector labels for vmauth balancer
-func (cr *VMCluster) VMAuthLBSelectorLabels() map[string]string {
+func (r *VMCluster) VMAuthLBSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmclusterlb-vmauth-balancer",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
 // GetVMAuthLBName returns prefixed name for the loadbalanacer components
-func (cr *VMCluster) GetVMAuthLBName() string {
-	return fmt.Sprintf("vmclusterlb-%s", cr.Name)
+func (r *VMCluster) GetVMAuthLBName() string {
+	return fmt.Sprintf("vmclusterlb-%s", r.Name)
 }
 
-func (cr *VMCluster) setLastSpec(prevSpec VMClusterSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
+func (r *VMCluster) setLastSpec(prevSpec VMClusterSpec) {
+	r.ParsedLastAppliedSpec = &prevSpec
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMCluster) UnmarshalJSON(src []byte) error {
-	type pcr VMCluster
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+func (r *VMCluster) UnmarshalJSON(src []byte) error {
+	type pr VMCluster
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
 		return err
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := parseLastAppliedState(r); err != nil {
 		return err
 	}
 	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMClusterSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMClusterSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmcluster spec: %s, err: %s", string(src), err)
+func (r *VMClusterSpec) UnmarshalJSON(src []byte) error {
+	type pr VMClusterSpec
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
+		r.ParsingError = fmt.Sprintf("cannot parse vmcluster spec: %s, err: %s", string(src), err)
 		return nil
 	}
 	return nil
@@ -176,8 +173,8 @@ type VMClusterStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMClusterStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (r *VMClusterStatus) GetStatusMetadata() *StatusMetadata {
+	return &r.StatusMetadata
 }
 
 // VMClusterList contains a list of VMCluster
@@ -252,8 +249,8 @@ type VMSelect struct {
 }
 
 // GetVMSelectLBName returns headless proxy service name for select component
-func (cr *VMCluster) GetVMSelectLBName() string {
-	return prefixedName(cr.Name, "vmselectinternal")
+func (r *VMCluster) GetVMSelectLBName() string {
+	return prefixedName(r.Name, "vmselectinternal")
 }
 
 func prefixedName(name, prefix string) string {
@@ -322,42 +319,42 @@ type VMInsert struct {
 }
 
 // GetVMInsertLBName returns headless proxy service name for insert component
-func (cr VMCluster) GetVMInsertLBName() string {
-	return prefixedName(cr.Name, "vminsertinternal")
+func (r *VMCluster) GetVMInsertLBName() string {
+	return prefixedName(r.Name, "vminsertinternal")
 }
 
-func (cr *VMInsert) Probe() *EmbeddedProbes {
-	return cr.EmbeddedProbes
+func (r *VMInsert) Probe() *EmbeddedProbes {
+	return r.EmbeddedProbes
 }
 
-func (cr *VMInsert) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+func (r *VMInsert) ProbePath() string {
+	return buildPathWithPrefixFlag(r.ExtraArgs, healthPath)
 }
 
-func (cr *VMInsert) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+func (r *VMInsert) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(r.ExtraArgs))
 }
 
-func (cr *VMInsert) ProbePort() string {
-	return cr.Port
+func (r *VMInsert) ProbePort() string {
+	return r.Port
 }
 
-func (cr *VMInsert) ProbeNeedLiveness() bool {
+func (r *VMInsert) ProbeNeedLiveness() bool {
 	return true
 }
 
 // GetVMInsertName returns vminsert component name
-func (cr *VMCluster) GetVMInsertName() string {
-	return prefixedName(cr.Name, "vminsert")
+func (r *VMCluster) GetVMInsertName() string {
+	return prefixedName(r.Name, "vminsert")
 }
 
 // GetInsertName returns select component name
-func (cr *VMCluster) GetVMSelectName() string {
-	return prefixedName(cr.Name, "vmselect")
+func (r *VMCluster) GetVMSelectName() string {
+	return prefixedName(r.Name, "vmselect")
 }
 
-func (cr *VMCluster) GetVMStorageName() string {
-	return prefixedName(cr.Name, "vmstorage")
+func (r *VMCluster) GetVMStorageName() string {
+	return prefixedName(r.Name, "vmstorage")
 }
 
 type VMStorage struct {
@@ -500,13 +497,13 @@ type VMBackup struct {
 	Restore *VMRestore `json:"restore,omitempty"`
 }
 
-func (cr *VMBackup) sanityCheck(l *License) error {
-	if !l.IsProvided() && !cr.AcceptEULA {
+func (r *VMBackup) validate(l *License) error {
+	if !l.IsProvided() && !r.AcceptEULA {
 		return fmt.Errorf("it is required to provide license key. See [here](https://docs.victoriametrics.com/enterprise)")
 	}
 
 	if l.IsProvided() {
-		return l.sanityCheck()
+		return l.validate()
 	}
 
 	return nil
@@ -527,18 +524,18 @@ type VMRestoreOnStartConfig struct {
 }
 
 // GetStorageVolumeName returns formatted name for vmstorage volume
-func (cr *VMStorage) GetStorageVolumeName() string {
-	if cr.Storage != nil && cr.Storage.VolumeClaimTemplate.Name != "" {
-		return cr.Storage.VolumeClaimTemplate.Name
+func (r *VMStorage) GetStorageVolumeName() string {
+	if r.Storage != nil && r.Storage.VolumeClaimTemplate.Name != "" {
+		return r.Storage.VolumeClaimTemplate.Name
 	}
 	return "vmstorage-db"
 }
 
 // GetCacheMountVolumeName returns formatted name for vmselect volume
-func (cr *VMSelect) GetCacheMountVolumeName() string {
-	storageSpec := cr.StorageSpec
+func (r *VMSelect) GetCacheMountVolumeName() string {
+	storageSpec := r.StorageSpec
 	if storageSpec == nil {
-		storageSpec = cr.Storage
+		storageSpec = r.Storage
 	}
 	if storageSpec != nil && storageSpec.VolumeClaimTemplate.Name != "" {
 		return storageSpec.VolumeClaimTemplate.Name
@@ -546,83 +543,130 @@ func (cr *VMSelect) GetCacheMountVolumeName() string {
 	return prefixedName("cachedir", "vmselect")
 }
 
+func (r *VMCluster) Validate() error {
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if r.Spec.VMSelect != nil {
+		vms := r.Spec.VMSelect
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == r.GetVMSelectName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", r.GetVMSelectName())
+		}
+		if vms.HPA != nil {
+			if err := vms.HPA.validate(); err != nil {
+				return err
+			}
+		}
+	}
+	if r.Spec.VMInsert != nil {
+		vmi := r.Spec.VMInsert
+		if vmi.ServiceSpec != nil && vmi.ServiceSpec.Name == r.GetVMInsertName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", r.GetVMInsertName())
+		}
+		if vmi.HPA != nil {
+			if err := vmi.HPA.validate(); err != nil {
+				return err
+			}
+		}
+	}
+	if r.Spec.VMStorage != nil {
+		vms := r.Spec.VMStorage
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == r.GetVMInsertName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", r.GetVMStorageName())
+		}
+		if r.Spec.VMStorage.VMBackup != nil {
+			if err := r.Spec.VMStorage.VMBackup.validate(r.Spec.License); err != nil {
+				return err
+			}
+		}
+	}
+	if r.Spec.RequestsLoadBalancer.Enabled {
+		rlb := r.Spec.RequestsLoadBalancer.Spec
+		if rlb.AdditionalServiceSpec != nil && rlb.AdditionalServiceSpec.Name == r.GetVMAuthLBName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", r.GetVMAuthLBName())
+		}
+	}
+
+	return nil
+}
+
 // VMSelectSelectorLabels returns selector labels for vmselect cluster component
-func (cr *VMCluster) VMSelectSelectorLabels() map[string]string {
+func (r *VMCluster) VMSelectSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmselect",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
 // VMSelectPodLabels returns pod labels for vmselect cluster component
-func (cr *VMCluster) VMSelectPodLabels() map[string]string {
-	selectorLabels := cr.VMSelectSelectorLabels()
-	if cr.Spec.VMSelect == nil || cr.Spec.VMSelect.PodMetadata == nil {
+func (r *VMCluster) VMSelectPodLabels() map[string]string {
+	selectorLabels := r.VMSelectSelectorLabels()
+	if r.Spec.VMSelect == nil || r.Spec.VMSelect.PodMetadata == nil {
 		return selectorLabels
 	}
-	return labels.Merge(cr.Spec.VMSelect.PodMetadata.Labels, selectorLabels)
+	return labels.Merge(r.Spec.VMSelect.PodMetadata.Labels, selectorLabels)
 }
 
 // VMInsertSelectorLabels returns selector labels for vminsert cluster component
-func (cr *VMCluster) VMInsertSelectorLabels() map[string]string {
+func (r *VMCluster) VMInsertSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vminsert",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
 // VMInsertPodLabels returns pod labels for vminsert cluster component
-func (cr *VMCluster) VMInsertPodLabels() map[string]string {
-	selectorLabels := cr.VMInsertSelectorLabels()
-	if cr.Spec.VMInsert == nil || cr.Spec.VMInsert.PodMetadata == nil {
+func (r *VMCluster) VMInsertPodLabels() map[string]string {
+	selectorLabels := r.VMInsertSelectorLabels()
+	if r.Spec.VMInsert == nil || r.Spec.VMInsert.PodMetadata == nil {
 		return selectorLabels
 	}
-	return labels.Merge(cr.Spec.VMInsert.PodMetadata.Labels, selectorLabels)
+	return labels.Merge(r.Spec.VMInsert.PodMetadata.Labels, selectorLabels)
 }
 
 // VMStorageSelectorLabels  returns pod labels for vmstorage cluster component
-func (cr VMCluster) VMStorageSelectorLabels() map[string]string {
+func (r VMCluster) VMStorageSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmstorage",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
 // VMStoragePodLabels returns pod labels for the vmstorage cluster component
-func (cr *VMCluster) VMStoragePodLabels() map[string]string {
-	selectorLabels := cr.VMStorageSelectorLabels()
-	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
+func (r *VMCluster) VMStoragePodLabels() map[string]string {
+	selectorLabels := r.VMStorageSelectorLabels()
+	if r.Spec.VMStorage == nil || r.Spec.VMStorage.PodMetadata == nil {
 		return selectorLabels
 	}
-	return labels.Merge(cr.Spec.VMStorage.PodMetadata.Labels, selectorLabels)
+	return labels.Merge(r.Spec.VMStorage.PodMetadata.Labels, selectorLabels)
 }
 
 // AvailableStorageNodeIDs returns ids of the storage nodes for the provided component
-func (cr *VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
+func (r *VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	var result []int32
-	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.ReplicaCount == nil {
+	if r.Spec.VMStorage == nil || r.Spec.VMStorage.ReplicaCount == nil {
 		return result
 	}
 	maintenanceNodes := make(map[int32]struct{})
 	switch requestsType {
 	case "select":
-		for _, i := range cr.Spec.VMStorage.MaintenanceSelectNodeIDs {
+		for _, i := range r.Spec.VMStorage.MaintenanceSelectNodeIDs {
 			maintenanceNodes[i] = struct{}{}
 		}
 	case "insert":
-		for _, i := range cr.Spec.VMStorage.MaintenanceInsertNodeIDs {
+		for _, i := range r.Spec.VMStorage.MaintenanceInsertNodeIDs {
 			maintenanceNodes[i] = struct{}{}
 		}
 	default:
 		panic("BUG unsupported requestsType: " + requestsType)
 	}
-	for i := int32(0); i < *cr.Spec.VMStorage.ReplicaCount; i++ {
+	for i := int32(0); i < *r.Spec.VMStorage.ReplicaCount; i++ {
 		if _, ok := maintenanceNodes[i]; ok {
 			continue
 		}
@@ -634,56 +678,56 @@ func (cr *VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 var globalClusterLabels = map[string]string{"app.kubernetes.io/part-of": "vmcluster"}
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
-func (cr *VMCluster) FinalLabels(selectorLabels map[string]string) map[string]string {
+func (r *VMCluster) FinalLabels(selectorLabels map[string]string) map[string]string {
 	baseLabels := labels.Merge(globalClusterLabels, selectorLabels)
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+	if r.ObjectMeta.Labels == nil && r.Spec.ManagedMetadata == nil {
 		// fast path
 		return baseLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	if r.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
 	}
-	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	if r.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, r.Spec.ManagedMetadata.Labels)
 	}
 	return labels.Merge(result, baseLabels)
 }
 
 // VMSelectPodAnnotations returns pod annotations for vmselect cluster component
-func (cr *VMCluster) VMSelectPodAnnotations() map[string]string {
-	if cr.Spec.VMSelect == nil || cr.Spec.VMSelect.PodMetadata == nil {
+func (r *VMCluster) VMSelectPodAnnotations() map[string]string {
+	if r.Spec.VMSelect == nil || r.Spec.VMSelect.PodMetadata == nil {
 		return make(map[string]string)
 	}
-	return cr.Spec.VMSelect.PodMetadata.Annotations
+	return r.Spec.VMSelect.PodMetadata.Annotations
 }
 
 // VMInsertPodAnnotations returns pod annotations for vminsert cluster component
-func (cr *VMCluster) VMInsertPodAnnotations() map[string]string {
-	if cr.Spec.VMInsert == nil || cr.Spec.VMInsert.PodMetadata == nil {
+func (r *VMCluster) VMInsertPodAnnotations() map[string]string {
+	if r.Spec.VMInsert == nil || r.Spec.VMInsert.PodMetadata == nil {
 		return make(map[string]string)
 	}
-	return cr.Spec.VMInsert.PodMetadata.Annotations
+	return r.Spec.VMInsert.PodMetadata.Annotations
 }
 
 // VMStoragePodAnnotations returns pod annotations for vmstorage cluster component
-func (cr *VMCluster) VMStoragePodAnnotations() map[string]string {
-	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
+func (r *VMCluster) VMStoragePodAnnotations() map[string]string {
+	if r.Spec.VMStorage == nil || r.Spec.VMStorage.PodMetadata == nil {
 		return make(map[string]string)
 	}
-	return cr.Spec.VMStorage.PodMetadata.Annotations
+	return r.Spec.VMStorage.PodMetadata.Annotations
 }
 
 // AnnotationsFiltered returns global annotations to be applied by objects generate for vmcluster
-func (cr *VMCluster) AnnotationsFiltered() map[string]string {
+func (r *VMCluster) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
-	if cr.Spec.ManagedMetadata != nil {
+	dst := filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if r.Spec.ManagedMetadata != nil {
 		if dst == nil {
 			dst = make(map[string]string)
 		}
-		for k, v := range cr.Spec.ManagedMetadata.Annotations {
+		for k, v := range r.Spec.ManagedMetadata.Annotations {
 			dst[k] = v
 		}
 	}
@@ -692,80 +736,80 @@ func (cr *VMCluster) AnnotationsFiltered() map[string]string {
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+func (r *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
+	return lastAppliedChangesAsPatch(r.ObjectMeta, r.Spec)
 }
 
 // HasSpecChanges compares cluster spec with last applied cluster spec stored in annotation
-func (cr *VMCluster) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+func (r *VMCluster) HasSpecChanges() (bool, error) {
+	return hasStateChanges(r.ObjectMeta, r.Spec)
 }
 
-func (cr *VMCluster) Paused() bool {
-	return cr.Spec.Paused
-}
-
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMSelect) GetMetricPath() string {
-	if cr == nil {
-		return healthPath
-	}
-	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
-}
-
-// ExtraArgs returns additionally configured command-line arguments
-func (cr *VMSelect) GetExtraArgs() map[string]string {
-	return cr.ExtraArgs
-}
-
-// ServiceScrape returns overrides for serviceScrape builder
-func (cr *VMSelect) GetServiceScrape() *VMServiceScrapeSpec {
-	return cr.ServiceScrapeSpec
+func (r *VMCluster) Paused() bool {
+	return r.Spec.Paused
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr *VMInsert) GetMetricPath() string {
-	if cr == nil {
+func (r *VMSelect) GetMetricPath() string {
+	if r == nil {
 		return healthPath
 	}
-	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return buildPathWithPrefixFlag(r.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMInsert) GetExtraArgs() map[string]string {
-	return cr.ExtraArgs
+func (r *VMSelect) GetExtraArgs() map[string]string {
+	return r.ExtraArgs
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
-func (cr *VMInsert) GetServiceScrape() *VMServiceScrapeSpec {
-	return cr.ServiceScrapeSpec
+func (r *VMSelect) GetServiceScrape() *VMServiceScrapeSpec {
+	return r.ServiceScrapeSpec
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr *VMStorage) GetMetricPath() string {
-	if cr == nil {
+func (r *VMInsert) GetMetricPath() string {
+	if r == nil {
 		return healthPath
 	}
-	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return buildPathWithPrefixFlag(r.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMStorage) GetExtraArgs() map[string]string {
-	return cr.ExtraArgs
+func (r *VMInsert) GetExtraArgs() map[string]string {
+	return r.ExtraArgs
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
-func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
-	return cr.ServiceScrapeSpec
+func (r *VMInsert) GetServiceScrape() *VMServiceScrapeSpec {
+	return r.ServiceScrapeSpec
+}
+
+// GetMetricPath returns prefixed path for metric requests
+func (r *VMStorage) GetMetricPath() string {
+	if r == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(r.ExtraArgs, metricPath)
+}
+
+// ExtraArgs returns additionally configured command-line arguments
+func (r *VMStorage) GetExtraArgs() map[string]string {
+	return r.ExtraArgs
+}
+
+// ServiceScrape returns overrides for serviceScrape builder
+func (r *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
+	return r.ServiceScrapeSpec
 }
 
 // SnapshotCreatePathWithFlags returns url for accessing vmbackupmanager component
-func (cr *VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
+func (r *VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotCreate))), extraArgs)
 }
 
 // SnapshotDeletePathWithFlags returns url for accessing vmbackupmanager component
-func (cr *VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
+func (r *VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete))), extraArgs)
 }
 
@@ -781,145 +825,150 @@ func joinBackupAuthKey(urlPath string, extraArgs map[string]string) string {
 	return urlPath
 }
 
-// GetServiceAccountName returns service account name for all vmcluster components
-func (cr *VMCluster) GetServiceAccountName() string {
-	if cr.Spec.ServiceAccountName == "" {
-		return cr.PrefixedName()
+func (r *VMCluster) GetServiceAccount() *ServiceAccount {
+	sa := r.Spec.ServiceAccount
+	if sa == nil {
+		sa = &ServiceAccount{
+			Name:           r.PrefixedName(),
+			AutomountToken: true,
+		}
 	}
-	return cr.Spec.ServiceAccountName
+	return sa
 }
 
-// IsOwnsServiceAccount checks if built-in service should be used
-func (cr *VMCluster) IsOwnsServiceAccount() bool {
-	return cr.Spec.ServiceAccountName == ""
+func (r *VMCluster) IsOwnsServiceAccount() bool {
+	if r.Spec.ServiceAccount != nil && r.Spec.ServiceAccount.Name != "" {
+		return r.Spec.ServiceAccount.Name == ""
+	}
+	return false
 }
 
 // PrefixedName format name of the component with hard-coded prefix
-func (cr *VMCluster) PrefixedName() string {
-	return fmt.Sprintf("vmcluster-%s", cr.Name)
+func (r *VMCluster) PrefixedName() string {
+	return fmt.Sprintf("vmcluster-%s", r.Name)
 }
 
 // SelectorLabels defines labels for objects generated used by all cluster components
-func (cr *VMCluster) SelectorLabels() map[string]string {
+func (r *VMCluster) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmcluster",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
 // AsURL implements stub for interface.
-func (cr *VMCluster) AsURL() string {
+func (r *VMCluster) AsURL() string {
 	return "unknown"
 }
 
-func (cr *VMCluster) VMSelectURL() string {
-	if cr.Spec.VMSelect == nil {
+func (r *VMCluster) VMSelectURL() string {
+	if r.Spec.VMSelect == nil {
 		return ""
 	}
-	port := cr.Spec.VMSelect.Port
+	port := r.Spec.VMSelect.Port
 	if port == "" {
 		port = "8481"
 	}
-	if cr.Spec.VMSelect.ServiceSpec != nil && cr.Spec.VMSelect.ServiceSpec.UseAsDefault {
-		for _, svcPort := range cr.Spec.VMSelect.ServiceSpec.Spec.Ports {
+	if r.Spec.VMSelect.ServiceSpec != nil && r.Spec.VMSelect.ServiceSpec.UseAsDefault {
+		for _, svcPort := range r.Spec.VMSelect.ServiceSpec.Spec.Ports {
 			if svcPort.Name == "http" {
 				port = fmt.Sprintf("%d", svcPort.Port)
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.GetVMSelectName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(r.Spec.VMSelect.ExtraArgs), r.GetVMSelectName(), r.Namespace, port)
 }
 
-func (cr *VMCluster) VMInsertURL() string {
-	if cr.Spec.VMInsert == nil {
+func (r *VMCluster) VMInsertURL() string {
+	if r.Spec.VMInsert == nil {
 		return ""
 	}
-	port := cr.Spec.VMInsert.Port
+	port := r.Spec.VMInsert.Port
 	if port == "" {
 		port = "8480"
 	}
-	if cr.Spec.VMInsert.ServiceSpec != nil && cr.Spec.VMInsert.ServiceSpec.UseAsDefault {
-		for _, svcPort := range cr.Spec.VMInsert.ServiceSpec.Spec.Ports {
+	if r.Spec.VMInsert.ServiceSpec != nil && r.Spec.VMInsert.ServiceSpec.UseAsDefault {
+		for _, svcPort := range r.Spec.VMInsert.ServiceSpec.Spec.Ports {
 			if svcPort.Name == "http" {
 				port = fmt.Sprintf("%d", svcPort.Port)
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.GetVMInsertName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(r.Spec.VMInsert.ExtraArgs), r.GetVMInsertName(), r.Namespace, port)
 }
 
-func (cr *VMCluster) VMStorageURL() string {
-	if cr.Spec.VMStorage == nil {
+func (r *VMCluster) VMStorageURL() string {
+	if r.Spec.VMStorage == nil {
 		return ""
 	}
-	port := cr.Spec.VMStorage.Port
+	port := r.Spec.VMStorage.Port
 	if port == "" {
 		port = "8482"
 	}
-	if cr.Spec.VMStorage.ServiceSpec != nil && cr.Spec.VMStorage.ServiceSpec.UseAsDefault {
-		for _, svcPort := range cr.Spec.VMStorage.ServiceSpec.Spec.Ports {
+	if r.Spec.VMStorage.ServiceSpec != nil && r.Spec.VMStorage.ServiceSpec.UseAsDefault {
+		for _, svcPort := range r.Spec.VMStorage.ServiceSpec.Spec.Ports {
 			if svcPort.Name == "http" {
 				port = fmt.Sprintf("%d", svcPort.Port)
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMStorage.ExtraArgs), cr.GetVMStorageName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(r.Spec.VMStorage.ExtraArgs), r.GetVMStorageName(), r.Namespace, port)
 }
 
 // AsCRDOwner implements interface
-func (cr *VMCluster) AsCRDOwner() []metav1.OwnerReference {
+func (r *VMCluster) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Cluster)
 }
 
 // GetNSName implements build.builderOpts interface
-func (cr *VMCluster) GetNSName() string {
-	return cr.GetNamespace()
+func (r *VMCluster) GetNSName() string {
+	return r.GetNamespace()
 }
 
-func (cr *VMSelect) Probe() *EmbeddedProbes {
-	return cr.EmbeddedProbes
+func (r *VMSelect) Probe() *EmbeddedProbes {
+	return r.EmbeddedProbes
 }
 
-func (cr *VMSelect) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+func (r *VMSelect) ProbePath() string {
+	return buildPathWithPrefixFlag(r.ExtraArgs, healthPath)
 }
 
-func (cr *VMSelect) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+func (r *VMSelect) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(r.ExtraArgs))
 }
 
-func (cr *VMSelect) ProbePort() string {
-	return cr.Port
+func (r *VMSelect) ProbePort() string {
+	return r.Port
 }
 
-func (cr *VMSelect) ProbeNeedLiveness() bool {
+func (r *VMSelect) ProbeNeedLiveness() bool {
 	return true
 }
 
-func (cr *VMStorage) Probe() *EmbeddedProbes {
-	return cr.EmbeddedProbes
+func (r *VMStorage) Probe() *EmbeddedProbes {
+	return r.EmbeddedProbes
 }
 
-func (cr *VMStorage) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+func (r *VMStorage) ProbePath() string {
+	return buildPathWithPrefixFlag(r.ExtraArgs, healthPath)
 }
 
-func (cr *VMStorage) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+func (r *VMStorage) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(r.ExtraArgs))
 }
 
-func (cr *VMStorage) ProbePort() string {
-	return cr.Port
+func (r *VMStorage) ProbePort() string {
+	return r.Port
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMCluster, *VMClusterStatus]{
+func (r *VMCluster) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMCluster, *VMClusterStatus]{
 		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
+		r:            r,
+		rStatus:      &r.Status,
 		maybeErr:     maybeErr,
 		mutateCurrentBeforeCompare: func(vs *VMClusterStatus) {
 			vs.LegacyStatus = vs.UpdateStatus
@@ -928,22 +977,22 @@ func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, sta
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VMSelect) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.ServiceSpec
+func (r *VMSelect) GetAdditionalService() *AdditionalServiceSpec {
+	return r.ServiceSpec
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VMStorage) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.ServiceSpec
+func (r *VMStorage) GetAdditionalService() *AdditionalServiceSpec {
+	return r.ServiceSpec
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VMInsert) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.ServiceSpec
+func (r *VMInsert) GetAdditionalService() *AdditionalServiceSpec {
+	return r.ServiceSpec
 }
 
 // ProbeNeedLiveness implements build.probeCRD interface
-func (cr *VMStorage) ProbeNeedLiveness() bool {
+func (r *VMStorage) ProbeNeedLiveness() bool {
 	return false
 }
 
@@ -987,41 +1036,41 @@ type VMAuthLoadBalancerSpec struct {
 }
 
 // ProbePath returns path for probe requests
-func (cr *VMAuthLoadBalancerSpec) Probe() *EmbeddedProbes {
-	return cr.EmbeddedProbes
+func (r *VMAuthLoadBalancerSpec) Probe() *EmbeddedProbes {
+	return r.EmbeddedProbes
 }
 
 // ProbePort returns port for probe requests
-func (cr *VMAuthLoadBalancerSpec) ProbePort() string {
-	return cr.Port
+func (r *VMAuthLoadBalancerSpec) ProbePort() string {
+	return r.Port
 }
 
 // ProbeNeedLiveness implements build.probeCRD interface
-func (cr *VMAuthLoadBalancerSpec) ProbeNeedLiveness() bool {
+func (r *VMAuthLoadBalancerSpec) ProbeNeedLiveness() bool {
 	return false
 }
 
 // ProbePath returns path for probe requests
-func (cr *VMAuthLoadBalancerSpec) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+func (r *VMAuthLoadBalancerSpec) ProbePath() string {
+	return buildPathWithPrefixFlag(r.ExtraArgs, healthPath)
 }
 
 // ProbeScheme returns scheme for probe requests
-func (cr *VMAuthLoadBalancerSpec) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+func (r *VMAuthLoadBalancerSpec) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(r.ExtraArgs))
 }
 
 // GetServiceScrape implements build.serviceScrapeBuilder interface
-func (cr *VMAuthLoadBalancerSpec) GetServiceScrape() *VMServiceScrapeSpec {
-	return cr.ServiceScrapeSpec
+func (r *VMAuthLoadBalancerSpec) GetServiceScrape() *VMServiceScrapeSpec {
+	return r.ServiceScrapeSpec
 }
 
 // GetExtraArgs implements build.serviceScrapeBuilder interface
-func (cr *VMAuthLoadBalancerSpec) GetExtraArgs() map[string]string {
-	return cr.ExtraArgs
+func (r *VMAuthLoadBalancerSpec) GetExtraArgs() map[string]string {
+	return r.ExtraArgs
 }
 
 // GetMetricPath implements build.serviceScrapeBuilder interface
-func (cr *VMAuthLoadBalancerSpec) GetMetricPath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+func (r *VMAuthLoadBalancerSpec) GetMetricPath() string {
+	return buildPathWithPrefixFlag(r.ExtraArgs, metricPath)
 }

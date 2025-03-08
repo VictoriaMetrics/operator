@@ -310,7 +310,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 			Volumes:            volumes,
 			InitContainers:     ic,
 			Containers:         containers,
-			ServiceAccountName: cr.GetServiceAccountName(),
+			ServiceAccountName: cr.GetServiceAccount().Name,
 		},
 	}
 	return vmAuthSpec, nil

@@ -52,6 +52,8 @@ spec:
                 description: Affinity If specified, the pod's scheduling constraints.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              automountServiceAccountToken:
+                type: boolean
               configMaps:
                 description: |-
                   ConfigMaps is a list of ConfigMaps in the same namespace as the Application
@@ -498,8 +500,8 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
-                description: ServiceAccountName is the name of the ServiceAccount
-                  to use to run the pods
+                description: Name is the name of the ServiceAccount to use to run
+                  the pods
                 type: string
               serviceScrapeSpec:
                 description: ServiceScrapeSpec that will be added to vlogs VMServiceScrape
@@ -1415,6 +1417,8 @@ spec:
                   deny:
                     type: boolean
                 type: object
+              automountServiceAccountToken:
+                type: boolean
               claimTemplates:
                 description: ClaimTemplates allows adding additional VolumeClaimTemplates
                   for VMAgent in StatefulMode
@@ -4199,8 +4203,8 @@ spec:
                   with selectAllByDefault: false - selects nothing
                 type: boolean
               serviceAccountName:
-                description: ServiceAccountName is the name of the ServiceAccount
-                  to use to run the pods
+                description: Name is the name of the ServiceAccount to use to run
+                  the pods
                 type: string
               serviceScrapeNamespaceSelector:
                 description: |-
@@ -9754,6 +9758,8 @@ spec:
                 description: Affinity If specified, the pod's scheduling constraints.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              automountServiceAccountToken:
+                type: boolean
               claimTemplates:
                 description: ClaimTemplates allows adding additional VolumeClaimTemplates
                   for StatefulSet
@@ -11142,8 +11148,8 @@ spec:
                   with selectAllByDefault: false - selects nothing
                 type: boolean
               serviceAccountName:
-                description: ServiceAccountName is the name of the ServiceAccount
-                  to use to run the pods
+                description: Name is the name of the ServiceAccount to use to run
+                  the pods
                 type: string
               serviceScrapeSpec:
                 description: ServiceScrapeSpec that will be added to vmalertmanager
@@ -12183,6 +12189,8 @@ spec:
                 description: Affinity If specified, the pod's scheduling constraints.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              automountServiceAccountToken:
+                type: boolean
               configMaps:
                 description: |-
                   ConfigMaps is a list of ConfigMaps in the same namespace as the Application
@@ -13737,8 +13745,8 @@ spec:
                   with selectAllByDefault: false - selects nothing
                 type: boolean
               serviceAccountName:
-                description: ServiceAccountName is the name of the ServiceAccount
-                  to use to run the pods
+                description: Name is the name of the ServiceAccount to use to run
+                  the pods
                 type: string
               serviceScrapeSpec:
                 description: ServiceScrapeSpec that will be added to vmalert VMServiceScrape
@@ -14107,6 +14115,8 @@ spec:
                 description: Affinity If specified, the pod's scheduling constraints.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              automountServiceAccountToken:
+                type: boolean
               configMaps:
                 description: |-
                   ConfigMaps is a list of ConfigMaps in the same namespace as the Application
@@ -14959,8 +14969,8 @@ spec:
                   with selectAllByDefault: false - selects nothing
                 type: boolean
               serviceAccountName:
-                description: ServiceAccountName is the name of the ServiceAccount
-                  to use to run the pods
+                description: Name is the name of the ServiceAccount to use to run
+                  the pods
                 type: string
               serviceScrapeSpec:
                 description: ServiceScrapeSpec that will be added to vmauth VMServiceScrape
@@ -15765,6 +15775,8 @@ spec:
           spec:
             description: VMClusterSpec defines the desired state of VMCluster
             properties:
+              automountServiceAccountToken:
+                type: boolean
               clusterDomainName:
                 description: |-
                   ClusterDomainName defines domain name suffix for in-cluster dns addresses
@@ -15904,9 +15916,8 @@ spec:
                   [retention period](https://docs.victoriametrics.com/Single-server-VictoriaMetrics/#retention)
                 type: string
               serviceAccountName:
-                description: |-
-                  ServiceAccountName is the name of the ServiceAccount to use to run the
-                  VMSelect, VMStorage and VMInsert Pods.
+                description: Name is the name of the ServiceAccount to use to run
+                  the pods
                 type: string
               useStrictSecurity:
                 description: |-
@@ -28851,6 +28862,8 @@ spec:
                 description: Affinity If specified, the pod's scheduling constraints.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              automountServiceAccountToken:
+                type: boolean
               configMaps:
                 description: |-
                   ConfigMaps is a list of ConfigMaps in the same namespace as the Application
@@ -29348,8 +29361,8 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
-                description: ServiceAccountName is the name of the ServiceAccount
-                  to use to run the pods
+                description: Name is the name of the ServiceAccount to use to run
+                  the pods
                 type: string
               serviceScrapeSpec:
                 description: ServiceScrapeSpec that will be added to vmsingle VMServiceScrape

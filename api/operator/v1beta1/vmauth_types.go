@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 
 	v12 "k8s.io/api/networking/v1"
@@ -13,6 +14,8 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var labelNameRegexp = regexp.MustCompile("^[a-zA-Z_:.][a-zA-Z0-9_:.]*$")
 
 // VMAuthSpec defines the desired state of VMAuth
 type VMAuthSpec struct {
@@ -103,9 +106,8 @@ type VMAuthSpec struct {
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
 	// +optional
 	ExternalConfig `json:"externalConfig,omitempty" yaml:"externalConfig,omitempty"`
-	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
+
+	*ServiceAccount `json:",inline,omitempty"`
 
 	CommonDefaultableParams           `json:",inline,omitempty" yaml:",inline"`
 	CommonConfigReloaderParams        `json:",inline,omitempty" yaml:",inline"`
@@ -127,32 +129,31 @@ type VMAuthUnauthorizedUserAccessSpec struct {
 }
 
 // Validate performs semantic syntax validation
-func (vmuua *VMAuthUnauthorizedUserAccessSpec) Validate() error {
-
-	if len(vmuua.URLMap) == 0 && len(vmuua.URLPrefix) == 0 {
+func (r *VMAuthUnauthorizedUserAccessSpec) Validate() error {
+	if len(r.URLMap) == 0 && len(r.URLPrefix) == 0 {
 		return fmt.Errorf("at least one of `url_map` or `url_prefix` must be defined")
 	}
-	for idx, urlMap := range vmuua.URLMap {
-		if err := urlMap.Validate(); err != nil {
+	for idx, urlMap := range r.URLMap {
+		if err := urlMap.validate(); err != nil {
 			return fmt.Errorf("incorrect url_map at idx=%d: %w", idx, err)
 		}
 	}
-	for _, urlPrefix := range vmuua.URLPrefix {
+	for _, urlPrefix := range r.URLPrefix {
 		if err := validateURLPrefix(urlPrefix); err != nil {
 			return err
 		}
 	}
-	if vmuua.TLSConfig != nil {
-		if err := vmuua.TLSConfig.Validate(); err != nil {
+	if r.TLSConfig != nil {
+		if err := r.TLSConfig.Validate(); err != nil {
 			return fmt.Errorf("incorrect tlsConfig for UnauthorizedUserAccess: %w", err)
 		}
 	}
-	for k := range vmuua.MetricLabels {
+	for k := range r.MetricLabels {
 		if !labelNameRegexp.Match([]byte(k)) {
 			return fmt.Errorf("incorrect metricLabelName=%q, must match pattern=%q", k, labelNameRegexp)
 		}
 	}
-	if err := vmuua.VMUserConfigOptions.Validate(); err != nil {
+	if err := r.VMUserConfigOptions.validate(); err != nil {
 		return fmt.Errorf("incorrect UnauthorizedUserAccess options: %w", err)
 	}
 
@@ -178,14 +179,14 @@ type UnauthorizedAccessConfigURLMap struct {
 }
 
 // Validate performs syntax logic validation
-func (uac *UnauthorizedAccessConfigURLMap) Validate() error {
-	if len(uac.SrcPaths) == 0 && len(uac.SrcHosts) == 0 && len(uac.SrcQueryArgs) == 0 && len(uac.URLMapCommon.SrcQueryArgs) == 0 {
+func (r *UnauthorizedAccessConfigURLMap) validate() error {
+	if len(r.SrcPaths) == 0 && len(r.SrcHosts) == 0 && len(r.SrcQueryArgs) == 0 && len(r.URLMapCommon.SrcQueryArgs) == 0 {
 		return fmt.Errorf("incorrect url_map config at least of one src_paths,src_hosts,src_query_args or src_headers must be defined")
 	}
-	if len(uac.URLPrefix) == 0 {
+	if len(r.URLPrefix) == 0 {
 		return fmt.Errorf("url_prefix cannot be empty for url_map")
 	}
-	for idx, urlPrefix := range uac.URLPrefix {
+	for idx, urlPrefix := range r.URLPrefix {
 		if err := validateURLPrefix(urlPrefix); err != nil {
 			return fmt.Errorf("incorrect url_prefix=%q at idx: %d: %w", urlPrefix, idx, err)
 		}
@@ -318,21 +319,21 @@ type VMUserConfigOptions struct {
 }
 
 // Validate performs semantic syntax validation
-func (vuopts *VMUserConfigOptions) Validate() error {
-	for _, durl := range vuopts.DefaultURLs {
+func (r *VMUserConfigOptions) validate() error {
+	for _, durl := range r.DefaultURLs {
 		if err := validateURLPrefix(durl); err != nil {
 			return fmt.Errorf("unexpected spec.default_url=%q: %w", durl, err)
 		}
 	}
-	if vuopts.TLSConfig != nil {
-		if err := vuopts.TLSConfig.Validate(); err != nil {
+	if r.TLSConfig != nil {
+		if err := r.TLSConfig.Validate(); err != nil {
 			return err
 		}
 	}
-	if err := validateHTTPHeaders(vuopts.Headers); err != nil {
+	if err := validateHTTPHeaders(r.Headers); err != nil {
 		return fmt.Errorf("incorrect 'headers' syntax: %w", err)
 	}
-	if err := validateHTTPHeaders(vuopts.ResponseHeaders); err != nil {
+	if err := validateHTTPHeaders(r.ResponseHeaders); err != nil {
 		return fmt.Errorf("incorrect 'response_headers' syntax: %w", err)
 	}
 	return nil
@@ -349,28 +350,84 @@ func validateHTTPHeaders(headerValues []string) error {
 	return nil
 }
 
-func (cr *VMAuth) setLastSpec(prevSpec VMAuthSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
+func (r *VMAuth) setLastSpec(prevSpec VMAuthSpec) {
+	r.ParsedLastAppliedSpec = &prevSpec
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAuth) UnmarshalJSON(src []byte) error {
-	type pcr VMAuth
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+func (r *VMAuth) UnmarshalJSON(src []byte) error {
+	type pr VMAuth
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
 		return err
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := parseLastAppliedState(r); err != nil {
 		return err
 	}
 
 	return nil
 }
 
+func (r *VMAuth) Validate() error {
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
+	}
+	if r.Spec.Ingress != nil {
+		// check ingress
+		// TlsHosts and TlsSecretName are both needed if one of them is used
+		ing := r.Spec.Ingress
+		if len(ing.TlsHosts) > 0 && ing.TlsSecretName == "" {
+			return fmt.Errorf("spec.ingress.tlsSecretName cannot be empty with non-empty spec.ingress.tlsHosts")
+		}
+		if ing.TlsSecretName != "" && len(ing.TlsHosts) == 0 {
+			return fmt.Errorf("spec.ingress.tlsHosts cannot be empty with non-empty spec.ingress.tlsSecretName")
+		}
+	}
+	if r.Spec.ConfigSecret != "" && r.Spec.ExternalConfig.SecretRef != nil {
+		return fmt.Errorf("spec.configSecret and spec.externalConfig.secretRef cannot be used at the same time")
+	}
+	if r.Spec.ExternalConfig.SecretRef != nil && r.Spec.ExternalConfig.LocalPath != "" {
+		return fmt.Errorf("at most one option can be used for externalConfig: spec.configSecret or spec.externalConfig.secretRef")
+	}
+	if r.Spec.ExternalConfig.SecretRef != nil {
+		if r.Spec.ExternalConfig.SecretRef.Name == r.PrefixedName() {
+			return fmt.Errorf("spec.externalConfig.secretRef cannot be equal to the vmauth-config-CR_NAME=%q, it's operator reserved value", r.ConfigSecretName())
+		}
+		if r.Spec.ExternalConfig.SecretRef.Name == "" || r.Spec.ExternalConfig.SecretRef.Key == "" {
+			return fmt.Errorf("name=%q and key=%q fields must be non-empty for spec.externalConfig.secretRef",
+				r.Spec.ExternalConfig.SecretRef.Name, r.Spec.ExternalConfig.SecretRef.Key)
+		}
+	}
+	if len(r.Spec.UnauthorizedAccessConfig) > 0 && r.Spec.UnauthorizedUserAccessSpec != nil {
+		return fmt.Errorf("at most one option can be used `spec.unauthorizedAccessConfig` or `spec.unauthorizedUserAccessSpec`, got both")
+	}
+	if len(r.Spec.UnauthorizedAccessConfig) > 0 {
+		for _, urlMap := range r.Spec.UnauthorizedAccessConfig {
+			if err := urlMap.validate(); err != nil {
+				return fmt.Errorf("incorrect r.spec.UnauthorizedAccessConfig: %w", err)
+			}
+		}
+		if err := r.Spec.VMUserConfigOptions.validate(); err != nil {
+			return fmt.Errorf("incorrect r.spec UnauthorizedAccessConfig options: %w", err)
+		}
+	}
+
+	if r.Spec.UnauthorizedUserAccessSpec != nil {
+		if err := r.Spec.UnauthorizedUserAccessSpec.validate(); err != nil {
+			return fmt.Errorf("incorrect r.spec.UnauthorizedUserAccess syntax: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAuthSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMAuthSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmauth spec: %s, err: %s", string(src), err)
+func (r *VMAuthSpec) UnmarshalJSON(src []byte) error {
+	type pr VMAuthSpec
+	if err := json.Unmarshal(src, (*pr)(r)); err != nil {
+		r.ParsingError = fmt.Sprintf("cannot parse vmauth spec: %s, err: %s", string(src), err)
 		return nil
 	}
 	return nil
@@ -409,8 +466,8 @@ type VMAuthStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAuthStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (r *VMAuthStatus) GetStatusMetadata() *StatusMetadata {
+	return &r.StatusMetadata
 }
 
 // VMAuth is the Schema for the vmauths API
@@ -433,23 +490,23 @@ type VMAuth struct {
 	Status VMAuthStatus `json:"status,omitempty"`
 }
 
-func (cr *VMAuth) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
+func (r *VMAuth) Probe() *EmbeddedProbes {
+	return r.Spec.EmbeddedProbes
 }
 
-func (cr *VMAuth) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+func (r *VMAuth) ProbePath() string {
+	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, healthPath)
 }
 
-func (cr *VMAuth) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+func (r *VMAuth) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(r.Spec.ExtraArgs))
 }
 
-func (cr *VMAuth) ProbePort() string {
-	return cr.Spec.Port
+func (r *VMAuth) ProbePort() string {
+	return r.Spec.Port
 }
 
-func (cr *VMAuth) ProbeNeedLiveness() bool {
+func (r *VMAuth) ProbeNeedLiveness() bool {
 	return true
 }
 
@@ -463,155 +520,162 @@ type VMAuthList struct {
 }
 
 // AsOwner returns owner references with current object as owner
-func (cr *VMAuth) AsOwner() []metav1.OwnerReference {
+func (r *VMAuth) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
-			APIVersion:         cr.APIVersion,
-			Kind:               cr.Kind,
-			Name:               cr.Name,
-			UID:                cr.UID,
+			APIVersion:         r.APIVersion,
+			Kind:               r.Kind,
+			Name:               r.Name,
+			UID:                r.UID,
 			Controller:         ptr.To(true),
 			BlockOwnerDeletion: ptr.To(true),
 		},
 	}
 }
 
-func (cr *VMAuth) PodAnnotations() map[string]string {
+func (r *VMAuth) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
-	if cr.Spec.PodMetadata != nil {
-		for annotation, value := range cr.Spec.PodMetadata.Annotations {
+	if r.Spec.PodMetadata != nil {
+		for annotation, value := range r.Spec.PodMetadata.Annotations {
 			annotations[annotation] = value
 		}
 	}
 	return annotations
 }
 
-func (cr *VMAuth) AnnotationsFiltered() map[string]string {
+func (r *VMAuth) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
-	if cr.Spec.ManagedMetadata != nil {
+	dst := filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if r.Spec.ManagedMetadata != nil {
 		if dst == nil {
 			dst = make(map[string]string)
 		}
-		for k, v := range cr.Spec.ManagedMetadata.Annotations {
+		for k, v := range r.Spec.ManagedMetadata.Annotations {
 			dst[k] = v
 		}
 	}
 	return dst
 }
 
-func (cr *VMAuth) SelectorLabels() map[string]string {
+func (r *VMAuth) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmauth",
-		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/instance":  r.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
-func (cr *VMAuth) PodLabels() map[string]string {
-	lbls := cr.SelectorLabels()
-	if cr.Spec.PodMetadata == nil {
+func (r *VMAuth) PodLabels() map[string]string {
+	lbls := r.SelectorLabels()
+	if r.Spec.PodMetadata == nil {
 		return lbls
 	}
-	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
+	return labels.Merge(r.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr *VMAuth) AllLabels() map[string]string {
-	selectorLabels := cr.SelectorLabels()
+func (r *VMAuth) AllLabels() map[string]string {
+	selectorLabels := r.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+	if r.ObjectMeta.Labels == nil && r.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	if r.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
 	}
-	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+	if r.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, r.Spec.ManagedMetadata.Labels)
 	}
 	return labels.Merge(result, selectorLabels)
 }
 
-func (cr *VMAuth) PrefixedName() string {
-	return fmt.Sprintf("vmauth-%s", cr.Name)
+func (r *VMAuth) PrefixedName() string {
+	return fmt.Sprintf("vmauth-%s", r.Name)
 }
 
-func (cr *VMAuth) ConfigSecretName() string {
-	return fmt.Sprintf("vmauth-config-%s", cr.Name)
+func (r *VMAuth) ConfigSecretName() string {
+	return fmt.Sprintf("vmauth-config-%s", r.Name)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr *VMAuth) GetMetricPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+func (r *VMAuth) GetMetricPath() string {
+	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, metricPath)
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr *VMAuth) GetExtraArgs() map[string]string {
-	return cr.Spec.ExtraArgs
+func (r *VMAuth) GetExtraArgs() map[string]string {
+	return r.Spec.ExtraArgs
 }
 
 // GetServiceScrape returns overrides for serviceScrape builder
-func (cr *VMAuth) GetServiceScrape() *VMServiceScrapeSpec {
-	return cr.Spec.ServiceScrapeSpec
+func (r *VMAuth) GetServiceScrape() *VMServiceScrapeSpec {
+	return r.Spec.ServiceScrapeSpec
 }
 
-func (cr *VMAuth) GetServiceAccountName() string {
-	if cr.Spec.ServiceAccountName == "" {
-		return cr.PrefixedName()
+func (r *VMAuth) GetServiceAccount() *ServiceAccount {
+	sa := r.Spec.ServiceAccount
+	if sa == nil {
+		sa = &ServiceAccount{
+			Name:           r.PrefixedName(),
+			AutomountToken: true,
+		}
 	}
-	return cr.Spec.ServiceAccountName
+	return sa
 }
 
-func (cr *VMAuth) IsOwnsServiceAccount() bool {
-	return cr.Spec.ServiceAccountName == ""
+func (r *VMAuth) IsOwnsServiceAccount() bool {
+	if r.Spec.ServiceAccount != nil && r.Spec.ServiceAccount.Name != "" {
+		return r.Spec.ServiceAccount.Name == ""
+	}
+	return false
 }
 
 // GetNSName implements build.builderOpts interface
-func (cr *VMAuth) GetNSName() string {
-	return cr.GetNamespace()
+func (r *VMAuth) GetNSName() string {
+	return r.GetNamespace()
 }
 
 // AsCRDOwner implements interface
-func (cr *VMAuth) AsCRDOwner() []metav1.OwnerReference {
+func (r *VMAuth) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Auth)
 }
 
 // IsUnmanaged checks if object should managed any  config objects
-func (cr *VMAuth) IsUnmanaged() bool {
-	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) ||
-		cr.Spec.ExternalConfig.SecretRef != nil ||
-		cr.Spec.ExternalConfig.LocalPath != ""
+func (r *VMAuth) IsUnmanaged() bool {
+	return (!r.Spec.SelectAllByDefault && r.Spec.UserSelector == nil && r.Spec.UserNamespaceSelector == nil) ||
+		r.Spec.ExternalConfig.SecretRef != nil ||
+		r.Spec.ExternalConfig.LocalPath != ""
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMAuth) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+func (r *VMAuth) LastAppliedSpecAsPatch() (client.Patch, error) {
+	return lastAppliedChangesAsPatch(r.ObjectMeta, r.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMAuth) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+func (r *VMAuth) HasSpecChanges() (bool, error) {
+	return hasStateChanges(r.ObjectMeta, r.Spec)
 }
 
-func (cr *VMAuth) Paused() bool {
-	return cr.Spec.Paused
+func (r *VMAuth) Paused() bool {
+	return r.Spec.Paused
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAuth, *VMAuthStatus]{
+func (r *VMAuth) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAuth, *VMAuthStatus]{
 		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
+		r:            r,
+		rStatus:      &r.Status,
 		maybeErr:     maybeErr,
 	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VMAuth) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.Spec.ServiceSpec
+func (r *VMAuth) GetAdditionalService() *AdditionalServiceSpec {
+	return r.Spec.ServiceSpec
 }
 
 func init() {

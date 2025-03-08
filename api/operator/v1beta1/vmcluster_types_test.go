@@ -38,8 +38,8 @@ func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cr := VMBackup{}
-			if got := cr.SnapshotDeletePathWithFlags(tt.args.port, tt.args.extraArgs); got != tt.want {
+			r := VMBackup{}
+			if got := r.SnapshotDeletePathWithFlags(tt.args.port, tt.args.extraArgs); got != tt.want {
 				t.Errorf("SnapshotDeletePathWithFlags() = %v, want %v", got, tt.want)
 			}
 		})
@@ -88,8 +88,8 @@ func TestVMBackup_SnapshotCreatePathWithFlags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cr := VMBackup{}
-			got := cr.SnapshotCreatePathWithFlags(tt.args.port, tt.args.extraArgs)
+			r := VMBackup{}
+			got := r.SnapshotCreatePathWithFlags(tt.args.port, tt.args.extraArgs)
 			assert.Equal(t, tt.want, got)
 		})
 	}

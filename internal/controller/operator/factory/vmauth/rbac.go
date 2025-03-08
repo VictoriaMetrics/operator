@@ -76,7 +76,7 @@ func buildRoleBinding(cr *vmv1beta1.VMAuth) *rbacv1.RoleBinding {
 		},
 		Subjects: []rbacv1.Subject{
 			{
-				Name:      cr.GetServiceAccountName(),
+				Name:      cr.GetServiceAccount().Name,
 				Namespace: cr.Namespace,
 				Kind:      "ServiceAccount",
 			},

@@ -431,7 +431,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 				InitContainers:     ic,
 				Containers:         containers,
 				Volumes:            volumes,
-				ServiceAccountName: cr.GetServiceAccountName(),
+				ServiceAccountName: cr.GetServiceAccount().Name,
 			},
 		},
 	}, nil

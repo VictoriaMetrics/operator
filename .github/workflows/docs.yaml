@@ -32,7 +32,9 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.23
+          go-version-file: 'go.mod'
+          check-latest: true
+          cache: true
         id: go
 
       - name: Import GPG key

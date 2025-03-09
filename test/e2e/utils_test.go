@@ -225,6 +225,6 @@ func mustGetFirstPod(rclient client.Client, ns string, lbs map[string]string) *c
 		Namespace:     ns,
 		LabelSelector: labels.SelectorFromSet(lbs),
 	})).To(Succeed())
-	Expect(len(podList.Items)).ToNot(BeEmpty())
+	Expect(podList.Items).ToNot(BeEmpty())
 	return &podList.Items[0]
 }

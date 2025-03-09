@@ -144,6 +144,7 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 
 func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec, error) {
 
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
 
 	amArgs := []string{
@@ -255,7 +256,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			},
 		},
 	}
-	if ptr.Deref(cr.Spec.UseVMConfigReloader, false) {
+	if useVMConfigReloader {
 		volumes[0] = corev1.Volume{
 			Name: configVolumeName,
 			VolumeSource: corev1.VolumeSource{
@@ -413,6 +414,9 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			}
 		}
 	}
+	if useVMConfigReloader {
+		volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
+	}
 	return &appsv1.StatefulSetSpec{
 		ServiceName: cr.PrefixedName(),
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
@@ -567,7 +571,8 @@ func buildConfgSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
 }
 
 func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
-	if !ptr.Deref(cr.Spec.UseVMConfigReloader, false) {
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	if !useVMConfigReloader {
 		return nil
 	}
 	initReloader := corev1.Container{
@@ -587,6 +592,10 @@ func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
 		},
 		Resources: cr.Spec.ConfigReloaderResources,
 	}
+	if useVMConfigReloader {
+		build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
+	}
+
 	return []corev1.Container{initReloader}
 }
 
@@ -599,10 +608,10 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
 		localReloadURL.Scheme = "https"
 	}
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
 	var configReloaderArgs []string
-	if useCustomConfigReloader {
+	if useVMConfigReloader {
 		configReloaderArgs = append(configReloaderArgs,
 			fmt.Sprintf("--reload-url=%s", localReloadURL),
 			fmt.Sprintf("--config-envsubst-file=%s", alertmanagerConfFile),
@@ -643,8 +652,10 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	build.AddsPortProbesToConfigReloaderContainer(useCustomConfigReloader, &configReloaderContainer)
-
+	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &configReloaderContainer)
+	if useVMConfigReloader {
+		build.AddServiceAccountTokenVolumeMount(&configReloaderContainer, &cr.Spec.CommonApplicationDeploymentParams)
+	}
 	return configReloaderContainer
 }
 

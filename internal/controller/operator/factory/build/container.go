@@ -304,8 +304,8 @@ var (
 
 // AddsPortProbesToConfigReloaderContainer conditionally adds readiness and liveness probes to the custom config-reloader image
 // exposes reloader-http port for container
-func AddsPortProbesToConfigReloaderContainer(useCustomConfigReloader bool, crContainer *corev1.Container) {
-	if !useCustomConfigReloader {
+func AddsPortProbesToConfigReloaderContainer(useVMConfigReloader bool, crContainer *corev1.Container) {
+	if !useVMConfigReloader {
 		return
 	}
 	crContainer.Ports = append(crContainer.Ports, corev1.ContainerPort{

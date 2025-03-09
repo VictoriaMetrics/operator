@@ -98,7 +98,8 @@ var _ = Describe("test  vmagent Controller", func() {
 							UseDefaultResources: ptr.To(false),
 						},
 						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
+							ReplicaCount:                        ptr.To[int32](1),
+							DisableAutomountServiceAccountToken: true,
 						},
 						StatefulMode: true,
 						RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
@@ -109,7 +110,6 @@ var _ = Describe("test  vmagent Controller", func() {
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
 					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
-
 				},
 			),
 			Entry("with additional service and insert ports", "insert-ports",
@@ -232,7 +232,8 @@ var _ = Describe("test  vmagent Controller", func() {
 							UseStrictSecurity: ptr.To(true),
 						},
 						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
+							ReplicaCount:                        ptr.To[int32](1),
+							DisableAutomountServiceAccountToken: true,
 						},
 						RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
 							{URL: "http://localhost:8428"},
@@ -245,6 +246,7 @@ var _ = Describe("test  vmagent Controller", func() {
 					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					// assert security
 					Expect(dep.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
 					Expect(dep.Spec.Template.Spec.SecurityContext.RunAsUser).NotTo(BeNil())
 					Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(2))
@@ -257,7 +259,25 @@ var _ = Describe("test  vmagent Controller", func() {
 					Expect(pc[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 					Expect(pc[1].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 					Expect(pic[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(5))
 
+					// assert k8s api access
+
+					// config-reloader must not have k8s api access
+					vmagentPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
+					Expect(hasVolumeMount(vmagentPod.Spec.Containers[0].VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).NotTo(Succeed())
+
+					// vmagent must have k8s api access
+					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).To(Succeed())
+					cric := pic[0]
+					Expect(cric.VolumeMounts).To(HaveLen(2))
+					crc := pc[0]
+					Expect(crc.Name).To(Equal("config-reloader"))
+					Expect(crc.VolumeMounts).To(HaveLen(2))
+					vmc := pc[1]
+					Expect(vmc.Name).To(Equal("vmagent"))
+					Expect(vmc.VolumeMounts).To(HaveLen(5))
+					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).To(Succeed())
 				}),
 			Entry("by migrating RBAC access", "rbac-migrate",
 				&v1beta1vm.VMAgent{

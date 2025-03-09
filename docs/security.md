@@ -133,3 +133,174 @@ spec:
       cpu: "1"
       memory: "1512Mi"
 ```
+
+### Kubernetes API Access
+
+
+ By default, operator configures Kubernetes API Access for all managed components with own `ServiceAccount`.
+This behaviour can be altered with object configuration - `spec.disableAutomountServiceAccountToken: true`. See the
+following [Kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting) for details.
+
+ Consider the following example for VMAgent:
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example-vmagent
+  namespace: default
+spec:
+  remoteWrite:
+  - url: http://vmsingle-vms-victoria-metrics-k8s-stack.default.svc:8429/api/v1/write
+  replicaCount: 1
+  selectAllByDefault: true
+  statefulMode: true
+```
+
+ Kubernetes controller-manager creates the following `Pod` definition and attaches `volumes` and `volumeMounts` with serviceAccount token:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vmagent-example-vmagent-0
+  namespace: default
+spec:
+  containers:
+  - args:
+...
+    name: config-reloader
+    volumeMounts:
+...
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-q44gh
+      readOnly: true
+  - args:
+...
+    name: vmagent
+    volumeMounts:
+...
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-q44gh
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  hostname: vmagent-example-vmagent-0
+  initContainers:
+  - args:
+...
+    name: config-init
+    volumeMounts:
+...
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-q44gh
+      readOnly: true
+
+  serviceAccount: vmagent-example-vmagent
+  serviceAccountName: vmagent-example-vmagent
+  volumes:
+...
+  - emptyDir: {}
+    name: persistent-queue-data
+  - name: kube-api-access-q44gh
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+```
+
+ If `disableAutomountServiceAccountToken: true` is set. Operator adds `volumes` and `volumeMounts` only if application explicitly requires access to Kubernetes API:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example-vmagent
+  namespace: default
+spec:
+  disableAutomountServiceAccountToken: true
+  remoteWrite:
+  - url: http://vmsingle-vms-victoria-metrics-k8s-stack.default.svc:8429/api/v1/write
+  replicaCount: 1
+  selectAllByDefault: true
+  statefulMode: true
+```
+
+ And `Pod` definition no longer has `volumeMounts` with serviceAccountToken for `config-reloader` container:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vmagent-example-vmagent-0
+  namespace: default
+spec:
+  automountServiceAccountToken: false
+  containers:
+  - args:
+    name: config-reloader
+    volumeMounts:
+    - mountPath: /etc/vmagent/config_out
+      name: config-out
+    - mountPath: /etc/vmagent/config
+      name: config
+  - args:
+    name: vmagent
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: FallbackToLogsOnError
+    volumeMounts:
+    - mountPath: /vmagent_pq/vmagent-remotewrite-data
+      name: persistent-queue-data
+...
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  hostname: vmagent-example-vmagent-0
+  initContainers:
+  - args:
+    name: config-init
+    volumeMounts:
+    - mountPath: /etc/vmagent/config
+      name: config
+    - mountPath: /etc/vmagent/config_out
+      name: config-out
+  serviceAccount: vmagent-example-vmagent
+  serviceAccountName: vmagent-example-vmagent
+  volumes:
+...
+  - name: kube-api-access
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3600
+          path: token
+      - configMap:
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+  - emptyDir: {}
+    name: persistent-queue-data
+```
+
+ The following containers needs access to Kubernetes API server:
+* vmagent uses Kubernetes service-discovery for scrapping target metrics.
+* config-reloader watches configuration secret and triggers application state config reload on change. Note, it's only true for `useVMConfigReloader: true`. This option can be used with `VMAgent`, `VMAuth` and `VMAlertmanager`.

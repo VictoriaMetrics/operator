@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestVMAlert_sanityCheck(t *testing.T) {
+func TestVMAlert_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
 		spec    VMAlertSpec
@@ -43,8 +43,8 @@ func TestVMAlert_sanityCheck(t *testing.T) {
 			r := &VMAlert{
 				Spec: tt.spec,
 			}
-			if err := r.sanityCheck(); (err != nil) != tt.wantErr {
-				t.Errorf("sanityCheck() error = %v, wantErr %v", err, tt.wantErr)
+			if err := r.Validate(); (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.112.0
 	github.com/VictoriaMetrics/metrics v1.35.2
-	github.com/VictoriaMetrics/metricsql v0.84.0
+	github.com/VictoriaMetrics/metricsql v0.84.1
 	github.com/VictoriaMetrics/operator/api v0.51.3
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32

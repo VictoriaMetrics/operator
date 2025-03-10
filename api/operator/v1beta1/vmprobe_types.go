@@ -119,11 +119,11 @@ type VMProbeList struct {
 }
 
 // AsProxyKey builds key for proxy cache maps
-func (cr VMProbe) AsProxyKey() string {
+func (cr *VMProbe) AsProxyKey() string {
 	return fmt.Sprintf("probeScrapeProxy/%s/%s", cr.Namespace, cr.Name)
 }
 
-func (cr VMProbe) AsMapKey() string {
+func (cr *VMProbe) AsMapKey() string {
 	return fmt.Sprintf("probeScrape/%s/%s", cr.Namespace, cr.Name)
 }
 

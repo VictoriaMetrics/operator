@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -319,6 +321,41 @@ func (cr *VMAgent) setLastSpec(prevSpec VMAgentSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
+func (cr *VMAgent) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+	if len(cr.Spec.RemoteWrite) == 0 {
+		return fmt.Errorf("spec.remoteWrite cannot be empty array, provide at least one remoteWrite")
+	}
+	if cr.Spec.InlineScrapeConfig != "" {
+		var inlineCfg yaml.MapSlice
+		if err := yaml.Unmarshal([]byte(cr.Spec.InlineScrapeConfig), &inlineCfg); err != nil {
+			return fmt.Errorf("bad cr.spec.inlineScrapeConfig it must be valid yaml, err :%w", err)
+		}
+	}
+	if len(cr.Spec.InlineRelabelConfig) > 0 {
+		if err := checkRelabelConfigs(cr.Spec.InlineRelabelConfig); err != nil {
+			return err
+		}
+	}
+	for idx, rw := range cr.Spec.RemoteWrite {
+		if rw.URL == "" {
+			return fmt.Errorf("remoteWrite.url cannot be empty at idx: %d", idx)
+		}
+		if len(rw.InlineUrlRelabelConfig) > 0 {
+			if err := checkRelabelConfigs(rw.InlineUrlRelabelConfig); err != nil {
+				return fmt.Errorf("bad urlRelabelingConfig at idx: %d, err: %w", idx, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	type pcr VMAgent
@@ -430,12 +467,12 @@ func (rw *VMAgentRemoteWriteSpec) AsMapKey() string {
 }
 
 // AsSecretKey key for kubernetes secret data
-func (rw *VMAgentRemoteWriteSpec) AsSecretKey(idx int, suffix string) string {
+func (*VMAgentRemoteWriteSpec) AsSecretKey(idx int, suffix string) string {
 	return fmt.Sprintf("RWS_%d-SECRET-%s", idx, strings.ToUpper(suffix))
 }
 
 // AsConfigMapKey key for kubernetes configmap
-func (rw *VMAgentRemoteWriteSpec) AsConfigMapKey(idx int, suffix string) string {
+func (*VMAgentRemoteWriteSpec) AsConfigMapKey(idx int, suffix string) string {
 	return fmt.Sprintf("RWS_%d-CM-%s", idx, strings.ToUpper(suffix))
 }
 
@@ -610,7 +647,6 @@ func (cr *VMAgent) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
-// IsOwnsServiceAccount checks if service account owned by CR
 func (cr *VMAgent) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
@@ -642,7 +678,7 @@ func (cr *VMAgent) AsURL() string {
 }
 
 // AsCRDOwner implements interface
-func (cr *VMAgent) AsCRDOwner() []metav1.OwnerReference {
+func (*VMAgent) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Agent)
 }
 
@@ -662,7 +698,7 @@ func (cr *VMAgent) ProbePort() string {
 	return cr.Spec.Port
 }
 
-func (cr *VMAgent) ProbeNeedLiveness() bool {
+func (*VMAgent) ProbeNeedLiveness() bool {
 	return true
 }
 
@@ -784,8 +820,8 @@ func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAgent, *VMAgentStatus]{
+func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAgent, *VMAgentStatus]{
 		actualStatus: status,
 		cr:           cr,
 		crStatus:     &cr.Status,
@@ -809,6 +845,12 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
+}
+
+func checkRelabelConfigs(src []RelabelConfig) error {
+	// TODO: restore check when issue will be fixed at golang
+	// https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6911
+	return nil
 }
 
 // APIServerConfig defines a host and auth methods to access apiserver.

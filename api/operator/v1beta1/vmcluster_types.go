@@ -155,13 +155,13 @@ type VMCluster struct {
 }
 
 // AsOwner returns owner references with current object as owner
-func (c *VMCluster) AsOwner() []metav1.OwnerReference {
+func (cr *VMCluster) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
-			APIVersion:         c.APIVersion,
-			Kind:               c.Kind,
-			Name:               c.Name,
-			UID:                c.UID,
+			APIVersion:         cr.APIVersion,
+			Kind:               cr.Kind,
+			Name:               cr.Name,
+			UID:                cr.UID,
 			Controller:         ptr.To(true),
 			BlockOwnerDeletion: ptr.To(true),
 		},
@@ -322,7 +322,7 @@ type VMInsert struct {
 }
 
 // GetVMInsertLBName returns headless proxy service name for insert component
-func (cr VMCluster) GetVMInsertLBName() string {
+func (cr *VMCluster) GetVMInsertLBName() string {
 	return prefixedName(cr.Name, "vminsertinternal")
 }
 
@@ -342,7 +342,7 @@ func (cr *VMInsert) ProbePort() string {
 	return cr.Port
 }
 
-func (cr *VMInsert) ProbeNeedLiveness() bool {
+func (*VMInsert) ProbeNeedLiveness() bool {
 	return true
 }
 
@@ -500,13 +500,13 @@ type VMBackup struct {
 	Restore *VMRestore `json:"restore,omitempty"`
 }
 
-func (cr *VMBackup) sanityCheck(l *License) error {
+func (cr *VMBackup) validate(l *License) error {
 	if !l.IsProvided() && !cr.AcceptEULA {
 		return fmt.Errorf("it is required to provide license key. See [here](https://docs.victoriametrics.com/enterprise)")
 	}
 
 	if l.IsProvided() {
-		return l.sanityCheck()
+		return l.validate()
 	}
 
 	return nil
@@ -544,6 +544,53 @@ func (cr *VMSelect) GetCacheMountVolumeName() string {
 		return storageSpec.VolumeClaimTemplate.Name
 	}
 	return prefixedName("cachedir", "vmselect")
+}
+
+func (cr *VMCluster) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	if cr.Spec.VMSelect != nil {
+		vms := cr.Spec.VMSelect
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == cr.GetVMSelectName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetVMSelectName())
+		}
+		if vms.HPA != nil {
+			if err := vms.HPA.validate(); err != nil {
+				return err
+			}
+		}
+	}
+	if cr.Spec.VMInsert != nil {
+		vmi := cr.Spec.VMInsert
+		if vmi.ServiceSpec != nil && vmi.ServiceSpec.Name == cr.GetVMInsertName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetVMInsertName())
+		}
+		if vmi.HPA != nil {
+			if err := vmi.HPA.validate(); err != nil {
+				return err
+			}
+		}
+	}
+	if cr.Spec.VMStorage != nil {
+		vms := cr.Spec.VMStorage
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == cr.GetVMInsertName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetVMStorageName())
+		}
+		if cr.Spec.VMStorage.VMBackup != nil {
+			if err := cr.Spec.VMStorage.VMBackup.validate(cr.Spec.License); err != nil {
+				return err
+			}
+		}
+	}
+	if cr.Spec.RequestsLoadBalancer.Enabled {
+		rlb := cr.Spec.RequestsLoadBalancer.Spec
+		if rlb.AdditionalServiceSpec != nil && rlb.AdditionalServiceSpec.Name == cr.GetVMAuthLBName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetVMAuthLBName())
+		}
+	}
+
+	return nil
 }
 
 // VMSelectSelectorLabels returns selector labels for vmselect cluster component
@@ -585,7 +632,7 @@ func (cr *VMCluster) VMInsertPodLabels() map[string]string {
 }
 
 // VMStorageSelectorLabels  returns pod labels for vmstorage cluster component
-func (cr VMCluster) VMStorageSelectorLabels() map[string]string {
+func (cr *VMCluster) VMStorageSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmstorage",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -760,12 +807,12 @@ func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
 }
 
 // SnapshotCreatePathWithFlags returns url for accessing vmbackupmanager component
-func (cr *VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
+func (*VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotCreate))), extraArgs)
 }
 
 // SnapshotDeletePathWithFlags returns url for accessing vmbackupmanager component
-func (cr *VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
+func (*VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete))), extraArgs)
 }
 
@@ -789,7 +836,6 @@ func (cr *VMCluster) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
-// IsOwnsServiceAccount checks if built-in service should be used
 func (cr *VMCluster) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
@@ -869,7 +915,7 @@ func (cr *VMCluster) VMStorageURL() string {
 }
 
 // AsCRDOwner implements interface
-func (cr *VMCluster) AsCRDOwner() []metav1.OwnerReference {
+func (*VMCluster) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Cluster)
 }
 
@@ -894,7 +940,7 @@ func (cr *VMSelect) ProbePort() string {
 	return cr.Port
 }
 
-func (cr *VMSelect) ProbeNeedLiveness() bool {
+func (*VMSelect) ProbeNeedLiveness() bool {
 	return true
 }
 
@@ -915,8 +961,8 @@ func (cr *VMStorage) ProbePort() string {
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMCluster, *VMClusterStatus]{
+func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMCluster, *VMClusterStatus]{
 		actualStatus: status,
 		cr:           cr,
 		crStatus:     &cr.Status,
@@ -943,7 +989,7 @@ func (cr *VMInsert) GetAdditionalService() *AdditionalServiceSpec {
 }
 
 // ProbeNeedLiveness implements build.probeCRD interface
-func (cr *VMStorage) ProbeNeedLiveness() bool {
+func (*VMStorage) ProbeNeedLiveness() bool {
 	return false
 }
 
@@ -997,7 +1043,7 @@ func (cr *VMAuthLoadBalancerSpec) ProbePort() string {
 }
 
 // ProbeNeedLiveness implements build.probeCRD interface
-func (cr *VMAuthLoadBalancerSpec) ProbeNeedLiveness() bool {
+func (*VMAuthLoadBalancerSpec) ProbeNeedLiveness() bool {
 	return false
 }
 

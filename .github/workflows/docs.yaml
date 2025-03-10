@@ -36,6 +36,7 @@ jobs:
           check-latest: true
           cache: true
         id: go
+        working-directory: __vm-operator
 
       - name: Import GPG key
         id: import-gpg

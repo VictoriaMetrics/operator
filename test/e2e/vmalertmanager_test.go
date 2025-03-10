@@ -116,7 +116,8 @@ var _ = Describe("test  vmalertmanager Controller", func() {
 							UseStrictSecurity:   ptr.To(true),
 						},
 						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
+							ReplicaCount:                        ptr.To[int32](1),
+							DisableAutomountServiceAccountToken: true,
 						},
 					},
 				},
@@ -135,6 +136,15 @@ var _ = Describe("test  vmalertmanager Controller", func() {
 					Expect(ps.Containers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 					Expect(ps.Containers[1].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 					Expect(ps.InitContainers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+
+					// assert k8s api access
+					saTokenMount := "/var/run/secrets/kubernetes.io/serviceaccount"
+					alertmanagerPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
+					Expect(hasVolumeMount(alertmanagerPod.Spec.Containers[0].VolumeMounts, saTokenMount)).NotTo(Succeed())
+					Expect(hasVolume(sts.Spec.Template.Spec.Volumes, "kube-api-access")).To(Succeed())
+					Expect(hasVolumeMount(ps.Containers[1].VolumeMounts, saTokenMount)).To(Succeed())
+					Expect(hasVolumeMount(ps.InitContainers[0].VolumeMounts, saTokenMount)).To(Succeed())
+
 				},
 			),
 		)

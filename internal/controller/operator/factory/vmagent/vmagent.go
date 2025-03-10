@@ -373,6 +373,7 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (r
 			},
 		}
 		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
+		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
 		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
@@ -409,6 +410,8 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (r
 		},
 	}
 	build.DeploymentAddCommonParams(depSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
+	depSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(depSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+
 	return depSpec, nil
 }
 
@@ -655,6 +658,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
+	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, &cr.Spec.CommonApplicationDeploymentParams)
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	vmagentContainer = build.Probe(vmagentContainer, cr)
@@ -667,7 +671,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
 			ic = append(ic,
-				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, false), cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
+				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, false), cr, configReloader.Args)...)
 			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 		}
 	}
@@ -1396,7 +1400,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
 	var configReloadVolumeMounts []corev1.VolumeMount
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if !cr.Spec.IngestOnlyMode {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
@@ -1404,7 +1408,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
 				MountPath: vmAgentConOfOutDir,
 			},
 		)
-		if !useCustomConfigReloader {
+		if !useVMConfigReloader {
 			configReloadVolumeMounts = append(configReloadVolumeMounts,
 				corev1.VolumeMount{
 					Name:      "config",
@@ -1447,10 +1451,11 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
 		VolumeMounts: configReloadVolumeMounts,
 		Resources:    cr.Spec.ConfigReloaderResources,
 	}
-	if useCustomConfigReloader {
+	if useVMConfigReloader {
 		cntr.Command = nil
+		build.AddServiceAccountTokenVolumeMount(&cntr, &cr.Spec.CommonApplicationDeploymentParams)
 	}
-	build.AddsPortProbesToConfigReloaderContainer(useCustomConfigReloader, &cntr)
+	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &cntr)
 
 	return cntr
 }
@@ -1463,11 +1468,11 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 	}
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
 	if !cr.Spec.IngestOnlyMode {
 		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
-		if useCustomConfigReloader {
+		if useVMConfigReloader {
 			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
 			args = append(args, "--config-secret-key=vmagent.yaml.gz")
 		} else {
@@ -1480,7 +1485,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
 	if cr.HasAnyRelabellingConfigs() {
 		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.RelabelingConfigDir))
 	}
-	if useCustomConfigReloader {
+	if useVMConfigReloader {
 		args = vmv1beta1.MaybeEnableProxyProtocol(args, cr.Spec.ExtraArgs)
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
@@ -1500,9 +1505,11 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
 	return args
 }
 
-func buildInitConfigContainer(useCustomConfigReloader bool, baseImage string, resources corev1.ResourceRequirements, configReloaderArgs []string) []corev1.Container {
+func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, configReloaderArgs []string) []corev1.Container {
 	var initReloader corev1.Container
-	if useCustomConfigReloader {
+	baseImage := cr.Spec.ConfigReloaderImageTag
+	resources := cr.Spec.ConfigReloaderResources
+	if useVMConfigReloader {
 		initReloader = corev1.Container{
 			Image: baseImage,
 			Name:  "config-init",
@@ -1515,6 +1522,7 @@ func buildInitConfigContainer(useCustomConfigReloader bool, baseImage string, re
 			},
 			Resources: resources,
 		}
+		build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
 		return []corev1.Container{initReloader}
 	}
 	initReloader = corev1.Container{
@@ -1539,6 +1547,7 @@ func buildInitConfigContainer(useCustomConfigReloader bool, baseImage string, re
 		},
 		Resources: resources,
 	}
+
 	return []corev1.Container{initReloader}
 }
 

@@ -93,7 +93,8 @@ var _ = Describe("test vmauth Controller", func() {
 							UseVMConfigReloader: ptr.To(true),
 						},
 						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
+							ReplicaCount:                        ptr.To[int32](1),
+							DisableAutomountServiceAccountToken: true,
 						},
 						UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
 							{
@@ -117,6 +118,14 @@ var _ = Describe("test vmauth Controller", func() {
 					Expect(ps.Containers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 					Expect(ps.Containers[1].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 					Expect(ps.InitContainers[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+
+					// assert k8s api access
+					saTokenMount := "/var/run/secrets/kubernetes.io/serviceaccount"
+					vmauthPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
+					Expect(hasVolumeMount(vmauthPod.Spec.Containers[0].VolumeMounts, saTokenMount)).NotTo(Succeed())
+					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).To(Succeed())
+					Expect(hasVolumeMount(ps.Containers[1].VolumeMounts, saTokenMount)).To(Succeed())
+					Expect(hasVolumeMount(ps.InitContainers[0].VolumeMounts, saTokenMount)).To(Succeed())
 				}),
 			)
 

@@ -165,7 +165,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -246,7 +246,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
-		if !useCustomConfigReloader {
+		if !useVMConfigReloader {
 			volumes = append(volumes, corev1.Volume{
 				Name: vmAuthVolumeName,
 				VolumeSource: corev1.VolumeSource{
@@ -268,7 +268,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		configReloader := buildVMAuthConfigReloaderContainer(cr)
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
-			buildInitConfigContainer(useCustomConfigReloader, cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
+			buildInitConfigContainer(useVMConfigReloader, cr, configReloader.Args)...)
 		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
 	}
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
@@ -301,6 +301,9 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		return nil, err
 	}
 
+	if useVMConfigReloader {
+		volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
+	}
 	vmAuthSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
@@ -485,8 +488,8 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
-	if useCustomConfigReloader {
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	if useVMConfigReloader {
 		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
 		configReloaderArgs = vmv1beta1.MaybeEnableProxyProtocol(configReloaderArgs, cr.Spec.ExtraArgs)
 	} else {
@@ -499,7 +502,7 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 			MountPath: vmAuthConfigFolder,
 		},
 	}
-	if !useCustomConfigReloader {
+	if !useVMConfigReloader {
 		reloaderMounts = append(reloaderMounts, corev1.VolumeMount{
 			Name:      vmAuthVolumeName,
 			MountPath: vmAuthConfigMountGz,
@@ -537,17 +540,20 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 		Resources:    cr.Spec.ConfigReloaderResources,
 	}
 
-	if useCustomConfigReloader {
+	if useVMConfigReloader {
 		configReloader.Command = nil
+		build.AddServiceAccountTokenVolumeMount(&configReloader, &cr.Spec.CommonApplicationDeploymentParams)
 	}
 
-	build.AddsPortProbesToConfigReloaderContainer(useCustomConfigReloader, &configReloader)
+	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &configReloader)
 	return configReloader
 }
 
-func buildInitConfigContainer(useCustomConfigReloader bool, baseImage string, resources corev1.ResourceRequirements, configReloaderArgs []string) []corev1.Container {
+func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, configReloaderArgs []string) []corev1.Container {
+	baseImage := cr.Spec.ConfigReloaderImageTag
+	resources := cr.Spec.ConfigReloaderResources
 	var initReloader corev1.Container
-	if useCustomConfigReloader {
+	if useVMConfigReloader {
 		initReloader = corev1.Container{
 			Image: baseImage,
 			Name:  "config-init",
@@ -560,6 +566,8 @@ func buildInitConfigContainer(useCustomConfigReloader bool, baseImage string, re
 			},
 			Resources: resources,
 		}
+		build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
+
 		return []corev1.Container{initReloader}
 	}
 	initReloader = corev1.Container{

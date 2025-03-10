@@ -1,8 +1,16 @@
 package v1beta1
 
 import (
+	"fmt"
 	"net/url"
+	"strconv"
+	"strings"
+	"sync"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/config"
+	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/notifier"
+	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/templates"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -10,6 +18,8 @@ import (
 // MaxConfigMapDataSize is a maximum `Data` field size of a ConfigMap.
 // Limit it to the half size of constant value, since it may be different for kubernetes versions.
 var MaxConfigMapDataSize = int(float64(v1.MaxSecretSize) * 0.5)
+
+var initVMAlertTemplatesOnce sync.Once
 
 // VMRuleSpec defines the desired state of VMRule
 type VMRuleSpec struct {
@@ -132,6 +142,74 @@ type VMRuleStatus struct {
 // GetStatusMetadata implements reconcile.objectWithStatus interface
 func (cr *VMRule) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
+}
+
+// Validate performs symantic validation of object
+func (cr *VMRule) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	testURL, _ := url.Parse("http://test:8429")
+	initVMAlertTemplatesOnce.Do(func() {
+		if err := templates.Load(nil, *testURL); err != nil {
+			panic(fmt.Sprintf("cannot init vmalert templates for validation: %s", err))
+		}
+	})
+	uniqNames := make(map[string]struct{})
+	var totalSize int
+	for i := range cr.Spec.Groups {
+		// make a copy
+		group := cr.Spec.Groups[i].DeepCopy()
+		// remove tenant from copy, it's needed to properly validate it with vmalert lib
+		// since tenant is only supported at enterprise code
+		if group.Tenant != "" {
+			if err := validateRuleGroupTenantID(group.Tenant); err != nil {
+				return fmt.Errorf("at idx=%d bad tenant=%q: %w", i, group.Tenant, err)
+			}
+			group.Tenant = ""
+		}
+		errContext := fmt.Sprintf("VMRule: %s/%s group: %s", cr.Namespace, cr.Name, group.Name)
+		if _, ok := uniqNames[group.Name]; ok {
+			return fmt.Errorf("duplicate group name: %s", errContext)
+		}
+		uniqNames[group.Name] = struct{}{}
+		groupBytes, err := yaml.Marshal(group)
+		if err != nil {
+			return fmt.Errorf("cannot marshal %s, err: %w", errContext, err)
+		}
+		var vmalertGroup config.Group
+		totalSize += len(groupBytes)
+		if err := yaml.Unmarshal(groupBytes, &vmalertGroup); err != nil {
+			return fmt.Errorf("cannot parse vmalert group %s, err: %w, r: \n%s", errContext, err, string(groupBytes))
+		}
+		if err := vmalertGroup.Validate(notifier.ValidateTemplates, true); err != nil {
+			return fmt.Errorf("validation failed for %s err: %w", errContext, err)
+		}
+	}
+	if totalSize > MaxConfigMapDataSize {
+		return fmt.Errorf("VMRule's content size: %d exceed single rule limit: %d", totalSize, MaxConfigMapDataSize)
+	}
+	return nil
+}
+
+func validateRuleGroupTenantID(id string) error {
+	ids := strings.TrimSpace(string(id))
+	idx := strings.Index(ids, ":")
+	if idx < 0 {
+		if _, err := strconv.ParseInt(ids, 10, 32); err != nil {
+			return fmt.Errorf("cannot parse account_id: %q as int32, err: %w", ids, err)
+		}
+		return nil
+	}
+	aIDs := ids[:idx]
+	pIDs := ids[idx+1:]
+	if _, err := strconv.ParseInt(aIDs, 10, 32); err != nil {
+		return fmt.Errorf("cannot parse account_id: %q as int32, err: %w", aIDs, err)
+	}
+	if _, err := strconv.ParseInt(pIDs, 10, 32); err != nil {
+		return fmt.Errorf("cannot parse project_id: %q as int32, err: %w", pIDs, err)
+	}
+	return nil
 }
 
 // VMRule defines rule records for vmalert application

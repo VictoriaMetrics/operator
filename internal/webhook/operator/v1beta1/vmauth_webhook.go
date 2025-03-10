@@ -23,70 +23,55 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// log is for logging in this package.
-var vlogslog = logf.Log.WithName("vlogs-resource")
-
-var vlogsValidator admission.CustomValidator = &VLogs{}
-
-// SetupWebhookWithManager will setup the manager to manage the webhooks
-func (r *VLogs) SetupWebhookWithManager(mgr ctrl.Manager) error {
+// SetupVMAuthWebhookWithManager will setup the manager to manage the webhooks
+func SetupVMAuthWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
-		WithValidator(r).
+		For(&vmv1beta1.VMAuth{}).
+		WithValidator(&VMAuthCustomValidator{}).
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vlogs,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vlogs,verbs=create;update,versions=v1beta1,name=vvlogs.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmauth,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmauths,verbs=create;update,versions=v1beta1,name=vvmauth-v1beta1.kb.io,admissionReviewVersions=v1
+type VMAuthCustomValidator struct{}
 
-func (r *VLogs) sanityCheck() error {
-	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.Name == r.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", r.PrefixedName())
-	}
-	return nil
-}
+var _ admission.CustomValidator = &VMAuthCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (*VLogs) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*VLogs)
+func (*VMAuthCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*vmv1beta1.VMAuth)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
 	}
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
-	if mustSkipValidation(r) {
-		return nil, nil
-	}
-	if err := r.sanityCheck(); err != nil {
+	if err := r.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (*VLogs) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*VLogs)
+func (*VMAuthCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*vmv1beta1.VMAuth)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
 	}
-
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}
-	if mustSkipValidation(r) {
-		return nil, nil
-	}
-	if err := r.sanityCheck(); err != nil {
+	if err := r.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (*VLogs) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VMAuthCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

@@ -309,7 +309,7 @@ func (cr *VMSingle) AsURL() string {
 }
 
 // AsCRDOwner implements interface
-func (cr *VMSingle) AsCRDOwner() []metav1.OwnerReference {
+func (*VMSingle) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Single)
 }
 
@@ -327,9 +327,46 @@ func (cr *VMSingle) Paused() bool {
 	return cr.Spec.Paused
 }
 
+func (cr *VMSingle) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+
+	if cr.Spec.VMBackup != nil {
+		if err := cr.Spec.VMBackup.validate(cr.Spec.License); err != nil {
+			return err
+		}
+	}
+	if cr.Spec.StorageDataPath != "" {
+		if len(cr.Spec.Volumes) == 0 {
+			return fmt.Errorf("spec.volumes must have at least 1 value for spec.storageDataPath=%q", cr.Spec.StorageDataPath)
+		}
+		var storageVolumeFound bool
+		for _, volume := range cr.Spec.Volumes {
+			if volume.Name == "data" {
+				storageVolumeFound = true
+				break
+			}
+		}
+		if cr.Spec.VMBackup != nil {
+			if !storageVolumeFound {
+				return fmt.Errorf("spec.volumes must have at least 1 value with `name: data` for spec.storageDataPath=%q."+
+					" It's required by operator to correctly mount backup volumeMount", cr.Spec.StorageDataPath)
+			}
+		}
+		if len(cr.Spec.VolumeMounts) == 0 && !storageVolumeFound {
+			return fmt.Errorf("spec.volumeMounts must have at least 1 value OR spec.volumes must have volume.name `data` for spec.storageDataPath=%q", cr.Spec.StorageDataPath)
+		}
+	}
+	return nil
+}
+
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMSingle, *VMSingleStatus]{
+func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMSingle, *VMSingleStatus]{
 		actualStatus: status,
 		cr:           cr,
 		crStatus:     &cr.Status,

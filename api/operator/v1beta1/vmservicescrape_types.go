@@ -131,12 +131,12 @@ type Endpoint struct {
 }
 
 // AsProxyKey builds key for proxy cache maps
-func (cr VMServiceScrape) AsProxyKey(i int) string {
+func (cr *VMServiceScrape) AsProxyKey(i int) string {
 	return fmt.Sprintf("serviceScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 // AsMapKey - returns cr name with suffix for token/auth maps.
-func (cr VMServiceScrape) AsMapKey(i int) string {
+func (cr *VMServiceScrape) AsMapKey(i int) string {
 	return fmt.Sprintf("serviceScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 

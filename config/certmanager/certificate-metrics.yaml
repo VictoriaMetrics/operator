@@ -11,7 +11,7 @@ metadata:
     app.kubernetes.io/part-of: vm-operator
     app.kubernetes.io/managed-by: kustomize
   name: metrics-certs
-  namespace: vm
+  namespace: system
 spec:
   dnsNames:
   # SERVICE_NAME and SERVICE_NAMESPACE will be substituted by kustomize

@@ -58,12 +58,12 @@ type VMStaticScrapeList struct {
 }
 
 // AsProxyKey builds key for proxy cache maps
-func (cr VMStaticScrape) AsProxyKey(i int) string {
+func (cr *VMStaticScrape) AsProxyKey(i int) string {
 	return fmt.Sprintf("staticScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 // AsMapKey builds key for cache secret map
-func (cr VMStaticScrape) AsMapKey(i int) string {
+func (cr *VMStaticScrape) AsMapKey(i int) string {
 	return fmt.Sprintf("staticScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 

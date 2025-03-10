@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 
+	amlabels "github.com/prometheus/alertmanager/pkg/labels"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -191,6 +192,7 @@ type VMAlertmanagerSpec struct {
 	// GossipConfig defines gossip TLS configuration for Alertmanager cluster
 	// +optional
 	GossipConfig *AlertmanagerGossipConfig `json:"gossipConfig,omitempty"`
+
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -400,13 +402,13 @@ func (cr *VMAlertmanager) GetServiceScrape() *VMServiceScrapeSpec {
 }
 
 // AsCRDOwner implements interface
-func (cr *VMAlertmanager) AsCRDOwner() []metav1.OwnerReference {
+func (*VMAlertmanager) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(AlertManager)
 }
 
 // AsNotifiers converts VMAlertmanager into VMAlertNotifierSpec
 func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
-	var r []VMAlertNotifierSpec
+	var notifiers []VMAlertNotifierSpec
 	replicaCount := 1
 	if cr.Spec.ReplicaCount != nil {
 		replicaCount = int(*cr.Spec.ReplicaCount)
@@ -415,9 +417,9 @@ func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
 		ns := VMAlertNotifierSpec{
 			URL: cr.asPodFQDN(i),
 		}
-		r = append(r, ns)
+		notifiers = append(notifiers, ns)
 	}
-	return r
+	return notifiers
 }
 
 func (cr *VMAlertmanager) GetVolumeName() string {
@@ -459,7 +461,7 @@ func (cr *VMAlertmanager) ProbeScheme() string {
 	return "HTTP"
 }
 
-func (cr *VMAlertmanager) ProbeNeedLiveness() bool {
+func (*VMAlertmanager) ProbeNeedLiveness() bool {
 	return true
 }
 
@@ -483,13 +485,82 @@ func (cr *VMAlertmanager) Paused() bool {
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAlertmanager, *VMAlertmanagerStatus]{
+func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAlertmanager, *VMAlertmanagerStatus]{
 		actualStatus: status,
 		cr:           cr,
 		crStatus:     &cr.Status,
 		maybeErr:     maybeErr,
 	})
+}
+
+func (cr *VMAlertmanager) Validate() error {
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+	for idx, matchers := range cr.Spec.EnforcedTopRouteMatchers {
+		_, err := amlabels.ParseMatchers(matchers)
+		if err != nil {
+			fmt.Errorf("incorrect EnforcedTopRouteMatchers=%q at idx=%d: %w", matchers, idx, err)
+		}
+	}
+
+	if len(cr.Spec.ConfigRawYaml) > 0 {
+		if err := validateAlertmanagerConfigSpec([]byte(cr.Spec.ConfigRawYaml)); err != nil {
+			return fmt.Errorf("bad config syntax at spec.configRawYaml: %w", err)
+		}
+	}
+	if cr.Spec.ConfigSecret == cr.ConfigSecretName() {
+		return fmt.Errorf("spec.configSecret uses the same name as built-in config secret used by operator. Please change it's name")
+	}
+	if cr.Spec.WebConfig != nil {
+		if cr.Spec.WebConfig.HTTPServerConfig != nil {
+			if cr.Spec.WebConfig.HTTPServerConfig.HTTP2 && cr.Spec.WebConfig.TLSServerConfig == nil {
+				return fmt.Errorf("with enabled http2 for webserver, tls_server_config must be defined")
+			}
+		}
+		if cr.Spec.WebConfig.TLSServerConfig != nil {
+			tc := cr.Spec.WebConfig.TLSServerConfig
+			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
+			}
+			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_server_config")
+			}
+			if tc.ClientAuthType == "RequireAndVerifyClientCert" {
+				if tc.ClientCAFile == "" && tc.ClientCASecretRef == nil {
+					return fmt.Errorf("either client_ca_secret_ref or client_ca_file must be set for tls_server_config with enabled RequireAndVerifyClientCert")
+				}
+			}
+		}
+	}
+
+	if cr.Spec.GossipConfig != nil {
+		if cr.Spec.GossipConfig.TLSServerConfig != nil {
+			tc := cr.Spec.GossipConfig.TLSServerConfig
+			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
+			}
+			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_server_config")
+			}
+			if tc.ClientAuthType == "RequireAndVerifyClientCert" {
+				if tc.ClientCAFile == "" && tc.ClientCASecretRef == nil {
+					return fmt.Errorf("either client_ca_secret_ref or client_ca_file must be set for tls_server_config with enabled RequireAndVerifyClientCert")
+				}
+			}
+		}
+		if cr.Spec.GossipConfig.TLSClientConfig != nil {
+			tc := cr.Spec.GossipConfig.TLSClientConfig
+			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_client_config")
+			}
+			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_client_config")
+			}
+		}
+	}
+	return nil
 }
 
 // AlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager

@@ -32,11 +32,10 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: '__vm-operator/go.mod'
           check-latest: true
           cache: true
         id: go
-        working-directory: __vm-operator
 
       - name: Import GPG key
         id: import-gpg

@@ -532,7 +532,7 @@ type StreamAggrConfig struct {
 	// IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval.
 	// +optional
 	IgnoreOldSamples bool `json:"ignoreOldSamples,omitempty"`
-	// EnableWindows enables aggregating data in separate windows
+	// EnableWindows enables aggregating data in separate windows ( available from v0.54.0).
 	// +optional
 	EnableWindows bool `json:"enableWindows,omitempty"`
 }
@@ -1291,7 +1291,7 @@ type CommonApplicationDeploymentParams struct {
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
-	// DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes {{% available_from "v0.54.0" %}}.
+	// DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
 	// Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
 	// For example, vmagent and vm-config-reloader requires k8s API access.
 	// Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.

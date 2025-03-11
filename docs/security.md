@@ -304,3 +304,42 @@ spec:
  The following containers needs access to Kubernetes API server:
 * vmagent uses Kubernetes service-discovery for scrapping target metrics.
 * config-reloader watches configuration secret and triggers application state config reload on change. Note, it's only true for `useVMConfigReloader: true`. This option can be used with `VMAgent`, `VMAuth` and `VMAlertmanager`.
+
+ It's also possible to mount `serviceAccountToken` manually to any component.
+Consider the following example:
+```yaml
+# add Role and Rolebinding for `vmsingle-with-sidecar` ServiceAccount
+# or provide specific serviceAccount via: `spec.serviceAccountName`
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: with-sidecar
+  namespace: default
+spec:
+  retentionPeriod: 1
+  disableAutomountServiceAccountToken: true
+  containers:
+  - name: side-car-with-api-access
+    image: busybox
+    command: ["/bin/sh"] 
+    args: ["-c", "tail -f /dev/stdout"] 
+    volumeMounts:
+    - name: kube-api-access
+      mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+  volumes:
+  - name: kube-api-access
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3600
+          path: token
+      - configMap:
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+```

@@ -32,7 +32,7 @@ func ServiceAccount(cr objectForServiceAccountBuilder) *corev1.ServiceAccount {
 	}
 }
 
-const seriveAccountTokenVolume = "kube-api-access"
+const serviceAccountTokenVolume = "kube-api-access"
 
 // AddServiceAccountTokenVolumeMount conditionally adds volumeMount to the provided container if DisableAutomountServiceAccountToken is set
 func AddServiceAccountTokenVolumeMount(dst *corev1.Container, params *vmv1beta1.CommonApplicationDeploymentParams) {
@@ -45,7 +45,7 @@ func AddServiceAccountTokenVolumeMount(dst *corev1.Container, params *vmv1beta1.
 		}
 	}
 	dst.VolumeMounts = append(dst.VolumeMounts, corev1.VolumeMount{
-		Name:      seriveAccountTokenVolume,
+		Name:      serviceAccountTokenVolume,
 		MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
 		ReadOnly:  true,
 	})
@@ -58,13 +58,13 @@ func AddServiceAccountTokenVolume(dst []corev1.Volume, params *vmv1beta1.CommonA
 	}
 
 	for _, v := range dst {
-		if v.Name == seriveAccountTokenVolume {
+		if v.Name == serviceAccountTokenVolume {
 			return dst
 		}
 	}
 
 	dst = append(dst, corev1.Volume{
-		Name: seriveAccountTokenVolume,
+		Name: serviceAccountTokenVolume,
 		VolumeSource: corev1.VolumeSource{
 			Projected: &corev1.ProjectedVolumeSource{
 				DefaultMode: ptr.To(int32(420)),

@@ -5,9 +5,11 @@ import (
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -183,6 +185,57 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 					})).To(Succeed())
 
+				},
+			),
+			Entry("with strict security and vm config reloader", "strict-vmreloader-create",
+				&v1beta1vm.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespacedName.Namespace,
+					},
+					Spec: v1beta1vm.VMAlertSpec{
+						CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+							UseStrictSecurity: ptr.To(true),
+						},
+						CommonConfigReloaderParams: v1beta1vm.CommonConfigReloaderParams{
+							UseVMConfigReloader: ptr.To(true),
+						},
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount:                        ptr.To[int32](1),
+							DisableAutomountServiceAccountToken: true,
+						},
+						SelectAllByDefault: true,
+						Notifier:           &v1beta1vm.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
+						Notifiers:          []v1beta1vm.VMAlertNotifierSpec{{URL: "http://alert-manager-2:9093"}},
+						Datasource: v1beta1vm.VMAlertDatasourceSpec{
+							URL: "http://some-datasource-url:8428",
+						},
+					},
+				},
+				nil,
+				func(cr *v1beta1vm.VMAlert) {
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					// assert security
+					Expect(dep.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
+					Expect(dep.Spec.Template.Spec.SecurityContext.RunAsUser).NotTo(BeNil())
+					Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(2))
+					pc := dep.Spec.Template.Spec.Containers
+					Expect(pc[0].SecurityContext).NotTo(BeNil())
+					Expect(pc[1].SecurityContext).NotTo(BeNil())
+					Expect(pc[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+					Expect(pc[1].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+
+					// assert k8s api access
+					// vmalert must not have any api access, it doesn't watch for secret changes
+					// operator changes pod annotation and triggers config reload
+					saTokenMount := "/var/run/secrets/kubernetes.io/serviceaccount"
+					vmalertPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
+					Expect(hasVolumeMount(vmalertPod.Spec.Containers[0].VolumeMounts, saTokenMount)).NotTo(Succeed())
+					Expect(hasVolumeMount(vmalertPod.Spec.Containers[1].VolumeMounts, saTokenMount)).NotTo(Succeed())
+					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).NotTo(Succeed())
 				},
 			),
 		)

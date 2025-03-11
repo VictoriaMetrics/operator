@@ -4,6 +4,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/utils/ptr"
 )
 
 // StatefulSetAddCommonParams adds common params to given statefulset
@@ -30,5 +31,7 @@ func StatefulSetAddCommonParams(dst *appsv1.StatefulSet, useStrictSecurity bool,
 	dst.Spec.MinReadySeconds = params.MinReadySeconds
 	dst.Spec.Replicas = params.ReplicaCount
 	dst.Spec.RevisionHistoryLimit = params.RevisionHistoryLimitCount
-
+	if params.DisableAutomountServiceAccountToken {
+		dst.Spec.Template.Spec.AutomountServiceAccountToken = ptr.To(false)
+	}
 }

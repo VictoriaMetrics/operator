@@ -20,6 +20,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated `client-gen` to  `v0.32.4` version and generate api client. See [this commit](https://github.com/VictoriaMetrics/operator/commit/7a947ae80ef72ca94765cf8a5db1ebb100842775) for details.
 
 * FEATURE: upgrade Go builder from Go1.23.4 to Go1.24. See [Go1.24 release notes](https://tip.golang.org/doc/go1.24).
+* FEATURE: [operator](https://docs.victoriametrics.com/operator/api): add new field to CRD objects spec: `disableAutomountServiceAccountToken`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1255) and this [docs](https://docs.victoriametrics.com/operator/security/#kubernetes-api-access) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): deprecate `aPIServerConfig` in favor of `apiServerConfig`. `aPIServerConfig` will be removed at `v0.56.0` release. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1239) for details
 * FEATURE: [vmpodscrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/): add `portNumber` to `podMetricEndpoints`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1251) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support stream aggregation `enableWindows`.

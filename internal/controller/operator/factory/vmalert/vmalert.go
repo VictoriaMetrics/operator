@@ -925,8 +925,8 @@ func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert,
 	}
 	volumeWatchArg := "-volume-dir"
 	reloadURLArg := "-webhook-url"
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
-	if useCustomConfigReloader {
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	if useVMConfigReloader {
 		volumeWatchArg = "--watched-dir"
 		reloadURLArg = "--reload-url"
 	}
@@ -967,8 +967,8 @@ func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		VolumeMounts:             reloaderVolumes,
 	}
-	if useCustomConfigReloader {
-		build.AddsPortProbesToConfigReloaderContainer(useCustomConfigReloader, &configReloaderContainer)
+	if useVMConfigReloader {
+		build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &configReloaderContainer)
 
 	}
 

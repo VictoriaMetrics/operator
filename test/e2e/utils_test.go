@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -191,4 +192,39 @@ func assertLabelsOnObjects(ctx context.Context, nss types.NamespacedName, object
 
 		}
 	}
+}
+
+//nolint:dupl,lll,unparam
+func hasVolume(volumes []corev1.Volume, volumeName string) error {
+	var existVolumes []string
+	for _, v := range volumes {
+		if v.Name == volumeName {
+			return nil
+		}
+		existVolumes = append(existVolumes, fmt.Sprintf("name=%s", v.Name))
+	}
+	return fmt.Errorf("volumes=%d with names=%s; must have=%s", len(volumes), strings.Join(existVolumes, ","), volumeName)
+}
+
+//nolint:dupl,lll,unparam
+func hasVolumeMount(volumeMounts []corev1.VolumeMount, volumeMountName string) error {
+	var existVolumes []string
+	for _, vm := range volumeMounts {
+		if vm.MountPath == volumeMountName {
+			return nil
+		}
+		existVolumes = append(existVolumes, fmt.Sprintf("volume=%s,mountPath=%s", vm.Name, vm.MountPath))
+	}
+	return fmt.Errorf("volumes mounts=%d with paths=%s; must have=%s", len(volumeMounts), strings.Join(existVolumes, ","), volumeMountName)
+}
+
+//nolint:dupl,lll
+func mustGetFirstPod(rclient client.Client, ns string, lbs map[string]string) *corev1.Pod {
+	var podList corev1.PodList
+	Expect(rclient.List(context.TODO(), &podList, &client.ListOptions{
+		Namespace:     ns,
+		LabelSelector: labels.SelectorFromSet(lbs),
+	})).To(Succeed())
+	Expect(podList.Items).ToNot(BeEmpty())
+	return &podList.Items[0]
 }

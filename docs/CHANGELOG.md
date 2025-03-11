@@ -13,9 +13,12 @@ aliases:
 
 ## tip
 
+## [v0.54.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.54.0)
+
+**Release date:** 11 Mar 2025
+![AppVersion: v1.113.0](https://img.shields.io/badge/v1.113.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fchangelog%23v11300)
 **Update note 1: remove deprecated fields `Replicas`, `UpdateReplicas`, `AvailableReplicas` and `UnAvailableReplicas` from `vlogs`, `vmsingle`,`vmagent`, `vmalert`  objects `.status`.
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to v1.112.0 version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated `Kubernetes` libraries to `v1.32.2` version and `controller-runtime` to `v0.20.2` version.
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated `client-gen` to  `v0.32.4` version and generate api client. See [this commit](https://github.com/VictoriaMetrics/operator/commit/7a947ae80ef72ca94765cf8a5db1ebb100842775) for details.
 

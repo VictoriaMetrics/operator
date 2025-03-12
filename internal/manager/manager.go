@@ -99,7 +99,7 @@ var (
 	clientQPS                     = managerFlags.Int("client.qps", 50, "defines K8s client QPS. The value should be increased for the cluster with large number of objects > 10_000.")
 	clientBurst                   = managerFlags.Int("client.burst", 100, "defines K8s client burst")
 	wasCacheSynced                = uint32(0)
-	disableCacheForObjects        = managerFlags.String("controller.disableCacheFor", "", "disables client for cache for API resources. Supported objects - namespace,pod,secret,configmap,deployment,statefulset")
+	disableCacheForObjects        = managerFlags.String("controller.disableCacheFor", "configmap,secret", "disables client for cache for API resources. Supported objects - namespace,pod,service,secret,configmap,deployment,statefulset")
 	disableSecretKeySpaceTrim     = managerFlags.Bool("disableSecretKeySpaceTrim", false, "disables trim of space at Secret/Configmap value content. It's a common mistake to put new line to the base64 encoded secret value.")
 	version                       = managerFlags.Bool("version", false, "Show operator version")
 	disableControllerForCRD       = managerFlags.String("controller.disableReconcileFor", "", "disables reconcile controllers for given list of comma separated CRD names. For example - VMCluster,VMSingle,VMAuth."+
@@ -379,6 +379,7 @@ func getClientCacheOptions(disabledCacheObjects string) (*client.CacheOptions, e
 var cacheClientObjectsByName = map[string]client.Object{
 	"secret":      &corev1.Secret{},
 	"configmap":   &corev1.ConfigMap{},
+	"service":     &corev1.Service{},
 	"namespace":   &corev1.Namespace{},
 	"pod":         &corev1.Pod{},
 	"deployment":  &appsv1.Deployment{},

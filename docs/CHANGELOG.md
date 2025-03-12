@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): reduce operator memory usage. Memory usage increased at [v0.48.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.48.0). This change updates default value for `-controller.disableCacheFor=""` flag from empty to `configmap,secret` and disables go-client cache for `Secret` and `ConfigMap`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1245) for details.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly reload `webhook` and `metricsserver` TLS certificates. Reload logic was broken at v0.54.0. See related [commit](b91d6f1e044b4c81dc7716da718204cb769dcebd).
 
 ## [v0.54.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.54.0)

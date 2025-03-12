@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"sync/atomic"
@@ -42,7 +41,6 @@ import (
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -91,7 +89,6 @@ var (
 	mtlsCAFile          = managerFlags.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
 		"By default the host system TLS Root CA is used for client certificate verification. ")
 	metricsAddr                   = managerFlags.String("metrics-bind-address", defaultMetricsAddr, "The address the metric endpoint binds to.")
-	secureMetrics                 = managerFlags.Bool("metrics-secure", false, "If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	pprofAddr                     = managerFlags.String("pprof-addr", ":8435", "The address for pprof/debug API. Empty value disables server")
 	probeAddr                     = managerFlags.String("health-probe-bind-address", ":8081", "The address the probes (health, ready) binds to.")
 	defaultKubernetesMinorVersion = managerFlags.Uint64("default.kubernetesVersion.minor", 21, "Minor version of kubernetes server, if operator cannot parse actual kubernetes response")
@@ -132,8 +129,6 @@ func RunManager(ctx context.Context) error {
 		StacktraceLevel: zapcore.PanicLevel,
 	}
 
-	var tlsOpts []func(*tls.Config)
-
 	opts.BindFlags(managerFlags)
 	vmcontroller.BindFlags(managerFlags)
 	managerFlags.Parse(os.Args[1:])
@@ -173,82 +168,28 @@ func RunManager(ctx context.Context) error {
 	klog.SetLogger(l)
 	ctrl.SetLogger(l)
 
-	// Create watchers for metrics and webhooks certificates
-	var metricsCertWatcher, webhookCertWatcher *certwatcher.CertWatcher
-
-	// Initial webhook TLS options
-	webhookTLSOpts := tlsOpts
-
-	if *enableWebhook {
-		setupLog.Info("Initializing webhook certificate watcher using provided certificates",
-			"webhook.certDir", webhookCertDir, "webhook.certName", webhookCertName, "webhook.keyName", webhookCertKey)
-
-		var err error
-		webhookCertWatcher, err = certwatcher.New(
-			filepath.Join(*webhookCertDir, *webhookCertName),
-			filepath.Join(*webhookCertDir, *webhookCertKey),
-		)
-		if err != nil {
-			setupLog.Error(err, "Failed to initialize webhook certificate watcher")
-			os.Exit(1)
-		}
-
-		webhookTLSOpts = append(webhookTLSOpts, func(config *tls.Config) {
-			config.GetCertificate = webhookCertWatcher.GetCertificate
-		})
+	metricServerTLSOpts, err := getMetricsServerMTLSOpts()
+	if err != nil {
+		return fmt.Errorf("cannot setup metrics server TLS: %w", err)
 	}
 
 	webhookServer := webhook.NewServer(webhook.Options{
-		Port:    *webhookPort,
-		TLSOpts: webhookTLSOpts,
+		Port:     *webhookPort,
+		CertDir:  *webhookCertDir,
+		CertName: *webhookCertName,
+		KeyName:  *webhookCertKey,
 	})
 
 	metricsServerOptions := metricsserver.Options{
 		BindAddress:   *metricsAddr,
-		SecureServing: *secureMetrics,
-		TLSOpts:       tlsOpts,
-		ExtraHandlers: map[string]http.Handler{},
+		SecureServing: *tlsEnable,
+		CertDir:       *tlsCertDir,
+		CertName:      *tlsCertName,
+		KeyName:       *tlsCertKey,
+		TLSOpts:       metricServerTLSOpts,
 	}
 
-	if *tlsEnable {
-		if tlsCertDir != nil && len(*tlsCertDir) > 0 {
-			setupLog.Info("Initializing metrics certificate watcher using provided certificates",
-				"tls.certDir", tlsCertDir, "tls.certName", tlsCertName, "tls.keyName", tlsCertKey)
-
-			var err error
-			metricsCertWatcher, err = certwatcher.New(
-				filepath.Join(*tlsCertDir, *tlsCertName),
-				filepath.Join(*tlsCertDir, *tlsCertKey),
-			)
-			if err != nil {
-				setupLog.Error(err, "to initialize metrics certificate watcher", "error", err)
-				os.Exit(1)
-			}
-
-			metricsServerOptions.TLSOpts = append(metricsServerOptions.TLSOpts, func(config *tls.Config) {
-				config.GetCertificate = metricsCertWatcher.GetCertificate
-			})
-		}
-		if *mtlsEnable {
-			metricsServerOptions.TLSOpts = append(metricsServerOptions.TLSOpts, func(cfg *tls.Config) {
-				cfg.ClientAuth = tls.RequireAndVerifyClientCert
-				if *mtlsCAFile != "" {
-					cp := x509.NewCertPool()
-					caFile := path.Join(*tlsCertDir, *mtlsCAFile)
-					caPEM, err := os.ReadFile(caFile)
-					if err != nil {
-						panic(fmt.Sprintf("cannot read tlsCAFile=%q: %s", caFile, err))
-					}
-					if !cp.AppendCertsFromPEM(caPEM) {
-						panic(fmt.Sprintf("cannot parse data for tlsCAFile=%q: %s", caFile, caPEM))
-					}
-					cfg.ClientCAs = cp
-				}
-			})
-		}
-	}
-
-	setupLog.Info("starting VictoriaMetrics operator", "build version", buildinfo.Version, "short_version", versionRe.FindString(buildinfo.Version))
+	setupLog.Info(fmt.Sprintf("starting VictoriaMetrics operator build version: %s, short_version: %s", buildinfo.Version, versionRe.FindString(buildinfo.Version)))
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt, clientQPSLimit)
 	addRestClientMetrics(r)
@@ -312,6 +253,7 @@ func RunManager(ctx context.Context) error {
 	}); err != nil {
 		return fmt.Errorf("cannot register ready endpoint: %w", err)
 	}
+
 	// no-op
 	if err := mgr.AddHealthzCheck("health", func(req *http.Request) error {
 		return nil
@@ -351,8 +293,7 @@ func RunManager(ctx context.Context) error {
 
 	baseClient, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
-		setupLog.Error(err, "cannot build promClient")
-		return err
+		return fmt.Errorf("cannot create k8s-go-client instance: %w", err)
 	}
 
 	k8stools.SetSpaceTrim(*disableSecretKeySpaceTrim)
@@ -362,10 +303,10 @@ func RunManager(ctx context.Context) error {
 	}
 	if err := k8stools.SetKubernetesVersionWithDefaults(k8sServerVersion, *defaultKubernetesMinorVersion, *defaultKubernetesMajorVersion); err != nil {
 		// log error and do nothing, because we are using sane default values.
-		setupLog.Error(err, "cannot parse kubernetes version, using default flag values")
+		setupLog.Error(err, "cannot parse kubernetes version, using default flag values, fallback to default values")
 	}
 
-	setupLog.Info("using kubernetes server version", "version", k8sServerVersion.String())
+	setupLog.Info(fmt.Sprintf("using kubernetes server version: %s", k8sServerVersion.String()))
 	wc, err := client.NewWithWatch(mgr.GetConfig(), client.Options{Scheme: scheme})
 	if err != nil {
 		return fmt.Errorf("cannot setup watch client: %w", err)
@@ -383,8 +324,7 @@ func RunManager(ctx context.Context) error {
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
-		setupLog.Error(err, "problem running manager")
-		return err
+		return fmt.Errorf("cannot start controller manager: %w", err)
 	}
 
 	setupLog.Info("gracefully stopped")
@@ -570,4 +510,34 @@ func mustGetLoggerEncodingOpts() []zap.EncoderConfigOption {
 		}
 	}
 	return opts
+}
+
+func getMetricsServerMTLSOpts() ([]func(*tls.Config), error) {
+
+	if !*mtlsEnable {
+		return nil, nil
+	}
+	var opts []func(*tls.Config)
+
+	var cp *x509.CertPool
+	if len(*mtlsCAFile) > 0 {
+		// CA file cannot be reloaded dynamically with golang std lib components
+		// so load it once during init
+		cp = x509.NewCertPool()
+		caFile := path.Join(*tlsCertDir, *mtlsCAFile)
+		caPEM, err := os.ReadFile(caFile)
+		if err != nil {
+			return nil, fmt.Errorf("cannot read tlsCAFile=%q: %s", caFile, err)
+		}
+		if !cp.AppendCertsFromPEM(caPEM) {
+			return nil, fmt.Errorf("cannot parse data for tlsCAFile=%q: %s", caFile, caPEM)
+		}
+	}
+
+	opts = append(opts, func(config *tls.Config) {
+		config.ClientAuth = tls.RequireAndVerifyClientCert
+		config.ClientCAs = cp
+	})
+
+	return opts, nil
 }

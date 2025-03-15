@@ -31,10 +31,10 @@ spec:
         # use special workaround for local endpoint scrape
         # rewrite scheme to http, if pod IP is equal to local pod IP
         # it allows to have multiple vmagent replicas with istio
-        relabelingConfig:
+        relabelConfigs:
           - source_labels: [__meta_kubernetes_pod_ip]
             regex: "%{POD_IP}"
-            target_label: __scheme
+            target_label: __scheme__
             replacement: http
         tlsConfig:
           caFile: /etc/istio-certs/root-cert.pem

@@ -244,7 +244,7 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 		}
 	}
 	var wg sync.WaitGroup
-	errCh := make(chan error, shardsCount)
+	errCh := make(chan error)
 
 	for shardNum := range shardNumIter(isUpscaling, shardsCount) {
 		wg.Add(1)
@@ -274,7 +274,7 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 						prevDeploy = prevObjApp
 						prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
 						if err != nil {
-							errCh <- fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent(%d): %w",  shardNum, err)
+							errCh <- fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent(%d): %w", shardNum, err)
 							return
 						}
 					}

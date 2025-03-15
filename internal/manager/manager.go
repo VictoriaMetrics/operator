@@ -357,6 +357,11 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&vmv1beta1.VMAuth{},
 		&vmv1beta1.VMUser{},
 		&vmv1beta1.VMRule{},
+		&vmv1beta1.VMServiceScrape{},
+		&vmv1beta1.VMPodScrape{},
+		&vmv1beta1.VMNodeScrape{},
+		&vmv1beta1.VMScrapeConfig{},
+		&vmv1beta1.VMStaticScrape{},
 	})
 }
 

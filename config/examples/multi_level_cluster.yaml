@@ -1,0 +1,128 @@
+# Minimal example for multi-level cluster setup with operator
+# (https://docs.victoriametrics.com/cluster-victoriametrics/#multi-level-cluster-setup)
+# There are two clusters: blue and green. Each cluster has its own storage, select and insert nodes.
+# And there is a shared VMCluster that uses VMSelect and VMInsert nodes from blue and green clusters through clusterNative.
+# The shared cluster also has a VMAgent that sends data to the shared insert nodes and VMAuth that selects data from the shared select nodes.
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: blue
+  namespace: monitoring
+spec:
+  retentionPeriod: "1"
+  vmstorage:
+    replicaCount: 3
+  vminsert:
+    replicaCount: 1
+    extraArgs:
+      clusternativeListenAddr: ":8400"
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        ports:
+          - name: clusternative
+            port: 8400
+            protocol: TCP
+            targetPort: 8400
+  vmselect:
+    replicaCount: 1
+    extraArgs:
+      clusternativeListenAddr: ":8401"
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        ports:
+          - name: clusternative
+            port: 8401
+            protocol: TCP
+            targetPort: 8401
+
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: green
+  namespace: monitoring
+spec:
+  retentionPeriod: "1"
+  vmstorage:
+    replicaCount: 3
+  vminsert:
+    replicaCount: 1
+    extraArgs:
+      clusternativeListenAddr: ":8400"
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        ports:
+          - name: clusternative
+            port: 8400
+            protocol: TCP
+            targetPort: 8400
+  vmselect:
+    replicaCount: 1
+    extraArgs:
+      clusternativeListenAddr: ":8401"
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        ports:
+          - name: clusternative
+            port: 8401
+            protocol: TCP
+            targetPort: 8401
+
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: shared
+  namespace: monitoring
+spec:
+  retentionPeriod: "1"
+  vmselect:
+    replicaCount: 1
+    extraArgs:
+      storageNode: "blue/vmselect-blue-0.vmselect-blue,green/vmselect-green-0.vmselect-green"
+  vminsert:
+    replicaCount: 1
+    extraArgs:
+      storageNode: "blue/vminsert-blue-0.vminsert-blue,green/vminsert-green-0.vminsert-green"
+
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: shared
+  namespace: monitoring
+spec:
+  selectAllByDefault: true
+  remoteWrite:
+    - url: "http://vminsert-shared:8480/insert/0/prometheus/api/v1/write"
+    - url: "http://vminsert-shared:8480/insert/0/prometheus/api/v1/write"
+
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: shared
+  namespace: monitoring
+spec:
+  userSelector: {}
+  userNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: monitoring
+  ingress:
+    class_name: nginx
+    host: vm.k8s.orb.local # specify your ingress host here
+  unauthorizedAccessConfig:
+    - src_paths: [".*"]
+      url_prefix: ["http://vmselect-shared:8481/select/0"]

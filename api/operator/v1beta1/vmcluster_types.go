@@ -94,6 +94,23 @@ func (cr *VMCluster) VMAuthLBSelectorLabels() map[string]string {
 	}
 }
 
+// VMAuthLBPodLabels returns pod labels for vmclusterlb-vmauth-balancer cluster component
+func (cr *VMCluster) VMAuthLBPodLabels() map[string]string {
+	selectorLabels := cr.VMAuthLBSelectorLabels()
+	if cr.Spec.RequestsLoadBalancer.Spec.PodMetadata == nil {
+		return selectorLabels
+	}
+	return labels.Merge(cr.Spec.RequestsLoadBalancer.Spec.PodMetadata.Labels, selectorLabels)
+}
+
+// VMAuthLBPodAnnotations returns pod annotations for vmstorage cluster component
+func (cr *VMCluster) VMAuthLBPodAnnotations() map[string]string {
+	if cr.Spec.RequestsLoadBalancer.Spec.PodMetadata == nil {
+		return make(map[string]string)
+	}
+	return cr.Spec.RequestsLoadBalancer.Spec.PodMetadata.Annotations
+}
+
 // GetVMAuthLBName returns prefixed name for the loadbalanacer components
 func (cr *VMCluster) GetVMAuthLBName() string {
 	return fmt.Sprintf("vmclusterlb-%s", cr.Name)

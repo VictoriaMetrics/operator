@@ -373,7 +373,7 @@ func parseAndSetCustomerConfigReloadImageVersion(boc *BaseOperatorConf) error {
 		boc.parsedConfigReloaderImageVersion = ver
 		return nil
 	}
-	return fmt.Errorf("cannot find : delimeter at customer config reloader image=%q", reloaderImage)
+	return fmt.Errorf("cannot find : delimiter at customer config reloader image=%q", reloaderImage)
 }
 
 // Validate - validates config on best effort.
@@ -546,8 +546,8 @@ func (labels *Labels) Merge(otherLabels map[string]string) map[string]string {
 func (labels *Labels) Set(value string) error {
 	m := map[string]string{}
 	if value != "" {
-		splited := strings.Split(value, ",")
-		for _, pair := range splited {
+		splitted := strings.Split(value, ",")
+		for _, pair := range splitted {
 			sp := strings.Split(pair, "=")
 			m[sp[0]] = sp[1]
 		}

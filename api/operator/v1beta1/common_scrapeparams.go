@@ -25,7 +25,7 @@ type VMScrapeParams struct {
 	DisableCompression *bool `json:"disable_compression,omitempty"`
 	// disable_keepalive allows disabling HTTP keep-alive when scraping targets.
 	// By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
-	// could be re-used.
+	// could be reused.
 	// See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements
 	// +optional
 	DisableKeepAlive *bool `json:"disable_keep_alive,omitempty"`

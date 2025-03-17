@@ -2210,7 +2210,7 @@ _Appears in:_
 
 | Field | Description |
 | --- | --- |
-| <a href="#tlsconfig-ca"><code id="tlsconfig-ca">ca</code></a><br/>_[SecretOrConfigMap](#secretorconfigmap)_ | _(Optional)_<br/>Stuct containing the CA cert to use for the targets. |
+| <a href="#tlsconfig-ca"><code id="tlsconfig-ca">ca</code></a><br/>_[SecretOrConfigMap](#secretorconfigmap)_ | _(Optional)_<br/>Struct containing the CA cert to use for the targets. |
 | <a href="#tlsconfig-cafile"><code id="tlsconfig-cafile">caFile</code></a><br/>_string_ | _(Optional)_<br/>Path to the CA cert in the container to use for the targets. |
 | <a href="#tlsconfig-cert"><code id="tlsconfig-cert">cert</code></a><br/>_[SecretOrConfigMap](#secretorconfigmap)_ | _(Optional)_<br/>Struct containing the client cert file for the targets. |
 | <a href="#tlsconfig-certfile"><code id="tlsconfig-certfile">certFile</code></a><br/>_string_ | _(Optional)_<br/>Path to the client cert file in the container for the targets. |
@@ -3825,7 +3825,7 @@ _Appears in:_
 | Field | Description |
 | --- | --- |
 | <a href="#vmscrapeparams-disable_compression"><code id="vmscrapeparams-disable_compression">disable_compression</code></a><br/>_boolean_ | _(Optional)_<br/>DisableCompression |
-| <a href="#vmscrapeparams-disable_keep_alive"><code id="vmscrapeparams-disable_keep_alive">disable_keep_alive</code></a><br/>_boolean_ | _(Optional)_<br/>disable_keepalive allows disabling HTTP keep-alive when scraping targets.<br />By default, HTTP keep-alive is enabled, so TCP connections to scrape targets<br />could be re-used.<br />See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements |
+| <a href="#vmscrapeparams-disable_keep_alive"><code id="vmscrapeparams-disable_keep_alive">disable_keep_alive</code></a><br/>_boolean_ | _(Optional)_<br/>disable_keepalive allows disabling HTTP keep-alive when scraping targets.<br />By default, HTTP keep-alive is enabled, so TCP connections to scrape targets<br />could be reused.<br />See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements |
 | <a href="#vmscrapeparams-headers"><code id="vmscrapeparams-headers">headers</code></a><br/>_string array_ | _(Optional)_<br/>Headers allows sending custom headers to scrape targets<br />must be in of semicolon separated header with it's value<br />eg:<br />headerName: headerValue<br />vmagent supports since 1.79.0 version |
 | <a href="#vmscrapeparams-no_stale_markers"><code id="vmscrapeparams-no_stale_markers">no_stale_markers</code></a><br/>_boolean_ | _(Optional)_<br/> |
 | <a href="#vmscrapeparams-proxy_client_config"><code id="vmscrapeparams-proxy_client_config">proxy_client_config</code></a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See feature description https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy |

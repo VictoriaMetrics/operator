@@ -1263,7 +1263,8 @@ spec:
                     description: TLSConfig Config to use for accessing apiserver.
                     properties:
                       ca:
-                        description: Stuct containing the CA cert to use for the targets.
+                        description: Struct containing the CA cert to use for the
+                          targets.
                         properties:
                           configMap:
                             description: ConfigMap containing data to use for the
@@ -3665,7 +3666,7 @@ spec:
                         write target
                       properties:
                         ca:
-                          description: Stuct containing the CA cert to use for the
+                          description: Struct containing the CA cert to use for the
                             targets.
                           properties:
                             configMap:
@@ -6065,8 +6066,8 @@ spec:
                                 description: TLS configuration for the client.
                                 properties:
                                   ca:
-                                    description: Stuct containing the CA cert to use
-                                      for the targets.
+                                    description: Struct containing the CA cert to
+                                      use for the targets.
                                     properties:
                                       configMap:
                                         description: ConfigMap containing data to
@@ -6365,8 +6366,8 @@ spec:
                             description: TLS configuration
                             properties:
                               ca:
-                                description: Stuct containing the CA cert to use for
-                                  the targets.
+                                description: Struct containing the CA cert to use
+                                  for the targets.
                                 properties:
                                   configMap:
                                     description: ConfigMap containing data to use
@@ -6771,8 +6772,8 @@ spec:
                                 description: TLS configuration for the client.
                                 properties:
                                   ca:
-                                    description: Stuct containing the CA cert to use
-                                      for the targets.
+                                    description: Struct containing the CA cert to
+                                      use for the targets.
                                     properties:
                                       configMap:
                                         description: ConfigMap containing data to
@@ -7739,8 +7740,8 @@ spec:
                                 description: TLS configuration for the client.
                                 properties:
                                   ca:
-                                    description: Stuct containing the CA cert to use
-                                      for the targets.
+                                    description: Struct containing the CA cert to
+                                      use for the targets.
                                     properties:
                                       configMap:
                                         description: ConfigMap containing data to
@@ -8354,8 +8355,8 @@ spec:
                                 description: TLS configuration for the client.
                                 properties:
                                   ca:
-                                    description: Stuct containing the CA cert to use
-                                      for the targets.
+                                    description: Struct containing the CA cert to
+                                      use for the targets.
                                     properties:
                                       configMap:
                                         description: ConfigMap containing data to
@@ -8787,8 +8788,8 @@ spec:
                                 description: TLS configuration for the client.
                                 properties:
                                   ca:
-                                    description: Stuct containing the CA cert to use
-                                      for the targets.
+                                    description: Struct containing the CA cert to
+                                      use for the targets.
                                     properties:
                                       configMap:
                                         description: ConfigMap containing data to
@@ -9305,8 +9306,8 @@ spec:
                                 description: TLS configuration for the client.
                                 properties:
                                   ca:
-                                    description: Stuct containing the CA cert to use
-                                      for the targets.
+                                    description: Struct containing the CA cert to
+                                      use for the targets.
                                     properties:
                                       configMap:
                                         description: ConfigMap containing data to
@@ -15223,7 +15224,8 @@ spec:
                       connection
                     properties:
                       ca:
-                        description: Stuct containing the CA cert to use for the targets.
+                        description: Struct containing the CA cert to use for the
+                          targets.
                         properties:
                           configMap:
                             description: ConfigMap containing data to use for the
@@ -20505,7 +20507,7 @@ spec:
                 description: TLSConfig configuration to use when scraping the endpoint
                 properties:
                   ca:
-                    description: Stuct containing the CA cert to use for the targets.
+                    description: Struct containing the CA cert to use for the targets.
                     properties:
                       configMap:
                         description: ConfigMap containing data to use for the targets.
@@ -20660,7 +20662,7 @@ spec:
                     description: |-
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
-                      could be re-used.
+                      could be reused.
                       See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements
                     type: boolean
                   headers:
@@ -20772,8 +20774,8 @@ spec:
                         description: TLSConfig specifies TLSConfig configuration parameters.
                         properties:
                           ca:
-                            description: Stuct containing the CA cert to use for the
-                              targets.
+                            description: Struct containing the CA cert to use for
+                              the targets.
                             properties:
                               configMap:
                                 description: ConfigMap containing data to use for
@@ -21585,7 +21587,7 @@ spec:
                         endpoint
                       properties:
                         ca:
-                          description: Stuct containing the CA cert to use for the
+                          description: Struct containing the CA cert to use for the
                             targets.
                           properties:
                             configMap:
@@ -21745,7 +21747,7 @@ spec:
                           description: |-
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
-                            could be re-used.
+                            could be reused.
                             See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements
                           type: boolean
                         headers:
@@ -21858,7 +21860,7 @@ spec:
                                 parameters.
                               properties:
                                 ca:
-                                  description: Stuct containing the CA cert to use
+                                  description: Struct containing the CA cert to use
                                     for the targets.
                                   properties:
                                     configMap:
@@ -22841,7 +22843,7 @@ spec:
                 description: TLSConfig configuration to use when scraping the endpoint
                 properties:
                   ca:
-                    description: Stuct containing the CA cert to use for the targets.
+                    description: Struct containing the CA cert to use for the targets.
                     properties:
                       configMap:
                         description: ConfigMap containing data to use for the targets.
@@ -22996,7 +22998,7 @@ spec:
                     description: |-
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
-                      could be re-used.
+                      could be reused.
                       See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements
                     type: boolean
                   headers:
@@ -23108,8 +23110,8 @@ spec:
                         description: TLSConfig specifies TLSConfig configuration parameters.
                         properties:
                           ca:
-                            description: Stuct containing the CA cert to use for the
-                              targets.
+                            description: Struct containing the CA cert to use for
+                              the targets.
                             properties:
                               configMap:
                                 description: ConfigMap containing data to use for
@@ -24252,7 +24254,7 @@ spec:
                             parameters.
                           properties:
                             ca:
-                              description: Stuct containing the CA cert to use for
+                              description: Struct containing the CA cert to use for
                                 the targets.
                               properties:
                                 configMap:
@@ -24442,7 +24444,7 @@ spec:
                       description: TLS configuration to use on every scrape request
                       properties:
                         ca:
-                          description: Stuct containing the CA cert to use for the
+                          description: Struct containing the CA cert to use for the
                             targets.
                           properties:
                             configMap:
@@ -24870,7 +24872,7 @@ spec:
                             parameters.
                           properties:
                             ca:
-                              description: Stuct containing the CA cert to use for
+                              description: Struct containing the CA cert to use for
                                 the targets.
                               properties:
                                 configMap:
@@ -25030,7 +25032,7 @@ spec:
                       description: TLS configuration to use on every scrape request
                       properties:
                         ca:
-                          description: Stuct containing the CA cert to use for the
+                          description: Struct containing the CA cert to use for the
                             targets.
                           properties:
                             configMap:
@@ -25576,7 +25578,7 @@ spec:
                             parameters.
                           properties:
                             ca:
-                              description: Stuct containing the CA cert to use for
+                              description: Struct containing the CA cert to use for
                                 the targets.
                               properties:
                                 configMap:
@@ -25736,7 +25738,7 @@ spec:
                       description: TLS configuration to use on every scrape request
                       properties:
                         ca:
-                          description: Stuct containing the CA cert to use for the
+                          description: Struct containing the CA cert to use for the
                             targets.
                           properties:
                             configMap:
@@ -26238,7 +26240,7 @@ spec:
                             parameters.
                           properties:
                             ca:
-                              description: Stuct containing the CA cert to use for
+                              description: Struct containing the CA cert to use for
                                 the targets.
                               properties:
                                 configMap:
@@ -26420,7 +26422,7 @@ spec:
                       description: TLS configuration to use on every scrape request
                       properties:
                         ca:
-                          description: Stuct containing the CA cert to use for the
+                          description: Struct containing the CA cert to use for the
                             targets.
                           properties:
                             configMap:
@@ -26882,7 +26884,7 @@ spec:
                       description: TLS configuration to use on every scrape request
                       properties:
                         ca:
-                          description: Stuct containing the CA cert to use for the
+                          description: Struct containing the CA cert to use for the
                             targets.
                           properties:
                             configMap:
@@ -27189,7 +27191,7 @@ spec:
                 description: TLSConfig configuration to use when scraping the endpoint
                 properties:
                   ca:
-                    description: Stuct containing the CA cert to use for the targets.
+                    description: Struct containing the CA cert to use for the targets.
                     properties:
                       configMap:
                         description: ConfigMap containing data to use for the targets.
@@ -27344,7 +27346,7 @@ spec:
                     description: |-
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
-                      could be re-used.
+                      could be reused.
                       See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements
                     type: boolean
                   headers:
@@ -27456,8 +27458,8 @@ spec:
                         description: TLSConfig specifies TLSConfig configuration parameters.
                         properties:
                           ca:
-                            description: Stuct containing the CA cert to use for the
-                              targets.
+                            description: Struct containing the CA cert to use for
+                              the targets.
                             properties:
                               configMap:
                                 description: ConfigMap containing data to use for
@@ -28250,7 +28252,7 @@ spec:
                         endpoint
                       properties:
                         ca:
-                          description: Stuct containing the CA cert to use for the
+                          description: Struct containing the CA cert to use for the
                             targets.
                           properties:
                             configMap:
@@ -28410,7 +28412,7 @@ spec:
                           description: |-
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
-                            could be re-used.
+                            could be reused.
                             See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements
                           type: boolean
                         headers:
@@ -28523,7 +28525,7 @@ spec:
                                 parameters.
                               properties:
                                 ca:
-                                  description: Stuct containing the CA cert to use
+                                  description: Struct containing the CA cert to use
                                     for the targets.
                                   properties:
                                     configMap:
@@ -31184,7 +31186,7 @@ spec:
                         endpoint
                       properties:
                         ca:
-                          description: Stuct containing the CA cert to use for the
+                          description: Struct containing the CA cert to use for the
                             targets.
                           properties:
                             configMap:
@@ -31344,7 +31346,7 @@ spec:
                           description: |-
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
-                            could be re-used.
+                            could be reused.
                             See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements
                           type: boolean
                         headers:
@@ -31457,7 +31459,7 @@ spec:
                                 parameters.
                               properties:
                                 ca:
-                                  description: Stuct containing the CA cert to use
+                                  description: Struct containing the CA cert to use
                                     for the targets.
                                   properties:
                                     configMap:
@@ -32084,7 +32086,7 @@ spec:
                 description: TLSConfig defines tls configuration for the backend connection
                 properties:
                   ca:
-                    description: Stuct containing the CA cert to use for the targets.
+                    description: Struct containing the CA cert to use for the targets.
                     properties:
                       configMap:
                         description: ConfigMap containing data to use for the targets.

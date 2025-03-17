@@ -134,7 +134,7 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 	return cs
 }
 
-// ReplacePromDirPath replace prometheus durectory path for config maps and secrets to VM one
+// ReplacePromDirPath replace prometheus directory path for config maps and secrets to VM one
 func ReplacePromDirPath(origin string) string {
 	if strings.HasPrefix(origin, prometheusSecretDir) {
 		return strings.Replace(origin, prometheusSecretDir, vmv1beta1.SecretsDir, 1)

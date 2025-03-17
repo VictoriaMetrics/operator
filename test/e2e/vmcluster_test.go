@@ -64,7 +64,7 @@ var _ = Describe("e2e vmcluster", func() {
 			}
 
 		},
-			Entry("without any componets", "empty", &v1beta1vm.VMCluster{
+			Entry("without any components", "empty", &v1beta1vm.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      namespacedName.Name,
@@ -183,7 +183,7 @@ var _ = Describe("e2e vmcluster", func() {
 						{Namespace: cr.Namespace, Name: cr.GetVMSelectName()}:  &appsv1.StatefulSet{},
 					}
 					for nsn, obj := range clusterNsnObjects {
-						By(fmt.Sprintf("verifing object with name: %s", nsn))
+						By(fmt.Sprintf("verifying object with name: %s", nsn))
 						Expect(k8sClient.Get(ctx, nsn, obj)).To(Succeed())
 						switch t := obj.(type) {
 						case *appsv1.Deployment:
@@ -268,7 +268,7 @@ var _ = Describe("e2e vmcluster", func() {
 						{Namespace: cr.Namespace, Name: cr.GetVMSelectName()}:  &appsv1.StatefulSet{},
 					}
 					for nsn, obj := range clusterNsnObjects {
-						By(fmt.Sprintf("verifing object with name: %s", nsn))
+						By(fmt.Sprintf("verifying object with name: %s", nsn))
 						Expect(k8sClient.Get(ctx, nsn, obj)).To(Succeed())
 						switch t := obj.(type) {
 						case *appsv1.Deployment:
@@ -1174,7 +1174,7 @@ up{baz="bar"} 123
 					},
 				},
 			),
-			Entry("by chaning annotations for created objects", "manage-annotations",
+			Entry("by changing annotations for created objects", "manage-annotations",
 				&v1beta1vm.VMCluster{
 					Spec: v1beta1vm.VMClusterSpec{
 						RequestsLoadBalancer: v1beta1vm.VMAuthLoadBalancer{Enabled: true},
@@ -1263,7 +1263,7 @@ func assertStrictSecurity(podSpec corev1.PodSpec) {
 
 	Expect(podSpec.Containers).To(HaveLen(1))
 	for _, cnt := range podSpec.Containers {
-		By(fmt.Sprintf("verifing container name=%q", cnt.Name))
+		By(fmt.Sprintf("verifying container name=%q", cnt.Name))
 		Expect(cnt.SecurityContext).NotTo(BeNil())
 		Expect(cnt.SecurityContext.RunAsNonRoot).NotTo(BeNil())
 		Expect(*cnt.SecurityContext.RunAsNonRoot).To(BeTrue())

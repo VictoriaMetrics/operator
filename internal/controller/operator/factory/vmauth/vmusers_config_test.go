@@ -497,7 +497,7 @@ password: pass
 			}
 			szd, err := yaml.Marshal(got)
 			if err != nil {
-				t.Fatalf("cannot serialize resutl: %v", err)
+				t.Fatalf("cannot serialize result: %v", err)
 			}
 			assert.Equal(t, tt.want, string(szd))
 		})
@@ -526,7 +526,7 @@ func Test_genPassword(t *testing.T) {
 				return
 			}
 			if got1 == got2 {
-				t.Errorf("genPassword() passowrd cannot be the same, got1 = %v got2 %v", got1, got2)
+				t.Errorf("genPassword() password cannot be the same, got1 = %v got2 %v", got1, got2)
 			}
 		})
 	}

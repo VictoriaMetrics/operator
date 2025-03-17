@@ -54,7 +54,7 @@ func (r *VMAlertmanagerConfig) Validate() error {
 		return fmt.Errorf("no routes provided")
 	}
 	if r.Spec.Route.Receiver == "" {
-		return fmt.Errorf("root route reciever cannot be empty")
+		return fmt.Errorf("root route receiver cannot be empty")
 	}
 
 	for idx, recv := range r.Spec.Receivers {
@@ -253,7 +253,7 @@ func validateReceiver(recv Receiver) error {
 				}
 			case opsgenieTypeMatcher.MatchString(responder.Type):
 			default:
-				return fmt.Errorf("at idx=%d opsgenie_configs responder type=%q doesnt match requirements, want either template or %s", idx, responder.Type, opsgenieTypeMatcher.String())
+				return fmt.Errorf("at idx=%d opsgenie_configs responder type=%q doesn't match requirements, want either template or %s", idx, responder.Type, opsgenieTypeMatcher.String())
 			}
 
 		}

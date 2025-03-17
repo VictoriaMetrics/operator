@@ -27,7 +27,7 @@ import (
 
 // allows to skip users based on external conditions
 // implementation should has as less implementation details of vmusers as possible
-// potentially it could be re-used later for scrape objects/vmalert rules.
+// potentially it could be reused later for scrape objects/vmalert rules.
 type skipableVMUsers struct {
 	stopIter        bool
 	users           []*vmv1beta1.VMUser

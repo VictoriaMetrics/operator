@@ -33,7 +33,7 @@ func init() {
 	metrics.Registry.MustRegister(badConfigsTotal)
 }
 
-// CreateOrUpdateAlertManager creates alertmanagerand and bulds config for it
+// CreateOrUpdateAlertManager creates alertmanagerand and builds config for it
 func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
 	var prevCR *vmv1beta1.VMAlertmanager
 	if cr.ParsedLastAppliedSpec != nil {

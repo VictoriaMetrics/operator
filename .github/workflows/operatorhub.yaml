@@ -80,7 +80,7 @@ jobs:
 
           mv bundle/* ${OPERATOR_DIR}/
           if [ -f ${OPERATOR_DIR}/Makefile ]; then
-            yq -i '.fbc.enabled = true' ${OPERATOR_DIR}/ci.yaml
+            yq -i 'del(.updateGraph)' ${OPERATOR_DIR}/ci.yaml
             cd ${OPERATOR_DIR}
             find catalog-templates \
               -path "*.yaml" \
@@ -90,7 +90,7 @@ jobs:
               -exec yq -i -I2 '.entries |= . += [{"image": strenv(BUNDLE_IMAGE), "schema": "olm.bundle"}]' {} \;
             make catalogs
           else
-            yq -i '.updateGraph = "replaces-mode"' ${OPERATOR_DIR}/ci.yaml
+            yq -i 'del(.fbc)' ${OPERATOR_DIR}/ci.yaml
           fi
           echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 

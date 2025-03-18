@@ -244,12 +244,19 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 		}
 	}
 	var wg sync.WaitGroup
-	errCh := make(chan error)
+
+	type returnValue struct {
+		deploymentName string
+		stsName        string
+		err            error
+	}
+	rtCh := make(chan *returnValue)
 
 	for shardNum := range shardNumIter(isUpscaling, shardsCount) {
 		wg.Add(1)
 		go func(shardNum int) {
 			defer wg.Done()
+
 			shardedDeploy := newDeploy.DeepCopyObject()
 			var prevShardedObject runtime.Object
 			addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy)
@@ -264,7 +271,11 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 				var err error
 				shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
 				if err != nil {
-					errCh <- fmt.Errorf("cannot fill placeholders for deployment sharded vmagent(%d): %w", shardNum, err)
+					rtCh <- &returnValue{
+						deploymentName: "",
+						stsName:        "",
+						err:            fmt.Errorf("cannot fill placeholders for deployment sharded vmagent(%d): %w", shardNum, err),
+					}
 					return
 				}
 				if prevShardedObject != nil {
@@ -274,22 +285,33 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 						prevDeploy = prevObjApp
 						prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
 						if err != nil {
-							errCh <- fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent(%d): %w", shardNum, err)
+							rtCh <- &returnValue{
+								deploymentName: "",
+								stsName:        "",
+								err:            fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent(%d): %w", shardNum, err),
+							}
 							return
 						}
 					}
 				}
 				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, prevDeploy, false); err != nil {
-					errCh <- fmt.Errorf("cannot reconcile deployment for sharded vmagent(%d): %w", shardNum, err)
+					rtCh <- &returnValue{
+						deploymentName: "",
+						stsName:        "",
+						err:            fmt.Errorf("cannot reconcile deployment for sharded vmagent(%d): %w", shardNum, err),
+					}
 					return
 				}
-				deploymentNames[shardedDeploy.Name] = struct{}{}
 			case *appsv1.StatefulSet:
 				var prevSts *appsv1.StatefulSet
 				var err error
 				shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
 				if err != nil {
-					errCh <- fmt.Errorf("cannot fill placeholders for sts in sharded vmagent(%d): %w", shardNum, err)
+					rtCh <- &returnValue{
+						deploymentName: "",
+						stsName:        "",
+						err:            fmt.Errorf("cannot fill placeholders for sts in sharded vmagent(%d): %w", shardNum, err),
+					}
 					return
 				}
 				if prevShardedObject != nil {
@@ -299,7 +321,11 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 						prevSts = prevObjApp
 						prevSts, err = k8stools.RenderPlaceholders(prevSts, placeholders)
 						if err != nil {
-							errCh <- fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent(%d): %w", shardNum, err)
+							rtCh <- &returnValue{
+								deploymentName: "",
+								stsName:        "",
+								err:            fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent(%d): %w", shardNum, err),
+							}
 							return
 						}
 					}
@@ -313,24 +339,34 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 					},
 				}
 				if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, prevSts); err != nil {
-					errCh <- err
+					rtCh <- &returnValue{
+						deploymentName: "",
+						stsName:        "",
+						err:            fmt.Errorf("cannot reconcile sts for sharded vmagent(%d): %w", shardNum, err),
+					}
 					return
 				}
-				stsNames[shardedDeploy.Name] = struct{}{}
 			}
 		}(shardNum)
 	}
 
 	go func() {
 		wg.Wait()
-		close(errCh)
+		close(rtCh)
 	}()
 
-	for err := range errCh {
-		if err != nil {
-			return err
+	for rt := range rtCh {
+		if rt.err != nil {
+			return rt.err
+		}
+		if rt.deploymentName != "" {
+			deploymentNames[rt.deploymentName] = struct{}{}
+		}
+		if rt.stsName != "" {
+			stsNames[rt.stsName] = struct{}{}
 		}
 	}
+
 	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
 		return err
 	}

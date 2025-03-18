@@ -1,13 +1,6 @@
 name: Publish OperatorHub release
 
 on:
-  workflow_dispatch:
-    ref: master
-    branches:
-      - master
-    permissions:
-      teams:
-        - development
   workflow_run:
     workflows:
       - Release
@@ -52,7 +45,6 @@ jobs:
           workdir: __k8s-operatorhub-repo
       
       - uses: dawidd6/action-download-artifact@v6
-        if: ${{ github.event_name == 'workflow_run' }}
         with:
           name: olm
           workflow: main.yaml
@@ -63,26 +55,33 @@ jobs:
       - name: Add operatorhub bundle
         id: update
         run: |
-          mkdir -p __k8s-operatorhub-repo/catalogs
+          if [ ! -d bundle ]; then
+            echo "No bundle directory found"
+            exit 1;
+          fi
           OPERATOR_DIR=__k8s-operatorhub-repo/operators/victoriametrics-operator
+          CATALOGS_DIR=__k8s-operatorhub-repo/catalogs
+
+          mkdir -p ${CATALOGS_DIR}
           mkdir -p ${OPERATOR_DIR}
-          export PREV_VERSION=$(find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -2 | tail -1)
-          export LATEST_VERSION=$(find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -1)
-          if [ -d bundle ]; then
-            export VERSION=$(ls bundle | head -1)
-            export MANIFEST_PATH=bundle/${VERSION}/manifests/victoriametrics-operator.clusterserviceversion.yaml
-            yq -i '.spec.replaces = "victoriametrics-operator.v" + strenv(LATEST_VERSION)' $MANIFEST_PATH
-            mv bundle/* ${OPERATOR_DIR}/
-            if [ -f ${OPERATOR_DIR}/Makefile ]; then
-              yq -i '.fbc.enabled = true' ${OPERATOR_DIR}/ci.yaml
-            else
-              yq -i '.updateGraph = "replaces-mode"' ${OPERATOR_DIR}/ci.yaml
-            fi
-          elif [ -f ${OPERATOR_DIR}/Makefile ]; then
+
+          export OLD_VERSION=$(find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -1)
+          export OLD_ENTRY="victoriametrics-operator.v${OLD_VERSION}"
+
+          export NEW_VERSION=$(ls bundle | head -1)
+          export NEW_ENTRY="victoriametrics-operator.v${NEW_VERSION}"
+
+          export MANIFEST_PATH=bundle/${NEW_VERSION}/manifests/victoriametrics-operator.clusterserviceversion.yaml
+          export BUNDLE_IMAGE="quay.io/community-operator-pipeline-prod/victoriametrics-operator:${NEW_VERSION}"
+
+          if [ ! -z $OLD_VERSION ]; then
+            yq -i '.spec.replaces = "victoriametrics-operator.v" + strenv(OLD_VERSION)' $MANIFEST_PATH
+          fi
+
+          mv bundle/* ${OPERATOR_DIR}/
+          if [ -f ${OPERATOR_DIR}/Makefile ]; then
+            yq -i '.fbc.enabled = true' ${OPERATOR_DIR}/ci.yaml
             cd ${OPERATOR_DIR}
-            export NEW_ENTRY="victoriametrics-operator.v${LATEST_VERSION}"
-            export OLD_ENTRY="victoriametrics-operator.v${PREV_VERSION}"
-            export BUNDLE_IMAGE="quay.io/community-operator-pipeline-prod/victoriametrics-operator:${LATEST_VERSION}"
             find catalog-templates \
               -path "*.yaml" \
               -exec yq -i -I2 '.entries |= .[] |= select(. | has("entries")).entries += [{"name": strenv(NEW_ENTRY), "replaces": strenv(OLD_ENTRY)}]' {} \;
@@ -90,9 +89,10 @@ jobs:
               -path "*.yaml" \
               -exec yq -i -I2 '.entries |= . += [{"image": strenv(BUNDLE_IMAGE), "schema": "olm.bundle"}]' {} \;
             make catalogs
-            export VERSION=${LATEST_VERSION}
+          else
+            yq -i '.updateGraph = "replaces-mode"' ${OPERATOR_DIR}/ci.yaml
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
         if: ${{ steps.update.outputs.VERSION != '' }}

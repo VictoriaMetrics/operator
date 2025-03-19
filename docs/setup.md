@@ -39,7 +39,7 @@ export VM_VERSION=`basename $(curl -fs -o/dev/null -w %{redirect_url} https://gi
 wget -O install.yaml https://github.com/VictoriaMetrics/operator/releases/download/$VM_VERSION/install-with-webhook.yaml
 
 # Or download manifest without webhook
-wget -O install.yaml https://github.com/VictoriaMetrics/operator/releases/download/$VM_VERSION/install-without-webhook.yaml
+wget -O install.yaml https://github.com/VictoriaMetrics/operator/releases/download/$VM_VERSION/install-no-webhook.yaml
 ```
 
 Operator use `vm` namespace, but you can install it to specific namespace with command:

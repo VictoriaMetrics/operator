@@ -119,7 +119,7 @@ kind: VMAuth
 metadata:
   name: vmauth-example
 spec:
-    replicas: 3
+    replicaCount: 3
     # ...
 ```
 

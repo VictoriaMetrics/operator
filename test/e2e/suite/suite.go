@@ -2,8 +2,11 @@ package suite
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -45,7 +48,9 @@ func GetClient() client.Client {
 		ErrorIfCRDPathMissing:    false,
 	}
 	cfg, err := testEnv.Start()
+
 	Expect(err).NotTo(HaveOccurred())
+	Expect(isLocalHost(cfg.Host)).To(BeTrue())
 
 	K8sClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).ToNot(HaveOccurred())
@@ -148,4 +153,62 @@ func ShutdownOperatorProcess() {
 	By("tearing down the test environment")
 	cancelManager()
 	Eventually(stopped, 60, 2).Should(BeClosed())
+}
+
+func isLocalHost(host string) bool {
+	ips, err := getLocalIPs()
+	if err != nil {
+		return false
+	}
+
+	for _, ip := range ips {
+		if strings.Contains(host, ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// GetLocalIPs returns a list of local IP addresses
+func getLocalIPs() ([]string, error) {
+	var ips []string
+
+	// Add loopback IPs
+	loopbackIPs := []string{"127.0.0.1", "::1"}
+	ips = append(ips, loopbackIPs...)
+
+	// Get all network interfaces
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network interfaces: %w", err)
+	}
+
+	for _, iface := range interfaces {
+		// Skip loopback, down, or interfaces without addresses
+		if iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			// Check if the address is IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				// Skip loopback and link-local addresses
+				if v.IP.IsLoopback() || v.IP.IsLinkLocalUnicast() || v.IP.IsLinkLocalMulticast() {
+					continue
+				}
+				// Only include IPv4 addresses
+				if v.IP.To4() != nil {
+					ips = append(ips, v.IP.String())
+				}
+			}
+		}
+	}
+
+	return ips, nil
 }

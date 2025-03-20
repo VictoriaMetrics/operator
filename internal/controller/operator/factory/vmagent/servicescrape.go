@@ -94,7 +94,7 @@ func generateServiceScrapeConfig(
 
 	switch m.Spec.DiscoveryRole {
 	case kubernetesSDRoleService:
-		// nothing to do, service doesnt have relations with pods.
+		// nothing to do, service doesn't have relations with pods.
 	case kubernetesSDRoleEndpointSlices:
 		// Relabel namespace and pod and service labels into proper labels.
 		relabelings = append(relabelings, []yaml.MapSlice{

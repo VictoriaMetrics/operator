@@ -664,7 +664,7 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, &s); err != nil {
 		// return nil for backward compatibility
 		if errors.IsNotFound(err) {
-			logger.WithContext(ctx).Error(err, fmt.Sprintf("alertmanager config secret=%q doens't exist at namespace=%q, default config is used", secretName, ns))
+			logger.WithContext(ctx).Error(err, fmt.Sprintf("alertmanager config secret=%q doesn't exist at namespace=%q, default config is used", secretName, ns))
 			return nil, nil
 		}
 		return nil, fmt.Errorf("cannot get secret: %s at ns: %s, err: %w", secretName, ns, err)

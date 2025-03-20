@@ -424,7 +424,7 @@ var _ = Describe("test  vmagent Controller", func() {
 					},
 				},
 			),
-			Entry("by chaning revisionHistoryLimit to 3", "update-revision",
+			Entry("by changing revisionHistoryLimit to 3", "update-revision",
 				&v1beta1vm.VMAgent{
 					Spec: v1beta1vm.VMAgentSpec{
 						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{

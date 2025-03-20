@@ -113,7 +113,7 @@ func updateChildStatusConditions[T any, PT interface {
 func setConditionTo(dst []vmv1beta1.Condition, cond vmv1beta1.Condition) []vmv1beta1.Condition {
 	// update TTL with jitter in order to reduce load on kubernetes API server
 	// jitter should cover configured resync period (60s default value)
-	// it also reduce propbability of concurrent update requests
+	// it also reduce probability of concurrent update requests
 	ttl := jitterForDuration(statusUpdateTTL)
 	for idx, c := range dst {
 		if c.Type == cond.Type {
@@ -141,7 +141,7 @@ func removeStaleConditionsBySuffix(src []vmv1beta1.Condition, domainTypeSuffix s
 	tmp := src[:0]
 	// update TTL with jitter in order to reduce load on kubernetes API server
 	// jitter should cover configured resync period (60s default value)
-	// it also reduce propbability of concurrent update requests
+	// it also reduce probability of concurrent update requests
 	ttl := statusExpireTTL + jitterForDuration(statusUpdateTTL)
 	for _, cond := range src {
 		if strings.HasSuffix(cond.Type, domainTypeSuffix) {

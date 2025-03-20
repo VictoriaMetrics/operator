@@ -107,7 +107,7 @@ var (
 	loggerJSONFields = managerFlags.String("loggerJSONFields", "", "Allows renaming fields in JSON formatted logs"+
 		`Example: "ts:timestamp,msg:message" renames "ts" to "timestamp" and "msg" to "message".`+
 		"Supported fields: ts, level, caller, msg")
-	statusUpdateTTL = managerFlags.Duration("controller.statusLastUpdateTimeTTL", time.Hour, "Configures TTL for LastUpdateTime status.condtions fields. "+
+	statusUpdateTTL = managerFlags.Duration("controller.statusLastUpdateTimeTTL", time.Hour, "Configures TTL for LastUpdateTime status.conditions fields. "+
 		"It's used to detect stale parent objects on child objects. Like VMAlert->VMRule .status.Conditions.Type")
 )
 

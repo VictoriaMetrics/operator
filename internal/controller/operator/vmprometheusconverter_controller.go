@@ -748,7 +748,7 @@ func (s *sharedAPIDiscoverer) subscribeForGroupKind(ctx context.Context, group, 
 	gp, ok := s.kindReadyByGroup[group]
 	if ok {
 		if _, ok := gp[kind]; ok {
-			panic(fmt.Sprintf("unexpected double subsribe for kind=%q,group=%q", kind, group))
+			panic(fmt.Sprintf("unexpected double subscribe for kind=%q,group=%q", kind, group))
 		}
 		gp[kind] = dst
 	} else {

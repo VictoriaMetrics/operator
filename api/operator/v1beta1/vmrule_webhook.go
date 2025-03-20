@@ -51,7 +51,7 @@ func (r *VMRule) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmrule,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmrules,verbs=create;update,versions=v1beta1,name=vvmrule.kb.io,admissionReviewVersions=v1
 
-// Validate performs symantic validation of object
+// Validate performs semantic validation of object
 func (r *VMRule) Validate() error {
 	if mustSkipValidation(r) {
 		return nil

@@ -105,7 +105,7 @@ func Probe(container corev1.Container, cr probeCRD) corev1.Container {
 	return container
 }
 
-// Resources creates containter resources with conditional defaults values
+// Resources creates container resources with conditional defaults values
 func Resources(crdResources corev1.ResourceRequirements, defaultResources config.Resource, useDefault bool) corev1.ResourceRequirements {
 	if crdResources.Requests == nil {
 		crdResources.Requests = corev1.ResourceList{}

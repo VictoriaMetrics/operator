@@ -243,7 +243,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 								foundOk = true
 								kv := strings.ReplaceAll(arg, "-external.label=", "")
 								if kv != "label1=value1" && kv != "label2=value-2" {
-									return fmt.Errorf("unexepcted value for external.label arg: %s", kv)
+									return fmt.Errorf("unexpected value for external.label arg: %s", kv)
 								}
 							}
 						}
@@ -573,7 +573,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 					t.Fatalf("cannot find generated deployment: %v, err: %v", tt.args.cr.PrefixedName(), err)
 				}
 				if err := tt.validator(&generatedDeploment); err != nil {
-					t.Fatalf("unexpetected error at deployment validation: %v", err)
+					t.Fatalf("unexpected error at deployment validation: %v", err)
 				}
 			}
 		})

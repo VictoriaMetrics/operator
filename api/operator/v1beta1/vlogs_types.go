@@ -236,7 +236,7 @@ func (r *VLogs) PodLabels() map[string]string {
 	if r.Spec.PodMetadata == nil {
 		return lbls
 	}
-	return labels.Merge(r.Spec.PodMetadata.Labels, lbls)
+	return labels.Merge(lbls, r.Spec.PodMetadata.Labels)
 }
 
 func (r *VLogs) AllLabels() map[string]string {
@@ -253,7 +253,7 @@ func (r *VLogs) AllLabels() map[string]string {
 	if r.Spec.ManagedMetadata != nil {
 		result = labels.Merge(result, r.Spec.ManagedMetadata.Labels)
 	}
-	return labels.Merge(result, selectorLabels)
+	return labels.Merge(selectorLabels, result)
 }
 
 func (r VLogs) PrefixedName() string {

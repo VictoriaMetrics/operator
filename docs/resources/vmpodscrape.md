@@ -26,10 +26,11 @@ The `VMPodScrape` object discovers pods and generates the relevant scraping conf
 The `PodMetricsEndpoints` section of the `VMPodScrapeSpec` is used to configure which ports of a pod are going to be
 scraped for metrics and with which parameters.
 
-Both `VMPodScrapes` and discovered targets may belong to any namespace. It is important for cross-namespace monitoring
-use cases, e.g. for meta-monitoring. Using the `namespaceSelector` of the `VMPodScrapeSpec` one can restrict the
-namespaces from which `Pods` are discovered from. To discover targets in all namespaces the `namespaceSelector` has to
-be empty:
+Both `VMPodScrape` and discovered targets may belong to any namespace. It is important for cross-namespace monitoring
+use cases, e.g. for meta-monitoring. Using the `podScrapeNamespaceSelector` of the `VMAgentSpec`
+one can restrict the namespaces from which `VMPodScrape`s are selected from by the respective [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent) server.
+Using the `namespaceSelector` of the `VMPodScrapeSpec` one can restrict the namespaces from which `Pods` are discovered from.
+To discover targets in all namespaces the `namespaceSelector` has to have value `any: true` specified:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -70,5 +71,5 @@ spec:
       scheme: http
   selector:
     matchLabels:
-     owner: dev
+      owner: dev
 ```

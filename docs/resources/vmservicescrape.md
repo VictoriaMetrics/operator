@@ -19,7 +19,7 @@ need to reconfigure.
 [kubernetes service discovery](https://docs.victoriametrics.com/sd_configs#kubernetes_sd_configs) targets by corresponding `Service`.
 It has various options for scraping configuration of target (with basic auth,tls access, by specific port name etc.).
 
-Monitoring configuration based on  `discoveryRole` setting. By default, `endpoints` is used to get objects from kubernetes api.
+Monitoring configuration is based on `discoveryRole` setting. By default, `endpoints` is used to get objects from kubernetes api.
 It's also possible to use `discoveryRole: service` or `discoveryRole: endpointslices`.
 
 `Endpoints` objects are essentially lists of IP addresses.
@@ -38,10 +38,10 @@ Therefore, when specifying an endpoint in the `endpoints` section, they are stri
 **Note:** `endpoints` (lowercase) is the field in the `VMServiceScrape` CRD, while `Endpoints` (capitalized) is the Kubernetes object kind.
 
 Both `VMServiceScrape` and discovered targets may belong to any namespace. It is important for cross-namespace monitoring
-use cases, e.g. for meta-monitoring. Using the `serviceScrapeSelector` of the `VMAgentSpec`
+use cases, e.g. for meta-monitoring. Using the `serviceScrapeNamespaceSelector` of the `VMAgentSpec`
 one can restrict the namespaces from which `VMServiceScrape`s are selected from by the respective [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent) server.
-Using the `namespaceSelector` of the `VMServiceScrape` one can restrict the namespaces from which `Endpoints` can be
-discovered from. To discover targets in all namespaces the `namespaceSelector` has to be empty:
+Using the `namespaceSelector` of the `VMServiceScrapeSpec` one can restrict the namespaces from which `Endpoints` are discovered from.
+To discover targets in all namespaces the `namespaceSelector` has to have value `any: true` specified:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -49,8 +49,8 @@ kind: VMServiceScrape
 metadata:
   name: example-service-scrape
 spec:
-  namespaceSelector: {}
-  # ...
+  namespaceSelector:
+    any: true
 ```
 
 More information about selectors you can find in [this doc](https://docs.victoriametrics.com/operator/resources/vmagent#scraping).
@@ -75,13 +75,13 @@ More details about migration from prometheus-operator you can read in [this doc]
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
-  name: example-app
+  name: example-service-scrape
   labels:
     team: frontend
 spec:
+  endpoints:
+    - port: web
   selector:
     matchLabels:
       app: example-app
-  endpoints:
-  - port: web
 ```

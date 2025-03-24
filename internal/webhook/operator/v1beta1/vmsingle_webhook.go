@@ -23,14 +23,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
-
-// log is for logging in this package.
-var vmsinglelog = logf.Log.WithName("vmsingle-resource")
 
 // SetupVMSingleWebhookWithManager will setup the manager to manage the webhooks
 func SetupVMSingleWebhookWithManager(mgr ctrl.Manager) error {
@@ -66,7 +62,6 @@ func (*VMSingleCustomValidator) ValidateUpdate(_ context.Context, _, newObj runt
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
 	}
-	vmsinglelog.Info("validate update", "name", r.Name)
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}

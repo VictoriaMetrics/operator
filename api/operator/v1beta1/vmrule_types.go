@@ -149,8 +149,8 @@ func (cr *VMRule) Validate() error {
 	if mustSkipValidation(cr) {
 		return nil
 	}
-	testURL, _ := url.Parse("http://test:8429")
 	initVMAlertTemplatesOnce.Do(func() {
+		testURL, _ := url.Parse("http://test:8429")
 		if err := templates.Load(nil, *testURL); err != nil {
 			panic(fmt.Sprintf("cannot init vmalert templates for validation: %s", err))
 		}
@@ -239,7 +239,7 @@ type VMRuleList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	// Items list of VMRule
-	Items []*VMRule `json:"items"`
+	Items []VMRule `json:"items"`
 }
 
 func init() {

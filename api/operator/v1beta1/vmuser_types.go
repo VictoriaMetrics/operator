@@ -10,10 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var supportedCRDKinds = []string{
-	"VMAgent", "VMAlert", "VMAlertmanager", "VMSingle", "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage",
-}
-
 // VMUserSpec defines the desired state of VMUser
 type VMUserSpec struct {
 	// Name of the VMUser object.
@@ -268,11 +264,6 @@ func (cr *VMUser) Validate() error {
 			}
 		}
 		if targetRef.CRD != nil {
-			switch targetRef.CRD.Kind {
-			case "VMAgent", "VMAlert", "VMAlertmanager", "VMSingle", "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage":
-			default:
-				return fmt.Errorf("unsupported crd.kind for target ref, got: `%s`, want one of: `%s`", targetRef.CRD.Kind, strings.Join(supportedCRDKinds, ","))
-			}
 			if targetRef.CRD.Namespace == "" || targetRef.CRD.Name == "" {
 				return fmt.Errorf("crd.name and crd.namespace cannot be empty")
 			}

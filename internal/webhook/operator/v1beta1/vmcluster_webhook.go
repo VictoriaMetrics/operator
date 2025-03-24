@@ -23,14 +23,11 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
-
-// log is for logging in this package.
-var vmclusterlog = logf.Log.WithName("vmcluster-resource")
 
 // SetupVMClusterWebhookWithManager will setup the manager to manage the webhooks
 func SetupVMClusterWebhookWithManager(mgr ctrl.Manager) error {
@@ -46,7 +43,7 @@ type VMClusterCustomValidator struct{}
 var _ admission.CustomValidator = &VMClusterCustomValidator{}
 
 // ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMClusterCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*vmv1beta1.VMCluster)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
@@ -58,13 +55,13 @@ func (*VMClusterCustomValidator) ValidateCreate(_ context.Context, obj runtime.O
 		return nil, err
 	}
 	if r.Spec.VMSelect != nil && r.Spec.VMSelect.StorageSpec != nil {
-		vmclusterlog.Info("deprecated property is defined `vmcluster.spec.vmselect.persistentVolume`, use `storage` instead.")
+		logger.WithContext(ctx).Info("deprecated property is defined `vmcluster.spec.vmselect.persistentVolume`, use `storage` instead.")
 	}
 	return nil, nil
 }
 
 // ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMClusterCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
+func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*vmv1beta1.VMCluster)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
@@ -76,7 +73,7 @@ func (*VMClusterCustomValidator) ValidateUpdate(_ context.Context, _, newObj run
 		return nil, err
 	}
 	if r.Spec.VMSelect != nil && r.Spec.VMSelect.StorageSpec != nil {
-		vmclusterlog.Info("deprecated property is defined `vmcluster.spec.vmselect.persistentVolume`, use `storage` instead.")
+		logger.WithContext(ctx).Info("deprecated property is defined `vmcluster.spec.vmselect.persistentVolume`, use `storage` instead.")
 	}
 	return nil, nil
 }

@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.114.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.114.0) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): make project layout compatible with `[kubebuilder v4](https://book.kubebuilder.io/migration/v3vsv4)`
 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator: log fields changes diff for `Deployment`, `StatefulSet`, `Service`, `PDB`, `HPA` and `VMServiceScrape` during reconcile process. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
 

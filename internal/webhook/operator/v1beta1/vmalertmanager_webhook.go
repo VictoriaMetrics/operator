@@ -23,14 +23,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
-
-// log is for logging in this package.
-var vmalertmanagerlog = logf.Log.WithName("vmalertmanager-resource")
 
 // SetupVMAlertmanagerWebhookWithManager will setup the manager to manage the webhooks
 func SetupVMAlertmanagerWebhookWithManager(mgr ctrl.Manager) error {
@@ -51,7 +47,6 @@ func (*VMAlertmanagerCustomValidator) ValidateCreate(_ context.Context, obj runt
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
 	}
-	vmalertmanagerlog.Info("validate create", "name", r.Name)
 	if r.Spec.ParsingError != "" {
 		return nil, errors.New(r.Spec.ParsingError)
 	}

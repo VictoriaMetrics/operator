@@ -1521,7 +1521,8 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: cr.VMAuthLBSelectorLabels(),
+					Labels:      cr.VMAuthLBPodLabels(),
+					Annotations: cr.VMAuthLBPodAnnotations(),
 				},
 				Spec: corev1.PodSpec{
 					Volumes:            volumes,

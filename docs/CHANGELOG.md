@@ -19,6 +19,7 @@ aliases:
 * FEATURE: [operator](https://docs.victoriametrics.com/operator: log fields changes diff for `Deployment`, `StatefulSet`, `Service`, `PDB`, `HPA` and `VMServiceScrape` during reconcile process. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly track immutable fields changes for `StatefulSet`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
+* BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): properly propagate `podMetadata` to `requestsLoadBalancer` `Deployment`. See [this PR](https://github.com/VictoriaMetrics/operator/pull/1275/) for details. Thanks to the @solidDoWant
 
 ## [v0.54.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.54.1)
 

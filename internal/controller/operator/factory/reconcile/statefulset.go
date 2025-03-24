@@ -61,8 +61,12 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts 
 // HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
 func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts, prevSts *appsv1.StatefulSet) error {
 	var isPrevEqual bool
+	var prevSpecDiff string
 	if prevSts != nil {
 		isPrevEqual = equality.Semantic.DeepDerivative(prevSts.Spec, newSts.Spec)
+		if !isPrevEqual {
+			prevSpecDiff = diffDeepDerivative(prevSts.Spec, newSts.Spec)
+		}
 	}
 	rclient.Scheme().Default(newSts)
 
@@ -121,8 +125,16 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				newSts.Spec.Template.Annotations = mergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations, prevTemplateAnnotations)
 				cloneSignificantMetadata(newSts, &currentSts)
 
-				logger.WithContext(ctx).Info(fmt.Sprintf("updating statefulset %s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
-					newSts.Name, isEqual, isPrevEqual, prevSts == nil))
+				logMsg := fmt.Sprintf("updating statefulset %s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
+					newSts.Name, isEqual, isPrevEqual, prevSts == nil)
+				if !isEqual {
+					logMsg += fmt.Sprintf(", current_spec_diff=%s", diffDeepDerivative(newSts.Spec, currentSts.Spec))
+				}
+				if len(prevSpecDiff) > 0 {
+					logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
+				}
+
+				logger.WithContext(ctx).Info(logMsg)
 
 				if err := rclient.Update(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)

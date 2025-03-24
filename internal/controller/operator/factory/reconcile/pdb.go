@@ -41,7 +41,8 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 			isAnnotationsEqual(currentPdb.Annotations, newPDB.Annotations, prevAnnotations) {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating PDB %s configuration", newPDB.Name))
+		logMsg := fmt.Sprintf("updating PDB %s configuration spec_diff: %s", newPDB.Name, diffDeep(newPDB.Spec, currentPdb.Spec))
+		logger.WithContext(ctx).Info(logMsg)
 
 		cloneSignificantMetadata(newPDB, currentPdb)
 		// for some reason Status is not marked as status sub-resource at PDB CRD

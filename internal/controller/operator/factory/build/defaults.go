@@ -42,12 +42,10 @@ func addStatefulsetDefaults(objI any) {
 	}
 
 	if obj.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType {
-		if obj.Spec.UpdateStrategy.RollingUpdate == nil {
-			// UpdateStrategy.RollingUpdate will take default values below.
-			obj.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{}
-		}
-		if obj.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
-			obj.Spec.UpdateStrategy.RollingUpdate.Partition = ptr.To[int32](0)
+		if obj.Spec.UpdateStrategy.RollingUpdate != nil {
+			if obj.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
+				obj.Spec.UpdateStrategy.RollingUpdate.Partition = ptr.To[int32](0)
+			}
 		}
 	}
 

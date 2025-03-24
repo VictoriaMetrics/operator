@@ -24,8 +24,12 @@ import (
 func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeploy *appsv1.Deployment, hasHPA bool) error {
 
 	var isPrevEqual bool
+	var prevSpecDiff string
 	if prevDeploy != nil {
 		isPrevEqual = equality.Semantic.DeepDerivative(prevDeploy.Spec, newDeploy.Spec)
+		if !isPrevEqual {
+			prevSpecDiff = diffDeepDerivative(prevDeploy.Spec, newDeploy.Spec)
+		}
 	}
 	rclient.Scheme().Default(newDeploy)
 
@@ -67,9 +71,18 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 		newDeploy.Spec.Template.Annotations = mergeAnnotations(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations, prevTemplateAnnotations)
 		cloneSignificantMetadata(newDeploy, &currentDeploy)
 
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating Deployment %s configuration"+
+		logMsg := fmt.Sprintf("updating Deployment %s configuration"+
 			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",
-			newDeploy.Name, isPrevEqual, isEqual, prevDeploy == nil))
+			newDeploy.Name, isPrevEqual, isEqual, prevDeploy == nil)
+
+		if len(prevSpecDiff) > 0 {
+			logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
+		}
+		if !isEqual {
+			logMsg += fmt.Sprintf(", curr_spec_diff=%s", diffDeepDerivative(newDeploy.Spec, currentDeploy.Spec))
+		}
+
+		logger.WithContext(ctx).Info(logMsg)
 
 		if err := rclient.Update(ctx, newDeploy); err != nil {
 			return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -38,88 +37,29 @@ import (
 // One of possible solutions - save current sts to the object annotation and remove it later if needed.
 // Other solution, to check orphaned objects by selector.
 // Lets leave it as this for now and handle later.
-func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, existingSTS *appsv1.StatefulSet) (bool, bool, error) {
+func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, oldStatefulSet *appsv1.StatefulSet) (bool, bool, error) {
 	l := logger.WithContext(ctx)
 	handleRemove := func() error {
-		// removes finalizer from exist sts, it allows to delete it
-		if err := finalize.RemoveFinalizer(ctx, rclient, existingSTS); err != nil {
-			return fmt.Errorf("failed to remove finalizer from sts during handleRemove call: %w", err)
-		}
-		opts := client.DeleteOptions{PropagationPolicy: func() *metav1.DeletionPropagation {
-			p := metav1.DeletePropagationOrphan
-			return &p
-		}()}
-		if err := rclient.Delete(ctx, existingSTS, &opts); err != nil {
-			return err
-		}
-		obj := types.NamespacedName{Name: existingSTS.Name, Namespace: existingSTS.Namespace}
-
-		// wait until sts disappears
-		if err := wait.PollUntilContextTimeout(context.TODO(), time.Second, time.Second*30, false, func(_ context.Context) (done bool, err error) {
-			err = rclient.Get(ctx, obj, &appsv1.StatefulSet{})
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, fmt.Errorf("unexpected error for polling, want notFound, got: %w", err)
-		}); err != nil {
-			return fmt.Errorf("cannot wait for sts to be deleted: %w", err)
-		}
-
-		if err := rclient.Create(ctx, newSTS); err != nil {
-			// try to restore previous one and throw error
-			existingSTS.ResourceVersion = ""
-			if err2 := rclient.Create(ctx, existingSTS); err2 != nil {
-				return fmt.Errorf("cannot restore previous sts: %s configuration after remove original error: %s: restore error %w", existingSTS.Name, err, err2)
-			}
-			return fmt.Errorf("cannot create new sts: %s instead of replaced, some manual action is required, err: %w", newSTS.Name, err)
-		}
-		return nil
+		return removeStatefulSetKeepPods(ctx, rclient, newSTS, oldStatefulSet)
 	}
-	needRecreateOnStorageChange := func(actualPVC, newPVC *corev1.PersistentVolumeClaim) bool {
-		// fast path
-		if actualPVC == nil && newPVC == nil {
-			return false
-		}
-		// one of pvcs are not nil
-		hasNotNilPVC := (actualPVC == nil && newPVC != nil) || (actualPVC != nil && newPVC == nil)
-		if hasNotNilPVC {
-			return true
-		}
-
-		if i := newPVC.Spec.Resources.Requests.Storage().Cmp(*actualPVC.Spec.Resources.Requests.Storage()); i != 0 {
-			sizeDiff := resource.NewQuantity(0, resource.BinarySI)
-			sizeDiff.Add(*newPVC.Spec.Resources.Requests.Storage())
-			sizeDiff.Sub(*actualPVC.Spec.Resources.Requests.Storage())
-			l.Info(fmt.Sprintf("must re-recreate sts, its pvc claim size=%s was changed", sizeDiff.String()))
-			return true
-		}
-
-		// compare meta and spec for pvc
-		if !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Labels, actualPVC.ObjectMeta.Labels) ||
-			!equality.Semantic.DeepEqual(newPVC.ObjectMeta.Annotations, actualPVC.ObjectMeta.Annotations) ||
-			!equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
-			diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
-			specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)
-			l.Info(fmt.Sprintf("changes detected for PVC=%s metaDiff=%v, specDiff=%v", newPVC.Name, strings.Join(diff, ","), strings.Join(specDiff, ",")))
-			return true
-		}
-
-		return false
+	if newSTS.Spec.ServiceName != oldStatefulSet.Spec.ServiceName {
+		return true, true, handleRemove()
 	}
 
 	// if vct got added, removed or changed, recreate the sts
-	if len(newSTS.Spec.VolumeClaimTemplates) != len(existingSTS.Spec.VolumeClaimTemplates) {
+	if len(newSTS.Spec.VolumeClaimTemplates) != len(oldStatefulSet.Spec.VolumeClaimTemplates) {
 		l.Info("VolumeClaimTemplates count changes, recreating statefulset")
 		return true, true, handleRemove()
 	}
+
 	var vctChanged bool
 	for _, newVCT := range newSTS.Spec.VolumeClaimTemplates {
-		actualPVC := getPVCFromSTS(newVCT.Name, existingSTS)
+		actualPVC := getPVCFromSTS(newVCT.Name, oldStatefulSet)
 		if actualPVC == nil {
 			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s was not found at VolumeClaimTemplates, recreating statefulset", newVCT.Name))
 			return true, true, handleRemove()
 		}
-		if needRecreateOnStorageChange(actualPVC, &newVCT) {
+		if shouldRecreateSTSOnStorageChange(ctx, actualPVC, &newVCT) {
 			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s have some changes, recreating StatefulSet", newVCT.Name))
 			vctChanged = true
 		}
@@ -128,31 +68,11 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 	if vctChanged {
 		return true, false, handleRemove()
 	}
-	if newSTS.Spec.MinReadySeconds != existingSTS.Spec.MinReadySeconds ||
-		newSTS.Spec.PodManagementPolicy != existingSTS.Spec.PodManagementPolicy ||
-		newSTS.Spec.UpdateStrategy != existingSTS.Spec.UpdateStrategy ||
-		!ptr.Equal(newSTS.Spec.RevisionHistoryLimit, existingSTS.Spec.RevisionHistoryLimit) ||
-		!isPVClaimPolicyEqual(newSTS.Spec.PersistentVolumeClaimRetentionPolicy, existingSTS.Spec.PersistentVolumeClaimRetentionPolicy) {
-		l.Info("Unchangeable fields at StatefulSet spec were changed, recreating Statefulset")
+	if shouldRecreateSTSOnImmutableFieldChange(ctx, newSTS, oldStatefulSet) {
 		return true, false, handleRemove()
 	}
-	if newSTS.Spec.ServiceName != existingSTS.Spec.ServiceName {
-		return true, true, handleRemove()
-	}
+
 	return false, false, nil
-}
-
-func isPVClaimPolicyEqual(left, right *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy) bool {
-	// current kubernetes version doesn't support claim retention feature gate
-	// https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#persistentvolumeclaim-retention
-	if right == nil {
-		return true
-	}
-	if left == nil {
-		return true
-	}
-
-	return *left == *right
 }
 
 func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {
@@ -308,4 +228,99 @@ func mayGrow(ctx context.Context, pvc *corev1.PersistentVolumeClaim, newSize, ex
 	default: // increase
 		return true
 	}
+}
+
+func shouldRecreateSTSOnStorageChange(ctx context.Context, actualPVC, newPVC *corev1.PersistentVolumeClaim) bool {
+	// fast path
+	if actualPVC == nil && newPVC == nil {
+		return false
+	}
+	// one of pvcs are not nil
+	hasNotNilPVC := (actualPVC == nil && newPVC != nil) || (actualPVC != nil && newPVC == nil)
+	if hasNotNilPVC {
+		return true
+	}
+
+	if i := newPVC.Spec.Resources.Requests.Storage().Cmp(*actualPVC.Spec.Resources.Requests.Storage()); i != 0 {
+		sizeDiff := resource.NewQuantity(0, resource.BinarySI)
+		sizeDiff.Add(*newPVC.Spec.Resources.Requests.Storage())
+		sizeDiff.Sub(*actualPVC.Spec.Resources.Requests.Storage())
+		logger.WithContext(ctx).Info(fmt.Sprintf("must re-recreate sts, its pvc claim size=%s was changed", sizeDiff.String()))
+		return true
+	}
+
+	// compare meta and spec for pvc
+	if !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Labels, actualPVC.ObjectMeta.Labels) ||
+		!equality.Semantic.DeepEqual(newPVC.ObjectMeta.Annotations, actualPVC.ObjectMeta.Annotations) ||
+		!equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
+		metaD := diffDeep(actualPVC.ObjectMeta, newPVC.ObjectMeta)
+		specD := diffDeep(actualPVC.Spec, newPVC.Spec)
+		logMsg := fmt.Sprintf("changes detected for PVC=%s metaDiff=%v, specDiff=%v", newPVC.Name, metaD, specD)
+		logger.WithContext(ctx).Info(logMsg)
+		return true
+	}
+
+	return false
+}
+
+// shouldRecreateSTSOnImmutableFieldChange checks if immutable statefulSet fields were changed
+//
+// logic was borrowed from
+// https://github.com/kubernetes/kubernetes/blob/a866cbe2e5bbaa01cfd5e969aa3e033f3282a8a2/pkg/apis/apps/validation/validation.go#L166
+func shouldRecreateSTSOnImmutableFieldChange(ctx context.Context, statefulSet, oldStatefulSet *appsv1.StatefulSet) bool {
+	// statefulset updates aren't super common and general updates are likely to be touching spec, so we'll do this
+	// deep copy right away.  This avoids mutating our inputs
+	newStatefulSetClone := statefulSet.DeepCopy()
+
+	// VolumeClaimTemplates must be checked before performing this check
+	newStatefulSetClone.Spec.VolumeClaimTemplates = oldStatefulSet.Spec.VolumeClaimTemplates
+
+	newStatefulSetClone.Spec.Replicas = oldStatefulSet.Spec.Replicas
+	newStatefulSetClone.Spec.Template = oldStatefulSet.Spec.Template
+	newStatefulSetClone.Spec.UpdateStrategy = oldStatefulSet.Spec.UpdateStrategy
+	newStatefulSetClone.Spec.MinReadySeconds = oldStatefulSet.Spec.MinReadySeconds
+	newStatefulSetClone.Spec.PersistentVolumeClaimRetentionPolicy = oldStatefulSet.Spec.PersistentVolumeClaimRetentionPolicy
+
+	isEqual := equality.Semantic.DeepEqual(newStatefulSetClone.Spec, oldStatefulSet.Spec)
+	if !isEqual {
+		d := diffDeep(oldStatefulSet.Spec, newStatefulSetClone.Spec)
+		logger.WithContext(ctx).Info(fmt.Sprintf("immutable StatefulSet field changed: %s", d))
+	}
+	return !isEqual
+}
+
+func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, statefulSet, oldStatefulSet *appsv1.StatefulSet) error {
+	// removes finalizer from exist sts, it allows to delete it
+	if err := finalize.RemoveFinalizer(ctx, rclient, oldStatefulSet); err != nil {
+		return fmt.Errorf("failed to remove finalizer from sts: %w", err)
+	}
+	opts := client.DeleteOptions{PropagationPolicy: func() *metav1.DeletionPropagation {
+		p := metav1.DeletePropagationOrphan
+		return &p
+	}()}
+	if err := rclient.Delete(ctx, oldStatefulSet, &opts); err != nil {
+		return err
+	}
+	nsn := types.NamespacedName{Name: oldStatefulSet.Name, Namespace: oldStatefulSet.Namespace}
+
+	// wait until sts disappears
+	if err := wait.PollUntilContextTimeout(ctx, time.Second, time.Second*30, false, func(_ context.Context) (done bool, err error) {
+		err = rclient.Get(ctx, nsn, &appsv1.StatefulSet{})
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, fmt.Errorf("unexpected error for polling, want notFound, got: %w", err)
+	}); err != nil {
+		return fmt.Errorf("cannot wait for sts to be deleted: %w", err)
+	}
+
+	if err := rclient.Create(ctx, statefulSet); err != nil {
+		// try to restore previous one and throw error
+		oldStatefulSet.ResourceVersion = ""
+		if err2 := rclient.Create(ctx, oldStatefulSet); err2 != nil {
+			return fmt.Errorf("cannot restore previous sts: %s configuration after remove original error: %s: restore error %w", oldStatefulSet.Name, err, err2)
+		}
+		return fmt.Errorf("cannot create new sts: %s instead of replaced, perform manual action to handle this error or report BUG, err: %w", statefulSet.Name, err)
+	}
+	return nil
 }

@@ -40,7 +40,8 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 		existVSS.Annotations = vss.Annotations
 		existVSS.Spec = vss.Spec
 		existVSS.Labels = vss.Labels
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMServiceScrape %s for CRD object", vss.Name))
+		logMsg := fmt.Sprintf("updating VMServiceScrape %s for CRD object spec_diff: %s", vss.Name, diffDeep(vss.Spec, existVSS.Spec))
+		logger.WithContext(ctx).Info(logMsg)
 
 		return rclient.Update(ctx, &existVSS)
 	})

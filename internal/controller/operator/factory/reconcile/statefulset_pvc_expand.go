@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -267,10 +266,9 @@ func shouldRecreateSTSOnStorageChange(ctx context.Context, actualPVC, newPVC *co
 	if !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Labels, actualPVC.ObjectMeta.Labels) ||
 		!equality.Semantic.DeepEqual(newPVC.ObjectMeta.Annotations, actualPVC.ObjectMeta.Annotations) ||
 		!equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
-		diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
-		specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)
-
-		logMsg := fmt.Sprintf("changes detected for PVC=%s metaDiff=%v, specDiff=%v", newPVC.Name, strings.Join(diff, ","), strings.Join(specDiff, ","))
+		metaD := diffDeep(actualPVC.ObjectMeta, newPVC.ObjectMeta)
+		specD := diffDeep(actualPVC.Spec, newPVC.Spec)
+		logMsg := fmt.Sprintf("changes detected for PVC=%s metaDiff=%v, specDiff=%v", newPVC.Name, metaD, specD)
 		logger.WithContext(ctx).Info(logMsg)
 		return true
 	}
@@ -298,7 +296,8 @@ func shouldRecreateSTSOnImmutableFieldChange(ctx context.Context, statefulSet, o
 
 	isEqual := equality.Semantic.DeepEqual(newStatefulSetClone.Spec, oldStatefulSet.Spec)
 	if !isEqual {
-		logger.WithContext(ctx).Info("immutable StatefulSet field changed")
+		d := diffDeep(oldStatefulSet.Spec, newStatefulSetClone.Spec)
+		logger.WithContext(ctx).Info(fmt.Sprintf("immutable StatefulSet field changed: %s", d))
 	}
 	return !isEqual
 }

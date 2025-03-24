@@ -44,7 +44,8 @@ func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.Horizon
 		cloneSignificantMetadata(newHPA, &currentHPA)
 		newHPA.Status = currentHPA.Status
 
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating HPA %s configuration", newHPA.Name))
+		logMsg := fmt.Sprintf("updating HPA %s configuration spec_diff: %s", newHPA.Name, diffDeepDerivative(newHPA.Spec, currentHPA.Spec))
+		logger.WithContext(ctx).Info(logMsg)
 
 		return rclient.Update(ctx, newHPA)
 	})

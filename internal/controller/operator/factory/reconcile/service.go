@@ -31,8 +31,12 @@ func Service(ctx context.Context, rclient client.Client, newService, prevService
 
 func reconcileService(ctx context.Context, rclient client.Client, newService, prevService *corev1.Service) error {
 	var isPrevServiceEqual bool
+	var prevSpecDiff string
 	if prevService != nil {
 		isPrevServiceEqual = equality.Semantic.DeepDerivative(prevService, newService)
+		if !isPrevServiceEqual {
+			prevSpecDiff = diffDeepDerivative(prevService, newService)
+		}
 	}
 	// helper for proper service deletion.
 	recreateService := func(svc *corev1.Service) error {
@@ -120,8 +124,16 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 	newService.Annotations = mergeAnnotations(currentService.Annotations, newService.Annotations, prevAnnotations)
 	cloneSignificantMetadata(newService, currentService)
 
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating service %s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
-		newService.Name, isEqual, isPrevServiceEqual, prevService == nil))
+	logMsg := fmt.Sprintf("updating service %s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
+		newService.Name, isEqual, isPrevServiceEqual, prevService == nil)
+
+	if len(prevSpecDiff) > 0 {
+		logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
+	}
+	if !isEqual {
+		logMsg += fmt.Sprintf(", curr_spec_diff=%s", diffDeepDerivative(newService.Spec, currentService.Spec))
+	}
+	logger.WithContext(ctx).Info(logMsg)
 
 	err = rclient.Update(ctx, newService)
 	if err != nil {

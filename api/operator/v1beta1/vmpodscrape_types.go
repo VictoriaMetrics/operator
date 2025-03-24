@@ -109,7 +109,7 @@ type ArbitraryFSAccessThroughSMsConfig struct {
 }
 
 // AsProxyKey builds key for proxy cache maps
-func (cr VMPodScrape) AsProxyKey(i int) string {
+func (cr *VMPodScrape) AsProxyKey(i int) string {
 	return fmt.Sprintf("podScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 
 	v12 "k8s.io/api/networking/v1"
@@ -13,6 +14,8 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var labelNameRegexp = regexp.MustCompile("^[a-zA-Z_:.][a-zA-Z0-9_:.]*$")
 
 // VMAuthSpec defines the desired state of VMAuth
 type VMAuthSpec struct {
@@ -103,6 +106,7 @@ type VMAuthSpec struct {
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
 	// +optional
 	ExternalConfig `json:"externalConfig,omitempty" yaml:"externalConfig,omitempty"`
+
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
@@ -128,12 +132,11 @@ type VMAuthUnauthorizedUserAccessSpec struct {
 
 // Validate performs semantic syntax validation
 func (vmuua *VMAuthUnauthorizedUserAccessSpec) Validate() error {
-
 	if len(vmuua.URLMap) == 0 && len(vmuua.URLPrefix) == 0 {
 		return fmt.Errorf("at least one of `url_map` or `url_prefix` must be defined")
 	}
 	for idx, urlMap := range vmuua.URLMap {
-		if err := urlMap.Validate(); err != nil {
+		if err := urlMap.validate(); err != nil {
 			return fmt.Errorf("incorrect url_map at idx=%d: %w", idx, err)
 		}
 	}
@@ -152,7 +155,7 @@ func (vmuua *VMAuthUnauthorizedUserAccessSpec) Validate() error {
 			return fmt.Errorf("incorrect metricLabelName=%q, must match pattern=%q", k, labelNameRegexp)
 		}
 	}
-	if err := vmuua.VMUserConfigOptions.Validate(); err != nil {
+	if err := vmuua.VMUserConfigOptions.validate(); err != nil {
 		return fmt.Errorf("incorrect UnauthorizedUserAccess options: %w", err)
 	}
 
@@ -178,7 +181,7 @@ type UnauthorizedAccessConfigURLMap struct {
 }
 
 // Validate performs syntax logic validation
-func (uac *UnauthorizedAccessConfigURLMap) Validate() error {
+func (uac *UnauthorizedAccessConfigURLMap) validate() error {
 	if len(uac.SrcPaths) == 0 && len(uac.SrcHosts) == 0 && len(uac.SrcQueryArgs) == 0 && len(uac.URLMapCommon.SrcQueryArgs) == 0 {
 		return fmt.Errorf("incorrect url_map config at least of one src_paths,src_hosts,src_query_args or src_headers must be defined")
 	}
@@ -318,7 +321,7 @@ type VMUserConfigOptions struct {
 }
 
 // Validate performs semantic syntax validation
-func (vuopts *VMUserConfigOptions) Validate() error {
+func (vuopts *VMUserConfigOptions) validate() error {
 	for _, durl := range vuopts.DefaultURLs {
 		if err := validateURLPrefix(durl); err != nil {
 			return fmt.Errorf("unexpected spec.default_url=%q: %w", durl, err)
@@ -361,6 +364,62 @@ func (cr *VMAuth) UnmarshalJSON(src []byte) error {
 	}
 	if err := parseLastAppliedState(cr); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (cr *VMAuth) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+	if cr.Spec.Ingress != nil {
+		// check ingress
+		// TlsHosts and TlsSecretName are both needed if one of them is used
+		ing := cr.Spec.Ingress
+		if len(ing.TlsHosts) > 0 && ing.TlsSecretName == "" {
+			return fmt.Errorf("spec.ingress.tlsSecretName cannot be empty with non-empty spec.ingress.tlsHosts")
+		}
+		if ing.TlsSecretName != "" && len(ing.TlsHosts) == 0 {
+			return fmt.Errorf("spec.ingress.tlsHosts cannot be empty with non-empty spec.ingress.tlsSecretName")
+		}
+	}
+	if cr.Spec.ConfigSecret != "" && cr.Spec.ExternalConfig.SecretRef != nil {
+		return fmt.Errorf("spec.configSecret and spec.externalConfig.secretRef cannot be used at the same time")
+	}
+	if cr.Spec.ExternalConfig.SecretRef != nil && cr.Spec.ExternalConfig.LocalPath != "" {
+		return fmt.Errorf("at most one option can be used for externalConfig: spec.configSecret or spec.externalConfig.secretRef")
+	}
+	if cr.Spec.ExternalConfig.SecretRef != nil {
+		if cr.Spec.ExternalConfig.SecretRef.Name == cr.PrefixedName() {
+			return fmt.Errorf("spec.externalConfig.secretRef cannot be equal to the vmauth-config-CR_NAME=%q, it's operator reserved value", cr.ConfigSecretName())
+		}
+		if cr.Spec.ExternalConfig.SecretRef.Name == "" || cr.Spec.ExternalConfig.SecretRef.Key == "" {
+			return fmt.Errorf("name=%q and key=%q fields must be non-empty for spec.externalConfig.secretRef",
+				cr.Spec.ExternalConfig.SecretRef.Name, cr.Spec.ExternalConfig.SecretRef.Key)
+		}
+	}
+	if len(cr.Spec.UnauthorizedAccessConfig) > 0 && cr.Spec.UnauthorizedUserAccessSpec != nil {
+		return fmt.Errorf("at most one option can be used `spec.unauthorizedAccessConfig` or `spec.unauthorizedUserAccessSpec`, got both")
+	}
+	if len(cr.Spec.UnauthorizedAccessConfig) > 0 {
+		for _, urlMap := range cr.Spec.UnauthorizedAccessConfig {
+			if err := urlMap.validate(); err != nil {
+				return fmt.Errorf("incorrect cr.spec.UnauthorizedAccessConfig: %w", err)
+			}
+		}
+		if err := cr.Spec.VMUserConfigOptions.validate(); err != nil {
+			return fmt.Errorf("incorrect cr.spec UnauthorizedAccessConfig options: %w", err)
+		}
+	}
+
+	if cr.Spec.UnauthorizedUserAccessSpec != nil {
+		if err := cr.Spec.UnauthorizedUserAccessSpec.validate(); err != nil {
+			return fmt.Errorf("incorrect cr.spec.UnauthorizedUserAccess syntax: %w", err)
+		}
 	}
 
 	return nil
@@ -449,7 +508,7 @@ func (cr *VMAuth) ProbePort() string {
 	return cr.Spec.Port
 }
 
-func (cr *VMAuth) ProbeNeedLiveness() bool {
+func (*VMAuth) ProbeNeedLiveness() bool {
 	return true
 }
 
@@ -600,8 +659,8 @@ func (cr *VMAuth) Paused() bool {
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAuth, *VMAuthStatus]{
+func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAuth, *VMAuthStatus]{
 		actualStatus: status,
 		cr:           cr,
 		crStatus:     &cr.Status,

@@ -468,7 +468,7 @@ type EmbeddedHPA struct {
 	Behaviour   *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behaviour,omitempty"`
 }
 
-func (cr *EmbeddedHPA) sanityCheck() error {
+func (cr *EmbeddedHPA) validate() error {
 	if cr.MinReplicas != nil && *cr.MinReplicas > cr.MaxReplicas {
 		return fmt.Errorf("minReplicas cannot be greater then maxReplicas")
 	}
@@ -815,7 +815,7 @@ func (l *License) MaybeAddToVolumes(volumes []v1.Volume, mounts []v1.VolumeMount
 	return volumes, mounts
 }
 
-func (l *License) sanityCheck() error {
+func (l *License) validate() error {
 	if !l.IsProvided() {
 		return nil
 	}
@@ -898,7 +898,7 @@ func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
 	return args
 }
 
-// TLSConfigValidationError is returned by TLSConfig.Validate() on semantically
+// TLSConfigValidationError is returned by TLSConfig.validate() on semantically
 // invalid tls configurations.
 // +k8s:openapi-gen=false
 type TLSConfigValidationError struct {
@@ -909,13 +909,13 @@ func (e *TLSConfigValidationError) Error() string {
 	return e.err
 }
 
-// Validate semantically validates the given TLSConfig.
+// validate semantically validates the given TLSConfig.
 func (c *TLSConfig) Validate() error {
 	if c.CA != (SecretOrConfigMap{}) {
 		if c.CAFile != "" {
 			return &TLSConfigValidationError{"tls config can not both specify CAFile and CA"}
 		}
-		if err := c.CA.Validate(); err != nil {
+		if err := c.CA.validate(); err != nil {
 			return err
 		}
 	}
@@ -924,7 +924,7 @@ func (c *TLSConfig) Validate() error {
 		if c.CertFile != "" {
 			return &TLSConfigValidationError{"tls config can not both specify CertFile and Cert"}
 		}
-		if err := c.Cert.Validate(); err != nil {
+		if err := c.Cert.validate(); err != nil {
 			return err
 		}
 	}
@@ -936,7 +936,7 @@ func (c *TLSConfig) Validate() error {
 	return nil
 }
 
-// SecretOrConfigMapValidationError is returned by SecretOrConfigMap.Validate()
+// SecretOrConfigMapValidationError is returned by SecretOrConfigMap.validate()
 // on semantically invalid configurations.
 // +k8s:openapi-gen=false
 type SecretOrConfigMapValidationError struct {
@@ -947,8 +947,8 @@ func (e *SecretOrConfigMapValidationError) Error() string {
 	return e.err
 }
 
-// Validate semantically validates the given TLSConfig.
-func (c *SecretOrConfigMap) Validate() error {
+// validate semantically validates the given TLSConfig.
+func (c *SecretOrConfigMap) validate() error {
 	if c.Secret != nil && c.ConfigMap != nil {
 		return &SecretOrConfigMapValidationError{"SecretOrConfigMap can not specify both Secret and ConfigMap"}
 	}

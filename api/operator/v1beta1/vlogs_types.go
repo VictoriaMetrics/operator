@@ -188,151 +188,162 @@ func (cr *VLogsSpec) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
-func (r *VLogs) Probe() *EmbeddedProbes {
-	return r.Spec.EmbeddedProbes
+func (cr *VLogs) Probe() *EmbeddedProbes {
+	return cr.Spec.EmbeddedProbes
 }
 
-func (r *VLogs) ProbePath() string {
-	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, healthPath)
+func (cr *VLogs) ProbePath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
-func (r *VLogs) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(r.Spec.ExtraArgs))
+func (cr *VLogs) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
 }
 
-func (r *VLogs) ProbePort() string {
-	return r.Spec.Port
+func (cr *VLogs) ProbePort() string {
+	return cr.Spec.Port
 }
 
-func (r *VLogs) ProbeNeedLiveness() bool {
+func (cr *VLogs) ProbeNeedLiveness() bool {
 	return false
 }
 
-func (r *VLogs) AnnotationsFiltered() map[string]string {
+func (cr *VLogs) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(r.ObjectMeta.Annotations, annotationFilterPrefixes)
-	if r.Spec.ManagedMetadata != nil {
+	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+	if cr.Spec.ManagedMetadata != nil {
 		if dst == nil {
 			dst = make(map[string]string)
 		}
-		for k, v := range r.Spec.ManagedMetadata.Annotations {
+		for k, v := range cr.Spec.ManagedMetadata.Annotations {
 			dst[k] = v
 		}
 	}
 	return dst
 }
 
-func (r *VLogs) SelectorLabels() map[string]string {
+func (cr *VLogs) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlogs",
-		"app.kubernetes.io/instance":  r.Name,
+		"app.kubernetes.io/instance":  cr.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
-func (r *VLogs) PodLabels() map[string]string {
-	lbls := r.SelectorLabels()
-	if r.Spec.PodMetadata == nil {
+func (cr *VLogs) PodLabels() map[string]string {
+	lbls := cr.SelectorLabels()
+	if cr.Spec.PodMetadata == nil {
 		return lbls
 	}
-	return labels.Merge(r.Spec.PodMetadata.Labels, lbls)
+	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-func (r *VLogs) AllLabels() map[string]string {
-	selectorLabels := r.SelectorLabels()
+func (cr *VLogs) AllLabels() map[string]string {
+	selectorLabels := cr.SelectorLabels()
 	// fast path
-	if r.ObjectMeta.Labels == nil && r.Spec.ManagedMetadata == nil {
+	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if r.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(r.ObjectMeta.Labels, labelFilterPrefixes)
+	if cr.ObjectMeta.Labels != nil {
+		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
 	}
-	if r.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, r.Spec.ManagedMetadata.Labels)
+	if cr.Spec.ManagedMetadata != nil {
+		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
 	}
 	return labels.Merge(result, selectorLabels)
 }
 
-func (r VLogs) PrefixedName() string {
-	return fmt.Sprintf("vlogs-%s", r.Name)
+func (cr *VLogs) PrefixedName() string {
+	return fmt.Sprintf("vlogs-%s", cr.Name)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (r VLogs) GetMetricPath() string {
-	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, metricPath)
+func (cr *VLogs) GetMetricPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+
+// Validate checks if spec is correct
+func (cr *VLogs) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+	return nil
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (r VLogs) GetExtraArgs() map[string]string {
-	return r.Spec.ExtraArgs
+func (cr *VLogs) GetExtraArgs() map[string]string {
+	return cr.Spec.ExtraArgs
 }
 
 // GetServiceScrape returns overrides for serviceScrape builder
-func (r VLogs) GetServiceScrape() *VMServiceScrapeSpec {
-	return r.Spec.ServiceScrapeSpec
+func (cr *VLogs) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.Spec.ServiceScrapeSpec
 }
 
-func (r VLogs) GetServiceAccountName() string {
-	if r.Spec.ServiceAccountName == "" {
-		return r.PrefixedName()
+func (cr *VLogs) GetServiceAccountName() string {
+	if cr.Spec.ServiceAccountName == "" {
+		return cr.PrefixedName()
 	}
-	return r.Spec.ServiceAccountName
+	return cr.Spec.ServiceAccountName
 }
 
-func (r VLogs) IsOwnsServiceAccount() bool {
-	return r.Spec.ServiceAccountName == ""
+func (cr *VLogs) IsOwnsServiceAccount() bool {
+	return cr.Spec.ServiceAccountName == ""
 }
 
-func (r VLogs) GetNSName() string {
-	return r.GetNamespace()
+func (cr *VLogs) GetNSName() string {
+	return cr.GetNamespace()
 }
 
-func (r *VLogs) AsURL() string {
-	port := r.Spec.Port
+func (cr *VLogs) AsURL() string {
+	port := cr.Spec.Port
 	if port == "" {
 		port = "8429"
 	}
-	if r.Spec.ServiceSpec != nil && r.Spec.ServiceSpec.UseAsDefault {
-		for _, svcPort := range r.Spec.ServiceSpec.Spec.Ports {
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
+		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
 			if svcPort.Name == "http" {
 				port = fmt.Sprintf("%d", svcPort.Port)
 				break
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(r.Spec.ExtraArgs), r.PrefixedName(), r.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
 // LastAppliedSpecAsPatch return last applied vlogs spec as patch annotation
-func (r *VLogs) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(r.ObjectMeta, r.Spec)
+func (cr *VLogs) LastAppliedSpecAsPatch() (client.Patch, error) {
+	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares vlogs spec with last applied vlogs spec stored in annotation
-func (r *VLogs) HasSpecChanges() (bool, error) {
-	return hasStateChanges(r.ObjectMeta, r.Spec)
+func (cr *VLogs) HasSpecChanges() (bool, error) {
+	return hasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
-func (r *VLogs) Paused() bool {
-	return r.Spec.Paused
+func (cr *VLogs) Paused() bool {
+	return cr.Spec.Paused
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (r *VLogs) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+func (cr *VLogs) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
 	return updateObjectStatus(ctx, c, &patchStatusOpts[*VLogs, *VLogsStatus]{
 		actualStatus: status,
-		cr:           r,
-		crStatus:     &r.Status,
+		cr:           cr,
+		crStatus:     &cr.Status,
 		maybeErr:     maybeErr,
 	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (r *VLogs) GetAdditionalService() *AdditionalServiceSpec {
-	return r.Spec.ServiceSpec
+func (cr *VLogs) GetAdditionalService() *AdditionalServiceSpec {
+	return cr.Spec.ServiceSpec
 }
 
 func init() {

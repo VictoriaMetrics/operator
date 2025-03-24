@@ -187,7 +187,7 @@ func (cr *VMUser) AsOwner() []metav1.OwnerReference {
 	}
 }
 
-func (cr VMUser) AnnotationsFiltered() map[string]string {
+func (cr *VMUser) AnnotationsFiltered() map[string]string {
 	annotations := make(map[string]string)
 	for annotation, value := range cr.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
@@ -197,7 +197,7 @@ func (cr VMUser) AnnotationsFiltered() map[string]string {
 	return annotations
 }
 
-func (cr VMUser) SelectorLabels() map[string]string {
+func (cr *VMUser) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmuser",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -207,7 +207,7 @@ func (cr VMUser) SelectorLabels() map[string]string {
 }
 
 // AllLabels returns combined labels for VMUser
-func (cr VMUser) AllLabels() map[string]string {
+func (cr *VMUser) AllLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.Labels != nil {
 		for label, value := range cr.Labels {
@@ -224,6 +224,72 @@ func (cr VMUser) AllLabels() map[string]string {
 // GetStatusMetadata implements reconcile.objectWithStatus interface
 func (cr *VMUser) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
+}
+
+func (cr *VMUser) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	if cr.Spec.UserName != nil && cr.Spec.BearerToken != nil {
+		return fmt.Errorf("one of spec.username and spec.bearerToken must be defined for user, got both")
+	}
+	if cr.Spec.PasswordRef != nil && cr.Spec.Password != nil {
+		return fmt.Errorf("one of spec.password or spec.passwordRef must be used for user, got both")
+	}
+	if len(cr.Spec.TargetRefs) == 0 {
+		return fmt.Errorf("at least 1 TargetRef must be provided for spec.targetRefs")
+	}
+	isRetryCodesSet := len(cr.Spec.RetryStatusCodes) > 0
+	for i := range cr.Spec.TargetRefs {
+		targetRef := cr.Spec.TargetRefs[i]
+		if targetRef.CRD != nil && targetRef.Static != nil {
+			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got both")
+		}
+		if targetRef.CRD == nil && targetRef.Static == nil {
+			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got none")
+		}
+		if targetRef.Static != nil {
+			if targetRef.Static.URL == "" && len(targetRef.Static.URLs) == 0 {
+				return fmt.Errorf("for targetRef.static url or urls option must be set at idx=%d", i)
+			}
+			if targetRef.Static.URL != "" {
+				if err := validateURLPrefix(targetRef.Static.URL); err != nil {
+					return fmt.Errorf("incorrect static.url: %w", err)
+				}
+			}
+			for _, staticURL := range targetRef.Static.URLs {
+				if err := validateURLPrefix(staticURL); err != nil {
+					return fmt.Errorf("incorrect value at static.urls: %w", err)
+				}
+			}
+		}
+		if targetRef.CRD != nil {
+			if targetRef.CRD.Namespace == "" || targetRef.CRD.Name == "" {
+				return fmt.Errorf("crd.name and crd.namespace cannot be empty")
+			}
+		}
+		if err := validateHTTPHeaders(targetRef.ResponseHeaders); err != nil {
+			return fmt.Errorf("failed to parse targetRef response headers :%w", err)
+		}
+		if err := validateHTTPHeaders(targetRef.RequestHeaders); err != nil {
+			return fmt.Errorf("failed to parse targetRef headers :%w", err)
+		}
+		if isRetryCodesSet && len(targetRef.RetryStatusCodes) > 0 {
+			return fmt.Errorf("retry_status_codes already set at VMUser.spec level")
+		}
+	}
+	for k := range cr.Spec.MetricLabels {
+		if !labelNameRegexp.MatchString(k) {
+			return fmt.Errorf("incorrect metricLabels key=%q, must match pattern=%q", k, labelNameRegexp)
+		}
+	}
+	if err := validateHTTPHeaders(cr.Spec.Headers); err != nil {
+		return fmt.Errorf("failed to parse vmuser headers: %w", err)
+	}
+	if err := validateHTTPHeaders(cr.Spec.ResponseHeaders); err != nil {
+		return fmt.Errorf("failed to parse vmuser response headers: %w", err)
+	}
+	return nil
 }
 
 func init() {

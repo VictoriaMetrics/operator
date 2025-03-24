@@ -296,7 +296,7 @@ func (cr *VMAlert) ProbePort() string {
 	return cr.Spec.Port
 }
 
-func (cr *VMAlert) ProbeNeedLiveness() bool {
+func (*VMAlert) ProbeNeedLiveness() bool {
 	return true
 }
 
@@ -345,6 +345,35 @@ func (cr *VMAlert) AnnotationsFiltered() map[string]string {
 		}
 	}
 	return dst
+}
+
+// Validate checks VMAlert spec
+func (cr *VMAlert) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
+		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+	if cr.Spec.Datasource.URL == "" {
+		return fmt.Errorf("spec.datasource.url cannot be empty")
+	}
+	if cr.Spec.Notifier != nil {
+		if cr.Spec.Notifier.URL == "" && cr.Spec.Notifier.Selector == nil {
+			return fmt.Errorf("spec.notifier.url and spec.notifier.selector cannot be empty at the same time, provide at least one setting")
+		}
+	}
+	for idx, nt := range cr.Spec.Notifiers {
+		if nt.URL == "" && nt.Selector == nil {
+			return fmt.Errorf("notifier.url is empty and selector is not set, provide at least once for spec.notifiers at idx: %d", idx)
+		}
+	}
+	if _, ok := cr.Spec.ExtraArgs["notifier.blackhole"]; !ok {
+		if cr.Spec.Notifier == nil && len(cr.Spec.Notifiers) == 0 && cr.Spec.NotifierConfigRef == nil {
+			return fmt.Errorf("vmalert should have at least one notifier.url or enable `-notifier.blackhole`")
+		}
+	}
+	return nil
 }
 
 func (cr *VMAlert) SelectorLabels() map[string]string {
@@ -448,22 +477,22 @@ func (cr *VMAlert) AsURL() string {
 }
 
 // AsCRDOwner implements interface
-func (cr *VMAlert) AsCRDOwner() []metav1.OwnerReference {
+func (*VMAlert) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Alert)
 }
 
 func (cr *VMAlert) GetNotifierSelectors() []*DiscoverySelector {
-	var r []*DiscoverySelector
+	var selectors []*DiscoverySelector
 	for _, n := range cr.Spec.Notifiers {
 		if n.Selector == nil {
 			continue
 		}
-		r = append(r, n.Selector)
+		selectors = append(selectors, n.Selector)
 	}
 	if cr.Spec.Notifier != nil && cr.Spec.Notifier.Selector != nil {
-		r = append(r, cr.Spec.Notifier.Selector)
+		selectors = append(selectors, cr.Spec.Notifier.Selector)
 	}
-	return r
+	return selectors
 }
 
 // IsUnmanaged checks if object should managed any  config objects
@@ -486,8 +515,8 @@ func (cr *VMAlert) Paused() bool {
 }
 
 // SetStatusTo changes update status with optional reason of fail
-func (cr *VMAlert) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, r, &patchStatusOpts[*VMAlert, *VMAlertStatus]{
+func (cr *VMAlert) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
+	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAlert, *VMAlertStatus]{
 		actualStatus: status,
 		cr:           cr,
 		crStatus:     &cr.Status,

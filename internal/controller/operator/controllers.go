@@ -60,7 +60,7 @@ var (
 	}, []string{"controller", "namespaced_name"})
 	contextCancelErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "operator_controller_reconcile_errors_total",
-		Help: "Counts number contex.Canceled errors",
+		Help: "Counts number context.Canceled errors",
 	})
 )
 

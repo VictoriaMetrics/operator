@@ -171,7 +171,7 @@ func reconcileVMAlertConfig(ctx context.Context, rclient client.Client, cr *vmv1
 	if err != nil {
 		return nil, err
 	}
-	// peform config maps content update
+	// perform config maps content update
 	ruleCMNames, err := reconcileConfigsData(ctx, rclient, cr, rulesData)
 	if err != nil {
 		return nil, err

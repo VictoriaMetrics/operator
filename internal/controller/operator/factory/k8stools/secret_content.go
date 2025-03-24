@@ -55,7 +55,7 @@ type OAuthCreds struct {
 	ClientID     string
 }
 
-// LoadOAuthSecrets fetches content of OAuth secret and retruns it plain text value
+// LoadOAuthSecrets fetches content of OAuth secret and returns it plain text value
 func LoadOAuthSecrets(ctx context.Context, rclient client.Client, oauth2 *vmv1beta1.OAuth2, ns string, cache map[string]*corev1.Secret, cmCache map[string]*corev1.ConfigMap) (*OAuthCreds, error) {
 	var r OAuthCreds
 	if oauth2.ClientSecret != nil {

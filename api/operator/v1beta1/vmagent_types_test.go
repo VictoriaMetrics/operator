@@ -27,7 +27,7 @@ func TestVMAgent_Validate(t *testing.T) {
 			name: "bad inline cfg",
 			spec: VMAgentSpec{
 				RemoteWrite:        []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
-				InlineScrapeConfig: "some; none yaml formated string",
+				InlineScrapeConfig: "some; none yaml formatted string",
 			},
 			wantErr: true,
 		},

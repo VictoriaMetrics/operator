@@ -63,7 +63,7 @@ var _ = Describe("VMAlertmanagerConfig Webhook", func() {
             - receiver: blackhole
               routes:
               - matcher: [nested=env]
-        `, `root route reciever cannot be empty`),
+        `, `root route receiver cannot be empty`),
 			Entry("missing mute interval", `
         apiVersion: v1 
         kind: VMAlertmanagerConfig

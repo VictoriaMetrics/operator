@@ -52,7 +52,7 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 											},
 										},
 									},
-									BearerTokenFile: "/var/run/tolen",
+									BearerTokenFile: "/var/run/token",
 								},
 							},
 						},
@@ -75,7 +75,7 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 								},
 							},
 						},
-						BearerTokenFile: "/var/run/tolen",
+						BearerTokenFile: "/var/run/token",
 					},
 				},
 				i:               0,
@@ -137,7 +137,7 @@ relabel_configs:
 tls_config:
   insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+bearer_token_file: /var/run/token
 `,
 		},
 
@@ -169,7 +169,7 @@ bearer_token_file: /var/run/tolen
 											},
 										},
 									},
-									BearerTokenFile: "/var/run/tolen",
+									BearerTokenFile: "/var/run/token",
 								},
 							},
 						},
@@ -189,7 +189,7 @@ bearer_token_file: /var/run/tolen
 								},
 							},
 						},
-						BearerTokenFile: "/var/run/tolen",
+						BearerTokenFile: "/var/run/token",
 					},
 					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 						ScrapeInterval: "60m",
@@ -247,7 +247,7 @@ relabel_configs:
 tls_config:
   insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+bearer_token_file: /var/run/token
 `,
 		},
 		{
@@ -278,7 +278,7 @@ bearer_token_file: /var/run/tolen
 											},
 										},
 									},
-									BearerTokenFile: "/var/run/tolen",
+									BearerTokenFile: "/var/run/token",
 								},
 							},
 						},
@@ -302,7 +302,7 @@ bearer_token_file: /var/run/tolen
 								},
 							},
 						},
-						BearerTokenFile: "/var/run/tolen",
+						BearerTokenFile: "/var/run/token",
 					},
 				},
 				i:               0,
@@ -357,7 +357,7 @@ relabel_configs:
 tls_config:
   insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+bearer_token_file: /var/run/token
 `,
 		},
 		{
@@ -384,7 +384,7 @@ bearer_token_file: /var/run/tolen
 											},
 										},
 									},
-									BearerTokenFile: "/var/run/tolen",
+									BearerTokenFile: "/var/run/token",
 								},
 							},
 						},
@@ -404,7 +404,7 @@ bearer_token_file: /var/run/tolen
 								},
 							},
 						},
-						BearerTokenFile: "/var/run/tolen",
+						BearerTokenFile: "/var/run/token",
 					},
 				},
 				i:               0,
@@ -458,7 +458,7 @@ relabel_configs:
 tls_config:
   insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+bearer_token_file: /var/run/token
 `,
 		},
 		{
@@ -485,7 +485,7 @@ bearer_token_file: /var/run/tolen
 											},
 										},
 									},
-									BearerTokenFile: "/var/run/tolen",
+									BearerTokenFile: "/var/run/token",
 								},
 							},
 						},
@@ -508,7 +508,7 @@ bearer_token_file: /var/run/tolen
 								},
 							},
 						},
-						BearerTokenFile: "/var/run/tolen",
+						BearerTokenFile: "/var/run/token",
 					},
 				},
 				i:               0,
@@ -542,7 +542,7 @@ relabel_configs:
 tls_config:
   insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+bearer_token_file: /var/run/token
 `,
 		},
 		{
@@ -623,7 +623,7 @@ relabel_configs:
 						TLSConfig: &vmv1beta1.TLSConfig{
 							InsecureSkipVerify: true,
 						},
-						BearerTokenFile: "/var/run/tolen",
+						BearerTokenFile: "/var/run/token",
 					},
 				},
 				i:               0,
@@ -656,7 +656,7 @@ relabel_configs:
   replacement: "8080"
 tls_config:
   insecure_skip_verify: true
-bearer_token_file: /var/run/tolen
+bearer_token_file: /var/run/token
 `,
 		},
 		{
@@ -734,7 +734,7 @@ bearer_token_file: /var/run/tolen
 						TLSConfig: &vmv1beta1.TLSConfig{
 							InsecureSkipVerify: true,
 						},
-						BearerTokenFile: "/var/run/tolen",
+						BearerTokenFile: "/var/run/token",
 						BearerTokenSecret: &corev1.SecretKeySelector{
 							Key:                  "bearer",
 							LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
@@ -797,7 +797,7 @@ proxy_tls_config:
 proxy_bearer_token_file: /tmp/some-file
 tls_config:
   insecure_skip_verify: true
-bearer_token_file: /var/run/tolen
+bearer_token_file: /var/run/token
 basic_auth:
   username: user
   password: pass
@@ -845,7 +845,7 @@ oauth2:
 											},
 										},
 									},
-									BearerTokenFile: "/var/run/tolen",
+									BearerTokenFile: "/var/run/token",
 								},
 							},
 						},
@@ -865,7 +865,7 @@ oauth2:
 								},
 							},
 						},
-						BearerTokenFile: "/var/run/tolen",
+						BearerTokenFile: "/var/run/token",
 					},
 				},
 				i:               0,
@@ -923,7 +923,7 @@ relabel_configs:
 tls_config:
   insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+bearer_token_file: /var/run/token
 `,
 		},
 	}

@@ -351,7 +351,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 ![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fchangelog%23v11010)
 
 - [operator](https://docs.victoriametrics.com/operator/): fixes `config-reloader` image tag name after 0.46.0 release. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1017) for details.
-- [prometheus-converter](https://docs.victoriametrics.com/operator/): fixes panic at `PodMonitor` convertion with configured `tlsConfig`. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1025) for details.
+- [prometheus-converter](https://docs.victoriametrics.com/operator/): fixes panic at `PodMonitor` conversion with configured `tlsConfig`. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1025) for details.
 - [api](https://docs.victoriametrics.com/operator/api): return back `targetPort` for `VMPodScrape` definition. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1015) for details.
 
 ## [v0.46.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.46.0)
@@ -526,7 +526,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 - [operator](https://docs.victoriametrics.com/operator/): adds more context to the log messages. It must greatly improve debugging process and log quality.
 - Update VictoriaMetrics image tags to [v1.99.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.99.0).
-- [operator](https://docs.victoriametrics.com/operator/): allow multiple comma separated values for `WATCH_NAMESPACE` param. It adds multiple watch namespace mode without cluster-wide permission. See this [issue](https://github.com/VictoriaMetrics/operator/issues/557) for details. Need namspace RBAC permissions located at `config/examples/operator_rbac_for_single_namespace.yaml`
+- [operator](https://docs.victoriametrics.com/operator/): allow multiple comma separated values for `WATCH_NAMESPACE` param. It adds multiple watch namespace mode without cluster-wide permission. See this [issue](https://github.com/VictoriaMetrics/operator/issues/557) for details. Need namespace RBAC permissions located at `config/examples/operator_rbac_for_single_namespace.yaml`
 - [operator](https://docs.victoriametrics.com/operator/): updates runtime dependencies (controller-runtime, controller-gen). See this [issue](https://github.com/VictoriaMetrics/operator/issues/878) for details.
 - [operator](https://docs.victoriametrics.com/operator/): updates runtime dependencies (controller-runtime, controller-gen). See this [issue](https://github.com/VictoriaMetrics/operator/issues/878) for details.
 - [operator](https://docs.victoriametrics.com/operator/): adds new `status.updateStatus` field to the all objects with pods. It helps to track rollout updates properly.
@@ -1020,7 +1020,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 - authorization cache usage <https://github.com/VictoriaMetrics/operator/commit/e43bdb6c975b712bf5f169b8fa74c8f7760c82f5> Thanks [@AndrewChubatiuk](https://github.com/AndrewChubatiuk)
 - claimTemplates: fixes CRD for it <https://github.com/VictoriaMetrics/operator/commit/a5d2f9f61ecfc37a776d8f8c1b0f1385536e773c>
-- vmrules: supress notFound errors <https://github.com/VictoriaMetrics/operator/issues/524>
+- vmrules: suppress notFound errors <https://github.com/VictoriaMetrics/operator/issues/524>
 - vmagent: fixes regression at default values for tmpDataPath and maxDiskUsage flags <https://github.com/VictoriaMetrics/operator/issues/523>
 
 ### Features
@@ -1038,7 +1038,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 - authorization cache usage <https://github.com/VictoriaMetrics/operator/commit/e43bdb6c975b712bf5f169b8fa74c8f7760c82f5> Thanks [@AndrewChubatiuk](https://github.com/AndrewChubatiuk)
 - claimTemplates: fixes CRD for it <https://github.com/VictoriaMetrics/operator/commit/a5d2f9f61ecfc37a776d8f8c1b0f1385536e773c>
-- vmrules: supress notFound errors <https://github.com/VictoriaMetrics/operator/issues/524>
+- vmrules: suppress notFound errors <https://github.com/VictoriaMetrics/operator/issues/524>
 - vmagent: fixes regression at default values for tmpDataPath and maxDiskUsage flags <https://github.com/VictoriaMetrics/operator/issues/523>
 
 ### Features
@@ -1174,7 +1174,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 - vmcluster: disables selectNode arg passing to vmselect with enabled `HPA`. It should prevent vmselect cascade restarts <https://github.com/VictoriaMetrics/operator/issues/499>
 - controllers: changes default rate limiter max delay from 16minutes to 2 minutes. <https://github.com/VictoriaMetrics/operator/issues/500>
 - vmagent: now properly changes size for volumes at persistentMode <https://github.com/VictoriaMetrics/operator/commit/81f09af5fd3b96c975cdd7b797d02e442e2d96d0>
-- prometheus converter: adds some missing fields, bumps version dependecy <https://github.com/VictoriaMetrics/operator/commit/35f1c26d98e10db06f561e51ee5ff02b9ad72f9d>
+- prometheus converter: adds some missing fields, bumps version dependency <https://github.com/VictoriaMetrics/operator/commit/35f1c26d98e10db06f561e51ee5ff02b9ad72f9d>
 
 ### Features
 
@@ -1386,7 +1386,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 #### Fixes
 
 - changes v1.SecretKeySelector value for pointer, it should help mitigate null error for v1.SecretKeySelector.Key <https://github.com/VictoriaMetrics/operator/issues/365>
-- Fixes `VMAlertmanagerConfig` - some configurations didn't add `send_resolved` option properly to the configration. <https://github.com/VictoriaMetrics/operator/commit/6ee75053a4af2a163619908cd10ba4ec051755ab>
+- Fixes `VMAlertmanagerConfig` - some configurations didn't add `send_resolved` option properly to the configuration. <https://github.com/VictoriaMetrics/operator/commit/6ee75053a4af2a163619908cd10ba4ec051755ab>
 
 ## [v0.20.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.20.2)
 
@@ -1903,7 +1903,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 ### Breaking changes
 
-- `VMAgent` RemoteWriteSpec was changed, now it doesnt support `flushInterval,maxBlockSize,maxDiskUsagePerURL and queues`. Because its global flags at `vmagent`.  Added `remoteWriteSettings` instead with corresponding settings.
+- `VMAgent` RemoteWriteSpec was changed, now it doesn't support `flushInterval,maxBlockSize,maxDiskUsagePerURL and queues`. Because its global flags at `vmagent`.  Added `remoteWriteSettings` instead with corresponding settings.
 
 ### Features
 

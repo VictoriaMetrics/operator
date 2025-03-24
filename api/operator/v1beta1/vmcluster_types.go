@@ -562,7 +562,7 @@ func (cr *VMCluster) VMSelectPodLabels() map[string]string {
 	if cr.Spec.VMSelect == nil || cr.Spec.VMSelect.PodMetadata == nil {
 		return selectorLabels
 	}
-	return labels.Merge(cr.Spec.VMSelect.PodMetadata.Labels, selectorLabels)
+	return labels.Merge(selectorLabels, cr.Spec.VMSelect.PodMetadata.Labels)
 }
 
 // VMInsertSelectorLabels returns selector labels for vminsert cluster component
@@ -581,7 +581,7 @@ func (cr *VMCluster) VMInsertPodLabels() map[string]string {
 	if cr.Spec.VMInsert == nil || cr.Spec.VMInsert.PodMetadata == nil {
 		return selectorLabels
 	}
-	return labels.Merge(cr.Spec.VMInsert.PodMetadata.Labels, selectorLabels)
+	return labels.Merge(selectorLabels, cr.Spec.VMInsert.PodMetadata.Labels)
 }
 
 // VMStorageSelectorLabels  returns pod labels for vmstorage cluster component
@@ -600,7 +600,7 @@ func (cr *VMCluster) VMStoragePodLabels() map[string]string {
 	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
 		return selectorLabels
 	}
-	return labels.Merge(cr.Spec.VMStorage.PodMetadata.Labels, selectorLabels)
+	return labels.Merge(selectorLabels, cr.Spec.VMStorage.PodMetadata.Labels)
 }
 
 // AvailableStorageNodeIDs returns ids of the storage nodes for the provided component

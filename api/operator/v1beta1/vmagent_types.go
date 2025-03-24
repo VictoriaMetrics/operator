@@ -548,7 +548,7 @@ func (cr *VMAgent) PodLabels() map[string]string {
 		return lbls
 	}
 
-	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
+	return labels.Merge(lbls, cr.Spec.PodMetadata.Labels)
 }
 
 func (cr *VMAgent) AllLabels() map[string]string {
@@ -565,7 +565,7 @@ func (cr *VMAgent) AllLabels() map[string]string {
 	if cr.Spec.ManagedMetadata != nil {
 		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
 	}
-	return labels.Merge(result, selectorLabels)
+	return labels.Merge(selectorLabels, result)
 }
 
 func (cr *VMAgent) PrefixedName() string {

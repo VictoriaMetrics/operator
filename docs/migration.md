@@ -48,7 +48,7 @@ i.e. creates resources of VictoriaMetrics similar to Prometheus resources in the
 You can control this behaviour by setting env variable for operator:
 
 ```sh
-# disable convertion for each object
+# disable conversion for each object
 VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR=false
 VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE=false
 VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE=false

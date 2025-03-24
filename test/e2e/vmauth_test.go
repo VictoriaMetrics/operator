@@ -166,7 +166,7 @@ var _ = Describe("test vmauth Controller", func() {
 					}
 
 				},
-				Entry("by chaning replicas to 2", "update-replicas-2",
+				Entry("by changing replicas to 2", "update-replicas-2",
 					&v1beta1vm.VMAuth{
 						Spec: v1beta1vm.VMAuthSpec{
 							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{

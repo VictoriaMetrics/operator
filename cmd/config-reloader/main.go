@@ -32,7 +32,7 @@ var (
 	configFileName = flag.String(
 		"config-file", "", "config file watched by reloader")
 	configFileDst = flag.String(
-		"config-envsubst-file", "", "target file, where conent of configFile or configSecret would be written")
+		"config-envsubst-file", "", "target file, where content of configFile or configSecret would be written")
 	configSecretName = flag.String(
 		"config-secret-name", "", "name of kubernetes secret in form of namespace/name")
 	configSecretKey = flag.String(

@@ -8,7 +8,7 @@ metadata:
     certified: "false"
     containerImage: docker.io/victoriametrics/operator:0.0.0
     createdAt: "2020-05-01 12:00:00"
-    description: Provides monitoring capabilites for kubernetes clusters and applications
+    description: Provides monitoring capabilities for kubernetes clusters and applications
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"
@@ -322,7 +322,7 @@ spec:
     Operator manages VictoriaMetrics applications and provides monitoring features for applications running inside and outside kubernetes cluster. It has support for prometheus-operator objects and
     provides migration mechanism.
 
-    Operator desinged to use existing installation of VictoriaMetrics inside or outside kubernetes cluster or it could
+    Operator designed to use existing installation of VictoriaMetrics inside or outside kubernetes cluster or it could
     bring own resources and fully manages them.
 
      You can read more about operator at docs:

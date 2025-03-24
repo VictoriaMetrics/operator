@@ -1558,7 +1558,7 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 					return fmt.Errorf("unexpected name for service: %v", svc.Name)
 				}
 				if len(svc.Spec.Ports) != 3 {
-					return fmt.Errorf("unexpcted count for ports, want 3, got: %v", len(svc.Spec.Ports))
+					return fmt.Errorf("unexpected count for ports, want 3, got: %v", len(svc.Spec.Ports))
 				}
 				return nil
 			},
@@ -1614,13 +1614,13 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 					return fmt.Errorf("unexpected name for service: %v", svc.Name)
 				}
 				if len(svc.Spec.Ports) != 3 {
-					return fmt.Errorf("unexpcted count for ports, want 3, got: %v", len(svc.Spec.Ports))
+					return fmt.Errorf("unexpected count for ports, want 3, got: %v", len(svc.Spec.Ports))
 				}
 				return nil
 			},
 			wantAdditionalService: func(svc *corev1.Service) error {
 				if len(svc.Spec.Ports) != 1 {
-					return fmt.Errorf("unexpcted count for ports, want 1, got: %v", len(svc.Spec.Ports))
+					return fmt.Errorf("unexpected count for ports, want 1, got: %v", len(svc.Spec.Ports))
 				}
 				if svc.Spec.Ports[0].NodePort != 8085 {
 					return fmt.Errorf("unexpected port %v, want 8085", svc.Spec.Ports[0])

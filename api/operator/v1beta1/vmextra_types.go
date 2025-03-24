@@ -121,7 +121,7 @@ func AddFinalizer(dst, src client.Object) {
 
 // AddFinalizerAndThen conditionally adds vm-operator finalizer to the dst object
 // respectfully merges exist finalizers from src to dst
-// if finalizer was added, peforms callback
+// if finalizer was added, performs callback
 func AddFinalizerAndThen(src client.Object, andThen func(client.Object) error) error {
 	srcFinalizers := src.GetFinalizers()
 	var wasNotFinalizerFound bool
@@ -847,7 +847,7 @@ type TLSConfig struct {
 	// Path to the CA cert in the container to use for the targets.
 	// +optional
 	CAFile string `json:"caFile,omitempty" yaml:"ca_file,omitempty"`
-	// Stuct containing the CA cert to use for the targets.
+	// Struct containing the CA cert to use for the targets.
 	// +optional
 	CA SecretOrConfigMap `json:"ca,omitempty"`
 
@@ -979,7 +979,7 @@ func (c *SecretOrConfigMap) Key() string {
 	return ""
 }
 
-// BuildAssetPath buildds path for usage with assets
+// BuildAssetPath builds path for usage with assets
 func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
 	if name == "" || key == "" {
 		return ""
@@ -1450,7 +1450,7 @@ type StatusMetadata struct {
 	// ObservedGeneration defines current generation picked by operator for the
 	// reconcile
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
-	// CurrentSyncError holds an error occured during reconcile loop
+	// CurrentSyncError holds an error occurred during reconcile loop
 	CurrentSyncError string `json:"-"`
 	// Known .status.conditions.type are: "Available", "Progressing", and "Degraded"
 	// +patchMergeKey=type

@@ -335,7 +335,7 @@ func forEachCollectSkipNotFound[T scrapeObjectWithStatus](src []T, apply func(s 
 				return nil, nil, err
 			}
 			st := o.GetStatusMetadata()
-			st.CurrentSyncError = fmt.Sprintf("cannot find refrenced object: %s", err)
+			st.CurrentSyncError = fmt.Sprintf("cannot find referenced object: %s", err)
 			continue
 		}
 		src[cnt] = o

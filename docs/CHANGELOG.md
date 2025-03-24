@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly track immutable fields changes for `StatefulSet`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
+
 ## [v0.54.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.54.1)
 
 **Release date:** 12 Mar 2025

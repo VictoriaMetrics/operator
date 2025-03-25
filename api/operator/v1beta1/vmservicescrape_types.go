@@ -135,6 +135,19 @@ func (cr *VMServiceScrape) AsProxyKey(i int) string {
 	return fmt.Sprintf("serviceScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
+// Validate returns error if CR is invalid
+func (cr *VMServiceScrape) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	for _, endpoint := range cr.Spec.Endpoints {
+		if err := endpoint.EndpointRelabelings.validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // AsMapKey - returns cr name with suffix for token/auth maps.
 func (cr *VMServiceScrape) AsMapKey(i int) string {
 	return fmt.Sprintf("serviceScrape/%s/%s/%d", cr.Namespace, cr.Name, i)

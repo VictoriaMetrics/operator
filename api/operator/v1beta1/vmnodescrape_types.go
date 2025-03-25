@@ -61,6 +61,14 @@ func (cr *VMNodeScrape) AsProxyKey() string {
 	return fmt.Sprintf("nodeScrapeProxy/%s/%s", cr.Namespace, cr.Name)
 }
 
+// Validate returns error if CR is invalid
+func (cr *VMNodeScrape) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	return cr.Spec.EndpointRelabelings.validate()
+}
+
 // AsMapKey - returns cr name with suffix for token/auth maps.
 func (cr *VMNodeScrape) AsMapKey() string {
 	return fmt.Sprintf("nodeScrape/%s/%s", cr.Namespace, cr.Name)

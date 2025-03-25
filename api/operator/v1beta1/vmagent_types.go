@@ -311,6 +311,13 @@ type VMAgentSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// EnableKubernetesAPISelectors instructs vmagent to use CRD scrape objects spec.selectors for
+	// Kubernetes API list and watch requests.
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#list-and-watch-filtering
+	// It could be useful to reduce Kubernetes API server resource usage for serving less than 100 CRD scrape objects in total.
+	// +optional
+	EnableKubernetesAPISelectors bool `json:"enableKubernetesAPISelectors,omitempty"`
+
 	VMAgentSecurityEnforcements       `json:",inline"`
 	CommonDefaultableParams           `json:",inline,omitempty"`
 	CommonConfigReloaderParams        `json:",inline,omitempty"`

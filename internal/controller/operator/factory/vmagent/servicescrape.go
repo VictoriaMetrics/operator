@@ -33,7 +33,15 @@ func generateServiceScrapeConfig(
 	if ep.AttachMetadata.Node == nil && m.Spec.AttachMetadata.Node != nil {
 		ep.AttachMetadata = m.Spec.AttachMetadata
 	}
-	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache, m.Spec.DiscoveryRole, &ep.AttachMetadata))
+	k8sSDOpts := generateK8SSDConfigOptions{
+		namespaces:         selectedNamespaces,
+		shouldAddSelectors: vmagentCR.Spec.EnableKubernetesAPISelectors,
+		selectors:          m.Spec.Selector,
+		apiServerConfig:    apiserverConfig,
+		role:               m.Spec.DiscoveryRole,
+		attachMetadata:     &ep.AttachMetadata,
+	}
+	cfg = append(cfg, generateK8SSDConfig(ssCache, k8sSDOpts))
 
 	if ep.SampleLimit == 0 {
 		ep.SampleLimit = m.Spec.SampleLimit

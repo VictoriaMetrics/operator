@@ -27,7 +27,13 @@ func generateNodeScrapeConfig(
 
 	setScrapeIntervalToWithLimit(ctx, &nodeSpec.EndpointScrapeParams, vmagentCR)
 
-	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, ssCache, kubernetesSDRoleNode, nil))
+	k8sSDOpts := generateK8SSDConfigOptions{
+		shouldAddSelectors: vmagentCR.Spec.EnableKubernetesAPISelectors,
+		selectors:          cr.Spec.Selector,
+		apiServerConfig:    apiserverConfig,
+		role:               kubernetesSDRoleNode,
+	}
+	cfg = append(cfg, generateK8SSDConfig(ssCache, k8sSDOpts))
 
 	cfg = addCommonScrapeParamsTo(cfg, nodeSpec.EndpointScrapeParams, se)
 

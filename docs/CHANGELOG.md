@@ -17,6 +17,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): make project layout compatible with `[kubebuilder v4](https://book.kubebuilder.io/migration/v3vsv4)`
 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator: log fields changes diff for `Deployment`, `StatefulSet`, `Service`, `PDB`, `HPA` and `VMServiceScrape` during reconcile process. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce Kubernetes API server load on large scale by removing `selectors` from `VMPodscrape` `kubernetes_sd_configs`. Add new field `VMAgent.spec.enableKubernetesAPISelectors`, which restores original behaviour. See [this issue]() for details.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly track immutable fields changes for `StatefulSet`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
 * BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): properly propagate `podMetadata` to `requestsLoadBalancer` `Deployment`. See [this PR](https://github.com/VictoriaMetrics/operator/pull/1275/) for details. Thanks to the @solidDoWant

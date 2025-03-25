@@ -1299,30 +1299,40 @@ func combineSelectorStr(kvs map[string]string) string {
 	return strings.Join(kvsSlice, ",")
 }
 
-func generateK8SSDConfig(namespaces []string, apiserverConfig *vmv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string, am *vmv1beta1.AttachMetadata) yaml.MapItem {
+type generateK8SSDConfigOptions struct {
+	namespaces         []string
+	apiServerConfig    *vmv1beta1.APIServerConfig
+	role               string
+	attachMetadata     *vmv1beta1.AttachMetadata
+	shouldAddSelectors bool
+	selectors          metav1.LabelSelector
+}
+
+func generateK8SSDConfig(ssCache *scrapesSecretsCache, opts generateK8SSDConfigOptions) yaml.MapItem {
 	k8sSDConfig := yaml.MapSlice{
 		{
 			Key:   "role",
-			Value: role,
+			Value: opts.role,
 		},
 	}
-	switch role {
+	switch opts.role {
 	case kubernetesSDRoleEndpoint, kubernetesSDRoleEndpointSlices, kubernetesSDRolePod:
-		k8sSDConfig = addAttachMetadata(k8sSDConfig, am)
+		k8sSDConfig = addAttachMetadata(k8sSDConfig, opts.attachMetadata)
 	}
-	if len(namespaces) != 0 {
+	if len(opts.namespaces) != 0 {
 		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
 			Key: "namespaces",
 			Value: yaml.MapSlice{
 				{
 					Key:   "names",
-					Value: namespaces,
+					Value: opts.namespaces,
 				},
 			},
 		})
 	}
 
-	if apiserverConfig != nil {
+	if opts.apiServerConfig != nil {
+		apiserverConfig := opts.apiServerConfig
 		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
 			Key: "api_server", Value: apiserverConfig.Host,
 		})
@@ -1351,6 +1361,44 @@ func generateK8SSDConfig(namespaces []string, apiserverConfig *vmv1beta1.APIServ
 
 		// config as well, make sure to path the right namespace here.
 		k8sSDConfig = addTLStoYaml(k8sSDConfig, "", apiserverConfig.TLSConfig, false)
+	}
+
+	if opts.shouldAddSelectors && len(opts.selectors.MatchLabels) > 0 {
+		var selectors []yaml.MapSlice
+		var selector yaml.MapSlice
+		selector = append(selector, yaml.MapItem{
+			Key:   "role",
+			Value: opts.role,
+		})
+		matchLabelsString := combineSelectorStr(opts.selectors.MatchLabels)
+		selector = append(selector, yaml.MapItem{
+			Key:   "label",
+			Value: matchLabelsString,
+		})
+		selectors = append(selectors, selector)
+
+		// special case, given roles create additional watchers for
+		// pod and services roles
+		if opts.role == kubernetesSDRoleEndpoint || opts.role == kubernetesSDRoleEndpointSlices {
+			for _, role := range []string{kubernetesSDRolePod, kubernetesSDRoleService} {
+				selectors = append(selectors, yaml.MapSlice{
+					{
+						Key:   "role",
+						Value: role,
+					},
+					{
+						Key:   "label",
+						Value: matchLabelsString,
+					},
+				})
+			}
+		}
+
+		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
+			Key:   "selectors",
+			Value: selectors,
+		})
+
 	}
 
 	return yaml.MapItem{

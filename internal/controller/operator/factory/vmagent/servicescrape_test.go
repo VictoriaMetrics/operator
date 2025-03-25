@@ -926,6 +926,179 @@ tls_config:
 bearer_token_file: /var/run/token
 `,
 		},
+		{
+			name: "with selectors endpoints",
+			args: args{
+				cr: vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						EnableKubernetesAPISelectors: true,
+					},
+				},
+				m: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+							},
+						},
+						Selector: *metav1.SetAsLabelSelector(map[string]string{
+							"env": "dev",
+						}),
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					AttachMetadata: vmv1beta1.AttachMetadata{
+						Node: ptr.To(true),
+					},
+					Port: "8080",
+				},
+				i: 0,
+				apiserverConfig: &vmv1beta1.APIServerConfig{
+					Host: "default-k8s-host",
+				},
+				ssCache: &scrapesSecretsCache{},
+				se: vmv1beta1.VMAgentSecurityEnforcements{
+					OverrideHonorLabels:      false,
+					OverrideHonorTimestamps:  false,
+					IgnoreNamespaceSelectors: false,
+					EnforcedNamespaceLabel:   "",
+				},
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: endpoints
+  attach_metadata:
+    node: true
+  namespaces:
+    names:
+    - default
+  api_server: default-k8s-host
+  selectors:
+  - role: endpoints
+    label: env=dev
+  - role: pod
+    label: env=dev
+  - role: service
+    label: env=dev
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_service_label_env
+  regex: dev
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+`,
+		},
+		{
+			name: "with selectors services",
+			args: args{
+				cr: vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						EnableKubernetesAPISelectors: true,
+					},
+				},
+				m: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						DiscoveryRole: kubernetesSDRoleService,
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+							},
+						},
+						Selector: *metav1.SetAsLabelSelector(map[string]string{
+							"env": "dev",
+						}),
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					AttachMetadata: vmv1beta1.AttachMetadata{
+						Node: ptr.To(true),
+					},
+					Port: "8080",
+				},
+				i: 0,
+				apiserverConfig: &vmv1beta1.APIServerConfig{
+					Host: "default-k8s-host",
+				},
+				ssCache: &scrapesSecretsCache{},
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: service
+  namespaces:
+    names:
+    - default
+  api_server: default-k8s-host
+  selectors:
+  - role: service
+    label: env=dev
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_service_label_env
+  regex: dev
+- action: keep
+  source_labels:
+  - __meta_kubernetes_service_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

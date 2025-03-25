@@ -198,6 +198,59 @@ basic_auth:
   username: username
 `,
 		},
+		{
+			name: "with selector",
+			args: args{
+				cr: vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						EnableKubernetesAPISelectors: true,
+					},
+				},
+				ssCache: &scrapesSecretsCache{},
+				i:       1,
+				m: &vmv1beta1.VMNodeScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "nodes-basic",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMNodeScrapeSpec{
+						Port: "9100",
+						Selector: *metav1.SetAsLabelSelector(map[string]string{
+							"zone": "eu-south-21",
+						}),
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path:     "/metrics",
+							Interval: "30s",
+						},
+					},
+				},
+			},
+			want: `job_name: nodeScrape/default/nodes-basic/1
+kubernetes_sd_configs:
+- role: node
+  selectors:
+  - role: node
+    label: zone=eu-south-21
+honor_labels: false
+scrape_interval: 30s
+metrics_path: /metrics
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_node_label_zone
+  regex: eu-south-21
+- source_labels:
+  - __meta_kubernetes_node_name
+  target_label: node
+- target_label: job
+  replacement: default/nodes-basic
+- source_labels:
+  - __address__
+  target_label: __address__
+  regex: ^(.*):(.*)
+  replacement: ${1}:9100
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

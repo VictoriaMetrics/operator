@@ -1995,6 +1995,13 @@ spec:
               dnsPolicy:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string
+              enableKubernetesAPISelectors:
+                description: |-
+                  EnableKubernetesAPISelectors instructs vmagent to use CRD scrape objects spec.selectors for
+                  Kubernetes API list and watch requests.
+                  https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#list-and-watch-filtering
+                  It could be useful to reduce Kubernetes API server resource usage for serving less than 100 CRD scrape objects in total.
+                type: boolean
               enforcedNamespaceLabel:
                 description: |-
                   EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert

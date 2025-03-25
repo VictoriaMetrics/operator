@@ -134,6 +134,11 @@ relabel_configs:
 		{
 			name: "test with selector",
 			args: args{
+				cr: vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						EnableKubernetesAPISelectors: true,
+					},
+				},
 				m: &vmv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-1",
@@ -217,6 +222,11 @@ relabel_configs:
 		{
 			name: "with portNumber",
 			args: args{
+				cr: vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						EnableKubernetesAPISelectors: true,
+					},
+				},
 				m: &vmv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-1",

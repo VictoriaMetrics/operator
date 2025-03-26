@@ -1177,28 +1177,6 @@ func TestBuildRemoteWrites(t *testing.T) {
 			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432", "-remoteWrite.maxDiskUsagePerURL=1500MB,500MB,1073741824"},
 		},
 		{
-			name: "test maxDiskUsage in extraArgs is not overwritten",
-			args: args{
-				ssCache: &scrapesSecretsCache{},
-				cr: &vmv1beta1.VMAgent{
-					Spec: vmv1beta1.VMAgentSpec{
-						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-							{
-								URL:          "localhost:8429",
-								MaxDiskUsage: ptr.To(vmv1beta1.BytesString("1500MB")),
-							},
-						},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ExtraArgs: map[string]string{
-								"remoteWrite.maxDiskUsagePerURL": "1000MB",
-							},
-						},
-					},
-				},
-			},
-			want: []string{"-remoteWrite.url=localhost:8429"},
-		},
-		{
 			name: "test forceVMProto",
 			args: args{
 				ssCache: &scrapesSecretsCache{},
@@ -1219,28 +1197,6 @@ func TestBuildRemoteWrites(t *testing.T) {
 				},
 			},
 			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432", "-remoteWrite.forceVMProto=true,false,true"},
-		},
-		{
-			name: "test forceVMProto in extraArgs is not overwritten",
-			args: args{
-				ssCache: &scrapesSecretsCache{},
-				cr: &vmv1beta1.VMAgent{
-					Spec: vmv1beta1.VMAgentSpec{
-						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-							{
-								URL:          "localhost:8429",
-								ForceVMProto: true,
-							},
-						},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ExtraArgs: map[string]string{
-								"remoteWrite.forceVMProto": "true",
-							},
-						},
-					},
-				},
-			},
-			want: []string{"-remoteWrite.url=localhost:8429"},
 		},
 		{
 			name: "test oauth2",
@@ -2440,4 +2396,288 @@ containers:
 
 serviceaccountname: vmagent-agent
 `)
+
+	// test maxDiskUsage and empty remoteWriteSettings
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			IngestOnlyMode: true,
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				Image: vmv1beta1.Image{
+					Tag: "v1.97.1",
+				},
+				UseDefaultResources: ptr.To(false),
+				Port:                "8425",
+			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				UseVMConfigReloader:    ptr.To(true),
+				ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+			},
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL:          "http://some-url/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+				{
+					URL:          "http://some-url-2/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+				{
+					URL: "http://some-url-3/api/v1/write",
+				},
+			},
+		},
+	}, nil, `
+volumes:
+    - name: persistent-queue-data
+      volumesource:
+        emptydir:
+            medium: ""
+            sizelimit: null
+initcontainers: []
+containers:
+    - name: vmagent
+      image: victoriametrics/vmagent:v1.97.1
+      args:
+        - -httpListenAddr=:8425
+        - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,1073741824
+        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
+        - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+      ports:
+        - name: http
+          hostport: 0
+          containerport: 8425
+          protocol: TCP
+      resources:
+        limits: {}
+        requests: {}
+        claims: []
+      volumemounts:
+        - name: persistent-queue-data
+          readonly: false
+          mountpath: /tmp/vmagent-remotewrite-data
+      livenessprobe:
+        probehandler:
+            httpget:
+                path: /health
+                port:
+                    type: 0
+                    intval: 8425
+                    strval: ""
+                scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      readinessprobe:
+        probehandler:
+            httpget:
+                path: /health
+                port:
+                    intval: 8425
+                scheme: HTTP
+        initialdelayseconds: 0
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      terminationmessagepolicy: FallbackToLogsOnError
+      imagepullpolicy: IfNotPresent
+serviceaccountname: vmagent-agent
+
+    `)
+
+	// test MaxDiskUsage with RemoteWriteSettings
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			IngestOnlyMode: true,
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				Image: vmv1beta1.Image{
+					Tag: "v1.97.1",
+				},
+				UseDefaultResources: ptr.To(false),
+				Port:                "8425",
+			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				UseVMConfigReloader:    ptr.To(true),
+				ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+			},
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL:          "http://some-url/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+				{
+					URL: "http://some-url-2/api/v1/write",
+				},
+				{
+					URL:          "http://some-url-3/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+			},
+			RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+				MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("20MB")),
+			},
+		},
+	}, nil, `
+volumes:
+    - name: persistent-queue-data
+      volumesource:
+        emptydir:
+            medium: ""
+            sizelimit: null
+initcontainers: []
+containers:
+    - name: vmagent
+      image: victoriametrics/vmagent:v1.97.1
+      args:
+        - -httpListenAddr=:8425
+        - -remoteWrite.maxDiskUsagePerURL=10GB,20MB,10GB
+        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
+        - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+      ports:
+        - name: http
+          hostport: 0
+          containerport: 8425
+          protocol: TCP
+      resources:
+        limits: {}
+        requests: {}
+        claims: []
+      volumemounts:
+        - name: persistent-queue-data
+          readonly: false
+          mountpath: /tmp/vmagent-remotewrite-data
+      livenessprobe:
+        probehandler:
+            httpget:
+                path: /health
+                port:
+                    type: 0
+                    intval: 8425
+                    strval: ""
+                scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      readinessprobe:
+        probehandler:
+            httpget:
+                path: /health
+                port:
+                    intval: 8425
+                scheme: HTTP
+        initialdelayseconds: 0
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      terminationmessagepolicy: FallbackToLogsOnError
+      imagepullpolicy: IfNotPresent
+serviceaccountname: vmagent-agent
+
+    `)
+	// test MaxDiskUsage with RemoteWriteSettings and extraArgs overwrite
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			IngestOnlyMode: true,
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				Image: vmv1beta1.Image{
+					Tag: "v1.97.1",
+				},
+				UseDefaultResources: ptr.To(false),
+				Port:                "8425",
+			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				UseVMConfigReloader:    ptr.To(true),
+				ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+			},
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ExtraArgs: map[string]string{
+					"remoteWrite.maxDiskUsagePerURL": "35GiB",
+					"remoteWrite.forceVMProto":       "false",
+				},
+			},
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL:          "http://some-url/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+				{
+					URL:          "http://some-url-2/api/v1/write",
+					ForceVMProto: true,
+				},
+				{
+					URL:          "http://some-url-3/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+			},
+			RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+				MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("20MB")),
+			},
+		},
+	}, nil, `
+volumes:
+    - name: persistent-queue-data
+      volumesource:
+        emptydir:
+            medium: ""
+            sizelimit: null
+initcontainers: []
+containers:
+    - name: vmagent
+      image: victoriametrics/vmagent:v1.97.1
+      args:
+        - -httpListenAddr=:8425
+        - -remoteWrite.forceVMProto=false
+        - -remoteWrite.maxDiskUsagePerURL=35GiB
+        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
+        - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+      ports:
+        - name: http
+          hostport: 0
+          containerport: 8425
+          protocol: TCP
+      resources:
+        limits: {}
+        requests: {}
+        claims: []
+      volumemounts:
+        - name: persistent-queue-data
+          readonly: false
+          mountpath: /tmp/vmagent-remotewrite-data
+      livenessprobe:
+        probehandler:
+            httpget:
+                path: /health
+                port:
+                    type: 0
+                    intval: 8425
+                    strval: ""
+                scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      readinessprobe:
+        probehandler:
+            httpget:
+                path: /health
+                port:
+                    intval: 8425
+                scheme: HTTP
+        initialdelayseconds: 0
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      terminationmessagepolicy: FallbackToLogsOnError
+      imagepullpolicy: IfNotPresent
+serviceaccountname: vmagent-agent
+
+    `)
+
 }

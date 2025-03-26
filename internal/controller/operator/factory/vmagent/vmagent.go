@@ -1031,6 +1031,18 @@ type remoteFlag struct {
 }
 
 func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
+	// limit to 1GB
+	// most people do not care about this setting,
+	// but it may harmfully affect kubernetes cluster health
+	maxDiskUsage := defaultMaxDiskUsage
+	var containsMaxDiskUsage bool
+	for i := range cr.Spec.RemoteWrite {
+		rws := cr.Spec.RemoteWrite[i]
+		if rws.MaxDiskUsage != nil {
+			containsMaxDiskUsage = true
+			break
+		}
+	}
 	var args []string
 	if cr.Spec.RemoteWriteSettings == nil {
 		// fast path
@@ -1039,9 +1051,11 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 			pqMountPath = vmAgentPersistentQueueSTSDir
 		}
 		args = append(args,
-			"-remoteWrite.maxDiskUsagePerURL=1073741824",
-			fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", defaultMaxDiskUsage),
 			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
+
+		if !containsMaxDiskUsage {
+			args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", maxDiskUsage))
+		}
 		return args
 	}
 
@@ -1052,13 +1066,7 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 	if rws.MaxBlockSize != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.maxBlockSize=%d", *rws.MaxBlockSize))
 	}
-	// limit to 1GB
-	// most people do not care about this setting,
-	// but it may harmfully affect kubernetes cluster health
-	maxDiskUsage := defaultMaxDiskUsage
-	if rws.MaxDiskUsagePerURL != nil {
-		maxDiskUsage = fmt.Sprintf("%d", *rws.MaxDiskUsagePerURL)
-	}
+
 	if rws.Queues != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.queues=%d", *rws.Queues))
 	}
@@ -1073,24 +1081,11 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 		pqMountPath = *rws.TmpDataPath
 	}
 	args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
-	var containsMaxDiskUsage bool
-	for arg := range cr.Spec.ExtraArgs {
-		if arg == "remoteWrite.maxDiskUsagePerURL" {
-			containsMaxDiskUsage = true
-		}
-		break
+
+	if rws.MaxDiskUsagePerURL != nil {
+		maxDiskUsage = rws.MaxDiskUsagePerURL.String()
 	}
 	if !containsMaxDiskUsage {
-		for i := range cr.Spec.RemoteWrite {
-			rws := cr.Spec.RemoteWrite[i]
-			if rws.MaxDiskUsage != nil {
-				containsMaxDiskUsage = true
-				break
-			}
-		}
-	}
-	if !containsMaxDiskUsage {
-		// limit to 1GB
 		args = append(args, "-remoteWrite.maxDiskUsagePerURL="+maxDiskUsage)
 	}
 	if rws.Labels != nil {
@@ -1161,31 +1156,9 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
-	var maxDiskUsageInExtraArgs bool
-	var forceVMProtoInExtraArgs bool
-	for arg := range cr.Spec.ExtraArgs {
-		if arg == "remoteWrite.maxDiskUsagePerURL" {
-			maxDiskUsageInExtraArgs = true
-		}
-		if arg == "remoteWrite.forceVMProto" {
-			forceVMProtoInExtraArgs = true
-		}
-		if maxDiskUsageInExtraArgs && forceVMProtoInExtraArgs {
-			break
-		}
-	}
-
-	for i := range remoteTargets {
-		rws := remoteTargets[i]
-		if !maxDiskUsageInExtraArgs && rws.MaxDiskUsage != nil {
-			maxDiskUsagePerURL.isNotNull = true
-		}
-		if !forceVMProtoInExtraArgs && rws.ForceVMProto {
-			forceVMProto.isNotNull = true
-		}
-		if maxDiskUsagePerURL.isNotNull && forceVMProto.isNotNull {
-			break
-		}
+	maxDiskUsage := defaultMaxDiskUsage
+	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
+		maxDiskUsage = cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL.String()
 	}
 
 	for i := range remoteTargets {
@@ -1289,7 +1262,6 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 			value = strings.TrimSuffix(value, "^^")
 		}
 		headers.flagSetting += fmt.Sprintf("%s,", value)
-		value = ""
 		var oaturl, oascopes, oaclientID, oaSecretKeyFile string
 		if rws.OAuth2 != nil {
 			if len(rws.OAuth2.TokenURL) > 0 {
@@ -1371,17 +1343,18 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		streamAggrIgnoreOldSamples.flagSetting += fmt.Sprintf("%v,", ignoreOldSamples)
 		streamAggrEnableWindows.flagSetting += fmt.Sprintf("%v", enableWindows)
 
-		if maxDiskUsagePerURL.isNotNull {
-			if rws.MaxDiskUsage != nil {
-				maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", *rws.MaxDiskUsage)
-			} else {
-				maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", defaultMaxDiskUsage)
-			}
+		value = maxDiskUsage
+		if rws.MaxDiskUsage != nil {
+			value = rws.MaxDiskUsage.String()
+			maxDiskUsagePerURL.isNotNull = true
 		}
+		maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", value)
+		value = ""
 
-		if forceVMProto.isNotNull {
-			forceVMProto.flagSetting += fmt.Sprintf("%t,", rws.ForceVMProto)
+		if rws.ForceVMProto {
+			forceVMProto.isNotNull = true
 		}
+		forceVMProto.flagSetting += fmt.Sprintf("%t,", rws.ForceVMProto)
 	}
 
 	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)

@@ -189,6 +189,7 @@ func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 	}
 	svc := build.Service(b, cr.Spec.VMSelect.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
+		svc.Spec.PublishNotReadyAddresses = true
 		if cr.Spec.VMSelect.ClusterNativePort != "" {
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
 				Name:       "clusternative",
@@ -413,6 +414,7 @@ func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, 
 
 		prevService = build.Service(prevT, prevCR.Spec.VMStorage.Port, func(svc *corev1.Service) {
 			svc.Spec.ClusterIP = "None"
+			svc.Spec.PublishNotReadyAddresses = true
 			svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
 				{
 					Name:       "vminsert",
@@ -442,6 +444,7 @@ func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, 
 	}
 	newHeadless := build.Service(t, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
+		svc.Spec.PublishNotReadyAddresses = true
 		svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
 			{
 				Name:       "vminsert",

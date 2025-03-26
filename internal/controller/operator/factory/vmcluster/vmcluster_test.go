@@ -543,6 +543,7 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    publishnotreadyaddresses: true
 `)
 	// with vmbackup and additional service ports
 	f("storage", &vmv1beta1.VMCluster{
@@ -552,6 +553,7 @@ spec:
 				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 					UseAsDefault: true,
 					Spec: corev1.ServiceSpec{
+						PublishNotReadyAddresses: true,
 						Ports: []corev1.ServicePort{
 							{
 								Name:       "web-rpc",
@@ -617,6 +619,7 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    publishnotreadyaddresses: true
 `)
 
 	f("select", &vmv1beta1.VMCluster{
@@ -661,6 +664,7 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    publishnotreadyaddresses: true
 `)
 	// with native and extra service
 	f("select", &vmv1beta1.VMCluster{
@@ -707,6 +711,7 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    publishnotreadyaddresses: true
 `)
 	f("insert", &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},

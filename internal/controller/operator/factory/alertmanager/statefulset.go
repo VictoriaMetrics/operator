@@ -82,6 +82,7 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 	newService := build.Service(cr, cr.Spec.PortName, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.Ports[0].Port = int32(port)
+		svc.Spec.PublishNotReadyAddresses = true
 		svc.Spec.Ports = append(svc.Spec.Ports,
 			corev1.ServicePort{
 				Name:       "tcp-mesh",
@@ -106,6 +107,7 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 		prevService = build.Service(prevCR, prevCR.Spec.PortName, func(svc *corev1.Service) {
 			svc.Spec.ClusterIP = "None"
 			svc.Spec.Ports[0].Port = int32(prevPort)
+			svc.Spec.PublishNotReadyAddresses = true
 			svc.Spec.Ports = append(svc.Spec.Ports,
 				corev1.ServicePort{
 					Name:       "tcp-mesh",

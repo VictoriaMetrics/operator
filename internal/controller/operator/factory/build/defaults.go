@@ -532,21 +532,29 @@ func addDefaluesToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 		}
 	}
 
+	cpuValue := appDefaults.ConfigReloaderCPU
+	if len(c.ConfigReloaderRequestCPU) > 0 {
+		cpuValue = c.ConfigReloaderRequestCPU
+	}
+	memoryValue := appDefaults.ConfigReloaderMemory
+	if len(c.ConfigReloaderRequestMemory) > 0 {
+		memoryValue = c.ConfigReloaderRequestMemory
+	}
 	common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
 	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource{
 		Limit: struct {
 			Mem string
 			Cpu string
 		}{
-			Cpu: config.UnLimitedResource,
-			Mem: config.UnLimitedResource,
+			Cpu: c.ConfigReloaderLimitCPU,
+			Mem: c.ConfigReloaderLimitMemory,
 		},
 		Request: struct {
 			Mem string
 			Cpu string
 		}{
-			Cpu: appDefaults.ConfigReloaderCPU,
-			Mem: appDefaults.ConfigReloaderMemory,
+			Cpu: cpuValue,
+			Mem: memoryValue,
 		},
 	}, useDefaultResources)
 }

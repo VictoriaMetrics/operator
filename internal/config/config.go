@@ -79,6 +79,15 @@ type BaseOperatorConf struct {
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false"`
 
+	// defines global resource.limits.cpu for all config-reloader containers
+	ConfigReloaderLimitCPU string `default:"unlimited" split_words:"true"`
+	// defines global resource.limits.memory for all config-reloader containers
+	ConfigReloaderLimitMemory string `default:"unlimited" split_words:"true"`
+	// defines global resource.requests.cpu for all config-reloader containers
+	ConfigReloaderRequestCPU string `default:"" split_words:"true"`
+	// defines global resource.requests.memory for all config-reloader containers
+	ConfigReloaderRequestMemory string `default:"" split_words:"true"`
+
 	VLogsDefault struct {
 		Image   string `default:"victoriametrics/victoria-logs"`
 		Version string `default:"v1.15.0-victorialogs"`
@@ -118,7 +127,9 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			}
 		}
-		ConfigReloaderCPU    string `default:"10m"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		ConfigReloaderCPU string `default:"10m"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi"`
 	}
 
@@ -144,7 +155,9 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			}
 		}
-		ConfigReloaderCPU    string `default:"10m"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		ConfigReloaderCPU string `default:"10m"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi"`
 	}
 
@@ -223,8 +236,10 @@ type BaseOperatorConf struct {
 	}
 
 	VMAlertManager struct {
-		ConfigReloaderImage          string `default:"jimmidyson/configmap-reload:v0.3.0"`
-		ConfigReloaderCPU            string `default:"10m"`
+		ConfigReloaderImage string `default:"jimmidyson/configmap-reload:v0.3.0"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		ConfigReloaderCPU string `default:"10m"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory         string `default:"25Mi"`
 		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager"`
 		AlertManagerVersion          string `default:"v0.27.0"`
@@ -275,7 +290,9 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			}
 		}
-		ConfigReloaderCPU    string `default:"10m"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		ConfigReloaderCPU string `default:"10m"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi"`
 	}
 
@@ -401,6 +418,29 @@ func (boc BaseOperatorConf) Validate() error {
 		}
 		return nil
 	}
+
+	if boc.ConfigReloaderLimitMemory != UnLimitedResource {
+		if _, err := resource.ParseQuantity(boc.ConfigReloaderLimitMemory); err != nil {
+			return fmt.Errorf("cannot parse global config-reloader resource limit memory :%w", err)
+		}
+	}
+	if boc.ConfigReloaderLimitCPU != UnLimitedResource {
+		if _, err := resource.ParseQuantity(boc.ConfigReloaderLimitCPU); err != nil {
+			return fmt.Errorf("cannot parse global config-reloader resource limit cpu :%w", err)
+		}
+	}
+
+	if len(boc.ConfigReloaderRequestMemory) > 0 && boc.ConfigReloaderRequestMemory != UnLimitedResource {
+		if _, err := resource.ParseQuantity(boc.ConfigReloaderRequestMemory); err != nil {
+			return fmt.Errorf("cannot parse global config-reloader resource request memory :%w", err)
+		}
+	}
+	if len(boc.ConfigReloaderRequestCPU) > 0 && boc.ConfigReloaderRequestCPU != UnLimitedResource {
+		if _, err := resource.ParseQuantity(boc.ConfigReloaderRequestCPU); err != nil {
+			return fmt.Errorf("cannot parse global config-reloader resource request cpu :%w", err)
+		}
+	}
+
 	if err := validateResource("vmagent", Resource(boc.VMAgentDefault.Resource)); err != nil {
 		return err
 	}

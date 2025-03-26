@@ -397,7 +397,9 @@ type VMAgentRemoteWriteSettings struct {
 
 	// The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
 	// +optional
-	MaxDiskUsagePerURL *int64 `json:"maxDiskUsagePerURL,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	MaxDiskUsagePerURL *BytesString `json:"maxDiskUsagePerURL,omitempty"`
 	// The number of concurrent queues
 	// +optional
 	Queues *int32 `json:"queues,omitempty"`
@@ -460,9 +462,12 @@ type VMAgentRemoteWriteSpec struct {
 	// StreamAggrConfig defines stream aggregation configuration for VMAgent for -remoteWrite.url
 	// +optional
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
-	// MaxDiskUsage defines the maximum file-based buffer size in bytes for -remoteWrite.url
+	// MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite
+	// It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL
 	// +optional
-	MaxDiskUsage *string `json:"maxDiskUsage,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	MaxDiskUsage *BytesString `json:"maxDiskUsage,omitempty"`
 	// ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url
 	// +optional
 	ForceVMProto bool `json:"forceVMProto,omitempty"`

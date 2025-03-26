@@ -299,6 +299,21 @@ _Appears in:_
 | <a href="#bearerauth-bearertokensecret"><code id="bearerauth-bearertokensecret">bearerTokenSecret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
 
 
+#### BytesString
+
+_Underlying type:_ _string_
+
+BytesString represents bytes value defined directly as integer
+or as a string with suffix - kb,mb,gb,tb,KiB,MiB,GiB,TiB
+
+
+
+_Appears in:_
+- [VMAgentRemoteWriteSettings](#vmagentremotewritesettings)
+- [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
+
+
+
 
 
 #### CRDRef
@@ -2601,7 +2616,7 @@ _Appears in:_
 | <a href="#vmagentremotewritesettings-flushinterval"><code id="vmagentremotewritesettings-flushinterval">flushInterval</code></a><br/>_string_ | _(Optional)_<br/>Interval for flushing the data to remote storage. (default 1s) |
 | <a href="#vmagentremotewritesettings-label"><code id="vmagentremotewritesettings-label">label</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Labels in the form 'name=value' to add to all the metrics before sending them. This overrides the label if it already exists. |
 | <a href="#vmagentremotewritesettings-maxblocksize"><code id="vmagentremotewritesettings-maxblocksize">maxBlockSize</code></a><br/>_integer_ | _(Optional)_<br/>The maximum size in bytes of unpacked request to send to remote storage |
-| <a href="#vmagentremotewritesettings-maxdiskusageperurl"><code id="vmagentremotewritesettings-maxdiskusageperurl">maxDiskUsagePerURL</code></a><br/>_integer_ | _(Optional)_<br/>The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath |
+| <a href="#vmagentremotewritesettings-maxdiskusageperurl"><code id="vmagentremotewritesettings-maxdiskusageperurl">maxDiskUsagePerURL</code></a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath |
 | <a href="#vmagentremotewritesettings-queues"><code id="vmagentremotewritesettings-queues">queues</code></a><br/>_integer_ | _(Optional)_<br/>The number of concurrent queues |
 | <a href="#vmagentremotewritesettings-showurl"><code id="vmagentremotewritesettings-showurl">showURL</code></a><br/>_boolean_ | _(Optional)_<br/>Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info |
 | <a href="#vmagentremotewritesettings-tmpdatapath"><code id="vmagentremotewritesettings-tmpdatapath">tmpDataPath</code></a><br/>_string_ | _(Optional)_<br/>Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data) |
@@ -2626,7 +2641,7 @@ _Appears in:_
 | <a href="#vmagentremotewritespec-forcevmproto"><code id="vmagentremotewritespec-forcevmproto">forceVMProto</code></a><br/>_boolean_ | _(Optional)_<br/>ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url |
 | <a href="#vmagentremotewritespec-headers"><code id="vmagentremotewritespec-headers">headers</code></a><br/>_string array_ | _(Optional)_<br/>Headers allow configuring custom http headers<br />Must be in form of semicolon separated header with value<br />e.g.<br />headerName: headerValue<br />vmagent supports since 1.79.0 version |
 | <a href="#vmagentremotewritespec-inlineurlrelabelconfig"><code id="vmagentremotewritespec-inlineurlrelabelconfig">inlineUrlRelabelConfig</code></a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec. |
-| <a href="#vmagentremotewritespec-maxdiskusage"><code id="vmagentremotewritespec-maxdiskusage">maxDiskUsage</code></a><br/>_string_ | _(Optional)_<br/>MaxDiskUsage defines the maximum file-based buffer size in bytes for -remoteWrite.url |
+| <a href="#vmagentremotewritespec-maxdiskusage"><code id="vmagentremotewritespec-maxdiskusage">maxDiskUsage</code></a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite<br />It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL |
 | <a href="#vmagentremotewritespec-oauth2"><code id="vmagentremotewritespec-oauth2">oauth2</code></a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | <a href="#vmagentremotewritespec-sendtimeout"><code id="vmagentremotewritespec-sendtimeout">sendTimeout</code></a><br/>_string_ | _(Optional)_<br/>Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) |
 | <a href="#vmagentremotewritespec-streamaggrconfig"><code id="vmagentremotewritespec-streamaggrconfig">streamAggrConfig</code></a><br/>_[StreamAggrConfig](#streamaggrconfig)_ | _(Optional)_<br/>StreamAggrConfig defines stream aggregation configuration for VMAgent for -remoteWrite.url |

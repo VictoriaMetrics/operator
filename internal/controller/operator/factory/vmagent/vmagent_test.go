@@ -1162,11 +1162,11 @@ func TestBuildRemoteWrites(t *testing.T) {
 					Spec: vmv1beta1.VMAgentSpec{RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{
 							URL:          "localhost:8429",
-							MaxDiskUsage: ptr.To("1500MB"),
+							MaxDiskUsage: ptr.To(vmv1beta1.BytesString("1500MB")),
 						},
 						{
 							URL:          "localhost:8431",
-							MaxDiskUsage: ptr.To("500MB"),
+							MaxDiskUsage: ptr.To(vmv1beta1.BytesString("500MB")),
 						},
 						{
 							URL: "localhost:8432",
@@ -1185,7 +1185,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{
 								URL:          "localhost:8429",
-								MaxDiskUsage: ptr.To("1500MB"),
+								MaxDiskUsage: ptr.To(vmv1beta1.BytesString("1500MB")),
 							},
 						},
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -2113,7 +2113,7 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 						RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
 							ShowURL:            ptr.To(true),
 							TmpDataPath:        ptr.To("/tmp/my-path"),
-							MaxDiskUsagePerURL: ptr.To(int64(1000)),
+							MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
 							UseMultiTenantMode: true,
 						},
 					},
@@ -2129,11 +2129,11 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{
 								URL:          "localhost:8431",
-								MaxDiskUsage: ptr.To("500MB"),
+								MaxDiskUsage: ptr.To(vmv1beta1.BytesString("500MB")),
 							},
 						},
 						RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-							MaxDiskUsagePerURL: ptr.To(int64(1000)),
+							MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
 						},
 					},
 				},

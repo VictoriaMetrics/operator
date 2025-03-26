@@ -3232,9 +3232,10 @@ spec:
                         type: object
                       type: array
                     maxDiskUsage:
-                      description: MaxDiskUsage defines the maximum file-based buffer
-                        size in bytes for -remoteWrite.url
-                      type: string
+                      description: |-
+                        MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite
+                        It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL
+                      x-kubernetes-preserve-unknown-fields: true
                     oauth2:
                       description: OAuth2 defines auth configuration
                       properties:
@@ -3876,8 +3877,7 @@ spec:
                     type: integer
                   maxDiskUsagePerURL:
                     description: The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
-                    format: int64
-                    type: integer
+                    x-kubernetes-preserve-unknown-fields: true
                   queues:
                     description: The number of concurrent queues
                     format: int32

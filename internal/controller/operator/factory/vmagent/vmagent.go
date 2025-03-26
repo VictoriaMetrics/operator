@@ -1040,6 +1040,7 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 		}
 		args = append(args,
 			"-remoteWrite.maxDiskUsagePerURL=1073741824",
+			fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", defaultMaxDiskUsage),
 			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
 		return args
 	}

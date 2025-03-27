@@ -445,7 +445,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 	if cr.Spec.LogFormat != "" {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
-	if len(cr.Spec.ExtraEnvs) > 0 {
+	if len(cr.Spec.ExtraEnvs) > 0 || len(cr.Spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 
@@ -653,6 +653,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      envs,
+		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
 		VolumeMounts:             agentVolumeMounts,
 		Resources:                cr.Spec.Resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,

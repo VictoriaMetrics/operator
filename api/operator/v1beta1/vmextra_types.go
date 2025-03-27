@@ -1300,6 +1300,11 @@ type CommonApplicationDeploymentParams struct {
 	// And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount.
 	// +optional
 	DisableAutomountServiceAccountToken bool `json:"disableAutomountServiceAccountToken,omitempty"`
+
+	// ExtraEnvsFrom defines source of env variables for the application container
+	// could either be secret or configmap
+	// +optional
+	ExtraEnvsFrom []v1.EnvFromSource `json:"extraEnvsFrom,omitempty"`
 }
 
 // SecurityContext extends PodSecurityContext with ContainerSecurityContext

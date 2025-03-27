@@ -360,6 +360,7 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 		VolumeMounts:             volumeMounts,
 		Resources:                cr.Spec.Resources,
 		Env:                      envs,
+		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	vmalertContainer = build.Probe(vmalertContainer, cr)
@@ -533,7 +534,7 @@ func buildVMAlertArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remote
 	for _, rulePath := range cr.Spec.RulePath {
 		args = append(args, fmt.Sprintf("-rule=%q", rulePath))
 	}
-	if len(cr.Spec.ExtraEnvs) > 0 {
+	if len(cr.Spec.ExtraEnvs) > 0 || len(cr.Spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 

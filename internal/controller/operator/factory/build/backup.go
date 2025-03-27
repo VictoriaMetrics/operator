@@ -107,7 +107,7 @@ func VMBackupManager(
 	args = license.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
 
 	extraEnvs := cr.ExtraEnvs
-	if len(cr.ExtraEnvs) > 0 {
+	if len(cr.ExtraEnvs) > 0 || len(cr.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 	// expose POD_NAME information by default
@@ -215,7 +215,7 @@ func VMRestore(
 		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, cr.CredentialsSecret.Key))
 	}
 	extraEnvs := cr.ExtraEnvs
-	if len(cr.ExtraEnvs) > 0 {
+	if len(cr.ExtraEnvs) > 0 || len(cr.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 
@@ -229,6 +229,7 @@ func VMRestore(
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      extraEnvs,
+		EnvFrom:                  cr.ExtraEnvsFrom,
 		VolumeMounts:             mounts,
 		Resources:                cr.Resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,

@@ -16,6 +16,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.114.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.114.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): make project layout compatible with `[kubebuilder v4](https://book.kubebuilder.io/migration/v3vsv4)`
 
+* FEATURE: [operator](https://docs.victoriametrics.com/operator: add `extraEnvsFrom` field to all applications, which defines source for env variables as Secret or ConfigMap. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1270) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator: set `publishNotReadyAddresses: true` to the `vmstorage`, `vmselect`, `vmalertmanager` services. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1211) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator: log fields changes diff for `Deployment`, `StatefulSet`, `Service`, `PDB`, `HPA` and `VMServiceScrape` during reconcile process. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator: add global env variables `VM_CONFIG_RELOADER_LIMIT_CPU` and `VM_CONFIG_RELOADER_LIMIT_MEMORY` with `unlimited` as default value. It controls global limits for config-reloader containers. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details.

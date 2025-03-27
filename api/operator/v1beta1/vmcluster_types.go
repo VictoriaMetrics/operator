@@ -504,6 +504,10 @@ type VMBackup struct {
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	// ExtraEnvsFrom defines source of env variables for the application container
+	// could either be secret or configmap
+	// +optional
+	ExtraEnvsFrom []v1.EnvFromSource `json:"extraEnvsFrom,omitempty"`
 
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the vmbackupmanager container,

@@ -344,6 +344,8 @@ type Receiver struct {
 	SNSConfigs []SnsConfig `json:"sns_configs,omitempty" yaml:"sns_configs,omitempty"`
 	// +optional
 	WebexConfigs []WebexConfig `json:"webex_configs,omitempty" yaml:"webex_configs,omitempty"`
+	// +optional
+	JiraConfigs []JiraConfig `json:"jira_configs,omitempty" yaml:"jira_configs,omitempty"`
 }
 
 // TelegramConfig configures notification via telegram
@@ -954,6 +956,66 @@ type WebexConfig struct {
 	Message string `json:"message,omitempty"`
 	// HTTP client configuration. You must use this configuration to supply the bot token as part of the HTTP `Authorization` header.
 	// +optional
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+// JiraConfig represent alertmanager's jira_config entry
+// https://prometheus.io/docs/alerting/latest/configuration/#jira_config
+// available from v0.55.0 operator version
+// and v0.28.0 alertmanager version
+type JiraConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
+
+	// The URL to send API requests to. The full API path must be included.
+	// Example: https://company.atlassian.net/rest/api/2/
+	// +optional
+	APIURL *string `yaml:"api_url,omitempty" json:"api_url,omitempty"`
+
+	// The project key where issues are created
+	Project string `yaml:"project" json:"project"`
+	// Issue summary template
+	// +optional
+	Summary string `yaml:"summary,omitempty" json:"summary,omitempty"`
+	// Issue description template.
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+	// Labels to be added to the issue
+	Labels []string `yaml:"labels,omitempty" json:"labels,omitempty"`
+	// Priority of the issue
+	Priority string `yaml:"priority,omitempty" json:"priority,omitempty"`
+
+	// Type of the issue (e.g. Bug)
+	IssueType string `yaml:"issue_type" json:"issue_type"`
+
+	// Name of the workflow transition to resolve an issue.
+	// The target status must have the category "done".
+	ReopenTransition string `yaml:"reopen_transition,omitempty" json:"reopen_transition,omitempty"`
+	// Name of the workflow transition to reopen an issue.
+	// The target status should not have the category "done".
+	ResolveTransition string `yaml:"resolve_transition,omitempty" json:"resolve_transition,omitempty"`
+	// If reopen_transition is defined, ignore issues with that resolution.
+	WontFixResolution string `yaml:"wont_fix_resolution,omitempty" json:"wont_fix_resolution,omitempty"`
+
+	// If reopen_transition is defined, reopen the issue when it is not older than this value (rounded down to the nearest minute).
+	// The resolutiondate field is used to determine the age of the issue.
+	// +kubebuilder:validation:Pattern:="^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$"
+	// +optional
+	ReopenDuration string `yaml:"reopen_duration,omitempty" json:"reopen_duration,omitempty"`
+
+	// Other issue and custom fields.
+	// Jira issue field can have multiple types.
+	// Depends on the field type, the values must be provided differently.
+	// See https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#setting-custom-field-data-for-other-field-types for further examples.
+	// +optional
+	Fields map[string]apiextensionsv1.JSON `yaml:"fields,omitempty" json:"custom_fields,omitempty"`
+
+	// The HTTP client's configuration. You must use this configuration to supply the personal access token (PAT) as part of the HTTP `Authorization` header.
+	// For Jira Cloud, use basic_auth with the email address as the username and the PAT as the password.
+	// For Jira Data Center, use the 'authorization' field with 'credentials: <PAT value>'.
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
@@ -1603,6 +1665,20 @@ func validateReceiver(recv Receiver) error {
 		}
 		if err := cfg.HTTPConfig.validate(); err != nil {
 			return fmt.Errorf("at idx=%d for webex_configs incorrect http_config: %w", idx, err)
+		}
+	}
+
+	for idx, cfg := range recv.JiraConfigs {
+		if cfg.APIURL != nil && *cfg.APIURL != "" {
+			if _, err := url.Parse(*cfg.APIURL); err != nil {
+				return fmt.Errorf("at idx=%d for jira_configs incorrect url=%q: %w", idx, *cfg.APIURL, err)
+			}
+		}
+		if cfg.Project == "" {
+			return fmt.Errorf("at idx=%d for jira_configs missing required field 'project'", idx)
+		}
+		if cfg.IssueType == "" {
+			return fmt.Errorf("at idx=%d for jira_configs missing required field 'issue_type'", idx)
 		}
 	}
 

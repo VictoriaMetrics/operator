@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,6 +21,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+//nolint:gofmt
 func TestBuildConfig(t *testing.T) {
 	type args struct {
 		ctx     context.Context
@@ -920,6 +923,157 @@ receivers:
   - send_resolved: true
     chat_id: 125
     message: some-templated message
+templates: []
+`,
+		},
+		{
+			name: "jira section",
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "jira-api-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"DC_KEY":     []byte(`somekey`),
+						"CLOUD_USER": []byte(`username`),
+						"CLOUD_PAT":  []byte(`personal-token`),
+					},
+				},
+			},
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+`),
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []vmv1beta1.Receiver{
+								{
+									Name: "jira-dc",
+									JiraConfigs: []vmv1beta1.JiraConfig{
+										{
+
+											SendResolved: ptr.To(true),
+											HTTPConfig: &vmv1beta1.HTTPConfig{
+												Authorization: &vmv1beta1.Authorization{
+													Credentials: &corev1.SecretKeySelector{
+														Key: "DC_KEY",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "jira-api-access",
+														},
+													},
+												},
+											},
+											Project:   "main",
+											IssueType: "BUG",
+											Summary:   "must be fixed",
+											Labels: []string{
+												"dev",
+											},
+											Fields: map[string]apiextensionsv1.JSON{
+												"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
+												"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
+												"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
+											},
+										},
+									},
+								},
+								{
+									Name: "jira-cloud",
+									JiraConfigs: []vmv1beta1.JiraConfig{
+										{
+
+											SendResolved: ptr.To(true),
+											HTTPConfig: &vmv1beta1.HTTPConfig{
+												BasicAuth: &vmv1beta1.BasicAuth{
+													Username: corev1.SecretKeySelector{
+														Key: "CLOUD_USER",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "jira-api-access",
+														},
+													},
+													Password: corev1.SecretKeySelector{
+														Key: "CLOUD_PAT",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "jira-api-access",
+														},
+													},
+												},
+											},
+											Project:   "main",
+											IssueType: "BUG",
+											Summary:   "must be fixed",
+											Labels: []string{
+												"dev",
+											},
+											Fields: map[string]apiextensionsv1.JSON{
+												"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
+												"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
+												"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
+											},
+										},
+									},
+								},
+							},
+							Route: &vmv1beta1.Route{
+								Receiver:  "jira-dc",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			want: `global:
+  smtp_smarthost: some:443
+  time_out: 1min
+route:
+  receiver: blackhole
+  routes:
+  - matchers:
+    - namespace = "default"
+    group_wait: 1min
+    receiver: default-base-jira-dc
+    continue: true
+receivers:
+- name: blackhole
+- name: default-base-jira-dc
+  jira_configs:
+  - http_config:
+      authorization:
+        credentials: somekey
+    send_resolved: true
+    project: main
+    issue_type: BUG
+    summary: must be fixed
+    labels:
+    - dev
+    fields:
+      components: '{ name: "Monitoring" }'
+      customfield_10001: '"Random text"'
+      customfield_10002: '{"value": "red"}'
+- name: default-base-jira-cloud
+  jira_configs:
+  - http_config:
+      basic_auth:
+        username: username
+        password: personal-token
+    send_resolved: true
+    project: main
+    issue_type: BUG
+    summary: must be fixed
+    labels:
+    - dev
+    fields:
+      components: '{ name: "Monitoring" }'
+      customfield_10001: '"Random text"'
+      customfield_10002: '{"value": "red"}'
 templates: []
 `,
 		},

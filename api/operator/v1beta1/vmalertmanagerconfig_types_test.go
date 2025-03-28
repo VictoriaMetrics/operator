@@ -63,7 +63,7 @@ var _ = Describe("VMAlertmanagerConfig Webhook", func() {
             - receiver: blackhole
               routes:
               - matcher: [nested=env]
-        `, `root route receiver cannot be empty`),
+        `, `root route reciever cannot be empty`),
 			Entry("missing mute interval", `
         apiVersion: v1 
         kind: VMAlertmanagerConfig
@@ -121,6 +121,24 @@ var _ = Describe("VMAlertmanagerConfig Webhook", func() {
               routes:
               - matcher: [nested=env]
         `, `cannot parse nested route for alertmanager config err: cannot parse matchers="bad !~-124 matcher\"" idx=0 for route_receiver=blackhole: matcher value contains unescaped double quote: -124 matcher"`),
+			Entry("jira", `
+        apiVersion: v1
+        kind: VMAlertmanagerConfig
+        metadata:
+          name: jira
+        spec:
+          receivers:
+          - name: jira
+            jira_configs:
+            - api_url: https://dc-url
+              project: some
+              labels:
+              - dev
+              - default
+          route:
+            receiver: jira
+        `,
+				`receiver at idx=0 is invalid: at idx=0 for jira_configs missing required field 'issue_type'`),
 		)
 		DescribeTable("should pass validation",
 			func(srcYAML string) {
@@ -406,6 +424,29 @@ var _ = Describe("VMAlertmanagerConfig Webhook", func() {
               message_thread_id: 15
           route:
             receiver: tg
+        `),
+			Entry("jira", `
+        apiVersion: v1
+        kind: VMAlertmanagerConfig
+        metadata:
+          name: jira
+        spec:
+          receivers:
+          - name: jira
+            jira_configs:
+            - api_url: https://dc-url
+              http_config:
+               authorization:
+                credentials:
+                  name: jira-access
+                  key: DC_KEY
+              project: some
+              issue_type: BUG
+              labels:
+              - dev
+              - default
+          route:
+            receiver: jira
         `),
 		)
 	})

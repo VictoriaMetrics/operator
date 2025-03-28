@@ -1084,6 +1084,7 @@ See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 
 _Appears in:_
 - [DiscordConfig](#discordconfig)
+- [JiraConfig](#jiraconfig)
 - [MSTeamsConfig](#msteamsconfig)
 - [OpsGenieConfig](#opsgenieconfig)
 - [PagerDutyConfig](#pagerdutyconfig)
@@ -1218,6 +1219,38 @@ _Appears in:_
 | <a href="#insertports-influxport"><code id="insertports-influxport">influxPort</code></a><br/>_string_ | _(Optional)_<br/>InfluxPort listen port |
 | <a href="#insertports-opentsdbhttpport"><code id="insertports-opentsdbhttpport">openTSDBHTTPPort</code></a><br/>_string_ | _(Optional)_<br/>OpenTSDBHTTPPort for http connections. |
 | <a href="#insertports-opentsdbport"><code id="insertports-opentsdbport">openTSDBPort</code></a><br/>_string_ | _(Optional)_<br/>OpenTSDBPort for tcp and udp listen |
+
+
+#### JiraConfig
+
+
+
+JiraConfig represent alertmanager's jira_config entry
+https://prometheus.io/docs/alerting/latest/configuration/#jira_config
+available from v0.55.0 operator version
+and v0.28.0 alertmanager version
+
+
+
+_Appears in:_
+- [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| <a href="#jiraconfig-api_url"><code id="jiraconfig-api_url">api_url</code></a><br/>_string_ | _(Optional)_<br/>The URL to send API requests to. The full API path must be included.<br />Example: https://company.atlassian.net/rest/api/2/ |
+| <a href="#jiraconfig-custom_fields"><code id="jiraconfig-custom_fields">custom_fields</code></a><br/>_object (keys:string, values:[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io))_ | _(Optional)_<br/>Other issue and custom fields.<br />Jira issue field can have multiple types.<br />Depends on the field type, the values must be provided differently.<br />See https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#setting-custom-field-data-for-other-field-types for further examples. |
+| <a href="#jiraconfig-description"><code id="jiraconfig-description">description</code></a><br/>_string_ | Issue description template. |
+| <a href="#jiraconfig-http_config"><code id="jiraconfig-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>The HTTP client's configuration. You must use this configuration to supply the personal access token (PAT) as part of the HTTP `Authorization` header.<br />For Jira Cloud, use basic_auth with the email address as the username and the PAT as the password.<br />For Jira Data Center, use the 'authorization' field with 'credentials: <PAT value>'. |
+| <a href="#jiraconfig-issue_type"><code id="jiraconfig-issue_type">issue_type</code></a><br/>_string_ | Type of the issue (e.g. Bug) |
+| <a href="#jiraconfig-labels"><code id="jiraconfig-labels">labels</code></a><br/>_string array_ | Labels to be added to the issue |
+| <a href="#jiraconfig-priority"><code id="jiraconfig-priority">priority</code></a><br/>_string_ | Priority of the issue |
+| <a href="#jiraconfig-project"><code id="jiraconfig-project">project</code></a><br/>_string_ | The project key where issues are created |
+| <a href="#jiraconfig-reopen_duration"><code id="jiraconfig-reopen_duration">reopen_duration</code></a><br/>_string_ | _(Optional)_<br/>If reopen_transition is defined, reopen the issue when it is not older than this value (rounded down to the nearest minute).<br />The resolutiondate field is used to determine the age of the issue. |
+| <a href="#jiraconfig-reopen_transition"><code id="jiraconfig-reopen_transition">reopen_transition</code></a><br/>_string_ | Name of the workflow transition to resolve an issue.<br />The target status must have the category "done". |
+| <a href="#jiraconfig-resolve_transition"><code id="jiraconfig-resolve_transition">resolve_transition</code></a><br/>_string_ | Name of the workflow transition to reopen an issue.<br />The target status should not have the category "done". |
+| <a href="#jiraconfig-send_resolved"><code id="jiraconfig-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| <a href="#jiraconfig-summary"><code id="jiraconfig-summary">summary</code></a><br/>_string_ | _(Optional)_<br/>Issue summary template |
+| <a href="#jiraconfig-wont_fix_resolution"><code id="jiraconfig-wont_fix_resolution">wont_fix_resolution</code></a><br/>_string_ | If reopen_transition is defined, ignore issues with that resolution. |
 
 
 #### K8SSelectorConfig
@@ -1678,6 +1711,7 @@ _Appears in:_
 | --- | --- |
 | <a href="#receiver-discord_configs"><code id="receiver-discord_configs">discord_configs</code></a><br/>_[DiscordConfig](#discordconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-email_configs"><code id="receiver-email_configs">email_configs</code></a><br/>_[EmailConfig](#emailconfig) array_ | _(Optional)_<br/>EmailConfigs defines email notification configurations. |
+| <a href="#receiver-jira_configs"><code id="receiver-jira_configs">jira_configs</code></a><br/>_[JiraConfig](#jiraconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-msteams_configs"><code id="receiver-msteams_configs">msteams_configs</code></a><br/>_[MSTeamsConfig](#msteamsconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-name"><code id="receiver-name">name</code></a><br/>_string_ | Name of the receiver. Must be unique across all items from the list. |
 | <a href="#receiver-opsgenie_configs"><code id="receiver-opsgenie_configs">opsgenie_configs</code></a><br/>_[OpsGenieConfig](#opsgenieconfig) array_ | _(Optional)_<br/>OpsGenieConfigs defines ops genie notification configurations. |

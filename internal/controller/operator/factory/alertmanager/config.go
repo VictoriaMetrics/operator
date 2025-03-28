@@ -473,36 +473,49 @@ func (cb *configBuilder) buildCfg(receiver vmv1beta1.Receiver) error {
 		}
 	}
 	cb.finalizeSection("webhook_configs")
+
 	for _, tgCfg := range receiver.TelegramConfigs {
 		if err := cb.buildTelegram(tgCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("telegram_configs")
+
 	for _, mcCfg := range receiver.MSTeamsConfigs {
 		if err := cb.buildTeams(mcCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("msteams_configs")
+
 	for _, mcCfg := range receiver.DiscordConfigs {
 		if err := cb.buildDiscord(mcCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("discord_configs")
+
 	for _, snsCfg := range receiver.SNSConfigs {
 		if err := cb.buildSNS(snsCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("sns_configs")
+
 	for _, webexCfg := range receiver.WebexConfigs {
 		if err := cb.buildWebex(webexCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("webex_configs")
+
+	for _, jiraCfg := range receiver.JiraConfigs {
+		if err := cb.buildJira(jiraCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("jira_configs")
+
 	return nil
 }
 
@@ -677,6 +690,65 @@ func (cb *configBuilder) buildWebex(web vmv1beta1.WebexConfig) error {
 	}
 	toYaml("room_id", web.RoomId)
 	toYaml("message", web.Message)
+	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
+}
+
+func (cb *configBuilder) buildJira(jira vmv1beta1.JiraConfig) error {
+	var temp yaml.MapSlice
+	if jira.HTTPConfig != nil {
+		c, err := cb.buildHTTPConfig(jira.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
+	}
+	if jira.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *jira.SendResolved})
+	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	if jira.APIURL != nil {
+		toYaml("api_url", *jira.APIURL)
+	}
+	toYaml("project", jira.Project)
+	toYaml("issue_type", jira.IssueType)
+	toYaml("description", jira.Description)
+	toYaml("priority", jira.Priority)
+	toYaml("summary", jira.Summary)
+	toYaml("reopen_transition", jira.ReopenTransition)
+	toYaml("resolve_transition", jira.ResolveTransition)
+	toYaml("wont_fix_resolution", jira.WontFixResolution)
+	toYaml("reopen_duration", jira.ReopenDuration)
+
+	if len(jira.Labels) > 0 {
+		temp = append(temp, yaml.MapItem{
+			Key:   "labels",
+			Value: jira.Labels,
+		})
+	}
+	if len(jira.Fields) > 0 {
+		sortableFieldIdxs := make([]string, 0, len(jira.Fields))
+		for key := range jira.Fields {
+			sortableFieldIdxs = append(sortableFieldIdxs, key)
+		}
+		sort.Strings(sortableFieldIdxs)
+		fields := make(yaml.MapSlice, 0, len(jira.Fields))
+		for _, key := range sortableFieldIdxs {
+			fields = append(fields, yaml.MapItem{
+				Key:   key,
+				Value: string(jira.Fields[key].Raw),
+			})
+		}
+		temp = append(temp, yaml.MapItem{
+			Key:   "fields",
+			Value: fields,
+		})
+	}
+
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }

@@ -417,7 +417,7 @@ func (cr *VMAuth) Validate() error {
 	}
 
 	if cr.Spec.UnauthorizedUserAccessSpec != nil {
-		if err := cr.Spec.UnauthorizedUserAccessSpec.validate(); err != nil {
+		if err := cr.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec.UnauthorizedUserAccess syntax: %w", err)
 		}
 	}

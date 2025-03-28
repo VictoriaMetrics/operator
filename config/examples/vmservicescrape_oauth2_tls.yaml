@@ -1,0 +1,51 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: oauth2-service
+spec:
+  endpoints:
+    - port: http
+      oauth2:
+        client_secret:
+          key: CLIENT_SECRET
+          name: oauth2-auth
+        client_id:
+          secret:
+            key: CLIENT_ID
+            name: oauth2-auth
+        token_url: "http://oauth2-token.example.com/issue"
+        tls_config:
+          insecure_skip_verify: false
+          ca:
+            secret:
+              key: CA
+              name: oauth2-tls-access
+          cert:
+            secret:
+              key: CERT
+              name: oauth2-tls-access
+          key_secret:
+            key: CERT_KEY
+            name: oauth2-tls-access
+  namespaceSelector: {}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: example-application
+      monitored-by: vm-operator
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oauth2-tls-access
+stringData:
+  CA: ca data
+  CERT: cert data
+  CERT_KEY: key data
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oauth2-auth
+stringData:
+  CLIENT_SECRET: some-secret
+  CLIENT_ID: some-id

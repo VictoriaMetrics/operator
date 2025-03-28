@@ -101,7 +101,7 @@ func generateNodeScrapeConfig(
 	cfg = addMetricRelabelingsTo(cfg, nodeSpec.MetricRelabelConfigs, se)
 	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
 	cfg = addTLStoYaml(cfg, cr.Namespace, nodeSpec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, nodeSpec.EndpointAuth, cr.AsMapKey(), ssCache)
+	cfg = addEndpointAuthTo(cfg, nodeSpec.EndpointAuth, cr.Namespace, cr.AsMapKey(), ssCache)
 
 	return cfg
 }

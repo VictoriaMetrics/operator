@@ -1425,7 +1425,9 @@ _Appears in:_
 | <a href="#oauth2-client_secret"><code id="oauth2-client_secret">client_secret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The secret containing the OAuth2 client secret |
 | <a href="#oauth2-client_secret_file"><code id="oauth2-client_secret_file">client_secret_file</code></a><br/>_string_ | _(Optional)_<br/>ClientSecretFile defines path for client secret file. |
 | <a href="#oauth2-endpoint_params"><code id="oauth2-endpoint_params">endpoint_params</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Parameters to append to the token URL |
+| <a href="#oauth2-proxy_url"><code id="oauth2-proxy_url">proxy_url</code></a><br/>_string_ | _(Optional)_<br/>The proxy URL for token_url connection<br />( available from v0.55.0).<br />Is only supported by Scrape objects family |
 | <a href="#oauth2-scopes"><code id="oauth2-scopes">scopes</code></a><br/>_string array_ | _(Optional)_<br/>OAuth2 scopes used for the token request |
+| <a href="#oauth2-tls_config"><code id="oauth2-tls_config">tls_config</code></a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig for token_url connection<br />( available from v0.55.0).<br />Is only supported by Scrape objects family |
 | <a href="#oauth2-token_url"><code id="oauth2-token_url">token_url</code></a><br/>_string_ | The URL to fetch the token from |
 
 
@@ -2207,6 +2209,7 @@ _Appears in:_
 - [HTTPConfig](#httpconfig)
 - [HTTPSDConfig](#httpsdconfig)
 - [KubernetesSDConfig](#kubernetessdconfig)
+- [OAuth2](#oauth2)
 - [OpenStackSDConfig](#openstacksdconfig)
 - [PodMetricsEndpoint](#podmetricsendpoint)
 - [ProxyAuth](#proxyauth)

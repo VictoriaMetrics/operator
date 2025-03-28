@@ -1192,6 +1192,388 @@ scrape_configs:
     replacement: "8083"
 `,
 		},
+		{
+			name: "with oauth2 tls config",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector:          &metav1.LabelSelector{},
+						PodScrapeSelector:              &metav1.LabelSelector{},
+						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+						NodeScrapeSelector:             &metav1.LabelSelector{},
+						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+						StaticScrapeSelector:           &metav1.LabelSelector{},
+						ProbeNamespaceSelector:         &metav1.LabelSelector{},
+						ProbeSelector:                  &metav1.LabelSelector{},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+					},
+				},
+				&vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "test-vms",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Selector:          metav1.LabelSelector{},
+						JobLabel:          "app",
+						NamespaceSelector: vmv1beta1.NamespaceSelector{},
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path: "/metrics",
+								},
+								Port: "8085",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									OAuth2: &vmv1beta1.OAuth2{
+										ClientID: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "CLIENT_ID",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "oauth2-access",
+												},
+											},
+										},
+										ClientSecret: &corev1.SecretKeySelector{
+											Key: "CLIENT_SECRET",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "oauth2-access",
+											},
+										},
+										TokenURL: "http://some-url",
+										TLSConfig: &vmv1beta1.TLSConfig{
+											CA: vmv1beta1.SecretOrConfigMap{
+												ConfigMap: &corev1.ConfigMapKeySelector{
+													Key: "CA",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "tls-default",
+													},
+												},
+											},
+											Cert: vmv1beta1.SecretOrConfigMap{
+												Secret: &corev1.SecretKeySelector{
+													Key: "CERT",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "tls-auth",
+													},
+												},
+											},
+											KeySecret: &corev1.SecretKeySelector{
+												Key: "SECRET_KEY",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-auth",
+												},
+											},
+											InsecureSkipVerify: false,
+										},
+									},
+									BearerTokenSecret: &corev1.SecretKeySelector{
+										Key: "bearer",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "access-creds",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "dev-pods",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{
+						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+							{
+								Port: ptr.To("8081"),
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									OAuth2: &vmv1beta1.OAuth2{
+										ClientID: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "CLIENT_ID",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "oauth2-access",
+												},
+											},
+										},
+										ClientSecret: &corev1.SecretKeySelector{
+											Key: "CLIENT_SECRET",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "oauth2-access",
+											},
+										},
+										TokenURL: "http://some-url",
+										TLSConfig: &vmv1beta1.TLSConfig{
+											CA: vmv1beta1.SecretOrConfigMap{
+												ConfigMap: &corev1.ConfigMapKeySelector{
+													Key: "CA",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "tls-default",
+													},
+												},
+											},
+											Cert: vmv1beta1.SecretOrConfigMap{
+												Secret: &corev1.SecretKeySelector{
+													Key: "CERT",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "tls-auth",
+													},
+												},
+											},
+											KeySecret: &corev1.SecretKeySelector{
+												Key: "SECRET_KEY",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-auth",
+												},
+											},
+											InsecureSkipVerify: false,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMNodeScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "k8s-nodes",
+					},
+					Spec: vmv1beta1.VMNodeScrapeSpec{
+						Port: "9093",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							OAuth2: &vmv1beta1.OAuth2{
+								ClientID: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "CLIENT_ID",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "oauth2-access",
+										},
+									},
+								},
+								ClientSecret: &corev1.SecretKeySelector{
+									Key: "CLIENT_SECRET",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "oauth2-access",
+									},
+								},
+								TokenURL: "http://some-url",
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CA: vmv1beta1.SecretOrConfigMap{
+										ConfigMap: &corev1.ConfigMapKeySelector{
+											Key: "CA",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-default",
+											},
+										},
+									},
+									Cert: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key: "CERT",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-auth",
+											},
+										},
+									},
+									KeySecret: &corev1.SecretKeySelector{
+										Key: "SECRET_KEY",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-auth",
+										},
+									},
+									InsecureSkipVerify: false,
+								},
+							},
+						},
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-default",
+						Namespace: "default",
+					},
+					Data: map[string]string{
+						"CA": "ca data",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-auth",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"CERT":       []byte(`cert data`),
+						"SECRET_KEY": []byte(`key data`),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "oauth2-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"CLIENT_ID":     []byte(`data`),
+						"CLIENT_SECRET": []byte(`data`),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "access-creds",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"cid":      []byte(`some-client-id`),
+						"cs":       []byte(`some-client-secret`),
+						"username": []byte(`some-username`),
+						"password": []byte(`some-password`),
+						"ca":       []byte(`some-ca-cert`),
+						"cert":     []byte(`some-cert`),
+						"key":      []byte(`some-key`),
+						"bearer":   []byte(`some-bearer`),
+					},
+				},
+			},
+			wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/test
+scrape_configs:
+- job_name: serviceScrape/default/test-vms/0
+  kubernetes_sd_configs:
+  - role: endpoints
+    namespaces:
+      names:
+      - default
+  honor_labels: false
+  metrics_path: /metrics
+  relabel_configs:
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_endpoint_port_name
+    regex: "8085"
+  - source_labels:
+    - __meta_kubernetes_endpoint_address_target_kind
+    - __meta_kubernetes_endpoint_address_target_name
+    separator: ;
+    regex: Node;(.*)
+    replacement: ${1}
+    target_label: node
+  - source_labels:
+    - __meta_kubernetes_endpoint_address_target_kind
+    - __meta_kubernetes_endpoint_address_target_name
+    separator: ;
+    regex: Pod;(.*)
+    replacement: ${1}
+    target_label: pod
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_service_name
+    target_label: service
+  - source_labels:
+    - __meta_kubernetes_service_name
+    target_label: job
+    replacement: ${1}
+  - source_labels:
+    - __meta_kubernetes_service_label_app
+    target_label: job
+    regex: (.+)
+    replacement: ${1}
+  - target_label: endpoint
+    replacement: "8085"
+  bearer_token: some-bearer
+  oauth2:
+    client_id: data
+    client_secret: data
+    token_url: http://some-url
+    tls_config:
+      insecure_skip_verify: false
+      ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+      cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
+      key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
+- job_name: podScrape/default/dev-pods/0
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: "8081"
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/dev-pods
+  - target_label: endpoint
+    replacement: "8081"
+  oauth2:
+    client_id: data
+    client_secret: data
+    token_url: http://some-url
+    tls_config:
+      insecure_skip_verify: false
+      ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+      cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
+      key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
+- job_name: nodeScrape/default/k8s-nodes/0
+  kubernetes_sd_configs:
+  - role: node
+  honor_labels: false
+  relabel_configs:
+  - source_labels:
+    - __meta_kubernetes_node_name
+    target_label: node
+  - target_label: job
+    replacement: default/k8s-nodes
+  - source_labels:
+    - __address__
+    target_label: __address__
+    regex: ^(.*):(.*)
+    replacement: ${1}:9093
+  oauth2:
+    client_id: data
+    client_secret: data
+    token_url: http://some-url
+    tls_config:
+      insecure_skip_verify: false
+      ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+      cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
+      key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

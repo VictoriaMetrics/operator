@@ -68,7 +68,7 @@ func generateStaticScrapeConfig(
 	cfg = addMetricRelabelingsTo(cfg, ep.MetricRelabelConfigs, se)
 	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
 	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, ep.EndpointAuth, m.AsMapKey(i), ssCache)
+	cfg = addEndpointAuthTo(cfg, ep.EndpointAuth, m.Namespace, m.AsMapKey(i), ssCache)
 
 	return cfg
 }

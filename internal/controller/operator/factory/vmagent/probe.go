@@ -147,7 +147,7 @@ func generateProbeConfig(
 	cfg = addMetricRelabelingsTo(cfg, cr.Spec.MetricRelabelConfigs, se)
 	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
 	cfg = addTLStoYaml(cfg, cr.Namespace, cr.Spec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, cr.Spec.EndpointAuth, cr.AsMapKey(), ssCache)
+	cfg = addEndpointAuthTo(cfg, cr.Spec.EndpointAuth, cr.Namespace, cr.AsMapKey(), ssCache)
 
 	return cfg
 }

@@ -43,7 +43,7 @@ func generateScrapeConfig(
 	cfg = addMetricRelabelingsTo(cfg, sc.Spec.MetricRelabelConfigs, se)
 	cfg = append(cfg, buildVMScrapeParams(sc.Namespace, sc.AsProxyKey("", 0), sc.Spec.VMScrapeParams, ssCache)...)
 	cfg = addTLStoYaml(cfg, sc.Namespace, sc.Spec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, sc.Spec.EndpointAuth, sc.AsMapKey("", 0), ssCache)
+	cfg = addEndpointAuthTo(cfg, sc.Spec.EndpointAuth, sc.Namespace, sc.AsMapKey("", 0), ssCache)
 
 	// build staticConfig
 	if len(sc.Spec.StaticConfigs) > 0 {
@@ -162,7 +162,7 @@ func generateScrapeConfig(
 			if config.TLSConfig != nil {
 				configs[i] = addTLStoYaml(configs[i], sc.Namespace, config.TLSConfig, false)
 			}
-			configs[i] = addOAuth2ConfigTo(configs[i], sc.AsMapKey("kubesd", i), config.OAuth2, ssCache.oauth2Secrets)
+			configs[i] = addOAuth2ConfigTo(configs[i], sc.Namespace, sc.AsMapKey("kubesd", i), config.OAuth2, ssCache.oauth2Secrets)
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}
@@ -335,7 +335,7 @@ func generateScrapeConfig(
 				}
 			}
 			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("consulsd", i), config.Authorization, ssCache.authorizationSecrets)
-			configs[i] = addOAuth2ConfigTo(configs[i], sc.AsMapKey("consulsd", i), config.OAuth2, ssCache.oauth2Secrets)
+			configs[i] = addOAuth2ConfigTo(configs[i], sc.Namespace, sc.AsMapKey("consulsd", i), config.OAuth2, ssCache.oauth2Secrets)
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}
@@ -674,7 +674,7 @@ func generateScrapeConfig(
 		configs := make([][]yaml.MapItem, len(sc.Spec.DigitalOceanSDConfigs))
 		for i, config := range sc.Spec.DigitalOceanSDConfigs {
 			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("digitaloceansd", i), config.Authorization, ssCache.authorizationSecrets)
-			configs[i] = addOAuth2ConfigTo(configs[i], sc.AsMapKey("digitaloceansd", i), config.OAuth2, ssCache.oauth2Secrets)
+			configs[i] = addOAuth2ConfigTo(configs[i], sc.Namespace, sc.AsMapKey("digitaloceansd", i), config.OAuth2, ssCache.oauth2Secrets)
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}

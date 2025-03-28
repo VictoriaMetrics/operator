@@ -354,6 +354,10 @@ func loadSecretsToCacheFrom(ctx context.Context, rclient client.Client, ep *vmv1
 	}
 
 	if ep.OAuth2 != nil {
+		if err := addAssetsToCache(ctx, rclient, namespace, ep.OAuth2.TLSConfig, ss); err != nil {
+			return fmt.Errorf("cannot add oauth2 tlsAsset for=%s %w", cacheKey, err)
+		}
+
 		oauth2, err := k8stools.LoadOAuthSecrets(ctx, rclient, ep.OAuth2, namespace, ss.nsSecretCache, ss.nsCMCache)
 		if err != nil {
 			return fmt.Errorf("cannot load oauth2 secret for=%s: %w", cacheKey, err)
@@ -1495,7 +1499,7 @@ func addAuthorizationConfigTo(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1
 	return dst
 }
 
-func addOAuth2ConfigTo(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1.OAuth2, oauth2Cache map[string]*k8stools.OAuthCreds) yaml.MapSlice {
+func addOAuth2ConfigTo(dst yaml.MapSlice, namespace, cacheKey string, cfg *vmv1beta1.OAuth2, oauth2Cache map[string]*k8stools.OAuthCreds) yaml.MapSlice {
 	cachedSecret := oauth2Cache[cacheKey]
 	if cfg == nil || cachedSecret == nil {
 		// fast path
@@ -1520,6 +1524,13 @@ func addOAuth2ConfigTo(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1.OAuth2
 	}
 	if len(cfg.TokenURL) > 0 {
 		r = append(r, yaml.MapItem{Key: "token_url", Value: cfg.TokenURL})
+	}
+
+	if len(cfg.ProxyURL) > 0 {
+		r = append(r, yaml.MapItem{Key: "proxy_url", Value: cfg.ProxyURL})
+	}
+	if cfg.TLSConfig != nil {
+		r = addTLStoYaml(r, namespace, cfg.TLSConfig, false)
 	}
 	if len(r) == 0 {
 		return dst
@@ -1685,7 +1696,7 @@ func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, s
 	return cfg
 }
 
-func addEndpointAuthTo(cfg yaml.MapSlice, ac vmv1beta1.EndpointAuth, key string, ssCache *scrapesSecretsCache) yaml.MapSlice {
+func addEndpointAuthTo(cfg yaml.MapSlice, ac vmv1beta1.EndpointAuth, namespace, key string, ssCache *scrapesSecretsCache) yaml.MapSlice {
 	if ac.BearerTokenFile != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ac.BearerTokenFile})
 	}
@@ -1712,7 +1723,7 @@ func addEndpointAuthTo(cfg yaml.MapSlice, ac vmv1beta1.EndpointAuth, key string,
 			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
 		}
 	}
-	cfg = addOAuth2ConfigTo(cfg, key, ac.OAuth2, ssCache.oauth2Secrets)
+	cfg = addOAuth2ConfigTo(cfg, namespace, key, ac.OAuth2, ssCache.oauth2Secrets)
 	cfg = addAuthorizationConfigTo(cfg, key, ac.Authorization, ssCache.authorizationSecrets)
 
 	return cfg

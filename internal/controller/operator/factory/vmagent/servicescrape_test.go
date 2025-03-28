@@ -720,6 +720,32 @@ bearer_token_file: /var/run/token
 								Key:                  "bearer",
 								LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
 							},
+							ProxyURL: "http://oauth2-access-proxy",
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+								CA: vmv1beta1.SecretOrConfigMap{
+									ConfigMap: &corev1.ConfigMapKeySelector{
+										Key: "ca",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-cm",
+										},
+									},
+								},
+								Cert: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "key",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls",
+										},
+									},
+								},
+								KeySecret: &corev1.SecretKeySelector{
+									Key: "cert",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls",
+									},
+								},
+							},
 						},
 						BasicAuth: &vmv1beta1.BasicAuth{
 							Username: corev1.SecretKeySelector{
@@ -751,6 +777,7 @@ bearer_token_file: /var/run/token
 							Password: "pass",
 						},
 					},
+					tlsAssets:    map[string]string{},
 					bearerTokens: map[string]string{},
 					oauth2Secrets: map[string]*k8stools.OAuthCreds{
 						"serviceScrape/default/test-scrape/0": {ClientSecret: "some-secret", ClientID: "some-id"},
@@ -809,6 +836,12 @@ oauth2:
   endpoint_params:
     timeout: 5s
   token_url: http://some-token-url
+  proxy_url: http://oauth2-access-proxy
+  tls_config:
+    insecure_skip_verify: true
+    ca_file: /etc/vmagent-tls/certs/default_configmap_tls-cm_ca
+    cert_file: /etc/vmagent-tls/certs/default_tls_key
+    key_file: /etc/vmagent-tls/certs/default_tls_cert
 `,
 		},
 		{

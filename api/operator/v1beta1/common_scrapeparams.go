@@ -57,7 +57,9 @@ type ProxyAuth struct {
 	BasicAuth       *BasicAuth            `json:"basic_auth,omitempty"`
 	BearerToken     *v1.SecretKeySelector `json:"bearer_token,omitempty"`
 	BearerTokenFile string                `json:"bearer_token_file,omitempty"`
-	TLSConfig       *TLSConfig            `json:"tls_config,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
 }
 
 // OAuth2 defines OAuth2 configuration
@@ -81,6 +83,19 @@ type OAuth2 struct {
 	// Parameters to append to the token URL
 	// +optional
 	EndpointParams map[string]string `json:"endpoint_params,omitempty" yaml:"endpoint_params"`
+
+	// The proxy URL for token_url connection
+	// ( available from v0.55.0).
+	// Is only supported by Scrape objects family
+	// +optional
+	ProxyURL string `json:"proxy_url,omitempty"`
+	// TLSConfig for token_url connection
+	// ( available from v0.55.0).
+	// Is only supported by Scrape objects family
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
 }
 
 func (o *OAuth2) validate() error {
@@ -97,6 +112,11 @@ func (o *OAuth2) validate() error {
 
 	if o.ClientID.Secret != nil && o.ClientID.ConfigMap != nil {
 		return fmt.Errorf("cannot specify both Secret and ConfigMap for client_id field")
+	}
+	if o.TLSConfig != nil {
+		if err := o.validate(); err != nil {
+			return fmt.Errorf("invalid tls_config: %w", err)
+		}
 	}
 	return nil
 }

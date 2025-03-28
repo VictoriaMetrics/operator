@@ -5932,6 +5932,17 @@ spec:
                     discord_configs:
                       items:
                         properties:
+                          avatar_url:
+                            description: |-
+                              AvatarURL defines message avatar URL
+                              Available from operator v0.55.0 and alertmanager v0.28.0
+                            type: string
+                          content:
+                            description: |-
+                              Content defines message content template
+                              Available from operator v0.55.0 and alertmanager v0.28.0
+                            maxLength: 2000
+                            type: string
                           http_config:
                             description: HTTP client configuration.
                             properties:
@@ -6355,6 +6366,11 @@ spec:
                             type: boolean
                           title:
                             description: The message title template
+                            type: string
+                          username:
+                            description: |-
+                              Username defines message username
+                              Available from operator v0.55.0 and alertmanager v0.28.0
                             type: string
                           webhook_url:
                             description: |-

@@ -622,10 +622,13 @@ _Appears in:_
 
 | Field | Description |
 | --- | --- |
+| <a href="#discordconfig-avatar_url"><code id="discordconfig-avatar_url">avatar_url</code></a><br/>_string_ | _(Optional)_<br/>AvatarURL defines message avatar URL<br />Available from operator v0.55.0 and alertmanager v0.28.0 |
+| <a href="#discordconfig-content"><code id="discordconfig-content">content</code></a><br/>_string_ | _(Optional)_<br/>Content defines message content template<br />Available from operator v0.55.0 and alertmanager v0.28.0 |
 | <a href="#discordconfig-http_config"><code id="discordconfig-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
 | <a href="#discordconfig-message"><code id="discordconfig-message">message</code></a><br/>_string_ | _(Optional)_<br/>The message body template |
 | <a href="#discordconfig-send_resolved"><code id="discordconfig-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
 | <a href="#discordconfig-title"><code id="discordconfig-title">title</code></a><br/>_string_ | _(Optional)_<br/>The message title template |
+| <a href="#discordconfig-username"><code id="discordconfig-username">username</code></a><br/>_string_ | _(Optional)_<br/>Username defines message username<br />Available from operator v0.55.0 and alertmanager v0.28.0 |
 | <a href="#discordconfig-webhook_url"><code id="discordconfig-webhook_url">webhook_url</code></a><br/>_string_ | _(Optional)_<br/>The discord webhook URL<br />one of `urlSecret` and `url` must be defined. |
 | <a href="#discordconfig-webhook_url_secret"><code id="discordconfig-webhook_url_secret">webhook_url_secret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. |
 

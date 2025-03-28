@@ -585,6 +585,9 @@ func (cb *configBuilder) buildDiscord(dc vmv1beta1.DiscordConfig) error {
 	}
 	toYaml("title", dc.Title)
 	toYaml("message", dc.Message)
+	toYaml("content", dc.Content)
+	toYaml("username", dc.Username)
+	toYaml("avatar_url", dc.AvatarURL)
 
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil

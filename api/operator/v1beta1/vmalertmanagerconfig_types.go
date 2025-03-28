@@ -869,6 +869,19 @@ type DiscordConfig struct {
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+	// Content defines message content template
+	// Available from operator v0.55.0 and alertmanager v0.28.0
+	// +kubebuilder:validation:MaxLength:=2000
+	// +optional
+	Content string `json:"content,omitempty"`
+	// Username defines message username
+	// Available from operator v0.55.0 and alertmanager v0.28.0
+	// +optional
+	Username string `json:"username,omitempty" yaml:"username"`
+	// AvatarURL defines message avatar URL
+	// Available from operator v0.55.0 and alertmanager v0.28.0
+	// +optional
+	AvatarURL string `json:"avatar_url,omitempty" yaml:"avatar_url,omitempty"`
 }
 
 type SnsConfig struct {

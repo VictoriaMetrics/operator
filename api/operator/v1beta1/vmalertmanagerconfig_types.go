@@ -346,6 +346,8 @@ type Receiver struct {
 	WebexConfigs []WebexConfig `json:"webex_configs,omitempty" yaml:"webex_configs,omitempty"`
 	// +optional
 	JiraConfigs []JiraConfig `json:"jira_configs,omitempty" yaml:"jira_configs,omitempty"`
+	// +optional
+	RocketchatConfigs []RocketchatConfig `json:"rocketchat_configs,omitempty" yaml:"rocketchat_configs,omitempty"`
 }
 
 // TelegramConfig configures notification via telegram
@@ -1019,6 +1021,64 @@ type JiraConfig struct {
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
+// RocketchatConfig configures notifications via Rocketchat.
+// https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
+// available from v0.55.0 operator version
+// and v0.28.0 alertmanager version
+type RocketchatConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool   `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
+	APIURL       *string `yaml:"api_url,omitempty" json:"api_url,omitempty"`
+
+	// The sender token and token_id
+	// See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens
+	TokenID *v1.SecretKeySelector `yaml:"token_id,omitempty" json:"token_id,omitempty"`
+	Token   *v1.SecretKeySelector `yaml:"token,omitempty" json:"token,omitempty"`
+
+	// RocketChat channel override, (like #other-channel or @username).
+	Channel string `yaml:"channel,omitempty" json:"channel,omitempty"`
+
+	Color       string                       `yaml:"color,omitempty" json:"color,omitempty"`
+	Title       string                       `yaml:"title,omitempty" json:"title,omitempty"`
+	TitleLink   string                       `yaml:"title_link,omitempty" json:"title_link,omitempty"`
+	Text        string                       `yaml:"text,omitempty" json:"text,omitempty"`
+	Fields      []RocketchatAttachmentField  `yaml:"fields,omitempty" json:"fields,omitempty"`
+	ShortFields bool                         `yaml:"short_fields" json:"short_fields,omitempty"`
+	Emoji       string                       `yaml:"emoji,omitempty" json:"emoji,omitempty"`
+	IconURL     string                       `yaml:"icon_url,omitempty" json:"icon_url,omitempty"`
+	ImageURL    string                       `yaml:"image_url,omitempty" json:"image_url,omitempty"`
+	ThumbURL    string                       `yaml:"thumb_url,omitempty" json:"thumb_url,omitempty"`
+	LinkNames   bool                         `yaml:"link_names" json:"link_names,omitempty"`
+	Actions     []RocketchatAttachmentAction `yaml:"actions,omitempty" json:"actions,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+// RocketchatAttachmentField defines API fields
+// https://developer.rocket.chat/reference/api/rest-api/endpoints/messaging/chat-endpoints/postmessage#attachment-field-objects
+type RocketchatAttachmentField struct {
+	Short *bool  `json:"short"`
+	Title string `json:"title,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
+// RocketchatAttachmentAction defines message attachements
+// https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
+type RocketchatAttachmentAction struct {
+	Type               string `json:"type,omitempty"`
+	Text               string `json:"text,omitempty"`
+	URL                string `json:"url,omitempty"`
+	ImageURL           string `json:"image_url,omitempty"`
+	IsWebView          bool   `json:"is_webview"`
+	WebviewHeightRatio string `json:"webview_height_ratio,omitempty"`
+	Msg                string `json:"msg,omitempty"`
+	MsgInChatWindow    bool   `json:"msg_in_chat_window"`
+	MsgProcessingType  string `json:"msg_processing_type,omitempty"`
+}
+
 // HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 // See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 type HTTPConfig struct {
@@ -1679,6 +1739,14 @@ func validateReceiver(recv Receiver) error {
 		}
 		if cfg.IssueType == "" {
 			return fmt.Errorf("at idx=%d for jira_configs missing required field 'issue_type'", idx)
+		}
+	}
+
+	for idx, cfg := range recv.RocketchatConfigs {
+		if cfg.APIURL != nil && *cfg.APIURL != "" {
+			if _, err := url.Parse(*cfg.APIURL); err != nil {
+				return fmt.Errorf("at idx=%d for jira_configs incorrect url=%q: %w", idx, *cfg.APIURL, err)
+			}
 		}
 	}
 

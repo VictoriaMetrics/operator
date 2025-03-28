@@ -1089,6 +1089,7 @@ _Appears in:_
 - [OpsGenieConfig](#opsgenieconfig)
 - [PagerDutyConfig](#pagerdutyconfig)
 - [PushoverConfig](#pushoverconfig)
+- [RocketchatConfig](#rocketchatconfig)
 - [SlackConfig](#slackconfig)
 - [SnsConfig](#snsconfig)
 - [TelegramConfig](#telegramconfig)
@@ -1717,6 +1718,7 @@ _Appears in:_
 | <a href="#receiver-opsgenie_configs"><code id="receiver-opsgenie_configs">opsgenie_configs</code></a><br/>_[OpsGenieConfig](#opsgenieconfig) array_ | _(Optional)_<br/>OpsGenieConfigs defines ops genie notification configurations. |
 | <a href="#receiver-pagerduty_configs"><code id="receiver-pagerduty_configs">pagerduty_configs</code></a><br/>_[PagerDutyConfig](#pagerdutyconfig) array_ | _(Optional)_<br/>PagerDutyConfigs defines pager duty notification configurations. |
 | <a href="#receiver-pushover_configs"><code id="receiver-pushover_configs">pushover_configs</code></a><br/>_[PushoverConfig](#pushoverconfig) array_ | _(Optional)_<br/>PushoverConfigs defines push over notification configurations. |
+| <a href="#receiver-rocketchat_configs"><code id="receiver-rocketchat_configs">rocketchat_configs</code></a><br/>_[RocketchatConfig](#rocketchatconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-slack_configs"><code id="receiver-slack_configs">slack_configs</code></a><br/>_[SlackConfig](#slackconfig) array_ | _(Optional)_<br/>SlackConfigs defines slack notification configurations. |
 | <a href="#receiver-sns_configs"><code id="receiver-sns_configs">sns_configs</code></a><br/>_[SnsConfig](#snsconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-telegram_configs"><code id="receiver-telegram_configs">telegram_configs</code></a><br/>_[TelegramConfig](#telegramconfig) array_ | _(Optional)_<br/> |
@@ -1763,6 +1765,86 @@ _Appears in:_
 | <a href="#relabelconfig-source_labels"><code id="relabelconfig-source_labels">source_labels</code></a><br/>_string array_ | _(Optional)_<br/>UnderScoreSourceLabels - additional form of source labels source_labels<br />for compatibility with original relabel config.<br />if set  both sourceLabels and source_labels, sourceLabels has priority.<br />for details https://github.com/VictoriaMetrics/operator/issues/131 |
 | <a href="#relabelconfig-targetlabel"><code id="relabelconfig-targetlabel">targetLabel</code></a><br/>_string_ | _(Optional)_<br/>Label to which the resulting value is written in a replace action.<br />It is mandatory for replace actions. Regex capture groups are available. |
 | <a href="#relabelconfig-target_label"><code id="relabelconfig-target_label">target_label</code></a><br/>_string_ | _(Optional)_<br/>UnderScoreTargetLabel - additional form of target label - target_label<br />for compatibility with original relabel config.<br />if set  both targetLabel and target_label, targetLabel has priority.<br />for details https://github.com/VictoriaMetrics/operator/issues/131 |
+
+
+#### RocketchatAttachmentAction
+
+
+
+RocketchatAttachmentAction defines message attachements
+https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
+
+
+
+_Appears in:_
+- [RocketchatConfig](#rocketchatconfig)
+
+| Field | Description |
+| --- | --- |
+| <a href="#rocketchatattachmentaction-image_url"><code id="rocketchatattachmentaction-image_url">image_url</code></a><br/>_string_ |  |
+| <a href="#rocketchatattachmentaction-is_webview"><code id="rocketchatattachmentaction-is_webview">is_webview</code></a><br/>_boolean_ |  |
+| <a href="#rocketchatattachmentaction-msg"><code id="rocketchatattachmentaction-msg">msg</code></a><br/>_string_ |  |
+| <a href="#rocketchatattachmentaction-msg_in_chat_window"><code id="rocketchatattachmentaction-msg_in_chat_window">msg_in_chat_window</code></a><br/>_boolean_ |  |
+| <a href="#rocketchatattachmentaction-msg_processing_type"><code id="rocketchatattachmentaction-msg_processing_type">msg_processing_type</code></a><br/>_string_ |  |
+| <a href="#rocketchatattachmentaction-text"><code id="rocketchatattachmentaction-text">text</code></a><br/>_string_ |  |
+| <a href="#rocketchatattachmentaction-type"><code id="rocketchatattachmentaction-type">type</code></a><br/>_string_ |  |
+| <a href="#rocketchatattachmentaction-url"><code id="rocketchatattachmentaction-url">url</code></a><br/>_string_ |  |
+| <a href="#rocketchatattachmentaction-webview_height_ratio"><code id="rocketchatattachmentaction-webview_height_ratio">webview_height_ratio</code></a><br/>_string_ |  |
+
+
+#### RocketchatAttachmentField
+
+
+
+RocketchatAttachmentField defines API fields
+https://developer.rocket.chat/reference/api/rest-api/endpoints/messaging/chat-endpoints/postmessage#attachment-field-objects
+
+
+
+_Appears in:_
+- [RocketchatConfig](#rocketchatconfig)
+
+| Field | Description |
+| --- | --- |
+| <a href="#rocketchatattachmentfield-short"><code id="rocketchatattachmentfield-short">short</code></a><br/>_boolean_ |  |
+| <a href="#rocketchatattachmentfield-title"><code id="rocketchatattachmentfield-title">title</code></a><br/>_string_ |  |
+| <a href="#rocketchatattachmentfield-value"><code id="rocketchatattachmentfield-value">value</code></a><br/>_string_ |  |
+
+
+#### RocketchatConfig
+
+
+
+RocketchatConfig configures notifications via Rocketchat.
+https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
+available from v0.55.0 operator version
+and v0.28.0 alertmanager version
+
+
+
+_Appears in:_
+- [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| <a href="#rocketchatconfig-actions"><code id="rocketchatconfig-actions">actions</code></a><br/>_[RocketchatAttachmentAction](#rocketchatattachmentaction) array_ |  |
+| <a href="#rocketchatconfig-api_url"><code id="rocketchatconfig-api_url">api_url</code></a><br/>_string_ |  |
+| <a href="#rocketchatconfig-channel"><code id="rocketchatconfig-channel">channel</code></a><br/>_string_ | RocketChat channel override, (like #other-channel or @username). |
+| <a href="#rocketchatconfig-color"><code id="rocketchatconfig-color">color</code></a><br/>_string_ |  |
+| <a href="#rocketchatconfig-emoji"><code id="rocketchatconfig-emoji">emoji</code></a><br/>_string_ |  |
+| <a href="#rocketchatconfig-fields"><code id="rocketchatconfig-fields">fields</code></a><br/>_[RocketchatAttachmentField](#rocketchatattachmentfield) array_ |  |
+| <a href="#rocketchatconfig-http_config"><code id="rocketchatconfig-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-icon_url"><code id="rocketchatconfig-icon_url">icon_url</code></a><br/>_string_ |  |
+| <a href="#rocketchatconfig-image_url"><code id="rocketchatconfig-image_url">image_url</code></a><br/>_string_ |  |
+| <a href="#rocketchatconfig-link_names"><code id="rocketchatconfig-link_names">link_names</code></a><br/>_boolean_ |  |
+| <a href="#rocketchatconfig-send_resolved"><code id="rocketchatconfig-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| <a href="#rocketchatconfig-short_fields"><code id="rocketchatconfig-short_fields">short_fields</code></a><br/>_boolean_ |  |
+| <a href="#rocketchatconfig-text"><code id="rocketchatconfig-text">text</code></a><br/>_string_ |  |
+| <a href="#rocketchatconfig-thumb_url"><code id="rocketchatconfig-thumb_url">thumb_url</code></a><br/>_string_ |  |
+| <a href="#rocketchatconfig-title"><code id="rocketchatconfig-title">title</code></a><br/>_string_ |  |
+| <a href="#rocketchatconfig-title_link"><code id="rocketchatconfig-title_link">title_link</code></a><br/>_string_ |  |
+| <a href="#rocketchatconfig-token"><code id="rocketchatconfig-token">token</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ |  |
+| <a href="#rocketchatconfig-token_id"><code id="rocketchatconfig-token_id">token_id</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | The sender token and token_id<br />See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens |
 
 
 #### Route

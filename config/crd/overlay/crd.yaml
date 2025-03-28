@@ -7560,6 +7560,143 @@ spec:
                             x-kubernetes-map-type: atomic
                         type: object
                       type: array
+                    rocketchat_configs:
+                      items:
+                        description: |-
+                          RocketchatConfig configures notifications via Rocketchat.
+                          https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
+                          available from v0.55.0 operator version
+                          and v0.28.0 alertmanager version
+                        properties:
+                          actions:
+                            items:
+                              description: |-
+                                RocketchatAttachmentAction defines message attachements
+                                https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
+                              properties:
+                                image_url:
+                                  type: string
+                                is_webview:
+                                  type: boolean
+                                msg:
+                                  type: string
+                                msg_in_chat_window:
+                                  type: boolean
+                                msg_processing_type:
+                                  type: string
+                                text:
+                                  type: string
+                                type:
+                                  type: string
+                                url:
+                                  type: string
+                                webview_height_ratio:
+                                  type: string
+                              required:
+                              - is_webview
+                              - msg_in_chat_window
+                              type: object
+                            type: array
+                          api_url:
+                            type: string
+                          channel:
+                            description: 'RocketChat channel override, (like #other-channel
+                              or @username).'
+                            type: string
+                          color:
+                            type: string
+                          emoji:
+                            type: string
+                          fields:
+                            items:
+                              description: |-
+                                RocketchatAttachmentField defines API fields
+                                https://developer.rocket.chat/reference/api/rest-api/endpoints/messaging/chat-endpoints/postmessage#attachment-field-objects
+                              properties:
+                                short:
+                                  type: boolean
+                                title:
+                                  type: string
+                                value:
+                                  type: string
+                              required:
+                              - short
+                              type: object
+                            type: array
+                          http_config:
+                            x-kubernetes-preserve-unknown-fields: true
+                          icon_url:
+                            type: string
+                          image_url:
+                            type: string
+                          link_names:
+                            type: boolean
+                          send_resolved:
+                            description: SendResolved controls notify about resolved
+                              alerts.
+                            type: boolean
+                          short_fields:
+                            type: boolean
+                          text:
+                            type: string
+                          thumb_url:
+                            type: string
+                          title:
+                            type: string
+                          title_link:
+                            type: string
+                          token:
+                            description: SecretKeySelector selects a key of a Secret.
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must
+                                  be a valid secret key.
+                                type: string
+                              name:
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                              optional:
+                                description: Specify whether the Secret or its key
+                                  must be defined
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          token_id:
+                            description: |-
+                              The sender token and token_id
+                              See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must
+                                  be a valid secret key.
+                                type: string
+                              name:
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                              optional:
+                                description: Specify whether the Secret or its key
+                                  must be defined
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                        type: object
+                      type: array
                     slack_configs:
                       description: SlackConfigs defines slack notification configurations.
                       items:

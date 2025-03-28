@@ -946,6 +946,7 @@ templates: []
 				baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
+ jira_api_url: "https://jira.cloud"
 `),
 				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
 					{
@@ -1031,6 +1032,7 @@ templates: []
 				},
 			},
 			want: `global:
+  jira_api_url: https://jira.cloud
   smtp_smarthost: some:443
   time_out: 1min
 route:
@@ -1074,6 +1076,115 @@ receivers:
       components: '{ name: "Monitoring" }'
       customfield_10001: '"Random text"'
       customfield_10002: '{"value": "red"}'
+templates: []
+`,
+		},
+		{
+			name: "rocketchat section",
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "rocket-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ID":           []byte(`12356`),
+						"SECRET_TOKEN": []byte(`token value`),
+					},
+				},
+			},
+			args: args{
+				baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+`),
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route: &vmv1beta1.Route{
+								Receiver: "rocketchat",
+							},
+							Receivers: []vmv1beta1.Receiver{
+								{
+									Name: "rocketchat",
+									RocketchatConfigs: []vmv1beta1.RocketchatConfig{
+										{
+											TokenID: &corev1.SecretKeySelector{
+												Key: "ID",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "rocket-access",
+												},
+											},
+											Token: &corev1.SecretKeySelector{
+												Key: "SECRET_TOKEN",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "rocket-access",
+												},
+											},
+											Channel: "some-channel",
+											Fields: []vmv1beta1.RocketchatAttachmentField{
+												{
+													Short: ptr.To(true),
+													Title: "alert value",
+													Value: "1",
+												},
+											},
+											Actions: []vmv1beta1.RocketchatAttachmentAction{
+												{
+													Type:               "action",
+													Text:               "some text",
+													URL:                "https://example.com/action",
+													ImageURL:           "https://example.com/image",
+													IsWebView:          true,
+													WebviewHeightRatio: "0.5",
+													Msg:                "some message",
+													MsgInChatWindow:    true,
+													MsgProcessingType:  "issue",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `global:
+  smtp_smarthost: some:443
+  time_out: 1min
+route:
+  receiver: blackhole
+  routes:
+  - matchers:
+    - namespace = "default"
+    receiver: default-base-rocketchat
+    continue: true
+receivers:
+- name: blackhole
+- name: default-base-rocketchat
+  rocketchat_configs:
+  - token_id: token value
+    token: token value
+    channel: some-channel
+    fields:
+    - title: alert value
+      value: "1"
+      short: true
+    actions:
+    - type: action
+      text,omitempty: some text
+      url: https://example.com/action
+      image_url: https://example.com/image
+      webview_height_ratio: "0.5"
+      msg: some message
+      msg_processing_type,omitempty: issue
+      is_webview: true
+      msg_in_chat_window: true
 templates: []
 `,
 		},

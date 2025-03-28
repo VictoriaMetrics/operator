@@ -16,6 +16,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.114.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.114.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): make project layout compatible with `[kubebuilder v4](https://book.kubebuilder.io/migration/v3vsv4)`
 
+
 * FEATURE: [operator](https://docs.victoriametrics.com/operator: add `tls_config` and `proxy_url` fields to the `oauth2` scrape target configurations. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1276) for details
 * FEATURE: [operator](https://docs.victoriametrics.com/operator: add `extraEnvsFrom` field to all applications, which defines source for env variables as Secret or ConfigMap. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1270) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator: set `publishNotReadyAddresses: true` to the `vmstorage`, `vmselect`, `vmalertmanager` services. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1211) for details.
@@ -25,6 +26,7 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce Kubernetes API server load on large scale by removing `selectors` from `VMPodscrape` `kubernetes_sd_configs`. Add new field `VMAgent.spec.enableKubernetesAPISelectors`, which restores original behaviour. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): allow to define `remoteWrite.MaxDiskUsage` as integer and adds validation to it. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1256) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): allow to define `remoteWriteSettings.maxDiskUsagePerURL` as string with bytes suffix and adds validation to it. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1256) for details.
+* FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `content`, `username` and `avatar_url` to `discord_configs` definition. It's supported by [alertmanager v0.28.0+](https://github.com/prometheus/alertmanager/releases/tag/v0.28.0). See [this commit](https://github.com/VictoriaMetrics/operator/commit/5dccc92f99add9b3fc687619581b1901936b27b5) for details.
 
 
 * BUGFIX: [operator](https://docs.victoriametrics.com/operator/): properly throttle concurrent reconcile events on high load. By raising default value for the `controller.maxConcurrentReconciles` command-line flag from `5` to `15`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1245#issuecomment-2722477187) for details.

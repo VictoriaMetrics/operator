@@ -329,6 +329,7 @@ type globalAlertmanagerConfig struct {
 		WeChatAPICorpID     string `yaml:"wechat_api_corp_id,omitempty" json:"wechat_api_corp_id,omitempty"`
 		VictorOpsAPIKey     string `yaml:"victorops_api_key,omitempty" json:"victorops_api_key,omitempty"`
 		VictorOpsAPIKeyFile string `yaml:"victorops_api_key_file,omitempty" json:"victorops_api_key_file,omitempty"`
+		JiraAPIURL            string `yaml:"jira_api_url,omitempty" json:"jira_api_url,omitempty"`
 	} `yaml:"global,omitempty"`
 }
 
@@ -714,6 +715,10 @@ func (cb *configBuilder) buildJira(jira vmv1beta1.JiraConfig) error {
 	if jira.APIURL != nil {
 		toYaml("api_url", *jira.APIURL)
 	}
+	if jira.APIURL == nil && cb.globalConfig.Global.JiraAPIURL == "" {
+		return fmt.Errorf("api_url secret is not defined and no global Jira API URL set")
+	}
+
 	toYaml("project", jira.Project)
 	toYaml("issue_type", jira.IssueType)
 	toYaml("description", jira.Description)

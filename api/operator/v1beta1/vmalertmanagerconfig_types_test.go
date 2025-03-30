@@ -139,6 +139,52 @@ var _ = Describe("VMAlertmanagerConfig Webhook", func() {
             receiver: jira
         `,
 				`receiver at idx=0 is invalid: at idx=0 for jira_configs missing required field 'issue_type'`),
+			Entry("msteamsv2-both-webhooks", `
+        apiVersion: v1
+        kind: VMAlertmanagerConfig
+        metadata:
+          name: teamsv2
+        spec:
+          receivers:
+          - name: teams
+            msteamsv2_configs:
+            - webhook_url_secret:
+                name: ms-access
+                key: SECRET
+              webhook_url: http://example.com
+              http_config:
+               authorization:
+                credentials:
+                  name: jira-access
+                  key: DC_KEY
+              title: some
+              text: alert notification
+          route:
+            receiver: teams
+        `,
+				`receiver at idx=0 is invalid: at idx=0 for msteamsv2_configs at most one of webhook_url or webhook_url_secret must be configured`,
+			),
+			Entry("msteamsv2-both-no-webhooks", `
+        apiVersion: v1
+        kind: VMAlertmanagerConfig
+        metadata:
+          name: teamsv2
+        spec:
+          receivers:
+          - name: teams
+            msteamsv2_configs:
+            - http_config:
+               authorization:
+                credentials:
+                  name: jira-access
+                  key: DC_KEY
+              title: some
+              text: alert notification
+          route:
+            receiver: teams
+        `,
+				`receiver at idx=0 is invalid: at idx=0 for msteamsv2_configs of webhook_url or webhook_url_secret must be configured`,
+			),
 		)
 		DescribeTable("should pass validation",
 			func(srcYAML string) {
@@ -447,6 +493,48 @@ var _ = Describe("VMAlertmanagerConfig Webhook", func() {
               - default
           route:
             receiver: jira
+        `),
+			Entry("msteamsv2", `
+        apiVersion: v1
+        kind: VMAlertmanagerConfig
+        metadata:
+          name: teamsv2
+        spec:
+          receivers:
+          - name: teams
+            msteamsv2_configs:
+            - webhook_url: https://dc-url
+              http_config:
+               authorization:
+                credentials:
+                  name: jira-access
+                  key: DC_KEY
+              title: some
+              text: alert notification
+          route:
+            receiver: teams
+        `),
+			Entry("msteamsv2-secret", `
+        apiVersion: v1
+        kind: VMAlertmanagerConfig
+        metadata:
+          name: teamsv2
+        spec:
+          receivers:
+          - name: teams
+            msteamsv2_configs:
+            - webhook_url_secret:
+                name: ms-access
+                key: SECRET
+              http_config:
+               authorization:
+                credentials:
+                  name: jira-access
+                  key: DC_KEY
+              title: some
+              text: alert notification
+          route:
+            receiver: teams
         `),
 		)
 	})

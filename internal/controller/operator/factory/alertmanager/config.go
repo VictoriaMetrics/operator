@@ -529,6 +529,13 @@ func (cb *configBuilder) buildCfg(receiver vmv1beta1.Receiver) error {
 	}
 	cb.finalizeSection("rocketchat_configs")
 
+	for _, rcCfg := range receiver.MSTeamsV2Configs {
+		if err := cb.buildTeamsV2(rcCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("msteamsv2_configs")
+
 	return nil
 }
 
@@ -1046,6 +1053,52 @@ func (cb *configBuilder) buildSlack(slack vmv1beta1.SlackConfig) error {
 		temp = append(temp, yaml.MapItem{Key: "fields", Value: fields})
 	}
 	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
+}
+
+func (cb *configBuilder) buildTeamsV2(mstCfg vmv1beta1.MSTeamsV2Config) error {
+	if mstCfg.URL == nil && mstCfg.URLSecret == nil {
+		return fmt.Errorf("one of required fields 'webhook_url' or 'webhook_url_secret' are not set")
+	}
+
+	var temp yaml.MapSlice
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	if mstCfg.HTTPConfig != nil {
+		h, err := cb.buildHTTPConfig(mstCfg.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: h})
+	}
+	if mstCfg.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *mstCfg.SendResolved})
+	}
+	var whURL string
+	switch {
+	case mstCfg.URLSecret != nil:
+		sv, err := cb.fetchSecretValue(mstCfg.URLSecret)
+		if err != nil {
+			return err
+		}
+		whURL = sv
+	case mstCfg.URL != nil:
+		whURL = *mstCfg.URL
+	default:
+		panic("BUG: impossible switch statement")
+	}
+	if _, err := url.Parse(whURL); err != nil {
+		return fmt.Errorf("unexpected webhook_url value=%q: %w", whURL, err)
+	}
+	toYaml("webhook_url", whURL)
+	toYaml("text", mstCfg.Text)
+	toYaml("title", mstCfg.Title)
+
+	cb.currentYaml = append(cb.currentYaml, temp)
+
 	return nil
 }
 

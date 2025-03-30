@@ -348,6 +348,8 @@ type Receiver struct {
 	JiraConfigs []JiraConfig `json:"jira_configs,omitempty" yaml:"jira_configs,omitempty"`
 	// +optional
 	RocketchatConfigs []RocketchatConfig `json:"rocketchat_configs,omitempty" yaml:"rocketchat_configs,omitempty"`
+	// +optional
+	MSTeamsV2Configs []MSTeamsV2Config `json:"msteamsv2_configs,omitempty" yaml:"msteamsv2_configs,omitempty"`
 }
 
 // TelegramConfig configures notification via telegram
@@ -1079,6 +1081,38 @@ type RocketchatAttachmentAction struct {
 	MsgProcessingType  string `json:"msg_processing_type,omitempty"`
 }
 
+// MSTeamsV2Config sends notifications using the new message format with adaptive cards as required by flows.
+// https://support.microsoft.com/en-gb/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498
+// available from v0.55.0 operator version
+// and v0.28.0 alertmanager version
+type MSTeamsV2Config struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
+
+	// The incoming webhook URL
+	// one of `urlSecret` and `url` must be defined.
+	// +optional
+	URL *string `json:"webhook_url,omitempty" yaml:"webhook_url,omitempty"`
+	// URLSecret defines secret name and key at the CRD namespace.
+	// It must contain the webhook URL.
+	// one of `webhook_url` or `webhook_url_secret` must be defined.
+	// +optional
+	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
+
+	// Message title template.
+	// +optional
+	Title string `yaml:"title,omitempty" json:"title,omitempty"`
+	// Message body template.
+	// +optional
+	Text string `yaml:"text,omitempty" json:"text,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
 // HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 // See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 type HTTPConfig struct {
@@ -1747,6 +1781,25 @@ func validateReceiver(recv Receiver) error {
 			if _, err := url.Parse(*cfg.APIURL); err != nil {
 				return fmt.Errorf("at idx=%d for jira_configs incorrect url=%q: %w", idx, *cfg.APIURL, err)
 			}
+		}
+	}
+
+	for idx, cfg := range recv.MSTeamsV2Configs {
+		if cfg.URL == nil && cfg.URLSecret == nil {
+			return fmt.Errorf("at idx=%d for msteamsv2_configs of webhook_url or webhook_url_secret must be configured", idx)
+		}
+
+		if cfg.URL != nil && cfg.URLSecret != nil {
+			return fmt.Errorf("at idx=%d for msteamsv2_configs at most one of webhook_url or webhook_url_secret must be configured", idx)
+		}
+		if cfg.URL != nil {
+			if _, err := url.Parse(*cfg.URL); err != nil {
+				return fmt.Errorf("at idx=%d for msteamsv2_configs has invalid webhook_url=%q", idx, *cfg.URL)
+			}
+		}
+
+		if err := cfg.HTTPConfig.validate(); err != nil {
+			return fmt.Errorf("at idx=%d for msteamsv2_configs incorrect http_config: %w", idx, err)
 		}
 	}
 

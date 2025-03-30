@@ -1188,6 +1188,90 @@ receivers:
 templates: []
 `,
 		},
+		{
+			name: "msteamsv2",
+			args: args{
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "msteams-dev",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route: &vmv1beta1.Route{
+								Receiver: "mstv2",
+							},
+							Receivers: []vmv1beta1.Receiver{
+								{
+									Name: "mstv2",
+									MSTeamsV2Configs: []vmv1beta1.MSTeamsV2Config{
+										{
+											URL:   ptr.To("http://example.com/msteams"),
+											Title: "some",
+											Text:  "some alert text",
+											HTTPConfig: &vmv1beta1.HTTPConfig{
+												Authorization: &vmv1beta1.Authorization{
+													Credentials: &corev1.SecretKeySelector{
+														Key: "TOKEN",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "ms-teams-access",
+														},
+													},
+												},
+											},
+										},
+										{
+											URLSecret: &corev1.SecretKeySelector{
+												Key: "API_URL",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "ms-teams-access",
+												},
+											},
+											Title: "team 2",
+											Text:  "some other text",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ms-teams-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"TOKEN":   []byte(`token value`),
+						"API_URL": []byte(`https://example.com/v2/msteamsv2`),
+					},
+				},
+			},
+			want: `route:
+  receiver: blackhole
+  routes:
+  - matchers:
+    - namespace = "default"
+    receiver: default-msteams-dev-mstv2
+    continue: true
+receivers:
+- name: blackhole
+- name: default-msteams-dev-mstv2
+  msteamsv2_configs:
+  - http_config:
+      authorization:
+        credentials: token value
+    webhook_url: http://example.com/msteams
+    text: some alert text
+    title: some
+  - webhook_url: https://example.com/v2/msteamsv2
+    text: some other text
+    title: team 2
+templates: []
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

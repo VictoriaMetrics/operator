@@ -7201,6 +7201,60 @@ spec:
                             x-kubernetes-map-type: atomic
                         type: object
                       type: array
+                    msteamsv2_configs:
+                      items:
+                        description: |-
+                          MSTeamsV2Config sends notifications using the new message format with adaptive cards as required by flows.
+                          https://support.microsoft.com/en-gb/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498
+                          available from v0.55.0 operator version
+                          and v0.28.0 alertmanager version
+                        properties:
+                          http_config:
+                            x-kubernetes-preserve-unknown-fields: true
+                          send_resolved:
+                            description: SendResolved controls notify about resolved
+                              alerts.
+                            type: boolean
+                          text:
+                            description: Message body template.
+                            type: string
+                          title:
+                            description: Message title template.
+                            type: string
+                          webhook_url:
+                            description: |-
+                              The incoming webhook URL
+                              one of `urlSecret` and `url` must be defined.
+                            type: string
+                          webhook_url_secret:
+                            description: |-
+                              URLSecret defines secret name and key at the CRD namespace.
+                              It must contain the webhook URL.
+                              one of `webhook_url` or `webhook_url_secret` must be defined.
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must
+                                  be a valid secret key.
+                                type: string
+                              name:
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                              optional:
+                                description: Specify whether the Secret or its key
+                                  must be defined
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                        type: object
+                      type: array
                     name:
                       description: Name of the receiver. Must be unique across all
                         items from the list.

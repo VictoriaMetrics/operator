@@ -1086,6 +1086,7 @@ _Appears in:_
 - [DiscordConfig](#discordconfig)
 - [JiraConfig](#jiraconfig)
 - [MSTeamsConfig](#msteamsconfig)
+- [MSTeamsV2Config](#msteamsv2config)
 - [OpsGenieConfig](#opsgenieconfig)
 - [PagerDutyConfig](#pagerdutyconfig)
 - [PushoverConfig](#pushoverconfig)
@@ -1240,7 +1241,7 @@ _Appears in:_
 | --- | --- |
 | <a href="#jiraconfig-api_url"><code id="jiraconfig-api_url">api_url</code></a><br/>_string_ | _(Optional)_<br/>The URL to send API requests to. The full API path must be included.<br />Example: https://company.atlassian.net/rest/api/2/ |
 | <a href="#jiraconfig-custom_fields"><code id="jiraconfig-custom_fields">custom_fields</code></a><br/>_object (keys:string, values:[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io))_ | _(Optional)_<br/>Other issue and custom fields.<br />Jira issue field can have multiple types.<br />Depends on the field type, the values must be provided differently.<br />See https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#setting-custom-field-data-for-other-field-types for further examples. |
-| <a href="#jiraconfig-description"><code id="jiraconfig-description">description</code></a><br/>_string_ | Issue description template. |
+| <a href="#jiraconfig-description"><code id="jiraconfig-description">description</code></a><br/>_string_ | _(Optional)_<br/>Issue description template. |
 | <a href="#jiraconfig-http_config"><code id="jiraconfig-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>The HTTP client's configuration. You must use this configuration to supply the personal access token (PAT) as part of the HTTP `Authorization` header.<br />For Jira Cloud, use basic_auth with the email address as the username and the PAT as the password.<br />For Jira Data Center, use the 'authorization' field with 'credentials: <PAT value>'. |
 | <a href="#jiraconfig-issue_type"><code id="jiraconfig-issue_type">issue_type</code></a><br/>_string_ | Type of the issue (e.g. Bug) |
 | <a href="#jiraconfig-labels"><code id="jiraconfig-labels">labels</code></a><br/>_string array_ | Labels to be added to the issue |
@@ -1365,6 +1366,30 @@ _Appears in:_
 | <a href="#msteamsconfig-title"><code id="msteamsconfig-title">title</code></a><br/>_string_ | _(Optional)_<br/>The title of the teams notification. |
 | <a href="#msteamsconfig-webhook_url"><code id="msteamsconfig-webhook_url">webhook_url</code></a><br/>_string_ | _(Optional)_<br/>The incoming webhook URL<br />one of `urlSecret` and `url` must be defined. |
 | <a href="#msteamsconfig-webhook_url_secret"><code id="msteamsconfig-webhook_url_secret">webhook_url_secret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. |
+
+
+#### MSTeamsV2Config
+
+
+
+MSTeamsV2Config sends notifications using the new message format with adaptive cards as required by flows.
+https://support.microsoft.com/en-gb/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498
+available from v0.55.0 operator version
+and v0.28.0 alertmanager version
+
+
+
+_Appears in:_
+- [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| <a href="#msteamsv2config-http_config"><code id="msteamsv2config-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
+| <a href="#msteamsv2config-send_resolved"><code id="msteamsv2config-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| <a href="#msteamsv2config-text"><code id="msteamsv2config-text">text</code></a><br/>_string_ | _(Optional)_<br/>Message body template. |
+| <a href="#msteamsv2config-title"><code id="msteamsv2config-title">title</code></a><br/>_string_ | _(Optional)_<br/>Message title template. |
+| <a href="#msteamsv2config-webhook_url"><code id="msteamsv2config-webhook_url">webhook_url</code></a><br/>_string_ | _(Optional)_<br/>The incoming webhook URL<br />one of `urlSecret` and `url` must be defined. |
+| <a href="#msteamsv2config-webhook_url_secret"><code id="msteamsv2config-webhook_url_secret">webhook_url_secret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `webhook_url` or `webhook_url_secret` must be defined. |
 
 
 #### ManagedObjectsMetadata
@@ -1714,6 +1739,7 @@ _Appears in:_
 | <a href="#receiver-email_configs"><code id="receiver-email_configs">email_configs</code></a><br/>_[EmailConfig](#emailconfig) array_ | _(Optional)_<br/>EmailConfigs defines email notification configurations. |
 | <a href="#receiver-jira_configs"><code id="receiver-jira_configs">jira_configs</code></a><br/>_[JiraConfig](#jiraconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-msteams_configs"><code id="receiver-msteams_configs">msteams_configs</code></a><br/>_[MSTeamsConfig](#msteamsconfig) array_ | _(Optional)_<br/> |
+| <a href="#receiver-msteamsv2_configs"><code id="receiver-msteamsv2_configs">msteamsv2_configs</code></a><br/>_[MSTeamsV2Config](#msteamsv2config) array_ | _(Optional)_<br/> |
 | <a href="#receiver-name"><code id="receiver-name">name</code></a><br/>_string_ | Name of the receiver. Must be unique across all items from the list. |
 | <a href="#receiver-opsgenie_configs"><code id="receiver-opsgenie_configs">opsgenie_configs</code></a><br/>_[OpsGenieConfig](#opsgenieconfig) array_ | _(Optional)_<br/>OpsGenieConfigs defines ops genie notification configurations. |
 | <a href="#receiver-pagerduty_configs"><code id="receiver-pagerduty_configs">pagerduty_configs</code></a><br/>_[PagerDutyConfig](#pagerdutyconfig) array_ | _(Optional)_<br/>PagerDutyConfigs defines pager duty notification configurations. |
@@ -1781,15 +1807,10 @@ _Appears in:_
 
 | Field | Description |
 | --- | --- |
-| <a href="#rocketchatattachmentaction-image_url"><code id="rocketchatattachmentaction-image_url">image_url</code></a><br/>_string_ |  |
-| <a href="#rocketchatattachmentaction-is_webview"><code id="rocketchatattachmentaction-is_webview">is_webview</code></a><br/>_boolean_ |  |
-| <a href="#rocketchatattachmentaction-msg"><code id="rocketchatattachmentaction-msg">msg</code></a><br/>_string_ |  |
-| <a href="#rocketchatattachmentaction-msg_in_chat_window"><code id="rocketchatattachmentaction-msg_in_chat_window">msg_in_chat_window</code></a><br/>_boolean_ |  |
-| <a href="#rocketchatattachmentaction-msg_processing_type"><code id="rocketchatattachmentaction-msg_processing_type">msg_processing_type</code></a><br/>_string_ |  |
-| <a href="#rocketchatattachmentaction-text"><code id="rocketchatattachmentaction-text">text</code></a><br/>_string_ |  |
-| <a href="#rocketchatattachmentaction-type"><code id="rocketchatattachmentaction-type">type</code></a><br/>_string_ |  |
-| <a href="#rocketchatattachmentaction-url"><code id="rocketchatattachmentaction-url">url</code></a><br/>_string_ |  |
-| <a href="#rocketchatattachmentaction-webview_height_ratio"><code id="rocketchatattachmentaction-webview_height_ratio">webview_height_ratio</code></a><br/>_string_ |  |
+| <a href="#rocketchatattachmentaction-msg"><code id="rocketchatattachmentaction-msg">msg</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentaction-text"><code id="rocketchatattachmentaction-text">text</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentaction-type"><code id="rocketchatattachmentaction-type">type</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentaction-url"><code id="rocketchatattachmentaction-url">url</code></a><br/>_string_ | _(Optional)_<br/> |
 
 
 #### RocketchatAttachmentField
@@ -1806,9 +1827,9 @@ _Appears in:_
 
 | Field | Description |
 | --- | --- |
-| <a href="#rocketchatattachmentfield-short"><code id="rocketchatattachmentfield-short">short</code></a><br/>_boolean_ |  |
-| <a href="#rocketchatattachmentfield-title"><code id="rocketchatattachmentfield-title">title</code></a><br/>_string_ |  |
-| <a href="#rocketchatattachmentfield-value"><code id="rocketchatattachmentfield-value">value</code></a><br/>_string_ |  |
+| <a href="#rocketchatattachmentfield-short"><code id="rocketchatattachmentfield-short">short</code></a><br/>_boolean_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentfield-title"><code id="rocketchatattachmentfield-title">title</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentfield-value"><code id="rocketchatattachmentfield-value">value</code></a><br/>_string_ | _(Optional)_<br/> |
 
 
 #### RocketchatConfig
@@ -1827,24 +1848,24 @@ _Appears in:_
 
 | Field | Description |
 | --- | --- |
-| <a href="#rocketchatconfig-actions"><code id="rocketchatconfig-actions">actions</code></a><br/>_[RocketchatAttachmentAction](#rocketchatattachmentaction) array_ |  |
-| <a href="#rocketchatconfig-api_url"><code id="rocketchatconfig-api_url">api_url</code></a><br/>_string_ |  |
-| <a href="#rocketchatconfig-channel"><code id="rocketchatconfig-channel">channel</code></a><br/>_string_ | RocketChat channel override, (like #other-channel or @username). |
-| <a href="#rocketchatconfig-color"><code id="rocketchatconfig-color">color</code></a><br/>_string_ |  |
-| <a href="#rocketchatconfig-emoji"><code id="rocketchatconfig-emoji">emoji</code></a><br/>_string_ |  |
-| <a href="#rocketchatconfig-fields"><code id="rocketchatconfig-fields">fields</code></a><br/>_[RocketchatAttachmentField](#rocketchatattachmentfield) array_ |  |
+| <a href="#rocketchatconfig-actions"><code id="rocketchatconfig-actions">actions</code></a><br/>_[RocketchatAttachmentAction](#rocketchatattachmentaction) array_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-api_url"><code id="rocketchatconfig-api_url">api_url</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-channel"><code id="rocketchatconfig-channel">channel</code></a><br/>_string_ | _(Optional)_<br/>RocketChat channel override, (like #other-channel or @username). |
+| <a href="#rocketchatconfig-color"><code id="rocketchatconfig-color">color</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-emoji"><code id="rocketchatconfig-emoji">emoji</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-fields"><code id="rocketchatconfig-fields">fields</code></a><br/>_[RocketchatAttachmentField](#rocketchatattachmentfield) array_ | _(Optional)_<br/> |
 | <a href="#rocketchatconfig-http_config"><code id="rocketchatconfig-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
-| <a href="#rocketchatconfig-icon_url"><code id="rocketchatconfig-icon_url">icon_url</code></a><br/>_string_ |  |
-| <a href="#rocketchatconfig-image_url"><code id="rocketchatconfig-image_url">image_url</code></a><br/>_string_ |  |
-| <a href="#rocketchatconfig-link_names"><code id="rocketchatconfig-link_names">link_names</code></a><br/>_boolean_ |  |
+| <a href="#rocketchatconfig-icon_url"><code id="rocketchatconfig-icon_url">icon_url</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-image_url"><code id="rocketchatconfig-image_url">image_url</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-link_names"><code id="rocketchatconfig-link_names">link_names</code></a><br/>_boolean_ | _(Optional)_<br/> |
 | <a href="#rocketchatconfig-send_resolved"><code id="rocketchatconfig-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
-| <a href="#rocketchatconfig-short_fields"><code id="rocketchatconfig-short_fields">short_fields</code></a><br/>_boolean_ |  |
-| <a href="#rocketchatconfig-text"><code id="rocketchatconfig-text">text</code></a><br/>_string_ |  |
-| <a href="#rocketchatconfig-thumb_url"><code id="rocketchatconfig-thumb_url">thumb_url</code></a><br/>_string_ |  |
-| <a href="#rocketchatconfig-title"><code id="rocketchatconfig-title">title</code></a><br/>_string_ |  |
-| <a href="#rocketchatconfig-title_link"><code id="rocketchatconfig-title_link">title_link</code></a><br/>_string_ |  |
-| <a href="#rocketchatconfig-token"><code id="rocketchatconfig-token">token</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ |  |
-| <a href="#rocketchatconfig-token_id"><code id="rocketchatconfig-token_id">token_id</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | The sender token and token_id<br />See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens |
+| <a href="#rocketchatconfig-short_fields"><code id="rocketchatconfig-short_fields">short_fields</code></a><br/>_boolean_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-text"><code id="rocketchatconfig-text">text</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-thumb_url"><code id="rocketchatconfig-thumb_url">thumb_url</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-title"><code id="rocketchatconfig-title">title</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-title_link"><code id="rocketchatconfig-title_link">title_link</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-token"><code id="rocketchatconfig-token">token</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-token_id"><code id="rocketchatconfig-token_id">token_id</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The sender token and token_id<br />See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens |
 
 
 #### Route

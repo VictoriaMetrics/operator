@@ -975,44 +975,45 @@ type JiraConfig struct {
 	// The URL to send API requests to. The full API path must be included.
 	// Example: https://company.atlassian.net/rest/api/2/
 	// +optional
-	APIURL *string `yaml:"api_url,omitempty" json:"api_url,omitempty"`
+	APIURL *string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 
 	// The project key where issues are created
-	Project string `yaml:"project" json:"project"`
+	Project string `json:"project" yaml:"project"`
 	// Issue summary template
 	// +optional
-	Summary string `yaml:"summary,omitempty" json:"summary,omitempty"`
+	Summary string `json:"summary,omitempty" yaml:"summary,omitempty"`
 	// Issue description template.
-	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+	// +optional
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Labels to be added to the issue
-	Labels []string `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels []string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	// Priority of the issue
-	Priority string `yaml:"priority,omitempty" json:"priority,omitempty"`
+	Priority string `json:"priority,omitempty" yaml:"priority,omitempty"`
 
 	// Type of the issue (e.g. Bug)
-	IssueType string `yaml:"issue_type" json:"issue_type"`
+	IssueType string `json:"issue_type" yaml:"issue_type"`
 
 	// Name of the workflow transition to resolve an issue.
 	// The target status must have the category "done".
-	ReopenTransition string `yaml:"reopen_transition,omitempty" json:"reopen_transition,omitempty"`
+	ReopenTransition string `json:"reopen_transition,omitempty" yaml:"reopen_transition,omitempty"`
 	// Name of the workflow transition to reopen an issue.
 	// The target status should not have the category "done".
-	ResolveTransition string `yaml:"resolve_transition,omitempty" json:"resolve_transition,omitempty"`
+	ResolveTransition string `json:"resolve_transition,omitempty" yaml:"resolve_transition,omitempty"`
 	// If reopen_transition is defined, ignore issues with that resolution.
-	WontFixResolution string `yaml:"wont_fix_resolution,omitempty" json:"wont_fix_resolution,omitempty"`
+	WontFixResolution string `json:"wont_fix_resolution,omitempty" yaml:"wont_fix_resolution,omitempty"`
 
 	// If reopen_transition is defined, reopen the issue when it is not older than this value (rounded down to the nearest minute).
 	// The resolutiondate field is used to determine the age of the issue.
 	// +kubebuilder:validation:Pattern:="^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$"
 	// +optional
-	ReopenDuration string `yaml:"reopen_duration,omitempty" json:"reopen_duration,omitempty"`
+	ReopenDuration string `json:"reopen_duration,omitempty" yaml:"reopen_duration,omitempty"`
 
 	// Other issue and custom fields.
 	// Jira issue field can have multiple types.
 	// Depends on the field type, the values must be provided differently.
 	// See https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#setting-custom-field-data-for-other-field-types for further examples.
 	// +optional
-	Fields map[string]apiextensionsv1.JSON `yaml:"fields,omitempty" json:"custom_fields,omitempty"`
+	Fields map[string]apiextensionsv1.JSON `json:"custom_fields,omitempty" yaml:"fields,omitempty"`
 
 	// The HTTP client's configuration. You must use this configuration to supply the personal access token (PAT) as part of the HTTP `Authorization` header.
 	// For Jira Cloud, use basic_auth with the email address as the username and the PAT as the password.
@@ -1030,29 +1031,44 @@ type JiraConfig struct {
 type RocketchatConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool   `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
-	APIURL       *string `yaml:"api_url,omitempty" json:"api_url,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
+	// +optional
+	APIURL *string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 
 	// The sender token and token_id
 	// See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens
+	// +optional
 	TokenID *v1.SecretKeySelector `yaml:"token_id,omitempty" json:"token_id,omitempty"`
-	Token   *v1.SecretKeySelector `yaml:"token,omitempty" json:"token,omitempty"`
+	// +optional
+	Token *v1.SecretKeySelector `yaml:"token,omitempty" json:"token,omitempty"`
 
 	// RocketChat channel override, (like #other-channel or @username).
+	// +optional
 	Channel string `yaml:"channel,omitempty" json:"channel,omitempty"`
-
-	Color       string                       `yaml:"color,omitempty" json:"color,omitempty"`
-	Title       string                       `yaml:"title,omitempty" json:"title,omitempty"`
-	TitleLink   string                       `yaml:"title_link,omitempty" json:"title_link,omitempty"`
-	Text        string                       `yaml:"text,omitempty" json:"text,omitempty"`
-	Fields      []RocketchatAttachmentField  `yaml:"fields,omitempty" json:"fields,omitempty"`
-	ShortFields bool                         `yaml:"short_fields" json:"short_fields,omitempty"`
-	Emoji       string                       `yaml:"emoji,omitempty" json:"emoji,omitempty"`
-	IconURL     string                       `yaml:"icon_url,omitempty" json:"icon_url,omitempty"`
-	ImageURL    string                       `yaml:"image_url,omitempty" json:"image_url,omitempty"`
-	ThumbURL    string                       `yaml:"thumb_url,omitempty" json:"thumb_url,omitempty"`
-	LinkNames   bool                         `yaml:"link_names" json:"link_names,omitempty"`
-	Actions     []RocketchatAttachmentAction `yaml:"actions,omitempty" json:"actions,omitempty"`
+	// +optional
+	Color string `json:"color,omitempty" yaml:"color,omitempty"`
+	// +optional
+	Title string `json:"title,omitempty" yaml:"title,omitempty"`
+	// +optional
+	TitleLink string `json:"title_link,omitempty" yaml:"title_link,omitempty"`
+	// +optional
+	Text string `json:"text,omitempty" yaml:"text,omitempty"`
+	// +optional
+	Fields []RocketchatAttachmentField `json:"fields,omitempty" yaml:"fields,omitempty"`
+	// +optional
+	ShortFields bool `json:"short_fields,omitempty" yaml:"short_fields,omitempty"`
+	// +optional
+	Emoji string `json:"emoji,omitempty" yaml:"emoji,omitempty"`
+	// +optional
+	IconURL string `json:"icon_url,omitempty" yaml:"icon_url,omitempty"`
+	// +optional
+	ImageURL string `json:"image_url,omitempty" yaml:"image_url,omitempty"`
+	// +optional
+	ThumbURL string `json:"thumb_url,omitempty" yaml:"thumb_url,omitempty"`
+	// +optional
+	LinkNames bool `json:"link_names,omitempty" yaml:"link_names"`
+	// +optional
+	Actions []RocketchatAttachmentAction `json:"actions,omitempty" yaml:"actions,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -1062,23 +1078,25 @@ type RocketchatConfig struct {
 // RocketchatAttachmentField defines API fields
 // https://developer.rocket.chat/reference/api/rest-api/endpoints/messaging/chat-endpoints/postmessage#attachment-field-objects
 type RocketchatAttachmentField struct {
-	Short *bool  `json:"short"`
+	// +optional
+	Short *bool `json:"short"`
+	// +optional
 	Title string `json:"title,omitempty"`
+	// +optional
 	Value string `json:"value,omitempty"`
 }
 
 // RocketchatAttachmentAction defines message attachements
 // https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
 type RocketchatAttachmentAction struct {
-	Type               string `json:"type,omitempty"`
-	Text               string `json:"text,omitempty"`
-	URL                string `json:"url,omitempty"`
-	ImageURL           string `json:"image_url,omitempty"`
-	IsWebView          bool   `json:"is_webview"`
-	WebviewHeightRatio string `json:"webview_height_ratio,omitempty"`
-	Msg                string `json:"msg,omitempty"`
-	MsgInChatWindow    bool   `json:"msg_in_chat_window"`
-	MsgProcessingType  string `json:"msg_processing_type,omitempty"`
+	// +optional
+	Type string `json:"type,omitempty"`
+	// +optional
+	Text string `json:"text,omitempty"`
+	// +optional
+	URL string `json:"url,omitempty"`
+	// +optional
+	Msg string `json:"msg,omitempty"`
 }
 
 // MSTeamsV2Config sends notifications using the new message format with adaptive cards as required by flows.
@@ -1102,10 +1120,10 @@ type MSTeamsV2Config struct {
 
 	// Message title template.
 	// +optional
-	Title string `yaml:"title,omitempty" json:"title,omitempty"`
+	Title string `json:"title,omitempty" yaml:"title,omitempty"`
 	// Message body template.
 	// +optional
-	Text string `yaml:"text,omitempty" json:"text,omitempty"`
+	Text string `json:"text,omitempty" yaml:"text,omitempty"`
 
 	// +optional
 	// +kubebuilder:validation:Schemaless

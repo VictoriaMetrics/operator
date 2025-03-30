@@ -878,23 +878,8 @@ func (cb *configBuilder) buildRocketchat(rc vmv1beta1.RocketchatConfig) error {
 			actionToYaml("type", a.Type)
 			actionToYaml("text,omitempty", a.Text)
 			actionToYaml("url", a.URL)
-			actionToYaml("image_url", a.ImageURL)
-			actionToYaml("webview_height_ratio", a.WebviewHeightRatio)
 			actionToYaml("msg", a.Msg)
-			actionToYaml("msg_processing_type,omitempty", a.MsgProcessingType)
 
-			if a.IsWebView {
-				action = append(action, yaml.MapItem{
-					Key:   "is_webview",
-					Value: a.IsWebView,
-				})
-			}
-			if a.MsgInChatWindow {
-				action = append(action, yaml.MapItem{
-					Key:   "msg_in_chat_window",
-					Value: a.MsgInChatWindow,
-				})
-			}
 			actions = append(actions, action)
 		}
 		temp = append(temp, yaml.MapItem{

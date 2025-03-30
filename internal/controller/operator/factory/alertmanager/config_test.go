@@ -1135,15 +1135,10 @@ templates: []
 											},
 											Actions: []vmv1beta1.RocketchatAttachmentAction{
 												{
-													Type:               "action",
-													Text:               "some text",
-													URL:                "https://example.com/action",
-													ImageURL:           "https://example.com/image",
-													IsWebView:          true,
-													WebviewHeightRatio: "0.5",
-													Msg:                "some message",
-													MsgInChatWindow:    true,
-													MsgProcessingType:  "issue",
+													Type: "action",
+													Text: "some text",
+													URL:  "https://example.com/action",
+													Msg:  "some message",
 												},
 											},
 										},
@@ -1179,12 +1174,7 @@ receivers:
     - type: action
       text,omitempty: some text
       url: https://example.com/action
-      image_url: https://example.com/image
-      webview_height_ratio: "0.5"
       msg: some message
-      msg_processing_type,omitempty: issue
-      is_webview: true
-      msg_in_chat_window: true
 templates: []
 `,
 		},

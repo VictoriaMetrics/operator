@@ -7628,15 +7628,7 @@ spec:
                                 RocketchatAttachmentAction defines message attachements
                                 https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
                               properties:
-                                image_url:
-                                  type: string
-                                is_webview:
-                                  type: boolean
                                 msg:
-                                  type: string
-                                msg_in_chat_window:
-                                  type: boolean
-                                msg_processing_type:
                                   type: string
                                 text:
                                   type: string
@@ -7644,11 +7636,6 @@ spec:
                                   type: string
                                 url:
                                   type: string
-                                webview_height_ratio:
-                                  type: string
-                              required:
-                              - is_webview
-                              - msg_in_chat_window
                               type: object
                             type: array
                           api_url:
@@ -7673,8 +7660,6 @@ spec:
                                   type: string
                                 value:
                                   type: string
-                              required:
-                              - short
                               type: object
                             type: array
                           http_config:

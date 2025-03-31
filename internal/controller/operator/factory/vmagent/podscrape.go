@@ -61,7 +61,8 @@ func generatePodScrapeConfig(
 		})
 	}
 
-	relabelings = addSelectorToRelabelingFor(relabelings, "pod", m.Spec.Selector)
+	skipRelabelSelectors := vmagentCR.Spec.EnableKubernetesAPISelectors
+	relabelings = addSelectorToRelabelingFor(relabelings, "pod", m.Spec.Selector, skipRelabelSelectors)
 
 	// Filter targets based on correct port for the endpoint.
 	switch {

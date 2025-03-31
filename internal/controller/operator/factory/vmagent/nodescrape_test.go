@@ -235,10 +235,6 @@ honor_labels: false
 scrape_interval: 30s
 metrics_path: /metrics
 relabel_configs:
-- action: keep
-  source_labels:
-  - __meta_kubernetes_node_label_zone
-  regex: eu-south-21
 - source_labels:
   - __meta_kubernetes_node_name
   target_label: node

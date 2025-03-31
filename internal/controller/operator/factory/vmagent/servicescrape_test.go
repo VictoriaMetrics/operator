@@ -979,7 +979,9 @@ bearer_token_file: /var/run/token
 							},
 						},
 						Selector: *metav1.SetAsLabelSelector(map[string]string{
-							"env": "dev",
+							"env":  "dev",
+							"dc":   "prod",
+							"team": "go",
 						}),
 					},
 				},
@@ -1012,17 +1014,13 @@ kubernetes_sd_configs:
   api_server: default-k8s-host
   selectors:
   - role: endpoints
-    label: env=dev
+    label: dc=prod,env=dev,team=go
   - role: pod
-    label: env=dev
+    label: dc=prod,env=dev,team=go
   - role: service
-    label: env=dev
+    label: dc=prod,env=dev,team=go
 honor_labels: false
 relabel_configs:
-- action: keep
-  source_labels:
-  - __meta_kubernetes_service_label_env
-  regex: dev
 - action: keep
   source_labels:
   - __meta_kubernetes_endpoint_port_name
@@ -1110,10 +1108,6 @@ kubernetes_sd_configs:
     label: env=dev
 honor_labels: false
 relabel_configs:
-- action: keep
-  source_labels:
-  - __meta_kubernetes_service_label_env
-  regex: dev
 - action: keep
   source_labels:
   - __meta_kubernetes_service_port_name

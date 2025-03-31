@@ -70,7 +70,8 @@ func generateProbeConfig(
 	}
 	if cr.Spec.Targets.Ingress != nil {
 
-		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", cr.Spec.Targets.Ingress.Selector)
+		skipRelabelSelectors := vmagentCR.Spec.EnableKubernetesAPISelectors
+		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", cr.Spec.Targets.Ingress.Selector, skipRelabelSelectors)
 		selectedNamespaces := getNamespacesFromNamespaceSelector(&cr.Spec.Targets.Ingress.NamespaceSelector, cr.Namespace, se.IgnoreNamespaceSelectors)
 
 		k8sSDOpts := generateK8SSDConfigOptions{

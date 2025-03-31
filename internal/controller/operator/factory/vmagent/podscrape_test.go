@@ -176,7 +176,7 @@ kubernetes_sd_configs:
 - role: pod
   selectors:
   - role: pod
-    label: label-1=value-1,label-2=value-2,label-3=value-3
+    label: label-1=value-1,label-2=value-2,label-3=value-3,some-label
 honor_labels: false
 metrics_path: /metric
 relabel_configs:
@@ -184,22 +184,6 @@ relabel_configs:
   source_labels:
   - __meta_kubernetes_pod_phase
   regex: (Failed|Succeeded)
-- action: keep
-  source_labels:
-  - __meta_kubernetes_pod_label_label_1
-  regex: value-1
-- action: keep
-  source_labels:
-  - __meta_kubernetes_pod_label_label_2
-  regex: value-2
-- action: keep
-  source_labels:
-  - __meta_kubernetes_pod_label_label_3
-  regex: value-3
-- action: keep
-  source_labels:
-  - __meta_kubernetes_pod_labelpresent_some_label
-  regex: "true"
 - action: keep
   source_labels:
   - __meta_kubernetes_pod_container_port_name
@@ -245,6 +229,15 @@ relabel_configs:
 									Key:      "some-label",
 									Operator: metav1.LabelSelectorOpExists,
 								},
+								{
+									Key:      "some-other",
+									Operator: metav1.LabelSelectorOpDoesNotExist,
+								},
+								{
+									Key:      "bad-labe",
+									Operator: metav1.LabelSelectorOpNotIn,
+									Values:   []string{"one", "two"},
+								},
 							},
 						},
 					},
@@ -262,7 +255,7 @@ kubernetes_sd_configs:
 - role: pod
   selectors:
   - role: pod
-    label: label-1=value-1
+    label: bad-labe notin (one,two),label-1=value-1,some-label,!some-other
 honor_labels: false
 metrics_path: /metric
 relabel_configs:
@@ -270,14 +263,6 @@ relabel_configs:
   source_labels:
   - __meta_kubernetes_pod_phase
   regex: (Failed|Succeeded)
-- action: keep
-  source_labels:
-  - __meta_kubernetes_pod_label_label_1
-  regex: value-1
-- action: keep
-  source_labels:
-  - __meta_kubernetes_pod_labelpresent_some_label
-  regex: "true"
 - action: keep
   source_labels:
   - __meta_kubernetes_pod_container_port_number

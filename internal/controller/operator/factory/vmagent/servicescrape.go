@@ -59,7 +59,8 @@ func generateServiceScrapeConfig(
 	// Filter targets by services selected by the scrape.
 
 	// Exact label matches.
-	relabelings = addSelectorToRelabelingFor(relabelings, "service", m.Spec.Selector)
+	skipRelabelSelectors := vmagentCR.Spec.EnableKubernetesAPISelectors
+	relabelings = addSelectorToRelabelingFor(relabelings, "service", m.Spec.Selector, skipRelabelSelectors)
 
 	// Filter targets based on correct port for the endpoint.
 	if ep.Port != "" {

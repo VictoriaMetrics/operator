@@ -290,10 +290,6 @@ kubernetes_sd_configs:
   - role: ingress
     label: ingress-class=ngin
 relabel_configs:
-- action: keep
-  source_labels:
-  - __meta_kubernetes_ingress_label_ingress_class
-  regex: ngin
 - source_labels:
   - __address__
   separator: ;

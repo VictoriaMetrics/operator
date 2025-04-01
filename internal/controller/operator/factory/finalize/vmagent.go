@@ -21,6 +21,9 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.
 	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, crd.PrefixedName(), crd.Namespace); err != nil {
 		return err
 	}
+	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.DaemonSet{}, crd.PrefixedName(), crd.Namespace); err != nil {
+		return err
+	}
 
 	if err := RemoveOrphanedDeployments(ctx, rclient, crd, nil); err != nil {
 		return err

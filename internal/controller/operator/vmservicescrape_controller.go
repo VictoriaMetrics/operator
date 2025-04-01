@@ -90,6 +90,9 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		currentVMagent := &vmagentItem
 		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
 		ctx := logger.AddToContext(ctx, reqLogger)
+		if currentVMagent.Spec.DaemonSetMode {
+			continue
+		}
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {

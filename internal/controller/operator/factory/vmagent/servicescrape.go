@@ -56,8 +56,6 @@ func generateServiceScrapeConfig(
 
 	var relabelings []yaml.MapSlice
 
-	// Filter targets by services selected by the scrape.
-
 	// Exact label matches.
 	skipRelabelSelectors := vmagentCR.Spec.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "service", m.Spec.Selector, skipRelabelSelectors)

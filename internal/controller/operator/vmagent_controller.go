@@ -74,6 +74,9 @@ func (r *VMAgentReconciler) Init(rclient client.Client, l logr.Logger, sc *runti
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterrolebindings,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=*
+// +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
+// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=*
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmagent", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, reqLogger)

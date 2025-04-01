@@ -1977,6 +1977,13 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              daemonSetMode:
+                description: |-
+                  DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
+                  Supports only VMPodScrape
+                  (available from v0.55.0).
+                  Cannot be used with statefulMode
+                type: boolean
               disableAutomountServiceAccountToken:
                 description: |-
                   DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).

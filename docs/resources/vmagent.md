@@ -786,7 +786,7 @@ Key features:
 * spread load for metrics collection.
 * provide resilience for single pod failure.
 
- In this scenario, VMAgent's pods will be launched on each Kubernetes Node. Operator configures VMAgent to apply `spec.nodeName` pod [field selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/#list-of-supported-fields) for Kubernets API requests.
+ In this scenario, VMAgent's pods will be launched on each Kubernetes Node. Operator configures VMAgent to apply `spec.nodeName` pod [field selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/#list-of-supported-fields) for Kubernetes API requests.
 This field selector is only supported by `role: pod`, which could be used only with `VMPodScrape`. It limits scope of objects selectable by VMAgent.
 An example of configuration:
 ```yaml

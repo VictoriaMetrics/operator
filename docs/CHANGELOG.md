@@ -37,7 +37,8 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly track immutable fields changes for `StatefulSet`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
 * BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): properly propagate `podMetadata` to `requestsLoadBalancer` `Deployment`. See [this PR](https://github.com/VictoriaMetrics/operator/pull/1275/) for details. Thanks to the @solidDoWant
 * BUGFIX: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): properly sort `VMUsers` at generated configuration. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1292) for details.
-* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly apply `remoteWriteSettings.maxDiskUsagePerURL` global setting. Previously, if `remoteWrite.MaxDiskUsage` was set to 1 remoteWrite and others don't have this setting, default value was used instead of remoteWriteSettings. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1256) for details.
+* BUGFIX: [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): properly add `vmProberSpec.scheme` to the generated configuration. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1294) for details.
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly apply `remoteWriteSettings.maxDiskUsagePerURL` global setting. Previously, if `remoteWrite.MaxDiskUsage` was set to 1 remoteWrite and others don't have this setting, default value was used instead of remoteWriteSettings. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1256) for details.
 
 ## [v0.54.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.54.1)
 

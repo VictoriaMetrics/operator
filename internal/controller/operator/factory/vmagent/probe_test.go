@@ -37,8 +37,12 @@ func Test_generateProbeConfig(t *testing.T) {
 						Name:      "static-probe",
 					},
 					Spec: vmv1beta1.VMProbeSpec{
-						Module:       "http",
-						VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox-monitor:9115"},
+						Module: "http",
+						VMProberSpec: vmv1beta1.VMProberSpec{
+							URL:    "blackbox-monitor:9115",
+							Scheme: "https",
+							Path:   "/probe2",
+						},
 						Targets: vmv1beta1.VMProbeTargets{
 							StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
 								Targets: []string{"host-1", "host-2"},
@@ -51,10 +55,11 @@ func Test_generateProbeConfig(t *testing.T) {
 			},
 			want: `job_name: probe/default/static-probe/0
 honor_labels: false
-metrics_path: /probe
+metrics_path: /probe2
 params:
   module:
   - http
+scheme: https
 static_configs:
 - targets:
   - host-1

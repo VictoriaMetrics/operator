@@ -36,6 +36,9 @@ func generateProbeConfig(
 		}
 		cr.Spec.Params["module"] = []string{cr.Spec.Module}
 	}
+	if len(cr.Spec.VMProberSpec.Scheme) > 0 {
+		cr.Spec.EndpointScrapeParams.Scheme = cr.Spec.VMProberSpec.Scheme
+	}
 
 	setScrapeIntervalToWithLimit(ctx, &cr.Spec.EndpointScrapeParams, vmagentCR)
 

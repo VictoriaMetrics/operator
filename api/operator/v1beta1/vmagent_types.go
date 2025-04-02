@@ -281,6 +281,12 @@ type VMAgentSpec struct {
 	// MaxScrapeInterval allows limiting maximum scrape interval for VMServiceScrape, VMPodScrape and other scrapes
 	// If interval is higher than defined limit, `maxScrapeInterval` will be used.
 	MaxScrapeInterval *string `json:"maxScrapeInterval,omitempty"`
+	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
+	// Supports only VMPodScrape
+	// (available from v0.55.0).
+	// Cannot be used with statefulMode
+	// +optional
+	DaemonSetMode bool `json:"daemonSetMode,omitempty"`
 	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
 	// it allows using persistent storage for vmagent's persistentQueue
 	// +optional
@@ -359,7 +365,17 @@ func (cr *VMAgent) Validate() error {
 			}
 		}
 	}
-
+	if cr.Spec.DaemonSetMode && cr.Spec.StatefulMode {
+		return fmt.Errorf("daemonSetMode and statefulMode cannot be used in the same time")
+	}
+	if cr.Spec.DaemonSetMode {
+		if cr.Spec.PodDisruptionBudget != nil {
+			return fmt.Errorf("podDisruptionBudget cannot be used with daemonSetMode")
+		}
+		if cr.Spec.EnableKubernetesAPISelectors {
+			return fmt.Errorf("enableKubernetesAPISelectors cannot be used with daemonSetMode")
+		}
+	}
 	return nil
 }
 

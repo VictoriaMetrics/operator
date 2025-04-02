@@ -49,6 +49,10 @@ rules:
   resources:
   - deployments
   - deployments/finalizers
+  - statefulsets
+  - statefulsets/finalizers
+  - daemonsets
+  - daemonsets/finalizers
   - replicasets
   - statefulsets
   - statefulsets/finalizers

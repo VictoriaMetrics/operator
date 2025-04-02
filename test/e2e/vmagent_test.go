@@ -560,6 +560,42 @@ var _ = Describe("test  vmagent Controller", func() {
 					},
 				},
 			),
+			Entry("by transition into daemonSet and back", "daemonset-transition",
+				&v1beta1vm.VMAgent{Spec: v1beta1vm.VMAgentSpec{
+					CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
+					RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+						{URL: "http://some-vm-single:8428"},
+					},
+				},
+				},
+				testStep{
+					modify: func(cr *v1beta1vm.VMAgent) { cr.Spec.DaemonSetMode = true },
+					verify: func(cr *v1beta1vm.VMAgent) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &v1beta1vm.VMPodScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &v1beta1vm.VMServiceScrape{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+					},
+				},
+				testStep{
+					modify: func(cr *v1beta1vm.VMAgent) {
+						cr.Spec.StatefulMode = true
+						cr.Spec.DaemonSetMode = false
+					},
+					verify: func(cr *v1beta1vm.VMAgent) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &v1beta1vm.VMServiceScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &v1beta1vm.VMPodScrape{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+
+					},
+				},
+			),
 		)
 	})
 })

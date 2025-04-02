@@ -442,6 +442,14 @@ spec:
           - apps
           resources:
           - deployments
+          - deployments/finalizers
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - daemonsets
+          - daemonsets/finalizers
           verbs:
           - '*'
         - apiGroups:

@@ -1574,6 +1574,130 @@ scrape_configs:
       key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
 `,
 		},
+		{
+			name: "daemonset mode",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "per-node",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						DaemonSetMode:      true,
+						SelectAllByDefault: true,
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default-2",
+					},
+				},
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "system",
+					},
+				},
+				&vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "svc-1",
+						Namespace: "default-1",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "http",
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{
+						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+							{
+								Port: ptr.To("web"),
+							},
+							{
+								PortNumber: ptr.To(int32(8085)),
+							},
+						},
+					},
+				},
+			},
+			wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/per-node
+scrape_configs:
+- job_name: podScrape/default/pod-1/0
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+    selectors:
+    - role: pod
+      field: spec.nodeName=%{KUBE_NODE_NAME}
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: web
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/pod-1
+  - target_label: endpoint
+    replacement: web
+- job_name: podScrape/default/pod-1/1
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+    selectors:
+    - role: pod
+      field: spec.nodeName=%{KUBE_NODE_NAME}
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_number
+    regex: 8085
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/pod-1
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

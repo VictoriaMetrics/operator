@@ -37,6 +37,9 @@ func generatePodScrapeConfig(
 		role:               kubernetesSDRolePod,
 		attachMetadata:     &ep.AttachMetadata,
 	}
+	if vmagentCR.Spec.DaemonSetMode {
+		k8sSDOpts.mustUseNodeSelector = true
+	}
 	cfg = append(cfg, generateK8SSDConfig(ssCache, k8sSDOpts))
 
 	// set defaults

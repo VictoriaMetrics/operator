@@ -1373,12 +1373,13 @@ func getNamespacesFromNamespaceSelector(nsSelector *vmv1beta1.NamespaceSelector,
 }
 
 type generateK8SSDConfigOptions struct {
-	namespaces         []string
-	apiServerConfig    *vmv1beta1.APIServerConfig
-	role               string
-	attachMetadata     *vmv1beta1.AttachMetadata
-	shouldAddSelectors bool
-	selectors          metav1.LabelSelector
+	namespaces          []string
+	apiServerConfig     *vmv1beta1.APIServerConfig
+	role                string
+	attachMetadata      *vmv1beta1.AttachMetadata
+	shouldAddSelectors  bool
+	selectors           metav1.LabelSelector
+	mustUseNodeSelector bool
 }
 
 func generateK8SSDConfig(ssCache *scrapesSecretsCache, opts generateK8SSDConfigOptions) yaml.MapItem {
@@ -1436,9 +1437,23 @@ func generateK8SSDConfig(ssCache *scrapesSecretsCache, opts generateK8SSDConfigO
 		k8sSDConfig = addTLStoYaml(k8sSDConfig, "", apiserverConfig.TLSConfig, false)
 	}
 
+	var selectors []yaml.MapSlice
+
 	isEmptySelectors := len(opts.selectors.MatchLabels)+len(opts.selectors.MatchExpressions) == 0
-	if opts.shouldAddSelectors && !isEmptySelectors {
-		var selectors []yaml.MapSlice
+	switch {
+	case opts.mustUseNodeSelector:
+		var selector yaml.MapSlice
+		selector = append(selector, yaml.MapItem{
+			Key:   "role",
+			Value: kubernetesSDRolePod,
+		})
+		selector = append(selector, yaml.MapItem{
+			Key:   "field",
+			Value: "spec.nodeName=" + kubeNodeEnvTemplate,
+		})
+		selectors = append(selectors, selector)
+
+	case opts.shouldAddSelectors && !isEmptySelectors:
 		var selector yaml.MapSlice
 		selector = append(selector, yaml.MapItem{
 			Key:   "role",
@@ -1470,12 +1485,12 @@ func generateK8SSDConfig(ssCache *scrapesSecretsCache, opts generateK8SSDConfigO
 				})
 			}
 		}
-
+	}
+	if len(selectors) > 0 {
 		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
 			Key:   "selectors",
 			Value: selectors,
 		})
-
 	}
 
 	return yaml.MapItem{

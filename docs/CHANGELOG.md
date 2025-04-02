@@ -13,6 +13,14 @@ aliases:
 
 ## tip
 
+## [v0.55.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.55.0)
+
+**Release date:** 02 Apr 2025
+
+![AppVersion: v1.114.0](https://img.shields.io/badge/v1.114.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fchangelog%23v11400)
+![AppVersion: v1.17.0](https://img.shields.io/badge/v1.17.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v170)
+
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.114.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.114.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): make project layout compatible with `[kubebuilder v4](https://book.kubebuilder.io/migration/v3vsv4)`
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default VLogs  v1.17.0 version

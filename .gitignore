@@ -5,7 +5,7 @@ Dockerfile.cross
 /bin/
 /build*
 /bundle*
-release*
+release
 operator.zip
 coverage.txt
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode

@@ -227,6 +227,7 @@ olm: operator-sdk opm yq docs
 		--channels=beta --default-channel=beta --output-dir=bundle/$(VERSION)
 	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
 	cp config/manifests/ci.yaml bundle/
+	cp config/manifests/release-config.yaml bundle/$(VERSION)/
 	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO):$(TAG)"' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.18"' \

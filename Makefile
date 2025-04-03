@@ -105,16 +105,14 @@ api-gen: client-gen lister-gen informer-gen
 		--go-header-file hack/boilerplate.go.txt
 
 .PHONY: docs
-docs: envconfig-docs crd-ref-docs manifests
+docs: build crd-ref-docs manifests
 	$(CRD_REF_DOCS) --config ./docs/config.yaml \
 		--templates-dir ./docs/templates/api \
 		--renderer markdown
 	mv out.md docs/api.md
-	$(ENVCONFIG_DOCS) \
-		--header docs/templates/vars/vars.tpl \
-		--input internal/config/config.go \
-		--output docs/vars.md \
-		--truncate=false
+	bin/$(REPO) \
+		-printDefaults \
+		-printFormat markdown > docs/env.md
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -148,7 +146,7 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 ##@ Build
 
 .PHONY: build
-build: docs generate fmt vet ## Build manager binary.
+build: generate fmt vet ## Build manager binary.
 	go build \
 		-ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=operator-${BUILDINFO}'"\
 		-o bin/$(REPO) $(ROOT)/
@@ -359,7 +357,6 @@ KIND = $(LOCALBIN)/kind-$(KIND_VERSION)
 OPERATOR_SDK = $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
 OPM = $(LOCALBIN)/opm-$(OPM_VERSION)
 YQ = $(LOCALBIN)/yq-$(YQ_VERSION)
-ENVCONFIG_DOCS = $(LOCALBIN)/envconfig-docs-$(ENVCONFIG_DOCS_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 GINKGO_BIN ?= $(LOCALBIN)/ginkgo-$(GINKGO_VERSION)
 GINKGO_VERSION ?= v2.23.0
@@ -376,7 +373,6 @@ OPERATOR_SDK_VERSION ?= v1.39.1
 OPM_VERSION ?= v1.51.0
 YQ_VERSION ?= v4.45.1
 
-ENVCONFIG_DOCS_VERSION ?= 746866a6303f8e7e610d39389aa951b3c0d97123
 CRD_REF_DOCS_VERSION ?= latest
 
 .PHONY: kustomize
@@ -390,12 +386,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
 
 .PHONY: install-tools
-install-tools: envconfig-docs crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest ginkgo
-
-.PHONY: envconfig-docs
-envconfig-docs: $(ENVCONFIG_DOCS)
-$(ENVCONFIG_DOCS): $(LOCALBIN)
-	$(call go-install-tool,$(ENVCONFIG_DOCS),github.com/f41gh7/envconfig-docs,$(ENVCONFIG_DOCS_VERSION))
+install-tools: crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest ginkgo
 
 .PHONY: crd-ref-docs
 crd-ref-docs: $(CRD_REF_DOCS)

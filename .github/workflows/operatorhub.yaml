@@ -69,28 +69,21 @@ jobs:
           export OLD_ENTRY="victoriametrics-operator.v${OLD_VERSION}"
 
           export NEW_VERSION=$(ls bundle | head -1)
-          export NEW_ENTRY="victoriametrics-operator.v${NEW_VERSION}"
-
-          export MANIFEST_PATH=bundle/${NEW_VERSION}/manifests/victoriametrics-operator.clusterserviceversion.yaml
-          export BUNDLE_IMAGE="quay.io/community-operator-pipeline-prod/victoriametrics-operator:${NEW_VERSION}"
 
           if [ ! -z $OLD_VERSION ]; then
+            export MANIFEST_PATH=bundle/${NEW_VERSION}/manifests/victoriametrics-operator.clusterserviceversion.yaml
             yq -i '.spec.replaces = "victoriametrics-operator.v" + strenv(OLD_VERSION)' $MANIFEST_PATH
           fi
 
           mv bundle/* ${OPERATOR_DIR}/
           if [ -f ${OPERATOR_DIR}/Makefile ]; then
             yq -i 'del(.updateGraph)' ${OPERATOR_DIR}/ci.yaml
-            cd ${OPERATOR_DIR}
-            find catalog-templates \
-              -path "*.yaml" \
-              -exec yq -i -I2 '.entries |= .[] |= select(. | has("entries")).entries += [{"name": strenv(NEW_ENTRY), "replaces": strenv(OLD_ENTRY)}]' {} \;
-            find catalog-templates \
-              -path "*.yaml" \
-              -exec yq -i -I2 '.entries |= . += [{"image": strenv(BUNDLE_IMAGE), "schema": "olm.bundle"}]' {} \;
-            make catalogs
+            if [ ! -z $OLD_VERSION ]; then
+              yq -i -I2 '.catalog_templates.[].replaces = strenv(OLD_ENTRY)' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
+            fi
           else
             yq -i 'del(.fbc)' ${OPERATOR_DIR}/ci.yaml
+            rm -f ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
           fi
           echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 

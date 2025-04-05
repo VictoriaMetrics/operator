@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): support license for requests load balancer.
+
 ## [v0.55.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.55.0)
 
 **Release date:** 02 Apr 2025

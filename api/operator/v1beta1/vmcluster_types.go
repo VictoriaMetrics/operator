@@ -1051,6 +1051,11 @@ type VMAuthLoadBalancerSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// License allows to configure license key to be used for enterprise features.
+	// Using license key is supported starting from VictoriaMetrics v1.94.0.
+	// See [here](https://docs.victoriametrics.com/enterprise)
+	// +optional
+	License *License `json:"license,omitempty"`
 }
 
 // ProbePath returns path for probe requests

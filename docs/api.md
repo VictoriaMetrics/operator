@@ -1316,6 +1316,7 @@ See [here](https://docs.victoriametrics.com/enterprise)
 _Appears in:_
 - [VMAgentSpec](#vmagentspec)
 - [VMAlertSpec](#vmalertspec)
+- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
 - [VMAuthSpec](#vmauthspec)
 - [VMClusterSpec](#vmclusterspec)
 - [VMSingleSpec](#vmsinglespec)
@@ -3330,6 +3331,7 @@ _Appears in:_
 | <a href="#vmauthloadbalancerspec-image"><code id="vmauthloadbalancerspec-image">image</code></a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
 | <a href="#vmauthloadbalancerspec-imagepullsecrets"><code id="vmauthloadbalancerspec-imagepullsecrets">imagePullSecrets</code></a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
 | <a href="#vmauthloadbalancerspec-initcontainers"><code id="vmauthloadbalancerspec-initcontainers">initContainers</code></a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
+| <a href="#vmauthloadbalancerspec-license"><code id="vmauthloadbalancerspec-license">license</code></a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/enterprise) |
 | <a href="#vmauthloadbalancerspec-logformat"><code id="vmauthloadbalancerspec-logformat">logFormat</code></a><br/>_string_ | _(Optional)_<br/>LogFormat for vmauth<br />default or json |
 | <a href="#vmauthloadbalancerspec-loglevel"><code id="vmauthloadbalancerspec-loglevel">logLevel</code></a><br/>_string_ | _(Optional)_<br/>LogLevel for vmauth container. |
 | <a href="#vmauthloadbalancerspec-minreadyseconds"><code id="vmauthloadbalancerspec-minreadyseconds">minReadySeconds</code></a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |

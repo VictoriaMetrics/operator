@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * [FEATURE]: [operator](https://docs.victoriametrics.com/operator): support `VM_METRICS_VERSION` and `VM_LOGS_VERSION` env variables as a source for all VM and VL related CR image versions
+* FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): support `InternalPort`, which defines `-httpInternalListenAddr` flag and overrides default probes. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1302).
 
 ## [v0.55.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.55.0)
 

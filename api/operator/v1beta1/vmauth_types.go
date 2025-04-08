@@ -505,6 +505,9 @@ func (cr *VMAuth) ProbeScheme() string {
 }
 
 func (cr *VMAuth) ProbePort() string {
+	if len(cr.Spec.InternalPort) > 0 {
+		return cr.Spec.InternalPort
+	}
 	return cr.Spec.Port
 }
 

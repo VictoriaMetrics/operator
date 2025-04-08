@@ -324,6 +324,9 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              internalPort:
+                description: InternalPort listen address
+                type: string
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object
@@ -2369,6 +2372,9 @@ spec:
                     description: OpenTSDBPort for tcp and udp listen
                     type: string
                 type: object
+              internalPort:
+                description: InternalPort listen address
+                type: string
               license:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
@@ -11393,6 +11399,9 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              internalPort:
+                description: InternalPort listen address
+                type: string
               listenLocal:
                 description: |-
                   ListenLocal makes the VMAlertmanager server listen on loopback, so that it
@@ -13193,6 +13202,9 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              internalPort:
+                description: InternalPort listen address
+                type: string
               license:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
@@ -15308,6 +15320,9 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              internalPort:
+                description: InternalPort listen address
+                type: string
               license:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
@@ -16861,6 +16876,9 @@ spec:
                         description: OpenTSDBPort for tcp and udp listen
                         type: string
                     type: object
+                  internalPort:
+                    description: InternalPort listen address
+                    type: string
                   livenessProbe:
                     description: LivenessProbe that will be added CRD pod
                     type: object
@@ -18056,6 +18074,9 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     type: array
+                  internalPort:
+                    description: InternalPort listen address
+                    type: string
                   livenessProbe:
                     description: LivenessProbe that will be added CRD pod
                     type: object
@@ -19725,6 +19746,9 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     type: array
+                  internalPort:
+                    description: InternalPort listen address
+                    type: string
                   livenessProbe:
                     description: LivenessProbe that will be added CRD pod
                     type: object
@@ -28707,6 +28731,9 @@ spec:
                     description: OpenTSDBPort for tcp and udp listen
                     type: string
                 type: object
+              internalPort:
+                description: InternalPort listen address
+                type: string
               license:
                 description: |-
                   License allows to configure license key to be used for enterprise features.

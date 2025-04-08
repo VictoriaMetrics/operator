@@ -1142,6 +1142,9 @@ type CommonDefaultableParams struct {
 	// Port listen address
 	// +optional
 	Port string `json:"port,omitempty"`
+	// InternalPort listen address
+	// +optional
+	InternalPort string `json:"internalPort,omitempty"`
 	// UseStrictSecurity enables strict security mode for component
 	// it restricts disk writes access
 	// uses non-root user out of the box

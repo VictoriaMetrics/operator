@@ -218,6 +218,56 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 				),
+				Entry("by switching to internal listen port", "vm-internal-listen",
+					&v1beta1vm.VMAuth{
+						Spec: v1beta1vm.VMAuthSpec{
+							SelectAllByDefault: true,
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+								UseDefaultResources: ptr.To(false),
+							},
+							CommonConfigReloaderParams: v1beta1vm.CommonConfigReloaderParams{
+								UseVMConfigReloader: ptr.To(true),
+							},
+
+							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+								{
+									URLPrefix: []string{"http://localhost:8490"},
+									SrcPaths:  []string{"/.*"},
+								},
+							},
+						},
+					},
+					testStep{
+						modify: func(cr *v1beta1vm.VMAuth) {
+							cr.Spec.InternalListenPort = "8426"
+						},
+						verify: func(cr *v1beta1vm.VMAuth) {
+							Eventually(func() string {
+								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+							pod := mustGetFirstPod(k8sClient, cr.Namespace, cr.SelectorLabels())
+							Expect(pod.Spec.Containers).To(HaveLen(2))
+							ac := pod.Spec.Containers[0]
+							Expect(ac.Ports).To(HaveLen(2))
+							Expect(ac.Ports[1].ContainerPort).To(Equal(int32(8426)))
+							nsn := types.NamespacedName{
+								Namespace: cr.Namespace,
+								Name:      cr.PrefixedName(),
+							}
+							var svc corev1.Service
+							Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
+							Expect(svc.Spec.Ports).To(HaveLen(2))
+							var vmss v1beta1vm.VMServiceScrape
+							Expect(k8sClient.Get(ctx, nsn, &vmss)).To(Succeed())
+							Expect(vmss.Spec.Endpoints).To(HaveLen(1))
+							ep := vmss.Spec.Endpoints[0]
+							Expect(ep.Port).To(Equal("internal"))
+						},
+					},
+				),
 				Entry("by removing podDistruptionBudget and keeping exist ingress", "vm-keep-ingress-change-pdb",
 					&v1beta1vm.VMAuth{
 						Spec: v1beta1vm.VMAuthSpec{

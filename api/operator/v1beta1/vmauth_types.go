@@ -114,6 +114,12 @@ type VMAuthSpec struct {
 	CommonDefaultableParams           `json:",inline,omitempty" yaml:",inline"`
 	CommonConfigReloaderParams        `json:",inline,omitempty" yaml:",inline"`
 	CommonApplicationDeploymentParams `json:",inline,omitempty" yaml:",inline"`
+	// InternalListenPort instructs vmauth to serve internal routes at given port
+	// available from v0.56.0 operator
+	// and v1.111.0 vmauth version
+	// related doc https://docs.victoriametrics.com/vmauth/#security
+	// +optional
+	InternalListenPort string `json:"internalListenPort,omitempty"`
 }
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
@@ -505,8 +511,8 @@ func (cr *VMAuth) ProbeScheme() string {
 }
 
 func (cr *VMAuth) ProbePort() string {
-	if len(cr.Spec.InternalPort) > 0 {
-		return cr.Spec.InternalPort
+	if len(cr.Spec.InternalListenPort) > 0 {
+		return cr.Spec.InternalListenPort
 	}
 	return cr.Spec.Port
 }

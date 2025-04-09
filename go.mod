@@ -7,6 +7,7 @@ require (
 	github.com/VictoriaMetrics/metrics v1.35.2
 	github.com/VictoriaMetrics/metricsql v0.84.1
 	github.com/VictoriaMetrics/operator/api v0.51.3
+	github.com/caarlos0/env/v11 v11.3.1
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v1.4.2
@@ -14,7 +15,6 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-version v1.7.0
-	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/onsi/ginkgo/v2 v2.23.0
 	github.com/onsi/gomega v1.36.2
 	github.com/pires/go-proxyproto v0.8.0

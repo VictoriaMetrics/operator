@@ -588,7 +588,7 @@ func addVMServiceScrapeDefaults(objI any) {
 		return
 	}
 	c := getCfg()
-	if cr.Spec.DiscoveryRole == "" && c.VMServiceScrapeDefault.EnforceEndpointslices {
+	if cr.Spec.DiscoveryRole == "" && c.VMServiceScrapeDefault.EnforceEndpointSlices {
 		cr.Spec.DiscoveryRole = "endpointslices"
 	}
 }

@@ -26,7 +26,7 @@ var (
 	opNamespace   []string
 	initNamespace sync.Once
 	defaultEnvs   = map[string]string{
-		"VM_METRICS_VERSION": "v1.114.0",
+		"VM_METRICS_VERSION": "v1.115.0",
 		"VM_LOGS_VERSION":    "v1.17.0",
 	}
 )

@@ -1024,7 +1024,7 @@ scrape_configs:
 				},
 				c: func() *config.BaseOperatorConf {
 					cfg := *config.MustGetBaseConfig()
-					cfg.VMServiceScrapeDefault.EnforceEndpointslices = true
+					cfg.VMServiceScrapeDefault.EnforceEndpointSlices = true
 					return &cfg
 				}(),
 			},

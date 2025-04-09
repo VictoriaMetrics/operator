@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* [FEATURE]: [operator](https://docs.victoriametrics.com/operator): support `VM_METRICS_VERSION` and `VM_LOGS_VERSION` env variables as a source for all VM and VL related CR image versions
+
 ## [v0.55.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.55.0)
 
 **Release date:** 02 Apr 2025
@@ -25,12 +27,12 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): make project layout compatible with `[kubebuilder v4](https://book.kubebuilder.io/migration/v3vsv4)`
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default VLogs  v1.17.0 version
 
-* FEATURE: [operator](https://docs.victoriametrics.com/operator: add `tls_config` and `proxy_url` fields to the `oauth2` scrape target configurations. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1276) for details
-* FEATURE: [operator](https://docs.victoriametrics.com/operator: add `extraEnvsFrom` field to all applications, which defines source for env variables as Secret or ConfigMap. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1270) for details.
-* FEATURE: [operator](https://docs.victoriametrics.com/operator: set `publishNotReadyAddresses: true` to the `vmstorage`, `vmselect`, `vmalertmanager` services. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1211) for details.
-* FEATURE: [operator](https://docs.victoriametrics.com/operator: log fields changes diff for `Deployment`, `StatefulSet`, `Service`, `PDB`, `HPA` and `VMServiceScrape` during reconcile process. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
-* FEATURE: [operator](https://docs.victoriametrics.com/operator: add global env variables `VM_CONFIG_RELOADER_LIMIT_CPU` and `VM_CONFIG_RELOADER_LIMIT_MEMORY` with `unlimited` as default value. It controls global limits for config-reloader containers. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details.
-* FEATURE: [operator](https://docs.victoriametrics.com/operator: add global env variables `VM_CONFIG_RELOADER_REQUEST_CPU` and `VM_CONFIG_RELOADER_REQUEST_MEMORY` with empty as default value. It controls global requests for config-reloader containers. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details. All per resource config-reloader requests env variables are now deprecated.
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): add `tls_config` and `proxy_url` fields to the `oauth2` scrape target configurations. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1276) for details
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): add `extraEnvsFrom` field to all applications, which defines source for env variables as Secret or ConfigMap. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1270) for details.
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): set `publishNotReadyAddresses: true` to the `vmstorage`, `vmselect`, `vmalertmanager` services. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1211) for details.
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): log fields changes diff for `Deployment`, `StatefulSet`, `Service`, `PDB`, `HPA` and `VMServiceScrape` during reconcile process. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1271) for details.
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): add global env variables `VM_CONFIG_RELOADER_LIMIT_CPU` and `VM_CONFIG_RELOADER_LIMIT_MEMORY` with `unlimited` as default value. It controls global limits for config-reloader containers. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details.
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): add global env variables `VM_CONFIG_RELOADER_REQUEST_CPU` and `VM_CONFIG_RELOADER_REQUEST_MEMORY` with empty as default value. It controls global requests for config-reloader containers. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details. All per resource config-reloader requests env variables are now deprecated.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): introduce `daemonSetMode` as a beta feature. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1103) and this [docs](https://docs.victoriametrics.com/operator/resources/vmagent/#daemonSet-mode) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce Kubernetes API server load on large scale by removing `selectors` from `VMPodscrape` `kubernetes_sd_configs`. Add new field `VMAgent.spec.enableKubernetesAPISelectors`, which restores original behaviour. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): allow to define `remoteWrite.MaxDiskUsage` as integer and adds validation to it. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1256) for details.

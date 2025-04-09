@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -227,10 +228,10 @@ type Route struct {
 	// Child routes.
 	// CRD schema doesn't support self-referential types for now (see https://github.com/kubernetes/kubernetes/issues/62872).
 	// We expose below RawRoutes as an alternative type to circumvent the limitation, and use Routes in code.
-	Routes []*SubRoute `json:"-,omitempty"`
+	Routes []*SubRoute `json:"-,omitempty" yaml:"-,omitempty"`
 	// Child routes.
 	// https://prometheus.io/docs/alerting/latest/configuration/#route
-	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty"`
+	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty" yaml:"routes,omitempty"`
 	// MuteTimeIntervals is a list of interval names that will mute matched alert
 	// +optional
 	MuteTimeIntervals []string `json:"mute_time_intervals,omitempty" yaml:"mute_time_intervals,omitempty"`
@@ -254,8 +255,13 @@ func parseNestedRoutes(src *Route) error {
 		}
 	}
 	for _, nestedRoute := range src.RawRoutes {
+		if len(nestedRoute.Raw) == 0 {
+			return fmt.Errorf("unexpected empty route")
+		}
 		var subRoute Route
-		if err := json.Unmarshal(nestedRoute.Raw, &subRoute); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(nestedRoute.Raw))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&subRoute); err != nil {
 			return fmt.Errorf("cannot parse json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
 		}
 		if err := parseNestedRoutes(&subRoute); err != nil {
@@ -1205,9 +1211,9 @@ func (r *VMAlertmanagerConfig) AsKey() string {
 	return fmt.Sprintf("%s/%s", r.Namespace, r.Name)
 }
 
-// validateAlertmanagerConfigSpec verifies that provided raw alertmanger configuration is logically valid
+// ValidateAlertmanagerConfigSpec verifies that provided raw alertmanger configuration is logically valid
 // according to alertmanager config parser
-func validateAlertmanagerConfigSpec(srcYAML []byte) error {
+func ValidateAlertmanagerConfigSpec(srcYAML []byte) error {
 	var cfgForTest amcfg.Config
 	if err := yaml.UnmarshalStrict(srcYAML, &cfgForTest); err != nil {
 		return err

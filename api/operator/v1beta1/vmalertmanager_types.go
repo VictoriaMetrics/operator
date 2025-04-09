@@ -506,7 +506,7 @@ func (cr *VMAlertmanager) Validate() error {
 	}
 
 	if len(cr.Spec.ConfigRawYaml) > 0 {
-		if err := validateAlertmanagerConfigSpec([]byte(cr.Spec.ConfigRawYaml)); err != nil {
+		if err := ValidateAlertmanagerConfigSpec([]byte(cr.Spec.ConfigRawYaml)); err != nil {
 			return fmt.Errorf("bad config syntax at spec.configRawYaml: %w", err)
 		}
 	}

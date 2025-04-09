@@ -15308,6 +15308,13 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              internalListenPort:
+                description: |-
+                  InternalListenPort instructs vmauth to serve internal routes at given port
+                  available from v0.56.0 operator
+                  and v1.111.0 vmauth version
+                  related doc https://docs.victoriametrics.com/vmauth/#security
+                type: string
               license:
                 description: |-
                   License allows to configure license key to be used for enterprise features.

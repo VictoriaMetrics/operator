@@ -875,6 +875,19 @@ type TLSConfig struct {
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty" yaml:"insecure_skip_verify,omitempty"`
 }
 
+// UnmarshalJSON implements json.Unmarshaller interface
+func (c *TLSConfig) UnmarshalJSON(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+
+	type pc TLSConfig
+	if err := decoder.Decode((*pc)(c)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
 	if c.CAFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.CAFile))

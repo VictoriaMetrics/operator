@@ -228,7 +228,7 @@ type Route struct {
 	// Child routes.
 	// CRD schema doesn't support self-referential types for now (see https://github.com/kubernetes/kubernetes/issues/62872).
 	// We expose below RawRoutes as an alternative type to circumvent the limitation, and use Routes in code.
-	Routes []*SubRoute `json:"-,omitempty" yaml:"-,omitempty"`
+	Routes []*SubRoute `json:"-" yaml:"-"`
 	// Child routes.
 	// https://prometheus.io/docs/alerting/latest/configuration/#route
 	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty" yaml:"routes,omitempty"`
@@ -1163,6 +1163,19 @@ type HTTPConfig struct {
 	// OAuth2 client credentials used to fetch a token for the targets.
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaller interface
+func (hc *HTTPConfig) UnmarshalJSON(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+
+	type phc HTTPConfig
+	if err := decoder.Decode((*phc)(hc)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (hc *HTTPConfig) validate() error {

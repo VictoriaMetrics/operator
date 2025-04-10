@@ -15,9 +15,10 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
 		}
 		if len(amc.Spec.ParsingError) > 0 {
 			errS := amc.Spec.ParsingError
-			if !strings.Contains(errS, expectedReason) {
-				t.Fatalf("unexpected parsing error: %s", amc.Spec.ParsingError)
+			if strings.Contains(errS, expectedReason) {
+				return
 			}
+			t.Fatalf("unexpected parsing error: %s", amc.Spec.ParsingError)
 		}
 		err := amc.Validate()
 		if err == nil {
@@ -362,6 +363,42 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
         }
     }
 }`, `receiver at idx=0 is invalid: at idx=0 for msteamsv2_configs of webhook_url or webhook_url_secret must be configured`)
+
+	f(`{
+    "apiVersion": "v1",
+    "kind": "VMAlertmanagerConfig",
+    "metadata": {
+        "name": "teamsv2"
+    },
+    "spec": {
+        "receivers": [
+            {
+                "name": "teams",
+                "msteamsv2_configs": [
+                    {
+                        "http_config": {
+                            "authorization": {
+                                "credentials": {
+                                    "name": "jira-access",
+                                    "key": "DC_KEY"
+                                }
+                            },
+                            "tls_config": {
+                                "insecure_skip_verify": true
+                             }
+                        },
+                        "title": "some",
+                        "text": "alert notification",
+                        "webhook_url": "http://example.com"
+                    }
+                ]
+            }
+        ],
+        "route": {
+            "receiver": "teams"
+        }
+    }
+}`, `unknown field "insecure_skip_verify"`)
 }
 
 func TestValidateVMAlertmanagerConfigOk(t *testing.T) {

@@ -457,6 +457,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	// e.g. namespace_secret_name_secret_key
 	tlsAssets := make(map[string]string)
 
+	var configSourceName string
 	var alertmananagerConfig []byte
 	switch {
 	// fetch content from user defined secret
@@ -472,11 +473,12 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 				return fmt.Errorf("cannot fetch secret content for alertmanager config secret, err: %w", err)
 			}
 			alertmananagerConfig = secretContent
-
+			configSourceName = "configSecret ref: " + cr.Spec.ConfigSecret
 		}
 		// use in-line config
 	case cr.Spec.ConfigRawYaml != "":
 		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
+		configSourceName = "inline configuration at configRawYaml"
 	}
 	mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, tlsAssets)
 	if err != nil {
@@ -486,6 +488,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	// apply default config to be able just start alertmanager
 	if len(alertmananagerConfig) == 0 {
 		alertmananagerConfig = []byte(defaultAMConfig)
+		configSourceName = "default config"
 	}
 
 	webCfg, err := buildWebServerConfigYAML(ctx, rclient, cr, tlsAssets)
@@ -509,6 +512,10 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 			return fmt.Errorf("cannot build alertmanager config with templates, err: %w", err)
 		}
 		alertmananagerConfig = mergedCfg
+	}
+
+	if err := vmv1beta1.ValidateAlertmanagerConfigSpec(alertmananagerConfig); err != nil {
+		return fmt.Errorf("incorrect result configuration, config source=%s,am cfgs count=%d: %w", configSourceName, len(mergedCfg.amcfgs), err)
 	}
 
 	newAMSecretConfig := &corev1.Secret{

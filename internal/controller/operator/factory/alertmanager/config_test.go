@@ -2,6 +2,7 @@ package alertmanager
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -1776,6 +1777,15 @@ authorization:
 	}
 }
 
+func mustRouteToJSON(t *testing.T, r vmv1beta1.SubRoute) apiextensionsv1.JSON {
+	t.Helper()
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("unexpected json marshal error: %s", err)
+	}
+	return apiextensionsv1.JSON{Raw: data}
+}
+
 func Test_UpdateDefaultAMConfig(t *testing.T) {
 	type args struct {
 		ctx context.Context
@@ -1825,6 +1835,11 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 						Route: &vmv1beta1.Route{
 							GroupBy:  []string{"alertname", "l2ci_channel"},
 							Receiver: "blackhole",
+							RawRoutes: []apiextensionsv1.JSON{
+								mustRouteToJSON(t, vmv1beta1.SubRoute{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietWeeklyNotifications\""}}),
+								mustRouteToJSON(t, vmv1beta1.SubRoute{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietDailyNotifications\""}}),
+								mustRouteToJSON(t, vmv1beta1.SubRoute{Receiver: "l2ci_receiver", Matchers: []string{"alert_group=~\"^l2ci.*\""}}),
+							},
 							Routes: []*vmv1beta1.SubRoute{
 								{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietWeeklyNotifications\""}},
 								{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietDailyNotifications\""}},

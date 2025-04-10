@@ -75,9 +75,10 @@ type VMClusterSpec struct {
 	// +optional
 	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 
-	// RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests
-	// it helps to evenly spread load across pods
-	// usually it's not possible with kubernetes TCP based service
+	// RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests.
+	// It helps to evenly spread load across pods.
+	// Usually it's not possible with Kubernetes TCP-based services.
+	// See more [here](https://docs.victoriametrics.com/operator/resources/vmcluster/#requests-load-balancing)
 	RequestsLoadBalancer VMAuthLoadBalancer `json:"requestsLoadBalancer,omitempty"`
 	// ManagedMetadata defines metadata that will be added to the all objects
 	// created by operator for the given CustomResource

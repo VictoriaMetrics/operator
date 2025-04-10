@@ -489,6 +489,55 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 				),
+				Entry("by switching to proxy-protocol", "proxy-protocol",
+					&v1beta1vm.VMAuth{
+						Spec: v1beta1vm.VMAuthSpec{
+							SelectAllByDefault: true,
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							CommonConfigReloaderParams: v1beta1vm.CommonConfigReloaderParams{
+								UseVMConfigReloader: ptr.To(true),
+							},
+							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+								{
+									URLPrefix: []string{"http://localhost:8490"},
+									SrcPaths:  []string{"/.*"},
+								},
+							},
+						},
+					},
+					testStep{
+						modify: func(cr *v1beta1vm.VMAuth) {
+							cr.Spec.ExtraArgs = map[string]string{
+								"httpListenAddr.useProxyProtocol": "true",
+							}
+							cr.Spec.EmbeddedProbes = &v1beta1vm.EmbeddedProbes{
+								LivenessProbe: &corev1.Probe{
+									ProbeHandler: corev1.ProbeHandler{
+										TCPSocket: &corev1.TCPSocketAction{
+											Port: intstr.FromInt32(8427),
+										},
+									},
+								},
+								ReadinessProbe: &corev1.Probe{
+									ProbeHandler: corev1.ProbeHandler{
+										TCPSocket: &corev1.TCPSocketAction{
+											Port: intstr.FromInt32(8427),
+										},
+									},
+								},
+							}
+						},
+						verify: func(cr *v1beta1vm.VMAuth) {},
+					},
+					testStep{
+						modify: func(cr *v1beta1vm.VMAuth) {
+							cr.Spec.UseVMConfigReloader = ptr.To(false)
+						},
+						verify: func(cr *v1beta1vm.VMAuth) {},
+					},
+				),
 			)
 		})
 	})

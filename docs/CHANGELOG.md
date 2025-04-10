@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+**Update note 1: config-reloader container now longer uses `proxy-protocol` for internal web-server if `reload-use-proxy-protocol` is set.
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.115.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.115.0) version
 
 * [FEATURE]: [operator](https://docs.victoriametrics.com/operator): support `VM_METRICS_VERSION` and `VM_LOGS_VERSION` env variables as a source for all VM and VL related CR image versions
@@ -20,6 +22,7 @@ aliases:
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): add runtime configuration validation. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1299) for details.
 
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): properly validate unknown fields at `route.routes`, `http_config` and `tls_config`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1299) for details.
+* BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): properly use `reload-use-proxy-protocol` flag. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1308) for details.
 
 ## [v0.55.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.55.0)
 

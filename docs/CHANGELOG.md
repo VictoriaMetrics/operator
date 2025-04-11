@@ -20,6 +20,7 @@ aliases:
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): support `VM_METRICS_VERSION` and `VM_LOGS_VERSION` env variables as a source for all VM and VL related CR image versions
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): add new field `internalListenPort` for serving internal routes. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1302) and this [docs](https://docs.victoriametrics.com/vmauth/#security).
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): add runtime configuration validation. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1299) for details.
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): add `StatefulSet` volumeMounts name validation. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1303) for details.
 
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): properly validate unknown fields at `route.routes`, `http_config` and `tls_config`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1299) for details.
 * BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): properly use `reload-use-proxy-protocol` flag. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1308) for details.

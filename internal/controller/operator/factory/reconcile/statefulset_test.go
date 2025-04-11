@@ -526,3 +526,151 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		},
 	})
 }
+
+func TestValidateStatefulSetFail(t *testing.T) {
+	f := func(sts appsv1.StatefulSet) {
+		t.Helper()
+		if err := validateStatefulSet(&sts); err == nil {
+			t.Fatalf("expected non-empty error")
+		}
+	}
+	// missing volume name
+	f(appsv1.StatefulSet{
+		Spec: appsv1.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{},
+					Containers: []corev1.Container{
+						{
+							Name: "vmbackup",
+							VolumeMounts: []corev1.VolumeMount{
+								{Name: "configmap-access"},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	// duplicate volume names
+	f(appsv1.StatefulSet{
+		Spec: appsv1.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+			},
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
+						{
+							Name: "secret-access",
+						},
+						{
+							Name: "data",
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name: "storage",
+							VolumeMounts: []corev1.VolumeMount{
+								{Name: "data"},
+							},
+						},
+						{
+							Name: "vmbackuper",
+							VolumeMounts: []corev1.VolumeMount{
+								{Name: "data"},
+								{Name: "secret-access"},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	// duplicate volumes
+	f(appsv1.StatefulSet{
+		Spec: appsv1.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+			},
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
+						{
+							Name: "data",
+						},
+						{
+							Name: "data",
+						},
+					},
+				},
+			},
+		},
+	})
+	// duplicate claim templates
+	f(appsv1.StatefulSet{
+		Spec: appsv1.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+			},
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{},
+			},
+		},
+	})
+
+}
+
+func TestValidateStatefulSetOk(t *testing.T) {
+	f := func(sts appsv1.StatefulSet) {
+		t.Helper()
+		if err := validateStatefulSet(&sts); err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+	}
+	// empty case
+	f(appsv1.StatefulSet{
+		Spec: appsv1.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{},
+				},
+			},
+		},
+	})
+	// reference for claims and volumes
+	f(appsv1.StatefulSet{
+		Spec: appsv1.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+			},
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
+						{
+							Name: "secret-access",
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name: "storage",
+							VolumeMounts: []corev1.VolumeMount{
+								{Name: "data"},
+							},
+						},
+						{
+							Name: "vmbackuper",
+							VolumeMounts: []corev1.VolumeMount{
+								{Name: "data"},
+								{Name: "secret-access"},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+}

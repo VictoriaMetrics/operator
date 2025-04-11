@@ -60,6 +60,9 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts 
 
 // HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
 func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts, prevSts *appsv1.StatefulSet) error {
+	if err := validateStatefulSet(newSts); err != nil {
+		return err
+	}
 	var isPrevEqual bool
 	var prevSpecDiff string
 	if prevSts != nil {
@@ -444,4 +447,44 @@ func keepOnlyStsPods(podList *corev1.PodList) {
 		cnt++
 	}
 	podList.Items = podList.Items[:cnt]
+}
+
+// validateStatefulSet performs validation Statefulset spec
+// Kubernenetes doesn't perform some checks and produces runtime error
+// during Pod creation.
+// VolumeMounts validation is missing:
+// https://github.com/kubernetes/kubernetes/blob/b15dfce6cbd0d5bbbcd6172cf7e2082f4d31055e/pkg/apis/apps/validation/validation.go#L66
+func validateStatefulSet(sts *appsv1.StatefulSet) error {
+	volumeNames := make(map[string]struct{}, len(sts.Spec.Template.Spec.Volumes))
+	var joinedNames string
+	for _, vl := range sts.Spec.Template.Spec.Volumes {
+		if _, ok := volumeNames[vl.Name]; ok {
+			return fmt.Errorf("duplicate Volume.Name=%s", vl.Name)
+		}
+		volumeNames[vl.Name] = struct{}{}
+		joinedNames += vl.Name + ","
+	}
+	for _, vct := range sts.Spec.VolumeClaimTemplates {
+		if _, ok := volumeNames[vct.Name]; ok {
+			return fmt.Errorf("duplicate VolumeClaimTemplate.Name=%s", vct.Name)
+		}
+		volumeNames[vct.Name] = struct{}{}
+		joinedNames += vct.Name + ","
+	}
+	for _, cnt := range sts.Spec.Template.Spec.Containers {
+		for _, vm := range cnt.VolumeMounts {
+			if _, ok := volumeNames[vm.Name]; !ok {
+				return fmt.Errorf("cannot find volumeMount.name=%s link for container=%s at volumes and claimTemplates names=%s", vm.Name, cnt.Name, joinedNames)
+			}
+		}
+	}
+	for _, cnt := range sts.Spec.Template.Spec.InitContainers {
+		for _, vm := range cnt.VolumeMounts {
+			if _, ok := volumeNames[vm.Name]; !ok {
+				return fmt.Errorf("cannot find volumeMount.name=%s link for initContainer=%s at volumes and claimTemplates names=%s", vm.Name, cnt.Name, joinedNames)
+			}
+		}
+	}
+
+	return nil
 }

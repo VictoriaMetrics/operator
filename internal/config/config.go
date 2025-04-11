@@ -27,7 +27,7 @@ var (
 	initNamespace sync.Once
 	defaultEnvs   = map[string]string{
 		"VM_METRICS_VERSION": "v1.115.0",
-		"VM_LOGS_VERSION":    "v1.17.0",
+		"VM_LOGS_VERSION":    "v1.18.0",
 	}
 )
 
@@ -109,7 +109,7 @@ type BaseOperatorConf struct {
 
 	VLogsDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
-		Version             string `default:"${VM_LOGS_VERSION}-victorialogs"`
+		Version             string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
 		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9428"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`

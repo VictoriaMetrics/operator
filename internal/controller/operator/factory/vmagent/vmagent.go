@@ -343,7 +343,7 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 func shardNumIter(backward bool, shardCount int) iter.Seq[int] {
 	if backward {
 		return func(yield func(int) bool) {
-			for shardCount >= 0 {
+			for shardCount > 0 {
 				shardCount--
 				if !yield(shardCount) {
 					return

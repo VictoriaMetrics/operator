@@ -809,7 +809,7 @@ func (cb *configBuilder) buildRocketchat(rc vmv1beta1.RocketchatConfig) error {
 		toYaml("api_url", *rc.APIURL)
 	}
 	if rc.TokenID != nil {
-		sv, err := cb.fetchSecretValue(rc.Token)
+		sv, err := cb.fetchSecretValue(rc.TokenID)
 		if err != nil {
 			return err
 		}

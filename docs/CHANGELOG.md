@@ -13,6 +13,13 @@ aliases:
 
 ## tip
 
+## [v0.56.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.56.0)
+
+**Release date:** 15 Apr 2025
+
+![AppVersion: v1.115.0](https://img.shields.io/badge/v1.115.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fchangelog%23v11500)
+![AppVersion: v1.18.0](https://img.shields.io/badge/v1.18.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v180)
+
 **Update note 1: config-reloader container now longer uses `proxy-protocol` for internal web-server if `reload-use-proxy-protocol` is set.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.115.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.115.0) version

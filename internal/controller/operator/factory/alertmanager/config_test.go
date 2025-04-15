@@ -1164,7 +1164,7 @@ receivers:
 - name: blackhole
 - name: default-base-rocketchat
   rocketchat_configs:
-  - token_id: token value
+  - token_id: "12356"
     token: token value
     channel: some-channel
     fields:

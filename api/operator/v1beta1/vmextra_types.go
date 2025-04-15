@@ -375,15 +375,6 @@ func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 	return defaultName + "-additional-service"
 }
 
-// MaybeEnableProxyProtocol conditionally adds proxy protocol for custom config-reloader image
-// useful for vmagent and vmauth
-func MaybeEnableProxyProtocol(args []string, extaArgs map[string]string) []string {
-	if v, ok := extaArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		args = append(args, "--reload-use-proxy-protocol")
-	}
-	return args
-}
-
 // BuildReloadPathWithPort builds reload api path for given args
 func BuildReloadPathWithPort(extraArgs map[string]string, port string) string {
 	proto := protoFromFlags(extraArgs)

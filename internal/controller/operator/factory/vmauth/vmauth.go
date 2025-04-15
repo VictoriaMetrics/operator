@@ -68,7 +68,9 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	if err := createOrUpdateVMAuthIngress(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) &&
+		!useProxyProtocol(cr) &&
+		len(cr.Spec.InternalListenPort) != 0 {
 		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, buildServiceScrape(svc, cr)); err != nil {
 			return err
 		}
@@ -146,6 +148,9 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 	args = append(args, fmt.Sprintf("-auth.config=%s", configPath))
 
+	if cr.Spec.UseProxyProtocol {
+		args = append(args, "-httpListenAddr.useProxyProtocol=true")
+	}
 	if cr.Spec.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
 	}
@@ -303,7 +308,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
-	vmauthContainer = build.Probe(vmauthContainer, cr)
+	vmauthContainer = addVMAuthProbes(cr, vmauthContainer)
 
 	// move vmauth container to the 0 index
 	operatorContainers = append([]corev1.Container{vmauthContainer}, operatorContainers...)
@@ -508,8 +513,8 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if useVMConfigReloader {
 		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
-		if len(cr.Spec.InternalListenPort) == 0 {
-			configReloaderArgs = vmv1beta1.MaybeEnableProxyProtocol(configReloaderArgs, cr.Spec.ExtraArgs)
+		if len(cr.Spec.InternalListenPort) == 0 && useProxyProtocol(cr) {
+			configReloaderArgs = append(configReloaderArgs, "--reload-use-proxy-protocol")
 		}
 	} else {
 		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))
@@ -707,4 +712,41 @@ func buildServiceScrape(svc *corev1.Service, cr *vmv1beta1.VMAuth) *vmv1beta1.VM
 		}
 	}
 	return b
+}
+
+func useProxyProtocol(cr *vmv1beta1.VMAuth) bool {
+	if cr.Spec.UseProxyProtocol {
+		return true
+	}
+	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
+		return true
+	}
+
+	return false
+}
+
+func addVMAuthProbes(cr *vmv1beta1.VMAuth, vmauthContainer corev1.Container) corev1.Container {
+	if useProxyProtocol(cr) &&
+		len(cr.Spec.InternalListenPort) == 0 &&
+		cr.Spec.EmbeddedProbes == nil {
+		probePort := intstr.Parse(cr.ProbePort())
+		cr.Spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: probePort,
+					},
+				},
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: probePort,
+					},
+				},
+			},
+		}
+	}
+	vmauthContainer = build.Probe(vmauthContainer, cr)
+	return vmauthContainer
 }

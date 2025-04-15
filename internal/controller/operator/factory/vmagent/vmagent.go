@@ -1526,9 +1526,6 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
 	if cr.HasAnyRelabellingConfigs() {
 		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.RelabelingConfigDir))
 	}
-	if useVMConfigReloader {
-		args = vmv1beta1.MaybeEnableProxyProtocol(args, cr.Spec.ExtraArgs)
-	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
 		for idx, arg := range args {
 			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]

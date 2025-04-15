@@ -3,7 +3,7 @@
 | --- | --- | --- | --- |
 | VM_USECUSTOMCONFIGRELOADER | false | false | enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY | - | false | container registry name prefix, e.g. docker.io |
-| VM_CUSTOMCONFIGRELOADERIMAGE | victoriametrics/operator:config-reloader-v0.48.4 | false |  |
+| VM_CUSTOMCONFIGRELOADERIMAGE | victoriametrics/operator:config-reloader-v0.56.0 | false |  |
 | VM_PSPAUTOCREATEENABLED | false | false |  |
 | VM_CONFIG_RELOADER_LIMIT_CPU | unlimited | false | defines global resource.limits.cpu for all config-reloader containers |
 | VM_CONFIG_RELOADER_LIMIT_MEMORY | unlimited | false | defines global resource.limits.memory for all config-reloader containers |

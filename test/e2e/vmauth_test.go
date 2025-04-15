@@ -509,25 +509,7 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 					testStep{
 						modify: func(cr *v1beta1vm.VMAuth) {
-							cr.Spec.ExtraArgs = map[string]string{
-								"httpListenAddr.useProxyProtocol": "true",
-							}
-							cr.Spec.EmbeddedProbes = &v1beta1vm.EmbeddedProbes{
-								LivenessProbe: &corev1.Probe{
-									ProbeHandler: corev1.ProbeHandler{
-										TCPSocket: &corev1.TCPSocketAction{
-											Port: intstr.FromInt32(8427),
-										},
-									},
-								},
-								ReadinessProbe: &corev1.Probe{
-									ProbeHandler: corev1.ProbeHandler{
-										TCPSocket: &corev1.TCPSocketAction{
-											Port: intstr.FromInt32(8427),
-										},
-									},
-								},
-							}
+							cr.Spec.UseProxyProtocol = true
 						},
 						verify: func(cr *v1beta1vm.VMAuth) {},
 					},

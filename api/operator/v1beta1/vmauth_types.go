@@ -120,6 +120,10 @@ type VMAuthSpec struct {
 	// related doc https://docs.victoriametrics.com/vmauth/#security
 	// +optional
 	InternalListenPort string `json:"internalListenPort,omitempty"`
+
+	// UseProxyProtocol enables proxy protocol for vmauth
+	// https://www.haproxy.org/download/2.3/doc/proxy-protocol.txt
+	UseProxyProtocol bool `json:"useProxyProtocol,omitempty"`
 }
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth

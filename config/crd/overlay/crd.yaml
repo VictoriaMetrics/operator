@@ -16074,6 +16074,11 @@ spec:
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
                 type: boolean
+              useProxyProtocol:
+                description: |-
+                  UseProxyProtocol enables proxy protocol for vmauth
+                  https://www.haproxy.org/download/2.3/doc/proxy-protocol.txt
+                type: boolean
               useStrictSecurity:
                 description: |-
                   UseStrictSecurity enables strict security mode for component

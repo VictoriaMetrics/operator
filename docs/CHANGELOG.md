@@ -146,7 +146,7 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Properly expose service ports for `VMServiceScrape` generated for CRD objects by operator. Add `-vmbackupmanager` suffix to the `VMServiceScrape` job name and expose only well-known `http` port. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1216) for details.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly build `relabelConfigs` with empty string values for `separator` and `replacement` fields. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1214) for details.
-* BUGFIX: [converter]((https://docs.victoriametrics.com/operator/migration/#objects-conversion)): properly format `regex` single value expression at Prometheus Operator CRD `relabelings` and `metricsRelabelings`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1219) for details.
+* BUGFIX: [converter](https://docs.victoriametrics.com/operator/migration/#objects-conversion): properly format `regex` single value expression at Prometheus Operator CRD `relabelings` and `metricsRelabelings`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1219) for details.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): keep `spec.template.annotations` added by 3rd party tools, kike `kubectl rollout restart`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1215) for details.
 
 ## [v0.51.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.51.3)

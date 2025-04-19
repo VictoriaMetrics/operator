@@ -24313,7 +24313,7 @@ spec:
                   properties:
                     allowStale:
                       description: |-
-                        Allow stale Consul results (see https://developer.hashicorp.com/consul/api-docs/features/consistency). Will reduce load on Consul.
+                        Allow stale Consul results (see https://developer.hashicorp.com/consul/api-docs/features/consistency ). Will reduce load on Consul.
                         If unset, use its default value.
                       type: boolean
                     authorization:

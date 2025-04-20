@@ -189,6 +189,7 @@ func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 	}
 	svc := build.Service(b, cr.Spec.VMSelect.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
+		svc.Spec.PublishNotReadyAddresses = true
 		if cr.Spec.VMSelect.ClusterNativePort != "" {
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
 				Name:       "clusternative",
@@ -413,6 +414,7 @@ func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, 
 
 		prevService = build.Service(prevT, prevCR.Spec.VMStorage.Port, func(svc *corev1.Service) {
 			svc.Spec.ClusterIP = "None"
+			svc.Spec.PublishNotReadyAddresses = true
 			svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
 				{
 					Name:       "vminsert",
@@ -442,6 +444,7 @@ func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, 
 	}
 	newHeadless := build.Service(t, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
+		svc.Spec.PublishNotReadyAddresses = true
 		svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
 			{
 				Name:       "vminsert",
@@ -579,7 +582,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		args = append(args, selectArg)
 	}
 
-	if len(cr.Spec.VMSelect.ExtraEnvs) > 0 {
+	if len(cr.Spec.VMSelect.ExtraEnvs) > 0 || len(cr.Spec.VMSelect.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 
@@ -655,6 +658,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		VolumeMounts:             vmMounts,
 		Resources:                cr.Spec.VMSelect.Resources,
 		Env:                      envs,
+		EnvFrom:                  cr.Spec.VMSelect.ExtraEnvsFrom,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		TerminationMessagePath:   "/dev/termination-log",
 	}
@@ -771,7 +775,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	if cr.Spec.ReplicationFactor != nil {
 		args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 	}
-	if len(cr.Spec.VMInsert.ExtraEnvs) > 0 {
+	if len(cr.Spec.VMInsert.ExtraEnvs) > 0 || len(cr.Spec.VMInsert.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 
@@ -853,6 +857,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		VolumeMounts:             vmMounts,
 		Resources:                cr.Spec.VMInsert.Resources,
 		Env:                      envs,
+		EnvFrom:                  cr.Spec.VMInsert.ExtraEnvsFrom,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
@@ -949,7 +954,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.VMStorage.LogFormat))
 	}
 
-	if len(cr.Spec.VMStorage.ExtraEnvs) > 0 {
+	if len(cr.Spec.VMStorage.ExtraEnvs) > 0 || len(cr.Spec.VMStorage.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 
@@ -1059,6 +1064,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 		VolumeMounts:             vmMounts,
 		Resources:                cr.Spec.VMStorage.Resources,
 		Env:                      envs,
+		EnvFrom:                  cr.Spec.VMStorage.ExtraEnvsFrom,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		TerminationMessagePath:   "/dev/termination-log",
 	}
@@ -1473,7 +1479,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", spec.Port))
-	if len(spec.ExtraEnvs) > 0 {
+	if len(spec.ExtraEnvs) > 0 || len(spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 	volumes, vmounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmounts, vmv1beta1.SecretsDir)
@@ -1491,6 +1497,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 		},
 		Args:            args,
 		Env:             spec.ExtraEnvs,
+		EnvFrom:         spec.ExtraEnvsFrom,
 		Resources:       spec.Resources,
 		Image:           fmt.Sprintf("%s:%s", spec.Image.Repository, spec.Image.Tag),
 		ImagePullPolicy: spec.Image.PullPolicy,

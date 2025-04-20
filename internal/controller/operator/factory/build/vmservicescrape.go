@@ -150,3 +150,84 @@ func vmServiceScrapeForServiceWithSpec(service *v1.Service, serviceScrapeSpec *v
 
 	return scrapeSvc
 }
+
+type podScrapeBuilder interface {
+	GetNamespace() string
+	PrefixedName() string
+	ProbePort() string
+	SelectorLabels() map[string]string
+	GetMetricPath() string
+}
+
+// VMPodScrapeForObjectWithSpec build VMPodScrape for given podScrapeBuilder with provided args
+// optionally could filter out ports from service
+func VMPodScrapeForObjectWithSpec(psb podScrapeBuilder, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]string) *vmv1beta1.VMPodScrape {
+	var isTLS bool
+	v, ok := extraArgs["tls"]
+	if ok {
+		// tls is array flag type at VictoriaMetrics components
+		// use first value
+		firstIdx := strings.IndexByte(v, ',')
+		if firstIdx > 0 {
+			v = v[:firstIdx]
+		}
+		isTLS = strings.ToLower(v) == "true"
+	}
+	authKey := extraArgs["metricsAuthKey"]
+
+	defaultEP := vmv1beta1.PodMetricsEndpoint{
+		Port: ptr.To("http"),
+		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+			Path: psb.GetMetricPath(),
+		},
+	}
+	if isTLS {
+		defaultEP.Scheme = "https"
+		// add insecure by default
+		// if needed user will override it with direct config
+		defaultEP.TLSConfig = &vmv1beta1.TLSConfig{
+			InsecureSkipVerify: true,
+		}
+	}
+	if len(authKey) > 0 {
+		defaultEP.Params = map[string][]string{
+			"authKey": {authKey},
+		}
+	}
+
+	selectorLabels := psb.SelectorLabels()
+	podScrape := &vmv1beta1.VMPodScrape{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      psb.PrefixedName(),
+			Namespace: psb.GetNamespace(),
+			Labels:    selectorLabels,
+		},
+		Spec: vmv1beta1.VMPodScrapeSpec{
+			Selector: *metav1.SetAsLabelSelector(selectorLabels),
+			PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+				defaultEP,
+			},
+		},
+	}
+	if serviceScrapeSpec != nil {
+		for _, ssEP := range serviceScrapeSpec.Endpoints {
+			if ssEP.Port == *defaultEP.Port {
+				defaultEP.EndpointAuth = ssEP.EndpointAuth
+				defaultEP.EndpointScrapeParams = ssEP.EndpointScrapeParams
+				defaultEP.EndpointRelabelings = ssEP.EndpointRelabelings
+				continue
+			}
+			podScrape.Spec.PodMetricsEndpoints = append(podScrape.Spec.PodMetricsEndpoints, vmv1beta1.PodMetricsEndpoint{
+				Port:                 ptr.To(ssEP.Port),
+				EndpointAuth:         ssEP.EndpointAuth,
+				EndpointRelabelings:  ssEP.EndpointRelabelings,
+				EndpointScrapeParams: ssEP.EndpointScrapeParams,
+			})
+		}
+		podScrape.Spec.PodTargetLabels = serviceScrapeSpec.PodTargetLabels
+		podScrape.Spec.SampleLimit = serviceScrapeSpec.SampleLimit
+		podScrape.Spec.SeriesLimit = serviceScrapeSpec.SeriesLimit
+		podScrape.Spec.AttachMetadata = serviceScrapeSpec.AttachMetadata
+	}
+	return podScrape
+}

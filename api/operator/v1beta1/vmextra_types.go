@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"path"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -371,15 +373,6 @@ func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 		return ss.Name
 	}
 	return defaultName + "-additional-service"
-}
-
-// MaybeEnableProxyProtocol conditionally adds proxy protocol for custom config-reloader image
-// useful for vmagent and vmauth
-func MaybeEnableProxyProtocol(args []string, extaArgs map[string]string) []string {
-	if v, ok := extaArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		args = append(args, "--reload-use-proxy-protocol")
-	}
-	return args
 }
 
 // BuildReloadPathWithPort builds reload api path for given args
@@ -873,6 +866,19 @@ type TLSConfig struct {
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty" yaml:"insecure_skip_verify,omitempty"`
 }
 
+// UnmarshalJSON implements json.Unmarshaller interface
+func (c *TLSConfig) UnmarshalJSON(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+
+	type pc TLSConfig
+	if err := decoder.Decode((*pc)(c)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
 	if c.CAFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.CAFile))
@@ -1298,6 +1304,11 @@ type CommonApplicationDeploymentParams struct {
 	// And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount.
 	// +optional
 	DisableAutomountServiceAccountToken bool `json:"disableAutomountServiceAccountToken,omitempty"`
+
+	// ExtraEnvsFrom defines source of env variables for the application container
+	// could either be secret or configmap
+	// +optional
+	ExtraEnvsFrom []v1.EnvFromSource `json:"extraEnvsFrom,omitempty"`
 }
 
 // SecurityContext extends PodSecurityContext with ContainerSecurityContext
@@ -1530,4 +1541,57 @@ type Condition struct {
 	// +optional
 	// +kubebuilder:validation:MaxLength=32768
 	Message string `json:"message,omitempty"`
+}
+
+// BytesString represents bytes value defined directly as integer
+// or as a string with suffix - kb,mb,gb,tb,KiB,MiB,GiB,TiB
+type BytesString string
+
+var bytesStringRe = regexp.MustCompile(`^[0-9]+(kb|mb|gb|tb|KB|MB|GB|TB|KiB|MiB|GiB|TiB)?$`)
+
+// UnmarshalJSON implements json.Unmarshaller interface
+func (bs *BytesString) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+	if data[0] == '"' {
+		var strV string
+		if err := json.Unmarshal(data, &strV); err != nil {
+			return fmt.Errorf("cannot parse string value: %w", err)
+		}
+		if !bytesStringRe.MatchString(strV) {
+			return fmt.Errorf("bytes value=%q must match pattern=%q", strV, bytesStringRe)
+		}
+		*bs = BytesString(strV)
+		return nil
+	}
+
+	var iv int64
+	if err := json.Unmarshal(data, &iv); err != nil {
+		return fmt.Errorf("cannot parse BytesString as integer or string: %w", err)
+	}
+	sv := strconv.FormatInt(iv, 10)
+	*bs = BytesString(sv)
+	return nil
+}
+
+// MarshalJSON implements json.Marshaller interface
+func (bs *BytesString) MarshalJSON() ([]byte, error) {
+	if bs == nil || len(*bs) == 0 {
+		return nil, nil
+	}
+	bsStr := string(*bs)
+	iv, err := strconv.ParseInt(bsStr, 64, 10)
+	if err == nil {
+		return json.Marshal(iv)
+	}
+	return json.Marshal(bsStr)
+}
+
+// String implements Stringer interface
+func (bs *BytesString) String() string {
+	if bs == nil {
+		return ""
+	}
+	return string(*bs)
 }

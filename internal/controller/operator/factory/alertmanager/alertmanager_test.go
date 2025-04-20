@@ -308,6 +308,7 @@ func Test_createDefaultAMConfig(t *testing.T) {
 				},
 			},
 			predefinedObjects: []runtime.Object{},
+			wantErr:           true,
 		},
 		{
 			name: "with alertmanager config support",
@@ -352,6 +353,9 @@ func Test_createDefaultAMConfig(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			if err := CreateOrUpdateConfig(tt.args.ctx, fclient, tt.args.cr, nil); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
 			}
 			var createdSecret corev1.Secret
 			secretName := tt.args.cr.ConfigSecretName()

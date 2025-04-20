@@ -10,24 +10,16 @@ updateGraph: replaces-mode
 fbc:
   enabled: true
   catalog_mapping:
-  - template_name: v4.12.yaml
-    catalog_names: ["v4.12"]
+  - template_name: v4.12-v4.16.yaml
+    catalog_names:
+     - "v4.12"
+     - "v4.13"
+     - "v4.14"
+     - "v4.15"
+     - "v4.16"
     type: olm.template.basic
-  - template_name: v4.13.yaml
-    catalog_names: ["v4.13"]
-    type: olm.template.basic
-  - template_name: v4.14.yaml
-    catalog_names: ["v4.14"]
-    type: olm.template.basic
-  - template_name: v4.15.yaml
-    catalog_names: ["v4.15"]
-    type: olm.template.basic
-  - template_name: v4.16.yaml
-    catalog_names: ["v4.16"]
-    type: olm.template.basic
-  - template_name: v4.17.yaml
-    catalog_names: ["v4.17"]
-    type: olm.template.basic
-  - template_name: v4.18.yaml
-    catalog_names: ["v4.18"]
+  - template_name: v4.17-v4.18.yaml
+    catalog_names:
+     - "v4.17"
+     - "v4.18"
     type: olm.template.basic

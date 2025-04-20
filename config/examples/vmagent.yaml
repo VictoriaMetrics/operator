@@ -15,4 +15,11 @@ spec:
   extraArgs:
     memory.allowedPercent: "40"
   remoteWrite:
-  - url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-dc-1.default.svc:8429/api/v1/write"
+      maxDiskUsage: 10GB
+    - url: "http://vmsingle-dc-2.default.svc:8429/api/v1/write"
+      maxDiskUsage: 15GB
+    - url: "http://vminsert-main.default.svc:8480/insert/1:1/prometheus/api/v1/write"
+  remoteWriteSettings:
+    # ~ 5GB in bytes
+    maxDiskUsagePerURL: 5GB

@@ -319,16 +319,22 @@ func buildCRPrefixedName(cr *vmv1beta1.VMAlertmanagerConfig, name string) string
 // contains only global configuration param for config validation
 type globalAlertmanagerConfig struct {
 	Global struct {
-		SMTPFrom            string `yaml:"smtp_from,omitempty" json:"smtp_from,omitempty"`
-		SMTPSmarthost       string `yaml:"smtp_smarthost,omitempty" json:"smtp_smarthost,omitempty"`
-		SlackAPIURL         string `yaml:"slack_api_url,omitempty" json:"slack_api_url,omitempty"`
-		SlackAPIURLFile     string `yaml:"slack_api_url_file,omitempty" json:"slack_api_url_file,omitempty"`
-		OpsGenieAPIKey      string `yaml:"opsgenie_api_key,omitempty" json:"opsgenie_api_key,omitempty"`
-		OpsGenieAPIKeyFile  string `yaml:"opsgenie_api_key_file,omitempty" json:"opsgenie_api_key_file,omitempty"`
-		WeChatAPISecret     string `yaml:"wechat_api_secret,omitempty" json:"wechat_api_secret,omitempty"`
-		WeChatAPICorpID     string `yaml:"wechat_api_corp_id,omitempty" json:"wechat_api_corp_id,omitempty"`
-		VictorOpsAPIKey     string `yaml:"victorops_api_key,omitempty" json:"victorops_api_key,omitempty"`
-		VictorOpsAPIKeyFile string `yaml:"victorops_api_key_file,omitempty" json:"victorops_api_key_file,omitempty"`
+		SMTPFrom              string `yaml:"smtp_from,omitempty" json:"smtp_from,omitempty"`
+		SMTPSmarthost         string `yaml:"smtp_smarthost,omitempty" json:"smtp_smarthost,omitempty"`
+		SlackAPIURL           string `yaml:"slack_api_url,omitempty" json:"slack_api_url,omitempty"`
+		SlackAPIURLFile       string `yaml:"slack_api_url_file,omitempty" json:"slack_api_url_file,omitempty"`
+		OpsGenieAPIKey        string `yaml:"opsgenie_api_key,omitempty" json:"opsgenie_api_key,omitempty"`
+		OpsGenieAPIKeyFile    string `yaml:"opsgenie_api_key_file,omitempty" json:"opsgenie_api_key_file,omitempty"`
+		WeChatAPISecret       string `yaml:"wechat_api_secret,omitempty" json:"wechat_api_secret,omitempty"`
+		WeChatAPICorpID       string `yaml:"wechat_api_corp_id,omitempty" json:"wechat_api_corp_id,omitempty"`
+		VictorOpsAPIKey       string `yaml:"victorops_api_key,omitempty" json:"victorops_api_key,omitempty"`
+		VictorOpsAPIKeyFile   string `yaml:"victorops_api_key_file,omitempty" json:"victorops_api_key_file,omitempty"`
+		JiraAPIURL            string `yaml:"jira_api_url,omitempty" json:"jira_api_url,omitempty"`
+		RocketchatAPIURL      string `yaml:"rocketchat_api_url,omitempty" json:"rocketchat_api_url,omitempty"`
+		RocketchatToken       string `yaml:"rocketchat_token,omitempty" json:"rocketchat_token,omitempty"`
+		RocketchatTokenFile   string `yaml:"rocketchat_token_file,omitempty" json:"rocketchat_token_file,omitempty"`
+		RocketchatTokenID     string `yaml:"rocketchat_token_id,omitempty" json:"rocketchat_token_id,omitempty"`
+		RocketchatTokenIDFile string `yaml:"rocketchat_token_id_file,omitempty" json:"rocketchat_token_id_file,omitempty"`
 	} `yaml:"global,omitempty"`
 }
 
@@ -473,36 +479,63 @@ func (cb *configBuilder) buildCfg(receiver vmv1beta1.Receiver) error {
 		}
 	}
 	cb.finalizeSection("webhook_configs")
+
 	for _, tgCfg := range receiver.TelegramConfigs {
 		if err := cb.buildTelegram(tgCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("telegram_configs")
+
 	for _, mcCfg := range receiver.MSTeamsConfigs {
 		if err := cb.buildTeams(mcCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("msteams_configs")
+
 	for _, mcCfg := range receiver.DiscordConfigs {
 		if err := cb.buildDiscord(mcCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("discord_configs")
+
 	for _, snsCfg := range receiver.SNSConfigs {
 		if err := cb.buildSNS(snsCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("sns_configs")
+
 	for _, webexCfg := range receiver.WebexConfigs {
 		if err := cb.buildWebex(webexCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("webex_configs")
+
+	for _, jiraCfg := range receiver.JiraConfigs {
+		if err := cb.buildJira(jiraCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("jira_configs")
+
+	for _, rcCfg := range receiver.RocketchatConfigs {
+		if err := cb.buildRocketchat(rcCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("rocketchat_configs")
+
+	for _, rcCfg := range receiver.MSTeamsV2Configs {
+		if err := cb.buildTeamsV2(rcCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("msteamsv2_configs")
+
 	return nil
 }
 
@@ -585,6 +618,9 @@ func (cb *configBuilder) buildDiscord(dc vmv1beta1.DiscordConfig) error {
 	}
 	toYaml("title", dc.Title)
 	toYaml("message", dc.Message)
+	toYaml("content", dc.Content)
+	toYaml("username", dc.Username)
+	toYaml("avatar_url", dc.AvatarURL)
 
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
@@ -676,6 +712,185 @@ func (cb *configBuilder) buildWebex(web vmv1beta1.WebexConfig) error {
 	toYaml("message", web.Message)
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
+}
+
+func (cb *configBuilder) buildJira(jira vmv1beta1.JiraConfig) error {
+	var temp yaml.MapSlice
+	if jira.HTTPConfig != nil {
+		c, err := cb.buildHTTPConfig(jira.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
+	}
+	if jira.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *jira.SendResolved})
+	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	if jira.APIURL != nil {
+		toYaml("api_url", *jira.APIURL)
+	}
+	if jira.APIURL == nil && cb.globalConfig.Global.JiraAPIURL == "" {
+		return fmt.Errorf("api_url secret is not defined and no global Jira API URL set")
+	}
+
+	toYaml("project", jira.Project)
+	toYaml("issue_type", jira.IssueType)
+	toYaml("description", jira.Description)
+	toYaml("priority", jira.Priority)
+	toYaml("summary", jira.Summary)
+	toYaml("reopen_transition", jira.ReopenTransition)
+	toYaml("resolve_transition", jira.ResolveTransition)
+	toYaml("wont_fix_resolution", jira.WontFixResolution)
+	toYaml("reopen_duration", jira.ReopenDuration)
+
+	if len(jira.Labels) > 0 {
+		temp = append(temp, yaml.MapItem{
+			Key:   "labels",
+			Value: jira.Labels,
+		})
+	}
+	if len(jira.Fields) > 0 {
+		sortableFieldIdxs := make([]string, 0, len(jira.Fields))
+		for key := range jira.Fields {
+			sortableFieldIdxs = append(sortableFieldIdxs, key)
+		}
+		sort.Strings(sortableFieldIdxs)
+		fields := make(yaml.MapSlice, 0, len(jira.Fields))
+		for _, key := range sortableFieldIdxs {
+			fields = append(fields, yaml.MapItem{
+				Key:   key,
+				Value: string(jira.Fields[key].Raw),
+			})
+		}
+		temp = append(temp, yaml.MapItem{
+			Key:   "fields",
+			Value: fields,
+		})
+	}
+
+	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
+}
+
+func (cb *configBuilder) buildRocketchat(rc vmv1beta1.RocketchatConfig) error {
+	if rc.TokenID == nil {
+		if cb.globalConfig.Global.RocketchatTokenID == "" && len(cb.globalConfig.Global.RocketchatTokenIDFile) == 0 {
+			return fmt.Errorf("no global Rocketchat TokenID set either inline or in a file")
+		}
+	}
+	if rc.Token == nil {
+		if cb.globalConfig.Global.RocketchatToken == "" && len(cb.globalConfig.Global.RocketchatTokenFile) == 0 {
+			return fmt.Errorf("no global Rocketchat Token set either inline or in a file")
+		}
+	}
+
+	var temp yaml.MapSlice
+	if rc.HTTPConfig != nil {
+		c, err := cb.buildHTTPConfig(rc.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
+	}
+	if rc.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *rc.SendResolved})
+	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	if rc.APIURL != nil {
+		toYaml("api_url", *rc.APIURL)
+	}
+	if rc.TokenID != nil {
+		sv, err := cb.fetchSecretValue(rc.TokenID)
+		if err != nil {
+			return err
+		}
+		toYaml("token_id", sv)
+	}
+	if rc.Token != nil {
+		sv, err := cb.fetchSecretValue(rc.Token)
+		if err != nil {
+			return err
+		}
+		toYaml("token", sv)
+	}
+	toYaml("channel", rc.Channel)
+	toYaml("color", rc.Color)
+	toYaml("title", rc.Title)
+	toYaml("text", rc.Text)
+	toYaml("emoji", rc.Emoji)
+	toYaml("icon_url", rc.IconURL)
+	toYaml("image_url", rc.ImageURL)
+	toYaml("thumb_url", rc.ThumbURL)
+
+	if rc.ShortFields {
+		temp = append(temp, yaml.MapItem{Key: "short_fields", Value: rc.ShortFields})
+	}
+	if rc.LinkNames {
+		temp = append(temp, yaml.MapItem{Key: "link_names", Value: rc.LinkNames})
+	}
+	if len(rc.Fields) > 0 {
+		fields := make([]yaml.MapSlice, 0, len(rc.Fields))
+		for _, f := range rc.Fields {
+			field := make(yaml.MapSlice, 0, 4)
+			if len(f.Title) > 0 {
+				field = append(field, yaml.MapItem{
+					Key:   "title",
+					Value: f.Title,
+				})
+			}
+			if len(f.Value) > 0 {
+				field = append(field, yaml.MapItem{
+					Key:   "value",
+					Value: f.Value,
+				})
+			}
+			if f.Short != nil {
+				field = append(field, yaml.MapItem{
+					Key:   "short",
+					Value: *f.Short,
+				})
+			}
+			fields = append(fields, field)
+		}
+		temp = append(temp, yaml.MapItem{
+			Key:   "fields",
+			Value: fields,
+		})
+	}
+	if len(rc.Actions) > 0 {
+		actions := make([]yaml.MapSlice, 0, len(rc.Actions))
+		for _, a := range rc.Actions {
+			action := make(yaml.MapSlice, 0, 4)
+			actionToYaml := func(key string, src string) {
+				if len(src) > 0 {
+					action = append(action, yaml.MapItem{Key: key, Value: src})
+				}
+			}
+			actionToYaml("type", a.Type)
+			actionToYaml("text,omitempty", a.Text)
+			actionToYaml("url", a.URL)
+			actionToYaml("msg", a.Msg)
+
+			actions = append(actions, action)
+		}
+		temp = append(temp, yaml.MapItem{
+			Key:   "actions",
+			Value: actions,
+		})
+	}
+
+	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
+
 }
 
 func (cb *configBuilder) buildTelegram(tg vmv1beta1.TelegramConfig) error {
@@ -823,6 +1038,52 @@ func (cb *configBuilder) buildSlack(slack vmv1beta1.SlackConfig) error {
 		temp = append(temp, yaml.MapItem{Key: "fields", Value: fields})
 	}
 	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
+}
+
+func (cb *configBuilder) buildTeamsV2(mstCfg vmv1beta1.MSTeamsV2Config) error {
+	if mstCfg.URL == nil && mstCfg.URLSecret == nil {
+		return fmt.Errorf("one of required fields 'webhook_url' or 'webhook_url_secret' are not set")
+	}
+
+	var temp yaml.MapSlice
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	if mstCfg.HTTPConfig != nil {
+		h, err := cb.buildHTTPConfig(mstCfg.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: h})
+	}
+	if mstCfg.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *mstCfg.SendResolved})
+	}
+	var whURL string
+	switch {
+	case mstCfg.URLSecret != nil:
+		sv, err := cb.fetchSecretValue(mstCfg.URLSecret)
+		if err != nil {
+			return err
+		}
+		whURL = sv
+	case mstCfg.URL != nil:
+		whURL = *mstCfg.URL
+	default:
+		panic("BUG: impossible switch statement")
+	}
+	if _, err := url.Parse(whURL); err != nil {
+		return fmt.Errorf("unexpected webhook_url value=%q: %w", whURL, err)
+	}
+	toYaml("webhook_url", whURL)
+	toYaml("text", mstCfg.Text)
+	toYaml("title", mstCfg.Title)
+
+	cb.currentYaml = append(cb.currentYaml, temp)
+
 	return nil
 }
 

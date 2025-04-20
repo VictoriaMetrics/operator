@@ -27,13 +27,20 @@ func generateNodeScrapeConfig(
 
 	setScrapeIntervalToWithLimit(ctx, &nodeSpec.EndpointScrapeParams, vmagentCR)
 
-	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, ssCache, kubernetesSDRoleNode, nil))
+	k8sSDOpts := generateK8SSDConfigOptions{
+		shouldAddSelectors: vmagentCR.Spec.EnableKubernetesAPISelectors,
+		selectors:          cr.Spec.Selector,
+		apiServerConfig:    apiserverConfig,
+		role:               kubernetesSDRoleNode,
+	}
+	cfg = append(cfg, generateK8SSDConfig(ssCache, k8sSDOpts))
 
 	cfg = addCommonScrapeParamsTo(cfg, nodeSpec.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
 
-	relabelings = addSelectorToRelabelingFor(relabelings, "node", nodeSpec.Selector)
+	skipRelabelSelectors := vmagentCR.Spec.EnableKubernetesAPISelectors
+	relabelings = addSelectorToRelabelingFor(relabelings, "node", nodeSpec.Selector, skipRelabelSelectors)
 	// Add __address__ as internalIP  and pod and service labels into proper labels.
 	relabelings = append(relabelings, []yaml.MapSlice{
 		{
@@ -95,7 +102,7 @@ func generateNodeScrapeConfig(
 	cfg = addMetricRelabelingsTo(cfg, nodeSpec.MetricRelabelConfigs, se)
 	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
 	cfg = addTLStoYaml(cfg, cr.Namespace, nodeSpec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, nodeSpec.EndpointAuth, cr.AsMapKey(), ssCache)
+	cfg = addEndpointAuthTo(cfg, nodeSpec.EndpointAuth, cr.Namespace, cr.AsMapKey(), ssCache)
 
 	return cfg
 }

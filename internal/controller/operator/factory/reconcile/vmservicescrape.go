@@ -46,3 +46,35 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 		return rclient.Update(ctx, &existVSS)
 	})
 }
+
+// VMPodScrapeForCRD creates or updates given object
+func VMPodScrapeForCRD(ctx context.Context, rclient client.Client, vps *vmv1beta1.VMPodScrape) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var existVPS vmv1beta1.VMPodScrape
+		err := rclient.Get(ctx, types.NamespacedName{Namespace: vps.Namespace, Name: vps.Name}, &existVPS)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating VMPodScrape %s", vps.Name))
+				return rclient.Create(ctx, vps)
+			}
+			return err
+		}
+		if err := finalize.FreeIfNeeded(ctx, rclient, &existVPS); err != nil {
+			return err
+		}
+
+		if equality.Semantic.DeepEqual(vps.Spec, existVPS.Spec) &&
+			equality.Semantic.DeepEqual(vps.Labels, existVPS.Labels) &&
+			equality.Semantic.DeepEqual(vps.Annotations, existVPS.Annotations) {
+			return nil
+		}
+		// TODO: @f41gh7 allow 3rd party applications to add annotations for generated VMPodScrape
+		existVPS.Annotations = vps.Annotations
+		existVPS.Spec = vps.Spec
+		existVPS.Labels = vps.Labels
+		logMsg := fmt.Sprintf("updating VMPodScrape %s for CRD object spec_diff: %s", vps.Name, diffDeep(vps.Spec, existVPS.Spec))
+		logger.WithContext(ctx).Info(logMsg)
+
+		return rclient.Update(ctx, &existVPS)
+	})
+}

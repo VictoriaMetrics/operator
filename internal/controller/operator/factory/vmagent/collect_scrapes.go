@@ -13,6 +13,10 @@ import (
 )
 
 func selectScrapeConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMScrapeConfig, error) {
+	if cr.Spec.DaemonSetMode {
+		return nil, nil
+	}
+
 	var scrapeConfigsCombined []*vmv1beta1.VMScrapeConfig
 	var namespacedNames []string
 
@@ -60,6 +64,9 @@ func selectPodScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client
 }
 
 func selectVMProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMProbe, error) {
+	if cr.Spec.DaemonSetMode {
+		return nil, nil
+	}
 	var probesCombined []*vmv1beta1.VMProbe
 	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ProbeNamespaceSelector, cr.Spec.ProbeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
@@ -82,6 +89,9 @@ func selectVMProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 }
 
 func selectVMNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMNodeScrape, error) {
+	if cr.Spec.DaemonSetMode {
+		return nil, nil
+	}
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
 		logger.WithContext(ctx).Info("cannot use VMNodeScrape at operator in single namespace mode with default permissions." +
 			" Create ServiceAccount for VMAgent manually if needed. Skipping config generation for it")
@@ -113,6 +123,9 @@ func selectVMNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 }
 
 func selectStaticScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMStaticScrape, error) {
+	if cr.Spec.DaemonSetMode {
+		return nil, nil
+	}
 	var staticScrapesCombined []*vmv1beta1.VMStaticScrape
 	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.StaticScrapeNamespaceSelector, cr.Spec.StaticScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
@@ -135,6 +148,10 @@ func selectStaticScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 }
 
 func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMServiceScrape, error) {
+	if cr.Spec.DaemonSetMode {
+		return nil, nil
+	}
+
 	var servScrapesCombined []*vmv1beta1.VMServiceScrape
 	var namespacedNames []string
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ServiceScrapeNamespaceSelector, cr.Spec.ServiceScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,

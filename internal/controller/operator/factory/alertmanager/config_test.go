@@ -2,12 +2,15 @@ package alertmanager
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,6 +22,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+//nolint:gofmt
 func TestBuildConfig(t *testing.T) {
 	type args struct {
 		ctx     context.Context
@@ -923,6 +927,342 @@ receivers:
 templates: []
 `,
 		},
+		{
+			name: "jira section",
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "jira-api-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"DC_KEY":     []byte(`somekey`),
+						"CLOUD_USER": []byte(`username`),
+						"CLOUD_PAT":  []byte(`personal-token`),
+					},
+				},
+			},
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+ jira_api_url: "https://jira.cloud"
+`),
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []vmv1beta1.Receiver{
+								{
+									Name: "jira-dc",
+									JiraConfigs: []vmv1beta1.JiraConfig{
+										{
+
+											SendResolved: ptr.To(true),
+											HTTPConfig: &vmv1beta1.HTTPConfig{
+												Authorization: &vmv1beta1.Authorization{
+													Credentials: &corev1.SecretKeySelector{
+														Key: "DC_KEY",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "jira-api-access",
+														},
+													},
+												},
+											},
+											Project:   "main",
+											IssueType: "BUG",
+											Summary:   "must be fixed",
+											Labels: []string{
+												"dev",
+											},
+											Fields: map[string]apiextensionsv1.JSON{
+												"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
+												"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
+												"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
+											},
+										},
+									},
+								},
+								{
+									Name: "jira-cloud",
+									JiraConfigs: []vmv1beta1.JiraConfig{
+										{
+
+											SendResolved: ptr.To(true),
+											HTTPConfig: &vmv1beta1.HTTPConfig{
+												BasicAuth: &vmv1beta1.BasicAuth{
+													Username: corev1.SecretKeySelector{
+														Key: "CLOUD_USER",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "jira-api-access",
+														},
+													},
+													Password: corev1.SecretKeySelector{
+														Key: "CLOUD_PAT",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "jira-api-access",
+														},
+													},
+												},
+											},
+											Project:   "main",
+											IssueType: "BUG",
+											Summary:   "must be fixed",
+											Labels: []string{
+												"dev",
+											},
+											Fields: map[string]apiextensionsv1.JSON{
+												"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
+												"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
+												"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
+											},
+										},
+									},
+								},
+							},
+							Route: &vmv1beta1.Route{
+								Receiver:  "jira-dc",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			want: `global:
+  jira_api_url: https://jira.cloud
+  smtp_smarthost: some:443
+  time_out: 1min
+route:
+  receiver: blackhole
+  routes:
+  - matchers:
+    - namespace = "default"
+    group_wait: 1min
+    receiver: default-base-jira-dc
+    continue: true
+receivers:
+- name: blackhole
+- name: default-base-jira-dc
+  jira_configs:
+  - http_config:
+      authorization:
+        credentials: somekey
+    send_resolved: true
+    project: main
+    issue_type: BUG
+    summary: must be fixed
+    labels:
+    - dev
+    fields:
+      components: '{ name: "Monitoring" }'
+      customfield_10001: '"Random text"'
+      customfield_10002: '{"value": "red"}'
+- name: default-base-jira-cloud
+  jira_configs:
+  - http_config:
+      basic_auth:
+        username: username
+        password: personal-token
+    send_resolved: true
+    project: main
+    issue_type: BUG
+    summary: must be fixed
+    labels:
+    - dev
+    fields:
+      components: '{ name: "Monitoring" }'
+      customfield_10001: '"Random text"'
+      customfield_10002: '{"value": "red"}'
+templates: []
+`,
+		},
+		{
+			name: "rocketchat section",
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "rocket-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ID":           []byte(`12356`),
+						"SECRET_TOKEN": []byte(`token value`),
+					},
+				},
+			},
+			args: args{
+				baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+`),
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route: &vmv1beta1.Route{
+								Receiver: "rocketchat",
+							},
+							Receivers: []vmv1beta1.Receiver{
+								{
+									Name: "rocketchat",
+									RocketchatConfigs: []vmv1beta1.RocketchatConfig{
+										{
+											TokenID: &corev1.SecretKeySelector{
+												Key: "ID",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "rocket-access",
+												},
+											},
+											Token: &corev1.SecretKeySelector{
+												Key: "SECRET_TOKEN",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "rocket-access",
+												},
+											},
+											Channel: "some-channel",
+											Fields: []vmv1beta1.RocketchatAttachmentField{
+												{
+													Short: ptr.To(true),
+													Title: "alert value",
+													Value: "1",
+												},
+											},
+											Actions: []vmv1beta1.RocketchatAttachmentAction{
+												{
+													Type: "action",
+													Text: "some text",
+													URL:  "https://example.com/action",
+													Msg:  "some message",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `global:
+  smtp_smarthost: some:443
+  time_out: 1min
+route:
+  receiver: blackhole
+  routes:
+  - matchers:
+    - namespace = "default"
+    receiver: default-base-rocketchat
+    continue: true
+receivers:
+- name: blackhole
+- name: default-base-rocketchat
+  rocketchat_configs:
+  - token_id: "12356"
+    token: token value
+    channel: some-channel
+    fields:
+    - title: alert value
+      value: "1"
+      short: true
+    actions:
+    - type: action
+      text,omitempty: some text
+      url: https://example.com/action
+      msg: some message
+templates: []
+`,
+		},
+		{
+			name: "msteamsv2",
+			args: args{
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "msteams-dev",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route: &vmv1beta1.Route{
+								Receiver: "mstv2",
+							},
+							Receivers: []vmv1beta1.Receiver{
+								{
+									Name: "mstv2",
+									MSTeamsV2Configs: []vmv1beta1.MSTeamsV2Config{
+										{
+											URL:   ptr.To("http://example.com/msteams"),
+											Title: "some",
+											Text:  "some alert text",
+											HTTPConfig: &vmv1beta1.HTTPConfig{
+												Authorization: &vmv1beta1.Authorization{
+													Credentials: &corev1.SecretKeySelector{
+														Key: "TOKEN",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "ms-teams-access",
+														},
+													},
+												},
+											},
+										},
+										{
+											URLSecret: &corev1.SecretKeySelector{
+												Key: "API_URL",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "ms-teams-access",
+												},
+											},
+											Title: "team 2",
+											Text:  "some other text",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ms-teams-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"TOKEN":   []byte(`token value`),
+						"API_URL": []byte(`https://example.com/v2/msteamsv2`),
+					},
+				},
+			},
+			want: `route:
+  receiver: blackhole
+  routes:
+  - matchers:
+    - namespace = "default"
+    receiver: default-msteams-dev-mstv2
+    continue: true
+receivers:
+- name: blackhole
+- name: default-msteams-dev-mstv2
+  msteamsv2_configs:
+  - http_config:
+      authorization:
+        credentials: token value
+    webhook_url: http://example.com/msteams
+    text: some alert text
+    title: some
+  - webhook_url: https://example.com/v2/msteamsv2
+    text: some other text
+    title: team 2
+templates: []
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1437,6 +1777,15 @@ authorization:
 	}
 }
 
+func mustRouteToJSON(t *testing.T, r vmv1beta1.SubRoute) apiextensionsv1.JSON {
+	t.Helper()
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("unexpected json marshal error: %s", err)
+	}
+	return apiextensionsv1.JSON{Raw: data}
+}
+
 func Test_UpdateDefaultAMConfig(t *testing.T) {
 	type args struct {
 		ctx context.Context
@@ -1486,6 +1835,11 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 						Route: &vmv1beta1.Route{
 							GroupBy:  []string{"alertname", "l2ci_channel"},
 							Receiver: "blackhole",
+							RawRoutes: []apiextensionsv1.JSON{
+								mustRouteToJSON(t, vmv1beta1.SubRoute{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietWeeklyNotifications\""}}),
+								mustRouteToJSON(t, vmv1beta1.SubRoute{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietDailyNotifications\""}}),
+								mustRouteToJSON(t, vmv1beta1.SubRoute{Receiver: "l2ci_receiver", Matchers: []string{"alert_group=~\"^l2ci.*\""}}),
+							},
 							Routes: []*vmv1beta1.SubRoute{
 								{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietWeeklyNotifications\""}},
 								{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietDailyNotifications\""}},

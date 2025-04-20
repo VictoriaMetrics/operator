@@ -81,12 +81,19 @@ func (sus *skipableVMUsers) deduplicateBy(cb func(user *vmv1beta1.VMUser) (strin
 func (sus *skipableVMUsers) sort() {
 	// sort for consistency.
 	sort.Slice(sus.users, func(i, j int) bool {
-		return sus.users[i].Name < sus.users[j].Name
+
+		if sus.users[i].Name != sus.users[j].Name {
+			return sus.users[i].Name < sus.users[j].Name
+		}
+		return sus.users[i].Namespace < sus.users[j].Namespace
 	})
 }
 
 // builds vmauth config.
 func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, sus *skipableVMUsers, tlsAssets map[string]string) ([]byte, error) {
+
+	// apply sort before making any changes to users
+	sus.sort()
 
 	// loads info about exist operator object kind for crdRef.
 	crdCache, err := fetchCRDRefURLs(ctx, rclient, sus)
@@ -102,7 +109,6 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 	// check config for dups.
 	filterNonUniqUsers(sus)
 
-	sus.sort()
 	// generate yaml config for vmauth.
 	cfg, err := generateVMAuthConfig(vmauth, sus, crdCache, tlsAssets, rclient)
 	if err != nil {

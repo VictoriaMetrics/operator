@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -227,10 +228,10 @@ type Route struct {
 	// Child routes.
 	// CRD schema doesn't support self-referential types for now (see https://github.com/kubernetes/kubernetes/issues/62872).
 	// We expose below RawRoutes as an alternative type to circumvent the limitation, and use Routes in code.
-	Routes []*SubRoute `json:"-,omitempty"`
+	Routes []*SubRoute `json:"-" yaml:"-"`
 	// Child routes.
 	// https://prometheus.io/docs/alerting/latest/configuration/#route
-	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty"`
+	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty" yaml:"routes,omitempty"`
 	// MuteTimeIntervals is a list of interval names that will mute matched alert
 	// +optional
 	MuteTimeIntervals []string `json:"mute_time_intervals,omitempty" yaml:"mute_time_intervals,omitempty"`
@@ -254,8 +255,13 @@ func parseNestedRoutes(src *Route) error {
 		}
 	}
 	for _, nestedRoute := range src.RawRoutes {
+		if len(nestedRoute.Raw) == 0 {
+			return fmt.Errorf("unexpected empty route")
+		}
 		var subRoute Route
-		if err := json.Unmarshal(nestedRoute.Raw, &subRoute); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(nestedRoute.Raw))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&subRoute); err != nil {
 			return fmt.Errorf("cannot parse json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
 		}
 		if err := parseNestedRoutes(&subRoute); err != nil {
@@ -344,6 +350,12 @@ type Receiver struct {
 	SNSConfigs []SnsConfig `json:"sns_configs,omitempty" yaml:"sns_configs,omitempty"`
 	// +optional
 	WebexConfigs []WebexConfig `json:"webex_configs,omitempty" yaml:"webex_configs,omitempty"`
+	// +optional
+	JiraConfigs []JiraConfig `json:"jira_configs,omitempty" yaml:"jira_configs,omitempty"`
+	// +optional
+	RocketchatConfigs []RocketchatConfig `json:"rocketchat_configs,omitempty" yaml:"rocketchat_configs,omitempty"`
+	// +optional
+	MSTeamsV2Configs []MSTeamsV2Config `json:"msteamsv2_configs,omitempty" yaml:"msteamsv2_configs,omitempty"`
 }
 
 // TelegramConfig configures notification via telegram
@@ -869,6 +881,19 @@ type DiscordConfig struct {
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+	// Content defines message content template
+	// Available from operator v0.55.0 and alertmanager v0.28.0
+	// +kubebuilder:validation:MaxLength:=2000
+	// +optional
+	Content string `json:"content,omitempty"`
+	// Username defines message username
+	// Available from operator v0.55.0 and alertmanager v0.28.0
+	// +optional
+	Username string `json:"username,omitempty" yaml:"username"`
+	// AvatarURL defines message avatar URL
+	// Available from operator v0.55.0 and alertmanager v0.28.0
+	// +optional
+	AvatarURL string `json:"avatar_url,omitempty" yaml:"avatar_url,omitempty"`
 }
 
 type SnsConfig struct {
@@ -944,6 +969,174 @@ type WebexConfig struct {
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
+// JiraConfig represent alertmanager's jira_config entry
+// https://prometheus.io/docs/alerting/latest/configuration/#jira_config
+// available from v0.55.0 operator version
+// and v0.28.0 alertmanager version
+type JiraConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
+
+	// The URL to send API requests to. The full API path must be included.
+	// Example: https://company.atlassian.net/rest/api/2/
+	// +optional
+	APIURL *string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
+
+	// The project key where issues are created
+	Project string `json:"project" yaml:"project"`
+	// Issue summary template
+	// +optional
+	Summary string `json:"summary,omitempty" yaml:"summary,omitempty"`
+	// Issue description template.
+	// +optional
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Labels to be added to the issue
+	Labels []string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	// Priority of the issue
+	Priority string `json:"priority,omitempty" yaml:"priority,omitempty"`
+
+	// Type of the issue (e.g. Bug)
+	IssueType string `json:"issue_type" yaml:"issue_type"`
+
+	// Name of the workflow transition to resolve an issue.
+	// The target status must have the category "done".
+	ReopenTransition string `json:"reopen_transition,omitempty" yaml:"reopen_transition,omitempty"`
+	// Name of the workflow transition to reopen an issue.
+	// The target status should not have the category "done".
+	ResolveTransition string `json:"resolve_transition,omitempty" yaml:"resolve_transition,omitempty"`
+	// If reopen_transition is defined, ignore issues with that resolution.
+	WontFixResolution string `json:"wont_fix_resolution,omitempty" yaml:"wont_fix_resolution,omitempty"`
+
+	// If reopen_transition is defined, reopen the issue when it is not older than this value (rounded down to the nearest minute).
+	// The resolutiondate field is used to determine the age of the issue.
+	// +kubebuilder:validation:Pattern:="^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$"
+	// +optional
+	ReopenDuration string `json:"reopen_duration,omitempty" yaml:"reopen_duration,omitempty"`
+
+	// Other issue and custom fields.
+	// Jira issue field can have multiple types.
+	// Depends on the field type, the values must be provided differently.
+	// See https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#setting-custom-field-data-for-other-field-types for further examples.
+	// +optional
+	Fields map[string]apiextensionsv1.JSON `json:"custom_fields,omitempty" yaml:"fields,omitempty"`
+
+	// The HTTP client's configuration. You must use this configuration to supply the personal access token (PAT) as part of the HTTP `Authorization` header.
+	// For Jira Cloud, use basic_auth with the email address as the username and the PAT as the password.
+	// For Jira Data Center, use the 'authorization' field with 'credentials: <PAT value>'.
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+// RocketchatConfig configures notifications via Rocketchat.
+// https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
+// available from v0.55.0 operator version
+// and v0.28.0 alertmanager version
+type RocketchatConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
+	// +optional
+	APIURL *string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
+
+	// The sender token and token_id
+	// See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens
+	// +optional
+	TokenID *v1.SecretKeySelector `yaml:"token_id,omitempty" json:"token_id,omitempty"`
+	// +optional
+	Token *v1.SecretKeySelector `yaml:"token,omitempty" json:"token,omitempty"`
+
+	// RocketChat channel override, (like #other-channel or @username).
+	// +optional
+	Channel string `yaml:"channel,omitempty" json:"channel,omitempty"`
+	// +optional
+	Color string `json:"color,omitempty" yaml:"color,omitempty"`
+	// +optional
+	Title string `json:"title,omitempty" yaml:"title,omitempty"`
+	// +optional
+	TitleLink string `json:"title_link,omitempty" yaml:"title_link,omitempty"`
+	// +optional
+	Text string `json:"text,omitempty" yaml:"text,omitempty"`
+	// +optional
+	Fields []RocketchatAttachmentField `json:"fields,omitempty" yaml:"fields,omitempty"`
+	// +optional
+	ShortFields bool `json:"short_fields,omitempty" yaml:"short_fields,omitempty"`
+	// +optional
+	Emoji string `json:"emoji,omitempty" yaml:"emoji,omitempty"`
+	// +optional
+	IconURL string `json:"icon_url,omitempty" yaml:"icon_url,omitempty"`
+	// +optional
+	ImageURL string `json:"image_url,omitempty" yaml:"image_url,omitempty"`
+	// +optional
+	ThumbURL string `json:"thumb_url,omitempty" yaml:"thumb_url,omitempty"`
+	// +optional
+	LinkNames bool `json:"link_names,omitempty" yaml:"link_names"`
+	// +optional
+	Actions []RocketchatAttachmentAction `json:"actions,omitempty" yaml:"actions,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+// RocketchatAttachmentField defines API fields
+// https://developer.rocket.chat/reference/api/rest-api/endpoints/messaging/chat-endpoints/postmessage#attachment-field-objects
+type RocketchatAttachmentField struct {
+	// +optional
+	Short *bool `json:"short"`
+	// +optional
+	Title string `json:"title,omitempty"`
+	// +optional
+	Value string `json:"value,omitempty"`
+}
+
+// RocketchatAttachmentAction defines message attachements
+// https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
+type RocketchatAttachmentAction struct {
+	// +optional
+	Type string `json:"type,omitempty"`
+	// +optional
+	Text string `json:"text,omitempty"`
+	// +optional
+	URL string `json:"url,omitempty"`
+	// +optional
+	Msg string `json:"msg,omitempty"`
+}
+
+// MSTeamsV2Config sends notifications using the new message format with adaptive cards as required by flows.
+// https://support.microsoft.com/en-gb/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498
+// available from v0.55.0 operator version
+// and v0.28.0 alertmanager version
+type MSTeamsV2Config struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
+
+	// The incoming webhook URL
+	// one of `urlSecret` and `url` must be defined.
+	// +optional
+	URL *string `json:"webhook_url,omitempty" yaml:"webhook_url,omitempty"`
+	// URLSecret defines secret name and key at the CRD namespace.
+	// It must contain the webhook URL.
+	// one of `webhook_url` or `webhook_url_secret` must be defined.
+	// +optional
+	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
+
+	// Message title template.
+	// +optional
+	Title string `json:"title,omitempty" yaml:"title,omitempty"`
+	// Message body template.
+	// +optional
+	Text string `json:"text,omitempty" yaml:"text,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
 // HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 // See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 type HTTPConfig struct {
@@ -970,6 +1163,19 @@ type HTTPConfig struct {
 	// OAuth2 client credentials used to fetch a token for the targets.
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaller interface
+func (hc *HTTPConfig) UnmarshalJSON(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+
+	type phc HTTPConfig
+	if err := decoder.Decode((*phc)(hc)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (hc *HTTPConfig) validate() error {
@@ -1018,9 +1224,9 @@ func (r *VMAlertmanagerConfig) AsKey() string {
 	return fmt.Sprintf("%s/%s", r.Namespace, r.Name)
 }
 
-// validateAlertmanagerConfigSpec verifies that provided raw alertmanger configuration is logically valid
+// ValidateAlertmanagerConfigSpec verifies that provided raw alertmanger configuration is logically valid
 // according to alertmanager config parser
-func validateAlertmanagerConfigSpec(srcYAML []byte) error {
+func ValidateAlertmanagerConfigSpec(srcYAML []byte) error {
 	var cfgForTest amcfg.Config
 	if err := yaml.UnmarshalStrict(srcYAML, &cfgForTest); err != nil {
 		return err
@@ -1590,6 +1796,47 @@ func validateReceiver(recv Receiver) error {
 		}
 		if err := cfg.HTTPConfig.validate(); err != nil {
 			return fmt.Errorf("at idx=%d for webex_configs incorrect http_config: %w", idx, err)
+		}
+	}
+
+	for idx, cfg := range recv.JiraConfigs {
+		if cfg.APIURL != nil && *cfg.APIURL != "" {
+			if _, err := url.Parse(*cfg.APIURL); err != nil {
+				return fmt.Errorf("at idx=%d for jira_configs incorrect url=%q: %w", idx, *cfg.APIURL, err)
+			}
+		}
+		if cfg.Project == "" {
+			return fmt.Errorf("at idx=%d for jira_configs missing required field 'project'", idx)
+		}
+		if cfg.IssueType == "" {
+			return fmt.Errorf("at idx=%d for jira_configs missing required field 'issue_type'", idx)
+		}
+	}
+
+	for idx, cfg := range recv.RocketchatConfigs {
+		if cfg.APIURL != nil && *cfg.APIURL != "" {
+			if _, err := url.Parse(*cfg.APIURL); err != nil {
+				return fmt.Errorf("at idx=%d for jira_configs incorrect url=%q: %w", idx, *cfg.APIURL, err)
+			}
+		}
+	}
+
+	for idx, cfg := range recv.MSTeamsV2Configs {
+		if cfg.URL == nil && cfg.URLSecret == nil {
+			return fmt.Errorf("at idx=%d for msteamsv2_configs of webhook_url or webhook_url_secret must be configured", idx)
+		}
+
+		if cfg.URL != nil && cfg.URLSecret != nil {
+			return fmt.Errorf("at idx=%d for msteamsv2_configs at most one of webhook_url or webhook_url_secret must be configured", idx)
+		}
+		if cfg.URL != nil {
+			if _, err := url.Parse(*cfg.URL); err != nil {
+				return fmt.Errorf("at idx=%d for msteamsv2_configs has invalid webhook_url=%q", idx, *cfg.URL)
+			}
+		}
+
+		if err := cfg.HTTPConfig.validate(); err != nil {
+			return fmt.Errorf("at idx=%d for msteamsv2_configs incorrect http_config: %w", idx, err)
 		}
 	}
 

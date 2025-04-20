@@ -66,6 +66,105 @@ type scrapeObjects struct {
 	totalBrokenCount int
 }
 
+var skipAnyError = func(_ error) bool {
+	return false
+}
+
+func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
+	var err error
+	so.sss, so.sssBroken, err = forEachCollectSkipOn(so.sss, so.sssBroken, func(ss *vmv1beta1.VMServiceScrape) error {
+		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+			for _, ep := range ss.Spec.Endpoints {
+				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := metav1.LabelSelectorAsSelector(&ss.Spec.Selector); err != nil {
+			return err
+		}
+		return nil
+	}, skipAnyError)
+	if err != nil {
+		panic(fmt.Errorf("BUG: validation cannot return error for ServiceScrape: %s", err))
+	}
+
+	so.pss, so.pssBroken, err = forEachCollectSkipOn(so.pss, so.pssBroken, func(ps *vmv1beta1.VMPodScrape) error {
+		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+			for _, ep := range ps.Spec.PodMetricsEndpoints {
+				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := metav1.LabelSelectorAsSelector(&ps.Spec.Selector); err != nil {
+			return err
+		}
+		return nil
+	}, skipAnyError)
+	if err != nil {
+		panic(fmt.Errorf("BUG: validation cannot return error for PodScrape: %s", err))
+	}
+
+	so.stss, so.stssBroken, err = forEachCollectSkipOn(so.stss, so.stssBroken, func(sts *vmv1beta1.VMStaticScrape) error {
+		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+			for _, ep := range sts.Spec.TargetEndpoints {
+				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}, skipAnyError)
+	if err != nil {
+		panic(fmt.Errorf("BUG: validation cannot return error for StaticScrape: %s", err))
+	}
+
+	so.nss, so.nssBroken, err = forEachCollectSkipOn(so.nss, so.nssBroken, func(ns *vmv1beta1.VMNodeScrape) error {
+		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+			if err := testForArbitraryFSAccess(ns.Spec.EndpointAuth); err != nil {
+				return err
+			}
+		}
+		return nil
+	}, skipAnyError)
+	if err != nil {
+		panic(fmt.Errorf("BUG: validation cannot return error for NodeScrape: %s", err))
+	}
+
+	so.prss, so.prssBroken, err = forEachCollectSkipOn(so.prss, so.prssBroken, func(prs *vmv1beta1.VMProbe) error {
+		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+			if err := testForArbitraryFSAccess(prs.Spec.EndpointAuth); err != nil {
+				return err
+			}
+		}
+		if prs.Spec.Targets.Ingress != nil {
+			_, err := metav1.LabelSelectorAsSelector(&prs.Spec.Targets.Ingress.Selector)
+			if err != nil {
+				return fmt.Errorf("cannot parse spec.selector: %w", err)
+			}
+		}
+		return nil
+	}, skipAnyError)
+	if err != nil {
+		panic(fmt.Errorf("BUG: validation cannot return error for ProbeScrape: %s", err))
+	}
+
+	so.scss, so.scssBroken, err = forEachCollectSkipOn(so.scss, so.scssBroken, func(scss *vmv1beta1.VMScrapeConfig) error {
+		// TODO: @f41gh7 validate per configuration FS access
+		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+			if err := testForArbitraryFSAccess(scss.Spec.EndpointAuth); err != nil {
+				return err
+			}
+
+		}
+		return nil
+	}, skipAnyError)
+	if err != nil {
+		panic(fmt.Errorf("BUG: validation cannot return error for scrapeConfig: %s", err))
+	}
+}
+
 // CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
 func CreateOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
 	var prevCR *vmv1beta1.VMAgent
@@ -120,28 +219,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		stss: statics,
 		scss: scrapeConfigs,
 	}
-	// filter out all service scrapes that access
-	// the file system.
-	// TODO: @f41gh7 properly check file system for other components
-	// with additional function
-	// keep it for backward-compatibility
-	var brokenServiceScrapes []*vmv1beta1.VMServiceScrape
-	if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
-		var cnt int
-	OUTER:
-		for _, sm := range sos.sss {
-			for _, endpoint := range sm.Spec.Endpoints {
-				if err := testForArbitraryFSAccess(endpoint.EndpointAuth); err != nil {
-					sm.Status.CurrentSyncError = err.Error()
-					brokenServiceScrapes = append(brokenServiceScrapes, sm)
-					continue OUTER
-				}
-			}
-			sos.sss[cnt] = sm
-			cnt++
-		}
-		sos.sss = sos.sss[:cnt]
-	}
+	sos.mustValidateObjects(cr)
 
 	ssCache, err := loadScrapeSecrets(ctx, rclient, sos, cr.Namespace, cr.Spec.APIServerConfig, cr.Spec.RemoteWrite)
 	if err != nil {
@@ -156,8 +234,6 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 	if err != nil {
 		return nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
 	}
-	// TODO: @f41gh7  move it to the separate function
-	sos.sssBroken = append(sos.sssBroken, brokenServiceScrapes...)
 
 	// Update secret based on the most recent configuration.
 	generatedConfig, err := generateConfig(
@@ -319,31 +395,36 @@ type scrapeObjectWithStatus interface {
 	GetStatusMetadata() *vmv1beta1.StatusMetadata
 }
 
+var skipOnNotFound = func(err error) bool {
+	var ne *k8stools.KeyNotFoundError
+	switch {
+	case errors.IsNotFound(err), stderrors.As(err, &ne):
+		return true
+	default:
+		return false
+	}
+}
+
 // returned objects with not found links have erased type
-func forEachCollectSkipNotFound[T scrapeObjectWithStatus](src []T, apply func(s T) error) ([]T, []T, error) {
+func forEachCollectSkipOn[T scrapeObjectWithStatus](src, srcBroken []T, apply func(s T) error, skipOn func(error) bool) ([]T, []T, error) {
 	var cnt int
-	var notNotFoundLinks []T
 	for _, o := range src {
 		if err := apply(o); err != nil {
-			var ne *k8stools.KeyNotFoundError
-			switch {
-			case stderrors.As(err, &ne):
-				notNotFoundLinks = append(notNotFoundLinks, o)
-			case errors.IsNotFound(err):
-				notNotFoundLinks = append(notNotFoundLinks, o)
-			default:
-				return nil, nil, err
+			if skipOn(err) {
+				st := o.GetStatusMetadata()
+				st.CurrentSyncError = err.Error()
+				srcBroken = append(srcBroken, o)
+				continue
 			}
-			st := o.GetStatusMetadata()
-			st.CurrentSyncError = fmt.Sprintf("cannot find referenced object: %s", err)
-			continue
+			return nil, nil, err
 		}
 		src[cnt] = o
 		cnt++
 	}
 	src = src[:cnt]
-	return src, notNotFoundLinks, nil
+	return src, srcBroken, nil
 }
+
 func loadSecretsToCacheFrom(ctx context.Context, rclient client.Client, ep *vmv1beta1.EndpointAuth, cacheKey, namespace string, ss *scrapesSecretsCache) error {
 	if ep.BasicAuth != nil {
 		credentials, err := loadBasicAuthSecretFromAPI(ctx, rclient, ep.BasicAuth, namespace, ss.nsSecretCache)
@@ -354,6 +435,10 @@ func loadSecretsToCacheFrom(ctx context.Context, rclient client.Client, ep *vmv1
 	}
 
 	if ep.OAuth2 != nil {
+		if err := addAssetsToCache(ctx, rclient, namespace, ep.OAuth2.TLSConfig, ss); err != nil {
+			return fmt.Errorf("cannot add oauth2 tlsAsset for=%s %w", cacheKey, err)
+		}
+
 		oauth2, err := k8stools.LoadOAuthSecrets(ctx, rclient, ep.OAuth2, namespace, ss.nsSecretCache, ss.nsCMCache)
 		if err != nil {
 			return fmt.Errorf("cannot load oauth2 secret for=%s: %w", cacheKey, err)
@@ -400,7 +485,7 @@ func loadScrapeSecrets(
 		tlsAssets:            map[string]string{},
 	}
 	var err error
-	sos.sss, sos.sssBroken, err = forEachCollectSkipNotFound(sos.sss, func(mon *vmv1beta1.VMServiceScrape) error {
+	sos.sss, sos.sssBroken, err = forEachCollectSkipOn(sos.sss, sos.sssBroken, func(mon *vmv1beta1.VMServiceScrape) error {
 		for i, ep := range mon.Spec.Endpoints {
 			if err := loadSecretsToCacheFrom(ctx, rclient, &ep.EndpointAuth, mon.AsMapKey(i), mon.Namespace, ssCache); err != nil {
 				return err
@@ -421,12 +506,12 @@ func loadScrapeSecrets(
 			}
 		}
 		return nil
-	})
+	}, skipOnNotFound)
 	if err != nil {
 		return nil, err
 	}
 
-	sos.nss, sos.nssBroken, err = forEachCollectSkipNotFound(sos.nss, func(node *vmv1beta1.VMNodeScrape) error {
+	sos.nss, sos.nssBroken, err = forEachCollectSkipOn(sos.nss, sos.nssBroken, func(node *vmv1beta1.VMNodeScrape) error {
 		if err := loadSecretsToCacheFrom(ctx, rclient, &node.Spec.EndpointAuth, node.AsMapKey(), node.Namespace, ssCache); err != nil {
 			return err
 		}
@@ -445,12 +530,12 @@ func loadScrapeSecrets(
 		}
 
 		return nil
-	})
+	}, skipOnNotFound)
 	if err != nil {
 		return nil, err
 	}
 
-	sos.pss, sos.pssBroken, err = forEachCollectSkipNotFound(sos.pss, func(pod *vmv1beta1.VMPodScrape) error {
+	sos.pss, sos.pssBroken, err = forEachCollectSkipOn(sos.pss, sos.pssBroken, func(pod *vmv1beta1.VMPodScrape) error {
 		for i, ep := range pod.Spec.PodMetricsEndpoints {
 			if err := loadSecretsToCacheFrom(ctx, rclient, &ep.EndpointAuth, pod.AsMapKey(i), pod.Namespace, ssCache); err != nil {
 				return err
@@ -471,12 +556,12 @@ func loadScrapeSecrets(
 		}
 
 		return nil
-	})
+	}, skipOnNotFound)
 	if err != nil {
 		return nil, err
 	}
 
-	sos.prss, sos.prssBroken, err = forEachCollectSkipNotFound(sos.prss, func(probe *vmv1beta1.VMProbe) error {
+	sos.prss, sos.prssBroken, err = forEachCollectSkipOn(sos.prss, sos.prssBroken, func(probe *vmv1beta1.VMProbe) error {
 		if err := loadSecretsToCacheFrom(ctx, rclient, &probe.Spec.EndpointAuth, probe.AsMapKey(), probe.Namespace, ssCache); err != nil {
 			return err
 		}
@@ -494,12 +579,12 @@ func loadScrapeSecrets(
 			}
 		}
 		return nil
-	})
+	}, skipOnNotFound)
 	if err != nil {
 		return nil, err
 	}
 
-	sos.stss, sos.stssBroken, err = forEachCollectSkipNotFound(sos.stss, func(staticCfg *vmv1beta1.VMStaticScrape) error {
+	sos.stss, sos.stssBroken, err = forEachCollectSkipOn(sos.stss, sos.stssBroken, func(staticCfg *vmv1beta1.VMStaticScrape) error {
 		for i, ep := range staticCfg.Spec.TargetEndpoints {
 			if err := loadSecretsToCacheFrom(ctx, rclient, &ep.EndpointAuth, staticCfg.AsMapKey(i), staticCfg.Namespace, ssCache); err != nil {
 				return err
@@ -520,12 +605,12 @@ func loadScrapeSecrets(
 			}
 		}
 		return nil
-	})
+	}, skipOnNotFound)
 	if err != nil {
 		return nil, err
 	}
 
-	sos.scss, sos.scssBroken, err = forEachCollectSkipNotFound(sos.scss, func(scrapeConfig *vmv1beta1.VMScrapeConfig) error {
+	sos.scss, sos.scssBroken, err = forEachCollectSkipOn(sos.scss, sos.scssBroken, func(scrapeConfig *vmv1beta1.VMScrapeConfig) error {
 		if err := loadSecretsToCacheFrom(ctx, rclient, &scrapeConfig.Spec.EndpointAuth, scrapeConfig.AsMapKey("", 0), scrapeConfig.Namespace, ssCache); err != nil {
 			return err
 		}
@@ -710,7 +795,7 @@ func loadScrapeSecrets(
 		}
 
 		return nil
-	})
+	}, skipOnNotFound)
 	if err != nil {
 		return nil, err
 	}
@@ -837,6 +922,7 @@ func loadAdditionalScrapeConfigsSecret(ctx context.Context, rclient client.Clien
 	return nil, nil
 }
 
+// TODO: @f41gh7 validate VMScrapeParams
 func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
 	if e.BearerTokenFile != "" {
 		return fmt.Errorf("it accesses file system via bearer token file which VMAgent specification prohibits")
@@ -1286,43 +1372,41 @@ func getNamespacesFromNamespaceSelector(nsSelector *vmv1beta1.NamespaceSelector,
 	}
 }
 
-func combineSelectorStr(kvs map[string]string) string {
-	kvsSlice := make([]string, 0, len(kvs))
-	for k, v := range kvs {
-		kvsSlice = append(kvsSlice, fmt.Sprintf("%v=%v", k, v))
-	}
-
-	// Ensure we generate the same selector string for the same kvs,
-	// regardless of Go map iteration order.
-	sort.Strings(kvsSlice)
-
-	return strings.Join(kvsSlice, ",")
+type generateK8SSDConfigOptions struct {
+	namespaces          []string
+	apiServerConfig     *vmv1beta1.APIServerConfig
+	role                string
+	attachMetadata      *vmv1beta1.AttachMetadata
+	shouldAddSelectors  bool
+	selectors           metav1.LabelSelector
+	mustUseNodeSelector bool
 }
 
-func generateK8SSDConfig(namespaces []string, apiserverConfig *vmv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string, am *vmv1beta1.AttachMetadata) yaml.MapItem {
+func generateK8SSDConfig(ssCache *scrapesSecretsCache, opts generateK8SSDConfigOptions) yaml.MapItem {
 	k8sSDConfig := yaml.MapSlice{
 		{
 			Key:   "role",
-			Value: role,
+			Value: opts.role,
 		},
 	}
-	switch role {
+	switch opts.role {
 	case kubernetesSDRoleEndpoint, kubernetesSDRoleEndpointSlices, kubernetesSDRolePod:
-		k8sSDConfig = addAttachMetadata(k8sSDConfig, am)
+		k8sSDConfig = addAttachMetadata(k8sSDConfig, opts.attachMetadata)
 	}
-	if len(namespaces) != 0 {
+	if len(opts.namespaces) != 0 {
 		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
 			Key: "namespaces",
 			Value: yaml.MapSlice{
 				{
 					Key:   "names",
-					Value: namespaces,
+					Value: opts.namespaces,
 				},
 			},
 		})
 	}
 
-	if apiserverConfig != nil {
+	if opts.apiServerConfig != nil {
+		apiserverConfig := opts.apiServerConfig
 		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
 			Key: "api_server", Value: apiserverConfig.Host,
 		})
@@ -1351,6 +1435,62 @@ func generateK8SSDConfig(namespaces []string, apiserverConfig *vmv1beta1.APIServ
 
 		// config as well, make sure to path the right namespace here.
 		k8sSDConfig = addTLStoYaml(k8sSDConfig, "", apiserverConfig.TLSConfig, false)
+	}
+
+	var selectors []yaml.MapSlice
+
+	isEmptySelectors := len(opts.selectors.MatchLabels)+len(opts.selectors.MatchExpressions) == 0
+	switch {
+	case opts.mustUseNodeSelector:
+		var selector yaml.MapSlice
+		selector = append(selector, yaml.MapItem{
+			Key:   "role",
+			Value: kubernetesSDRolePod,
+		})
+		selector = append(selector, yaml.MapItem{
+			Key:   "field",
+			Value: "spec.nodeName=" + kubeNodeEnvTemplate,
+		})
+		selectors = append(selectors, selector)
+
+	case opts.shouldAddSelectors && !isEmptySelectors:
+		var selector yaml.MapSlice
+		selector = append(selector, yaml.MapItem{
+			Key:   "role",
+			Value: opts.role,
+		})
+		labelSelector, err := metav1.LabelSelectorAsSelector(&opts.selectors)
+		if err != nil {
+			panic(fmt.Sprintf("BUG: unexpected error, selectors must be already validated: %q: %s", opts.selectors.String(), err))
+		}
+		selector = append(selector, yaml.MapItem{
+			Key:   "label",
+			Value: labelSelector.String(),
+		})
+		selectors = append(selectors, selector)
+
+		// special case, given roles create additional watchers for
+		// pod and services roles
+		if opts.role == kubernetesSDRoleEndpoint || opts.role == kubernetesSDRoleEndpointSlices {
+			for _, role := range []string{kubernetesSDRolePod, kubernetesSDRoleService} {
+				selectors = append(selectors, yaml.MapSlice{
+					{
+						Key:   "role",
+						Value: role,
+					},
+					{
+						Key:   "label",
+						Value: labelSelector.String(),
+					},
+				})
+			}
+		}
+	}
+	if len(selectors) > 0 {
+		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
+			Key:   "selectors",
+			Value: selectors,
+		})
 	}
 
 	return yaml.MapItem{
@@ -1447,7 +1587,7 @@ func addAuthorizationConfigTo(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1
 	return dst
 }
 
-func addOAuth2ConfigTo(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1.OAuth2, oauth2Cache map[string]*k8stools.OAuthCreds) yaml.MapSlice {
+func addOAuth2ConfigTo(dst yaml.MapSlice, namespace, cacheKey string, cfg *vmv1beta1.OAuth2, oauth2Cache map[string]*k8stools.OAuthCreds) yaml.MapSlice {
 	cachedSecret := oauth2Cache[cacheKey]
 	if cfg == nil || cachedSecret == nil {
 		// fast path
@@ -1472,6 +1612,13 @@ func addOAuth2ConfigTo(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1.OAuth2
 	}
 	if len(cfg.TokenURL) > 0 {
 		r = append(r, yaml.MapItem{Key: "token_url", Value: cfg.TokenURL})
+	}
+
+	if len(cfg.ProxyURL) > 0 {
+		r = append(r, yaml.MapItem{Key: "proxy_url", Value: cfg.ProxyURL})
+	}
+	if cfg.TLSConfig != nil {
+		r = addTLStoYaml(r, namespace, cfg.TLSConfig, false)
 	}
 	if len(r) == 0 {
 		return dst
@@ -1514,7 +1661,10 @@ func buildProxyAuthConfig(namespace, cacheKey string, proxyAuth *vmv1beta1.Proxy
 	return r
 }
 
-func addSelectorToRelabelingFor(relabelings []yaml.MapSlice, typeName string, selector metav1.LabelSelector) []yaml.MapSlice {
+func addSelectorToRelabelingFor(relabelings []yaml.MapSlice, typeName string, selector metav1.LabelSelector, mustSkipAdd bool) []yaml.MapSlice {
+	if mustSkipAdd {
+		return relabelings
+	}
 	// Exact label matches.
 	var labelKeys []string
 	for k := range selector.MatchLabels {
@@ -1637,7 +1787,7 @@ func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, s
 	return cfg
 }
 
-func addEndpointAuthTo(cfg yaml.MapSlice, ac vmv1beta1.EndpointAuth, key string, ssCache *scrapesSecretsCache) yaml.MapSlice {
+func addEndpointAuthTo(cfg yaml.MapSlice, ac vmv1beta1.EndpointAuth, namespace, key string, ssCache *scrapesSecretsCache) yaml.MapSlice {
 	if ac.BearerTokenFile != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ac.BearerTokenFile})
 	}
@@ -1664,7 +1814,7 @@ func addEndpointAuthTo(cfg yaml.MapSlice, ac vmv1beta1.EndpointAuth, key string,
 			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
 		}
 	}
-	cfg = addOAuth2ConfigTo(cfg, key, ac.OAuth2, ssCache.oauth2Secrets)
+	cfg = addOAuth2ConfigTo(cfg, namespace, key, ac.OAuth2, ssCache.oauth2Secrets)
 	cfg = addAuthorizationConfigTo(cfg, key, ac.Authorization, ssCache.authorizationSecrets)
 
 	return cfg

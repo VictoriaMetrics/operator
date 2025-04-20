@@ -2,6 +2,7 @@ package vmauth
 
 import (
 	"context"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -2171,6 +2172,93 @@ unauthorized_user:
   dump_request_on_errors: true
 `,
 		},
+		{
+			name: "with unsorted duplicates",
+			args: args{
+				vmauth: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default-1",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-2"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://some-static-2"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-1"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://some-static-1"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user",
+						Namespace: "default-2",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-3"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://some-static-3"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+					},
+				},
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default-1",
+					},
+				},
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default-2",
+					},
+				},
+			},
+			want: `users:
+- url_prefix:
+  - http://some-static-2
+  bearer_token: bearer-2
+- url_prefix:
+  - http://some-static-1
+  bearer_token: bearer-1
+- url_prefix:
+  - http://some-static-3
+  bearer_token: bearer-3
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2181,6 +2269,9 @@ unauthorized_user:
 			if err != nil {
 				t.Fatalf("unexpected error at selectVMUsers: %s", err)
 			}
+			rand.Shuffle(len(sus.users), func(i, j int) {
+				sus.users[i], sus.users[j] = sus.users[j], sus.users[i]
+			})
 
 			got, err := buildVMAuthConfig(ctx, testClient, tt.args.vmauth, sus, map[string]string{})
 			if (err != nil) != tt.wantErr {

@@ -37,8 +37,12 @@ func Test_generateProbeConfig(t *testing.T) {
 						Name:      "static-probe",
 					},
 					Spec: vmv1beta1.VMProbeSpec{
-						Module:       "http",
-						VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox-monitor:9115"},
+						Module: "http",
+						VMProberSpec: vmv1beta1.VMProberSpec{
+							URL:    "blackbox-monitor:9115",
+							Scheme: "https",
+							Path:   "/probe2",
+						},
 						Targets: vmv1beta1.VMProbeTargets{
 							StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
 								Targets: []string{"host-1", "host-2"},
@@ -51,10 +55,11 @@ func Test_generateProbeConfig(t *testing.T) {
 			},
 			want: `job_name: probe/default/static-probe/0
 honor_labels: false
-metrics_path: /probe
+metrics_path: /probe2
 params:
   module:
   - http
+scheme: https
 static_configs:
 - targets:
   - host-1
@@ -238,6 +243,89 @@ proxy_tls_config:
 bearer_token_file: /tmp/some_path
 basic_auth:
   password_file: /tmp/some-file-ba
+`,
+		},
+		{
+			name: "with ingress selectors",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				crAgent: vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						EnableKubernetesAPISelectors: true,
+					},
+				},
+				cr: &vmv1beta1.VMProbe{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "probe-ingress",
+						Namespace: "monitor",
+					},
+					Spec: vmv1beta1.VMProbeSpec{
+						Module:       "http200",
+						VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+						Targets: vmv1beta1.VMProbeTargets{
+							Ingress: &vmv1beta1.ProbeTargetIngress{
+								NamespaceSelector: vmv1beta1.NamespaceSelector{},
+								Selector: *metav1.SetAsLabelSelector(map[string]string{
+									"ingress-class": "ngin",
+								}),
+								RelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										SourceLabels: []string{"label1"},
+										TargetLabel:  "api",
+										Action:       "replacement",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `job_name: probe/monitor/probe-ingress/0
+honor_labels: false
+metrics_path: /probe
+params:
+  module:
+  - http200
+kubernetes_sd_configs:
+- role: ingress
+  namespaces:
+    names:
+    - monitor
+  selectors:
+  - role: ingress
+    label: ingress-class=ngin
+relabel_configs:
+- source_labels:
+  - __address__
+  separator: ;
+  regex: (.*)
+  target_label: __tmp_ingress_address
+  replacement: $1
+  action: replace
+- source_labels:
+  - __meta_kubernetes_ingress_scheme
+  - __address__
+  - __meta_kubernetes_ingress_path
+  separator: ;
+  regex: (.+);(.+);(.+)
+  target_label: __param_target
+  replacement: ${1}://${2}${3}
+  action: replace
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_ingress_name
+  target_label: ingress
+- source_labels:
+  - label1
+  target_label: api
+  action: replacement
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox:9115
 `,
 		},
 	}

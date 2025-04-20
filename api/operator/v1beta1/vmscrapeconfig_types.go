@@ -234,7 +234,7 @@ type ConsulSDConfig struct {
 	// +mapType:=atomic
 	// +optional
 	NodeMeta map[string]string `json:"nodeMeta,omitempty"`
-	// Allow stale Consul results (see https://developer.hashicorp.com/consul/api-docs/features/consistency). Will reduce load on Consul.
+	// Allow stale Consul results (see https://developer.hashicorp.com/consul/api-docs/features/consistency ). Will reduce load on Consul.
 	// If unset, use its default value.
 	// +optional
 	AllowStale *bool `json:"allowStale,omitempty"`

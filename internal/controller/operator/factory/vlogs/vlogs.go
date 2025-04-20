@@ -171,7 +171,7 @@ func makeSpecForVLogs(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 		args = append(args, "-logIngestedRows")
 	}
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", r.Spec.Port))
-	if len(r.Spec.ExtraEnvs) > 0 {
+	if len(r.Spec.ExtraEnvs) > 0 || len(r.Spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 
@@ -255,6 +255,7 @@ func makeSpecForVLogs(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 		VolumeMounts:             vmMounts,
 		Resources:                r.Spec.Resources,
 		Env:                      envs,
+		EnvFrom:                  r.Spec.ExtraEnvsFrom,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          r.Spec.Image.PullPolicy,
 	}

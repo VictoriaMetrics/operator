@@ -43,6 +43,9 @@ const (
 	vmagentGzippedFilename = "vmagent.yaml.gz"
 	configEnvsubstFilename = "vmagent.env.yaml"
 	defaultMaxDiskUsage    = "1073741824"
+
+	kubeNodeEnvName     = "KUBE_NODE_NAME"
+	kubeNodeEnvTemplate = "%{" + kubeNodeEnvName + "}"
 )
 
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
@@ -94,7 +97,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
-	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
+	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot delete objects from prev state: %w", err)
 	}
 	if cr.IsOwnsServiceAccount() {
@@ -110,7 +113,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}
-
 	}
 
 	svc, err := createOrUpdateVMAgentService(ctx, rclient, cr, prevCR)
@@ -119,9 +121,14 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	}
 
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		err = reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
+		if cr.Spec.DaemonSetMode {
+			ps := build.VMPodScrapeForObjectWithSpec(cr, cr.Spec.ServiceScrapeSpec, cr.Spec.ExtraArgs)
+			err = reconcile.VMPodScrapeForCRD(ctx, rclient, ps)
+		} else {
+			err = reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
+		}
 		if err != nil {
-			return fmt.Errorf("cannot create serviceScrape: %w", err)
+			return fmt.Errorf("cannot create or update scrape object: %w", err)
 		}
 	}
 
@@ -138,7 +145,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
 	}
 
-	if cr.Spec.PodDisruptionBudget != nil {
+	if cr.Spec.PodDisruptionBudget != nil && !cr.Spec.DaemonSetMode {
 		var prevPDB *policyv1.PodDisruptionBudget
 		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
 			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
@@ -162,7 +169,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
-	if cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
+	if !cr.Spec.DaemonSetMode && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
 		return createOrUpdateShardedDeploy(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
 	}
 	return createOrUpdateDeploy(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
@@ -219,12 +226,28 @@ func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, _ *vmv
 			return err
 		}
 		stsNames[newDeploy.Name] = struct{}{}
+	case *appsv1.DaemonSet:
+		var prevDeploy *appsv1.DaemonSet
+		if prevObjectSpec != nil {
+			prevAppObject, ok := prevObjectSpec.(*appsv1.DaemonSet)
+			if ok {
+				prevDeploy = prevAppObject
+			}
+		}
+		if err := reconcile.DaemonSet(ctx, rclient, newDeploy, prevDeploy); err != nil {
+			return err
+		}
+	default:
+		panic(fmt.Sprintf("BUG: unexpected deploy object type: %T", newDeploy))
 	}
 	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
 		return err
 	}
 	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsNames); err != nil {
 		return err
+	}
+	if err := removeStaleDaemonSet(ctx, rclient, cr); err != nil {
+		return fmt.Errorf("cannot remove vmagent daemonSet: %w", err)
 	}
 	return nil
 }
@@ -311,13 +334,16 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsNames); err != nil {
 		return err
 	}
+	if err := removeStaleDaemonSet(ctx, rclient, cr); err != nil {
+		return fmt.Errorf("cannot remove vmagent daemonSet: %w", err)
+	}
 	return nil
 }
 
 func shardNumIter(backward bool, shardCount int) iter.Seq[int] {
 	if backward {
 		return func(yield func(int) bool) {
-			for shardCount >= 0 {
+			for shardCount > 0 {
 				shardCount--
 				if !yield(shardCount) {
 					return
@@ -343,6 +369,35 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (r
 	}
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
+	if cr.Spec.DaemonSetMode {
+		dsSpec := &appsv1.DaemonSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.PrefixedName(),
+				Namespace:       cr.Namespace,
+				Labels:          cr.AllLabels(),
+				Annotations:     cr.AnnotationsFiltered(),
+				OwnerReferences: cr.AsOwner(),
+				Finalizers:      []string{vmv1beta1.FinalizerName},
+			},
+			Spec: appsv1.DaemonSetSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: cr.SelectorLabels(),
+				},
+				MinReadySeconds: cr.Spec.MinReadySeconds,
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels:      cr.PodLabels(),
+						Annotations: cr.PodAnnotations(),
+					},
+					Spec: *podSpec,
+				},
+			},
+		}
+		build.DaemonSetAddCommonParams(dsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
+		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+
+		return dsSpec, nil
+	}
 	// fast path, use sts
 	if cr.Spec.StatefulMode {
 		stsSpec := &appsv1.StatefulSet{
@@ -445,12 +500,23 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 	if cr.Spec.LogFormat != "" {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
-	if len(cr.Spec.ExtraEnvs) > 0 {
+	if len(cr.Spec.ExtraEnvs) > 0 || len(cr.Spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.ExtraEnvs...)
+
+	if cr.Spec.DaemonSetMode {
+		envs = append(envs, corev1.EnvVar{
+			Name: kubeNodeEnvName,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "spec.nodeName",
+				},
+			},
+		})
+	}
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
@@ -653,6 +719,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      envs,
+		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
 		VolumeMounts:             agentVolumeMounts,
 		Resources:                cr.Spec.Resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
@@ -1031,6 +1098,18 @@ type remoteFlag struct {
 }
 
 func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
+	// limit to 1GB
+	// most people do not care about this setting,
+	// but it may harmfully affect kubernetes cluster health
+	maxDiskUsage := defaultMaxDiskUsage
+	var containsMaxDiskUsage bool
+	for i := range cr.Spec.RemoteWrite {
+		rws := cr.Spec.RemoteWrite[i]
+		if rws.MaxDiskUsage != nil {
+			containsMaxDiskUsage = true
+			break
+		}
+	}
 	var args []string
 	if cr.Spec.RemoteWriteSettings == nil {
 		// fast path
@@ -1039,8 +1118,11 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 			pqMountPath = vmAgentPersistentQueueSTSDir
 		}
 		args = append(args,
-			"-remoteWrite.maxDiskUsagePerURL=1073741824",
 			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
+
+		if !containsMaxDiskUsage {
+			args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", maxDiskUsage))
+		}
 		return args
 	}
 
@@ -1051,13 +1133,7 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 	if rws.MaxBlockSize != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.maxBlockSize=%d", *rws.MaxBlockSize))
 	}
-	// limit to 1GB
-	// most people do not care about this setting,
-	// but it may harmfully affect kubernetes cluster health
-	maxDiskUsage := defaultMaxDiskUsage
-	if rws.MaxDiskUsagePerURL != nil {
-		maxDiskUsage = fmt.Sprintf("%d", *rws.MaxDiskUsagePerURL)
-	}
+
 	if rws.Queues != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.queues=%d", *rws.Queues))
 	}
@@ -1072,24 +1148,11 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 		pqMountPath = *rws.TmpDataPath
 	}
 	args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
-	var containsMaxDiskUsage bool
-	for arg := range cr.Spec.ExtraArgs {
-		if arg == "remoteWrite.maxDiskUsagePerURL" {
-			containsMaxDiskUsage = true
-		}
-		break
+
+	if rws.MaxDiskUsagePerURL != nil {
+		maxDiskUsage = rws.MaxDiskUsagePerURL.String()
 	}
 	if !containsMaxDiskUsage {
-		for i := range cr.Spec.RemoteWrite {
-			rws := cr.Spec.RemoteWrite[i]
-			if rws.MaxDiskUsage != nil {
-				containsMaxDiskUsage = true
-				break
-			}
-		}
-	}
-	if !containsMaxDiskUsage {
-		// limit to 1GB
 		args = append(args, "-remoteWrite.maxDiskUsagePerURL="+maxDiskUsage)
 	}
 	if rws.Labels != nil {
@@ -1160,31 +1223,9 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
-	var maxDiskUsageInExtraArgs bool
-	var forceVMProtoInExtraArgs bool
-	for arg := range cr.Spec.ExtraArgs {
-		if arg == "remoteWrite.maxDiskUsagePerURL" {
-			maxDiskUsageInExtraArgs = true
-		}
-		if arg == "remoteWrite.forceVMProto" {
-			forceVMProtoInExtraArgs = true
-		}
-		if maxDiskUsageInExtraArgs && forceVMProtoInExtraArgs {
-			break
-		}
-	}
-
-	for i := range remoteTargets {
-		rws := remoteTargets[i]
-		if !maxDiskUsageInExtraArgs && rws.MaxDiskUsage != nil {
-			maxDiskUsagePerURL.isNotNull = true
-		}
-		if !forceVMProtoInExtraArgs && rws.ForceVMProto {
-			forceVMProto.isNotNull = true
-		}
-		if maxDiskUsagePerURL.isNotNull && forceVMProto.isNotNull {
-			break
-		}
+	maxDiskUsage := defaultMaxDiskUsage
+	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
+		maxDiskUsage = cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL.String()
 	}
 
 	for i := range remoteTargets {
@@ -1288,7 +1329,6 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 			value = strings.TrimSuffix(value, "^^")
 		}
 		headers.flagSetting += fmt.Sprintf("%s,", value)
-		value = ""
 		var oaturl, oascopes, oaclientID, oaSecretKeyFile string
 		if rws.OAuth2 != nil {
 			if len(rws.OAuth2.TokenURL) > 0 {
@@ -1370,17 +1410,18 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		streamAggrIgnoreOldSamples.flagSetting += fmt.Sprintf("%v,", ignoreOldSamples)
 		streamAggrEnableWindows.flagSetting += fmt.Sprintf("%v", enableWindows)
 
-		if maxDiskUsagePerURL.isNotNull {
-			if rws.MaxDiskUsage != nil {
-				maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", *rws.MaxDiskUsage)
-			} else {
-				maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", defaultMaxDiskUsage)
-			}
+		value = maxDiskUsage
+		if rws.MaxDiskUsage != nil {
+			value = rws.MaxDiskUsage.String()
+			maxDiskUsagePerURL.isNotNull = true
 		}
+		maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", value)
+		value = ""
 
-		if forceVMProto.isNotNull {
-			forceVMProto.flagSetting += fmt.Sprintf("%t,", rws.ForceVMProto)
+		if rws.ForceVMProto {
+			forceVMProto.isNotNull = true
 		}
+		forceVMProto.flagSetting += fmt.Sprintf("%t,", rws.ForceVMProto)
 	}
 
 	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)
@@ -1485,9 +1526,6 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
 	if cr.HasAnyRelabellingConfigs() {
 		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.RelabelingConfigDir))
 	}
-	if useVMConfigReloader {
-		args = vmv1beta1.MaybeEnableProxyProtocol(args, cr.Spec.ExtraArgs)
-	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
 		for idx, arg := range args {
 			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
@@ -1551,20 +1589,43 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, c
 	return []corev1.Container{initReloader}
 }
 
-func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
-	if cr.ParsedLastAppliedSpec == nil {
+func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+	if prevCR == nil {
 		return nil
 	}
 	// TODO check for stream aggr removed
 
-	prevSvc, currSvc := cr.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
+	prevSvc, currSvc := prevCR.Spec.ServiceSpec, cr.Spec.ServiceSpec
 	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
 		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil && cr.ParsedLastAppliedSpec.PodDisruptionBudget != nil {
+	if cr.Spec.PodDisruptionBudget == nil && prevCR.Spec.PodDisruptionBudget != nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
+		}
+	}
+
+	if !prevCR.Spec.DaemonSetMode && cr.Spec.DaemonSetMode {
+		// transit into DaemonSetMode
+		if cr.Spec.PodDisruptionBudget != nil {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
+				return fmt.Errorf("cannot delete PDB from prev state: %w", err)
+			}
+		}
+		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+				return fmt.Errorf("cannot delete VMServiceScrape during daemonset transition: %w", err)
+			}
+		}
+	}
+
+	if prevCR.Spec.DaemonSetMode && !cr.Spec.DaemonSetMode {
+		// transit into non DaemonSetMode
+		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
+				return fmt.Errorf("cannot delete VMPodScrape during transition for non-daemonsetMode: %w", err)
+			}
 		}
 	}
 
@@ -1575,4 +1636,17 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAgent, rclien
 	}
 
 	return nil
+}
+
+func removeStaleDaemonSet(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
+	if cr.Spec.DaemonSetMode {
+		return nil
+	}
+	ds := appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.PrefixedName(),
+			Namespace: cr.Namespace,
+		},
+	}
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, &ds)
 }

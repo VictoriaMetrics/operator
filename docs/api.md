@@ -299,6 +299,21 @@ _Appears in:_
 | <a href="#bearerauth-bearertokensecret"><code id="bearerauth-bearertokensecret">bearerTokenSecret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
 
 
+#### BytesString
+
+_Underlying type:_ _string_
+
+BytesString represents bytes value defined directly as integer
+or as a string with suffix - kb,mb,gb,tb,KiB,MiB,GiB,TiB
+
+
+
+_Appears in:_
+- [VMAgentRemoteWriteSettings](#vmagentremotewritesettings)
+- [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
+
+
+
 
 
 #### CRDRef
@@ -370,6 +385,7 @@ _Appears in:_
 | <a href="#commonapplicationdeploymentparams-dnspolicy"><code id="commonapplicationdeploymentparams-dnspolicy">dnsPolicy</code></a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
 | <a href="#commonapplicationdeploymentparams-extraargs"><code id="commonapplicationdeploymentparams-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#commonapplicationdeploymentparams-extraenvs"><code id="commonapplicationdeploymentparams-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#commonapplicationdeploymentparams-extraenvsfrom"><code id="commonapplicationdeploymentparams-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#commonapplicationdeploymentparams-hostaliases"><code id="commonapplicationdeploymentparams-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#commonapplicationdeploymentparams-hostnetwork"><code id="commonapplicationdeploymentparams-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | <a href="#commonapplicationdeploymentparams-host_aliases"><code id="commonapplicationdeploymentparams-host_aliases">host_aliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -506,27 +522,27 @@ See [here](https://docs.victoriametrics.com/sd_configs/#consul_sd_configs)
 _Appears in:_
 - [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
-| Field | Description |
-| --- | --- |
-| <a href="#consulsdconfig-allowstale"><code id="consulsdconfig-allowstale">allowStale</code></a><br/>_boolean_ | _(Optional)_<br/>Allow stale Consul results (see https://developer.hashicorp.com/consul/api-docs/features/consistency). Will reduce load on Consul.<br />If unset, use its default value. |
-| <a href="#consulsdconfig-authorization"><code id="consulsdconfig-authorization">authorization</code></a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
-| <a href="#consulsdconfig-basicauth"><code id="consulsdconfig-basicauth">basicAuth</code></a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
-| <a href="#consulsdconfig-datacenter"><code id="consulsdconfig-datacenter">datacenter</code></a><br/>_string_ | _(Optional)_<br/>Consul Datacenter name, if not provided it will use the local Consul Agent Datacenter. |
-| <a href="#consulsdconfig-filter"><code id="consulsdconfig-filter">filter</code></a><br/>_string_ | _(Optional)_<br/>Filter defines filter for /v1/catalog/services requests<br />See https://developer.hashicorp.com/consul/api-docs/features/filtering |
-| <a href="#consulsdconfig-followredirects"><code id="consulsdconfig-followredirects">followRedirects</code></a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects.<br />If unset, use its default value. |
-| <a href="#consulsdconfig-namespace"><code id="consulsdconfig-namespace">namespace</code></a><br/>_string_ | _(Optional)_<br/>Namespaces are only supported in Consul Enterprise. |
-| <a href="#consulsdconfig-nodemeta"><code id="consulsdconfig-nodemeta">nodeMeta</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Node metadata key/value pairs to filter nodes for a given service. |
-| <a href="#consulsdconfig-oauth2"><code id="consulsdconfig-oauth2">oauth2</code></a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
-| <a href="#consulsdconfig-partition"><code id="consulsdconfig-partition">partition</code></a><br/>_string_ | _(Optional)_<br/>Admin Partitions are only supported in Consul Enterprise. |
-| <a href="#consulsdconfig-proxyurl"><code id="consulsdconfig-proxyurl">proxyURL</code></a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
-| <a href="#consulsdconfig-proxy_client_config"><code id="consulsdconfig-proxy_client_config">proxy_client_config</code></a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy) |
-| <a href="#consulsdconfig-scheme"><code id="consulsdconfig-scheme">scheme</code></a><br/>_string_ | _(Optional)_<br/>HTTP Scheme default "http" |
-| <a href="#consulsdconfig-server"><code id="consulsdconfig-server">server</code></a><br/>_string_ | A valid string consisting of a hostname or IP followed by an optional port number. |
-| <a href="#consulsdconfig-services"><code id="consulsdconfig-services">services</code></a><br/>_string array_ | _(Optional)_<br/>A list of services for which targets are retrieved. If omitted, all services are scraped. |
-| <a href="#consulsdconfig-tagseparator"><code id="consulsdconfig-tagseparator">tagSeparator</code></a><br/>_string_ | _(Optional)_<br/>The string by which Consul tags are joined into the tag label.<br />If unset, use its default value. |
-| <a href="#consulsdconfig-tags"><code id="consulsdconfig-tags">tags</code></a><br/>_string array_ | _(Optional)_<br/>An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list. |
-| <a href="#consulsdconfig-tlsconfig"><code id="consulsdconfig-tlsconfig">tlsConfig</code></a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
-| <a href="#consulsdconfig-tokenref"><code id="consulsdconfig-tokenref">tokenRef</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Consul ACL TokenRef, if not provided it will use the ACL from the local Consul Agent. |
+| Field | Description                                                                                                                                                                                |
+| --- |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| <a href="#consulsdconfig-allowstale"><code id="consulsdconfig-allowstale">allowStale</code></a><br/>_boolean_ | _(Optional)_<br/>Allow stale Consul results (see https://developer.hashicorp.com/consul/api-docs/features/consistency ). Will reduce load on Consul.<br />If unset, use its default value. |
+| <a href="#consulsdconfig-authorization"><code id="consulsdconfig-authorization">authorization</code></a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request.                                                                                                                      |
+| <a href="#consulsdconfig-basicauth"><code id="consulsdconfig-basicauth">basicAuth</code></a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request.                                                                                                                     |
+| <a href="#consulsdconfig-datacenter"><code id="consulsdconfig-datacenter">datacenter</code></a><br/>_string_ | _(Optional)_<br/>Consul Datacenter name, if not provided it will use the local Consul Agent Datacenter.                                                                                    |
+| <a href="#consulsdconfig-filter"><code id="consulsdconfig-filter">filter</code></a><br/>_string_ | _(Optional)_<br/>Filter defines filter for /v1/catalog/services requests<br />See https://developer.hashicorp.com/consul/api-docs/features/filtering                                       |
+| <a href="#consulsdconfig-followredirects"><code id="consulsdconfig-followredirects">followRedirects</code></a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects.<br />If unset, use its default value.                                                                          |
+| <a href="#consulsdconfig-namespace"><code id="consulsdconfig-namespace">namespace</code></a><br/>_string_ | _(Optional)_<br/>Namespaces are only supported in Consul Enterprise.                                                                                                                       |
+| <a href="#consulsdconfig-nodemeta"><code id="consulsdconfig-nodemeta">nodeMeta</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Node metadata key/value pairs to filter nodes for a given service.                                                                                                        |
+| <a href="#consulsdconfig-oauth2"><code id="consulsdconfig-oauth2">oauth2</code></a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration                                                                                                                                         |
+| <a href="#consulsdconfig-partition"><code id="consulsdconfig-partition">partition</code></a><br/>_string_ | _(Optional)_<br/>Admin Partitions are only supported in Consul Enterprise.                                                                                                                 |
+| <a href="#consulsdconfig-proxyurl"><code id="consulsdconfig-proxyurl">proxyURL</code></a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.                                                                                       |
+| <a href="#consulsdconfig-proxy_client_config"><code id="consulsdconfig-proxy_client_config">proxy_client_config</code></a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy)       |
+| <a href="#consulsdconfig-scheme"><code id="consulsdconfig-scheme">scheme</code></a><br/>_string_ | _(Optional)_<br/>HTTP Scheme default "http"                                                                                                                                                |
+| <a href="#consulsdconfig-server"><code id="consulsdconfig-server">server</code></a><br/>_string_ | A valid string consisting of a hostname or IP followed by an optional port number.                                                                                                         |
+| <a href="#consulsdconfig-services"><code id="consulsdconfig-services">services</code></a><br/>_string array_ | _(Optional)_<br/>A list of services for which targets are retrieved. If omitted, all services are scraped.                                                                                 |
+| <a href="#consulsdconfig-tagseparator"><code id="consulsdconfig-tagseparator">tagSeparator</code></a><br/>_string_ | _(Optional)_<br/>The string by which Consul tags are joined into the tag label.<br />If unset, use its default value.                                                                      |
+| <a href="#consulsdconfig-tags"><code id="consulsdconfig-tags">tags</code></a><br/>_string array_ | _(Optional)_<br/>An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.                                                            |
+| <a href="#consulsdconfig-tlsconfig"><code id="consulsdconfig-tlsconfig">tlsConfig</code></a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request                                                                                                                          |
+| <a href="#consulsdconfig-tokenref"><code id="consulsdconfig-tokenref">tokenRef</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Consul ACL TokenRef, if not provided it will use the ACL from the local Consul Agent.                                                                                     |
 
 
 #### ContainerSecurityContext
@@ -606,10 +622,13 @@ _Appears in:_
 
 | Field | Description |
 | --- | --- |
+| <a href="#discordconfig-avatar_url"><code id="discordconfig-avatar_url">avatar_url</code></a><br/>_string_ | _(Optional)_<br/>AvatarURL defines message avatar URL<br />Available from operator v0.55.0 and alertmanager v0.28.0 |
+| <a href="#discordconfig-content"><code id="discordconfig-content">content</code></a><br/>_string_ | _(Optional)_<br/>Content defines message content template<br />Available from operator v0.55.0 and alertmanager v0.28.0 |
 | <a href="#discordconfig-http_config"><code id="discordconfig-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
 | <a href="#discordconfig-message"><code id="discordconfig-message">message</code></a><br/>_string_ | _(Optional)_<br/>The message body template |
 | <a href="#discordconfig-send_resolved"><code id="discordconfig-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
 | <a href="#discordconfig-title"><code id="discordconfig-title">title</code></a><br/>_string_ | _(Optional)_<br/>The message title template |
+| <a href="#discordconfig-username"><code id="discordconfig-username">username</code></a><br/>_string_ | _(Optional)_<br/>Username defines message username<br />Available from operator v0.55.0 and alertmanager v0.28.0 |
 | <a href="#discordconfig-webhook_url"><code id="discordconfig-webhook_url">webhook_url</code></a><br/>_string_ | _(Optional)_<br/>The discord webhook URL<br />one of `urlSecret` and `url` must be defined. |
 | <a href="#discordconfig-webhook_url_secret"><code id="discordconfig-webhook_url_secret">webhook_url_secret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. |
 
@@ -1065,10 +1084,13 @@ See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 
 _Appears in:_
 - [DiscordConfig](#discordconfig)
+- [JiraConfig](#jiraconfig)
 - [MSTeamsConfig](#msteamsconfig)
+- [MSTeamsV2Config](#msteamsv2config)
 - [OpsGenieConfig](#opsgenieconfig)
 - [PagerDutyConfig](#pagerdutyconfig)
 - [PushoverConfig](#pushoverconfig)
+- [RocketchatConfig](#rocketchatconfig)
 - [SlackConfig](#slackconfig)
 - [SnsConfig](#snsconfig)
 - [TelegramConfig](#telegramconfig)
@@ -1201,6 +1223,38 @@ _Appears in:_
 | <a href="#insertports-opentsdbport"><code id="insertports-opentsdbport">openTSDBPort</code></a><br/>_string_ | _(Optional)_<br/>OpenTSDBPort for tcp and udp listen |
 
 
+#### JiraConfig
+
+
+
+JiraConfig represent alertmanager's jira_config entry
+https://prometheus.io/docs/alerting/latest/configuration/#jira_config
+available from v0.55.0 operator version
+and v0.28.0 alertmanager version
+
+
+
+_Appears in:_
+- [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| <a href="#jiraconfig-api_url"><code id="jiraconfig-api_url">api_url</code></a><br/>_string_ | _(Optional)_<br/>The URL to send API requests to. The full API path must be included.<br />Example: https://company.atlassian.net/rest/api/2/ |
+| <a href="#jiraconfig-custom_fields"><code id="jiraconfig-custom_fields">custom_fields</code></a><br/>_object (keys:string, values:[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io))_ | _(Optional)_<br/>Other issue and custom fields.<br />Jira issue field can have multiple types.<br />Depends on the field type, the values must be provided differently.<br />See https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#setting-custom-field-data-for-other-field-types for further examples. |
+| <a href="#jiraconfig-description"><code id="jiraconfig-description">description</code></a><br/>_string_ | _(Optional)_<br/>Issue description template. |
+| <a href="#jiraconfig-http_config"><code id="jiraconfig-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>The HTTP client's configuration. You must use this configuration to supply the personal access token (PAT) as part of the HTTP `Authorization` header.<br />For Jira Cloud, use basic_auth with the email address as the username and the PAT as the password.<br />For Jira Data Center, use the 'authorization' field with 'credentials: <PAT value>'. |
+| <a href="#jiraconfig-issue_type"><code id="jiraconfig-issue_type">issue_type</code></a><br/>_string_ | Type of the issue (e.g. Bug) |
+| <a href="#jiraconfig-labels"><code id="jiraconfig-labels">labels</code></a><br/>_string array_ | Labels to be added to the issue |
+| <a href="#jiraconfig-priority"><code id="jiraconfig-priority">priority</code></a><br/>_string_ | Priority of the issue |
+| <a href="#jiraconfig-project"><code id="jiraconfig-project">project</code></a><br/>_string_ | The project key where issues are created |
+| <a href="#jiraconfig-reopen_duration"><code id="jiraconfig-reopen_duration">reopen_duration</code></a><br/>_string_ | _(Optional)_<br/>If reopen_transition is defined, reopen the issue when it is not older than this value (rounded down to the nearest minute).<br />The resolutiondate field is used to determine the age of the issue. |
+| <a href="#jiraconfig-reopen_transition"><code id="jiraconfig-reopen_transition">reopen_transition</code></a><br/>_string_ | Name of the workflow transition to resolve an issue.<br />The target status must have the category "done". |
+| <a href="#jiraconfig-resolve_transition"><code id="jiraconfig-resolve_transition">resolve_transition</code></a><br/>_string_ | Name of the workflow transition to reopen an issue.<br />The target status should not have the category "done". |
+| <a href="#jiraconfig-send_resolved"><code id="jiraconfig-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| <a href="#jiraconfig-summary"><code id="jiraconfig-summary">summary</code></a><br/>_string_ | _(Optional)_<br/>Issue summary template |
+| <a href="#jiraconfig-wont_fix_resolution"><code id="jiraconfig-wont_fix_resolution">wont_fix_resolution</code></a><br/>_string_ | If reopen_transition is defined, ignore issues with that resolution. |
+
+
 #### K8SSelectorConfig
 
 
@@ -1314,6 +1368,30 @@ _Appears in:_
 | <a href="#msteamsconfig-webhook_url_secret"><code id="msteamsconfig-webhook_url_secret">webhook_url_secret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. |
 
 
+#### MSTeamsV2Config
+
+
+
+MSTeamsV2Config sends notifications using the new message format with adaptive cards as required by flows.
+https://support.microsoft.com/en-gb/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498
+available from v0.55.0 operator version
+and v0.28.0 alertmanager version
+
+
+
+_Appears in:_
+- [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| <a href="#msteamsv2config-http_config"><code id="msteamsv2config-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
+| <a href="#msteamsv2config-send_resolved"><code id="msteamsv2config-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| <a href="#msteamsv2config-text"><code id="msteamsv2config-text">text</code></a><br/>_string_ | _(Optional)_<br/>Message body template. |
+| <a href="#msteamsv2config-title"><code id="msteamsv2config-title">title</code></a><br/>_string_ | _(Optional)_<br/>Message title template. |
+| <a href="#msteamsv2config-webhook_url"><code id="msteamsv2config-webhook_url">webhook_url</code></a><br/>_string_ | _(Optional)_<br/>The incoming webhook URL<br />one of `urlSecret` and `url` must be defined. |
+| <a href="#msteamsv2config-webhook_url_secret"><code id="msteamsv2config-webhook_url_secret">webhook_url_secret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `webhook_url` or `webhook_url_secret` must be defined. |
+
+
 #### ManagedObjectsMetadata
 
 
@@ -1409,7 +1487,9 @@ _Appears in:_
 | <a href="#oauth2-client_secret"><code id="oauth2-client_secret">client_secret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The secret containing the OAuth2 client secret |
 | <a href="#oauth2-client_secret_file"><code id="oauth2-client_secret_file">client_secret_file</code></a><br/>_string_ | _(Optional)_<br/>ClientSecretFile defines path for client secret file. |
 | <a href="#oauth2-endpoint_params"><code id="oauth2-endpoint_params">endpoint_params</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Parameters to append to the token URL |
+| <a href="#oauth2-proxy_url"><code id="oauth2-proxy_url">proxy_url</code></a><br/>_string_ | _(Optional)_<br/>The proxy URL for token_url connection<br />( available from v0.55.0).<br />Is only supported by Scrape objects family |
 | <a href="#oauth2-scopes"><code id="oauth2-scopes">scopes</code></a><br/>_string array_ | _(Optional)_<br/>OAuth2 scopes used for the token request |
+| <a href="#oauth2-tls_config"><code id="oauth2-tls_config">tls_config</code></a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig for token_url connection<br />( available from v0.55.0).<br />Is only supported by Scrape objects family |
 | <a href="#oauth2-token_url"><code id="oauth2-token_url">token_url</code></a><br/>_string_ | The URL to fetch the token from |
 
 
@@ -1657,11 +1737,14 @@ _Appears in:_
 | --- | --- |
 | <a href="#receiver-discord_configs"><code id="receiver-discord_configs">discord_configs</code></a><br/>_[DiscordConfig](#discordconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-email_configs"><code id="receiver-email_configs">email_configs</code></a><br/>_[EmailConfig](#emailconfig) array_ | _(Optional)_<br/>EmailConfigs defines email notification configurations. |
+| <a href="#receiver-jira_configs"><code id="receiver-jira_configs">jira_configs</code></a><br/>_[JiraConfig](#jiraconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-msteams_configs"><code id="receiver-msteams_configs">msteams_configs</code></a><br/>_[MSTeamsConfig](#msteamsconfig) array_ | _(Optional)_<br/> |
+| <a href="#receiver-msteamsv2_configs"><code id="receiver-msteamsv2_configs">msteamsv2_configs</code></a><br/>_[MSTeamsV2Config](#msteamsv2config) array_ | _(Optional)_<br/> |
 | <a href="#receiver-name"><code id="receiver-name">name</code></a><br/>_string_ | Name of the receiver. Must be unique across all items from the list. |
 | <a href="#receiver-opsgenie_configs"><code id="receiver-opsgenie_configs">opsgenie_configs</code></a><br/>_[OpsGenieConfig](#opsgenieconfig) array_ | _(Optional)_<br/>OpsGenieConfigs defines ops genie notification configurations. |
 | <a href="#receiver-pagerduty_configs"><code id="receiver-pagerduty_configs">pagerduty_configs</code></a><br/>_[PagerDutyConfig](#pagerdutyconfig) array_ | _(Optional)_<br/>PagerDutyConfigs defines pager duty notification configurations. |
 | <a href="#receiver-pushover_configs"><code id="receiver-pushover_configs">pushover_configs</code></a><br/>_[PushoverConfig](#pushoverconfig) array_ | _(Optional)_<br/>PushoverConfigs defines push over notification configurations. |
+| <a href="#receiver-rocketchat_configs"><code id="receiver-rocketchat_configs">rocketchat_configs</code></a><br/>_[RocketchatConfig](#rocketchatconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-slack_configs"><code id="receiver-slack_configs">slack_configs</code></a><br/>_[SlackConfig](#slackconfig) array_ | _(Optional)_<br/>SlackConfigs defines slack notification configurations. |
 | <a href="#receiver-sns_configs"><code id="receiver-sns_configs">sns_configs</code></a><br/>_[SnsConfig](#snsconfig) array_ | _(Optional)_<br/> |
 | <a href="#receiver-telegram_configs"><code id="receiver-telegram_configs">telegram_configs</code></a><br/>_[TelegramConfig](#telegramconfig) array_ | _(Optional)_<br/> |
@@ -1708,6 +1791,81 @@ _Appears in:_
 | <a href="#relabelconfig-source_labels"><code id="relabelconfig-source_labels">source_labels</code></a><br/>_string array_ | _(Optional)_<br/>UnderScoreSourceLabels - additional form of source labels source_labels<br />for compatibility with original relabel config.<br />if set  both sourceLabels and source_labels, sourceLabels has priority.<br />for details https://github.com/VictoriaMetrics/operator/issues/131 |
 | <a href="#relabelconfig-targetlabel"><code id="relabelconfig-targetlabel">targetLabel</code></a><br/>_string_ | _(Optional)_<br/>Label to which the resulting value is written in a replace action.<br />It is mandatory for replace actions. Regex capture groups are available. |
 | <a href="#relabelconfig-target_label"><code id="relabelconfig-target_label">target_label</code></a><br/>_string_ | _(Optional)_<br/>UnderScoreTargetLabel - additional form of target label - target_label<br />for compatibility with original relabel config.<br />if set  both targetLabel and target_label, targetLabel has priority.<br />for details https://github.com/VictoriaMetrics/operator/issues/131 |
+
+
+#### RocketchatAttachmentAction
+
+
+
+RocketchatAttachmentAction defines message attachements
+https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
+
+
+
+_Appears in:_
+- [RocketchatConfig](#rocketchatconfig)
+
+| Field | Description |
+| --- | --- |
+| <a href="#rocketchatattachmentaction-msg"><code id="rocketchatattachmentaction-msg">msg</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentaction-text"><code id="rocketchatattachmentaction-text">text</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentaction-type"><code id="rocketchatattachmentaction-type">type</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentaction-url"><code id="rocketchatattachmentaction-url">url</code></a><br/>_string_ | _(Optional)_<br/> |
+
+
+#### RocketchatAttachmentField
+
+
+
+RocketchatAttachmentField defines API fields
+https://developer.rocket.chat/reference/api/rest-api/endpoints/messaging/chat-endpoints/postmessage#attachment-field-objects
+
+
+
+_Appears in:_
+- [RocketchatConfig](#rocketchatconfig)
+
+| Field | Description |
+| --- | --- |
+| <a href="#rocketchatattachmentfield-short"><code id="rocketchatattachmentfield-short">short</code></a><br/>_boolean_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentfield-title"><code id="rocketchatattachmentfield-title">title</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatattachmentfield-value"><code id="rocketchatattachmentfield-value">value</code></a><br/>_string_ | _(Optional)_<br/> |
+
+
+#### RocketchatConfig
+
+
+
+RocketchatConfig configures notifications via Rocketchat.
+https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
+available from v0.55.0 operator version
+and v0.28.0 alertmanager version
+
+
+
+_Appears in:_
+- [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| <a href="#rocketchatconfig-actions"><code id="rocketchatconfig-actions">actions</code></a><br/>_[RocketchatAttachmentAction](#rocketchatattachmentaction) array_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-api_url"><code id="rocketchatconfig-api_url">api_url</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-channel"><code id="rocketchatconfig-channel">channel</code></a><br/>_string_ | _(Optional)_<br/>RocketChat channel override, (like #other-channel or @username). |
+| <a href="#rocketchatconfig-color"><code id="rocketchatconfig-color">color</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-emoji"><code id="rocketchatconfig-emoji">emoji</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-fields"><code id="rocketchatconfig-fields">fields</code></a><br/>_[RocketchatAttachmentField](#rocketchatattachmentfield) array_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-http_config"><code id="rocketchatconfig-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-icon_url"><code id="rocketchatconfig-icon_url">icon_url</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-image_url"><code id="rocketchatconfig-image_url">image_url</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-link_names"><code id="rocketchatconfig-link_names">link_names</code></a><br/>_boolean_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-send_resolved"><code id="rocketchatconfig-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| <a href="#rocketchatconfig-short_fields"><code id="rocketchatconfig-short_fields">short_fields</code></a><br/>_boolean_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-text"><code id="rocketchatconfig-text">text</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-thumb_url"><code id="rocketchatconfig-thumb_url">thumb_url</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-title"><code id="rocketchatconfig-title">title</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-title_link"><code id="rocketchatconfig-title_link">title_link</code></a><br/>_string_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-token"><code id="rocketchatconfig-token">token</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/> |
+| <a href="#rocketchatconfig-token_id"><code id="rocketchatconfig-token_id">token_id</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The sender token and token_id<br />See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens |
 
 
 #### Route
@@ -2191,6 +2349,7 @@ _Appears in:_
 - [HTTPConfig](#httpconfig)
 - [HTTPSDConfig](#httpsdconfig)
 - [KubernetesSDConfig](#kubernetessdconfig)
+- [OAuth2](#oauth2)
 - [OpenStackSDConfig](#openstacksdconfig)
 - [PodMetricsEndpoint](#podmetricsendpoint)
 - [ProxyAuth](#proxyauth)
@@ -2521,6 +2680,7 @@ _Appears in:_
 | <a href="#vlogsspec-dnspolicy"><code id="vlogsspec-dnspolicy">dnsPolicy</code></a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
 | <a href="#vlogsspec-extraargs"><code id="vlogsspec-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vlogsspec-extraenvs"><code id="vlogsspec-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vlogsspec-extraenvsfrom"><code id="vlogsspec-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vlogsspec-futureretention"><code id="vlogsspec-futureretention">futureRetention</code></a><br/>_string_ | FutureRetention for the stored logs<br />Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention |
 | <a href="#vlogsspec-hostaliases"><code id="vlogsspec-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vlogsspec-hostnetwork"><code id="vlogsspec-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
@@ -2601,7 +2761,7 @@ _Appears in:_
 | <a href="#vmagentremotewritesettings-flushinterval"><code id="vmagentremotewritesettings-flushinterval">flushInterval</code></a><br/>_string_ | _(Optional)_<br/>Interval for flushing the data to remote storage. (default 1s) |
 | <a href="#vmagentremotewritesettings-label"><code id="vmagentremotewritesettings-label">label</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Labels in the form 'name=value' to add to all the metrics before sending them. This overrides the label if it already exists. |
 | <a href="#vmagentremotewritesettings-maxblocksize"><code id="vmagentremotewritesettings-maxblocksize">maxBlockSize</code></a><br/>_integer_ | _(Optional)_<br/>The maximum size in bytes of unpacked request to send to remote storage |
-| <a href="#vmagentremotewritesettings-maxdiskusageperurl"><code id="vmagentremotewritesettings-maxdiskusageperurl">maxDiskUsagePerURL</code></a><br/>_integer_ | _(Optional)_<br/>The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath |
+| <a href="#vmagentremotewritesettings-maxdiskusageperurl"><code id="vmagentremotewritesettings-maxdiskusageperurl">maxDiskUsagePerURL</code></a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath |
 | <a href="#vmagentremotewritesettings-queues"><code id="vmagentremotewritesettings-queues">queues</code></a><br/>_integer_ | _(Optional)_<br/>The number of concurrent queues |
 | <a href="#vmagentremotewritesettings-showurl"><code id="vmagentremotewritesettings-showurl">showURL</code></a><br/>_boolean_ | _(Optional)_<br/>Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info |
 | <a href="#vmagentremotewritesettings-tmpdatapath"><code id="vmagentremotewritesettings-tmpdatapath">tmpDataPath</code></a><br/>_string_ | _(Optional)_<br/>Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data) |
@@ -2626,7 +2786,7 @@ _Appears in:_
 | <a href="#vmagentremotewritespec-forcevmproto"><code id="vmagentremotewritespec-forcevmproto">forceVMProto</code></a><br/>_boolean_ | _(Optional)_<br/>ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url |
 | <a href="#vmagentremotewritespec-headers"><code id="vmagentremotewritespec-headers">headers</code></a><br/>_string array_ | _(Optional)_<br/>Headers allow configuring custom http headers<br />Must be in form of semicolon separated header with value<br />e.g.<br />headerName: headerValue<br />vmagent supports since 1.79.0 version |
 | <a href="#vmagentremotewritespec-inlineurlrelabelconfig"><code id="vmagentremotewritespec-inlineurlrelabelconfig">inlineUrlRelabelConfig</code></a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec. |
-| <a href="#vmagentremotewritespec-maxdiskusage"><code id="vmagentremotewritespec-maxdiskusage">maxDiskUsage</code></a><br/>_string_ | _(Optional)_<br/>MaxDiskUsage defines the maximum file-based buffer size in bytes for -remoteWrite.url |
+| <a href="#vmagentremotewritespec-maxdiskusage"><code id="vmagentremotewritespec-maxdiskusage">maxDiskUsage</code></a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite<br />It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL |
 | <a href="#vmagentremotewritespec-oauth2"><code id="vmagentremotewritespec-oauth2">oauth2</code></a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | <a href="#vmagentremotewritespec-sendtimeout"><code id="vmagentremotewritespec-sendtimeout">sendTimeout</code></a><br/>_string_ | _(Optional)_<br/>Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) |
 | <a href="#vmagentremotewritespec-streamaggrconfig"><code id="vmagentremotewritespec-streamaggrconfig">streamAggrConfig</code></a><br/>_[StreamAggrConfig](#streamaggrconfig)_ | _(Optional)_<br/>StreamAggrConfig defines stream aggregation configuration for VMAgent for -remoteWrite.url |
@@ -2679,14 +2839,17 @@ _Appears in:_
 | <a href="#vmagentspec-configreloaderimagetag"><code id="vmagentspec-configreloaderimagetag">configReloaderImageTag</code></a><br/>_string_ | _(Optional)_<br/>ConfigReloaderImageTag defines image:tag for config-reloader container |
 | <a href="#vmagentspec-configreloaderresources"><code id="vmagentspec-configreloaderresources">configReloaderResources</code></a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | _(Optional)_<br/>ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
 | <a href="#vmagentspec-containers"><code id="vmagentspec-containers">containers</code></a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. |
+| <a href="#vmagentspec-daemonsetmode"><code id="vmagentspec-daemonsetmode">daemonSetMode</code></a><br/>_boolean_ | _(Optional)_<br/>DaemonSetMode enables DaemonSet deployment mode instead of Deployment.<br />Supports only VMPodScrape<br />(available from v0.55.0).<br />Cannot be used with statefulMode |
 | <a href="#vmagentspec-disableautomountserviceaccounttoken"><code id="vmagentspec-disableautomountserviceaccounttoken">disableAutomountServiceAccountToken</code></a><br/>_boolean_ | _(Optional)_<br/>DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).<br />Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.<br />For example, vmagent and vm-config-reloader requires k8s API access.<br />Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.<br />And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount. |
 | <a href="#vmagentspec-disableselfservicescrape"><code id="vmagentspec-disableselfservicescrape">disableSelfServiceScrape</code></a><br/>_boolean_ | _(Optional)_<br/>DisableSelfServiceScrape controls creation of VMServiceScrape by operator<br />for the application.<br />Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable |
 | <a href="#vmagentspec-dnsconfig"><code id="vmagentspec-dnsconfig">dnsConfig</code></a><br/>_[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#poddnsconfig-v1-core)_ | _(Optional)_<br/>Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. |
 | <a href="#vmagentspec-dnspolicy"><code id="vmagentspec-dnspolicy">dnsPolicy</code></a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
+| <a href="#vmagentspec-enablekubernetesapiselectors"><code id="vmagentspec-enablekubernetesapiselectors">enableKubernetesAPISelectors</code></a><br/>_boolean_ | _(Optional)_<br/>EnableKubernetesAPISelectors instructs vmagent to use CRD scrape objects spec.selectors for<br />Kubernetes API list and watch requests.<br />https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#list-and-watch-filtering<br />It could be useful to reduce Kubernetes API server resource usage for serving less than 100 CRD scrape objects in total. |
 | <a href="#vmagentspec-enforcednamespacelabel"><code id="vmagentspec-enforcednamespacelabel">enforcedNamespaceLabel</code></a><br/>_string_ | _(Optional)_<br/>EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert<br />and metric that is user created. The label value will always be the namespace of the object that is<br />being created. |
 | <a href="#vmagentspec-externallabels"><code id="vmagentspec-externallabels">externalLabels</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExternalLabels The labels to add to any time series scraped by vmagent.<br />it doesn't affect metrics ingested directly by push API's |
 | <a href="#vmagentspec-extraargs"><code id="vmagentspec-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vmagentspec-extraenvs"><code id="vmagentspec-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vmagentspec-extraenvsfrom"><code id="vmagentspec-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vmagentspec-hostaliases"><code id="vmagentspec-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vmagentspec-hostnetwork"><code id="vmagentspec-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | <a href="#vmagentspec-host_aliases"><code id="vmagentspec-host_aliases">host_aliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -2901,6 +3064,7 @@ _Appears in:_
 | <a href="#vmalertspec-externallabels"><code id="vmalertspec-externallabels">externalLabels</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExternalLabels in the form 'name: value' to add to all generated recording rules and alerts. |
 | <a href="#vmalertspec-extraargs"><code id="vmalertspec-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vmalertspec-extraenvs"><code id="vmalertspec-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vmalertspec-extraenvsfrom"><code id="vmalertspec-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vmalertspec-hostaliases"><code id="vmalertspec-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vmalertspec-hostnetwork"><code id="vmalertspec-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | <a href="#vmalertspec-host_aliases"><code id="vmalertspec-host_aliases">host_aliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -3048,6 +3212,7 @@ _Appears in:_
 | <a href="#vmalertmanagerspec-externalurl"><code id="vmalertmanagerspec-externalurl">externalURL</code></a><br/>_string_ | _(Optional)_<br/>ExternalURL the VMAlertmanager instances will be available under. This is<br />necessary to generate correct URLs. This is necessary if VMAlertmanager is not<br />served from root of a DNS name. |
 | <a href="#vmalertmanagerspec-extraargs"><code id="vmalertmanagerspec-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vmalertmanagerspec-extraenvs"><code id="vmalertmanagerspec-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vmalertmanagerspec-extraenvsfrom"><code id="vmalertmanagerspec-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vmalertmanagerspec-gossipconfig"><code id="vmalertmanagerspec-gossipconfig">gossipConfig</code></a><br/>_[AlertmanagerGossipConfig](#alertmanagergossipconfig)_ | _(Optional)_<br/>GossipConfig defines gossip TLS configuration for Alertmanager cluster |
 | <a href="#vmalertmanagerspec-hostaliases"><code id="vmalertmanagerspec-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vmalertmanagerspec-hostnetwork"><code id="vmalertmanagerspec-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
@@ -3158,6 +3323,7 @@ _Appears in:_
 | <a href="#vmauthloadbalancerspec-dnspolicy"><code id="vmauthloadbalancerspec-dnspolicy">dnsPolicy</code></a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
 | <a href="#vmauthloadbalancerspec-extraargs"><code id="vmauthloadbalancerspec-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vmauthloadbalancerspec-extraenvs"><code id="vmauthloadbalancerspec-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vmauthloadbalancerspec-extraenvsfrom"><code id="vmauthloadbalancerspec-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vmauthloadbalancerspec-hostaliases"><code id="vmauthloadbalancerspec-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vmauthloadbalancerspec-hostnetwork"><code id="vmauthloadbalancerspec-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | <a href="#vmauthloadbalancerspec-host_aliases"><code id="vmauthloadbalancerspec-host_aliases">host_aliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -3223,6 +3389,7 @@ _Appears in:_
 | <a href="#vmauthspec-externalconfig"><code id="vmauthspec-externalconfig">externalConfig</code></a><br/>_[ExternalConfig](#externalconfig)_ | _(Optional)_<br/>ExternalConfig defines a source of external VMAuth configuration.<br />If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders |
 | <a href="#vmauthspec-extraargs"><code id="vmauthspec-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vmauthspec-extraenvs"><code id="vmauthspec-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vmauthspec-extraenvsfrom"><code id="vmauthspec-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vmauthspec-headers"><code id="vmauthspec-headers">headers</code></a><br/>_string array_ | _(Optional)_<br/>Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth |
 | <a href="#vmauthspec-hostaliases"><code id="vmauthspec-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vmauthspec-hostnetwork"><code id="vmauthspec-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
@@ -3231,6 +3398,7 @@ _Appears in:_
 | <a href="#vmauthspec-imagepullsecrets"><code id="vmauthspec-imagepullsecrets">imagePullSecrets</code></a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
 | <a href="#vmauthspec-ingress"><code id="vmauthspec-ingress">ingress</code></a><br/>_[EmbeddedIngress](#embeddedingress)_ | Ingress enables ingress configuration for VMAuth. |
 | <a href="#vmauthspec-initcontainers"><code id="vmauthspec-initcontainers">initContainers</code></a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
+| <a href="#vmauthspec-internallistenport"><code id="vmauthspec-internallistenport">internalListenPort</code></a><br/>_string_ | _(Optional)_<br/>InternalListenPort instructs vmauth to serve internal routes at given port<br />available from v0.56.0 operator<br />and v1.111.0 vmauth version<br />related doc https://docs.victoriametrics.com/vmauth/#security |
 | <a href="#vmauthspec-ip_filters"><code id="vmauthspec-ip_filters">ip_filters</code></a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth/#ip-filters) |
 | <a href="#vmauthspec-license"><code id="vmauthspec-license">license</code></a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/enterprise) |
 | <a href="#vmauthspec-load_balancing_policy"><code id="vmauthspec-load_balancing_policy">load_balancing_policy</code></a><br/>_string_ | _(Optional)_<br/>LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/vmauth#load-balancing) for more details (default "least_loaded") |
@@ -3266,6 +3434,7 @@ _Appears in:_
 | <a href="#vmauthspec-unauthorizedaccessconfig"><code id="vmauthspec-unauthorizedaccessconfig">unauthorizedAccessConfig</code></a><br/>_[UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap) array_ | UnauthorizedAccessConfig configures access for un authorized users<br /><br />Deprecated, use unauthorizedUserAccessSpec instead<br />will be removed at v1.0 release |
 | <a href="#vmauthspec-unauthorizeduseraccessspec"><code id="vmauthspec-unauthorizeduseraccessspec">unauthorizedUserAccessSpec</code></a><br/>_[VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)_ | _(Optional)_<br/>UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config |
 | <a href="#vmauthspec-usedefaultresources"><code id="vmauthspec-usedefaultresources">useDefaultResources</code></a><br/>_boolean_ | _(Optional)_<br/>UseDefaultResources controls resource settings<br />By default, operator sets built-in resource requirements |
+| <a href="#vmauthspec-useproxyprotocol"><code id="vmauthspec-useproxyprotocol">useProxyProtocol</code></a><br/>_boolean_ | UseProxyProtocol enables proxy protocol for vmauth<br />https://www.haproxy.org/download/2.3/doc/proxy-protocol.txt |
 | <a href="#vmauthspec-usestrictsecurity"><code id="vmauthspec-usestrictsecurity">useStrictSecurity</code></a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | <a href="#vmauthspec-usevmconfigreloader"><code id="vmauthspec-usevmconfigreloader">useVMConfigReloader</code></a><br/>_boolean_ | _(Optional)_<br/>UseVMConfigReloader replaces prometheus-like config-reloader<br />with vm one. It uses secrets watch instead of file watch<br />which greatly increases speed of config updates |
 | <a href="#vmauthspec-usernamespaceselector"><code id="vmauthspec-usernamespaceselector">userNamespaceSelector</code></a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>UserNamespaceSelector Namespaces to be selected for  VMAuth discovery.<br />Works in combination with Selector.<br />NamespaceSelector nil - only objects at VMAuth namespace.<br />Selector nil - only objects at NamespaceSelector namespaces.<br />If both nil - behaviour controlled by selectAllByDefault |
@@ -3331,6 +3500,7 @@ _Appears in:_
 | <a href="#vmbackup-disableweekly"><code id="vmbackup-disableweekly">disableWeekly</code></a><br/>_boolean_ | _(Optional)_<br/>Defines if weekly backups disabled (default false) |
 | <a href="#vmbackup-extraargs"><code id="vmbackup-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>extra args like maxBytesPerSecond default 0 |
 | <a href="#vmbackup-extraenvs"><code id="vmbackup-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/> |
+| <a href="#vmbackup-extraenvsfrom"><code id="vmbackup-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vmbackup-image"><code id="vmbackup-image">image</code></a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings for VMBackuper |
 | <a href="#vmbackup-logformat"><code id="vmbackup-logformat">logFormat</code></a><br/>_string_ | _(Optional)_<br/>LogFormat for VMBackup to be configured with.<br />default or json |
 | <a href="#vmbackup-loglevel"><code id="vmbackup-loglevel">logLevel</code></a><br/>_string_ | _(Optional)_<br/>LogLevel for VMBackup to be configured with. |
@@ -3381,7 +3551,7 @@ _Appears in:_
 | <a href="#vmclusterspec-managedmetadata"><code id="vmclusterspec-managedmetadata">managedMetadata</code></a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
 | <a href="#vmclusterspec-paused"><code id="vmclusterspec-paused">paused</code></a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
 | <a href="#vmclusterspec-replicationfactor"><code id="vmclusterspec-replicationfactor">replicationFactor</code></a><br/>_integer_ | _(Optional)_<br/>ReplicationFactor defines how many copies of data make among<br />distinct storage nodes |
-| <a href="#vmclusterspec-requestsloadbalancer"><code id="vmclusterspec-requestsloadbalancer">requestsLoadBalancer</code></a><br/>_[VMAuthLoadBalancer](#vmauthloadbalancer)_ | RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests<br />it helps to evenly spread load across pods<br />usually it's not possible with kubernetes TCP based service |
+| <a href="#vmclusterspec-requestsloadbalancer"><code id="vmclusterspec-requestsloadbalancer">requestsLoadBalancer</code></a><br/>_[VMAuthLoadBalancer](#vmauthloadbalancer)_ | RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests.<br />It helps to evenly spread load across pods.<br />Usually it's not possible with Kubernetes TCP-based services.<br />See more [here](https://docs.victoriametrics.com/operator/resources/vmcluster/#requests-load-balancing) |
 | <a href="#vmclusterspec-retentionperiod"><code id="vmclusterspec-retentionperiod">retentionPeriod</code></a><br/>_string_ | RetentionPeriod for the stored metrics<br />Note VictoriaMetrics has data/ and indexdb/ folders<br />metrics from data/ removed eventually as soon as partition leaves retention period<br />reverse index data at indexdb rotates once at the half of configured<br />[retention period](https://docs.victoriametrics.com/Single-server-VictoriaMetrics/#retention) |
 | <a href="#vmclusterspec-serviceaccountname"><code id="vmclusterspec-serviceaccountname">serviceAccountName</code></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the<br />VMSelect, VMStorage and VMInsert Pods. |
 | <a href="#vmclusterspec-usestrictsecurity"><code id="vmclusterspec-usestrictsecurity">useStrictSecurity</code></a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
@@ -3415,6 +3585,7 @@ _Appears in:_
 | <a href="#vminsert-dnspolicy"><code id="vminsert-dnspolicy">dnsPolicy</code></a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
 | <a href="#vminsert-extraargs"><code id="vminsert-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vminsert-extraenvs"><code id="vminsert-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vminsert-extraenvsfrom"><code id="vminsert-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vminsert-hostaliases"><code id="vminsert-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vminsert-hostnetwork"><code id="vminsert-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | <a href="#vminsert-host_aliases"><code id="vminsert-host_aliases">host_aliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -3859,6 +4030,7 @@ _Appears in:_
 | <a href="#vmselect-dnspolicy"><code id="vmselect-dnspolicy">dnsPolicy</code></a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
 | <a href="#vmselect-extraargs"><code id="vmselect-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vmselect-extraenvs"><code id="vmselect-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vmselect-extraenvsfrom"><code id="vmselect-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vmselect-hostaliases"><code id="vmselect-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vmselect-hostnetwork"><code id="vmselect-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | <a href="#vmselect-host_aliases"><code id="vmselect-host_aliases">host_aliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -3993,6 +4165,7 @@ _Appears in:_
 | <a href="#vmsinglespec-dnspolicy"><code id="vmsinglespec-dnspolicy">dnsPolicy</code></a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
 | <a href="#vmsinglespec-extraargs"><code id="vmsinglespec-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vmsinglespec-extraenvs"><code id="vmsinglespec-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vmsinglespec-extraenvsfrom"><code id="vmsinglespec-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vmsinglespec-hostaliases"><code id="vmsinglespec-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vmsinglespec-hostnetwork"><code id="vmsinglespec-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | <a href="#vmsinglespec-host_aliases"><code id="vmsinglespec-host_aliases">host_aliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -4099,6 +4272,7 @@ _Appears in:_
 | <a href="#vmstorage-dnspolicy"><code id="vmstorage-dnspolicy">dnsPolicy</code></a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
 | <a href="#vmstorage-extraargs"><code id="vmstorage-extraargs">extraArgs</code></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | <a href="#vmstorage-extraenvs"><code id="vmstorage-extraenvs">extraEnvs</code></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| <a href="#vmstorage-extraenvsfrom"><code id="vmstorage-extraenvsfrom">extraEnvsFrom</code></a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
 | <a href="#vmstorage-hostaliases"><code id="vmstorage-hostaliases">hostAliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | <a href="#vmstorage-hostnetwork"><code id="vmstorage-hostnetwork">hostNetwork</code></a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | <a href="#vmstorage-host_aliases"><code id="vmstorage-host_aliases">host_aliases</code></a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |

@@ -6,7 +6,6 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"gopkg.in/yaml.v2"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func generatePodScrapeConfig(
@@ -30,7 +29,18 @@ func generatePodScrapeConfig(
 	if ep.AttachMetadata.Node == nil && m.Spec.AttachMetadata.Node != nil {
 		ep.AttachMetadata = m.Spec.AttachMetadata
 	}
-	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache, kubernetesSDRolePod, &ep.AttachMetadata))
+	k8sSDOpts := generateK8SSDConfigOptions{
+		namespaces:         selectedNamespaces,
+		shouldAddSelectors: vmagentCR.Spec.EnableKubernetesAPISelectors,
+		selectors:          m.Spec.Selector,
+		apiServerConfig:    apiserverConfig,
+		role:               kubernetesSDRolePod,
+		attachMetadata:     &ep.AttachMetadata,
+	}
+	if vmagentCR.Spec.DaemonSetMode {
+		k8sSDOpts.mustUseNodeSelector = true
+	}
+	cfg = append(cfg, generateK8SSDConfig(ssCache, k8sSDOpts))
 
 	// set defaults
 	if ep.SampleLimit == 0 {
@@ -54,7 +64,8 @@ func generatePodScrapeConfig(
 		})
 	}
 
-	relabelings = addSelectorToRelabelingFor(relabelings, "pod", m.Spec.Selector)
+	skipRelabelSelectors := vmagentCR.Spec.EnableKubernetesAPISelectors
+	relabelings = addSelectorToRelabelingFor(relabelings, "pod", m.Spec.Selector, skipRelabelSelectors)
 
 	// Filter targets based on correct port for the endpoint.
 	switch {
@@ -158,41 +169,7 @@ func generatePodScrapeConfig(
 	cfg = addMetricRelabelingsTo(cfg, ep.MetricRelabelConfigs, se)
 	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
 	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, ep.EndpointAuth, m.AsMapKey(i), ssCache)
-
-	return cfg
-}
-
-func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *vmv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string, am *vmv1beta1.AttachMetadata) yaml.MapItem {
-	cfg := generateK8SSDConfig(namespaces, apiserverConfig, ssCache, role, am)
-
-	if len(labelSelector.MatchLabels) != 0 {
-		k8sSDs, flag := cfg.Value.([]yaml.MapSlice)
-		if !flag {
-			return cfg
-		}
-
-		selector := yaml.MapSlice{}
-		selector = append(selector, yaml.MapItem{
-			Key:   "role",
-			Value: role,
-		})
-		selector = append(selector, yaml.MapItem{
-			Key:   "label",
-			Value: combineSelectorStr(labelSelector.MatchLabels),
-		})
-
-		for i := range k8sSDs {
-			k8sSDs[i] = append(k8sSDs[i], yaml.MapItem{
-				Key: "selectors",
-				Value: []yaml.MapSlice{
-					selector,
-				},
-			})
-		}
-
-		cfg.Value = k8sSDs
-	}
+	cfg = addEndpointAuthTo(cfg, ep.EndpointAuth, m.Namespace, m.AsMapKey(i), ssCache)
 
 	return cfg
 }

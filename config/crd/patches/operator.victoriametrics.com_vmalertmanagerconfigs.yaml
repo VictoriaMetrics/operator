@@ -1,6 +1,4 @@
 - op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/route/properties/-
-- op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/receivers/items/properties/pagerduty_configs/items/properties/http_config/properties
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/receivers/items/properties/pagerduty_configs/items/properties/http_config/x-kubernetes-preserve-unknown-fields

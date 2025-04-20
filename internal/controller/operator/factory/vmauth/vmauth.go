@@ -36,6 +36,7 @@ const (
 	vmAuthConfigName      = "config.yaml"
 	vmAuthConfigNameGz    = "config.yaml.gz"
 	vmAuthVolumeName      = "config"
+	internalPortName      = "internal"
 )
 
 // CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
@@ -67,8 +68,10 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	if err := createOrUpdateVMAuthIngress(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr)); err != nil {
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) &&
+		!useProxyProtocol(cr) &&
+		len(cr.Spec.InternalListenPort) != 0 {
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, buildServiceScrape(svc, cr)); err != nil {
 			return err
 		}
 	}
@@ -145,6 +148,9 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 	args = append(args, fmt.Sprintf("-auth.config=%s", configPath))
 
+	if cr.Spec.UseProxyProtocol {
+		args = append(args, "-httpListenAddr.useProxyProtocol=true")
+	}
 	if cr.Spec.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
 	}
@@ -153,7 +159,10 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
-	if len(cr.Spec.ExtraEnvs) > 0 {
+	if len(cr.Spec.InternalListenPort) > 0 {
+		args = append(args, fmt.Sprintf("-httpInternalListenAddr=:%s", cr.Spec.InternalListenPort))
+	}
+	if len(cr.Spec.ExtraEnvs) > 0 || len(cr.Spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 
@@ -163,6 +172,14 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	var ports []corev1.ContainerPort
 
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+
+	if len(cr.Spec.InternalListenPort) > 0 {
+		ports = append(ports, corev1.ContainerPort{
+			Name:          internalPortName,
+			Protocol:      "TCP",
+			ContainerPort: intstr.Parse(cr.Spec.InternalListenPort).IntVal,
+		})
+	}
 
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
@@ -287,10 +304,11 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		VolumeMounts:             volumeMounts,
 		Resources:                cr.Spec.Resources,
 		Env:                      envs,
+		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
-	vmauthContainer = build.Probe(vmauthContainer, cr)
+	vmauthContainer = addVMAuthProbes(cr, vmauthContainer)
 
 	// move vmauth container to the 0 index
 	operatorContainers = append([]corev1.Container{vmauthContainer}, operatorContainers...)
@@ -484,14 +502,20 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 }
 
 func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
+	port := cr.Spec.Port
+	if len(cr.Spec.InternalListenPort) > 0 {
+		port = cr.Spec.InternalListenPort
+	}
 	configReloaderArgs := []string{
-		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
+		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if useVMConfigReloader {
 		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
-		configReloaderArgs = vmv1beta1.MaybeEnableProxyProtocol(configReloaderArgs, cr.Spec.ExtraArgs)
+		if len(cr.Spec.InternalListenPort) == 0 && useProxyProtocol(cr) {
+			configReloaderArgs = append(configReloaderArgs, "--reload-use-proxy-protocol")
+		}
 	} else {
 		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))
 	}
@@ -604,14 +628,27 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	return nil
 }
 
+func setInternalSvcPort(cr *vmv1beta1.VMAuth) func(svc *corev1.Service) {
+	return func(svc *corev1.Service) {
+		if len(cr.Spec.InternalListenPort) > 0 {
+			p := intstr.Parse(cr.Spec.InternalListenPort)
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+				Name:       internalPortName,
+				Port:       p.IntVal,
+				TargetPort: p,
+			})
+		}
+	}
+}
+
 // createOrUpdateVMAuthService creates service for VMAuth
 func createOrUpdateVMAuthService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) (*corev1.Service, error) {
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
-		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
+		prevService = build.Service(prevCR, prevCR.Spec.Port, setInternalSvcPort(prevCR))
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
 	}
-	newService := build.Service(cr, cr.Spec.Port, nil)
+	newService := build.Service(cr, cr.Spec.Port, setInternalSvcPort(cr))
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
@@ -660,4 +697,56 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 	}
 
 	return nil
+}
+
+func buildServiceScrape(svc *corev1.Service, cr *vmv1beta1.VMAuth) *vmv1beta1.VMServiceScrape {
+	b := build.VMServiceScrapeForServiceWithSpec(svc, cr)
+	if len(cr.Spec.InternalListenPort) == 0 {
+		return b
+	}
+	for idx := range b.Spec.Endpoints {
+		ep := &b.Spec.Endpoints[idx]
+		if ep.Port == "http" {
+			ep.Port = internalPortName
+			break
+		}
+	}
+	return b
+}
+
+func useProxyProtocol(cr *vmv1beta1.VMAuth) bool {
+	if cr.Spec.UseProxyProtocol {
+		return true
+	}
+	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
+		return true
+	}
+
+	return false
+}
+
+func addVMAuthProbes(cr *vmv1beta1.VMAuth, vmauthContainer corev1.Container) corev1.Container {
+	if useProxyProtocol(cr) &&
+		len(cr.Spec.InternalListenPort) == 0 &&
+		cr.Spec.EmbeddedProbes == nil {
+		probePort := intstr.Parse(cr.ProbePort())
+		cr.Spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: probePort,
+					},
+				},
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: probePort,
+					},
+				},
+			},
+		}
+	}
+	vmauthContainer = build.Probe(vmauthContainer, cr)
+	return vmauthContainer
 }

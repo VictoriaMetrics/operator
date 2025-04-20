@@ -88,6 +88,9 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 			continue
 		}
 		currentVMagent := &vmagentItem
+		if currentVMagent.Spec.DaemonSetMode {
+			continue
+		}
 		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
 		ctx := logger.AddToContext(ctx, reqLogger)
 

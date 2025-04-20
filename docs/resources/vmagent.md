@@ -775,3 +775,48 @@ spec:
     - action: labeldrop
       regex: "temp.*"
 ```
+
+
+### DaemonSet mode
+
+ It's possible to configure vmagent to use [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/) instead of Deployment and StatefulSet. Operator provides seamless transition between launch modes - daemonSetMode, statefulMode or defaultMode.
+
+Key features:
+* reduce network traffic for metric scrapping.
+* spread load for metrics collection.
+* provide resilience for single pod failure.
+
+ In this scenario, VMAgent's pods will be launched on each Kubernetes Node. Operator configures VMAgent to apply `spec.nodeName` pod [field selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/#list-of-supported-fields) for Kubernetes API requests.
+This field selector is only supported by `role: pod`, which could be used only with `VMPodScrape`. It limits scope of objects selectable by VMAgent.
+An example of configuration:
+```yaml
+kubernetes_sd_configs:
+- role: pod
+  namespaces:
+    names:
+    - default
+  selectors:
+  - role: pod
+    field: spec.nodeName=%{KUBE_NODE_NAME}
+```
+
+ An example of VMAgent object:
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: per-node
+spec:
+  selectAllByDefault: true
+  daemonSetMode: true
+  remoteWrite:
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
+```
+
+ daemonSetMode has the following restrictions and limitations:
+* sharding not supported.
+* podDisruptionPudget not supported.
+* horizontalPodAutoScraler not supported.
+* Volume for the persistent-queue could be mounted with `volumes` and must have either hostPath or emptyDir.
+* Only VMPodScrape supported.
+* vmagent restarts will lead to the small metric collection gaps. Only a single pod from DaemonSet deployed per node.

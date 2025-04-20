@@ -281,6 +281,12 @@ type VMAgentSpec struct {
 	// MaxScrapeInterval allows limiting maximum scrape interval for VMServiceScrape, VMPodScrape and other scrapes
 	// If interval is higher than defined limit, `maxScrapeInterval` will be used.
 	MaxScrapeInterval *string `json:"maxScrapeInterval,omitempty"`
+	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
+	// Supports only VMPodScrape
+	// (available from v0.55.0).
+	// Cannot be used with statefulMode
+	// +optional
+	DaemonSetMode bool `json:"daemonSetMode,omitempty"`
 	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
 	// it allows using persistent storage for vmagent's persistentQueue
 	// +optional
@@ -310,6 +316,13 @@ type VMAgentSpec struct {
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// EnableKubernetesAPISelectors instructs vmagent to use CRD scrape objects spec.selectors for
+	// Kubernetes API list and watch requests.
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#list-and-watch-filtering
+	// It could be useful to reduce Kubernetes API server resource usage for serving less than 100 CRD scrape objects in total.
+	// +optional
+	EnableKubernetesAPISelectors bool `json:"enableKubernetesAPISelectors,omitempty"`
 
 	VMAgentSecurityEnforcements       `json:",inline"`
 	CommonDefaultableParams           `json:",inline,omitempty"`
@@ -352,7 +365,17 @@ func (cr *VMAgent) Validate() error {
 			}
 		}
 	}
-
+	if cr.Spec.DaemonSetMode && cr.Spec.StatefulMode {
+		return fmt.Errorf("daemonSetMode and statefulMode cannot be used in the same time")
+	}
+	if cr.Spec.DaemonSetMode {
+		if cr.Spec.PodDisruptionBudget != nil {
+			return fmt.Errorf("podDisruptionBudget cannot be used with daemonSetMode")
+		}
+		if cr.Spec.EnableKubernetesAPISelectors {
+			return fmt.Errorf("enableKubernetesAPISelectors cannot be used with daemonSetMode")
+		}
+	}
 	return nil
 }
 
@@ -390,7 +413,9 @@ type VMAgentRemoteWriteSettings struct {
 
 	// The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
 	// +optional
-	MaxDiskUsagePerURL *int64 `json:"maxDiskUsagePerURL,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	MaxDiskUsagePerURL *BytesString `json:"maxDiskUsagePerURL,omitempty"`
 	// The number of concurrent queues
 	// +optional
 	Queues *int32 `json:"queues,omitempty"`
@@ -453,9 +478,12 @@ type VMAgentRemoteWriteSpec struct {
 	// StreamAggrConfig defines stream aggregation configuration for VMAgent for -remoteWrite.url
 	// +optional
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
-	// MaxDiskUsage defines the maximum file-based buffer size in bytes for -remoteWrite.url
+	// MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite
+	// It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL
 	// +optional
-	MaxDiskUsage *string `json:"maxDiskUsage,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	MaxDiskUsage *BytesString `json:"maxDiskUsage,omitempty"`
 	// ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url
 	// +optional
 	ForceVMProto bool `json:"forceVMProto,omitempty"`

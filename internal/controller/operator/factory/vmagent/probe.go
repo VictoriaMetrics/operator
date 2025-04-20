@@ -36,6 +36,9 @@ func generateProbeConfig(
 		}
 		cr.Spec.Params["module"] = []string{cr.Spec.Module}
 	}
+	if len(cr.Spec.VMProberSpec.Scheme) > 0 {
+		cr.Spec.EndpointScrapeParams.Scheme = cr.Spec.VMProberSpec.Scheme
+	}
 
 	setScrapeIntervalToWithLimit(ctx, &cr.Spec.EndpointScrapeParams, vmagentCR)
 
@@ -70,9 +73,18 @@ func generateProbeConfig(
 	}
 	if cr.Spec.Targets.Ingress != nil {
 
-		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", cr.Spec.Targets.Ingress.Selector)
+		skipRelabelSelectors := vmagentCR.Spec.EnableKubernetesAPISelectors
+		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", cr.Spec.Targets.Ingress.Selector, skipRelabelSelectors)
 		selectedNamespaces := getNamespacesFromNamespaceSelector(&cr.Spec.Targets.Ingress.NamespaceSelector, cr.Namespace, se.IgnoreNamespaceSelectors)
-		cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache, kubernetesSDRoleIngress, nil))
+
+		k8sSDOpts := generateK8SSDConfigOptions{
+			namespaces:         selectedNamespaces,
+			shouldAddSelectors: vmagentCR.Spec.EnableKubernetesAPISelectors,
+			selectors:          cr.Spec.Targets.Ingress.Selector,
+			apiServerConfig:    apiserverConfig,
+			role:               kubernetesSDRoleIngress,
+		}
+		cfg = append(cfg, generateK8SSDConfig(ssCache, k8sSDOpts))
 
 		// Relabelings for ingress SD.
 		relabelings = append(relabelings, []yaml.MapSlice{
@@ -139,7 +151,7 @@ func generateProbeConfig(
 	cfg = addMetricRelabelingsTo(cfg, cr.Spec.MetricRelabelConfigs, se)
 	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
 	cfg = addTLStoYaml(cfg, cr.Namespace, cr.Spec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, cr.Spec.EndpointAuth, cr.AsMapKey(), ssCache)
+	cfg = addEndpointAuthTo(cfg, cr.Spec.EndpointAuth, cr.Namespace, cr.AsMapKey(), ssCache)
 
 	return cfg
 }

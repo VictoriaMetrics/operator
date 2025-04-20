@@ -53,7 +53,7 @@ Also, you can check out the [examples](#examples) section.
 
  In this case clients could establish multiple connections to the same `pod` via `service`. And client requests will be served only by subset of `pods`.
 
- Operator allows to tweak this behaviour with enabled `requestsLoadbalacing`:
+ Operator allows to tweak this behaviour with enabled [requestsLoadBalancer](https://docs.victoriametrics.com/operator/api/#vmclusterspec-requestsloadbalancer):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -79,7 +79,11 @@ spec:
  Network scheme with load-balancing:
  ![CR](vmcluster_with_balancer.webp)
 
- Operator allows to customise load-balancing configuration with `requestsLoadBalancer.Spec` settings.
+The `requestsLoadBalancer` feature works transparently and is managed entirely by the `VMCluster` operator, 
+with no direct access to the underlying [VMAuth](https://docs.victoriametrics.com/vmauth/) configuration. 
+If you need more control over load balancing behavior, 
+or want to combine request routing with authentication or (m)TLS, 
+consider deploying a standalone [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/) resource instead of enabling `requestsLoadBalancer`.
 
 ## High availability
 

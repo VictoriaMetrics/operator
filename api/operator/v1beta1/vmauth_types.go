@@ -114,6 +114,16 @@ type VMAuthSpec struct {
 	CommonDefaultableParams           `json:",inline,omitempty" yaml:",inline"`
 	CommonConfigReloaderParams        `json:",inline,omitempty" yaml:",inline"`
 	CommonApplicationDeploymentParams `json:",inline,omitempty" yaml:",inline"`
+	// InternalListenPort instructs vmauth to serve internal routes at given port
+	// available from v0.56.0 operator
+	// and v1.111.0 vmauth version
+	// related doc https://docs.victoriametrics.com/vmauth/#security
+	// +optional
+	InternalListenPort string `json:"internalListenPort,omitempty"`
+
+	// UseProxyProtocol enables proxy protocol for vmauth
+	// https://www.haproxy.org/download/2.3/doc/proxy-protocol.txt
+	UseProxyProtocol bool `json:"useProxyProtocol,omitempty"`
 }
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
@@ -417,7 +427,7 @@ func (cr *VMAuth) Validate() error {
 	}
 
 	if cr.Spec.UnauthorizedUserAccessSpec != nil {
-		if err := cr.Spec.UnauthorizedUserAccessSpec.validate(); err != nil {
+		if err := cr.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec.UnauthorizedUserAccess syntax: %w", err)
 		}
 	}
@@ -505,6 +515,9 @@ func (cr *VMAuth) ProbeScheme() string {
 }
 
 func (cr *VMAuth) ProbePort() string {
+	if len(cr.Spec.InternalListenPort) > 0 {
+		return cr.Spec.InternalListenPort
+	}
 	return cr.Spec.Port
 }
 

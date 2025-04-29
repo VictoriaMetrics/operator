@@ -56,11 +56,13 @@ type VMSingleSpec struct {
 	// +optional
 	RemovePvcAfterDelete bool `json:"removePvcAfterDelete,omitempty"`
 
-	// RetentionPeriod for the stored metrics
-	// Note VictoriaMetrics has data/ and indexdb/ folders
-	// metrics from data/ removed eventually as soon as partition leaves retention period
-	// reverse index data at indexdb rotates once at the half of configured [retention period](https://docs.victoriametrics.com/Single-server-VictoriaMetrics/#retention)
-	RetentionPeriod string `json:"retentionPeriod"`
+	// RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").
+	// Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
+	// The default value is 1 (one month).
+	// See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
+	// +optional
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y)?$"
+	RetentionPeriod string `json:"retentionPeriod,omitempty"`
 	// VMBackup configuration for backup
 	// +optional
 	VMBackup *VMBackup `json:"vmBackup,omitempty"`

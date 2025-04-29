@@ -945,8 +945,12 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 		fmt.Sprintf("-vminsertAddr=:%s", cr.Spec.VMStorage.VMInsertPort),
 		fmt.Sprintf("-vmselectAddr=:%s", cr.Spec.VMStorage.VMSelectPort),
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMStorage.Port),
-		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
 	}
+
+	if cr.Spec.RetentionPeriod != "" {
+		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod))
+	}
+
 	if cr.Spec.VMStorage.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.VMStorage.LogLevel))
 	}

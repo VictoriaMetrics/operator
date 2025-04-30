@@ -25,7 +25,11 @@ var (
 
 	opNamespace   []string
 	initNamespace sync.Once
-	defaultEnvs   = map[string]string{
+	// this values are used by env expand logic here:
+	// https://github.com/caarlos0/env/blob/0669e014efa158a19b690c908bf39a3081a9fdc9/env.go#L607
+	//
+	// DO NOT FORGET TO MODIFY VERSIONS IN BaseOperatorConf
+	defaultEnvs = map[string]string{
 		"VM_METRICS_VERSION": "v1.115.0",
 		"VM_LOGS_VERSION":    "v1.18.0",
 	}
@@ -89,6 +93,13 @@ type Resource struct {
 
 //genvars:true
 type BaseOperatorConf struct {
+	// this values are printed when -printDefaults is called
+	//
+	// DO NOT FORGET TO MODIFY VERSIONS IN defaultEnvs
+
+	MetricsVersion string `default:"v1.115.0" env:"METRICS_VERSION"`
+	LogsVersion    string `default:"v1.18.0" env:"LOGS_VERSION"`
+
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
 	UseCustomConfigReloader bool `default:"false" env:"USECUSTOMCONFIGRELOADER"`

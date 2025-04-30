@@ -9,264 +9,206 @@ aliases:
   - /operator/quick-start/
   - /operator/quick-start/index.html
 ---
-VictoriaMetrics Operator serves to make running VictoriaMetrics applications on top of Kubernetes as easy as possible 
-while preserving Kubernetes-native configuration options.
 
-The shortest way to deploy full-stack monitoring cluster with VictoriaMetrics Operator is 
-to use Helm-chart [victoria-metrics-k8s-stack](https://docs.victoriametrics.com/helm/victoriametrics-k8s-stack/).
+This guide walks you through the easiest way to install VictoriaMetrics in a [Kubernetes](https://kubernetes.io/) cluster using the VictoriaMetrics [operator](https://github.com/VictoriaMetrics/operator/).
+While other [installation methods](https://docs.victoriametrics.com/operator/setup) offer more flexibility, 
+this approach keeps things simple and helps you get up and running with minimal effort.
 
-Also you can follow the other steps in documentation to use VictoriaMetrics Operator:
+By the end of this guide, you’ll have a fully functional setup that includes:
+- `VMSingle` – for storing and querying metrics
+- `VMAgent` and `VMServiceScrape` – for scraping targets
+- `VMAlert` and `VMRule` – for managing alerts
 
-- [Setup](https://docs.victoriametrics.com/operator/setup)
-- [Security](https://docs.victoriametrics.com/operator/security)
-- [Configuration](https://docs.victoriametrics.com/operator/configuration)
-- [Migration from Prometheus](https://docs.victoriametrics.com/operator/migration)
-- [Monitoring](https://docs.victoriametrics.com/operator/monitoring)
-- [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth)
-- [High Availability](https://docs.victoriametrics.com/operator/high-availability)
-- [Enterprise](https://docs.victoriametrics.com/operator/enterprise)
-- [Custom resources](https://docs.victoriametrics.com/operator/resources/)
-- [FAQ (Frequency Asked Questions)](https://docs.victoriametrics.com/operator/faq)
+You’ll also learn how to interact with the system using basic tools like `kubectl` and `curl`.
 
-But if you want to deploy VictoriaMetrics Operator quickly from scratch (without using templating for custom resources), 
-you can follow this guide:
+Read more about the operator pattern in the [Kubernetes documentation](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
 
-- [Setup operator](#setup-operator)
-- [Deploy components](#deploy-components)
-  - [VMCluster](#vmcluster-vmselect-vminsert-vmstorage)
-  - [Scraping](#scraping)
-    - [VMAgent](#vmagent)
-    - [VMServiceScrape](#vmservicescrape)
-  - [Access](#access)
-    - [VMAuth](#vmauth)
-    - [VMUser](#vmuser)
-  - [Alerting](#alerting)
-    - [VMAlertmanager](#vmalertmanager)
-    - [VMAlert](#vmalert)
-    - [VMRule](#vmrule)
-    - [VMUser](#vmuser)
-- [Anythings else?](#anythings-else)
+Before we proceed, let’s verify that you have access to your Kubernetes cluster. 
+Run the following command and ensure the output includes a server version:
+```bash
+kubectl version
 
-Let's start!
+# Client Version: v1.32.3
+# Kustomize Version: v5.5.0
+# Server Version: v1.32.2
+```
+If you don't have a Kubernetes cluster, you can quickly spin up a local one using [Kind](https://kind.sigs.k8s.io/).
+
+Please note that [certain permissions](https://docs.victoriametrics.com/operator/security#roles) may be required for the operator to function properly.
 
 ## Setup operator
 
-You can find out how to and instructions for installing the VictoriaMetrics operator into your kubernetes cluster
-on the [Setup page](https://docs.victoriametrics.com/operator/setup).
+Download the latest [operator release](https://github.com/VictoriaMetrics/operator/latest) from GitHub:
+```bash
+export VM_OPERATOR_VERSION=$(basename $(curl -fs -o /dev/null -w %{redirect_url} \
+  https://github.com/VictoriaMetrics/operator/releases/latest))
+echo "VM_OPERATOR_VERSION=$VM_OPERATOR_VERSION"
 
-Here we will elaborate on just one of the ways - for instance, we will install operator via Helm-chart
-[victoria-metrics-operator](https://docs.victoriametrics.com/helm/victoriametrics-operator/):
+wget -O operator-and-crds.yaml \
+  "https://github.com/VictoriaMetrics/operator/releases/download/$VM_OPERATOR_VERSION/install-no-webhook.yaml"
 
-Add repo with helm-chart:
-
-```shell
-helm repo add vm https://victoriametrics.github.io/helm-charts/
-helm repo update
-```
-
-Render `values.yaml` with default operator configuration:
-
-```shell
-helm show values vm/victoria-metrics-operator > values.yaml
-```
-
-Now you can configure operator - open rendered `values.yaml` file in your text editor. For example:
-
-```shell
-code values.yaml
-```
-
-![Values](quick-start_values.webp)
-{width="1200"}
-
-Now you can change configuration in `values.yaml`. For more details about configuration options and methods,
-see [configuration -> victoria-metrics-operator](https://docs.victoriametrics.com/operator/configuration#victoria-metrics-operator).
-
-If you migrated from prometheus-operator, you can read about prometheus-operator objects conversion on 
-the [migration from prometheus-operator](https://docs.victoriametrics.com/operator/migration).
-
-Since we're looking at installing from scratch, let's disable prometheus-operator objects conversion,
-and also let's set some resources for operator in `values.yaml`:
-
-```yaml
-# ...
-
-operator:
-  # -- By default, operator converts prometheus-operator objects.
-  disable_prometheus_converter: true
-
-# -- Resources for operator
-resources:
-  limits:
-    cpu: 500m
-    memory: 500Mi
-  requests:
-    cpu: 100m
-    memory: 150Mi
-
+# VM_OPERATOR_VERSION=v0.56.0
 # ...
 ```
 
-You will need a kubernetes namespace to deploy the operator and VM components. Let's create it:
+The commands above will download the operator manifest and save it as `operator-and-crds.yaml` in your current directory.
+Let’s take a quick look at the file’s contents. The beginning of the file should contain a standard Kubernetes YAML resource definition.
+```bash
+head -n 10 operator-and-crds.yaml
 
-```shell
-kubectl create namespace vm
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+# labels:
+# app.kubernetes.io/managed-by: kustomize
+# app.kubernetes.io/name: vm-operator
+# control-plane: vm-operator
+# name: vm
+# ---
 ```
 
-After finishing with `values.yaml` and creating namespace, you can test the installation with command:
+Apply the manifest to your cluster:
+```bash
+kubectl apply -f operator-and-crds.yaml
 
-```shell
-helm install vmoperator vm/victoria-metrics-operator -f values.yaml -n vm --debug --dry-run
+# namespace/vm configured
+# customresourcedefinition.apiextensions.k8s.io/vlogs.operator.victoriametrics.com configured
+# customresourcedefinition.apiextensions.k8s.io/vmagents.operator.victoriametrics.com configured
+# ...
+```
+The apply command installs the operator and CRDs in the `vm` namespace.
+Once it's running, it will start watching for VictoriaMetrics custom resources and manage them automatically.
+
+You can confirm the operator is running by checking the pod status:
+```bash
+kubectl get pods -n vm -l "control-plane=vm-operator"
+
+# NAME                           READY   STATUS    RESTARTS   AGE
+# vm-operator-5db95b48bd-j6m9v   1/1     Running   0          2m27s
 ```
 
-Where `vm` is the namespace where you want to install operator. 
+The operator introduces [custom resources](https://docs.victoriametrics.com/operator/resources/) to the cluster, 
+which you can list using the following command:
+```bash
+kubectl api-resources --api-group=operator.victoriametrics.com
 
-If everything is ok, you can install operator with command:
+# NAME                    SHORTNAMES   APIVERSION                             NAMESPACED   KIND
+# vlogs                                operator.victoriametrics.com/v1beta1   true         VLogs
+# vmagents                             operator.victoriametrics.com/v1beta1   true         VMAgent
+# vmsingles                            operator.victoriametrics.com/v1beta1   true         VMSingle
+# ...
+```
+You can interact with VictoriaMetrics resources in the same way as you would with built-in Kubernetes resources. 
+For example, to get a list of `VMSingle` resources, you can run `kubectl get vmsingle -n vm`. 
+This knowledge will help you manage and inspect the custom resources within the cluster efficiently in later sections.
 
-```shell
-helm install vmoperator vm/victoria-metrics-operator -f values.yaml -n vm
+The operator is configured using [environment variables](https://docs.victoriametrics.com/operator/vars/). 
+You can consult the documentation or explore the variables directly in your cluster (note that `kubectl exec` may require [additional permissions](https://discuss.kubernetes.io/t/adding-permission-to-exec-commands-in-containers-inside-pods-in-a-certain-namespace/22821/2)).
+Here’s an example showing how to get the default CPU and memory limits applied to the VMSingle resource:
+```bash 
+OPERATOR_POD_NAME=$(kubectl get pod -l "control-plane=vm-operator"  -n vm -o jsonpath="{.items[0].metadata.name}")
+kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --printDefaults 2>&1 | grep VMSINGLEDEFAULT_RESOURCE
 
-# NAME: vmoperator
-# LAST DEPLOYED: Thu Sep 14 15:13:04 2023
-# NAMESPACE: vm
-# STATUS: deployed
-# REVISION: 1
-# TEST SUITE: None
-# NOTES:
-# victoria-metrics-operator has been installed. Check its status by running:
-#   kubectl --namespace vm get pods -l "app.kubernetes.io/instance=vmoperator"
-#
-# Get more information on https://docs.victoriametrics.com/helm/victoriametrics-operator/
-# See "Getting started guide for VM Operator" on https://docs.victoriametrics.com/guides/getting-started-with-vm-operator/.
+# VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_MEM     1500Mi   false       
+# VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_CPU     1200m    false       
+# VM_VMSINGLEDEFAULT_RESOURCE_REQUEST_MEM   500Mi    false       
+# VM_VMSINGLEDEFAULT_RESOURCE_REQUEST_CPU   150m     false 
 ```
 
-And check that operator is running:
+At this point, you should have a functional operator and [custom resources](https://docs.victoriametrics.com/operator/resources/) set up in your cluster. 
+You can now proceed with installing the metrics storage `VMSingle`.
 
-```shell
-kubectl get pods -n vm -l "app.kubernetes.io/instance=vmoperator"
+## Setup storage
 
-# NAME                                                    READY   STATUS    RESTARTS   AGE
-# vmoperator-victoria-metrics-operator-7b88bd6df9-q9qwz   1/1     Running   0          98s
-``` 
+The easiest and production-ready way to run VictoriaMetrics storage in Kubernetes is by using the [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle) resource.
+It deploys a [VictoriaMetrics single-node](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) instance.
+Although it runs as a single pod, the setup is recommended for production use.
+`VMSingle` can scale vertically and efficiently handle high volumes of metric ingestion and querying.
 
-## Deploy components
-
-Now you can create instances of VictoriaMetrics applications.
-Let's create fullstack monitoring cluster with 
-[`vmagent`](https://docs.victoriametrics.com/operator/resources/vmagent),
-[`vmauth`](https://docs.victoriametrics.com/operator/resources/vmauth),
-[`vmalert`](https://docs.victoriametrics.com/operator/resources/vmalert),
-[`vmalertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager),  
-[`vmcluster`](https://docs.victoriametrics.com/operator/resources/vmcluster)
-(a component for deploying a cluster version of 
-[VictoriaMetrics](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#architecture-overview)
-consisting of `vmstorage`, `vmselect` and `vminsert`):
-
-![Cluster Scheme](quick-start_cluster-scheme.webp)
-{width="1200"}
-
-More details about resources of VictoriaMetrics operator you can find on the [resources page](https://docs.victoriametrics.com/operator/resources/). 
-
-### VMCluster (vmselect, vminsert, vmstorage)
-
-Let's start by deploying the [`vmcluster`](https://docs.victoriametrics.com/operator/resources/vmcluster) resource.
-
-Create file `vmcluster.yaml` 
-
-```shell
-code vmcluster.yaml
-```
-
-with the following content:
-
-```yaml
-# vmcluster.yaml
+First, create a `VMSingle` manifest file:
+```bash
+cat > vmsingle-demo.yaml <<'EOF'
 apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMCluster
+kind: VMSingle
 metadata:
   name: demo
-spec:
-  retentionPeriod: "1"
-  replicationFactor: 2
-  vmstorage:
-    replicaCount: 2
-    storageDataPath: "/vm-data"
-    storage:
-      volumeClaimTemplate:
-        spec:
-          resources:
-            requests:
-              storage: "10Gi"
-    resources:
-      limits:
-        cpu: "1"
-        memory: "1Gi"
-  vmselect:
-    replicaCount: 2
-    cacheMountPath: "/select-cache"
-    storage:
-      volumeClaimTemplate:
-        spec:
-          resources:
-            requests:
-              storage: "1Gi"
-    resources:
-      limits:
-        cpu: "1"
-        memory: "1Gi"
-      requests:
-        cpu: "0.5"
-        memory: "500Mi"
-  vminsert:
-    replicaCount: 2
-    resources:
-      limits:
-        cpu: "1"
-        memory: "1Gi"
-      requests:
-        cpu: "0.5"
-        memory: "500Mi"
+  namespace: vm
+EOF
 ```
 
-After that you can deploy `vmcluster` resource to the kubernetes cluster:
-
-```shell
-kubectl apply -f vmcluster.yaml -n vm
-
-# vmcluster.operator.victoriametrics.com/demo created
+Next, apply the manifest to your Kubernetes cluster:
+```bash
+kubectl apply -f vmsingle-demo.yaml
 ```
+That's it! You now have a fully operational VictoriaMetrics storage instance running in the `vm` namespace.
 
-Check that `vmcluster` is running:
+To confirm that `VMSingle` is running, run the following commands. You should see output similar to this:
+```bash
+kubectl get vmsingle -n vm
 
-```shell
-kubectl get pods -n vm -l "app.kubernetes.io/instance=demo"
+#NAME   STATUS        AGE
+#demo   operational   5h48m
+
+kubectl get pods -n vm -l "app.kubernetes.io/name=vmsingle"
 
 # NAME                             READY   STATUS    RESTARTS   AGE
-# vminsert-demo-8688d88ff7-fnbnw   1/1     Running   0          3m39s
-# vminsert-demo-8688d88ff7-5wbj7   1/1     Running   0          3m39s
-# vmselect-demo-0                  1/1     Running   0          3m39s
-# vmselect-demo-1                  1/1     Running   0          3m39s
-# vmstorage-demo-1                 1/1     Running   0          22s
-# vmstorage-demo-0                 1/1     Running   0          6s
+# vmsingle-demo-54f8fc5777-sw6xp   1/1     Running   0          5h28m
 ```
 
-Now you can see that 6 components of your demo vmcluster is running. 
+Let’s explore how to interact with the storage. First, you need to make the storage port accessible from your machine.
+To do this, open a separate terminal and run the port-forward command below:
+```bash
+VMSINGLE_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmsingle" -o jsonpath="{.items[0].metadata.name}")
+kubectl port-forward -n vm $VMSINGLE_POD_NAME 8429:8429
 
-In addition, you can see that the operator created services for each of the component type:
+# Forwarding from 127.0.0.1:8429 -> 8429
+# Forwarding from [::1]:8429 -> 8429
+```
+Make sure it stays up and running throughout the rest of this documentation.
 
-```shell
-kubectl get svc -n vm -l "app.kubernetes.io/instance=demo"
+You can use the `/api/v1/import/prometheus` endpoint to store metrics using the [Prometheus exposition format](https://prometheus.io/docs/concepts/data_model/).
+The following example demonstrates how to post a simple `a_metric` with a label and value:
+```bash
+curl -i -X POST \
+  --url http://127.0.0.1:8429/api/v1/import/prometheus \
+  --header 'Content-Type: text/plain' \
+  --data 'a_metric{foo="fooVal"} 123'
 
-# NAME             TYPE        CLUSTER-IP        EXTERNAL-IP   PORT(S)                      AGE
-# vmstorage-demo   ClusterIP   None              <none>        8482/TCP,8400/TCP,8401/TCP   8m3s
-# vmselect-demo    ClusterIP   None              <none>        8481/TCP                     8m3s
-# vminsert-demo    ClusterIP   192.168.194.183   <none>        8480/TCP                     8m3s
+# HTTP/1.1 204 No Content
+# ...
 ```
 
-We'll need them in the next steps.
+To retrieve metrics from VictoriaMetrics, you can use either of the following HTTP endpoints:
+- `/api/v1/query` — for instant (point-in-time) queries
+- `/api/v1/query_range` — for range queries over a specified time window
 
-More information about `vmcluster` resource you can find on 
-the [vmcluster page](https://docs.victoriametrics.com/operator/resources/vmcluster).
+Keep in mind that metrics become available for querying 30 seconds after they're collected.
+Here’s an example using query endpoint to fetch `a_metric` data:
+```bash
+curl -i --url http://127.0.0.1:8429/api/v1/query --url-query query=a_metric
+
+# HTTP/1.1 200 OK
+# ...
+# {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"a_metric","foo":"fooVal"},"value":[1746099757,"123"]}]},"stats":{"seriesFetched": "1","executionTimeMsec":0}}
+```
+
+For an interactive way to explore and query metrics, visit the built-in VMUI at: http://127.0.0.1:8429/vmui
+
+VictoriaMetrics stores all ingested metrics on the filesystem.
+You can verify that data is being persisted by inspecting the storage directory inside the `VMSingle` pod:
+```bash
+VMSINGLE_POD_NAME=$(kubectl get pod -l "app.kubernetes.io/name=vmsingle"  -n vm -o jsonpath="{.items[0].metadata.name}")
+
+kubectl exec -n vm "$VMSINGLE_POD_NAME" -- ls -l  /victoria-metrics-data
+
+# total 20
+# drwxr-xr-x    4 root     root          4096 Apr 30 12:20 data
+# -rw-r--r--    1 root     root             0 Apr 30 12:20 flock.lock
+# drwxr-xr-x    6 root     root          4096 Apr 30 12:20 indexdb
+# drwxr-xr-x    2 root     root          4096 Apr 30 12:20 metadata
+# drwxr-xr-x    2 root     root          4096 Apr 30 12:20 snapshots
+# drwxr-xr-x    3 root     root          4096 Apr 30 12:20 tmp
+```
 
 ### Scraping
 

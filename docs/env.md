@@ -1,6 +1,8 @@
 
 | variable name | variable default value | variable required | variable description |
 | --- | --- | --- | --- |
+| VM_METRICS_VERSION | v1.115.0 | false |  |
+| VM_LOGS_VERSION | v1.18.0 | false |  |
 | VM_USECUSTOMCONFIGRELOADER | false | false | enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY | - | false | container registry name prefix, e.g. docker.io |
 | VM_CUSTOMCONFIGRELOADERIMAGE | victoriametrics/operator:config-reloader-v0.56.0 | false |  |

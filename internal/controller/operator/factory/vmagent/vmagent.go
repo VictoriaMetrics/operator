@@ -1217,7 +1217,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	streamAggrDropInputLabels := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInputLabels="}
 	streamAggrIgnoreFirstIntervals := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreFirstIntervals="}
 	streamAggrIgnoreOldSamples := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreOldSamples="}
-	streamAggrEnableWindows := remoteFlag{flagSetting: "-remoteWrite.steamAggr.enableWindows="}
+	streamAggrEnableWindows := remoteFlag{flagSetting: "-remoteWrite.streamAggr.enableWindows="}
 	maxDiskUsagePerURL := remoteFlag{flagSetting: "-remoteWrite.maxDiskUsagePerURL="}
 	forceVMProto := remoteFlag{flagSetting: "-remoteWrite.forceVMProto="}
 

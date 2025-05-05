@@ -730,6 +730,8 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 
 	vmagentContainer = build.Probe(vmagentContainer, cr)
 
+	build.AddConfigReloadAuthKeyToApp(&vmagentContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
+
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	// conditional add config reloader container
@@ -764,6 +766,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 			}
 		}
 	}
+	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
 
 	return &corev1.PodSpec{
 		Volumes:            volumes,
@@ -1497,7 +1500,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
 		build.AddServiceAccountTokenVolumeMount(&cntr, &cr.Spec.CommonApplicationDeploymentParams)
 	}
 	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &cntr)
-
+	build.AddConfigReloadAuthKeyToReloader(&cntr, &cr.Spec.CommonConfigReloaderParams)
 	return cntr
 }
 

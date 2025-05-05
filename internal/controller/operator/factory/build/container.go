@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 const probeTimeoutSeconds int32 = 5
@@ -328,4 +329,55 @@ func AddsPortProbesToConfigReloaderContainer(useVMConfigReloader bool, crContain
 		PeriodSeconds:       10,
 		ProbeHandler:        configReloaderContainerProbe,
 	}
+}
+
+const (
+	authKeyAppFlagName      = "reloadAuthKey"
+	authKeyReloaderFlagName = "reload-url-auth-key"
+	authKeyMountPath        = "/etc/vm/config-reload-auth"
+	authKeyMountName        = "vm-config-reload-auth-secret"
+)
+
+// AddConfigReloadAuthKeyVolume conditionally adds volume with config reload auth secret
+func AddConfigReloadAuthKeyVolume(dst []corev1.Volume, spec *vmv1beta1.CommonConfigReloaderParams) []corev1.Volume {
+	if spec.ConfigReloadAuthKeySecret == nil {
+		return dst
+	}
+	dst = append(dst, corev1.Volume{
+		Name: authKeyMountName,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: spec.ConfigReloadAuthKeySecret.Name,
+			},
+		},
+	})
+	return dst
+}
+
+// AddConfigReloadAuthKeyToApp adds authKey env var to the given application container
+func AddConfigReloadAuthKeyToApp(container *corev1.Container, extraArgs map[string]string, spec *vmv1beta1.CommonConfigReloaderParams) {
+	if spec.ConfigReloadAuthKeySecret == nil {
+		return
+	}
+	container.Args = append(container.Args, fmt.Sprintf("-%s=file://%s/%s", authKeyAppFlagName, authKeyMountPath, spec.ConfigReloadAuthKeySecret.Key))
+	container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+		Name:      authKeyMountName,
+		MountPath: authKeyMountPath,
+	})
+}
+
+// AddConfigReloadAuthKeyToReloader adds authKey env var to the given config-reloader container
+func AddConfigReloadAuthKeyToReloader(container *corev1.Container, spec *vmv1beta1.CommonConfigReloaderParams) {
+	if spec.ConfigReloadAuthKeySecret == nil {
+		return
+	}
+	useVMConfigReloader := ptr.Deref(spec.UseVMConfigReloader, false)
+	if !useVMConfigReloader {
+		return
+	}
+	container.Args = append(container.Args, fmt.Sprintf("-%s=file://%s/%s", authKeyReloaderFlagName, authKeyMountPath, spec.ConfigReloadAuthKeySecret.Key))
+	container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+		Name:      authKeyMountName,
+		MountPath: authKeyMountPath,
+	})
 }

@@ -1893,6 +1893,32 @@ spec:
                 items:
                   type: string
                 type: array
+              configReloadAuthKeySecret:
+                description: |-
+                  ConfigReloaderAuthKeySecret defines optional secret reference for authKey.
+                  Given secret reference will be added to the application and vm-config-reloader as env variable
+                  available since v0.57.0 version
+                properties:
+                  key:
+                    description: The key of the secret to select from.  Must be a
+                      valid secret key.
+                    type: string
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  optional:
+                    description: Specify whether the Secret or its key must be defined
+                    type: boolean
+                required:
+                - key
+                type: object
+                x-kubernetes-map-type: atomic
               configReloaderExtraArgs:
                 additionalProperties:
                   type: string
@@ -10723,6 +10749,32 @@ spec:
                   it helps it to start without secret.
                   priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret.
                 type: string
+              configReloadAuthKeySecret:
+                description: |-
+                  ConfigReloaderAuthKeySecret defines optional secret reference for authKey.
+                  Given secret reference will be added to the application and vm-config-reloader as env variable
+                  available since v0.57.0 version
+                properties:
+                  key:
+                    description: The key of the secret to select from.  Must be a
+                      valid secret key.
+                    type: string
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  optional:
+                    description: Specify whether the Secret or its key must be defined
+                    type: boolean
+                required:
+                - key
+                type: object
+                x-kubernetes-map-type: atomic
               configReloaderExtraArgs:
                 additionalProperties:
                   type: string
@@ -12724,6 +12776,32 @@ spec:
                 items:
                   type: string
                 type: array
+              configReloadAuthKeySecret:
+                description: |-
+                  ConfigReloaderAuthKeySecret defines optional secret reference for authKey.
+                  Given secret reference will be added to the application and vm-config-reloader as env variable
+                  available since v0.57.0 version
+                properties:
+                  key:
+                    description: The key of the secret to select from.  Must be a
+                      valid secret key.
+                    type: string
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  optional:
+                    description: Specify whether the Secret or its key must be defined
+                    type: boolean
+                required:
+                - key
+                type: object
+                x-kubernetes-map-type: atomic
               configReloaderExtraArgs:
                 additionalProperties:
                   type: string
@@ -14703,6 +14781,32 @@ spec:
                 items:
                   type: string
                 type: array
+              configReloadAuthKeySecret:
+                description: |-
+                  ConfigReloaderAuthKeySecret defines optional secret reference for authKey.
+                  Given secret reference will be added to the application and vm-config-reloader as env variable
+                  available since v0.57.0 version
+                properties:
+                  key:
+                    description: The key of the secret to select from.  Must be a
+                      valid secret key.
+                    type: string
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  optional:
+                    description: Specify whether the Secret or its key must be defined
+                    type: boolean
+                required:
+                - key
+                type: object
+                x-kubernetes-map-type: atomic
               configReloaderExtraArgs:
                 additionalProperties:
                   type: string

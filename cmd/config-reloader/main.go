@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -47,7 +48,8 @@ var (
 		"rules-dir", "the same as watched-dir, legacy")
 	reloadURL = flag.String(
 		"reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
-	listenAddr = flag.String(
+	reloadURLAuthKey = flagutil.NewPassword("reload-url-auth-key", "authKey for config reload API requests")
+	listenAddr       = flag.String(
 		"http.listenAddr", ":8435", "http server listen addr")
 	useProxyProtocol = flag.Bool(
 		"reload-use-proxy-protocol", false, "enables proxy-protocol for reload connections.")
@@ -82,6 +84,10 @@ func main() {
 	buildinfo.Init()
 	logger.Init()
 	ctx, cancel := context.WithCancel(context.Background())
+	_, err := url.Parse(*reloadURL)
+	if err != nil {
+		logger.Fatalf("incorrect value for reload-url=%q: %s", *reloadURL, err)
+	}
 	logger.Infof("starting config reloader")
 	r := reloader{
 		c: buildHTTPClient(),
@@ -203,17 +209,32 @@ type reloader struct {
 
 func (r *reloader) reload(ctx context.Context) error {
 	configReloadsTotal.Inc()
-	req, err := http.NewRequestWithContext(ctx, *webhookMethod, *reloadURL, nil)
-	if err != nil {
-		return fmt.Errorf("cannot build request for reload api: %w", err)
-	}
-	resp, err := r.c.Do(req)
-	if err != nil {
-		return fmt.Errorf("cannot execute request for reload api: %w", err)
+	authKey := reloadURLAuthKey.Get()
+
+	var resp *http.Response
+	if len(authKey) > 0 {
+		formData := url.Values{
+			"authKey": []string{authKey},
+		}
+		var err error
+		resp, err = r.c.PostForm(*reloadURL, formData)
+		if err != nil {
+			return fmt.Errorf("cannot execute postForm request for reload api: %w", err)
+		}
+	} else {
+		req, err := http.NewRequestWithContext(ctx, *webhookMethod, *reloadURL, nil)
+		if err != nil {
+			return fmt.Errorf("cannot build request for reload api: %w", err)
+		}
+		resp, err = r.c.Do(req)
+		if err != nil {
+			return fmt.Errorf("cannot execute request for reload api: %w", err)
+		}
 	}
 	defer resp.Body.Close()
+	text, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		return fmt.Errorf("unexpected status code: %d for reload api request", resp.StatusCode)
+		return fmt.Errorf("unexpected status code: %d: %s for reload api request", resp.StatusCode, text)
 	}
 	return nil
 }

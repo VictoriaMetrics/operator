@@ -217,6 +217,34 @@ var _ = Describe("test vmauth Controller", func() {
 							}, eventualDeploymentPodTimeout).Should(BeEmpty())
 						},
 					},
+					testStep{
+						modify: func(cr *v1beta1vm.VMAuth) {
+							authSecret := corev1.Secret{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      "reload-auth-key",
+									Namespace: namespace,
+								},
+								StringData: map[string]string{
+									"SECRET_VALUE": "some-auth-value",
+								},
+							}
+							Expect(k8sClient.Create(ctx, &authSecret)).To(Succeed())
+							DeferCleanup(func(ctx SpecContext) {
+								Expect(k8sClient.Delete(ctx, &authSecret)).To(Succeed())
+							})
+							cr.Spec.ConfigReloadAuthKeySecret = &corev1.SecretKeySelector{
+								Key: "SECRET_VALUE",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: authSecret.Name,
+								},
+							}
+						},
+						verify: func(cr *v1beta1vm.VMAuth) {
+							Eventually(func() string {
+								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+						},
+					},
 				),
 				Entry("by switching to internal listen port", "vm-internal-listen",
 					&v1beta1vm.VMAuth{

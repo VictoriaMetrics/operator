@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	vlogsDataDir        = "/victoria-metrics-data"
+	vlogsDataDir        = "/victoria-logs-data"
 	vlogsDataVolumeName = "data"
 )
 

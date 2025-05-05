@@ -35,6 +35,7 @@ aliases:
 ) for vmauth. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1309).
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): add runtime configuration validation. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1299) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): add `StatefulSet` volumeMounts name validation. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1303) for details.
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): made `retentionPeriod` in VMSingle and VMCluster optional; it now defaults to 1 (month) if not specified. Add a validation regexp `^[0-9]+(h|d|y)?$` for `retentionPeriod`. See [#1326](https://github.com/VictoriaMetrics/operator/pull/1326) for details.
 
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): properly validate unknown fields at `route.routes`, `http_config` and `tls_config`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1299) for details.
 * BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): properly use `reload-use-proxy-protocol` flag. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1308) for details.

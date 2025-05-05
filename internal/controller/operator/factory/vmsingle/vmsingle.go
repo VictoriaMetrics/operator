@@ -146,8 +146,10 @@ func newDeployForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.
 }
 
 func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateSpec, error) {
-	args := []string{
-		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
+	var args []string
+
+	if cr.Spec.RetentionPeriod != "" {
+		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod))
 	}
 
 	// if customStorageDataPath is not empty, do not add volumes

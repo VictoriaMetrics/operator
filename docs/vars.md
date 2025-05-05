@@ -8,5 +8,6 @@ menu:
 aliases:
   - /operator/vars/
   - /operator/vars/index.html
+  - /operator/vars.html
 ---
 {{% content "env.md" %}}

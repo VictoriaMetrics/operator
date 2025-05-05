@@ -17,6 +17,8 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default VLogs  [v1.21.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.21.0-victorialogs) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default  alertmanager to [0.28.1](https://github.com/prometheus/alertmanager/releases/tag/v0.28.1) version
 
+* BUGFIX: [operator](https://docs.victoriametrics.com/operator): fix typo in `-remoteWrite.streamAggr.enableWindows` flag when `enableWindows` is set to true in VMAgent resources
+
 ## [v0.56.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.56.0)
 
 **Release date:** 15 Apr 2025

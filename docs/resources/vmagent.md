@@ -770,7 +770,7 @@ spec:
   externalLabels:
     cluster: my-cluster
   remoteWrite:
-    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
   inlineRelabelConfig:
     - action: labeldrop
       regex: "temp.*"
@@ -810,7 +810,7 @@ spec:
   selectAllByDefault: true
   daemonSetMode: true
   remoteWrite:
-    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
 ```
 
  daemonSetMode has the following restrictions and limitations:

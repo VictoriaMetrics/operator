@@ -159,10 +159,10 @@ Let’s explore how to interact with the storage. First, you need to make the st
 To do this, open a separate terminal and run the port-forward command below:
 ```bash
 VMSINGLE_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmsingle" -o jsonpath="{.items[0].metadata.name}")
-kubectl port-forward -n vm $VMSINGLE_POD_NAME 8429:8429
+kubectl port-forward -n vm $VMSINGLE_POD_NAME 8428:8429
 
-# Forwarding from 127.0.0.1:8429 -> 8429
-# Forwarding from [::1]:8429 -> 8429
+# Forwarding from 127.0.0.1:8428 -> 8429
+# Forwarding from [::1]:8428 -> 8429
 ```
 Make sure it stays up and running throughout the rest of this documentation.
 
@@ -170,7 +170,7 @@ You can use the `/api/v1/import/prometheus` endpoint to store metrics using the 
 The following example demonstrates how to post a simple `a_metric` with a label and value:
 ```bash
 curl -i -X POST \
-  --url http://127.0.0.1:8429/api/v1/import/prometheus \
+  --url http://127.0.0.1:8428/api/v1/import/prometheus \
   --header 'Content-Type: text/plain' \
   --data 'a_metric{foo="fooVal"} 123'
 
@@ -185,14 +185,14 @@ To retrieve metrics from VictoriaMetrics, you can use either of the following HT
 Keep in mind that metrics become available for querying 30 seconds after they're collected.
 Here’s an example using query endpoint to fetch `a_metric` data:
 ```bash
-curl -i --url http://127.0.0.1:8429/api/v1/query --url-query query=a_metric
+curl -i --url http://127.0.0.1:8428/api/v1/query --url-query query=a_metric
 
 # HTTP/1.1 200 OK
 # ...
 # {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"a_metric","foo":"fooVal"},"value":[1746099757,"123"]}]},"stats":{"seriesFetched": "1","executionTimeMsec":0}}
 ```
 
-For an interactive way to explore and query metrics, visit the built-in VMUI at: http://127.0.0.1:8429/vmui
+For an interactive way to explore and query metrics, visit the built-in VMUI at: http://127.0.0.1:8428/vmui
 
 VictoriaMetrics stores all ingested metrics on the filesystem.
 You can verify that data is being persisted by inspecting the storage directory inside the `VMSingle` pod:

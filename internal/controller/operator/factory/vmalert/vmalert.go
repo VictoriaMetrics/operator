@@ -364,6 +364,7 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	vmalertContainer = build.Probe(vmalertContainer, cr)
+	build.AddConfigReloadAuthKeyToApp(&vmalertContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
 	vmalertContainers = buildConfigReloaderContainer(vmalertContainers, cr, ruleConfigMapNames)
@@ -388,6 +389,7 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 			}
 		}
 	}
+	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
 
 	spec := &appsv1.DeploymentSpec{
 
@@ -970,8 +972,8 @@ func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert,
 	}
 	if useVMConfigReloader {
 		build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &configReloaderContainer)
-
 	}
+	build.AddConfigReloadAuthKeyToReloader(&configReloaderContainer, &cr.Spec.CommonConfigReloaderParams)
 
 	dst = append(dst, configReloaderContainer)
 	return dst

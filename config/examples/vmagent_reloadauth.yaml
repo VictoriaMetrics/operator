@@ -1,0 +1,21 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example-reload-auth
+spec:
+  selectAllByDefault: true
+  replicaCount: 1
+  useVMConfigReloader: true
+  configReloaderImageTag: victoriametrics/operator:config-reloader-v0.57.0
+  configReloadAuthKeySecret:
+    name: reload-key
+    key: RELOAD_AUTH_KEY
+  remoteWrite:
+    - url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429/api/v1/write"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: reload-key
+stringData:
+  RELOAD_AUTH_KEY: some-secret-key-value

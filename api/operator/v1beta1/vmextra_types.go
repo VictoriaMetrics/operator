@@ -1177,6 +1177,11 @@ type CommonConfigReloaderParams struct {
 	// for example resyncInterval: "30s"
 	// +optional
 	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
+	// ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
+	// Given secret reference will be added to the application and vm-config-reloader as volume
+	// available since v0.57.0 version
+	// +optional
+	ConfigReloadAuthKeySecret *v1.SecretKeySelector `json:"configReloadAuthKeySecret,omitempty"`
 }
 
 // CommonApplicationDeploymentParams defines common params

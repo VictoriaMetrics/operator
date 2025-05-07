@@ -309,6 +309,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
 	vmauthContainer = addVMAuthProbes(cr, vmauthContainer)
+	build.AddConfigReloadAuthKeyToApp(&vmauthContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 
 	// move vmauth container to the 0 index
 	operatorContainers = append([]corev1.Container{vmauthContainer}, operatorContainers...)
@@ -322,6 +323,8 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	if useVMConfigReloader {
 		volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
 	}
+	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
+
 	vmAuthSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
@@ -570,6 +573,7 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	}
 
 	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &configReloader)
+	build.AddConfigReloadAuthKeyToReloader(&configReloader, &cr.Spec.CommonConfigReloaderParams)
 	return configReloader
 }
 

@@ -1349,7 +1349,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 				oaSecretKeyFile = rws.OAuth2.ClientSecretFile
 			}
 
-			sv := ssCache.oauth2Secrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]
+			sv := ssCache.oauth2Secrets[rws.AsMapKey()]
 			if rws.OAuth2.ClientSecret != nil && sv != nil {
 				oauth2ClientSecretFile.isNotNull = true
 				oaSecretKeyFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "oauth2Secret"))

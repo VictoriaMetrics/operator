@@ -622,6 +622,76 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 			statefulsetMode:   true,
 			predefinedObjects: []runtime.Object{},
 		},
+		{
+			name: "with oauth2 rw",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "oauth2",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0)),
+						},
+						StatefulMode: true,
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "http://some-url",
+								OAuth2: &vmv1beta1.OAuth2{
+									TokenURL: "http://oauth2-svc/auth",
+									ClientID: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key: "client-id",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "oauth2-access",
+											},
+										},
+									},
+									ClientSecret: &corev1.SecretKeySelector{
+										Key: "client-secret",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "oauth2-access",
+										},
+									},
+									TLSConfig: &vmv1beta1.TLSConfig{},
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "oauth2-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"client-secret": []byte(`some-secret-value`),
+						"client-id":     []byte(`some-id-value`),
+					},
+				},
+			},
+			statefulsetMode: true,
+			validate: func(set *appsv1.StatefulSet) error {
+				cnt := set.Spec.Template.Spec.Containers[1]
+				if cnt.Name != "vmagent" {
+					return fmt.Errorf("unexpected container name: %q, want: vmagent", cnt.Name)
+				}
+				hasClientSecretArg := false
+				for _, arg := range cnt.Args {
+					if strings.Contains(arg, "remoteWrite.oauth2.clientSecretFile") {
+						hasClientSecretArg = true
+						break
+					}
+				}
+				if !hasClientSecretArg {
+					return fmt.Errorf("container must have remoteWrite.oauth2.clientSecretFile flag, has only: %s", strings.Join(cnt.Args, ":,:"))
+				}
+				return nil
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -636,15 +706,12 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				}
 				tt.args.cr.Annotations["operator.victoriametrics/last-applied-spec"] = string(jsonSpec)
 			}
-			errC := make(chan error)
+			errC := make(chan error, 1)
 			build.AddDefaults(fclient.Scheme())
 			fclient.Scheme().Default(tt.args.cr)
 			go func() {
 				err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient)
-				select {
-				case errC <- err:
-				default:
-				}
+				errC <- err
 			}()
 
 			if tt.statefulsetMode {
@@ -670,7 +737,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 							return true, nil
 						})
 						if err != nil {
-							t.Fatalf("cannot wait sts ready: %s", err)
+							t.Errorf("cannot wait sts ready: %s", err)
 						}
 					}
 				} else {
@@ -689,10 +756,9 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						return true, nil
 					})
 					if err != nil {
-						t.Fatalf("cannot wait sts ready: %s", err)
+						t.Errorf("cannot wait sts ready: %s", err)
 					}
 				}
-
 			}
 
 			err := <-errC
@@ -1224,7 +1290,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 			name: "test oauth2",
 			args: args{
 				ssCache: &scrapesSecretsCache{
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{"remoteWriteSpec/localhost:8431": {
+					oauth2Secrets: map[string]*k8stools.OAuthCreds{func() string {
+						rws := vmv1beta1.VMAgentRemoteWriteSpec{
+							URL: "localhost:8431",
+						}
+						return rws.AsMapKey()
+					}(): {
 						ClientID:     "some-id",
 						ClientSecret: "some-secret",
 					}},
@@ -1239,9 +1310,14 @@ func TestBuildRemoteWrites(t *testing.T) {
 							URL:         "localhost:8431",
 							SendTimeout: ptr.To("15s"),
 							OAuth2: &vmv1beta1.OAuth2{
-								Scopes:       []string{"scope-1"},
-								TokenURL:     "http://some-url",
-								ClientSecret: &corev1.SecretKeySelector{},
+								Scopes:   []string{"scope-1"},
+								TokenURL: "http://some-url",
+								ClientSecret: &corev1.SecretKeySelector{
+									Key: "some-secret",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "some-cm",
+									},
+								},
 								ClientID: vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
 									LocalObjectReference: corev1.LocalObjectReference{Name: "some-cm"},
 									Key:                  "some-key",

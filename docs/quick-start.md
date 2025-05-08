@@ -212,7 +212,7 @@ kubectl exec -n vm "$VMSINGLE_POD_NAME" -- ls -l  /victoria-metrics-data;
 While you can push metrics directly as shown above, in most cases you won't need to.
 VictoriaMetrics can discover your applications and scrape their metrics. Let's set up scraping next.
 
-### Scraping
+## Scraping
 
 The [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/) discovers and scrapes metrics from your apps.
 It uses special resources like [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) to know where to look.
@@ -279,10 +279,7 @@ spec:
     spec:
       containers:
         - name: main
-          image: docker.io/victoriametrics/demo-app:1.0
-          ports:
-            - containerPort: 9100
-              name: metrics
+          image: docker.io/victoriametrics/demo-app:1.1
 ---
 apiVersion: v1
 kind: Service
@@ -295,9 +292,8 @@ spec:
   selector:
     app.kubernetes.io/name: demo-app
   ports:
-    - port: 9100
-      targetPort: metrics
-      name: metrics
+    - port: 8080
+      name: http
 EOF
 
 kubectl -n default apply -f demo-app.yaml;
@@ -305,12 +301,12 @@ kubectl -n default apply -f demo-app.yaml;
 # pod/demo-app created
 # service/demo-app created
 ```
-The pod runs demo app from the image `docker.io/victoriametrics/demo-app:1.0`.
+The pod runs demo app from the image `docker.io/victoriametrics/demo-app`.
 The service connects to any pod that matches the label selector: `app.kubernetes.io/name: demo-app`.
 
-The demo app serves metrics at `/metrics` path on port `9100`. You can test it like this:
+The demo app serves metrics at `/metrics` path on port `8080`. You can test it like this:
 ```sh
-kubectl exec -n default  demo-app -- curl -i http://127.0.0.1:9100/metrics
+kubectl exec -n default  demo-app -- curl -i http://127.0.0.1:8080/metrics
 
 # ...
 # HTTP/1.1 200 OK
@@ -376,7 +372,7 @@ curl -i --url http://127.0.0.1:8428/api/v1/query --url-query 'query=demo_counter
 # HTTP/1.1 200 OK
 # ...
 #
-# {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"demo_counter_total","endpoint":"metrics","instance":"10.244.0.33:9100","job":"demo-app","namespace":"default","pod":"demo-app","prometheus":"vm/demo","service":"demo-app"},"value":[1746362555,"23164"]}]},"stats":{"seriesFetched": "1","executionTimeMsec":3}}
+# {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"demo_counter_total","endpoint":"metrics","instance":"10.244.0.33:8080","job":"demo-app","namespace":"default","pod":"demo-app","prometheus":"vm/demo","service":"demo-app"},"value":[1746362555,"23164"]}]},"stats":{"seriesFetched": "1","executionTimeMsec":3}}
 ```
 If you get a response like that, it means everything is working — the metrics are being collected and stored.
 

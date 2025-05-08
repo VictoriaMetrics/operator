@@ -17,7 +17,7 @@ this approach keeps things simple and helps you get up and running with minimal 
 By the end of this guide, you’ll have a fully functional setup that includes:
 - `VMSingle` – for storing and querying metrics
 - `VMAgent` and `VMServiceScrape` – for scraping targets
-- `VMAlert` and `VMRule` – for managing alerts
+- `VMAlertmanager`, `VMAlert` and `VMRule` – for managing alerts
 
 You’ll also learn how to interact with the system using basic tools like `kubectl` and `curl`.
 
@@ -36,7 +36,7 @@ If you don't have a Kubernetes cluster, you can quickly spin up a local one usin
 
 Please note that [certain permissions](https://docs.victoriametrics.com/operator/security#roles) may be required for the operator to function properly.
 
-## Setup operator
+## Operator
 
 Download the latest [operator release](https://github.com/VictoriaMetrics/operator/latest) from GitHub:
 ```sh
@@ -114,10 +114,10 @@ kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --printDefaults 2>&1 | grep VMSI
 # VM_VMSINGLEDEFAULT_RESOURCE_REQUEST_CPU   150m     false 
 ```
 
-At this point, you should have a functional operator and [custom resources](https://docs.victoriametrics.com/operator/resources/) set up in your cluster. 
+At this point, you should have a functional operator and [custom resources](https://docs.victoriametrics.com/operator/resources/) up in your cluster. 
 You can now proceed with installing the metrics storage `VMSingle`.
 
-## Setup storage
+## Storage
 
 The easiest and production-ready way to run VictoriaMetrics storage in Kubernetes is by using the [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle) resource.
 It deploys a [VictoriaMetrics single-node](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) instance.
@@ -126,7 +126,7 @@ Although it runs as a single pod, the setup is recommended for production use.
 
 First, create a `VMSingle` manifest file:
 ```sh
-cat > vmsingle-demo.yaml <<'EOF'
+cat <<'EOF' > vmsingle-demo.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
@@ -212,7 +212,7 @@ kubectl exec -n vm "$VMSINGLE_POD_NAME" -- ls -l  /victoria-metrics-data;
 While you can push metrics directly as shown above, in most cases you won't need to.
 VictoriaMetrics can discover your applications and scrape their metrics. Let's set up scraping next.
 
-### Scraping
+## Scraping
 
 The [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/) discovers and scrapes metrics from your apps.
 It uses special resources like [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) to know where to look.
@@ -220,7 +220,7 @@ Once you create a scrape resource, `VMAgent` picks it up automatically and start
 
 Let’s start by creating a `VMAgent` manifest file:
 ```sh
-cat <<EOF > vmagent-demo.yaml
+cat <<'EOF' > vmagent-demo.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
@@ -259,7 +259,7 @@ Now let’s deploy a [demo application](https://github.com/VictoriaMetrics/demo-
 This app is intended for demonstration purposes only and can be removed afterward. 
 Create the following file and apply it:
 ```sh
-cat <<EOF > demo-app.yaml
+cat <<'EOF' > demo-app.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -279,10 +279,7 @@ spec:
     spec:
       containers:
         - name: main
-          image: docker.io/victoriametrics/demo-app:1.0
-          ports:
-            - containerPort: 9100
-              name: metrics
+          image: docker.io/victoriametrics/demo-app:1.2
 ---
 apiVersion: v1
 kind: Service
@@ -295,9 +292,8 @@ spec:
   selector:
     app.kubernetes.io/name: demo-app
   ports:
-    - port: 9100
-      targetPort: metrics
-      name: metrics
+    - port: 8080
+      name: http
 EOF
 
 kubectl -n default apply -f demo-app.yaml;
@@ -305,12 +301,13 @@ kubectl -n default apply -f demo-app.yaml;
 # pod/demo-app created
 # service/demo-app created
 ```
-The pod runs demo app from the image `docker.io/victoriametrics/demo-app:1.0`.
+The pod runs demo app from the image `docker.io/victoriametrics/demo-app`.
 The service connects to any pod that matches the label selector: `app.kubernetes.io/name: demo-app`.
 
-The demo app serves metrics at `/metrics` path on port `9100`. You can test it like this:
+The demo app serves metrics at `/metrics` path on port `8080`. You can test it like this:
 ```sh
-kubectl exec -n default  demo-app -- curl -i http://127.0.0.1:9100/metrics
+DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n default  ${DEMO_APP_POD} -- curl -i http://127.0.0.1:8080/metrics;
 
 # ...
 # HTTP/1.1 200 OK
@@ -324,7 +321,7 @@ kubectl exec -n default  demo-app -- curl -i http://127.0.0.1:9100/metrics
 Next, let’s configure `VMAgent` to scrape metrics from the demo app we just deployed.
 To do this, create a `VMServiceScrape` resource. It tells `VMAgent` where to find the metrics:
 ```sh
-cat <<EOF > demo-app-scrape.yaml
+cat <<'EOF' > demo-app-scrape.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
@@ -358,7 +355,7 @@ kubectl exec -n vm $VMAGENT_POD_NAME -c vmagent  -- wget -qO -  http://127.0.0.1
 ```
 You’ll see demo-app in the list, along with a few other targets.
 The extra ones, like vmsingle-demo and vmagent-demo, are added automatically.
-That’s because the VictoriaMetrics operator creates scrape configs for its own components by default.
+This is because the VictoriaMetrics operator automatically creates scrape configurations for the resources it deploys.
 
 If you prefer a visual interface, you can use the VMAgent UI.
 First, forward port `8429` from the VMAgent pod to your local machine:
@@ -376,7 +373,7 @@ curl -i --url http://127.0.0.1:8428/api/v1/query --url-query 'query=demo_counter
 # HTTP/1.1 200 OK
 # ...
 #
-# {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"demo_counter_total","endpoint":"metrics","instance":"10.244.0.33:9100","job":"demo-app","namespace":"default","pod":"demo-app","prometheus":"vm/demo","service":"demo-app"},"value":[1746362555,"23164"]}]},"stats":{"seriesFetched": "1","executionTimeMsec":3}}
+# {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"demo_counter_total","endpoint":"metrics","instance":"10.244.0.33:8080","job":"demo-app","namespace":"default","pod":"demo-app","prometheus":"vm/demo","service":"demo-app"},"value":[1746362555,"23164"]}]},"stats":{"seriesFetched": "1","executionTimeMsec":3}}
 ```
 If you get a response like that, it means everything is working — the metrics are being collected and stored.
 
@@ -384,7 +381,168 @@ If you get a response like that, it means everything is working — the metrics 
 
 Now that you know how to scrape metrics from your app, let’s move on to configuring alerts based on the collected metrics.
 
-### Access
+## Alerting
+
+If you're new to alerting with Prometheus, we recommend starting with [Prometheus Alerting 101: Rules, Recording Rules, and Alertmanager](https://victoriametrics.com/blog/alerting-recording-rules-alertmanager/).
+This article provides a solid introduction to key concepts such as alert rules, recording rules, alert templates, routing, silencing, and more.
+In this guide, we’ll show how to set up alerting in Kubernetes using VictoriaMetrics tools.
+
+We’ll deploy the following resources:
+- `VMAlertManager` – handles alert notifications
+- `VMAlert` – evaluates alerting and recording rules
+- `VMRule` – defines alerting and recording rules
+
+We’ll also use the demo app from the [Scraping](#scraping) section again. 
+It will be used both as a source of metrics and as a webhook receiver for alerts.
+
+Create a [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/) manifest and apply it:
+```sh
+cat <<EOF > vmalertmanager-demo.yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: demo
+  namespace: vm
+spec:
+  configRawYaml: |
+    route:
+      receiver: 'demo-app'
+    receivers:
+    - name: 'demo-app'
+      webhook_configs:
+      - url: 'http://demo-app.default.svc:8080/alerting/webhook'
+EOF
+
+kubectl apply -f vmalertmanager-demo.yaml;
+
+# vmalertmanager.operator.victoriametrics.com/demo created
+```
+
+Create a [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert/) manifest and apply it:
+```sh
+cat <<'EOF' > vmalert-demo.yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: demo
+  namespace: vm
+spec:
+  # Metrics source (VMCluster/VMSingle)
+  datasource:
+    url: "http://vmsingle-demo.vm.svc:8429"
+
+  # Where alert state and recording rules are stored
+  remoteWrite:
+    url: "http://vmsingle-demo.vm.svc:8429"
+
+  # Where the previous alert state is loaded from. Optional
+  remoteRead:
+    url: "http://vmsingle-demo.vm.svc:8429"
+
+  # Alertmanager URL for sending alerts
+  notifier:
+    url: "http://vmalertmanager-demo.vm.svc:9093"
+
+  # How often the rules are evaluated
+  evaluationInterval: "10s"
+
+  # Watch VMRule resources in all namespaces
+  selectAllByDefault: true
+EOF
+
+kubectl apply -f vmalert-demo.yaml;
+
+# vmalert.operator.victoriametrics.com/demo created
+```
+
+You can use the same method we used before to check if the resources are running.
+Run `kubectl get pod`, but use the label selectors `app.kubernetes.io/name=vmalertmanager` and `app.kubernetes.io/name=vmalert`.
+
+Now, when you have `VMAlert` and `VMAlertManager` running, you can create your first  resource to define the alerting rules.
+This script creates a [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/) resource that defines an alert called `DemoAlertFiring`. 
+The rule expression checks if the metric `demo_alert_firing` is above zero for any `demo-app` pod in the `default` namespace. 
+If the condition holds for 30 seconds, the alert fires.
+```sh
+cat <<'EOF' > demo-app-rule.yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: demo
+  namespace: default
+spec:
+  groups:
+    - name: demo-app
+      rules:
+        - alert: DemoAlertFiring
+          expr: 'sum(demo_alert_firing{job="demo-app",namespace="default"}) by (job,pod,namespace) > 0'
+          for: 30s
+          labels:
+            job: '{{ $labels.job }}'
+            pod: '{{ $labels.pod }}'
+          annotations:
+            description: 'demo-app pod {{ $labels.pod }} is firing demo alert'
+EOF
+
+kubectl apply -f demo-app-rule.yaml
+
+# vmrule.operator.victoriametrics.com/demo created
+```
+
+To confirm the alert is active, run:
+```sh
+VMALERT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmalert" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n vm $VMALERT_POD_NAME -c vmalert  -- wget -qO -  http://127.0.0.1:8080/api/v1/rules |
+  jq -r '.data.groups[].rules[].name';
+# DemoAlertFiring
+```
+
+If you prefer using a web interface, you can open the `VMAlert` UI in your browser.
+First, forward port `8080` from the `VMAlert` pod to your local machine:
+```sh
+VMALERT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmalert" -o jsonpath="{.items[0].metadata.name}")
+kubectl port-forward -n vm $VMALERT_POD_NAME 8080:8080
+```
+Then go to: http://localhost:8080/vmalert/groups.
+You’ll see all groups, alerts and a lot more.
+
+That’s it! Your alerting setup is now working.
+If you want to see how it works from start to finish, follow the steps below.
+
+To trigger an alert, run this command:
+```sh
+DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/alerting/fireDemoAlert;
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/metrics;
+
+# demo_alert_firing 1
+# demo_counter_total 523
+```
+
+This sets the `demo_alert_firing` metric to 1. Give alert a minute to fire, then check the webhook receiver:
+```sh
+DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/alerting/receivedWebhooks;
+
+# {"receiver":"demo-app","status":"firing","alerts":[{"status":"firing","labels":{"alertgroup":"demo-app","alertname":"DemoAlertFiring","job":"demo-app","namespace":"default","pod":"demo-app-7f65f4dbf7-kt4tz"},"annotations":{"description":"demo-app pod demo-app-7f65f4dbf7-kt4tz is firing demo alert"},"startsAt":"2025-05-09T15:07:40Z","endsAt":"0001-01-01T00:00:00Z","generatorURL":"http://vmalert-demo-6f9cfcfb54-zzz9d:8080/vmalert/alert?group_id=1974157196182235209\u0026alert_id=9826110110139929675","fingerprint":"d014d7d794d8b310"}],"groupLabels":{},"commonLabels":{"alertgroup":"demo-app","alertname":"DemoAlertFiring","job":"demo-app","namespace":"default","pod":"demo-app-7f65f4dbf7-kt4tz"},"commonAnnotations":{"description":"demo-app pod demo-app-7f65f4dbf7-kt4tz is firing demo alert"},"externalURL":"http://vmalertmanager-demo-0:9093","version":"4","groupKey":"{}:{}","truncatedAlerts":0}
+```
+It should output the most recent firing webhook notifications received from `VMAlertmanager`.
+
+To stop the alert, run:
+```sh
+DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/alerting/resolveDemoAlert;
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/metrics;
+
+# demo_alert_firing 0
+# demo_counter_total 601
+```
+This sets the `demo_alert_firing` metric to 0. You should receive one final "resolved" webhook notification. 
+After that, no further webhook notifications will be sent. 
+
+Feel free to explore more by trying different annotations, labels, receivers, playing with templating.
+For more details, check out the [VMAlert documentation](https://docs.victoriametrics.com/victoriametrics/vmalert/).
+
+## Access
 
 We need to look at the results of what we got. Up until now, we've just been looking only at the status of the pods. 
 
@@ -492,216 +650,6 @@ and your given password (`Yt3N2r3cPl` in our case):
 
 ![Select 2](quick-start_select-2.webp)
 
-### Alerting
-
-The remaining components will be needed for alerting. 
-
-#### VMAlertmanager
-
-Let's start with [`vmalertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager).
-
-Create file `vmalertmanager.yaml`
-
-```shell
-code vmalertmanager.yaml
-```
-
-with the following content:
-
-```yaml
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAlertmanager
-metadata:
-  name: demo
-spec:
-  configRawYaml: |
-    global:
-      resolve_timeout: 5m
-    route:
-      group_wait: 30s
-      group_interval: 5m
-      repeat_interval: 12h
-      receiver: 'webhook'
-    receivers:
-    - name: 'webhook'
-      webhook_configs:
-      - url: 'http://your-webhook-url'
-```
-
-where webhook-url is the address of the webhook to receive notifications 
-(configuration of AlertManager notifications will remain out of scope).
-You can find more details about `alertmanager` configuration in 
-the [Alertmanager documentation](https://prometheus.io/docs/alerting/latest/configuration/).
-
-After that you can deploy `vmalertmanager` resource to the kubernetes cluster:
-
-```shell
-kubectl apply -f vmalertmanager.yaml -n vm
-
-# vmalertmanager.operator.victoriametrics.com/demo created
-```
-
-Check that `vmalertmanager` is running:
-
-```shell
-kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.io/name=vmalertmanager"
-
-# NAME                    READY   STATUS    RESTARTS   AGE
-# vmalertmanager-demo-0   2/2     Running   0          107s
-```
-
-#### VMAlert
-
-And now you can create [`vmalert`](https://docs.victoriametrics.com/operator/resources/vmalert) resource.
-
-Create file `vmalert.yaml`
-
-```shell
-code vmalert.yaml
-```
-
-with the following content:
-
-```yaml
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAlert
-metadata:
-  name: demo
-spec:
-  datasource:
-    url: "http://vmselect-demo.vm.svc:8481/select/0/prometheus"
-  remoteWrite:
-    url: "http://vminsert-demo.vm.svc:8480/insert/0/prometheus"
-  remoteRead:
-    url: "http://vmselect-demo.vm.svc:8481/select/0/prometheus"
-  notifier:
-    url: "http://vmalertmanager-demo.vm.svc:9093"
-  evaluationInterval: "30s"
-  selectAllByDefault: true
-  # for accessing to vmalert via vmauth with path prefix
-  extraArgs:
-    http.pathPrefix: /vmalert
-```
-
-After that you can deploy `vmalert` resource to the kubernetes cluster:
-
-```shell
-kubectl apply -f vmalert.yaml -n vm
-
-# vmalert.operator.victoriametrics.com/demo created
-```
-
-Check that `vmalert` is running:
-
-```shell
-kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.io/name=vmalert"
-
-# NAME                           READY   STATUS    RESTARTS   AGE
-# vmalert-demo-bf75c67cb-hh4qd   2/2     Running   0          5s
-```
-
-#### VMRule
-
-Now you can create [vmrule](https://docs.victoriametrics.com/operator/resources/vmrule) resource 
-for [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert).
-
-Create file `vmrule.yaml`
-
-```shell
-code vmrule.yaml
-```
-
-with the following content:
-
-```yaml
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMRule
-metadata:
-  name: demo
-spec:
-  groups:
-    - name: vmalert
-      rules:
-        - alert: vmalert config reload error
-          expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0
-          for: 10s
-          labels:
-            severity: major
-            job:  "{{ $labels.job }}"
-          annotations:
-            value: "{{ $value }}"
-            description: 'error reloading vmalert config, reload count for 5 min {{ $value }}'
-```
-
-After that you can deploy `vmrule` resource to the kubernetes cluster:
-
-```shell
-kubectl apply -f vmrule.yaml -n vm
-
-# vmrule.operator.victoriametrics.com/demo created
-```
-
-#### VMUser update
-
-Let's update our user with access to `vmalert` and `vmalertmanager`:
-
-```shell
-code vmuser.yaml
-```
-
-```yaml
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMUser
-metadata:
-  name: demo
-spec:
-  name: demo
-  username: demo
-  generatePassword: true
-  targetRefs:
-    # vmui + vmselect
-    - crd:
-        kind: VMCluster/vmselect
-        name: demo
-        namespace: vm
-      target_path_suffix: "/select/0"
-      paths:
-        - "/vmui"
-        - "/vmui/.*"
-        - "/prometheus/api/v1/query"
-        - "/prometheus/api/v1/query_range"
-        - "/prometheus/api/v1/series"
-        - "/prometheus/api/v1/status/.*"
-        - "/prometheus/api/v1/label/"
-        - "/prometheus/api/v1/label/[^/]+/values"
-    # vmalert
-    - crd:
-        kind: VMAlert
-        name: demo
-        namespace: vm
-      paths:
-        - "/vmalert"
-        - "/vmalert/.*"
-        - "/api/v1/groups"
-        - "/api/v1/alert"
-        - "/api/v1/alerts"
-```
-
-After that you can deploy `vmuser` resource to the kubernetes cluster:
-
-```shell
-kubectl apply -f vmuser.yaml -n vm
-
-# vmuser.operator.victoriametrics.com/demo created
-```
-
-And now you can get access to your data with url `http://vm-demo.k8s.orb.local/vmalert` 
-(for your environment it most likely will be different) with username `demo`:
-
-![Alert 1](quick-start_alert-1.webp)
-
-![Alert 2](quick-start_alert-2.webp)
-
 ## Anything else
 
 That's it. We obtained a monitoring cluster corresponding to the target topology:
@@ -730,3 +678,47 @@ and feel free to can ask them:
 
 If you have any suggestions or find a bug, please create an issue
 on [GitHub](https://github.com/VictoriaMetrics/operator/issues/new).
+
+
+###### Setup operator
+
+Renamed to [operator/quick-start#operator](https://docs.victoriametrics.com/operator/quick-start#operator)
+
+###### Setup storage
+
+Renamed to [operator/quick-start#storage](https://docs.victoriametrics.com/operator/quick-start#storage)
+
+###### Deploy components
+
+Split into several sections [operator/quick-start#storage](https://docs.victoriametrics.com/operator/quick-start#storage), 
+[operator/quick-start#scrapping](https://docs.victoriametrics.com/operator/quick-start#scraping), 
+[operator/quick-start#alerting](https://docs.victoriametrics.com/operator/quick-start#alerting), 
+[operator/quick-start#access](https://docs.victoriametrics.com/operator/quick-start#access)
+
+###### VMCluster (vmselect, vminsert, vmstorage)
+
+Quick start now features `VMSingle` [operator/quick-start#storage](https://docs.victoriametrics.com/operator/quick-start#storage),
+for advanced use cases, check out [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/).
+
+###### VMAgent
+
+Became part of [operator/quick-start#scraping](https://docs.victoriametrics.com/operator/quick-start#scraping)
+
+###### VMServiceScrape
+
+Became part of [operator/quick-start#scraping](https://docs.victoriametrics.com/operator/quick-start#scraping)
+
+###### VMAlertmanager
+
+Became part of [operator/quick-start#alerting](https://docs.victoriametrics.com/operator/quick-start#alerting)
+
+###### VMAlert
+
+Became part of [operator/quick-start#alerting](https://docs.victoriametrics.com/operator/quick-start#alerting)
+
+###### VMRule
+
+Became part of [operator/quick-start#alerting](https://docs.victoriametrics.com/operator/quick-start#alerting)
+
+
+<!-- TODO: Add BC links for "VMUser update", "VMUser", "VMAuth". -->

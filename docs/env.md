@@ -1,11 +1,11 @@
 
 | variable name | variable default value | variable required | variable description |
 | --- | --- | --- | --- |
-| VM_METRICS_VERSION | v1.115.0 | false |  |
-| VM_LOGS_VERSION | v1.18.0 | false |  |
+| VM_METRICS_VERSION | v1.116.0 | false |  |
+| VM_LOGS_VERSION | v1.21.0 | false |  |
 | VM_USECUSTOMCONFIGRELOADER | false | false | enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY | - | false | container registry name prefix, e.g. docker.io |
-| VM_CUSTOMCONFIGRELOADERIMAGE | victoriametrics/operator:config-reloader-v0.56.0 | false |  |
+| VM_CUSTOMCONFIGRELOADERIMAGE | victoriametrics/operator:config-reloader-v0.57.0 | false |  |
 | VM_PSPAUTOCREATEENABLED | false | false |  |
 | VM_CONFIG_RELOADER_LIMIT_CPU | unlimited | false | defines global resource.limits.cpu for all config-reloader containers |
 | VM_CONFIG_RELOADER_LIMIT_MEMORY | unlimited | false | defines global resource.limits.memory for all config-reloader containers |
@@ -78,7 +78,7 @@
 | VM_VMALERTMANAGER_CONFIGRELOADERCPU | 10m | false | deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead |
 | VM_VMALERTMANAGER_CONFIGRELOADERMEMORY | 25Mi | false | deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE | prom/alertmanager | false |  |
-| VM_VMALERTMANAGER_ALERTMANAGERVERSION | v0.27.0 | false |  |
+| VM_VMALERTMANAGER_ALERTMANAGERVERSION | v0.28.1 | false |  |
 | VM_VMALERTMANAGER_LOCALHOST | 127.0.0.1 | false |  |
 | VM_VMALERTMANAGER_USEDEFAULTRESOURCES | true | false |  |
 | VM_VMALERTMANAGER_RESOURCE_LIMIT_MEM | 256Mi | false |  |

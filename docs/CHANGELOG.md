@@ -18,6 +18,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default  alertmanager to [0.28.1](https://github.com/prometheus/alertmanager/releases/tag/v0.28.1) version
 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new field `spec.configReloadAuthKeySecret` for `VMAgent`, `VMAlert` and `VMAuth` components. It instructs application to use provided value for `-configReload` auth key. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1323) for details.
+* FEATURE: upgrade Go builder from Go1.24.0 to Go1.24.4 See [Go1.24 release notes](https://tip.golang.org/doc/go1.24).
 
 * BUGFIX: [operator](https://docs.victoriametrics.com/operator): fix typo in `-remoteWrite.streamAggr.enableWindows` flag when `enableWindows` is set to true in VMAgent resources
 

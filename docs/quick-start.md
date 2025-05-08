@@ -25,7 +25,7 @@ Read more about the operator pattern in the [Kubernetes documentation](https://k
 
 Before we proceed, let’s verify that you have access to your Kubernetes cluster. 
 Run the following command and ensure the output includes a server version:
-```bash
+```sh
 kubectl version
 
 # Client Version: v1.32.3
@@ -39,7 +39,7 @@ Please note that [certain permissions](https://docs.victoriametrics.com/operator
 ## Setup operator
 
 Download the latest [operator release](https://github.com/VictoriaMetrics/operator/latest) from GitHub:
-```bash
+```sh
 export VM_OPERATOR_VERSION=$(basename $(curl -fs -o /dev/null -w %{redirect_url} \
   https://github.com/VictoriaMetrics/operator/releases/latest))
 echo "VM_OPERATOR_VERSION=$VM_OPERATOR_VERSION"
@@ -53,7 +53,7 @@ wget -O operator-and-crds.yaml \
 
 The commands above will download the operator manifest and save it as `operator-and-crds.yaml` in your current directory.
 Let’s take a quick look at the file’s contents. The beginning of the file should contain a standard Kubernetes YAML resource definition.
-```bash
+```sh
 head -n 10 operator-and-crds.yaml
 
 # apiVersion: v1
@@ -68,7 +68,7 @@ head -n 10 operator-and-crds.yaml
 ```
 
 Apply the manifest to your cluster:
-```bash
+```sh
 kubectl apply -f operator-and-crds.yaml
 
 # namespace/vm configured
@@ -80,7 +80,7 @@ The apply command installs the operator and CRDs in the `vm` namespace.
 Once it's running, it will start watching for VictoriaMetrics custom resources and manage them automatically.
 
 You can confirm the operator is running by checking the pod status:
-```bash
+```sh
 kubectl get pods -n vm -l "control-plane=vm-operator"
 
 # NAME                           READY   STATUS    RESTARTS   AGE
@@ -89,7 +89,7 @@ kubectl get pods -n vm -l "control-plane=vm-operator"
 
 The operator introduces [custom resources](https://docs.victoriametrics.com/operator/resources/) to the cluster, 
 which you can list using the following command:
-```bash
+```sh
 kubectl api-resources --api-group=operator.victoriametrics.com
 
 # NAME                    SHORTNAMES   APIVERSION                             NAMESPACED   KIND
@@ -105,7 +105,7 @@ This knowledge will help you manage and inspect the custom resources within the 
 The operator is configured using [environment variables](https://docs.victoriametrics.com/operator/vars/). 
 You can consult the documentation or explore the variables directly in your cluster (note that `kubectl exec` may require [additional permissions](https://discuss.kubernetes.io/t/adding-permission-to-exec-commands-in-containers-inside-pods-in-a-certain-namespace/22821/2)).
 Here’s an example showing how to get the default CPU and memory limits applied to the VMSingle resource:
-```bash 
+```sh 
 OPERATOR_POD_NAME=$(kubectl get pod -l "control-plane=vm-operator"  -n vm -o jsonpath="{.items[0].metadata.name}")
 kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --printDefaults 2>&1 | grep VMSINGLEDEFAULT_RESOURCE
 
@@ -126,7 +126,7 @@ Although it runs as a single pod, the setup is recommended for production use.
 `VMSingle` can scale vertically and efficiently handle high volumes of metric ingestion and querying.
 
 First, create a `VMSingle` manifest file:
-```bash
+```sh
 cat > vmsingle-demo.yaml <<'EOF'
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
@@ -137,13 +137,13 @@ EOF
 ```
 
 Next, apply the manifest to your Kubernetes cluster:
-```bash
+```sh
 kubectl apply -f vmsingle-demo.yaml
 ```
 That's it! You now have a fully operational VictoriaMetrics storage instance running in the `vm` namespace.
 
 To confirm that `VMSingle` is running, run the following commands. You should see output similar to this:
-```bash
+```sh
 kubectl get vmsingle -n vm
 
 #NAME   STATUS        AGE
@@ -157,7 +157,7 @@ kubectl get pods -n vm -l "app.kubernetes.io/name=vmsingle"
 
 Let’s explore how to interact with the storage. First, you need to make the storage port accessible from your machine.
 To do this, open a separate terminal and run the port-forward command below:
-```bash
+```sh
 VMSINGLE_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmsingle" -o jsonpath="{.items[0].metadata.name}")
 kubectl port-forward -n vm $VMSINGLE_POD_NAME 8428:8429
 
@@ -168,7 +168,7 @@ Make sure it stays up and running throughout the rest of this documentation.
 
 You can use the `/api/v1/import/prometheus` endpoint to store metrics using the [Prometheus exposition format](https://prometheus.io/docs/concepts/data_model/).
 The following example demonstrates how to post a simple `a_metric` with a label and value:
-```bash
+```sh
 curl -i -X POST \
   --url http://127.0.0.1:8428/api/v1/import/prometheus \
   --header 'Content-Type: text/plain' \
@@ -184,7 +184,7 @@ To retrieve metrics from VictoriaMetrics, you can use either of the following HT
 
 Keep in mind that metrics become available for querying 30 seconds after they're collected.
 Here’s an example using query endpoint to fetch `a_metric` data:
-```bash
+```sh
 curl -i --url http://127.0.0.1:8428/api/v1/query --url-query query=a_metric
 
 # HTTP/1.1 200 OK
@@ -196,7 +196,7 @@ For an interactive way to explore and query metrics, visit the built-in VMUI at:
 
 VictoriaMetrics stores all ingested metrics on the filesystem.
 You can verify that data is being persisted by inspecting the storage directory inside the `VMSingle` pod:
-```bash
+```sh
 VMSINGLE_POD_NAME=$(kubectl get pod -l "app.kubernetes.io/name=vmsingle"  -n vm -o jsonpath="{.items[0].metadata.name}")
 
 kubectl exec -n vm "$VMSINGLE_POD_NAME" -- ls -l  /victoria-metrics-data
@@ -210,93 +210,167 @@ kubectl exec -n vm "$VMSINGLE_POD_NAME" -- ls -l  /victoria-metrics-data
 # drwxr-xr-x    3 root     root          4096 Apr 30 12:20 tmp
 ```
 
+While you can push metrics directly as shown above, in most cases you won't need to.
+VictoriaMetrics can discover your applications and scrape their metrics. Let's set up scraping next.
+
 ### Scraping
 
-#### VMAgent
+The [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/) discovers and scrapes metrics from your apps.
+It uses special resources like [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) to know where to look.
+Once you create a scrape resource, `VMAgent` picks it up automatically and starts pulling metrics.
 
-Now let's deploy [`vmagent`](https://docs.victoriametrics.com/operator/resources/vmagent) resource.
-
-Create file `vmagent.yaml` 
-
-```shell
-code vmagent.yaml
-```
-
-with the following content:
-
-```yaml
+Let’s start by creating a `VMAgent` manifest file:
+```sh
+cat <<EOF > vmagent-demo.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
   name: demo
+  namespace: vm
 spec:
   selectAllByDefault: true
   remoteWrite:
-    - url: "http://vminsert-demo.vm.svc:8480/insert/0/prometheus/api/v1/write"
+    - url: "http://vmsingle-demo.vm.svc:8429/api/v1/write"
 ```
+The `selectAllByDefault` setting tells `VMAgent` to look for scrape resources in every namespace.
+The `remoteWrite.url` setting tells `VMAgent` where to send the scraped metrics.
+We’ll use the `VMSingle` storage we created earlier as the remote write destination.
 
-After that you can deploy `vmagent` resource to the kubernetes cluster:
-
-```shell
-kubectl apply -f vmagent.yaml -n vm
+Apply the manifest to your cluster:
+```sh
+kubectl -n vm apply -f vmagent-demo.yaml
 
 # vmagent.operator.victoriametrics.com/demo created
 ```
 
-Check that `vmagent` is running:
+To check if `VMAgent` is running, use:
+```sh
+kubectl get vmagent -n vm
 
-```shell
-kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.io/name=vmagent"
+# NAME   SHARDS COUNT   REPLICA COUNT   STATUS        AGE
+# demo                                  operational   41h
+
+kubectl get pods -n vm -l "app.kubernetes.io/name=vmagent"
 
 # NAME                            READY   STATUS    RESTARTS   AGE
-# vmagent-demo-6785f7d7b9-zpbv6   2/2     Running   0          72s
+# vmagent-demo-75bbfb6c5d-8htm8   2/2     Running   0          41h
 ```
 
-More information about `vmagent` resource you can find on 
-the [vmagent page](https://docs.victoriametrics.com/operator/resources/vmagent).
+Now let’s deploy a [demo application](https://github.com/VictoriaMetrics/demo-app) that exposes some metrics. 
+This app is intended for demonstration purposes only and can be removed afterward. 
+Create the following file and apply it:
+```sh
+cat <<EOF > demo-app.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-app
+  namespace: default
+  labels:
+    app.kubernetes.io/name: demo-app
+spec:
+  containers:
+    - name: main
+      image: docker.io/victoriametrics/demo-app:1.0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-app
+  namespace: default
+  labels:
+    app.kubernetes.io/name: demo-app
+spec:
+  selector:
+    app.kubernetes.io/name: demo-app
+  ports:
+    - port: 9100
+      name: metrics
+EOF
 
-#### VMServiceScrape
+kubectl -n default apply -f demo-app.yaml
 
-Now we have the timeseries database (vmcluster) and the tool to collect metrics (vmagent) and send it to the database.
+# pod/demo-app created
+# service/demo-app created
+```
+The pod runs demo app from the image `docker.io/victoriametrics/demo-app:1.0`.
+The service connects to any pod that matches the label selector: `app.kubernetes.io/name: demo-app`.
 
-But we need to tell vmagent what metrics to collect. For this we will use [`vmservicescrape`](https://docs.victoriametrics.com/operator/resources/vmservicescrape) resource
-or [other `*scrape` resources](https://docs.victoriametrics.com/operator/resources/).
+The demo app serves metrics at `/metrics` path on port `9100`. You can test it like this:
+```sh
+kubectl exec -n default  demo-app -- curl -i http://127.0.0.1:9100/metrics
 
-By default, operator creates `vmservicescrape` resource for each component that it manages. More details about this you can find on
-the [monitoring page](https://docs.victoriametrics.com/operator/configuration#monitoring-of-cluster-components).
-
-For instance, we can create `vmservicescrape` for VictoriaMetrics operator manually. Let's create file `vmservicescrape.yaml`:
-
-```shell
-code vmservicescrape.yaml
+# ...
+# HTTP/1.1 200 OK
+# Date: Sun, 04 May 2025 11:34:09 GMT
+# Content-Length: 25
+# Content-Type: text/plain; charset=utf-8
+#
+# demo_counter_total 19295
 ```
 
-with the following content:
-
-```yaml
+Next, let’s configure `VMAgent` to scrape metrics from the demo app we just deployed.
+To do this, create a `VMServiceScrape` resource. It tells `VMAgent` where to find the metrics:
+```sh
+cat <<EOF > demo-app-scrape.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
-  name: vmoperator-demo
+  name: demo-app-service-scrape
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/instance: vmoperator
-      app.kubernetes.io/name: victoria-metrics-operator
-  namespaceSelector: 
-    matchNames:
-      - vm
+      app.kubernetes.io/name: demo-app
   endpoints:
-  - port: http
+  - port: metrics
+EOF
+
+kubectl -n default apply -f demo-app-scrape.yaml
+
+# vmpodscrape.operator.victoriametrics.com "demo-app-pod-scrape" created
 ```
+The `matchLabels` field tells `VMAgent` to look for [services](https://kubernetes.io/docs/concepts/services-networking/service/) with the label `app.kubernetes.io/name: demo-app`.
+The `endpoints` field specifies the port to scrape metrics from.
+The `/metrics` path is used by default, so you don’t need to specify it explicitly.
 
-After that you can deploy `vmservicescrape` resource to the kubernetes cluster:
+Give `VMAgent` about 30–60 seconds to discover this new target. 
+To check which targets it found, run:
+```sh
+VMAGENT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmagent" -o jsonpath="{.items[0].metadata.name}")
+kubectl exec -n vm $VMAGENT_POD_NAME -c vmagent  -- wget -qO -  http://127.0.0.1:8429/api/v1/targets |
+  jq -r '.data.activeTargets[].discoveredLabels.__meta_kubernetes_endpoint_address_target_name'
 
-```shell
-kubectl apply -f vmservicescrape.yaml -n vm
-
-# vmservicescrape.operator.victoriametrics.com/vmoperator-demo created
+# vmsingle-demo-54f8fc5777-sw6xp
+# vmagent-demo-75bbfb6c5d-8htm8
+# demo-app
 ```
+You’ll see demo-app in the list, along with a few other targets.
+The extra ones, like vmsingle-demo and vmagent-demo, are added automatically.
+That’s because the VictoriaMetrics operator creates scrape configs for its own components by default.
+
+If you prefer a visual interface, you can use the VMAgent UI.
+First, forward port `8429` from the VMAgent pod to your local machine:
+```sh
+VMAGENT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmagent" -o jsonpath="{.items[0].metadata.name}")
+kubectl port-forward -n vm $VMAGENT_POD_NAME 8429:8429
+```
+Then open this URL in your browser: http://localhost:8429/targets
+There, you’ll see all the targets that VMAgent is scraping, their status, the latest metrics, and when each was last scraped.
+
+Finally, let’s check that the metrics made it to `VMSingle`. Run this query:
+```sh
+curl -i --url http://127.0.0.1:8429/api/v1/query --url-query 'query=demo_counter_total{job="demo-app",namespace="default"}'
+
+# HTTP/1.1 200 OK
+# ...
+#
+# {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"demo_counter_total","endpoint":"metrics","instance":"10.244.0.33:9100","job":"demo-app","namespace":"default","pod":"demo-app","prometheus":"vm/demo","service":"demo-app"},"value":[1746362555,"23164"]}]},"stats":{"seriesFetched": "1","executionTimeMsec":3}}
+```
+If you get a response like that, it means everything is working — the metrics are being collected and stored.
+
+`VMAgent` does more than just discover and scrape metrics. You can learn more about it in [resources/vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/).
+
+Now that you know how to scrape metrics from your app, let’s move on to configuring alerts based on the collected metrics.
 
 ### Access
 

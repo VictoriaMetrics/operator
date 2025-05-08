@@ -122,7 +122,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 					Namespace: "default",
 				},
 			},
-			wantPortsLen: 1,
+			wantPortsLen: 2,
 		},
 		{
 			name: "base service test-with ports",
@@ -148,7 +148,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 					Namespace: "default",
 				},
 			},
-			wantPortsLen: 8,
+			wantPortsLen: 9,
 		},
 		{
 			name: "with extra service nodePort",
@@ -174,7 +174,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 					Namespace: "default",
 				},
 			},
-			wantPortsLen: 1,
+			wantPortsLen: 2,
 			predefinedObjects: []runtime.Object{
 				&corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{

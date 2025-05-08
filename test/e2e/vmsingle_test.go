@@ -88,7 +88,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 						Expect(
 							k8sClient.Get(ctx, createdChildObjects, &createdSvc)).
 							To(Succeed())
-						Expect(createdSvc.Spec.Ports).To(HaveLen(8))
+						Expect(createdSvc.Spec.Ports).To(HaveLen(9))
 						var createdDeploy appsv1.Deployment
 						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
 						Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(1))
@@ -133,7 +133,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 						Expect(
 							k8sClient.Get(ctx, createdChildObjects, &createdSvc)).
 							To(Succeed())
-						Expect(createdSvc.Spec.Ports).To(HaveLen(2))
+						Expect(createdSvc.Spec.Ports).To(HaveLen(3))
 						var createdDeploy appsv1.Deployment
 						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
 						Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(2))

@@ -352,7 +352,17 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 
 func createOrUpdateVMSingleService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) (*corev1.Service, error) {
 
-	addBackupPort := func(svc *corev1.Service, vmb *vmv1beta1.VMBackup) {
+	addExtraPorts := func(svc *corev1.Service, vmb *vmv1beta1.VMBackup) {
+		if cr.Spec.Port != "8428" {
+			// conditionally add 8428 port to be compatible with binary port
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+				Name:       "http-alias",
+				Protocol:   "TCP",
+				Port:       8428,
+				TargetPort: intstr.Parse(cr.Spec.Port),
+			})
+		}
+
 		if vmb != nil {
 			parsedPort := intstr.Parse(vmb.Port)
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
@@ -364,14 +374,14 @@ func createOrUpdateVMSingleService(ctx context.Context, rclient client.Client, c
 		}
 	}
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
-		addBackupPort(svc, cr.Spec.VMBackup)
+		addExtraPorts(svc, cr.Spec.VMBackup)
 		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
 	})
 
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
-			addBackupPort(svc, prevCR.Spec.VMBackup)
+			addExtraPorts(svc, prevCR.Spec.VMBackup)
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
 		})
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)

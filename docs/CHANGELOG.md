@@ -21,6 +21,7 @@ aliases:
 * FEATURE: [converter](https://docs.victoriametrics.com/operator/migration/#objects-conversion): add `msteamsv2_configs` conversion from Prometheus resource AlertmanagerConfig. See [this commit](https://github.com/VictoriaMetrics/operator/commit/5cc7457e9eef325f75d9b1d9633d161230a6e0f7) for details.
 * FEATURE: upgrade Go builder from Go1.24.0 to Go1.24.4 See [Go1.24 release notes](https://tip.golang.org/doc/go1.24).
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `timeout` field to the `webhook_configs` definition. It's supported by [alertmanager v0.28.0+](https://github.com/prometheus/alertmanager/releases/tag/v0.28.0). See [this commit](https://github.com/VictoriaMetrics/operator/commit/5cc7457e9eef325f75d9b1d9633d161230a6e0f7) for details.
+* FEATURE: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): add `8428` port alias to the `VMSingle` `Service`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1343) for details.
 
 * BUGFIX: [operator](https://docs.victoriametrics.com/operator): fix typo in `-remoteWrite.streamAggr.enableWindows` flag when `enableWindows` is set to true in VMAgent resources. See [this commit](https://github.com/VictoriaMetrics/operator/commit/655987ee718b33b04d9c03108209beec91b9b1e8) for details.
 

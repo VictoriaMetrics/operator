@@ -90,6 +90,58 @@ func SafeDelete(ctx context.Context, rclient client.Client, r client.Object) err
 	return nil
 }
 
+// SafeDeleteForSelectorsWithFinalizer removes given object if it matches provided label selectors
+func SafeDeleteForSelectorsWithFinalizer(ctx context.Context, rclient client.Client, r client.Object, selectors map[string]string) error {
+	objName, objNs := r.GetName(), r.GetNamespace()
+	if objName == "" || objNs == "" {
+		return fmt.Errorf("BUG: object name=%q or object namespace=%q cannot be empty", objName, objNs)
+	}
+	// reload object from API to properly remove finalizer
+	if err := rclient.Get(ctx, types.NamespacedName{
+		Namespace: objNs,
+		Name:      objName,
+	}, r); err != nil {
+		// fast path
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	if !isLabelsMatchSelectors(r.GetLabels(), selectors) {
+		// object has a different set of labels
+		// most probably it is not managed by operator
+		return nil
+	}
+	if err := RemoveFinalizer(ctx, rclient, r); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	if err := rclient.Delete(ctx, r); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func isLabelsMatchSelectors(objLabels map[string]string, selectorLabels map[string]string) bool {
+	for k, v := range selectorLabels {
+		isFound := false
+		objV, ok := objLabels[k]
+		if ok {
+			if objV != v {
+				return false
+			}
+			isFound = true
+		}
+		if !isFound {
+			return false
+		}
+	}
+	return true
+}
+
 // SafeDeleteWithFinalizer removes object, ignores notfound error.
 func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r client.Object) error {
 	objName, objNs := r.GetName(), r.GetNamespace()

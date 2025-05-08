@@ -68,11 +68,12 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	if err := createOrUpdateVMAuthIngress(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) &&
-		!useProxyProtocol(cr) &&
-		len(cr.Spec.InternalListenPort) != 0 {
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, buildServiceScrape(svc, cr)); err != nil {
-			return err
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		// it's not possible to scrape metrics from vmauth if proxyProtocol is configured
+		if !useProxyProtocol(cr) || len(cr.Spec.InternalListenPort) > 0 {
+			if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, buildServiceScrape(svc, cr)); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -694,9 +695,16 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			return fmt.Errorf("cannot delete ingress from prev state: %w", err)
 		}
 	}
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(prevCR.Spec.DisableSelfServiceScrape, false) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels()); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
+		}
+	}
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if useProxyProtocol(cr) && len(cr.Spec.InternalListenPort) == 0 {
+			if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels()); err != nil {
+				return fmt.Errorf("cannot remove serviceScrape: %w", err)
+			}
 		}
 	}
 

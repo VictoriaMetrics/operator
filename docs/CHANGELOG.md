@@ -25,7 +25,7 @@ aliases:
 
 * BUGFIX: [operator](https://docs.victoriametrics.com/operator): fix typo in `-remoteWrite.streamAggr.enableWindows` flag when `enableWindows` is set to true in VMAgent resources. See [this commit](https://github.com/VictoriaMetrics/operator/commit/655987ee718b33b04d9c03108209beec91b9b1e8) for details.
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly build `oauth2` `clientSecret` configuration for `remoteWrite` targets. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1336) for details. Thanks to the @Unichron for catching this bug.
-
+* BUGFIX: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): properly create and delete `VMServiceScrape` with `internalListenPort` option configured. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1320) for details.
 ## [v0.56.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.56.0)
 
 **Release date:** 15 Apr 2025

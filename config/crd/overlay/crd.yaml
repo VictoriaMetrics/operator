@@ -9454,6 +9454,12 @@ spec:
                             description: SendResolved controls notify about resolved
                               alerts.
                             type: boolean
+                          timeout:
+                            description: |-
+                              Timeout is the maximum time allowed to invoke the webhook
+                              available since v0.28.0 alertmanager version
+                            pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
+                            type: string
                           url:
                             description: |-
                               URL to send requests to,

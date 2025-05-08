@@ -55,6 +55,43 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 			}
 			return nil
 		})
+
+	f("msteamsv2",
+		&promv1alpha1.AlertmanagerConfig{
+			Spec: promv1alpha1.AlertmanagerConfigSpec{
+				Receivers: []promv1alpha1.Receiver{
+					{
+						Name: "msteams",
+						MSTeamsV2Configs: []promv1alpha1.MSTeamsV2Config{
+							{
+								SendResolved: ptr.To(true),
+								WebhookURL: &corev1.SecretKeySelector{
+									Key: "some-key",
+								},
+								Title: ptr.To("some title"),
+							},
+						},
+					},
+				},
+			},
+		},
+		func(convertedAMCfg *vmv1beta1.VMAlertmanagerConfig) error {
+			if len(convertedAMCfg.Spec.Receivers) != 1 {
+				return fmt.Errorf("expected single receiver, got: %d", len(convertedAMCfg.Spec.Receivers))
+			}
+			if len(convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs) != 1 {
+				return fmt.Errorf("expected single msteamsv2 receiver, got: %d", len(convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs))
+			}
+			msv2 := convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs[0]
+			if msv2.Title != "some title" {
+				return fmt.Errorf("unexpected title: %q", msv2.Title)
+			}
+			if msv2.URLSecret.Key != "some-key" {
+				return fmt.Errorf("unexpected key=%q", msv2.URLSecret.Key)
+			}
+			return nil
+		},
+	)
 }
 
 func TestConvertScrapeConfig(t *testing.T) {

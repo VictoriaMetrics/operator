@@ -412,6 +412,11 @@ type WebhookConfig struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	MaxAlerts int32 `json:"max_alerts,omitempty" yaml:"max_alerts,omitempty"`
+	// Timeout is the maximum time allowed to invoke the webhook
+	// available since v0.28.0 alertmanager version
+	// +kubebuilder:validation:Pattern:="^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$"
+	// +optional
+	Timeout string `json:"timeout,omitempty"`
 }
 
 // WeChatConfig configures notifications via WeChat.

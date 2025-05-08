@@ -1123,6 +1123,9 @@ func (cb *configBuilder) buildWebhook(wh vmv1beta1.WebhookConfig) error {
 	if wh.MaxAlerts != 0 {
 		temp = append(temp, yaml.MapItem{Key: "max_alerts", Value: wh.MaxAlerts})
 	}
+	if len(wh.Timeout) > 0 {
+		temp = append(temp, yaml.MapItem{Key: "timeout", Value: wh.Timeout})
+	}
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }

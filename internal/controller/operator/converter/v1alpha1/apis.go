@@ -209,6 +209,7 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 			DiscordConfigs:   make([]vmv1beta1.DiscordConfig, 0, len(promR.DiscordConfigs)),
 			SNSConfigs:       make([]vmv1beta1.SnsConfig, 0, len(promR.SNSConfigs)),
 			WebexConfigs:     make([]vmv1beta1.WebexConfig, 0, len(promR.WebexConfigs)),
+			MSTeamsV2Configs: make([]vmv1beta1.MSTeamsV2Config, 0, len(promR.MSTeamsV2Configs)),
 		}
 		for _, obj := range promR.EmailConfigs {
 			vo := vmv1beta1.EmailConfig{
@@ -361,6 +362,7 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 				URL:          obj.URL,
 				URLSecret:    obj.URLSecret,
 				MaxAlerts:    obj.MaxAlerts,
+				Timeout:      ptr.Deref((*string)(obj.Timeout), ""),
 			}
 			dst.WebhookConfigs = append(dst.WebhookConfigs, vo)
 		}
@@ -425,6 +427,9 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 				URLSecret:    &obj.APIURL,
 				Title:        ptr.Deref(obj.Title, ""),
 				Message:      ptr.Deref(obj.Message, ""),
+				Username:     ptr.Deref(obj.Username, ""),
+				Content:      ptr.Deref(obj.Content, ""),
+				AvatarURL:    ptr.Deref((*string)(obj.AvatarURL), ""),
 			}
 			dst.DiscordConfigs = append(dst.DiscordConfigs, vo)
 		}
@@ -469,6 +474,16 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 				Message: ptr.Deref(obj.Message, ""),
 			}
 			dst.WebexConfigs = append(dst.WebexConfigs, vo)
+		}
+		for _, obj := range promR.MSTeamsV2Configs {
+			vo := vmv1beta1.MSTeamsV2Config{
+				SendResolved: obj.SendResolved,
+				URLSecret:    obj.WebhookURL,
+				Title:        ptr.Deref(obj.Title, ""),
+				Text:         ptr.Deref(obj.Text, ""),
+				HTTPConfig:   convertHTTPConfig(obj.HTTPConfig),
+			}
+			dst.MSTeamsV2Configs = append(dst.MSTeamsV2Configs, vo)
 		}
 
 		vmReceivers = append(vmReceivers, dst)

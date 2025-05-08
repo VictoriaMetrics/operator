@@ -126,7 +126,7 @@ Although it runs as a single pod, the setup is recommended for production use.
 
 First, create a `VMSingle` manifest file:
 ```sh
-cat > vmsingle-demo.yaml <<'EOF'
+cat <<'EOF' > vmsingle-demo.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
@@ -220,7 +220,7 @@ Once you create a scrape resource, `VMAgent` picks it up automatically and start
 
 Let’s start by creating a `VMAgent` manifest file:
 ```sh
-cat <<EOF > vmagent-demo.yaml
+cat <<'EOF' > vmagent-demo.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
@@ -259,7 +259,7 @@ Now let’s deploy a [demo application](https://github.com/VictoriaMetrics/demo-
 This app is intended for demonstration purposes only and can be removed afterward. 
 Create the following file and apply it:
 ```sh
-cat <<EOF > demo-app.yaml
+cat <<'EOF' > demo-app.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -306,7 +306,8 @@ The service connects to any pod that matches the label selector: `app.kubernetes
 
 The demo app serves metrics at `/metrics` path on port `8080`. You can test it like this:
 ```sh
-kubectl exec -n default  demo-app -- curl -i http://127.0.0.1:8080/metrics
+DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n default  ${DEMO_APP_POD} -- curl -i http://127.0.0.1:8080/metrics;
 
 # ...
 # HTTP/1.1 200 OK
@@ -320,7 +321,7 @@ kubectl exec -n default  demo-app -- curl -i http://127.0.0.1:8080/metrics
 Next, let’s configure `VMAgent` to scrape metrics from the demo app we just deployed.
 To do this, create a `VMServiceScrape` resource. It tells `VMAgent` where to find the metrics:
 ```sh
-cat <<EOF > demo-app-scrape.yaml
+cat <<'EOF' > demo-app-scrape.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:

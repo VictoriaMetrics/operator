@@ -46,10 +46,7 @@ Package v1beta1 contains API Schema definitions for the victoriametrics v1beta1 
 
 APIServerConfig defines a host and auth methods to access apiserver.
 
-
-
-_Appears in:_
-- [VMAgentSpec](#vmagentspec)
+_Appears in: [VMAgentSpec](#vmagentspec)
 
 | Field | Description |
 | --- | --- |
@@ -71,19 +68,7 @@ labels,selector, ports.
 if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
 if UseAsDefault is set to true, changes applied to the main service without additional service creation
 
-
-
-_Appears in:_
-- [VLogsSpec](#vlogsspec)
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
-- [VMSingleSpec](#vmsinglespec)
-- [VMStorage](#vmstorage)
+_Appears in: [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -98,10 +83,7 @@ _Appears in:_
 
 AlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager
 
-
-
-_Appears in:_
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
+_Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
 
 | Field | Description |
 | --- | --- |
@@ -115,10 +97,7 @@ _Appears in:_
 
 AlertmanagerHTTPConfig defines http server configuration for alertmanager
 
-
-
-_Appears in:_
-- [AlertmanagerWebConfig](#alertmanagerwebconfig)
+_Appears in: [AlertmanagerWebConfig](#alertmanagerwebconfig)
 
 | Field | Description |
 | --- | --- |
@@ -132,10 +111,7 @@ _Appears in:_
 
 AlertmanagerWebConfig defines web server configuration for alertmanager
 
-
-
-_Appears in:_
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
+_Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
 
 | Field | Description |
 | --- | --- |
@@ -157,11 +133,7 @@ in the vmagent container. Those secrets would then be sent with a scrape
 request by vmagent to a malicious target. Denying the above would prevent the
 attack, users can instead use the BearerTokenSecret field.
 
-
-
-_Appears in:_
-- [VMAgentSecurityEnforcements](#vmagentsecurityenforcements)
-- [VMAgentSpec](#vmagentspec)
+_Appears in: [VMAgentSecurityEnforcements](#vmagentsecurityenforcements), [VMAgentSpec](#vmagentspec)
 
 | Field | Description |
 | --- | --- |
@@ -174,14 +146,7 @@ _Appears in:_
 
 AttachMetadata configures metadata attachment
 
-
-
-_Appears in:_
-- [Endpoint](#endpoint)
-- [KubernetesSDConfig](#kubernetessdconfig)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [VMPodScrapeSpec](#vmpodscrapespec)
-- [VMServiceScrapeSpec](#vmservicescrapespec)
+_Appears in: [Endpoint](#endpoint), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [VMPodScrapeSpec](#vmpodscrapespec), [VMServiceScrapeSpec](#vmservicescrapespec)
 
 | Field | Description |
 | --- | --- |
@@ -194,22 +159,7 @@ _Appears in:_
 
 Authorization configures generic authorization params
 
-
-
-_Appears in:_
-- [APIServerConfig](#apiserverconfig)
-- [ConsulSDConfig](#consulsdconfig)
-- [DigitalOceanSDConfig](#digitaloceansdconfig)
-- [Endpoint](#endpoint)
-- [EndpointAuth](#endpointauth)
-- [HTTPConfig](#httpconfig)
-- [HTTPSDConfig](#httpsdconfig)
-- [KubernetesSDConfig](#kubernetessdconfig)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [TargetEndpoint](#targetendpoint)
-- [VMNodeScrapeSpec](#vmnodescrapespec)
-- [VMProbeSpec](#vmprobespec)
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -225,10 +175,7 @@ _Appears in:_
 AzureSDConfig allow retrieving scrape targets from Azure VMs.
 See [here](https://docs.victoriametrics.com/sd_configs#azure_sd_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -248,28 +195,7 @@ _Appears in:_
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-
-
-_Appears in:_
-- [APIServerConfig](#apiserverconfig)
-- [ConsulSDConfig](#consulsdconfig)
-- [Endpoint](#endpoint)
-- [EndpointAuth](#endpointauth)
-- [HTTPAuth](#httpauth)
-- [HTTPConfig](#httpconfig)
-- [HTTPSDConfig](#httpsdconfig)
-- [KubernetesSDConfig](#kubernetessdconfig)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [ProxyAuth](#proxyauth)
-- [TargetEndpoint](#targetendpoint)
-- [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
-- [VMAlertDatasourceSpec](#vmalertdatasourcespec)
-- [VMAlertNotifierSpec](#vmalertnotifierspec)
-- [VMAlertRemoteReadSpec](#vmalertremotereadspec)
-- [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
-- [VMNodeScrapeSpec](#vmnodescrapespec)
-- [VMProbeSpec](#vmprobespec)
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -284,14 +210,7 @@ _Appears in:_
 
 BearerAuth defines auth with bearer token
 
-
-
-_Appears in:_
-- [HTTPAuth](#httpauth)
-- [VMAlertDatasourceSpec](#vmalertdatasourcespec)
-- [VMAlertNotifierSpec](#vmalertnotifierspec)
-- [VMAlertRemoteReadSpec](#vmalertremotereadspec)
-- [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
+_Appears in: [HTTPAuth](#httpauth), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
 
 | Field | Description |
 | --- | --- |
@@ -306,11 +225,7 @@ _Underlying type:_ _string_
 BytesString represents bytes value defined directly as integer
 or as a string with suffix - kb,mb,gb,tb,KiB,MiB,GiB,TiB
 
-
-
-_Appears in:_
-- [VMAgentRemoteWriteSettings](#vmagentremotewritesettings)
-- [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
+_Appears in: [VMAgentRemoteWriteSettings](#vmagentremotewritesettings), [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
 
 
 
@@ -322,10 +237,7 @@ _Appears in:_
 
 CRDRef describe CRD target reference.
 
-
-
-_Appears in:_
-- [TargetRef](#targetref)
+_Appears in: [TargetRef](#targetref)
 
 | Field | Description |
 | --- | --- |
@@ -340,11 +252,7 @@ _Appears in:_
 
 Certs defines TLS certs configuration
 
-
-
-_Appears in:_
-- [TLSClientConfig](#tlsclientconfig)
-- [TLSServerConfig](#tlsserverconfig)
+_Appears in: [TLSClientConfig](#tlsclientconfig), [TLSServerConfig](#tlsserverconfig)
 
 | Field | Description |
 | --- | --- |
@@ -361,19 +269,7 @@ _Appears in:_
 CommonApplicationDeploymentParams defines common params
 for deployment and statefulset specifications
 
-
-
-_Appears in:_
-- [VLogsSpec](#vlogsspec)
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
-- [VMSingleSpec](#vmsinglespec)
-- [VMStorage](#vmstorage)
+_Appears in: [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -415,13 +311,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthSpec](#vmauthspec)
+_Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthSpec](#vmauthspec)
 
 | Field | Description |
 | --- | --- |
@@ -439,19 +329,7 @@ _Appears in:_
 CommonDefaultableParams contains Application settings
 with known values populated from operator configuration
 
-
-
-_Appears in:_
-- [VLogsSpec](#vlogsspec)
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
-- [VMSingleSpec](#vmsinglespec)
-- [VMStorage](#vmstorage)
+_Appears in: [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -469,21 +347,7 @@ _Appears in:_
 
 Condition defines status condition of the resource
 
-
-
-_Appears in:_
-- [ScrapeObjectStatus](#scrapeobjectstatus)
-- [StatusMetadata](#statusmetadata)
-- [VLogsStatus](#vlogsstatus)
-- [VMAgentStatus](#vmagentstatus)
-- [VMAlertStatus](#vmalertstatus)
-- [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus)
-- [VMAlertmanagerStatus](#vmalertmanagerstatus)
-- [VMAuthStatus](#vmauthstatus)
-- [VMClusterStatus](#vmclusterstatus)
-- [VMRuleStatus](#vmrulestatus)
-- [VMSingleStatus](#vmsinglestatus)
-- [VMUserStatus](#vmuserstatus)
+_Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus)
 
 | Field | Description |
 | --- | --- |
@@ -501,10 +365,7 @@ _Appears in:_
 
 ConfigMapKeyReference refers to a key in a ConfigMap.
 
-
-
-_Appears in:_
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
+_Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
 
 | Field | Description |
 | --- | --- |
@@ -518,10 +379,7 @@ _Appears in:_
 ConsulSDConfig defines a Consul service discovery configuration.
 See [here](https://docs.victoriametrics.com/sd_configs/#consul_sd_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -552,10 +410,7 @@ _Appears in:_
 
 ContainerSecurityContext defines security context for each application container
 
-
-
-_Appears in:_
-- [SecurityContext](#securitycontext)
+_Appears in: [SecurityContext](#securitycontext)
 
 | Field | Description |
 | --- | --- |
@@ -574,10 +429,7 @@ DNSSDConfig allows specifying a set of DNS domain names which are periodically q
 The DNS servers to be contacted are read from /etc/resolv.conf.
 See [here](https://docs.victoriametrics.com/sd_configs#dns_sd_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -594,10 +446,7 @@ DigitalOceanSDConfig allow retrieving scrape targets from DigitalOcean's Droplet
 This service discovery uses the public IPv4 address by default, by that can be changed with relabeling.
 See [here](https://docs.victoriametrics.com/sd_configs#digitalocean_sd_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -616,10 +465,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -640,10 +486,7 @@ _Appears in:_
 
 DiscoverySelector can be used at CRD components discovery
 
-
-
-_Appears in:_
-- [VMAlertNotifierSpec](#vmalertnotifierspec)
+_Appears in: [VMAlertNotifierSpec](#vmalertnotifierspec)
 
 | Field | Description |
 | --- | --- |
@@ -657,10 +500,7 @@ _Appears in:_
 
 EC2Filter is the configuration for filtering EC2 instances.
 
-
-
-_Appears in:_
-- [EC2SDConfig](#ec2sdconfig)
+_Appears in: [EC2SDConfig](#ec2sdconfig)
 
 | Field | Description |
 | --- | --- |
@@ -677,10 +517,7 @@ The private IP address is used by default, but may be changed to the public IP a
 The IAM credentials used must have the ec2:DescribeInstances permission to discover scrape targets.
 See [here](https://docs.victoriametrics.com/sd_configs#ec2_sd_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -698,10 +535,7 @@ _Appears in:_
 
 EmailConfig configures notifications via Email.
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -728,11 +562,7 @@ _Appears in:_
 EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
 https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/
 
-
-
-_Appears in:_
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
+_Appears in: [VMInsert](#vminsert), [VMSelect](#vmselect)
 
 | Field | Description |
 | --- | --- |
@@ -748,10 +578,7 @@ _Appears in:_
 
 EmbeddedIngress describes ingress configuration options.
 
-
-
-_Appears in:_
-- [VMAuthSpec](#vmauthspec)
+_Appears in: [VMAuthSpec](#vmauthspec)
 
 | Field | Description |
 | --- | --- |
@@ -773,22 +600,7 @@ _Appears in:_
 EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
 Only fields which are relevant to embedded resources are included.
 
-
-
-_Appears in:_
-- [AdditionalServiceSpec](#additionalservicespec)
-- [EmbeddedIngress](#embeddedingress)
-- [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)
-- [VLogsSpec](#vlogsspec)
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
-- [VMSingleSpec](#vmsinglespec)
-- [VMStorage](#vmstorage)
+_Appears in: [AdditionalServiceSpec](#additionalservicespec), [EmbeddedIngress](#embeddedingress), [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -804,10 +616,7 @@ _Appears in:_
 EmbeddedPersistentVolumeClaim is an embedded version of k8s.io/api/core/v1.PersistentVolumeClaim.
 It contains TypeMeta and a reduced ObjectMeta.
 
-
-
-_Appears in:_
-- [StorageSpec](#storagespec)
+_Appears in: [StorageSpec](#storagespec)
 
 | Field | Description |
 | --- | --- |
@@ -821,17 +630,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
-- [VMStorage](#vmstorage)
+_Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -848,19 +647,7 @@ EmbeddedProbes - it allows to override some probe params.
 its not necessary to specify all options,
 operator will replace missing spec with default values.
 
-
-
-_Appears in:_
-- [VLogsSpec](#vlogsspec)
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
-- [VMSingleSpec](#vmsinglespec)
-- [VMStorage](#vmstorage)
+_Appears in: [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -875,10 +662,7 @@ _Appears in:_
 
 Endpoint defines a scrapeable endpoint serving metrics.
 
-
-
-_Appears in:_
-- [VMServiceScrapeSpec](#vmservicescrapespec)
+_Appears in: [VMServiceScrapeSpec](#vmservicescrapespec)
 
 | Field | Description |
 | --- | --- |
@@ -915,15 +699,7 @@ _Appears in:_
 
 EndpointAuth defines target endpoint authorization options for scrapping
 
-
-
-_Appears in:_
-- [Endpoint](#endpoint)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [TargetEndpoint](#targetendpoint)
-- [VMNodeScrapeSpec](#vmnodescrapespec)
-- [VMProbeSpec](#vmprobespec)
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -941,14 +717,7 @@ _Appears in:_
 
 EndpointRelabelings defines service discovery and metrics relabeling configuration for endpoints
 
-
-
-_Appears in:_
-- [Endpoint](#endpoint)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [TargetEndpoint](#targetendpoint)
-- [VMNodeScrapeSpec](#vmnodescrapespec)
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -962,15 +731,7 @@ _Appears in:_
 
 ScrapeTargetParams defines common configuration params for all scrape endpoint targets
 
-
-
-_Appears in:_
-- [Endpoint](#endpoint)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [TargetEndpoint](#targetendpoint)
-- [VMNodeScrapeSpec](#vmnodescrapespec)
-- [VMProbeSpec](#vmprobespec)
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -996,10 +757,7 @@ _Appears in:_
 
 ExternalConfig defines external source of configuration
 
-
-
-_Appears in:_
-- [VMAuthSpec](#vmauthspec)
+_Appears in: [VMAuthSpec](#vmauthspec)
 
 | Field | Description |
 | --- | --- |
@@ -1014,10 +772,7 @@ _Appears in:_
 FileSDConfig defines a file service discovery configuration.
 See [here](https://docs.victoriametrics.com/sd_configs#file_sd_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1038,10 +793,7 @@ The GCE service discovery will load the Google Cloud credentials
 from the file specified by the GOOGLE_APPLICATION_CREDENTIALS environment variable.
 See https://cloud.google.com/kubernetes-engine/docs/tutorials/authenticating-to-cloud-platform
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1058,13 +810,7 @@ _Appears in:_
 
 HTTPAuth generic auth used with http protocols
 
-
-
-_Appears in:_
-- [VMAlertDatasourceSpec](#vmalertdatasourcespec)
-- [VMAlertNotifierSpec](#vmalertnotifierspec)
-- [VMAlertRemoteReadSpec](#vmalertremotereadspec)
-- [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
+_Appears in: [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
 
 | Field | Description |
 | --- | --- |
@@ -1081,24 +827,7 @@ _Appears in:_
 HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 
-
-
-_Appears in:_
-- [DiscordConfig](#discordconfig)
-- [JiraConfig](#jiraconfig)
-- [MSTeamsConfig](#msteamsconfig)
-- [MSTeamsV2Config](#msteamsv2config)
-- [OpsGenieConfig](#opsgenieconfig)
-- [PagerDutyConfig](#pagerdutyconfig)
-- [PushoverConfig](#pushoverconfig)
-- [RocketchatConfig](#rocketchatconfig)
-- [SlackConfig](#slackconfig)
-- [SnsConfig](#snsconfig)
-- [TelegramConfig](#telegramconfig)
-- [VictorOpsConfig](#victoropsconfig)
-- [WeChatConfig](#wechatconfig)
-- [WebexConfig](#webexconfig)
-- [WebhookConfig](#webhookconfig)
+_Appears in: [DiscordConfig](#discordconfig), [JiraConfig](#jiraconfig), [MSTeamsConfig](#msteamsconfig), [MSTeamsV2Config](#msteamsv2config), [OpsGenieConfig](#opsgenieconfig), [PagerDutyConfig](#pagerdutyconfig), [PushoverConfig](#pushoverconfig), [RocketchatConfig](#rocketchatconfig), [SlackConfig](#slackconfig), [SnsConfig](#snsconfig), [TelegramConfig](#telegramconfig), [VictorOpsConfig](#victoropsconfig), [WeChatConfig](#wechatconfig), [WebexConfig](#webexconfig), [WebhookConfig](#webhookconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1118,10 +847,7 @@ _Appears in:_
 HTTPSDConfig defines a HTTP service discovery configuration.
 See [here](https://docs.victoriametrics.com/sd_configs#http_sd_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1139,21 +865,7 @@ _Appears in:_
 
 Image defines docker image settings
 
-
-
-_Appears in:_
-- [CommonDefaultableParams](#commondefaultableparams)
-- [VLogsSpec](#vlogsspec)
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMBackup](#vmbackup)
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
-- [VMSingleSpec](#vmsinglespec)
-- [VMStorage](#vmstorage)
+_Appears in: [CommonDefaultableParams](#commondefaultableparams), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMBackup](#vmbackup), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -1170,10 +882,7 @@ ImageConfig is used to attach images to the incident.
 See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-images-property
 for more information.
 
-
-
-_Appears in:_
-- [PagerDutyConfig](#pagerdutyconfig)
+_Appears in: [PagerDutyConfig](#pagerdutyconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1191,10 +900,7 @@ alerts are already firing.
 Note, it doesn't support deprecated alertmanager config options.
 See https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule
 
-
-
-_Appears in:_
-- [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
+_Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1209,12 +915,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [VMAgentSpec](#vmagentspec)
-- [VMInsert](#vminsert)
-- [VMSingleSpec](#vmsinglespec)
+_Appears in: [VMAgentSpec](#vmagentspec), [VMInsert](#vminsert), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -1233,10 +934,7 @@ https://prometheus.io/docs/alerting/latest/configuration/#jira_config
 available from v0.55.0 operator version
 and v0.28.0 alertmanager version
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -1262,10 +960,7 @@ _Appears in:_
 
 K8SSelectorConfig is Kubernetes Selector Config
 
-
-
-_Appears in:_
-- [KubernetesSDConfig](#kubernetessdconfig)
+_Appears in: [KubernetesSDConfig](#kubernetessdconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1283,10 +978,7 @@ _Appears in:_
 KubernetesSDConfig allows retrieving scrape targets from Kubernetes' REST API.
 See [here](https://docs.victoriametrics.com/sd_configs#kubernetes_sd_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1312,14 +1004,7 @@ License holds license key for enterprise features.
 Using license key is supported starting from VictoriaMetrics v1.94.0.
 See [here](https://docs.victoriametrics.com/enterprise)
 
-
-
-_Appears in:_
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMClusterSpec](#vmclusterspec)
-- [VMSingleSpec](#vmsinglespec)
+_Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -1337,10 +1022,7 @@ LinkConfig is used to attach text links to the incident.
 See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-links-property
 for more information.
 
-
-
-_Appears in:_
-- [PagerDutyConfig](#pagerdutyconfig)
+_Appears in: [PagerDutyConfig](#pagerdutyconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1354,10 +1036,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -1378,10 +1057,7 @@ https://support.microsoft.com/en-gb/office/create-incoming-webhooks-with-workflo
 available from v0.55.0 operator version
 and v0.28.0 alertmanager version
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -1399,16 +1075,7 @@ _Appears in:_
 
 ManagedObjectsMetadata contains Labels and Annotations
 
-
-
-_Appears in:_
-- [VLogsSpec](#vlogsspec)
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMClusterSpec](#vmclusterspec)
-- [VMSingleSpec](#vmsinglespec)
+_Appears in: [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -1423,10 +1090,7 @@ _Appears in:_
 NamespaceDiscovery is the configuration for discovering
 Kubernetes namespaces.
 
-
-
-_Appears in:_
-- [KubernetesSDConfig](#kubernetessdconfig)
+_Appears in: [KubernetesSDConfig](#kubernetessdconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1441,13 +1105,7 @@ _Appears in:_
 NamespaceSelector is a selector for selecting either all namespaces or a
 list of namespaces.
 
-
-
-_Appears in:_
-- [DiscoverySelector](#discoveryselector)
-- [ProbeTargetIngress](#probetargetingress)
-- [VMPodScrapeSpec](#vmpodscrapespec)
-- [VMServiceScrapeSpec](#vmservicescrapespec)
+_Appears in: [DiscoverySelector](#discoveryselector), [ProbeTargetIngress](#probetargetingress), [VMPodScrapeSpec](#vmpodscrapespec), [VMServiceScrapeSpec](#vmservicescrapespec)
 
 | Field | Description |
 | --- | --- |
@@ -1461,26 +1119,7 @@ _Appears in:_
 
 OAuth2 defines OAuth2 configuration
 
-
-
-_Appears in:_
-- [ConsulSDConfig](#consulsdconfig)
-- [DigitalOceanSDConfig](#digitaloceansdconfig)
-- [Endpoint](#endpoint)
-- [EndpointAuth](#endpointauth)
-- [HTTPAuth](#httpauth)
-- [HTTPConfig](#httpconfig)
-- [KubernetesSDConfig](#kubernetessdconfig)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [TargetEndpoint](#targetendpoint)
-- [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
-- [VMAlertDatasourceSpec](#vmalertdatasourcespec)
-- [VMAlertNotifierSpec](#vmalertnotifierspec)
-- [VMAlertRemoteReadSpec](#vmalertremotereadspec)
-- [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
-- [VMNodeScrapeSpec](#vmnodescrapespec)
-- [VMProbeSpec](#vmprobespec)
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1501,10 +1140,7 @@ _Appears in:_
 OpenStackSDConfig allow retrieving scrape targets from OpenStack Nova instances.
 See [here](https://docs.victoriametrics.com/sd_configs#openstack_sd_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1534,10 +1170,7 @@ _Appears in:_
 OpsGenieConfig configures notifications via OpsGenie.
 See https://prometheus.io/docs/alerting/latest/configuration/#opsgenie_config
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -1565,10 +1198,7 @@ _Appears in:_
 OpsGenieConfigResponder defines a responder to an incident.
 One of `id`, `name` or `username` has to be defined.
 
-
-
-_Appears in:_
-- [OpsGenieConfig](#opsgenieconfig)
+_Appears in: [OpsGenieConfig](#opsgenieconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1585,10 +1215,7 @@ _Appears in:_
 PagerDutyConfig configures notifications via PagerDuty.
 See https://prometheus.io/docs/alerting/latest/configuration/#pagerduty_config
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -1615,10 +1242,7 @@ _Appears in:_
 
 PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving metrics.
 
-
-
-_Appears in:_
-- [VMPodScrapeSpec](#vmpodscrapespec)
+_Appears in: [VMPodScrapeSpec](#vmpodscrapespec)
 
 | Field | Description |
 | --- | --- |
@@ -1657,10 +1281,7 @@ _Appears in:_
 
 ProbeTargetIngress defines the set of Ingress objects considered for probing.
 
-
-
-_Appears in:_
-- [VMProbeTargets](#vmprobetargets)
+_Appears in: [VMProbeTargets](#vmprobetargets)
 
 | Field | Description |
 | --- | --- |
@@ -1677,14 +1298,7 @@ ProxyAuth represent proxy auth config
 Only VictoriaMetrics scrapers supports it.
 See https://github.com/VictoriaMetrics/VictoriaMetrics/commit/a6a71ef861444eb11fe8ec6d2387f0fc0c4aea87
 
-
-
-_Appears in:_
-- [ConsulSDConfig](#consulsdconfig)
-- [DigitalOceanSDConfig](#digitaloceansdconfig)
-- [HTTPSDConfig](#httpsdconfig)
-- [KubernetesSDConfig](#kubernetessdconfig)
-- [VMScrapeParams](#vmscrapeparams)
+_Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [VMScrapeParams](#vmscrapeparams)
 
 | Field | Description |
 | --- | --- |
@@ -1701,10 +1315,7 @@ _Appears in:_
 PushoverConfig configures notifications via Pushover.
 See https://prometheus.io/docs/alerting/latest/configuration/#pushover_config
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -1729,10 +1340,7 @@ _Appears in:_
 
 Receiver defines one or more notification integrations.
 
-
-
-_Appears in:_
-- [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
+_Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1762,21 +1370,7 @@ _Appears in:_
 RelabelConfig allows dynamic rewriting of the label set
 More info: https://docs.victoriametrics.com/#relabeling
 
-
-
-_Appears in:_
-- [Endpoint](#endpoint)
-- [EndpointRelabelings](#endpointrelabelings)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [ProbeTargetIngress](#probetargetingress)
-- [StreamAggrRule](#streamaggrrule)
-- [TargetEndpoint](#targetendpoint)
-- [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
-- [VMAgentSpec](#vmagentspec)
-- [VMNodeScrapeSpec](#vmnodescrapespec)
-- [VMProbeSpec](#vmprobespec)
-- [VMProbeTargetStaticConfig](#vmprobetargetstaticconfig)
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [Endpoint](#endpoint), [EndpointRelabelings](#endpointrelabelings), [PodMetricsEndpoint](#podmetricsendpoint), [ProbeTargetIngress](#probetargetingress), [StreamAggrRule](#streamaggrrule), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAgentSpec](#vmagentspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMProbeTargetStaticConfig](#vmprobetargetstaticconfig), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1801,10 +1395,7 @@ _Appears in:_
 RocketchatAttachmentAction defines message attachements
 https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
 
-
-
-_Appears in:_
-- [RocketchatConfig](#rocketchatconfig)
+_Appears in: [RocketchatConfig](#rocketchatconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1821,10 +1412,7 @@ _Appears in:_
 RocketchatAttachmentField defines API fields
 https://developer.rocket.chat/reference/api/rest-api/endpoints/messaging/chat-endpoints/postmessage#attachment-field-objects
 
-
-
-_Appears in:_
-- [RocketchatConfig](#rocketchatconfig)
+_Appears in: [RocketchatConfig](#rocketchatconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1842,10 +1430,7 @@ https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
 available from v0.55.0 operator version
 and v0.28.0 alertmanager version
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -1875,11 +1460,7 @@ _Appears in:_
 
 Route defines a node in the routing tree.
 
-
-
-_Appears in:_
-- [SubRoute](#subroute)
-- [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
+_Appears in: [SubRoute](#subroute), [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1901,10 +1482,7 @@ _Appears in:_
 
 Rule describes an alerting or recording rule.
 
-
-
-_Appears in:_
-- [RuleGroup](#rulegroup)
+_Appears in: [RuleGroup](#rulegroup)
 
 | Field | Description |
 | --- | --- |
@@ -1925,10 +1503,7 @@ _Appears in:_
 
 RuleGroup is a list of sequentially evaluated recording and alerting rules.
 
-
-
-_Appears in:_
-- [VMRuleSpec](#vmrulespec)
+_Appears in: [VMRuleSpec](#vmrulespec)
 
 | Field | Description |
 | --- | --- |
@@ -1957,11 +1532,7 @@ _Appears in:_
 
 SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
 
-
-
-_Appears in:_
-- [OAuth2](#oauth2)
-- [TLSConfig](#tlsconfig)
+_Appears in: [OAuth2](#oauth2), [TLSConfig](#tlsconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1978,20 +1549,7 @@ _Appears in:_
 SecurityContext extends PodSecurityContext with ContainerSecurityContext
 It allows to globally configure security params for pod and all containers
 
-
-
-_Appears in:_
-- [CommonApplicationDeploymentParams](#commonapplicationdeploymentparams)
-- [VLogsSpec](#vlogsspec)
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
-- [VMSingleSpec](#vmsinglespec)
-- [VMStorage](#vmstorage)
+_Appears in: [CommonApplicationDeploymentParams](#commonapplicationdeploymentparams), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 
 
@@ -2001,10 +1559,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [SnsConfig](#snsconfig)
+_Appears in: [SnsConfig](#snsconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2025,10 +1580,7 @@ notification.
 See https://api.slack.com/docs/message-attachments#action_fields and
 https://api.slack.com/docs/message-buttons for more information.
 
-
-
-_Appears in:_
-- [SlackConfig](#slackconfig)
+_Appears in: [SlackConfig](#slackconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2048,10 +1600,7 @@ _Appears in:_
 SlackConfig configures notifications via Slack.
 See https://prometheus.io/docs/alerting/latest/configuration/#slack_config
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -2089,10 +1638,7 @@ click one more time.
 See https://api.slack.com/docs/interactive-message-field-guide#confirmation_fields
 for more information.
 
-
-
-_Appears in:_
-- [SlackAction](#slackaction)
+_Appears in: [SlackAction](#slackaction)
 
 | Field | Description |
 | --- | --- |
@@ -2109,10 +1655,7 @@ _Appears in:_
 SlackField configures a single Slack field that is sent with each notification.
 See https://api.slack.com/docs/message-attachments#fields for more information.
 
-
-
-_Appears in:_
-- [SlackConfig](#slackconfig)
+_Appears in: [SlackConfig](#slackconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2127,10 +1670,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -2153,10 +1693,7 @@ _Appears in:_
 StaticConfig defines a static configuration.
 See [here](https://docs.victoriametrics.com/sd_configs#static_configs)
 
-
-
-_Appears in:_
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -2170,10 +1707,7 @@ _Appears in:_
 
 StaticRef - user-defined routing host address.
 
-
-
-_Appears in:_
-- [TargetRef](#targetref)
+_Appears in: [TargetRef](#targetref)
 
 | Field | Description |
 | --- | --- |
@@ -2187,20 +1721,7 @@ _Appears in:_
 
 StatusMetadata holds metadata of application update status
 
-
-
-_Appears in:_
-- [ScrapeObjectStatus](#scrapeobjectstatus)
-- [VLogsStatus](#vlogsstatus)
-- [VMAgentStatus](#vmagentstatus)
-- [VMAlertStatus](#vmalertstatus)
-- [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus)
-- [VMAlertmanagerStatus](#vmalertmanagerstatus)
-- [VMAuthStatus](#vmauthstatus)
-- [VMClusterStatus](#vmclusterstatus)
-- [VMRuleStatus](#vmrulestatus)
-- [VMSingleStatus](#vmsinglestatus)
-- [VMUserStatus](#vmuserstatus)
+_Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus)
 
 | Field | Description |
 | --- | --- |
@@ -2217,13 +1738,7 @@ _Appears in:_
 StorageSpec defines the configured storage for a group Prometheus servers.
 If neither `emptyDir` nor `volumeClaimTemplate` is specified, then by default an [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) will be used.
 
-
-
-_Appears in:_
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMSelect](#vmselect)
-- [VMStorage](#vmstorage)
+_Appears in: [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMSelect](#vmselect), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2238,12 +1753,7 @@ _Appears in:_
 
 StreamAggrConfig defines the stream aggregation config
 
-
-
-_Appears in:_
-- [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
-- [VMAgentSpec](#vmagentspec)
-- [VMSingleSpec](#vmsinglespec)
+_Appears in: [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAgentSpec](#vmagentspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -2264,10 +1774,7 @@ _Appears in:_
 
 StreamAggrRule defines the rule in stream aggregation config
 
-
-
-_Appears in:_
-- [StreamAggrConfig](#streamaggrconfig)
+_Appears in: [StreamAggrConfig](#streamaggrconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2295,14 +1802,7 @@ _Underlying type:_ _string array_
 
 StringOrArray is a helper type for storing string or array of string.
 
-
-
-_Appears in:_
-- [GCESDConfig](#gcesdconfig)
-- [RelabelConfig](#relabelconfig)
-- [StreamAggrRule](#streamaggrrule)
-- [UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap)
-- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
+_Appears in: [GCESDConfig](#gcesdconfig), [RelabelConfig](#relabelconfig), [StreamAggrRule](#streamaggrrule), [UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
 
 
 
@@ -2314,10 +1814,7 @@ _Appears in:_
 
 TLSClientConfig defines TLS configuration for the application's client
 
-
-
-_Appears in:_
-- [AlertmanagerGossipConfig](#alertmanagergossipconfig)
+_Appears in: [AlertmanagerGossipConfig](#alertmanagergossipconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2337,36 +1834,7 @@ _Appears in:_
 
 TLSConfig specifies TLSConfig configuration parameters.
 
-
-
-_Appears in:_
-- [APIServerConfig](#apiserverconfig)
-- [ConsulSDConfig](#consulsdconfig)
-- [DigitalOceanSDConfig](#digitaloceansdconfig)
-- [EmailConfig](#emailconfig)
-- [Endpoint](#endpoint)
-- [EndpointAuth](#endpointauth)
-- [HTTPAuth](#httpauth)
-- [HTTPConfig](#httpconfig)
-- [HTTPSDConfig](#httpsdconfig)
-- [KubernetesSDConfig](#kubernetessdconfig)
-- [OAuth2](#oauth2)
-- [OpenStackSDConfig](#openstacksdconfig)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [ProxyAuth](#proxyauth)
-- [TargetEndpoint](#targetendpoint)
-- [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
-- [VMAlertDatasourceSpec](#vmalertdatasourcespec)
-- [VMAlertNotifierSpec](#vmalertnotifierspec)
-- [VMAlertRemoteReadSpec](#vmalertremotereadspec)
-- [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
-- [VMAuthSpec](#vmauthspec)
-- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
-- [VMNodeScrapeSpec](#vmnodescrapespec)
-- [VMProbeSpec](#vmprobespec)
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
-- [VMUserConfigOptions](#vmuserconfigoptions)
-- [VMUserSpec](#vmuserspec)
+_Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |
@@ -2388,11 +1856,7 @@ _Appears in:_
 
 TLSServerConfig defines TLS configuration for the application's server
 
-
-
-_Appears in:_
-- [AlertmanagerGossipConfig](#alertmanagergossipconfig)
-- [AlertmanagerWebConfig](#alertmanagerwebconfig)
+_Appears in: [AlertmanagerGossipConfig](#alertmanagergossipconfig), [AlertmanagerWebConfig](#alertmanagerwebconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2416,10 +1880,7 @@ _Appears in:_
 
 TargetEndpoint defines single static target endpoint.
 
-
-
-_Appears in:_
-- [VMStaticScrapeSpec](#vmstaticscrapespec)
+_Appears in: [VMStaticScrapeSpec](#vmstaticscrapespec)
 
 | Field | Description |
 | --- | --- |
@@ -2458,10 +1919,7 @@ one of target types can be chosen:
 crd or static per targetRef.
 user can define multiple targetRefs with different ref Types.
 
-
-
-_Appears in:_
-- [VMUserSpec](#vmuserspec)
+_Appears in: [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |
@@ -2480,10 +1938,7 @@ _Appears in:_
 
 TargetRefBasicAuth target basic authentication
 
-
-
-_Appears in:_
-- [TargetRef](#targetref)
+_Appears in: [TargetRef](#targetref)
 
 | Field | Description |
 | --- | --- |
@@ -2498,10 +1953,7 @@ _Appears in:_
 TelegramConfig configures notification via telegram
 https://prometheus.io/docs/alerting/latest/configuration/#telegram_config
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -2522,10 +1974,7 @@ _Appears in:_
 
 TimeInterval defines intervals of time
 
-
-
-_Appears in:_
-- [TimeIntervals](#timeintervals)
+_Appears in: [TimeIntervals](#timeintervals)
 
 | Field | Description |
 | --- | --- |
@@ -2543,10 +1992,7 @@ _Appears in:_
 
 TimeIntervals for alerts
 
-
-
-_Appears in:_
-- [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
+_Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -2560,10 +2006,7 @@ _Appears in:_
 
 TimeRange  ranges inclusive of the starting time and exclusive of the end time
 
-
-
-_Appears in:_
-- [TimeInterval](#timeinterval)
+_Appears in: [TimeInterval](#timeinterval)
 
 | Field | Description |
 | --- | --- |
@@ -2577,11 +2020,7 @@ _Appears in:_
 
 URLMapCommon contains common fields for unauthorized user and user in vmuser
 
-
-
-_Appears in:_
-- [TargetRef](#targetref)
-- [UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap)
+_Appears in: [TargetRef](#targetref), [UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap)
 
 | Field | Description |
 | --- | --- |
@@ -2602,11 +2041,7 @@ _Appears in:_
 UnauthorizedAccessConfigURLMap defines element of url_map routing configuration
 For UnauthorizedAccessConfig and VMAuthUnauthorizedUserAccessSpec.URLMap
 
-
-
-_Appears in:_
-- [VMAuthSpec](#vmauthspec)
-- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
+_Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
 
 | Field | Description |
 | --- | --- |
@@ -2622,21 +2057,7 @@ _Underlying type:_ _string_
 
 UpdateStatus defines status for application
 
-
-
-_Appears in:_
-- [ScrapeObjectStatus](#scrapeobjectstatus)
-- [StatusMetadata](#statusmetadata)
-- [VLogsStatus](#vlogsstatus)
-- [VMAgentStatus](#vmagentstatus)
-- [VMAlertStatus](#vmalertstatus)
-- [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus)
-- [VMAlertmanagerStatus](#vmalertmanagerstatus)
-- [VMAuthStatus](#vmauthstatus)
-- [VMClusterStatus](#vmclusterstatus)
-- [VMRuleStatus](#vmrulestatus)
-- [VMSingleStatus](#vmsinglestatus)
-- [VMUserStatus](#vmuserstatus)
+_Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus)
 
 
 
@@ -2646,8 +2067,6 @@ _Appears in:_
 
 VLogs is fast, cost-effective and scalable logs database.
 VLogs is the Schema for the vlogs API
-
-
 
 
 
@@ -2665,10 +2084,7 @@ VLogs is the Schema for the vlogs API
 
 VLogsSpec defines the desired state of VLogs
 
-
-
-_Appears in:_
-- [VLogs](#vlogs)
+_Appears in: [VLogs](#vlogs)
 
 | Field | Description |
 | --- | --- |
@@ -2736,8 +2152,6 @@ or any other Prometheus-compatible storage system that supports the remote_write
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -2752,10 +2166,7 @@ or any other Prometheus-compatible storage system that supports the remote_write
 
 VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
 
-
-
-_Appears in:_
-- [VMAgentSpec](#vmagentspec)
+_Appears in: [VMAgentSpec](#vmagentspec)
 
 | Field | Description |
 | --- | --- |
@@ -2775,10 +2186,7 @@ _Appears in:_
 
 VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
 
-
-
-_Appears in:_
-- [VMAgentSpec](#vmagentspec)
+_Appears in: [VMAgentSpec](#vmagentspec)
 
 | Field | Description |
 | --- | --- |
@@ -2802,10 +2210,7 @@ _Appears in:_
 
 VMAgentSecurityEnforcements defines security configuration for endpoint scrapping
 
-
-
-_Appears in:_
-- [VMAgentSpec](#vmagentspec)
+_Appears in: [VMAgentSpec](#vmagentspec)
 
 | Field | Description |
 | --- | --- |
@@ -2822,10 +2227,7 @@ _Appears in:_
 
 VMAgentSpec defines the desired state of VMAgent
 
-
-
-_Appears in:_
-- [VMAgent](#vmagent)
+_Appears in: [VMAgent](#vmagent)
 
 | Field | Description |
 | --- | --- |
@@ -2941,8 +2343,6 @@ VMAlert  executes a list of given alerting or recording rules against configured
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -2957,10 +2357,7 @@ VMAlert  executes a list of given alerting or recording rules against configured
 
 VMAlertDatasourceSpec defines the remote storage configuration for VmAlert to read alerts from
 
-
-
-_Appears in:_
-- [VMAlertSpec](#vmalertspec)
+_Appears in: [VMAlertSpec](#vmalertspec)
 
 | Field | Description |
 | --- | --- |
@@ -2977,10 +2374,7 @@ _Appears in:_
 
 VMAlertNotifierSpec defines the notifier url for sending information about alerts
 
-
-
-_Appears in:_
-- [VMAlertSpec](#vmalertspec)
+_Appears in: [VMAlertSpec](#vmalertspec)
 
 | Field | Description |
 | --- | --- |
@@ -2998,10 +2392,7 @@ _Appears in:_
 
 VMAlertRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
 
-
-
-_Appears in:_
-- [VMAlertSpec](#vmalertspec)
+_Appears in: [VMAlertSpec](#vmalertspec)
 
 | Field | Description |
 | --- | --- |
@@ -3019,10 +2410,7 @@ _Appears in:_
 
 VMAlertRemoteWriteSpec defines the remote storage configuration for VmAlert
 
-
-
-_Appears in:_
-- [VMAlertSpec](#vmalertspec)
+_Appears in: [VMAlertSpec](#vmalertspec)
 
 | Field | Description |
 | --- | --- |
@@ -3043,10 +2431,7 @@ _Appears in:_
 
 VMAlertSpec defines the desired state of VMAlert
 
-
-
-_Appears in:_
-- [VMAlert](#vmalert)
+_Appears in: [VMAlert](#vmalert)
 
 | Field | Description |
 | --- | --- |
@@ -3127,8 +2512,6 @@ VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -3142,8 +2525,6 @@ VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
 
 
 VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
-
-
 
 
 
@@ -3162,10 +2543,7 @@ VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
 VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
 it must reference only locally defined objects
 
-
-
-_Appears in:_
-- [VMAlertmanagerConfig](#vmalertmanagerconfig)
+_Appears in: [VMAlertmanagerConfig](#vmalertmanagerconfig)
 
 | Field | Description |
 | --- | --- |
@@ -3184,10 +2562,7 @@ _Appears in:_
 VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmanager cluster. More info:
 https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 
-
-
-_Appears in:_
-- [VMAlertmanager](#vmalertmanager)
+_Appears in: [VMAlertmanager](#vmalertmanager)
 
 | Field | Description |
 | --- | --- |
@@ -3274,8 +2649,6 @@ VMAuth is the Schema for the vmauths API
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -3291,10 +2664,7 @@ VMAuth is the Schema for the vmauths API
 VMAuthLoadBalancer configures vmauth as a load balancer
 for the requests
 
-
-
-_Appears in:_
-- [VMClusterSpec](#vmclusterspec)
+_Appears in: [VMClusterSpec](#vmclusterspec)
 
 | Field | Description |
 | --- | --- |
@@ -3311,10 +2681,7 @@ _Appears in:_
 VMAuthLoadBalancerSpec defines configuration spec for VMAuth used as load-balancer
 for VMCluster component
 
-
-
-_Appears in:_
-- [VMAuthLoadBalancer](#vmauthloadbalancer)
+_Appears in: [VMAuthLoadBalancer](#vmauthloadbalancer)
 
 | Field | Description |
 | --- | --- |
@@ -3368,10 +2735,7 @@ _Appears in:_
 
 VMAuthSpec defines the desired state of VMAuth
 
-
-
-_Appears in:_
-- [VMAuth](#vmauth)
+_Appears in: [VMAuth](#vmauth)
 
 | Field | Description |
 | --- | --- |
@@ -3456,10 +2820,7 @@ _Appears in:_
 
 VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
 
-
-
-_Appears in:_
-- [VMAuthSpec](#vmauthspec)
+_Appears in: [VMAuthSpec](#vmauthspec)
 
 | Field | Description |
 | --- | --- |
@@ -3485,11 +2846,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [VMSingleSpec](#vmsinglespec)
-- [VMStorage](#vmstorage)
+_Appears in: [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -3526,8 +2883,6 @@ Cluster version with
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -3542,10 +2897,7 @@ Cluster version with
 
 VMClusterSpec defines the desired state of VMCluster
 
-
-
-_Appears in:_
-- [VMCluster](#vmcluster)
+_Appears in: [VMCluster](#vmcluster)
 
 | Field | Description |
 | --- | --- |
@@ -3573,10 +2925,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [VMClusterSpec](#vmclusterspec)
+_Appears in: [VMClusterSpec](#vmclusterspec)
 
 | Field | Description |
 | --- | --- |
@@ -3639,8 +2988,6 @@ InternalIP is used as __address__ for scraping.
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -3655,10 +3002,7 @@ InternalIP is used as __address__ for scraping.
 
 VMNodeScrapeSpec defines specification for VMNodeScrape.
 
-
-
-_Appears in:_
-- [VMNodeScrape](#vmnodescrape)
+_Appears in: [VMNodeScrape](#vmnodescrape)
 
 | Field | Description |
 | --- | --- |
@@ -3700,8 +3044,6 @@ based on selectors.
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -3716,10 +3058,7 @@ based on selectors.
 
 VMPodScrapeSpec defines the desired state of VMPodScrape
 
-
-
-_Appears in:_
-- [VMPodScrape](#vmpodscrape)
+_Appears in: [VMPodScrape](#vmpodscrape)
 
 | Field | Description |
 | --- | --- |
@@ -3743,8 +3082,6 @@ It helps to monitor reachability of target with various checks.
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -3759,10 +3096,7 @@ It helps to monitor reachability of target with various checks.
 
 VMProbeSpec contains specification parameters for a Probe.
 
-
-
-_Appears in:_
-- [VMProbe](#vmprobe)
+_Appears in: [VMProbe](#vmprobe)
 
 | Field | Description |
 | --- | --- |
@@ -3799,10 +3133,7 @@ _Appears in:_
 
 VMProbeTargetStaticConfig defines the set of static targets considered for probing.
 
-
-
-_Appears in:_
-- [VMProbeTargets](#vmprobetargets)
+_Appears in: [VMProbeTargets](#vmprobetargets)
 
 | Field | Description |
 | --- | --- |
@@ -3817,10 +3148,7 @@ _Appears in:_
 
 VMProbeTargets defines a set of static and dynamically discovered targets for the prober.
 
-
-
-_Appears in:_
-- [VMProbeSpec](#vmprobespec)
+_Appears in: [VMProbeSpec](#vmprobespec)
 
 | Field | Description |
 | --- | --- |
@@ -3834,10 +3162,7 @@ _Appears in:_
 
 VMProberSpec contains specification parameters for the Prober used for probing.
 
-
-
-_Appears in:_
-- [VMProbeSpec](#vmprobespec)
+_Appears in: [VMProbeSpec](#vmprobespec)
 
 | Field | Description |
 | --- | --- |
@@ -3852,10 +3177,7 @@ _Appears in:_
 
 VMRestore defines config options for vmrestore start-up
 
-
-
-_Appears in:_
-- [VMBackup](#vmbackup)
+_Appears in: [VMBackup](#vmbackup)
 
 | Field | Description |
 | --- | --- |
@@ -3868,10 +3190,7 @@ _Appears in:_
 
 VMRestoreOnStartConfig controls vmrestore setting
 
-
-
-_Appears in:_
-- [VMRestore](#vmrestore)
+_Appears in: [VMRestore](#vmrestore)
 
 | Field | Description |
 | --- | --- |
@@ -3883,8 +3202,6 @@ _Appears in:_
 
 
 VMRule defines rule records for vmalert application
-
-
 
 
 
@@ -3902,10 +3219,7 @@ VMRule defines rule records for vmalert application
 
 VMRuleSpec defines the desired state of VMRule
 
-
-
-_Appears in:_
-- [VMRule](#vmrule)
+_Appears in: [VMRule](#vmrule)
 
 | Field | Description |
 | --- | --- |
@@ -3919,8 +3233,6 @@ _Appears in:_
 
 
 VMScrapeConfig specifies a set of targets and parameters describing how to scrape them.
-
-
 
 
 
@@ -3938,10 +3250,7 @@ VMScrapeConfig specifies a set of targets and parameters describing how to scrap
 
 VMScrapeConfigSpec defines the desired state of VMScrapeConfig
 
-
-
-_Appears in:_
-- [VMScrapeConfig](#vmscrapeconfig)
+_Appears in: [VMScrapeConfig](#vmscrapeconfig)
 
 | Field | Description |
 | --- | --- |
@@ -3987,16 +3296,7 @@ _Appears in:_
 VMScrapeParams defines scrape target configuration that compatible only with VictoriaMetrics scrapers
 VMAgent and VMSingle
 
-
-
-_Appears in:_
-- [Endpoint](#endpoint)
-- [EndpointScrapeParams](#endpointscrapeparams)
-- [PodMetricsEndpoint](#podmetricsendpoint)
-- [TargetEndpoint](#targetendpoint)
-- [VMNodeScrapeSpec](#vmnodescrapespec)
-- [VMProbeSpec](#vmprobespec)
-- [VMScrapeConfigSpec](#vmscrapeconfigspec)
+_Appears in: [Endpoint](#endpoint), [EndpointScrapeParams](#endpointscrapeparams), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -4016,10 +3316,7 @@ _Appears in:_
 
 VMSelect defines configuration section for vmselect components of the victoria-metrics cluster
 
-
-
-_Appears in:_
-- [VMClusterSpec](#vmclusterspec)
+_Appears in: [VMClusterSpec](#vmclusterspec)
 
 | Field | Description |
 | --- | --- |
@@ -4085,8 +3382,6 @@ result config will scrape service endpoints
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -4101,20 +3396,7 @@ result config will scrape service endpoints
 
 VMServiceScrapeSpec defines the desired state of VMServiceScrape
 
-
-
-_Appears in:_
-- [VLogsSpec](#vlogsspec)
-- [VMAgentSpec](#vmagentspec)
-- [VMAlertSpec](#vmalertspec)
-- [VMAlertmanagerSpec](#vmalertmanagerspec)
-- [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec)
-- [VMAuthSpec](#vmauthspec)
-- [VMInsert](#vminsert)
-- [VMSelect](#vmselect)
-- [VMServiceScrape](#vmservicescrape)
-- [VMSingleSpec](#vmsinglespec)
-- [VMStorage](#vmstorage)
+_Appears in: [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMServiceScrape](#vmservicescrape), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -4138,8 +3420,6 @@ VMSingle  is fast, cost-effective and scalable time-series database.
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -4154,10 +3434,7 @@ VMSingle  is fast, cost-effective and scalable time-series database.
 
 VMSingleSpec defines the desired state of VMSingle
 
-
-
-_Appears in:_
-- [VMSingle](#vmsingle)
+_Appears in: [VMSingle](#vmsingle)
 
 | Field | Description |
 | --- | --- |
@@ -4225,8 +3502,6 @@ VMStaticScrape  defines static targets configuration for scraping.
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -4241,10 +3516,7 @@ VMStaticScrape  defines static targets configuration for scraping.
 
 VMStaticScrapeSpec defines the desired state of VMStaticScrape.
 
-
-
-_Appears in:_
-- [VMStaticScrape](#vmstaticscrape)
+_Appears in: [VMStaticScrape](#vmstaticscrape)
 
 | Field | Description |
 | --- | --- |
@@ -4260,10 +3532,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [VMClusterSpec](#vmclusterspec)
+_Appears in: [VMClusterSpec](#vmclusterspec)
 
 | Field | Description |
 | --- | --- |
@@ -4328,8 +3597,6 @@ VMUser is the Schema for the vmusers API
 
 
 
-
-
 | Field | Description |
 | --- | --- |
 | `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` |
@@ -4344,12 +3611,7 @@ VMUser is the Schema for the vmusers API
 
 VMUserConfigOptions defines configuration options for VMUser object
 
-
-
-_Appears in:_
-- [VMAuthSpec](#vmauthspec)
-- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
-- [VMUserSpec](#vmuserspec)
+_Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |
@@ -4373,13 +3635,7 @@ _Appears in:_
 VMUserIPFilters defines filters for IP addresses
 supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth#ip-filters)
 
-
-
-_Appears in:_
-- [VMAuthSpec](#vmauthspec)
-- [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)
-- [VMUserConfigOptions](#vmuserconfigoptions)
-- [VMUserSpec](#vmuserspec)
+_Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |
@@ -4393,10 +3649,7 @@ _Appears in:_
 
 VMUserSpec defines the desired state of VMUser
 
-
-
-_Appears in:_
-- [VMUser](#vmuser)
+_Appears in: [VMUser](#vmuser)
 
 | Field | Description |
 | --- | --- |
@@ -4432,10 +3685,7 @@ _Appears in:_
 VictorOpsConfig configures notifications via VictorOps.
 See https://prometheus.io/docs/alerting/latest/configuration/#victorops_config
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -4458,10 +3708,7 @@ _Appears in:_
 WeChatConfig configures notifications via WeChat.
 See https://prometheus.io/docs/alerting/latest/configuration/#wechat_config
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -4484,10 +3731,7 @@ _Appears in:_
 
 
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
@@ -4505,16 +3749,14 @@ _Appears in:_
 WebhookConfig configures notifications via a generic receiver supporting the webhook payload.
 See https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
 
-
-
-_Appears in:_
-- [Receiver](#receiver)
+_Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
 | <a href="#webhookconfig-http_config"><code id="webhookconfig-http_config">http_config</code></a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
 | <a href="#webhookconfig-max_alerts"><code id="webhookconfig-max_alerts">max_alerts</code></a><br/>_integer_ | _(Optional)_<br/>Maximum number of alerts to be sent per webhook message. When 0, all alerts are included. |
 | <a href="#webhookconfig-send_resolved"><code id="webhookconfig-send_resolved">send_resolved</code></a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| <a href="#webhookconfig-timeout"><code id="webhookconfig-timeout">timeout</code></a><br/>_string_ | _(Optional)_<br/>Timeout is the maximum time allowed to invoke the webhook<br />available since v0.28.0 alertmanager version |
 | <a href="#webhookconfig-url"><code id="webhookconfig-url">url</code></a><br/>_string_ | _(Optional)_<br/>URL to send requests to,<br />one of `urlSecret` and `url` must be defined. |
 | <a href="#webhookconfig-url_secret"><code id="webhookconfig-url_secret">url_secret</code></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. |
 

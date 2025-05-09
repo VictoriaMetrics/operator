@@ -355,7 +355,7 @@ kubectl exec -n vm $VMAGENT_POD_NAME -c vmagent  -- wget -qO -  http://127.0.0.1
 ```
 You’ll see demo-app in the list, along with a few other targets.
 The extra ones, like vmsingle-demo and vmagent-demo, are added automatically.
-That’s because the VictoriaMetrics operator creates scrape configs for its own components by default.
+That’s because the VictoriaMetrics operator creates scrape configs for its own resources by default.
 
 If you prefer a visual interface, you can use the VMAgent UI.
 First, forward port `8429` from the VMAgent pod to your local machine:
@@ -385,10 +385,9 @@ Now that you know how to scrape metrics from your app, let’s move on to config
 
 If you're new to alerting with Prometheus, we recommend starting with [Prometheus Alerting 101: Rules, Recording Rules, and Alertmanager](https://victoriametrics.com/blog/alerting-recording-rules-alertmanager/).
 This article provides a solid introduction to key concepts such as alert rules, recording rules, alert templates, routing, silencing, and more.
-In this section, we’ll walk through how to set up alerting in a Kubernetes environment using VictoriaMetrics components.
 In this guide, we’ll show how to set up alerting in Kubernetes using VictoriaMetrics tools.
 
-We’ll deploy the following components:
+We’ll deploy the following resources:
 - `VMAlertManager` – handles alert notifications
 - `VMAlert` – checks alert and recording rules
 - `VMRule` – defines the alert rules
@@ -508,10 +507,38 @@ First, forward port `8080` from the `VMAlert` pod to your local machine:
 VMALERT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmalert" -o jsonpath="{.items[0].metadata.name}")
 kubectl port-forward -n vm $VMALERT_POD_NAME 8080:8080
 ```
-Then go to: http://localhost:8080/vmalert/groups
+Then go to: http://localhost:8080/vmalert/groups.
 You’ll see all groups, alerts and a lot more.
 
+That’s it! Your alerting setup is now working.
+If you want to see how it works from start to finish, follow the steps below.
 
+To trigger an alert, run this command:
+```sh
+DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/alerting/fireDemoAlert;
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/metrics;
+```
+
+This sets the `demo_alert_firing` metric to 1. Wait 1–2 minutes, then check the webhook receiver:
+```sh
+DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/alerting/receivedWebhooks;
+
+# {"receiver":"demo-app","status":"firing","alerts":[{"status":"firing","labels":{"alertgroup":"demo-app","alertname":"DemoAlertFiring","job":"demo-app","namespace":"default","pod":"demo-app-7f65f4dbf7-kt4tz"},"annotations":{"description":"demo-app pod demo-app-7f65f4dbf7-kt4tz is firing demo alert"},"startsAt":"2025-05-09T15:07:40Z","endsAt":"0001-01-01T00:00:00Z","generatorURL":"http://vmalert-demo-6f9cfcfb54-zzz9d:8080/vmalert/alert?group_id=1974157196182235209\u0026alert_id=9826110110139929675","fingerprint":"d014d7d794d8b310"}],"groupLabels":{},"commonLabels":{"alertgroup":"demo-app","alertname":"DemoAlertFiring","job":"demo-app","namespace":"default","pod":"demo-app-7f65f4dbf7-kt4tz"},"commonAnnotations":{"description":"demo-app pod demo-app-7f65f4dbf7-kt4tz is firing demo alert"},"externalURL":"http://vmalertmanager-demo-0:9093","version":"4","groupKey":"{}:{}","truncatedAlerts":0}
+```
+It will output the most recent webhook received from `VMAlertmanager`.
+
+To stop the alert, run:
+```sh
+DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/alerting/resolveDemoAlert;
+kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/metrics;
+```
+This sets the `demo_alert_firing` metric to 0. You should stop receiving alert notifications.
+
+Feel free to explore more by trying different annotations, labels, receivers, and other alert settings.
+For more details, check out the [VMAlert documentation](https://docs.victoriametrics.com/victoriametrics/vmalert/).
 
 ## Access
 

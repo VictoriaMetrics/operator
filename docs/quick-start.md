@@ -381,7 +381,139 @@ If you get a response like that, it means everything is working — the metrics 
 
 Now that you know how to scrape metrics from your app, let’s move on to configuring alerts based on the collected metrics.
 
-### Access
+## Alerting
+
+If you're new to alerting with Prometheus, we recommend starting with [Prometheus Alerting 101: Rules, Recording Rules, and Alertmanager](https://victoriametrics.com/blog/alerting-recording-rules-alertmanager/).
+This article provides a solid introduction to key concepts such as alert rules, recording rules, alert templates, routing, silencing, and more.
+In this section, we’ll walk through how to set up alerting in a Kubernetes environment using VictoriaMetrics components.
+In this guide, we’ll show how to set up alerting in Kubernetes using VictoriaMetrics tools.
+
+We’ll deploy the following components:
+- `VMAlertManager` – handles alert notifications
+- `VMAlert` – checks alert and recording rules
+- `VMRule` – defines the alert rules
+
+We’ll also use the demo app from the [Scraping](#scraping) section again. 
+It will be used both as a source of metrics and as a webhook receiver for alerts.
+
+Create a [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/) manifest and apply it:
+```sh
+cat <<EOF > vmalertmanager-demo.yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: demo
+  namespace: vm
+spec:
+  configRawYaml: |
+    route:
+      receiver: 'demo-app'
+    receivers:
+    - name: 'demo-app'
+      webhook_configs:
+      - url: 'http://demo-app.default.svc:8080/alerting/webhook'
+EOF
+
+kubectl apply -f vmalertmanager-demo.yaml;
+
+# vmalertmanager.operator.victoriametrics.com/demo created
+```
+
+Create a [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert/) manifest and apply it:
+```sh
+cat <<'EOF' > vmalert-demo.yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: demo
+  namespace: vm
+spec:
+  # Metrics source (VMStorage/VMCluster/VMSingle)
+  datasource:
+    url: "http://vmsingle-demo.vm.svc:8429"
+
+  # Where to send alert state
+  remoteWrite:
+    url: "http://vmsingle-demo.vm.svc:8429"
+
+  # Where to load previous alert state from
+  remoteRead:
+    url: "http://vmsingle-demo.vm.svc:8429"
+
+  # Alertmanager URL for sending alerts
+  notifier:
+    url: "http://vmalertmanager-demo.vm.svc:9093"
+
+  # How often to evaluate rules
+  evaluationInterval: "30s"
+
+  # Watch VMRule resources in all namespaces
+  selectAllByDefault: true
+EOF
+
+kubectl apply -f vmalert-demo.yaml;
+
+# vmalert.operator.victoriametrics.com/demo created
+```
+
+You can use the same method we used before to check if the resources are running.
+Run `kubectl get pod`, but use the label selectors `app.kubernetes.io/name=vmalertmanager` and `app.kubernetes.io/name=vmalert`.
+
+Now, when you have `VMAlert` and `VMAlertManager` running, you can create your first  resource to define the alerting rules.
+This script creates a `VMRule` resource that defines an alert called `DemoAlertFiring`. 
+The rule expression checks if the metric `demo_alert_firing` is above zero for any `demo-app` pod in the `default` namespace. 
+If the condition holds for 30 seconds, the alert fires.
+
+Now that `VMAlert` and `VMAlertManager` are running, let’s define your first [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/).
+The rule defines an alert named `DemoAlertFiring`.
+It checks if the metric `demo_alert_firing` is above 0 for any `demo-app` pod in the `default` namespace.
+If this condition stays true for 30 seconds, the alert will fire.
+```sh
+cat <<'EOF' > demo-app-rule.yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: demo
+  namespace: default
+spec:
+  groups:
+    - name: demo-app
+      rules:
+        - alert: DemoAlertFiring
+          expr: 'sum(demo_alert_firing{job="demo-app",namespace="default"}) by (job,pod,namespace) > 0'
+          for: 30s
+          labels:
+            job: '{{ $labels.job }}'
+            pod: '{{ $labels.pod }}'
+          annotations:
+            description: 'demo-app pod {{ $labels.pod }} is firing demo alert'
+EOF
+
+kubectl apply -f demo-app-rule.yaml
+
+# vmrule.operator.victoriametrics.com/demo created
+```
+
+To confirm the alert is active, run:
+```sh
+VMALERT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmalert" -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n vm $VMALERT_POD_NAME -c vmalert  -- wget -qO -  http://127.0.0.1:8080/api/v1/rules |
+  jq -r '.data.groups[].rules[].name';
+# DemoAlertFiring
+```
+
+If you prefer using a web interface, you can open the `VMAlert` UI in your browser.
+First, forward port `8080` from the `VMAlert` pod to your local machine:
+```sh
+VMALERT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmalert" -o jsonpath="{.items[0].metadata.name}")
+kubectl port-forward -n vm $VMALERT_POD_NAME 8080:8080
+```
+Then go to: http://localhost:8080/vmalert/groups
+You’ll see all groups, alerts and a lot more.
+
+
+
+## Access
 
 We need to look at the results of what we got. Up until now, we've just been looking only at the status of the pods. 
 
@@ -488,88 +620,6 @@ and your given password (`Yt3N2r3cPl` in our case):
 ![Select 1](quick-start_select-1.webp)
 
 ![Select 2](quick-start_select-2.webp)
-
-## Alerting
-
-If you're new to alerting with Prometheus, we recommend starting with [Prometheus Alerting 101: Rules, Recording Rules, and Alertmanager](https://victoriametrics.com/blog/alerting-recording-rules-alertmanager/).
-This article provides a solid introduction to key concepts such as alert rules, recording rules, alert templates, routing, silencing, and more.
-In this section, we’ll walk through how to set up alerting in a Kubernetes environment using VictoriaMetrics components. 
-Specifically, we will deploy the following resources:
-
-- `VMAlertManager` – for managing alert notifications
-- `VMAlert` – for evaluating alerting and recording rules
-- `VMRule` – for defining the alerting rules
-
-We’ll also re-use the demo application deployed in the [Scraping](#scraping) section — 
-both as a metrics source and as the webhook receiver for alert notifications.
-
-Create a `VMAlertmanager` manifest and apply it:
-```sh
-cat <<EOF > vmalertmanager-demo.yaml
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAlertmanager
-metadata:
-  name: demo
-  namespace: vm
-spec:
-  configRawYaml: |
-    route:
-      receiver: 'demo-app'
-    receivers:
-    - name: 'demo-app'
-      webhook_configs:
-      - url: 'http://demo-app.default.svc:8080/alerting/webhook'
-EOF
-
-kubectl apply -f vmalertmanager-demo.yaml;
-
-# vmalertmanager.operator.victoriametrics.com/demo created
-```
-
-Create a `VMAlert` manifest and apply it:
-```sh
-cat <<'EOF' > vmalert-demo.yaml
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAlert
-metadata:
-  name: demo
-  namespace: vm
-spec:
-  # Metrics source (VMStorage/VMCluster/VMSingle)
-  datasource:
-    url: "http://vmsingle-demo.vm.svc:8429"
-
-  # Where to send alert state
-  remoteWrite:
-    url: "http://vmsingle-demo.vm.svc:8429"
-
-  # Where to load previous alert state from
-  remoteRead:
-    url: "http://vmsingle-demo.vm.svc:8429"
-
-  # Alertmanager URL for sending alerts
-  notifier:
-    url: "http://vmalertmanager-demo.vm.svc:9093"
-
-  # How often to evaluate rules
-  evaluationInterval: "30s"
-
-  # Watch VMRule resources in all namespaces
-  selectAllByDefault: true
-EOF
-
-kubectl apply -f vmalert-demo.yaml;
-
-# vmalert.operator.victoriametrics.com/demo created
-```
-
-You can follow the same approach we used earlier to verify that the deployed resources are running. 
-Use the same command `kubectl get pod`, but update the label selectors to `app.kubernetes.io/name=vmalertmanager` and `app.kubernetes.io/name=vmalert`.
-
-
-
-
-
 
 ## Anything else
 

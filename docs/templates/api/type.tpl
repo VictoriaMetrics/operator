@@ -15,11 +15,8 @@ _Validation:_
 {{- end }}
 {{- end }}
 
-{{ if $type.References -}}
-_Appears in:_
-{{- range $type.SortedReferences }}
-- {{ markdownRenderTypeLink . }}
-{{- end }}
+{{- if $type.References -}}
+_Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}{{ markdownRenderTypeLink $ref }}{{- end }}
 {{- end }}
 
 {{ if $type.Members -}}

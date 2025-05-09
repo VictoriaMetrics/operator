@@ -16,7 +16,7 @@ _Validation:_
 {{- end }}
 
 {{- if $type.References -}}
-_Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}{{ markdownRenderTypeLink $ref }}{{- end }}
+Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}{{ markdownRenderTypeLink $ref }}{{- end }}
 {{- end }}
 
 {{ if $type.Members -}}

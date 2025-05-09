@@ -23,7 +23,8 @@ COPY api/ api/
 COPY internal/ internal/
 ARG ROOT
 ARG BUILDINFO
-
+ARG FIPS_VERSION
+ARG GODEBUG_ARGS
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command
 # was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
@@ -34,7 +35,7 @@ RUN --mount=type=cache,target="/root/.cache/go-build"
 RUN \
   --mount=type=cache,target=/root/.cache \
   --mount=type=cache,target=/go/pkg/mod \
-  CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a \
+  CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} GODEBUG=${GODEBUG_ARGS} GOFIPS140=${FIPS_VERSION} go build -a \
    -ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=operator-${BUILDINFO}'" \
    -o app ${ROOT}/
 

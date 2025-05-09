@@ -12,6 +12,7 @@ DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
 OVERLAY ?= config/manager
 E2E_TESTS_CONCURRENCY ?= 5
+FIPS_VERSION=v1.0.0
 
 BUILDINFO="operator-$(DATEINFO_TAG)-$(TAG)"
 
@@ -196,6 +197,14 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 		--platform=$(PLATFORMS) \
 		--build-arg ROOT=$(ROOT) \
 		--build-arg BUILDINFO=$(BUILDINFO) \
+		--build-arg GODEBUG_ARGS="$(GODEBUG_BUILD_ARGS)" \
+		--build-arg FIPS_VERSION="$(FIPS_BUILD_VERSION)" \
+		--label "org.opencontainers.image.source=https://github.com/VictoriaMetrics/operator" \
+		--label "org.opencontainers.image.documentation=https://docs.victoriametrics.com/operator" \
+		--label "org.opencontainers.image.title=operator" \
+		--label "org.opencontainers.image.vendor=VictoriaMetrics" \
+		--label "org.opencontainers.image.version=$(TAG)" \
+		--label "org.opencontainers.image.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")" \
 		${DOCKER_BUILD_ARGS} \
 		$(foreach registry,$(PUBLISH_REGISTRIES), \
 		--tag $(registry)/$(ORG)/$(REPO):$(TAG) \
@@ -206,7 +215,9 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 
 publish:
 	TAG=$(TAG) ROOT=./cmd $(MAKE) docker-buildx
+	TAG=$(TAG)-fips GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd $(MAKE) docker-buildx
 	TAG=config-reloader-$(TAG) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
+	TAG=config-reloader-$(TAG)-fips GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.

@@ -169,7 +169,7 @@ type BaseOperatorConf struct {
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.68.0" env:"CONFIGRELOADIMAGE"`
+		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -301,7 +301,7 @@ type BaseOperatorConf struct {
 	VMAuthDefault struct {
 		Image               string `default:"victoriametrics/vmauth"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.68.0" env:"CONFIGRELOADIMAGE"`
+		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8427"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -581,8 +581,8 @@ func (labels *Labels) Merge(otherLabels map[string]string) map[string]string {
 func (labels *Labels) Set(value string) error {
 	m := map[string]string{}
 	if value != "" {
-		splitted := strings.Split(value, ",")
-		for _, pair := range splitted {
+		split := strings.Split(value, ",")
+		for _, pair := range split {
 			sp := strings.Split(pair, "=")
 			m[sp[0]] = sp[1]
 		}

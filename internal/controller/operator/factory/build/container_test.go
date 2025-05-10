@@ -265,10 +265,10 @@ func TestFormatContainerImage(t *testing.T) {
 	f("", "victoria-metrics/storage", "victoria-metrics/storage")
 	f("docker.io", "victoria-metrics/storage", "docker.io/victoria-metrics/storage")
 	// strip quay and replace with global repo
-	f("docker.io", "quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1", "docker.io/prometheus-operator/prometheus-config-reloader:v0.48.1")
+	f("docker.io", "quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1", "docker.io/prometheus-operator/prometheus-config-reloader:v0.82.1")
 	f("private.github.io", "victoria-metrics/storage", "private.github.io/victoria-metrics/storage")
 	// for private repo
-	f("private.github.io", "quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1", "private.github.io/prometheus-operator/prometheus-config-reloader:v0.48.1")
+	f("private.github.io", "quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1", "private.github.io/prometheus-operator/prometheus-config-reloader:v0.82.1")
 	// edge case
 	f("private.github.io", "quay.io/victoria-metrics/storage", "private.github.io/victoria-metrics/storage")
 	// correct behaviour, user must fix image naming

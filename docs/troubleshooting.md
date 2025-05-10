@@ -4,11 +4,11 @@ title: Troubleshooting
 menu:
   docs:
     parent: "operator"
-    weight: 13
+    weight: 15
 ---
 
-This document provides troubleshooting guides for the most common issues encountered when working with the VictoriaMetrics Operator.
-For more general troubleshooting, refer to the [VictoriaMetrics Troubleshooting](https://docs.victoriametrics.com/victoriametrics/troubleshooting/).
+This document provides troubleshooting guidance for the most common issues encountered when running VictoriaMetrics in Kubernetes.
+For broader troubleshooting tips and best practices, refer to the [VictoriaMetrics Troubleshooting](https://docs.victoriametrics.com/victoriametrics/troubleshooting/) guide.
 
 ## Unexpected vmstorage cache invalidation or inconsistent cache max size
 

@@ -1392,7 +1392,7 @@ Appears in: [Endpoint](#endpoint), [EndpointRelabelings](#endpointrelabelings), 
 
 
 
-RocketchatAttachmentAction defines message attachements
+RocketchatAttachmentAction defines message attachments
 https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
 
 Appears in: [RocketchatConfig](#rocketchatconfig)

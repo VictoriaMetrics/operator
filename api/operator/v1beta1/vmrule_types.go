@@ -144,7 +144,7 @@ func (cr *VMRule) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
 
-// Validate performs symantic validation of object
+// Validate performs semantic validation of object
 func (cr *VMRule) Validate() error {
 	if mustSkipValidation(cr) {
 		return nil

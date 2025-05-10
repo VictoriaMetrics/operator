@@ -151,7 +151,7 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
             ]
         }
     }
-}`, `root route reciever cannot be empty`)
+}`, `root route receiver cannot be empty`)
 
 	f(`{
     "apiVersion": "v1",

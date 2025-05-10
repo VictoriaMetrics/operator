@@ -114,7 +114,7 @@ func (r *VMAlertmanagerConfig) Validate() error {
 		return fmt.Errorf("no routes provided")
 	}
 	if r.Spec.Route.Receiver == "" {
-		return fmt.Errorf("root route reciever cannot be empty")
+		return fmt.Errorf("root route receiver cannot be empty")
 	}
 
 	for idx, recv := range r.Spec.Receivers {
@@ -1097,7 +1097,7 @@ type RocketchatAttachmentField struct {
 	Value string `json:"value,omitempty"`
 }
 
-// RocketchatAttachmentAction defines message attachements
+// RocketchatAttachmentAction defines message attachments
 // https://github.com/RocketChat/Rocket.Chat.Go.SDK/blob/master/models/message.go
 type RocketchatAttachmentAction struct {
 	// +optional
@@ -1658,7 +1658,7 @@ func validateReceiver(recv Receiver) error {
 				}
 			case opsgenieTypeMatcher.MatchString(responder.Type):
 			default:
-				return fmt.Errorf("at idx=%d opsgenie_configs responder type=%q doesnt match requirements, want either template or %s", idx, responder.Type, opsgenieTypeMatcher.String())
+				return fmt.Errorf("at idx=%d opsgenie_configs responder type=%q doesn't match requirements, want either template or %s", idx, responder.Type, opsgenieTypeMatcher.String())
 			}
 
 		}

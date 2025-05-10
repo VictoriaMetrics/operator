@@ -13,7 +13,7 @@ For broader troubleshooting tips and best practices, refer to the [VictoriaMetri
 ## Unexpected vmstorage cache invalidation or inconsistent cache max size
 
 Sometimes, vmstorage may [show unexpected cache resets or different cache sizes across pods](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8883). 
-This often happens after a pod restarts and you may notice changes in the `vm_cache_size_max_bytes` and `vm_cache_size_bytes metrics`.
+This often happens after a pod restarts and you may notice changes in the `vm_cache_size_max_bytes` and `vm_cache_size_bytes` metrics.
 Normally, vmstorage saves its cache when it shuts down properly and loads it again on startup. 
 But if the amount of available memory at startup is different from before, this behavior changes. 
 In those cases, vmstorage throws away the saved cache and creates a new one. 

@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new flags for leader election configuration - `leader-elect-namespace`, `leader-elect-id`.
+* FEATURE: [operator](https://docs.victoriametrics.com/operator): upgraded prometheus-config-reloader image 0.68.0 -> 0.82.1. See [helm-charts#2174](https://github.com/VictoriaMetrics/helm-charts/issues/2174).
 
 ## [v0.57.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.57.0)
 

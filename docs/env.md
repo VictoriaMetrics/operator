@@ -1,7 +1,7 @@
 
 | variable name | variable default value | variable required | variable description |
 | --- | --- | --- | --- |
-| VM_METRICS_VERSION | v1.116.0 | false |  |
+| VM_METRICS_VERSION | v1.117.0 | false |  |
 | VM_LOGS_VERSION | v1.21.0 | false |  |
 | VM_USECUSTOMCONFIGRELOADER | false | false | enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY | - | false | container registry name prefix, e.g. docker.io |
@@ -33,7 +33,7 @@
 | VM_VMSERVICESCRAPEDEFAULT_ENFORCEENDPOINTSLICES | false | false | Use endpointslices instead of endpoints as discovery role for vmservicescrape when generate scrape config for vmagent. |
 | VM_VMAGENTDEFAULT_IMAGE | victoriametrics/vmagent | false |  |
 | VM_VMAGENTDEFAULT_VERSION | ${VM_METRICS_VERSION} | false |  |
-| VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE | quay.io/prometheus-operator/prometheus-config-reloader:v0.68.0 | false |  |
+| VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE | quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1 | false |  |
 | VM_VMAGENTDEFAULT_PORT | 8429 | false |  |
 | VM_VMAGENTDEFAULT_USEDEFAULTRESOURCES | true | false |  |
 | VM_VMAGENTDEFAULT_RESOURCE_LIMIT_MEM | 500Mi | false |  |
@@ -96,7 +96,7 @@
 | VM_VMBACKUP_RESOURCE_REQUEST_CPU | 150m | false |  |
 | VM_VMAUTHDEFAULT_IMAGE | victoriametrics/vmauth | false |  |
 | VM_VMAUTHDEFAULT_VERSION | ${VM_METRICS_VERSION} | false |  |
-| VM_VMAUTHDEFAULT_CONFIGRELOADIMAGE | quay.io/prometheus-operator/prometheus-config-reloader:v0.68.0 | false |  |
+| VM_VMAUTHDEFAULT_CONFIGRELOADIMAGE | quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1 | false |  |
 | VM_VMAUTHDEFAULT_PORT | 8427 | false |  |
 | VM_VMAUTHDEFAULT_USEDEFAULTRESOURCES | true | false |  |
 | VM_VMAUTHDEFAULT_RESOURCE_LIMIT_MEM | 300Mi | false |  |

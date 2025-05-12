@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.117.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.117.0) version
+
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new flags for leader election configuration - `leader-elect-namespace`, `leader-elect-id`.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): upgraded prometheus-config-reloader image 0.68.0 -> 0.82.1. See [helm-charts#2174](https://github.com/VictoriaMetrics/helm-charts/issues/2174).
 

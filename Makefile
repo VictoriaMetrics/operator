@@ -20,9 +20,6 @@ LOCAL_REGISTRY_NAME ?= kind-registry
 LOCAL_REGISTRY_PORT ?= 5001
 LOCAL_REGISTRY_DIR = "/etc/containerd/certs.d/localhost:$(LOCAL_REGISTRY_PORT)"
 
-REPODIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-WORKDIR := $(REPODIR)/..
-
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.32.0
 PLATFORM = $(shell uname -o)
@@ -45,6 +42,7 @@ CONTAINER_TOOL ?= docker
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+include docs/Makefile
 include codespell/Makefile
 
 .PHONY: all
@@ -318,37 +316,6 @@ deploy-kind-olm: kustomize-set-annotation load-kind olm docker-push deploy
 
 undeploy-kind: OVERLAY=config/kind
 undeploy-kind: load-kind undeploy
-
-docs-image:
-	if [ ! -d $(WORKDIR)/vmdocs ]; then \
-		git clone --depth 1 git@github.com:VictoriaMetrics/vmdocs $(WORKDIR)/vmdocs; \
-	fi; \
-	cd $(WORKDIR)/vmdocs && \
-	git checkout main && \
-	git pull origin main && \
-	cd $(REPODIR) && \
-	$(CONTAINER_TOOL) build \
-		-t vmdocs \
-		$(WORKDIR)/vmdocs
-
-docs-debug: docs docs-image
-	$(CONTAINER_TOOL) run \
-		--rm \
-		--name vmdocs \
-		-p 1313:1313 \
-		-v ./docs:/opt/docs/content/operator vmdocs
-
-docs-images-to-webp: docs-image
-	$(CONTAINER_TOOL) run \
-		--rm \
-		--entrypoint /usr/bin/find \
-		--name vmdocs \
-		-v ./docs:/opt/docs/content/operator vmdocs \
-			content/operator \
-				-regex ".*\.\(png\|jpg\|jpeg\)" \
-				-exec sh -c 'cwebp -preset drawing -m 6 -o $$(echo {} | cut -f-1 -d.).webp {} && rm -rf {}' {} \;
-
-##@ Dependencies
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin

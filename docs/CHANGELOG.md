@@ -18,6 +18,8 @@ aliases:
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new flags for leader election configuration - `leader-elect-namespace`, `leader-elect-id`.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): upgraded prometheus-config-reloader image 0.68.0 -> 0.82.1. See [helm-charts#2174](https://github.com/VictoriaMetrics/helm-charts/issues/2174).
 
+* BUGFIX: [converter](https://docs.victoriametrics.com/operator/migration/#objects-conversion): properly retry watch request errors. Previously watcher could stale and ignore any Prometheus CRD object events. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1322) for details.
+
 ## [v0.57.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.57.0)
 
 **Release date:** 09 May 2025

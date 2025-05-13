@@ -149,6 +149,7 @@ var (
 type ObjectWatcherForNamespaces struct {
 	result         chan watch.Event
 	objectWatchers []watch.Interface
+	cancel         func()
 	wg             sync.WaitGroup
 }
 
@@ -161,14 +162,20 @@ func NewObjectWatcherForNamespaces[T any, PT interface {
 	initMetrics.Do(func() {
 		metrics.Registry.MustRegister(activeWatchers, watchEventsTotalByType)
 	})
+	// all watchers must be gracefully stopped at any child channel close
+	// or at watch.Stop call
+	localCtx, cancel := context.WithCancel(ctx)
+
 	ownss := ObjectWatcherForNamespaces{
 		result: make(chan watch.Event),
+		cancel: cancel,
 	}
 	// fast path
 	if len(namespaces) == 0 {
 		dst := PT(new(T))
-		w, err := rclient.Watch(ctx, dst)
+		w, err := rclient.Watch(localCtx, dst)
 		if err != nil {
+			cancel()
 			return w, fmt.Errorf("cannot start watcher for cluster wide: %w", err)
 		}
 		ownss.wg.Add(1)
@@ -178,7 +185,7 @@ func NewObjectWatcherForNamespaces[T any, PT interface {
 			defer activeWatchers.WithLabelValues("ALL_NAMESPACES").Add(-1)
 			for {
 				select {
-				case <-ctx.Done():
+				case <-localCtx.Done():
 					return
 				case ev, ok := <-w.ResultChan():
 					if !ok {
@@ -188,7 +195,7 @@ func NewObjectWatcherForNamespaces[T any, PT interface {
 					watchEventsTotalByType.WithLabelValues(string(ev.Type), "ALL_NAMESPACES", crdTypeName).Inc()
 					select {
 					case ownss.result <- ev:
-					case <-ctx.Done():
+					case <-localCtx.Done():
 						return
 					}
 				}
@@ -198,8 +205,6 @@ func NewObjectWatcherForNamespaces[T any, PT interface {
 		return &ownss, nil
 	}
 
-	// all watchers must be gracefully stopped at any child channel close
-	localCtx, cancel := context.WithCancel(ctx)
 	for _, ns := range namespaces {
 		dst := PT(new(T))
 		w, err := rclient.Watch(localCtx, dst, &client.ListOptions{Namespace: ns})
@@ -250,6 +255,9 @@ func (ow *ObjectWatcherForNamespaces) Stop() {
 	for _, objectWatcher := range ow.objectWatchers {
 		objectWatcher.Stop()
 	}
+	// cancel on-going items processing
+	// it must properly release all created resources by watchers
+	ow.cancel()
 	ow.wg.Wait()
 }
 

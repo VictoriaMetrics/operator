@@ -679,46 +679,47 @@ and feel free to can ask them:
 If you have any suggestions or find a bug, please create an issue
 on [GitHub](https://github.com/VictoriaMetrics/operator/issues/new).
 
+---
 
 ###### Setup operator
 
-Renamed to [operator/quick-start#operator](https://docs.victoriametrics.com/operator/quick-start#operator)
+Moved to [operator/quick-start/#operator](https://docs.victoriametrics.com/operator/quick-start/#operator)
 
 ###### Setup storage
 
-Renamed to [operator/quick-start#storage](https://docs.victoriametrics.com/operator/quick-start#storage)
+Moved to [operator/quick-start/#storage](https://docs.victoriametrics.com/operator/quick-start/#storage)
 
 ###### Deploy components
 
-Split into several sections [operator/quick-start#storage](https://docs.victoriametrics.com/operator/quick-start#storage), 
-[operator/quick-start#scrapping](https://docs.victoriametrics.com/operator/quick-start#scraping), 
-[operator/quick-start#alerting](https://docs.victoriametrics.com/operator/quick-start#alerting), 
-[operator/quick-start#access](https://docs.victoriametrics.com/operator/quick-start#access)
+Split into several sections [operator/quick-start/#storage](https://docs.victoriametrics.com/operator/quick-start/#storage), 
+[operator/quick-start/#scrapping](https://docs.victoriametrics.com/operator/quick-start/#scraping), 
+[operator/quick-start/#alerting](https://docs.victoriametrics.com/operator/quick-start/#alerting), 
+[operator/quick-start/#access](https://docs.victoriametrics.com/operator/quick-start/#access)
+
 
 ###### VMCluster (vmselect, vminsert, vmstorage)
 
-Quick start now features `VMSingle` [operator/quick-start#storage](https://docs.victoriametrics.com/operator/quick-start#storage),
+Quick start now features `VMSingle` [operator/quick-start/#storage](https://docs.victoriametrics.com/operator/quick-start/#storage),
 for advanced use cases, check out [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/).
 
 ###### VMAgent
 
-Became part of [operator/quick-start#scraping](https://docs.victoriametrics.com/operator/quick-start#scraping)
+Became part of [operator/quick-start/#scraping](https://docs.victoriametrics.com/operator/quick-start/#scraping)
 
 ###### VMServiceScrape
 
-Became part of [operator/quick-start#scraping](https://docs.victoriametrics.com/operator/quick-start#scraping)
+Became part of [operator/quick-start/#scraping](https://docs.victoriametrics.com/operator/quick-start/#scraping)
 
 ###### VMAlertmanager
 
-Became part of [operator/quick-start#alerting](https://docs.victoriametrics.com/operator/quick-start#alerting)
+Became part of [operator/quick-start/#alerting](https://docs.victoriametrics.com/operator/quick-start/#alerting)
 
 ###### VMAlert
 
-Became part of [operator/quick-start#alerting](https://docs.victoriametrics.com/operator/quick-start#alerting)
+Became part of [operator/quick-start/#alerting](https://docs.victoriametrics.com/operator/quick-start/#alerting)
 
 ###### VMRule
 
-Became part of [operator/quick-start#alerting](https://docs.victoriametrics.com/operator/quick-start#alerting)
-
+Became part of [operator/quick-start/#alerting](https://docs.victoriametrics.com/operator/quick-start/#alerting)
 
 <!-- TODO: Add BC links for "VMUser update", "VMUser", "VMAuth". -->

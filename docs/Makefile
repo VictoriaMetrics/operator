@@ -29,7 +29,7 @@ docs-debug: docs docs-image
 		--rm \
 		--name vmdocs \
 		-p 1313:1313 \
-		-v ./docs:/opt/docs/content/operator vmdocs
+		-v ./docs:/opt/docs/content/operator vmdocs-docker-package
 
 docs-images-to-webp: docs-image
 	$(CONTAINER_TOOL) run \
@@ -37,7 +37,7 @@ docs-images-to-webp: docs-image
 		--platform $(DOCKER_PLATFORM) \
 		--entrypoint /usr/bin/find \
 		--name vmdocs \
-		-v ./docs:/opt/docs/content/operator vmdocs \
+		-v ./docs:/opt/docs/content/operator vmdocs-docker-package \
 			content/operator \
 				-regex ".*\.\(png\|jpg\|jpeg\)" \
 				-exec sh -c 'cwebp -preset drawing -m 6 -o $$(echo {} | cut -f-1 -d.).webp {} && rm -rf {}' {} \;

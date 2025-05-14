@@ -62,6 +62,19 @@ func (cr *VMStaticScrape) AsProxyKey(i int) string {
 	return fmt.Sprintf("staticScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
+// Validate returns error if CR is invalid
+func (cr *VMStaticScrape) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	for _, endpoint := range cr.Spec.TargetEndpoints {
+		if err := endpoint.EndpointRelabelings.validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // AsMapKey builds key for cache secret map
 func (cr *VMStaticScrape) AsMapKey(i int) string {
 	return fmt.Sprintf("staticScrape/%s/%s/%d", cr.Namespace, cr.Name, i)

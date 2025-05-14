@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+## [v0.58.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.58.0)
+
+**Release date:** 14 May 2025
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.117.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.117.0) version
 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new flags for leader election configuration - `leader-elect-namespace`, `leader-elect-id`.

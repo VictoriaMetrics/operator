@@ -18,6 +18,7 @@ By the end of this guide, you’ll have a fully functional setup that includes:
 - `VMSingle` – for storing and querying metrics
 - `VMAgent` and `VMServiceScrape` – for scraping targets
 - `VMAlertmanager`, `VMAlert` and `VMRule` – for managing alerts
+- `VMAuth`, `VMUser` - for external access and authentication.
 
 You’ll also learn how to interact with the system using basic tools like `kubectl` and `curl`.
 
@@ -28,6 +29,7 @@ Run the following command and ensure the output includes a server version:
 ```sh
 kubectl version
 
+# Output:
 # Client Version: v1.32.3
 # Kustomize Version: v5.5.0
 # Server Version: v1.32.2
@@ -35,6 +37,11 @@ kubectl version
 If you don't have a Kubernetes cluster, you can quickly spin up a local one using [Kind](https://kind.sigs.k8s.io/).
 
 Please note that [certain permissions](https://docs.victoriametrics.com/operator/security#roles) may be required for the operator to function properly.
+
+If you are new to metrics and monitoring, we recommend reading the following articles first:
+- [Counters, Gauges, Histograms & Summaries](https://victoriametrics.com/blog/prometheus-monitoring-metrics-counters-gauges-histogram-summaries/)
+- [Instant Queries and Range Queries Explained](https://victoriametrics.com/blog/prometheus-monitoring-instant-range-query/)
+- [Functions, Subqueries, Operators, and Modifiers](https://victoriametrics.com/blog/prometheus-monitoring-function-operator-modifier/)
 
 ## Operator
 
@@ -46,6 +53,7 @@ echo "VM_OPERATOR_VERSION=$VM_OPERATOR_VERSION";
 wget -O operator-and-crds.yaml \
   "https://github.com/VictoriaMetrics/operator/releases/download/$VM_OPERATOR_VERSION/install-no-webhook.yaml";
 
+# Output:
 # VM_OPERATOR_VERSION=v0.56.0
 # ...
 ```
@@ -55,6 +63,7 @@ Let’s take a quick look at the file’s contents. The beginning of the file sh
 ```sh
 head -n 10 operator-and-crds.yaml
 
+# Output:
 # apiVersion: v1
 # kind: Namespace
 # metadata:
@@ -70,6 +79,7 @@ Apply the manifest to your cluster:
 ```sh
 kubectl apply -f operator-and-crds.yaml
 
+# Output:
 # namespace/vm created
 # customresourcedefinition.apiextensions.k8s.io/vlogs.operator.victoriametrics.com created
 # customresourcedefinition.apiextensions.k8s.io/vmagents.operator.victoriametrics.com created
@@ -82,6 +92,7 @@ You can confirm the operator is running by checking the pod status:
 ```sh
 kubectl get pods -n vm -l "control-plane=vm-operator"
 
+# Output:
 # NAME                           READY   STATUS    RESTARTS   AGE
 # vm-operator-5db95b48bd-j6m9v   1/1     Running   0          2m27s
 ```
@@ -91,6 +102,7 @@ which you can list using the following command:
 ```sh
 kubectl api-resources --api-group=operator.victoriametrics.com
 
+# Output:
 # NAME                    SHORTNAMES   APIVERSION                             NAMESPACED   KIND
 # vlogs                                operator.victoriametrics.com/v1beta1   true         VLogs
 # vmagents                             operator.victoriametrics.com/v1beta1   true         VMAgent
@@ -108,6 +120,7 @@ Here’s an example showing how to get the default CPU and memory limits applied
 OPERATOR_POD_NAME=$(kubectl get pod -l "control-plane=vm-operator"  -n vm -o jsonpath="{.items[0].metadata.name}");
 kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --printDefaults 2>&1 | grep VMSINGLEDEFAULT_RESOURCE;
 
+# Output:
 # VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_MEM     1500Mi   false       
 # VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_CPU     1200m    false       
 # VM_VMSINGLEDEFAULT_RESOURCE_REQUEST_MEM   500Mi    false       
@@ -145,11 +158,13 @@ To confirm that `VMSingle` is running, run the following commands. You should se
 ```sh
 kubectl get vmsingle -n vm;
 
+# Output:
 #NAME   STATUS        AGE
 #demo   operational   5h48m
 
 kubectl get pods -n vm -l "app.kubernetes.io/name=vmsingle";
 
+# Output:
 # NAME                             READY   STATUS    RESTARTS   AGE
 # vmsingle-demo-54f8fc5777-sw6xp   1/1     Running   0          5h28m
 ```
@@ -160,6 +175,7 @@ To do this, open a separate terminal and run the port-forward command below:
 VMSINGLE_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmsingle" -o jsonpath="{.items[0].metadata.name}");
 kubectl port-forward -n vm $VMSINGLE_POD_NAME 8428:8429;
 
+# Output:
 # Forwarding from 127.0.0.1:8428 -> 8429
 # Forwarding from [::1]:8428 -> 8429
 ```
@@ -173,6 +189,7 @@ curl -i -X POST \
   --header 'Content-Type: text/plain' \
   --data 'a_metric{foo="fooVal"} 123'
 
+# Output:
 # HTTP/1.1 204 No Content
 # ...
 ```
@@ -186,6 +203,7 @@ Here’s an example using query endpoint to fetch `a_metric` data:
 ```sh
 curl -i --url http://127.0.0.1:8428/api/v1/query --url-query query=a_metric
 
+# Output:
 # HTTP/1.1 200 OK
 # ...
 # {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"a_metric","foo":"fooVal"},"value":[1746099757,"123"]}]},"stats":{"seriesFetched": "1","executionTimeMsec":0}}
@@ -200,6 +218,7 @@ VMSINGLE_POD_NAME=$(kubectl get pod -l "app.kubernetes.io/name=vmsingle"  -n vm 
 
 kubectl exec -n vm "$VMSINGLE_POD_NAME" -- ls -l  /victoria-metrics-data;
 
+# Output:
 # total 20
 # drwxr-xr-x    4 root     root          4096 Apr 30 12:20 data
 # -rw-r--r--    1 root     root             0 Apr 30 12:20 flock.lock
@@ -213,6 +232,8 @@ While you can push metrics directly as shown above, in most cases you won't need
 VictoriaMetrics can discover your applications and scrape their metrics. Let's set up scraping next.
 
 ## Scraping
+
+If you're new to scraping metrics or VMAgent, we recommend starting with [How vmagent Collects and Ships Metrics Fast with Aggregation, Deduplication, and More](https://victoriametrics.com/blog/vmagent-how-it-works/).
 
 The [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/) discovers and scrapes metrics from your apps.
 It uses special resources like [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) to know where to look.
@@ -239,6 +260,7 @@ Apply the manifest to your cluster:
 ```sh
 kubectl -n vm apply -f vmagent-demo.yaml
 
+# Output:
 # vmagent.operator.victoriametrics.com/demo created
 ```
 
@@ -246,11 +268,13 @@ To check if `VMAgent` is running, use:
 ```sh
 kubectl get vmagent -n vm;
 
+# Output:
 # NAME   SHARDS COUNT   REPLICA COUNT   STATUS        AGE
 # demo                                  operational   10s
 
 kubectl get pods -n vm -l "app.kubernetes.io/name=vmagent";
 
+# Output:
 # NAME                            READY   STATUS    RESTARTS   AGE
 # vmagent-demo-75bbfb6c5d-8htm8   2/2     Running   0          8s
 ```
@@ -298,6 +322,7 @@ EOF
 
 kubectl -n default apply -f demo-app.yaml;
 
+# Output:
 # pod/demo-app created
 # service/demo-app created
 ```
@@ -309,6 +334,7 @@ The demo app serves metrics at `/metrics` path on port `8080`. You can test it l
 DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
 kubectl exec -n default  ${DEMO_APP_POD} -- curl -i http://127.0.0.1:8080/metrics;
 
+# Output:
 # ...
 # HTTP/1.1 200 OK
 # Date: Sun, 04 May 2025 11:34:09 GMT
@@ -349,6 +375,7 @@ VMAGENT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmagent" -o 
 kubectl exec -n vm $VMAGENT_POD_NAME -c vmagent  -- wget -qO -  http://127.0.0.1:8429/api/v1/targets |
   jq -r '.data.activeTargets[].discoveredLabels.__meta_kubernetes_endpoint_address_target_name';
 
+# Output:
 # vmsingle-demo-54f8fc5777-sw6xp
 # vmagent-demo-75bbfb6c5d-8htm8
 # demo-app
@@ -370,6 +397,7 @@ Finally, let’s check that the metrics made it to `VMSingle`. Run this query:
 ```sh
 curl -i --url http://127.0.0.1:8428/api/v1/query --url-query 'query=demo_counter_total{job="demo-app",namespace="default"}'
 
+# Output:
 # HTTP/1.1 200 OK
 # ...
 #
@@ -392,7 +420,7 @@ We’ll deploy the following resources:
 - `VMAlert` – evaluates alerting and recording rules
 - `VMRule` – defines alerting and recording rules
 
-We’ll also use the demo app from the [Scraping](#scraping) section again. 
+We’ll also use the demo app from the [Scraping](https://docs.victoriametrics.com/operator/quick-start/#scraping) section again. 
 It will be used both as a source of metrics and as a webhook receiver for alerts.
 
 Create a [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/) manifest and apply it:
@@ -415,6 +443,7 @@ EOF
 
 kubectl apply -f vmalertmanager-demo.yaml;
 
+# Output:
 # vmalertmanager.operator.victoriametrics.com/demo created
 ```
 
@@ -485,6 +514,7 @@ EOF
 
 kubectl apply -f demo-app-rule.yaml
 
+# Output:
 # vmrule.operator.victoriametrics.com/demo created
 ```
 
@@ -493,6 +523,8 @@ To confirm the alert is active, run:
 VMALERT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmalert" -o jsonpath="{.items[0].metadata.name}");
 kubectl exec -n vm $VMALERT_POD_NAME -c vmalert  -- wget -qO -  http://127.0.0.1:8080/api/v1/rules |
   jq -r '.data.groups[].rules[].name';
+
+# Output:
 # DemoAlertFiring
 ```
 
@@ -514,6 +546,7 @@ DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -
 kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/alerting/fireDemoAlert;
 kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/metrics;
 
+# Output:
 # demo_alert_firing 1
 # demo_counter_total 523
 ```
@@ -523,6 +556,7 @@ This sets the `demo_alert_firing` metric to 1. Give alert a minute to fire, then
 DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -o jsonpath="{.items[0].metadata.name}");
 kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/alerting/receivedWebhooks;
 
+# Output:
 # {"receiver":"demo-app","status":"firing","alerts":[{"status":"firing","labels":{"alertgroup":"demo-app","alertname":"DemoAlertFiring","job":"demo-app","namespace":"default","pod":"demo-app-7f65f4dbf7-kt4tz"},"annotations":{"description":"demo-app pod demo-app-7f65f4dbf7-kt4tz is firing demo alert"},"startsAt":"2025-05-09T15:07:40Z","endsAt":"0001-01-01T00:00:00Z","generatorURL":"http://vmalert-demo-6f9cfcfb54-zzz9d:8080/vmalert/alert?group_id=1974157196182235209\u0026alert_id=9826110110139929675","fingerprint":"d014d7d794d8b310"}],"groupLabels":{},"commonLabels":{"alertgroup":"demo-app","alertname":"DemoAlertFiring","job":"demo-app","namespace":"default","pod":"demo-app-7f65f4dbf7-kt4tz"},"commonAnnotations":{"description":"demo-app pod demo-app-7f65f4dbf7-kt4tz is firing demo alert"},"externalURL":"http://vmalertmanager-demo-0:9093","version":"4","groupKey":"{}:{}","truncatedAlerts":0}
 ```
 It should output the most recent firing webhook notifications received from `VMAlertmanager`.
@@ -533,6 +567,7 @@ DEMO_APP_POD=$(kubectl get pod -n default -l "app.kubernetes.io/name=demo-app" -
 kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/alerting/resolveDemoAlert;
 kubectl exec -n default ${DEMO_APP_POD} -- curl -s --url http://127.0.0.1:8080/metrics;
 
+# Output:
 # demo_alert_firing 0
 # demo_counter_total 601
 ```
@@ -544,113 +579,156 @@ For more details, check out the [VMAlert documentation](https://docs.victoriamet
 
 ## Access
 
-We need to look at the results of what we got. Up until now, we've just been looking only at the status of the pods. 
-
-#### VMAuth
-
-Let's expose our components with [`vmauth`](https://docs.victoriametrics.com/operator/resources/vmauth).
-
-Create file `vmauth.yaml` 
-
-```shell
-code vmauth.yaml
+In Kubernetes, services are usually accessed within the cluster using internal addresses like:
 ```
+http://[SERVICE].[NAMESPACE].svc:[PORT]
+```
+This works well for internal communication between services\pods. 
+But if you want to access a service from outside the cluster (for example, from your browser), it's more complicated.
+There is `kubectl port-forward`, which works well for debugging but isn’t practical for production use.
+It also doesn’t support authentication, routing, enhanced load balancing. 
 
-with the following content:
+To access services in a more reliable and secure way, we’ll use:
+- [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/) - receives HTTP requests, authenticates and routes to the correct VictoriaMetrics resources.
+- [VMUser](https://docs.victoriametrics.com/operator/resources/vmuser/) - defines a username and a password, and tells `VMAuth` which requests should go where.
 
-```yaml
+Before you begin:
+You’ll need an [Ingress Controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) running in your cluster.
+This guide doesn’t include steps for setting up Ingress Controller because it depends on which Kubernetes distribution you're using (like EKS, GKE, or Minikube).
+Also, to keep things simple, we’re skipping HTTPS/TLS in this example — but in production, [always use HTTPS](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy) to keep your traffic secure.
+
+Run the following command to check if you already have an Ingress Controller:
+```sh
+kubectl get pods --all-namespaces | grep ingress
+
+# Output:
+# NAME                                        READY   STATUS    RESTARTS   AGE
+# ingress-nginx-controller-6d8c98d56b-7t2gh   1/1     Running   0          10h
+```
+If you don’t see any results, you likely don’t have an Ingress Controller installed yet.
+
+Create a `VMAuth` resource by saving this YAML to a file and applying it:
+```sh
+cat <<'EOF' > vmauth-demo.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
   name: demo
 spec:
   selectAllByDefault: true
-  userNamespaceSelector: {}
-  userSelector: {}
   ingress:
-    class_name: nginx # <-- change this to your ingress-controller
-    host: vm-demo.k8s.orb.local # <-- change this to your domain
+    class_name: 'nginx'                 # <-- Change this to match your Ingress controller (e.g., 'traefik')
+    host: victoriametrics.mycompany.com # <-- Change this to the domain name you’ll use
+EOF
+
+kubectl -n vm apply -f vmauth-demo.yaml
+
+# Output:
+# vmauth.operator.victoriametrics.com/demo created
+```
+This creates a `VMAuth` named `demo` and makes it accessible through the domain name `victoriametrics.mycompany.com`. 
+You can use the same method we used before to check if the resources are running.
+Run `kubectl get pod`, but use the label selector `app.kubernetes.io/name=vmauth`.
+
+Check if the `Ingress` rule was created:
+```sh
+kubectl get ingress -n vm
+
+# Output:
+# NAME          CLASS   HOSTS                           ADDRESS   PORTS   AGE
+# vmauth-demo   nginx   victoriametrics.mycompany.com             80      5m
 ```
 
-**Note** that content of `ingress` field depends on your ingress-controller and domain.
-Your cluster will have them differently. 
-Also, for simplicity, we don't use tls, but in real environments not having tls is unsafe.
+Next, we’ll define a user that can securely access storage VMUI and alerting UI, as well as run queries we used in previous chapters. 
+You can also expand access later by adding more paths you needed.
 
-#### VMUser
-
-To get authorized access to our data it is necessary to create a user using 
-the [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser) resource.
-
-Create file `vmuser.yaml` 
-
-```shell
-code vmuser.yaml
-```
-
-with the following content:
-
-```yaml
+Create a new file named `vmuser-demo.yaml` with the following content:
+```sh
+cat <<'EOF' > vmuser-demo.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
 metadata:
   name: demo
 spec:
-    name: demo
-    username: demo
-    generatePassword: true
-    targetRefs:
-      # vmui + vmselect
-      - crd:
-          kind: VMCluster/vmselect
-          name: demo
-          namespace: vm
-        target_path_suffix: "/select/0"
-        paths:
-          - "/vmui"
-          - "/vmui/.*"
-          - "/prometheus/api/v1/query"
-          - "/prometheus/api/v1/query_range"
-          - "/prometheus/api/v1/series"
-          - "/prometheus/api/v1/status/.*"
-          - "/prometheus/api/v1/label/"
-          - "/prometheus/api/v1/label/[^/]+/values"
-```
+  name: demo
+  username: demo
+  generatePassword: true
+  targetRefs:
+    # vmsingle
+    - crd:
+        kind: VMSingle
+        name: demo
+        namespace: vm
+      paths:
+        - "/vmui.*"
+        - "/prometheus/.*"
+    # vmalert
+    - crd:
+        kind: VMAlert
+        name: demo
+        namespace: vm
+      paths:
+        - "/vmalert.*"
+        - "/api/v1/groups"
+        - "/api/v1/alert"
+        - "/api/v1/alerts"
+EOF
 
-After that you can deploy `vmauth` and `vmuser` resources to the kubernetes cluster:
+kubectl -n vm apply -f vmuser-demo.yaml
 
-```shell
-kubectl apply -f vmauth.yaml -n vm
-kubectl apply -f vmuser.yaml -n vm
-
-# vmauth.operator.victoriametrics.com/demo created
+# Output:
 # vmuser.operator.victoriametrics.com/demo created
 ```
+This creates a user named `demo` with a randomly generated password. 
+The `targetRefs` section tells `VMAuth` how to route the user’s requests. 
+In this case, it sets up access to two VictoriaMetrics components — `VMSingle` and `VMAlert` — both running in the `vm` namespace.
 
-Operator automatically creates a secret with username/password token for `VMUser` resource with `generatePassword=true`:
+The username and password are saved in a `vmuser-demo` secret. 
+You can extract them using this command:
+```sh
+export DEMO_USERNAME="$(kubectl get secret -n vm vmuser-demo -o jsonpath="{.data.username}" | base64 --decode)";
+export DEMO_PASSWORD="$(kubectl get secret -n vm vmuser-demo -o jsonpath="{.data.password}" | base64 --decode)";
+echo "Username: $DEMO_USERNAME; Password: $DEMO_PASSWORD";
 
-```shell
-kubectl get secret -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.io/name=vmuser"
-
-# NAME          TYPE     DATA   AGE
-# vmuser-demo   Opaque   3      29m
+# Output:
+# Username: demo; Password: 9plcNIcbdh
 ```
 
-You can get password for your user with command:
+Now you can test your setup.
+Use the following command to send a metric query through `VMAuth` using your domain and credentials:
+```sh
+curl -u "${DEMO_USERNAME}:${DEMO_PASSWORD}" --url http://victoriametrics.mycompany.com/api/v1/query \
+  --url-query query=a_metric
 
-```shell
-kubectl get secret -n vm vmuser-demo -o jsonpath="{.data.password}" | base64 --decode
+# Output:
+# HTTP/1.1 200 OK
+# ...
+# {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"a_metric","foo":"fooVal"},"value":[1746099757,"123"]}]},"stats":{"seriesFetched": "1","executionTimeMsec":0}}
+```
+You might need adjusting the protocol (http or https) depending on your Ingress controller setup.
 
-# Yt3N2r3cPl
+If you haven’t set up an Ingress controller yet, you can still test locally. 
+Use `kubectl port-forward` to open port `8427` from the `VMAuth` service on your machine:
+```sh
+kubectl -n vm port-forward svc/vmauth-demo 8427:8427
+
+# Output:
+# Forwarding from 127.0.0.1:8427 -> 8427
+# Forwarding from [::1]:8427 -> 8427
 ```
 
-Now you can get access to your data with url `http://vm-demo.k8s.orb.local/vmui`, username `demo` 
-and your given password (`Yt3N2r3cPl` in our case):
+Then send the same request as before:
+```sh
+curl -i -u "${DEMO_USERNAME}:${DEMO_PASSWORD}" -H "Host: victoriametrics.mycompany.com" \
+  --url http://127.0.0.1:8427/api/v1/query --url-query query=a_metric
+  
+# Output:
+# HTTP/1.1 200 OK
+# ...
+```
+Make sure to use the same Host header you defined in your `VMAuth` config, or the request may not be routed properly.
 
-![Select 1](quick-start_select-1.webp)
-
-![Select 2](quick-start_select-2.webp)
-
-## Anything else
+## Next steps
 
 That's it. We obtained a monitoring cluster corresponding to the target topology:
 
@@ -680,6 +758,8 @@ If you have any suggestions or find a bug, please create an issue
 on [GitHub](https://github.com/VictoriaMetrics/operator/issues/new).
 
 ---
+
+The following legacy links are retained for historical reference.
 
 ###### Setup operator
 
@@ -722,4 +802,14 @@ Became part of [operator/quick-start/#alerting](https://docs.victoriametrics.com
 
 Became part of [operator/quick-start/#alerting](https://docs.victoriametrics.com/operator/quick-start/#alerting)
 
-<!-- TODO: Add BC links for "VMUser update", "VMUser", "VMAuth". -->
+###### VMAuth
+
+Became part of [operator/quick-start/#access](https://docs.victoriametrics.com/operator/quick-start/#access)
+
+###### VMUser
+
+Became part of [operator/quick-start/#access](https://docs.victoriametrics.com/operator/quick-start/#access)
+
+###### Anything else
+
+Moved to [operator/quick-start/#next-steps](https://docs.victoriametrics.com/operator/quick-start/#next-steps)

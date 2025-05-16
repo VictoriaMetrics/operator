@@ -17,6 +17,9 @@ aliases:
 
 **Release date:** 14 May 2025
 
+**Update Note 1:** This release introduces a bug in the `vmagent`. The relabeling config is not properly reloaded, causing the relabeling logic to be skipped.
+We advise skipping this version and waiting for the fix in v0.58.1. See more details in [VictoriaMetrics#8941](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/8941).
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.117.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.117.0) version
 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new flags for leader election configuration - `leader-elect-namespace`, `leader-elect-id`.

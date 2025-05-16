@@ -2,8 +2,11 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
+    # deprecated, could not be removed because of deployment match selector immutability
     control-plane: vm-operator
-    app.kubernetes.io/name: vm-operator
+
+    app.kubernetes.io/instance: vmoperator
+    app.kubernetes.io/name: victoria-metrics-operator
     app.kubernetes.io/managed-by: kustomize
   name: vm
 ---

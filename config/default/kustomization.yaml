@@ -1,11 +1,5 @@
 namespace: vm
 resources:
 - ../crd/overlay
-- ../rbac
-- ../manager
-- ../network-policy
-- metrics_service.yaml
-patches:
-- path: manager_metrics_patch.yaml
-  target:
-    kind: Deployment
+- ../operator
+

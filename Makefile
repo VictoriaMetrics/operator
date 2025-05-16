@@ -223,6 +223,7 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	cd config/manager && $(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 	$(KUSTOMIZE) build config/base > dist/install-no-webhook.yaml
 	$(KUSTOMIZE) build config/base-with-webhook > dist/install-with-webhook.yaml
+	$(KUSTOMIZE) build config/operator > dist/operator.yaml
 
 olm: operator-sdk opm yq docs
 	rm -rf bundle*

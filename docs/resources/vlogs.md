@@ -112,6 +112,7 @@ Also, you can specify requests without limits - in this case default values for 
 ## Examples
 
 ```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VLogs
 metadata:
   name: example

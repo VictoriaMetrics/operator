@@ -219,10 +219,11 @@ publish:
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
-	mkdir -p dist
+	mkdir -p dist && rm -rf dist/*
 	cd config/manager && $(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 	$(KUSTOMIZE) build config/base > dist/install-no-webhook.yaml
 	$(KUSTOMIZE) build config/base-with-webhook > dist/install-with-webhook.yaml
+	$(KUSTOMIZE) build config/crd/overlay > dist/crd.yaml
 
 olm: operator-sdk opm yq docs
 	rm -rf bundle*

@@ -8,4 +8,5 @@ spec:
   - port: 443
     targetPort: 9443
   selector:
-    control-plane: vm-operator
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/name: victoria-metrics-operator

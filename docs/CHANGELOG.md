@@ -17,6 +17,10 @@ aliases:
 
 **Release date:** 14 May 2025
 
+**Update Note 1:** This release by default deploys`vmagent` which contains a bug, see more details in [VictoriaMetrics#8941](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/8941).
+We recommend skipping this release and waiting for newer release. 
+If you still want to upgrade, you can override the vmagent image version by setting the environment variable: `VM_VMAGENTDEFAULT_VERSION=v1.117.1`
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.117.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.117.0) version
 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new flags for leader election configuration - `leader-elect-namespace`, `leader-elect-id`.

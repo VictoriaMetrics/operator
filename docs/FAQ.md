@@ -83,4 +83,5 @@ See this example in operator repository: https://github.com/VictoriaMetrics/oper
 
 ## What versions of Kubernetes is the operator compatible with?
 
-Operator tested at kubernetes versions from 1.16 to 1.27.
+The operator is designed to work with Kubernetes version 1.25 and above. 
+It may function on older versions, but we do not officially support or guarantee compatibility with them.

@@ -250,6 +250,28 @@ Open http://localhost:8429/targets. You should see there three targets in `UP` s
 
 ## Hybrid policies
 
+https://spiffe.io
+
+Strict policy works reliably for traffic going through Kubernetes Services, since Istio can map pod SPIFFE URIs (secure identities) to pod IPs.
+
+However, VMAgent does not use services when scraping metrics. 
+For performance reasons, it connects directly to pod IPs and ports, bypassing Kubernetes Services entirely.
+As a result, the VMAgent sidecar cannot validate the destination's certificate, 
+since it has no knowledge of the expected SPIFFE URI for the target pod. 
+In fact, it cannot even guarantee that the destination IP belongs to a pod at all.
+So the sidecar either drops the request or pass through it unauthenticated (in this case destination sidecar would reject it 503)
+
+In this section, we present a workaround that maintains partial security while enabling VMAgent to scrape metrics.
+
+The strategy is:
+- Run everything in strict mTLS mode, except the vm namespace, which should run in permissive mode.
+- Allow VMAgent to scrape using TLS with Istio-provided certificates.
+- Disable certificate verification on the VMAgent side to avoid SPIFFE mismatch issues.
+- Set the VMAgent sidecar to passthrough mode for all outbound traffic.
+
+This configuration does not provide full mTLS security. Since VMAgent doesn’t verify the destination certificate.
+However, the receiving side (the pod being scraped) can still enforce strict mTLS for all incoming traffic.
+
 ## Strict policy
 
 ## Scrape Istio metrics

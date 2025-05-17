@@ -59,9 +59,9 @@ head -n 10 operator-and-crds.yaml
 # kind: Namespace
 # metadata:
 # labels:
+# app.kubernetes.io/instance: vmoperator
 # app.kubernetes.io/managed-by: kustomize
-# app.kubernetes.io/name: vm-operator
-# control-plane: vm-operator
+# app.kubernetes.io/name=victoria-metrics-operator
 # name: vm
 # ---
 ```
@@ -80,7 +80,7 @@ Once it's running, it will start watching for VictoriaMetrics custom resources a
 
 You can confirm the operator is running by checking the pod status:
 ```sh
-kubectl get pods -n vm -l "control-plane=vm-operator"
+kubectl get pods -n vm -l "app.kubernetes.io/name=victoria-metrics-operator"
 
 # NAME                           READY   STATUS    RESTARTS   AGE
 # vm-operator-5db95b48bd-j6m9v   1/1     Running   0          2m27s
@@ -105,7 +105,7 @@ The operator is configured using [environment variables](https://docs.victoriame
 You can consult the documentation or explore the variables directly in your cluster (note that `kubectl exec` may require [additional permissions](https://discuss.kubernetes.io/t/adding-permission-to-exec-commands-in-containers-inside-pods-in-a-certain-namespace/22821/2)).
 Here’s an example showing how to get the default CPU and memory limits applied to the VMSingle resource:
 ```sh 
-OPERATOR_POD_NAME=$(kubectl get pod -l "control-plane=vm-operator"  -n vm -o jsonpath="{.items[0].metadata.name}");
+OPERATOR_POD_NAME=$(kubectl get pod -l "app.kubernetes.io/name=victoria-metrics-operator"  -n vm -o jsonpath="{.items[0].metadata.name}");
 kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --printDefaults 2>&1 | grep VMSINGLEDEFAULT_RESOURCE;
 
 # VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_MEM     1500Mi   false       

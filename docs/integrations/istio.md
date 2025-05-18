@@ -7,19 +7,26 @@ menu:
     weight: 3
 ---
 
-In this guide, we’ll walk through deploying and using VictoriaMetrics in an environment running the [Istio](https://istio.io/) service mesh. 
-We'll start with a simple setup and gradually introduce more advanced configurations, 
-covering edge cases and best practices along the way.
-By the end of this guide, you’ll also learn how to configure VictoriaMetrics to scrape metrics exposed by Istio.
+https://istio.io/
+
+In this guide, we'll walk through deploying and using VictoriaMetrics with Istio service mesh.
+Istio is a tool that helps manage network traffic between your applications in Kubernetes.
+We'll start with a simple setup and gradually add more advanced configurations,
+covering common challenges and best practices along the way.
+
+<!-- TODO: You'll also learn how to configure VictoriaMetrics to scrape metrics exposed by Istio. -->
 
 ## Prerequisites
 
-Before we dive into the details, let’s set up locally a Kubernetes cluster with Istio and VictoriaMetrics.
-This setup will serve as the foundation for the rest of the tutorial, so make sure to follow each step carefully.
+https://docs.victoriametrics.com/operator/quick-start/
 
-{{% collapse name="Prepare demo cluster" %}}
+Before we dive into the details, let's set up a test Kubernetes cluster with VictoriaMetrics and Istio.
+This setup will be the foundation for the rest of the tutorial, so make sure to follow each step carefully.
+We'll install Istio first without enabling the mesh network. Later, we'll enable it in permissive mode and then strict mode,
+showing how to adapt VictoriaMetrics to work with each setting.
+For more details on VMSingle, VMAgent, and demo-app, check out the quick-start guide.
 
-We will use [Kind](https://kind.sigs.k8s.io/) and [Docker](https://www.docker.com/) to create a local Kubernetes cluster:
+Create a test Kubernetes cluster using [Kind](https://kind.sigs.k8s.io/):
 ```sh
 kind create cluster --name=istio;
 
@@ -31,53 +38,7 @@ kind create cluster --name=istio;
 # kubectl cluster-info --context kind-istio
 ```
 
-Install Istio:
-```sh
-curl -L https://istio.io/downloadIstio | sh -;
-./istio-1.26.0/bin/istioctl install -f ./istio-1.26.0/samples/bookinfo/demo-profile-no-gateways.yaml -y;
-
-# Output:
-# ...
-# ✔ Istio core installed ⛵️                                                                                                                                                                                           
-# ✔ Istiod installed 🧠                                                                                                                                                                                               
-# ✔ Installation complete  
-```
-
-Set global permissive policy:
-```sh
-cat <<'EOF' > global-peer-authentication.yaml
-apiVersion: security.istio.io/v1
-kind: PeerAuthentication
-metadata:
-  name: default
-  namespace: istio-system
-spec:
-  mtls:
-    mode: PERMISSIVE
-EOF
-kubectl -n istio-system apply -f global-peer-authentication.yaml;
-
-# Output:
-# peerauthentication.security.istio.io/default created
-```
-
-Enable Istio injection in `default` and `vm` namespaces:
-```sh
-kubectl label namespace default istio-injection=enabled;
-kubectl create namespace vm || true;
-kubectl label namespace vm istio-injection=enabled;
-
-# Output:
-# namespace/default labeled
-# namespace/vm created
-# namespace/vm labeled
-```
-
-Follow these steps to install the VictoriaMetrics Operator along with the CRDs, 
-and to deploy a `VMSingle` and `VMAgent` instance. 
-For more details, refer to the [quick-start](https://docs.victoriametrics.com/operator/quick-start/) guide.
-
-Install operator:
+Install VictoriaMetrics operator:
 ```sh
 export VM_OPERATOR_VERSION=$(basename $(curl -fs -o /dev/null -w %{redirect_url} \
   https://github.com/VictoriaMetrics/operator/releases/latest));
@@ -87,14 +48,17 @@ VM_OPERATOR_VERSION=v0.57.0
 
 wget -O operator-and-crds.yaml \
   "https://github.com/VictoriaMetrics/operator/releases/download/$VM_OPERATOR_VERSION/install-no-webhook.yaml";
+
 kubectl apply -f operator-and-crds.yaml;
+kubectl -n vm rollout status deployment vm-operator --watch=true;
 
 # Output:
 # namespace/vm configured
 # ...
+# deployment "vm-operator" successfully rolled out
 ```
 
-Install `VMSingle`:
+Install metrics storage `VMSingle`:
 ```sh
 cat <<'EOF' > vmsingle-demo.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -105,12 +69,16 @@ metadata:
 EOF
 
 kubectl -n vm apply -f vmsingle-demo.yaml;
+kubectl -n vm wait --for=jsonpath='{.status.updateStatus}'=operational vmsingle/demo;
+kubectl -n vm rollout status deployment vmsingle-demo  --watch=true;
 
 # Output:
 # vmsingle.operator.victoriametrics.com/demo created
+# vmsingle.operator.victoriametrics.com/demo condition met
+# deployment "vmsingle-demo" successfully rolled out
 ```
 
-Install `VMAgent`:
+Install scraping agent `VMAgent`:
 ```sh
 cat <<'EOF' > vmagent-demo.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -125,9 +93,13 @@ spec:
 EOF
 
 kubectl -n vm apply -f vmagent-demo.yaml;
+kubectl -n vm wait --for=jsonpath='{.status.updateStatus}'=operational vmagent/demo;
+kubectl -n vm rollout status deployment vmagent-demo  --watch=true;
 
 # Output:
 # vmagent.operator.victoriametrics.com/demo created
+# vmagent.operator.victoriametrics.com/demo condition met
+# deployment "vmsingle-demo" successfully rolled out
 ```
 
 Install [demo-app](https://github.com/VictoriaMetrics/demo-app):
@@ -170,13 +142,17 @@ spec:
 EOF
 
 kubectl -n default apply -f demo-app.yaml;
+kubectl -n default rollout status deployment demo-app  --watch=true;
 
 # Output:
 # deployment.apps/demo-app created
 # service/demo-app created
+# Waiting for deployment "demo-app" rollout to finish: 0 of 1 updated replicas are available...
+# deployment "demo-app" successfully rolled out
 ```
+This creates a simple application that will generate metrics for us to collect and monitor.
 
-Scrape demo app metrics:
+Tell VMAgent to scrape demo app metrics:
 ```sh
 cat <<'EOF' > demo-app-scrape.yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -193,12 +169,123 @@ spec:
 EOF
 
 kubectl apply -f demo-app-scrape.yaml;
+kubectl -n default wait --for=jsonpath='{.status.updateStatus}'=operational vmservicescrapes/demo-app-service-scrape;
 
 # Output:
 # vmservicescrape.operator.victoriametrics.com/demo-app-service-scrape created
+# vmservicescrape.operator.victoriametrics.com/demo-app-service-scrape condition met
 ```
 
-Run check that istio sidecar containers are injected into the pods:
+Install Istio:
+```sh
+curl -L https://istio.io/downloadIstio | sh -;
+./istio-1.26.0/bin/istioctl install -f ./istio-1.26.0/samples/bookinfo/demo-profile-no-gateways.yaml -y;
+
+# Output:
+# ...
+# ✔ Istio core installed ⛵️                                                                                                                                                                                           
+# ✔ Istiod installed 🧠                                                                                                                                                                                               
+# ✔ Installation complete  
+```
+These commands download and install Istio service mesh with a basic demo profile configuration.
+
+## Ambient mode
+
+[ambient mode](https://istio.io/latest/docs/ambient/overview/)
+[sidecar mode](https://istio.io/latest/docs/setup/)
+
+In ambient mode, Istio handles network traffic management using a proxy on each node (Layer 4) and optionally another proxy for each namespace (Layer 7).
+If you're using ambient mode, you don't need to make any changes to your applications or VictoriaMetrics pods. 
+You can skip the next sections.
+
+However, most clusters use sidecar mode, so continue reading the next sections if that's your case.
+
+## Permissive policy
+
+https://istio.io/latest/docs/tasks/security/authentication/authn-policy/
+[prerequisites](#Prerequisites)
+
+When both the application and the VictoriaMetrics pod are running with Istio's permissive authentication policy, 
+everything should work without changes. 
+The Istio sidecar will try to secure traffic where possible, but scraping requests from VMAgent that use plain HTTP
+will still be allowed to pass through in permissive mode.
+
+If you followed the prerequisites steps, you should have VictoriaMetrics and Istio installed and running in your Kubernetes cluster.
+However, the traffic is not yet part of the service mesh.
+To include traffic in the mesh with permissive mode, we need to create a peer authentication policy and
+select which namespaces should have the istio-proxy sidecar injected. Let's do that now.  
+
+Set global permissive policy:
+```sh
+cat <<'EOF' > global-peer-authentication.yaml
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: PERMISSIVE
+EOF
+
+kubectl -n istio-system apply -f global-peer-authentication.yaml;
+
+# Output:
+# peerauthentication.security.istio.io/default created
+```
+This policy called default in the istio-system namespace is special - it applies to all services in the mesh. 
+It sets the authentication mode to PERMISSIVE, which allows both plain and encrypted traffic.
+
+Enable Istio injection in `default` and `vm` namespaces:
+```sh
+kubectl label namespace default istio-injection=enabled;
+kubectl label namespace vm istio-injection=enabled;
+
+# Output:
+# namespace/default labeled
+# namespace/vm labeled
+```
+These commands add the istio-injection=enabled label to our namespaces, 
+which tells Istio to automatically inject the sidecar proxy into any pods created in these namespaces.
+
+Re-deploy VictoriaMetrics service and demo-app so the Istio sidecar is properly injected:
+```sh
+kubectl -n vm rollout restart deployment vm-operator;
+kubectl -n vm rollout status deployment vm-operator --watch=true;
+
+kubectl -n vm rollout restart deployment vmsingle-demo;
+kubectl -n vm rollout status deployment vmsingle-demo  --watch=true;
+
+kubectl -n vm rollout restart deployment vmagent-demo; 
+kubectl -n vm rollout status deployment vmagent-demo  --watch=true;
+
+kubectl -n default rollout restart deployment demo-app; 
+kubectl -n default rollout status deployment demo-app  --watch=true;
+
+# Output:
+# deployment.apps/vm-operator restarted
+# Waiting for deployment "vm-operator" rollout to finish: 0 out of 1 new replicas have been updated...
+# Waiting for deployment "vm-operator" rollout to finish: 1 old replicas are pending termination...
+# Waiting for deployment "vm-operator" rollout to finish: 1 old replicas are pending termination...
+# deployment "vm-operator" successfully rolled out
+# deployment.apps/vmsingle-demo restarted
+# Waiting for deployment "vmsingle-demo" rollout to finish: 0 out of 1 new replicas have been updated...
+# Waiting for deployment "vmsingle-demo" rollout to finish: 0 out of 1 new replicas have been updated...
+# Waiting for deployment "vmsingle-demo" rollout to finish: 0 out of 1 new replicas have been updated...
+# Waiting for deployment "vmsingle-demo" rollout to finish: 0 of 1 updated replicas are available...
+# deployment "vmsingle-demo" successfully rolled out
+# deployment.apps/vmagent-demo restarted
+# Waiting for deployment "vmagent-demo" rollout to finish: 1 old replicas are pending termination...
+# Waiting for deployment "vmagent-demo" rollout to finish: 1 old replicas are pending termination...
+# deployment "vmagent-demo" successfully rolled out
+# deployment.apps/demo-app restarted
+# Waiting for deployment "demo-app" rollout to finish: 0 out of 1 new replicas have been updated...
+# Waiting for deployment "demo-app" rollout to finish: 1 old replicas are pending termination...
+# Waiting for deployment "demo-app" rollout to finish: 1 old replicas are pending termination...
+# deployment "demo-app" successfully rolled out
+```
+
+To check that istio sidecar containers are correctly injected into the pods, run:
 ```sh
 kubectl get pods --all-namespaces  -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{range .spec.containers[*]}- {.name}{"\n"}{end}{"\n"}{end}'
 
@@ -215,28 +302,12 @@ kubectl get pods --all-namespaces  -o jsonpath='{range .items[*]}{.metadata.name
 # - vmsingle
 # - istio-proxy
 ```
-Pods in `vm` and `default` namespaces have `istio-proxy` container injected because of namespace `istio-injection=enabled` label.
-Other namespaces do not have this label, so pods in those namespaces do not have `istio-proxy` container injected.
+Pods in the vm and default namespaces now have an istio-proxy container injected because we added the istio-injection=enabled label to these namespaces.
+Other namespaces don't have this label, so their pods don't have the istio-proxy container.
 
-{{% /collapse %}}
-
-## Ambient mode
-
-In [ambient mode](https://istio.io/latest/docs/ambient/overview/), Istio implements its features using a per-node Layer 4 (L4) proxy, and optionally a per-namespace Layer 7 (L7) proxy.
-In this mode no modifications are required to application or VictoriaMetrics pods.
-
-## Permissive policy
-
-https://istio.io/latest/docs/tasks/security/authentication/authn-policy/
-
-If both the application and the VictoriaMetrics pod are operating under Istio permissive authentication policy, 
-everything should function correctly without any modifications.
-The Istio sidecar will attempt to secure traffic where possible; however, scraping requests from `VMAgent` are sent directly to the pod over plain HTTP. 
-Istio will allow these requests to pass through without blocking them.
-
-Let's open `VMAgent` targets UI to check that metrics are scraped correctly.
-
-First, port forward the `VMAgent` service:
+Let's check that scraping is still working.
+First, let's port-forward the VMAgent service.
+Then we'll open the VMAgent targets UI to check that metrics are being scraped correctly (wait a minute or two for changes to take effect).
 ```sh
 VMAGENT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmagent" -o jsonpath="{.items[0].metadata.name}");
 
@@ -245,10 +316,15 @@ kubectl port-forward -n vm $VMAGENT_POD_NAME 8429:8429;
 # Forwarding from 127.0.0.1:8429 -> 8429
 # Forwarding from [::1]:8429 -> 8429
 ```
+Open http://localhost:8429/targets in your browser. You should see three targets in the UP state for demo-app, vmsingle, and vmagent.
 
-Open http://localhost:8429/targets. You should see there three targets in `UP` state for `demo-app`, `vmsingle` and `vmagent`.
+## Partially strict policy
 
-## Hybrid policies
+Next step could be enforcing strict mTLS policy for all traffic except for `vm` namespace and configure 
+
+
+permissive -> strict error
+unexpected status code returned when scraping "http://10.244.0.7:8080/metrics": 503; expecting 200; response body: "upstream connect error or disconnect/reset before headers. reset reason: connection termination"
 
 https://spiffe.io
 
@@ -277,8 +353,3 @@ However, the receiving side (the pod being scraped) can still enforce strict mTL
 ## Scrape Istio metrics
 
 
-
-
-
-permissive -> strict error
-unexpected status code returned when scraping "http://10.244.0.7:8080/metrics": 503; expecting 200; response body: "upstream connect error or disconnect/reset before headers. reset reason: connection termination"

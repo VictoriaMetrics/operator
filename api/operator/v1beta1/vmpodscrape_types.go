@@ -1,14 +1,19 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+var _ json.Unmarshaler = (*VMPodScrapeSpec)(nil)
+
 // VMPodScrapeSpec defines the desired state of VMPodScrape
 type VMPodScrapeSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-" yaml:"-"`
 	// The label to use to retrieve the job name from.
 	// +optional
 	JobLabel string `json:"jobLabel,omitempty"`
@@ -36,6 +41,16 @@ type VMPodScrapeSpec struct {
 	// AttachMetadata configures metadata attaching from service discovery
 	// +optional
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMPodScrapeSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMPodScrapeSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // VMPodScrape is scrape configuration for pods,
@@ -106,6 +121,19 @@ type PodMetricsEndpoint struct {
 // attack, users can instead use the BearerTokenSecret field.
 type ArbitraryFSAccessThroughSMsConfig struct {
 	Deny bool `json:"deny,omitempty"`
+}
+
+// Validate returns error if CR is invalid
+func (cr *VMPodScrape) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	for _, endpoint := range cr.Spec.PodMetricsEndpoints {
+		if err := endpoint.EndpointRelabelings.validate(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // AsProxyKey builds key for proxy cache maps

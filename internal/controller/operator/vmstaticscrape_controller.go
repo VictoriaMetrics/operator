@@ -49,6 +49,9 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return result, &getError{err, "vmstaticscrape", req}
 	}
 	RegisterObjectStat(instance, "vmstaticscrape")
+	if instance.Spec.ParsingError != "" {
+		return result, &parsingError{instance.Spec.ParsingError, "vmstaticscrape"}
+	}
 	if vmAgentReconcileLimit.MustThrottleReconcile() {
 		// fast path, rate limited
 		return ctrl.Result{}, nil

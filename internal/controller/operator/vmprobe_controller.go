@@ -68,6 +68,9 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	RegisterObjectStat(instance, "vmprobescrape")
+	if instance.Spec.ParsingError != "" {
+		return result, &parsingError{instance.Spec.ParsingError, "vmprobescrape"}
+	}
 	if vmAgentReconcileLimit.MustThrottleReconcile() {
 		// fast path, rate limited
 		return

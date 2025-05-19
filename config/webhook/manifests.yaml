@@ -150,6 +150,46 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmnodescrape
+  failurePolicy: Fail
+  name: vvmnodescrape.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmnodescrapes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmpodscrape
+  failurePolicy: Fail
+  name: vvmpodscrape.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmpodscrapes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-operator-victoriametrics-com-v1beta1-vmrule
   failurePolicy: Fail
   name: vvmrule.kb.io
@@ -163,6 +203,46 @@ webhooks:
     - UPDATE
     resources:
     - vmrules
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmscrapeconfig
+  failurePolicy: Fail
+  name: vvmscrapeconfig.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmscrapeconfigs
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmservicescrape
+  failurePolicy: Fail
+  name: vvmservicescrape.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmservicescrapes
   sideEffects: None
 - admissionReviewVersions:
   - v1
@@ -190,6 +270,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmstaticscrape
+  failurePolicy: Fail
+  name: vvmstaticscrape.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmstaticscrapes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-operator-victoriametrics-com-v1beta1-vmuser
   failurePolicy: Fail
   name: vvmuser.kb.io
@@ -203,4 +303,24 @@ webhooks:
     - UPDATE
     resources:
     - vmusers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmprobe
+  failurePolicy: Fail
+  name: vvmprobe.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmprobes
   sideEffects: None

@@ -42,7 +42,7 @@ func TestVMAgent_Validate(t *testing.T) {
 			name: "valid relabeling",
 			spec: VMAgentSpec{
 				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
-				InlineRelabelConfig: []RelabelConfig{
+				InlineRelabelConfig: []*RelabelConfig{
 					{
 						Action:       "drop",
 						SourceLabels: []string{"src_id"},
@@ -54,7 +54,7 @@ func TestVMAgent_Validate(t *testing.T) {
 			name: "relabeling with if array",
 			spec: VMAgentSpec{
 				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
-				InlineRelabelConfig: []RelabelConfig{
+				InlineRelabelConfig: []*RelabelConfig{
 					{
 						Action: "drop_metrics",
 						If: []string{

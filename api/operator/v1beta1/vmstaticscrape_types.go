@@ -1,13 +1,18 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var _ json.Unmarshaler = (*VMStaticScrapeSpec)(nil)
+
 // VMStaticScrapeSpec defines the desired state of VMStaticScrape.
 type VMStaticScrapeSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-" yaml:"-"`
 	// JobName name of job.
 	JobName string `json:"jobName,omitempty"`
 	// A list of target endpoints to scrape metrics from.
@@ -19,6 +24,16 @@ type VMStaticScrapeSpec struct {
 	// a single target can expose during all the scrapes on the time window of 24h.
 	// +optional
 	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMStaticScrapeSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMStaticScrapeSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // TargetEndpoint defines single static target endpoint.
@@ -60,6 +75,19 @@ type VMStaticScrapeList struct {
 // AsProxyKey builds key for proxy cache maps
 func (cr *VMStaticScrape) AsProxyKey(i int) string {
 	return fmt.Sprintf("staticScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
+}
+
+// Validate returns error if CR is invalid
+func (cr *VMStaticScrape) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	for _, endpoint := range cr.Spec.TargetEndpoints {
+		if err := endpoint.EndpointRelabelings.validate(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // AsMapKey builds key for cache secret map

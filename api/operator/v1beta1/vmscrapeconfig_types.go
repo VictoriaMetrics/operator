@@ -16,6 +16,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -40,8 +41,12 @@ type VMScrapeConfig struct {
 	Status ScrapeObjectStatus `json:"status,omitempty"`
 }
 
+var _ json.Unmarshaler = (*VMScrapeConfigSpec)(nil)
+
 // VMScrapeConfigSpec defines the desired state of VMScrapeConfig
 type VMScrapeConfigSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-" yaml:"-"`
 	// StaticConfigs defines a list of static targets with a common label set.
 	// +optional
 	StaticConfigs []StaticConfig `json:"staticConfigs,omitempty"`
@@ -78,6 +83,16 @@ type VMScrapeConfigSpec struct {
 	EndpointScrapeParams  `json:",inline"`
 	EndpointRelabelings   `json:",inline"`
 	EndpointAuth          `json:",inline"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMScrapeConfigSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMScrapeConfigSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // StaticConfig defines a static configuration.
@@ -502,6 +517,14 @@ type VMScrapeConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VMScrapeConfig `json:"items"`
+}
+
+// Validate returns error if CR is invalid
+func (cr *VMScrapeConfig) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	return cr.Spec.EndpointRelabelings.validate()
 }
 
 // AsProxyKey builds key for proxy cache maps

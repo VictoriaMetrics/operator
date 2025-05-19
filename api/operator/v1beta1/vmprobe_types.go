@@ -17,14 +17,19 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var _ json.Unmarshaler = (*VMProbeSpec)(nil)
+
 // VMProbeSpec contains specification parameters for a Probe.
 // +k8s:openapi-gen=true
 type VMProbeSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-" yaml:"-"`
 	// The job name assigned to scraped metrics by default.
 	JobName string `json:"jobName,omitempty"`
 	// Specification for the prober to use for probing targets.
@@ -42,6 +47,16 @@ type VMProbeSpec struct {
 
 	EndpointAuth         `json:",inline"`
 	EndpointScrapeParams `json:",inline"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMProbeSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMProbeSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // VMProbeTargets defines a set of static and dynamically discovered targets for the prober.
@@ -130,6 +145,27 @@ func (cr *VMProbe) AsMapKey() string {
 // GetStatusMetadata implements reconcile.objectWithStatus interface
 func (cr *VMProbe) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
+}
+
+// Validate returns error if CR is invalid
+func (cr *VMProbe) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	if err := checkRelabelConfigs(cr.Spec.MetricRelabelConfigs); err != nil {
+		return fmt.Errorf("invalid metricRelabelConfigs: %w", err)
+	}
+	switch {
+	case cr.Spec.Targets.Ingress != nil:
+		if err := checkRelabelConfigs(cr.Spec.Targets.Ingress.RelabelConfigs); err != nil {
+			return fmt.Errorf("invliad ingress.relabelingConfigs: %w", err)
+		}
+	case cr.Spec.Targets.StaticConfig != nil:
+		if err := checkRelabelConfigs(cr.Spec.Targets.StaticConfig.RelabelConfigs); err != nil {
+			return fmt.Errorf("invliad staticConfig.relabelingConfigs: %w", err)
+		}
+	}
+	return nil
 }
 
 func init() {

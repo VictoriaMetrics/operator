@@ -321,3 +321,13 @@ type EndpointRelabelings struct {
 	// +optional
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
 }
+
+func (r *EndpointRelabelings) validate() error {
+	if err := checkRelabelConfigs(r.RelabelConfigs); err != nil {
+		return fmt.Errorf("invalid relabelConfigs: %w", err)
+	}
+	if err := checkRelabelConfigs(r.MetricRelabelConfigs); err != nil {
+		return fmt.Errorf("invalid metricRelabelConfigs: %w", err)
+	}
+	return nil
+}

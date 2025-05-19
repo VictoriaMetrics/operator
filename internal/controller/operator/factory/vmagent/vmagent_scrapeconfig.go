@@ -66,7 +66,7 @@ type scrapeObjects struct {
 	totalBrokenCount int
 }
 
-var skipAnyError = func(_ error) bool {
+var skipNon = func(_ error) bool {
 	return false
 }
 
@@ -84,7 +84,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 			return err
 		}
 		return nil
-	}, skipAnyError)
+	}, skipNon)
 	if err != nil {
 		panic(fmt.Errorf("BUG: validation cannot return error for ServiceScrape: %s", err))
 	}
@@ -101,7 +101,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 			return err
 		}
 		return nil
-	}, skipAnyError)
+	}, skipNon)
 	if err != nil {
 		panic(fmt.Errorf("BUG: validation cannot return error for PodScrape: %s", err))
 	}
@@ -115,7 +115,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 			}
 		}
 		return nil
-	}, skipAnyError)
+	}, skipNon)
 	if err != nil {
 		panic(fmt.Errorf("BUG: validation cannot return error for StaticScrape: %s", err))
 	}
@@ -127,7 +127,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 			}
 		}
 		return nil
-	}, skipAnyError)
+	}, skipNon)
 	if err != nil {
 		panic(fmt.Errorf("BUG: validation cannot return error for NodeScrape: %s", err))
 	}
@@ -145,7 +145,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 			}
 		}
 		return nil
-	}, skipAnyError)
+	}, skipNon)
 	if err != nil {
 		panic(fmt.Errorf("BUG: validation cannot return error for ProbeScrape: %s", err))
 	}
@@ -159,7 +159,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 
 		}
 		return nil
-	}, skipAnyError)
+	}, skipNon)
 	if err != nil {
 		panic(fmt.Errorf("BUG: validation cannot return error for scrapeConfig: %s", err))
 	}
@@ -395,10 +395,12 @@ type scrapeObjectWithStatus interface {
 	GetStatusMetadata() *vmv1beta1.StatusMetadata
 }
 
-var skipOnNotFound = func(err error) bool {
+var skipOnNotFoundOrParseErr = func(err error) bool {
 	var ne *k8stools.KeyNotFoundError
 	switch {
 	case errors.IsNotFound(err), stderrors.As(err, &ne):
+		return true
+	case err != nil && strings.Contains(err.Error(), "cannot parse spec:"):
 		return true
 	default:
 		return false
@@ -486,6 +488,10 @@ func loadScrapeSecrets(
 	}
 	var err error
 	sos.sss, sos.sssBroken, err = forEachCollectSkipOn(sos.sss, sos.sssBroken, func(mon *vmv1beta1.VMServiceScrape) error {
+		if mon.Spec.ParsingError != "" {
+			return stderrors.New(mon.Spec.ParsingError)
+		}
+
 		for i, ep := range mon.Spec.Endpoints {
 			if err := loadSecretsToCacheFrom(ctx, rclient, &ep.EndpointAuth, mon.AsMapKey(i), mon.Namespace, ssCache); err != nil {
 				return err
@@ -506,12 +512,16 @@ func loadScrapeSecrets(
 			}
 		}
 		return nil
-	}, skipOnNotFound)
+	}, skipOnNotFoundOrParseErr)
 	if err != nil {
 		return nil, err
 	}
 
 	sos.nss, sos.nssBroken, err = forEachCollectSkipOn(sos.nss, sos.nssBroken, func(node *vmv1beta1.VMNodeScrape) error {
+		if node.Spec.ParsingError != "" {
+			return stderrors.New(node.Spec.ParsingError)
+		}
+
 		if err := loadSecretsToCacheFrom(ctx, rclient, &node.Spec.EndpointAuth, node.AsMapKey(), node.Namespace, ssCache); err != nil {
 			return err
 		}
@@ -530,12 +540,16 @@ func loadScrapeSecrets(
 		}
 
 		return nil
-	}, skipOnNotFound)
+	}, skipOnNotFoundOrParseErr)
 	if err != nil {
 		return nil, err
 	}
 
 	sos.pss, sos.pssBroken, err = forEachCollectSkipOn(sos.pss, sos.pssBroken, func(pod *vmv1beta1.VMPodScrape) error {
+		if pod.Spec.ParsingError != "" {
+			return stderrors.New(pod.Spec.ParsingError)
+		}
+
 		for i, ep := range pod.Spec.PodMetricsEndpoints {
 			if err := loadSecretsToCacheFrom(ctx, rclient, &ep.EndpointAuth, pod.AsMapKey(i), pod.Namespace, ssCache); err != nil {
 				return err
@@ -556,12 +570,16 @@ func loadScrapeSecrets(
 		}
 
 		return nil
-	}, skipOnNotFound)
+	}, skipOnNotFoundOrParseErr)
 	if err != nil {
 		return nil, err
 	}
 
 	sos.prss, sos.prssBroken, err = forEachCollectSkipOn(sos.prss, sos.prssBroken, func(probe *vmv1beta1.VMProbe) error {
+		if probe.Spec.ParsingError != "" {
+			return stderrors.New(probe.Spec.ParsingError)
+		}
+
 		if err := loadSecretsToCacheFrom(ctx, rclient, &probe.Spec.EndpointAuth, probe.AsMapKey(), probe.Namespace, ssCache); err != nil {
 			return err
 		}
@@ -579,12 +597,16 @@ func loadScrapeSecrets(
 			}
 		}
 		return nil
-	}, skipOnNotFound)
+	}, skipOnNotFoundOrParseErr)
 	if err != nil {
 		return nil, err
 	}
 
 	sos.stss, sos.stssBroken, err = forEachCollectSkipOn(sos.stss, sos.stssBroken, func(staticCfg *vmv1beta1.VMStaticScrape) error {
+		if staticCfg.Spec.ParsingError != "" {
+			return stderrors.New(staticCfg.Spec.ParsingError)
+		}
+
 		for i, ep := range staticCfg.Spec.TargetEndpoints {
 			if err := loadSecretsToCacheFrom(ctx, rclient, &ep.EndpointAuth, staticCfg.AsMapKey(i), staticCfg.Namespace, ssCache); err != nil {
 				return err
@@ -605,12 +627,16 @@ func loadScrapeSecrets(
 			}
 		}
 		return nil
-	}, skipOnNotFound)
+	}, skipOnNotFoundOrParseErr)
 	if err != nil {
 		return nil, err
 	}
 
 	sos.scss, sos.scssBroken, err = forEachCollectSkipOn(sos.scss, sos.scssBroken, func(scrapeConfig *vmv1beta1.VMScrapeConfig) error {
+		if scrapeConfig.Spec.ParsingError != "" {
+			return stderrors.New(scrapeConfig.Spec.ParsingError)
+		}
+
 		if err := loadSecretsToCacheFrom(ctx, rclient, &scrapeConfig.Spec.EndpointAuth, scrapeConfig.AsMapKey("", 0), scrapeConfig.Namespace, ssCache); err != nil {
 			return err
 		}
@@ -795,7 +821,7 @@ func loadScrapeSecrets(
 		}
 
 		return nil
-	}, skipOnNotFound)
+	}, skipOnNotFoundOrParseErr)
 	if err != nil {
 		return nil, err
 	}

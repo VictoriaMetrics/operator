@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,6 +47,10 @@ func (*VMPodScrapeCustomValidator) ValidateCreate(_ context.Context, obj runtime
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
 	}
+	if r.Spec.ParsingError != "" {
+		return nil, errors.New(r.Spec.ParsingError)
+	}
+
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}
@@ -58,6 +63,10 @@ func (*VMPodScrapeCustomValidator) ValidateUpdate(_ context.Context, oldObj, new
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
 	}
+	if r.Spec.ParsingError != "" {
+		return nil, errors.New(r.Spec.ParsingError)
+	}
+
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}

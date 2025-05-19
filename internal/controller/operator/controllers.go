@@ -110,7 +110,12 @@ func (ge *getError) Error() string {
 	return fmt.Sprintf("get_object error for controller=%q object_name=%q at namespace=%q, origin=%q", ge.controller, ge.requestObject.Name, ge.requestObject.Namespace, ge.origin)
 }
 
-func handleReconcileErr(ctx context.Context, rclient client.Client, object objectWithStatusTrack, originResult ctrl.Result, err error) (ctrl.Result, error) {
+type objectWithStatusUpdate interface {
+	client.Object
+	SetUpdateStatusTo(ctx context.Context, r client.Client, status vmv1beta1.UpdateStatus, maybeReason error) error
+}
+
+func handleReconcileErr(ctx context.Context, rclient client.Client, object objectWithStatusUpdate, originResult ctrl.Result, err error) (ctrl.Result, error) {
 	if err == nil {
 		return originResult, nil
 	}
@@ -121,10 +126,14 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object objec
 		contextCancelErrorsTotal.Inc()
 		return originResult, nil
 	case errors.As(err, &pe):
-		if err := object.SetUpdateStatusTo(ctx, rclient, vmv1beta1.UpdateStatusFailed, err); err != nil {
-			logger.WithContext(ctx).Error(err, "failed to update status with parsing error")
+		namespacedName := "unknown"
+		if object != nil && !reflect.ValueOf(object).IsNil() {
+			namespacedName = fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
+			if err := object.SetUpdateStatusTo(ctx, rclient, vmv1beta1.UpdateStatusFailed, err); err != nil {
+				logger.WithContext(ctx).Error(err, "failed to update status with parsing error")
+			}
 		}
-		parseObjectErrorsTotal.WithLabelValues(pe.controller, fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())).Inc()
+		parseObjectErrorsTotal.WithLabelValues(pe.controller, namespacedName).Inc()
 	case errors.As(err, &ge):
 		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
 		getObjectsErrorsTotal.WithLabelValues(ge.controller, ge.requestObject.String()).Inc()

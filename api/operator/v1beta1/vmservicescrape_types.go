@@ -1,14 +1,19 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+var _ json.Unmarshaler = (*VMServiceScrapeSpec)(nil)
+
 // VMServiceScrapeSpec defines the desired state of VMServiceScrape
 type VMServiceScrapeSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-" yaml:"-"`
 	// DiscoveryRole - defines kubernetes_sd role for objects discovery.
 	// by default, its endpoints.
 	// can be changed to service or endpointslices.
@@ -47,6 +52,16 @@ type VMServiceScrapeSpec struct {
 	// AttachMetadata configures metadata attaching from service discovery
 	// +optional
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMServiceScrapeSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMServiceScrapeSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // VMServiceScrape is scrape configuration for endpoints associated with

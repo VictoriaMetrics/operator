@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,6 +47,10 @@ func (*VMProbeCustomValidator) ValidateCreate(_ context.Context, obj runtime.Obj
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
 	}
+	if r.Spec.ParsingError != "" {
+		return nil, errors.New(r.Spec.ParsingError)
+	}
+
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}
@@ -57,6 +62,9 @@ func (*VMProbeCustomValidator) ValidateUpdate(_ context.Context, oldObj, newObj 
 	r, ok := newObj.(*vmv1beta1.VMProbe)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+	}
+	if r.Spec.ParsingError != "" {
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if err := r.Validate(); err != nil {
 		return nil, err

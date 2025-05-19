@@ -69,7 +69,9 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	RegisterObjectStat(instance, "vmpodscrape")
-
+	if instance.Spec.ParsingError != "" {
+		return result, &parsingError{instance.Spec.ParsingError, "vmpodscrape"}
+	}
 	if vmAgentReconcileLimit.MustThrottleReconcile() {
 		return
 	}

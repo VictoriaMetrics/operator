@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,6 +46,9 @@ func (*VMScrapeConfigCustomValidator) ValidateCreate(_ context.Context, obj runt
 	r, ok := obj.(*vmv1beta1.VMScrapeConfig)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+	}
+	if r.Spec.ParsingError != "" {
+		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if err := r.Validate(); err != nil {
 		return nil, err

@@ -3865,9 +3865,13 @@ func (in *VMAgentRemoteWriteSpec) DeepCopyInto(out *VMAgentRemoteWriteSpec) {
 	}
 	if in.InlineUrlRelabelConfig != nil {
 		in, out := &in.InlineUrlRelabelConfig, &out.InlineUrlRelabelConfig
-		*out = make([]RelabelConfig, len(*in))
+		*out = make([]*RelabelConfig, len(*in))
 		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(RelabelConfig)
+				(*in).DeepCopyInto(*out)
+			}
 		}
 	}
 	if in.OAuth2 != nil {
@@ -3982,9 +3986,13 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 	}
 	if in.InlineRelabelConfig != nil {
 		in, out := &in.InlineRelabelConfig, &out.InlineRelabelConfig
-		*out = make([]RelabelConfig, len(*in))
+		*out = make([]*RelabelConfig, len(*in))
 		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(RelabelConfig)
+				(*in).DeepCopyInto(*out)
+			}
 		}
 	}
 	if in.StreamAggrConfig != nil {

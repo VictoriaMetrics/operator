@@ -126,6 +126,9 @@ resources:
   kind: VMProbe
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
     namespaced: true

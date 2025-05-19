@@ -112,7 +112,7 @@ type VMAgentSpec struct {
 	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
 	// InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD.
 	// +optional
-	InlineRelabelConfig []RelabelConfig `json:"inlineRelabelConfig,omitempty"`
+	InlineRelabelConfig []*RelabelConfig `json:"inlineRelabelConfig,omitempty"`
 	// StreamAggrConfig defines global stream aggregation configuration for VMAgent
 	// +optional
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
@@ -457,7 +457,7 @@ type VMAgentRemoteWriteSpec struct {
 	UrlRelabelConfig *v1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
 	// InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec.
 	// +optional
-	InlineUrlRelabelConfig []RelabelConfig `json:"inlineUrlRelabelConfig,omitempty"`
+	InlineUrlRelabelConfig []*RelabelConfig `json:"inlineUrlRelabelConfig,omitempty"`
 	// OAuth2 defines auth configuration
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
@@ -875,7 +875,7 @@ func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
 
-func checkRelabelConfigs(src []RelabelConfig) error {
+func checkRelabelConfigs(src []*RelabelConfig) error {
 	// TODO: restore check when issue will be fixed at golang
 	// https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6911
 	return nil

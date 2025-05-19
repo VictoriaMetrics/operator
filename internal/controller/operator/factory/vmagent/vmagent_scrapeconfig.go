@@ -1288,9 +1288,9 @@ func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *vmv1beta1.TLSConfig,
 	return cfg
 }
 
-func addRelabelConfigs(dst []yaml.MapSlice, rcs []vmv1beta1.RelabelConfig) []yaml.MapSlice {
+func addRelabelConfigs(dst []yaml.MapSlice, rcs []*vmv1beta1.RelabelConfig) []yaml.MapSlice {
 	for i := range rcs {
-		rc := &rcs[i]
+		rc := rcs[i]
 		if rc.IsEmpty() {
 			continue
 		}

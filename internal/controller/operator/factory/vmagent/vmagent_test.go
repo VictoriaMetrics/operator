@@ -1168,7 +1168,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 								TLSConfig: &vmv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
 								},
-								InlineUrlRelabelConfig: []vmv1beta1.RelabelConfig{
+								InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
 									{TargetLabel: "rw-1", Replacement: ptr.To("present")},
 								},
 							},
@@ -1184,12 +1184,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 								TLSConfig: &vmv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
 								},
-								InlineUrlRelabelConfig: []vmv1beta1.RelabelConfig{
+								InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
 									{TargetLabel: "rw-2", Replacement: ptr.To("present")},
 								},
 							},
 						},
-						InlineRelabelConfig: []vmv1beta1.RelabelConfig{
+						InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
 							{TargetLabel: "dst", Replacement: ptr.To("ok")},
 						},
 					},
@@ -1728,7 +1728,7 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 				ctx: context.TODO(),
 				cr: &vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						InlineRelabelConfig: []vmv1beta1.RelabelConfig{
+						InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
 							{
 								Regex:        []string{".*"},
 								Action:       "DROP",
@@ -1764,7 +1764,7 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						InlineRelabelConfig: []vmv1beta1.RelabelConfig{
+						InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
 							{
 								Regex:        []string{".*"},
 								Action:       "DROP",
@@ -2069,7 +2069,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 					Spec: vmv1beta1.VMAgentSpec{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
 						IngestOnlyMode:          false,
-						InlineRelabelConfig:     []vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
+						InlineRelabelConfig:     []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{
 								URL: "http://some",

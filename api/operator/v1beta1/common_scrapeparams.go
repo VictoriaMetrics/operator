@@ -6,11 +6,6 @@ import (
 	"reflect"
 	"strings"
 
-	"gopkg.in/yaml.v2"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/envtemplate"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promrelabel"
-
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -328,27 +323,11 @@ type EndpointRelabelings struct {
 }
 
 func (r *EndpointRelabelings) validate() error {
-	prc, err := yaml.Marshal(r.MetricRelabelConfigs)
-	if err != nil {
-		return fmt.Errorf("failed to validate metricRelabelConfigs: %w", err)
+	if err := checkRelabelConfigs(r.RelabelConfigs); err != nil {
+		return fmt.Errorf("invalid relabelConfigs: %w", err)
 	}
-	prc, err = envtemplate.ReplaceBytes(prc)
-	if err != nil {
-		return fmt.Errorf("cannot replace envs: %w", err)
-	}
-	if _, err = promrelabel.ParseRelabelConfigsData(prc); err != nil {
-		return err
-	}
-	prc, err = yaml.Marshal(r.RelabelConfigs)
-	if err != nil {
-		return fmt.Errorf("failed to validate relabelConfigs: %w", err)
-	}
-	prc, err = envtemplate.ReplaceBytes(prc)
-	if err != nil {
-		return fmt.Errorf("cannot replace envs: %w", err)
-	}
-	if _, err = promrelabel.ParseRelabelConfigsData(prc); err != nil {
-		return err
+	if err := checkRelabelConfigs(r.MetricRelabelConfigs); err != nil {
+		return fmt.Errorf("invalid metricRelabelConfigs: %w", err)
 	}
 	return nil
 }

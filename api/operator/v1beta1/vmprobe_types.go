@@ -132,6 +132,27 @@ func (cr *VMProbe) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
 
+// Validate returns error if CR is invalid
+func (cr *VMProbe) Validate() error {
+	if mustSkipValidation(cr) {
+		return nil
+	}
+	if err := checkRelabelConfigs(cr.Spec.MetricRelabelConfigs); err != nil {
+		return fmt.Errorf("invalid metricRelabelConfigs: %w", err)
+	}
+	switch {
+	case cr.Spec.Targets.Ingress != nil:
+		if err := checkRelabelConfigs(cr.Spec.Targets.Ingress.RelabelConfigs); err != nil {
+			return fmt.Errorf("invliad ingress.relabelingConfigs: %w", err)
+		}
+	case cr.Spec.Targets.StaticConfig != nil:
+		if err := checkRelabelConfigs(cr.Spec.Targets.StaticConfig.RelabelConfigs); err != nil {
+			return fmt.Errorf("invliad staticConfig.relabelingConfigs: %w", err)
+		}
+	}
+	return nil
+}
+
 func init() {
 	SchemeBuilder.Register(&VMProbe{}, &VMProbeList{})
 }

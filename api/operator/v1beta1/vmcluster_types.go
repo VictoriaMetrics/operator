@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -171,6 +170,16 @@ type VMCluster struct {
 	ParsedLastAppliedSpec *VMClusterSpec `json:"-" yaml:"-"`
 	// +optional
 	Status VMClusterStatus `json:"status,omitempty"`
+}
+
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMCluster) GetStatus() *VMClusterStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMCluster) DefaultStatusFields(vs *VMClusterStatus) {
+	vs.LegacyStatus = vs.UpdateStatus
 }
 
 // AsOwner returns owner references with current object as owner
@@ -981,19 +990,6 @@ func (cr *VMStorage) ProbeScheme() string {
 
 func (cr *VMStorage) ProbePort() string {
 	return cr.Port
-}
-
-// SetStatusTo changes update status with optional reason of fail
-func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMCluster, *VMClusterStatus]{
-		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
-		maybeErr:     maybeErr,
-		mutateCurrentBeforeCompare: func(vs *VMClusterStatus) {
-			vs.LegacyStatus = vs.UpdateStatus
-		},
-	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

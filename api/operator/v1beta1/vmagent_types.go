@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -583,6 +582,26 @@ func (cr *VMAgent) PodAnnotations() map[string]string {
 	return annotations
 }
 
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAgent) GetStatus() *VMAgentStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAgent) DefaultStatusFields(vs *VMAgentStatus) {
+	replicaCount := int32(0)
+	if cr.Spec.ReplicaCount != nil {
+		replicaCount = *cr.Spec.ReplicaCount
+	}
+	var shardCnt int32
+	if cr.Spec.ShardCount != nil {
+		shardCnt = int32(*cr.Spec.ShardCount)
+	}
+	vs.Replicas = replicaCount
+	vs.Shards = shardCnt
+	vs.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
+}
+
 func (cr *VMAgent) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
 	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
@@ -845,29 +864,6 @@ func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 	}
 
 	return false
-}
-
-// SetStatusTo changes update status with optional reason of fail
-func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAgent, *VMAgentStatus]{
-		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
-		maybeErr:     maybeErr,
-		mutateCurrentBeforeCompare: func(vs *VMAgentStatus) {
-			replicaCount := int32(0)
-			if cr.Spec.ReplicaCount != nil {
-				replicaCount = *cr.Spec.ReplicaCount
-			}
-			var shardCnt int32
-			if cr.Spec.ShardCount != nil {
-				shardCnt = int32(*cr.Spec.ShardCount)
-			}
-			vs.Replicas = replicaCount
-			vs.Shards = shardCnt
-			vs.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
-		},
-	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

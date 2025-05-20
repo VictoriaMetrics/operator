@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -252,6 +251,15 @@ func (cr *VMAlertmanagerStatus) GetStatusMetadata() *StatusMetadata {
 	return &cr.StatusMetadata
 }
 
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAlertmanager) GetStatus() *VMAlertmanagerStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAlertmanager) DefaultStatusFields(vs *VMAlertmanagerStatus) {
+}
+
 // AsOwner returns owner references with current object as owner
 func (cr *VMAlertmanager) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
@@ -482,16 +490,6 @@ func (cr *VMAlertmanager) HasSpecChanges() (bool, error) {
 
 func (cr *VMAlertmanager) Paused() bool {
 	return cr.Spec.Paused
-}
-
-// SetStatusTo changes update status with optional reason of fail
-func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAlertmanager, *VMAlertmanagerStatus]{
-		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
-		maybeErr:     maybeErr,
-	})
 }
 
 func (cr *VMAlertmanager) Validate() error {

@@ -56,14 +56,14 @@ func (r *VMServiceScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
 func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+	instance := &vmv1beta1.VMServiceScrape{}
 	reqLogger := r.Log.WithValues("vmservicescrape", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, reqLogger)
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
 	}()
 
 	// Fetch the VMServiceScrape instance
-	instance := &vmv1beta1.VMServiceScrape{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return result, &getError{err, "vmservicescrape", req}
 	}

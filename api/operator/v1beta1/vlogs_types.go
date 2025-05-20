@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -135,6 +134,15 @@ type VLogsList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VLogs `json:"items"`
+}
+
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VLogs) GetStatus() *VLogsStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VLogs) DefaultStatusFields(vs *VLogsStatus) {
 }
 
 func (r *VLogs) PodAnnotations() map[string]string {
@@ -329,16 +337,6 @@ func (cr *VLogs) HasSpecChanges() (bool, error) {
 
 func (cr *VLogs) Paused() bool {
 	return cr.Spec.Paused
-}
-
-// SetStatusTo changes update status with optional reason of fail
-func (cr *VLogs) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, c, &patchStatusOpts[*VLogs, *VLogsStatus]{
-		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
-		maybeErr:     maybeErr,
-	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

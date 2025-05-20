@@ -56,13 +56,14 @@ func (r *VMProbeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes/status,verbs=get;update;patch
 func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+	instance := &vmv1beta1.VMProbe{}
 	reqLogger := r.Log.WithValues("vmprobe", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, reqLogger)
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
 	}()
+
 	// Fetch the VMPodScrape instance
-	instance := &vmv1beta1.VMProbe{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return result, &getError{err, "vmprobescrape", req}
 	}

@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -280,6 +279,15 @@ type VMAlert struct {
 	Status VMAlertStatus `json:"status,omitempty"`
 }
 
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAlert) GetStatus() *VMAlertStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAlert) DefaultStatusFields(vs *VMAlertStatus) {
+}
+
 func (cr *VMAlert) Probe() *EmbeddedProbes {
 	return cr.Spec.EmbeddedProbes
 }
@@ -512,16 +520,6 @@ func (cr *VMAlert) HasSpecChanges() (bool, error) {
 
 func (cr *VMAlert) Paused() bool {
 	return cr.Spec.Paused
-}
-
-// SetStatusTo changes update status with optional reason of fail
-func (cr *VMAlert) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAlert, *VMAlertStatus]{
-		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
-		maybeErr:     maybeErr,
-	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

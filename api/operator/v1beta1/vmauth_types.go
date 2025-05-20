@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -502,6 +501,15 @@ type VMAuth struct {
 	Status VMAuthStatus `json:"status,omitempty"`
 }
 
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAuth) GetStatus() *VMAuthStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAuth) DefaultStatusFields(vs *VMAuthStatus) {
+}
+
 func (cr *VMAuth) Probe() *EmbeddedProbes {
 	return cr.Spec.EmbeddedProbes
 }
@@ -669,16 +677,6 @@ func (cr *VMAuth) HasSpecChanges() (bool, error) {
 
 func (cr *VMAuth) Paused() bool {
 	return cr.Spec.Paused
-}
-
-// SetStatusTo changes update status with optional reason of fail
-func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMAuth, *VMAuthStatus]{
-		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
-		maybeErr:     maybeErr,
-	})
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

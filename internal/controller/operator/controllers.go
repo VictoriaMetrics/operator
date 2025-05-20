@@ -110,12 +110,13 @@ func (ge *getError) Error() string {
 	return fmt.Sprintf("get_object error for controller=%q object_name=%q at namespace=%q, origin=%q", ge.controller, ge.requestObject.Name, ge.requestObject.Namespace, ge.origin)
 }
 
-type objectWithStatusUpdate interface {
-	client.Object
-	SetUpdateStatusTo(ctx context.Context, r client.Client, status vmv1beta1.UpdateStatus, maybeReason error) error
-}
-
-func handleReconcileErr(ctx context.Context, rclient client.Client, object objectWithStatusUpdate, originResult ctrl.Result, err error) (ctrl.Result, error) {
+func handleReconcileErr[T client.Object, ST operatorreconcile.StatusWithMetadata[STC], STC any](
+	ctx context.Context,
+	rclient client.Client,
+	object operatorreconcile.ObjectWithDeepCopyAndStatus[T, ST, STC],
+	originResult ctrl.Result,
+	err error,
+) (ctrl.Result, error) {
 	if err == nil {
 		return originResult, nil
 	}
@@ -129,7 +130,7 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object objec
 		namespacedName := "unknown"
 		if object != nil && !reflect.ValueOf(object).IsNil() {
 			namespacedName = fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
-			if err := object.SetUpdateStatusTo(ctx, rclient, vmv1beta1.UpdateStatusFailed, err); err != nil {
+			if err := operatorreconcile.UpdateObjectStatus(ctx, rclient, object, vmv1beta1.UpdateStatusFailed, err); err != nil {
 				logger.WithContext(ctx).Error(err, "failed to update status with parsing error")
 			}
 		}
@@ -149,6 +150,68 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object objec
 			namespacedName = fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
 		}
 		conflictErrorsTotal.WithLabelValues(controller, namespacedName).Inc()
+		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
+	}
+	if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
+		errEvent := &corev1.Event{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "victoria-metrics-operator-" + uuid.New().String(),
+				Namespace: object.GetNamespace(),
+			},
+			Type:    corev1.EventTypeWarning,
+			Reason:  "ReconcilationError",
+			Message: err.Error(),
+			Source: corev1.EventSource{
+				Component: "victoria-metrics-operator",
+			},
+			LastTimestamp: metav1.NewTime(time.Now()),
+			InvolvedObject: corev1.ObjectReference{
+				Kind:            object.GetObjectKind().GroupVersionKind().Kind,
+				Namespace:       object.GetNamespace(),
+				Name:            object.GetName(),
+				UID:             object.GetUID(),
+				ResourceVersion: object.GetResourceVersion(),
+			},
+		}
+		if err := rclient.Create(ctx, errEvent); err != nil {
+			logger.WithContext(ctx).Error(err, "failed to create error event at kubernetes API during reconciliation error")
+		}
+	}
+
+	return originResult, err
+}
+
+func handleReconcileErrWithoutStatus(
+	ctx context.Context,
+	rclient client.Client,
+	object client.Object,
+	originResult ctrl.Result,
+	err error,
+) (ctrl.Result, error) {
+	if err == nil {
+		return originResult, nil
+	}
+	var ge *getError
+	var pe *parsingError
+	switch {
+	case errors.Is(err, context.Canceled):
+		contextCancelErrorsTotal.Inc()
+		return originResult, nil
+	case errors.As(err, &pe):
+		parseObjectErrorsTotal.WithLabelValues(pe.controller, "unknown").Inc()
+	case errors.As(err, &ge):
+		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
+		getObjectsErrorsTotal.WithLabelValues(ge.controller, ge.requestObject.String()).Inc()
+		if apierrors.IsNotFound(err) {
+			err = nil
+			return originResult, nil
+		}
+	case apierrors.IsConflict(err):
+		controller := "unknown"
+		if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
+			controller = object.GetObjectKind().GroupVersionKind().GroupKind().Kind
+		}
+		conflictErrorsTotal.WithLabelValues(controller, "unknown").Inc()
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 	if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
@@ -246,11 +309,12 @@ func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sou
 	return true, nil
 }
 
-type objectWithStatusTrack interface {
+type objectWithStatusTrack[T client.Object, ST operatorreconcile.StatusWithMetadata[STC], STC any] interface {
 	client.Object
 	HasSpecChanges() (bool, error)
 	LastAppliedSpecAsPatch() (client.Patch, error)
-	SetUpdateStatusTo(ctx context.Context, r client.Client, status vmv1beta1.UpdateStatus, maybeReason error) error
+	// TODO: remove
+	operatorreconcile.ObjectWithDeepCopyAndStatus[T, ST, STC]
 	Paused() bool
 }
 
@@ -284,9 +348,14 @@ func createGenericEventForObject(ctx context.Context, c client.Client, object cl
 // TODO :@f41gh7 replace object with generic type
 // it allows to use DeepClone method to prevent hidden object updates
 // made by controller-runtime client
-func reconcileAndTrackStatus(ctx context.Context, c client.Client, object objectWithStatusTrack, cb func() (ctrl.Result, error)) (result ctrl.Result, resultErr error) {
+func reconcileAndTrackStatus[T client.Object, ST operatorreconcile.StatusWithMetadata[STC], STC any](
+	ctx context.Context,
+	c client.Client,
+	object objectWithStatusTrack[T, ST, STC],
+	cb func() (ctrl.Result, error),
+) (result ctrl.Result, resultErr error) {
 	if object.Paused() {
-		if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusPaused, nil); err != nil {
+		if err := operatorreconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusPaused, nil); err != nil {
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
@@ -309,7 +378,7 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 			return
 		}
 
-		if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusExpanding, nil); err != nil {
+		if err := operatorreconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusExpanding, nil); err != nil {
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
@@ -337,7 +406,7 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 		if operatorreconcile.IsErrorWaitTimeout(err) {
 			desiredStatus = vmv1beta1.UpdateStatusExpanding
 		}
-		if updateErr := object.SetUpdateStatusTo(ctx, c, desiredStatus, err); updateErr != nil {
+		if updateErr := operatorreconcile.UpdateObjectStatus(ctx, c, object, desiredStatus, err); updateErr != nil {
 			resultErr = fmt.Errorf("failed to update object status: %q, origin err: %w", updateErr, err)
 			return
 		}
@@ -350,7 +419,7 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 		}
 		logger.WithContext(ctx).Info("object was successfully reconciled")
 	}
-	if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusOperational, nil); err != nil {
+	if err := operatorreconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusOperational, nil); err != nil {
 		resultErr = fmt.Errorf("failed to update object status: %w", err)
 		return
 	}

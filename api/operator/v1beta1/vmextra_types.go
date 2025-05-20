@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -16,7 +15,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -1356,91 +1354,6 @@ type ContainerSecurityContext struct {
 	// Note that this field cannot be set when spec.os.name is windows.
 	// +optional
 	ProcMount *v1.ProcMountType `json:"procMount,omitempty"`
-}
-
-type objectWithDeepCopy[T client.Object] interface {
-	client.Object
-	DeepCopy() T
-}
-
-type objectStatusWithDeepCopy[ST any] interface {
-	GetStatusMetadata() *StatusMetadata
-	DeepCopy() ST
-}
-
-type patchStatusOpts[T client.Object, ST any] struct {
-	actualStatus               UpdateStatus
-	cr                         objectWithDeepCopy[T]
-	crStatus                   objectStatusWithDeepCopy[ST]
-	maybeErr                   error
-	mutateCurrentBeforeCompare func(ST)
-}
-
-func updateObjectStatus[T client.Object, ST any](ctx context.Context, rclient client.Client, opts *patchStatusOpts[T, ST]) error {
-	currentStatus := opts.crStatus
-	prevStatus := opts.crStatus.DeepCopy()
-	currMeta := currentStatus.GetStatusMetadata()
-	newUpdateStatus := opts.actualStatus
-	switch opts.actualStatus {
-	case UpdateStatusExpanding, UpdateStatusPaused:
-	case UpdateStatusFailed:
-		if opts.maybeErr != nil {
-			currMeta.Reason = opts.maybeErr.Error()
-		}
-	case UpdateStatusOperational:
-		currMeta.Reason = ""
-	default:
-		panic(fmt.Sprintf("BUG: not expected status=%q", opts.actualStatus))
-	}
-
-	currMeta.ObservedGeneration = opts.cr.GetGeneration()
-	if opts.mutateCurrentBeforeCompare != nil {
-		opts.mutateCurrentBeforeCompare(opts.crStatus.(ST))
-	}
-	// compare before send update request
-	// it reduces load at kubernetes api-server
-	if equality.Semantic.DeepEqual(currentStatus, prevStatus) && currMeta.UpdateStatus == opts.actualStatus {
-		return nil
-	}
-	currMeta.UpdateStatus = newUpdateStatus
-
-	pr, err := buildStatusPatch(currentStatus)
-	if err != nil {
-		return err
-	}
-	// make a deep copy before passing object to Patch function
-	// it reload state of the object from API server
-	// which is not desired behaviour
-	objecToUpdate := opts.cr.DeepCopy()
-	if err := rclient.Status().Patch(ctx, objecToUpdate, pr); err != nil {
-		return fmt.Errorf("cannot update resource status with patch: %w", err)
-	}
-	// Update ResourceVersion in order to resolve future conflicts
-	opts.cr.SetResourceVersion(objecToUpdate.GetResourceVersion())
-
-	return nil
-}
-
-func buildStatusPatch(currentStatus any) (client.Patch, error) {
-	type patch struct {
-		OP    string `json:"op"`
-		Path  string `json:"path"`
-		Value any    `json:"value"`
-	}
-	ops := []patch{
-		{
-			OP:    "replace",
-			Path:  "/status",
-			Value: currentStatus,
-		},
-	}
-	data, err := json.Marshal(ops)
-	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize patch specification as json :%w", err)
-	}
-
-	return client.RawPatch(types.JSONPatchType, data), nil
-
 }
 
 // ExternalConfig defines external source of configuration

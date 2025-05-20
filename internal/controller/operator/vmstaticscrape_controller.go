@@ -40,11 +40,11 @@ func (r *VMStaticScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes/status,verbs=get;update;patch
 func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+	instance := &vmv1beta1.VMStaticScrape{}
 	reqLogger := r.Log.WithValues("vmstaticscrape", req.Name, "namespace", req.Namespace)
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
 	}()
-	instance := &vmv1beta1.VMStaticScrape{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return result, &getError{err, "vmstaticscrape", req}
 	}

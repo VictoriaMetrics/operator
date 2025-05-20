@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -152,6 +151,16 @@ type VMSingle struct {
 	ParsedLastAppliedSpec *VMSingleSpec `json:"-" yaml:"-"`
 
 	Status VMSingleStatus `json:"status,omitempty"`
+}
+
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMSingle) GetStatus() *VMSingleStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMSingle) DefaultStatusFields(vs *VMSingleStatus) {
+	vs.LegacyStatus = vs.UpdateStatus
 }
 
 func (cr *VMSingle) Probe() *EmbeddedProbes {
@@ -364,19 +373,6 @@ func (cr *VMSingle) Validate() error {
 		}
 	}
 	return nil
-}
-
-// SetStatusTo changes update status with optional reason of fail
-func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
-	return updateObjectStatus(ctx, c, &patchStatusOpts[*VMSingle, *VMSingleStatus]{
-		actualStatus: status,
-		cr:           cr,
-		crStatus:     &cr.Status,
-		maybeErr:     maybeErr,
-		mutateCurrentBeforeCompare: func(vs *VMSingleStatus) {
-			vs.LegacyStatus = vs.UpdateStatus
-		},
-	})
 }
 
 // GetStatusMetadata returns metadata for object status

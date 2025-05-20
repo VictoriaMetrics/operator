@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand/v2"
 	"reflect"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
@@ -175,4 +177,87 @@ func jitterForDuration(d time.Duration) time.Duration {
 	dv := d / 2
 	p := float64(rand.Uint32()) / (1 << 32)
 	return d + time.Duration(p*float64(dv))
+}
+
+type ObjectWithDeepCopyAndStatus[T client.Object, ST StatusWithMetadata[STC], STC any] interface {
+	client.Object
+	DeepCopy() T
+	GetStatus() ST
+	DefaultStatusFields(ST)
+}
+
+// StatusWithMetadata defines
+type StatusWithMetadata[T any] interface {
+	DeepCopy() T
+	GetStatusMetadata() *vmv1beta1.StatusMetadata
+}
+
+// UpdateStatus reconcile provided object status with given actualStatus status
+func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ctx context.Context, rclient client.Client, object ObjectWithDeepCopyAndStatus[T, ST, STC], actualStatus vmv1beta1.UpdateStatus, maybeErr error) error {
+	currentStatus := object.GetStatus()
+	prevStatus := currentStatus.DeepCopy()
+	currMeta := currentStatus.GetStatusMetadata()
+	newUpdateStatus := actualStatus
+
+	pr, err := buildStatusPatch(currentStatus)
+	if err != nil {
+		return err
+	}
+	switch actualStatus {
+	case vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusPaused:
+	case vmv1beta1.UpdateStatusFailed:
+		if maybeErr != nil {
+			currMeta.Reason = maybeErr.Error()
+		}
+	case vmv1beta1.UpdateStatusOperational:
+		currMeta.Reason = ""
+	default:
+		panic(fmt.Sprintf("BUG: not expected status=%q", actualStatus))
+	}
+
+	currMeta.ObservedGeneration = object.GetGeneration()
+	object.DefaultStatusFields(currentStatus)
+	// if opts.mutateCurrentBeforeCompare != nil {
+	// 	opts.mutateCurrentBeforeCompare(opts.crStatus.(ST))
+	// }
+	// compare before send update request
+	// it reduces load at kubernetes api-server
+	if equality.Semantic.DeepEqual(currentStatus, prevStatus) && currMeta.UpdateStatus == actualStatus {
+		return nil
+	}
+	currMeta.UpdateStatus = newUpdateStatus
+
+	// make a deep copy before passing object to Patch function
+	// it reload state of the object from API server
+	// which is not desired behaviour
+	objecToUpdate := object.DeepCopy()
+	if err := rclient.Status().Patch(ctx, objecToUpdate, pr); err != nil {
+		return fmt.Errorf("cannot update resource status with patch: %w", err)
+	}
+	// Update ResourceVersion in order to resolve future conflicts
+	object.SetResourceVersion(objecToUpdate.GetResourceVersion())
+
+	return nil
+}
+
+func buildStatusPatch(currentStatus any) (client.Patch, error) {
+	type patch struct {
+		OP    string `json:"op"`
+		Path  string `json:"path"`
+		Value any    `json:"value"`
+	}
+	ops := []patch{
+		{
+			OP:    "replace",
+			Path:  "/status",
+			Value: currentStatus,
+		},
+	}
+	data, err := json.Marshal(ops)
+	if err != nil {
+		return nil, fmt.Errorf("possible bug, cannot serialize patch specification as json :%w", err)
+	}
+
+	return client.RawPatch(types.JSONPatchType, data), nil
+
 }

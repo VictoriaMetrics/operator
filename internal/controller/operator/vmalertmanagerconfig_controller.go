@@ -61,12 +61,12 @@ func (r *VMAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs/status,verbs=get;update;patch
 func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, resultErr error) {
+	var instance vmv1beta1.VMAlertmanagerConfig
+
 	l := r.Log.WithValues("vmalertmanagerconfig", req.Name, "namespace", req.Namespace)
 	defer func() {
-		result, resultErr = handleReconcileErr(ctx, r.Client, nil, result, resultErr)
+		result, resultErr = handleReconcileErrWithoutStatus(ctx, r.Client, &instance, result, resultErr)
 	}()
-
-	var instance vmv1beta1.VMAlertmanagerConfig
 
 	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		return result, &getError{err, "vmalertmanagerconfig", req}

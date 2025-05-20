@@ -62,12 +62,11 @@ var vmauthRateLimiter = limiter.NewRateLimiter("vmauth", 5)
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers/status,verbs=get;update;patch
 func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vmuser", req.Name, "namespace", req.Namespace)
-
-	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
-	}()
 	var instance vmv1beta1.VMUser
+	l := r.Log.WithValues("vmuser", req.Name, "namespace", req.Namespace)
+	defer func() {
+		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, &instance, result, err)
+	}()
 
 	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		return result, &getError{err, "vmuser", req}

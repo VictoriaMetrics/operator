@@ -77,25 +77,18 @@ head -n 10 operator-and-crds.yaml
 
 Apply the manifest to your cluster:
 ```sh
-kubectl apply -f operator-and-crds.yaml
+kubectl apply -f operator-and-crds.yaml;
+kubectl -n vm rollout status deployment vm-operator --watch=true;
 
 # Output:
-# namespace/vm created
-# customresourcedefinition.apiextensions.k8s.io/vlogs.operator.victoriametrics.com created
-# customresourcedefinition.apiextensions.k8s.io/vmagents.operator.victoriametrics.com created
+# namespace/vm configured
 # ...
+# Waiting for deployment "vm-operator" rollout to finish: 0 of 1 updated replicas are available...
+# deployment "vm-operator" successfully rolled out
 ```
 The apply command installs the operator and CRDs in the `vm` namespace.
-Once it's running, it will start watching for VictoriaMetrics custom resources and manage them automatically.
-
-You can confirm the operator is running by checking the pod status:
-```sh
-kubectl get pods -n vm -l "app.kubernetes.io/name=victoria-metrics-operator"
-
-# Output:
-# NAME                           READY   STATUS    RESTARTS   AGE
-# vm-operator-5db95b48bd-j6m9v   1/1     Running   0          2m27s
-```
+`kubectl rollout status` ensures the operator is running and ready to accept requests.
+<!-- TODO: add generic troubleshooting section and link it from here -->
 
 The operator introduces [custom resources](https://docs.victoriametrics.com/operator/resources/) to the cluster, 
 which you can list using the following command:
@@ -151,23 +144,16 @@ EOF
 Next, apply the manifest to your Kubernetes cluster:
 ```sh
 kubectl apply -f vmsingle-demo.yaml
+kubectl -n vm wait --for=jsonpath='{.status.updateStatus}'=operational vmsingle/demo;
+kubectl -n vm rollout status deployment vmsingle-demo  --watch=true;
+
+# Output:
+# vmsingle.operator.victoriametrics.com/demo created
+# vmsingle.operator.victoriametrics.com/demo condition met
+# deployment "vmsingle-demo" successfully rolled out
 ```
 That's it! You now have a fully operational VictoriaMetrics storage instance running in the `vm` namespace.
-
-To confirm that `VMSingle` is running, run the following commands. You should see output similar to this:
-```sh
-kubectl get vmsingle -n vm;
-
-# Output:
-#NAME   STATUS        AGE
-#demo   operational   5h48m
-
-kubectl get pods -n vm -l "app.kubernetes.io/name=vmsingle";
-
-# Output:
-# NAME                             READY   STATUS    RESTARTS   AGE
-# vmsingle-demo-54f8fc5777-sw6xp   1/1     Running   0          5h28m
-```
+<!-- TODO: add generic troubleshooting section and link it from here -->
 
 Let’s explore how to interact with the storage. First, you need to make the storage port accessible from your machine.
 To do this, open a separate terminal and run the port-forward command below:
@@ -259,25 +245,15 @@ We’ll use the `VMSingle` storage we created earlier as the remote write destin
 Apply the manifest to your cluster:
 ```sh
 kubectl -n vm apply -f vmagent-demo.yaml
+kubectl -n vm wait --for=jsonpath='{.status.updateStatus}'=operational vmagent/demo;
+kubectl -n vm rollout status deployment vmagent-demo  --watch=true;
 
 # Output:
 # vmagent.operator.victoriametrics.com/demo created
+# vmagent.operator.victoriametrics.com/demo condition met
+# deployment "vmagent-demo" successfully rolled out
 ```
-
-To check if `VMAgent` is running, use:
-```sh
-kubectl get vmagent -n vm;
-
-# Output:
-# NAME   SHARDS COUNT   REPLICA COUNT   STATUS        AGE
-# demo                                  operational   10s
-
-kubectl get pods -n vm -l "app.kubernetes.io/name=vmagent";
-
-# Output:
-# NAME                            READY   STATUS    RESTARTS   AGE
-# vmagent-demo-75bbfb6c5d-8htm8   2/2     Running   0          8s
-```
+<!-- TODO: add generic troubleshooting section and link it from here -->
 
 Now let’s deploy a [demo application](https://github.com/VictoriaMetrics/demo-app) that exposes some metrics. 
 This app is intended for demonstration purposes only and can be removed afterward. 
@@ -321,13 +297,15 @@ spec:
 EOF
 
 kubectl -n default apply -f demo-app.yaml;
+kubectl -n default rollout status deployment demo-app  --watch=true;
 
 # Output:
-# pod/demo-app created
+# deployment.apps/demo-app created
 # service/demo-app created
+# Waiting for deployment "demo-app" rollout to finish: 0 of 1 updated replicas are available...
+# deployment "demo-app" successfully rolled out
 ```
-The pod runs demo app from the image `docker.io/victoriametrics/demo-app`.
-The service connects to any pod that matches the label selector: `app.kubernetes.io/name: demo-app`.
+The demo app instance is running in the `default` namespace from the image [docker.io/victoriametrics/demo-app](https://hub.docker.com/r/victoriametrics/demo-app).
 
 The demo app serves metrics at `/metrics` path on port `8080`. You can test it like this:
 ```sh
@@ -360,9 +338,12 @@ spec:
   - port: metrics
 EOF
 
-kubectl -n default apply -f demo-app-scrape.yaml;
+kubectl apply -f demo-app-scrape.yaml;
+kubectl wait --for=jsonpath='{.status.updateStatus}'=operational vmservicescrape/demo-app-service-scrape;
 
-vmservicescrape.operator.victoriametrics.com/demo-app-service-scrape created
+# Output: 
+# vmservicescrape.operator.victoriametrics.com/demo-app-service-scrape created
+# vmservicescrape.operator.victoriametrics.com/demo-app-service-scrape condition met
 ```
 The `matchLabels` field tells `VMAgent` to look for [services](https://kubernetes.io/docs/concepts/services-networking/service/) with the label `app.kubernetes.io/name: demo-app`.
 The `endpoints` field specifies the port to scrape metrics from.
@@ -442,10 +423,14 @@ spec:
 EOF
 
 kubectl apply -f vmalertmanager-demo.yaml;
+kubectl -n vm wait --for=jsonpath='{.status.updateStatus}'=operational vmalertmanager/demo;
+# vmalertmanger is a statefulset, so there is no rollout status check 
 
 # Output:
 # vmalertmanager.operator.victoriametrics.com/demo created
+# vmalertmanager.operator.victoriametrics.com/demo condition met
 ```
+<!-- TODO: add generic troubleshooting section and link it from here -->
 
 Create a [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert/) manifest and apply it:
 ```sh
@@ -480,12 +465,13 @@ spec:
 EOF
 
 kubectl apply -f vmalert-demo.yaml;
+kubectl -n vm wait --for=jsonpath='{.status.updateStatus}'=operational vmalert/demo;
+kubectl -n vm rollout status deployment vmalert-demo  --watch=true;
 
 # vmalert.operator.victoriametrics.com/demo created
+# vmalert.operator.victoriametrics.com/demo condition met
+# deployment "vmalert-demo" successfully rolled out
 ```
-
-You can use the same method we used before to check if the resources are running.
-Run `kubectl get pod`, but use the label selectors `app.kubernetes.io/name=vmalertmanager` and `app.kubernetes.io/name=vmalert`.
 
 Now, when you have `VMAlert` and `VMAlertManager` running, you can create your first  resource to define the alerting rules.
 This script creates a [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/) resource that defines an alert called `DemoAlertFiring`. 
@@ -512,10 +498,12 @@ spec:
             description: 'demo-app pod {{ $labels.pod }} is firing demo alert'
 EOF
 
-kubectl apply -f demo-app-rule.yaml
+kubectl apply -f demo-app-rule.yaml;
+kubectl wait --for=jsonpath='{.status.updateStatus}'=operational vmrule/demo;
 
 # Output:
 # vmrule.operator.victoriametrics.com/demo created
+# vmrule.operator.victoriametrics.com/demo condition met
 ```
 
 To confirm the alert is active, run:
@@ -621,14 +609,17 @@ spec:
     host: victoriametrics.mycompany.com # <-- Change this to the domain name you’ll use
 EOF
 
-kubectl -n vm apply -f vmauth-demo.yaml
+kubectl -n vm apply -f vmauth-demo.yaml;
+kubectl -n vm wait --for=jsonpath='{.status.updateStatus}'=operational vmauth/demo;
+kubectl -n vm rollout status deployment vmauth-demo  --watch=true;
 
 # Output:
 # vmauth.operator.victoriametrics.com/demo created
+# vmauth.operator.victoriametrics.com/demo condition met
+# deployment "vmauth-demo" successfully rolled out
 ```
-This creates a `VMAuth` named `demo` and makes it accessible through the domain name `victoriametrics.mycompany.com`. 
-You can use the same method we used before to check if the resources are running.
-Run `kubectl get pod`, but use the label selector `app.kubernetes.io/name=vmauth`.
+This creates a `VMAuth` named `demo` and makes it accessible through the domain name `victoriametrics.mycompany.com`.
+<!-- TODO: add generic troubleshooting section and link it from here -->
 
 Check if the `Ingress` rule was created:
 ```sh
@@ -674,10 +665,12 @@ spec:
         - "/api/v1/alerts"
 EOF
 
-kubectl -n vm apply -f vmuser-demo.yaml
+kubectl -n vm apply -f vmuser-demo.yaml;
+kubectl -n vm wait '--for=jsonpath={.status.updateStatus}=operational' vmuser/demo;
 
 # Output:
 # vmuser.operator.victoriametrics.com/demo created
+# vmuser.operator.victoriametrics.com/demo condition met
 ```
 This creates a user named `demo` with a randomly generated password. 
 The `targetRefs` section tells `VMAuth` how to route the user’s requests. 

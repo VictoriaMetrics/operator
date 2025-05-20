@@ -35,6 +35,16 @@ kubectl version
 # Server Version: v1.32.2
 ```
 If you don't have a Kubernetes cluster, you can quickly spin up a local one using [Kind](https://kind.sigs.k8s.io/).
+```sh
+kind create cluster --name=quick-start;
+
+# Output:
+# ...
+# Set kubectl context to "kind-quick-start"
+# You can now use your cluster with:
+#
+# kubectl cluster-info --context kind-quick-start
+```
 
 Please note that [certain permissions](https://docs.victoriametrics.com/operator/security#roles) may be required for the operator to function properly.
 

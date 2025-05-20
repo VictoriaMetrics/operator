@@ -152,7 +152,7 @@ func (cr *VMServiceScrape) AsProxyKey(i int) string {
 
 // Validate returns error if CR is invalid
 func (cr *VMServiceScrape) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	for _, endpoint := range cr.Spec.Endpoints {

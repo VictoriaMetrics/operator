@@ -125,7 +125,7 @@ type ArbitraryFSAccessThroughSMsConfig struct {
 
 // Validate returns error if CR is invalid
 func (cr *VMPodScrape) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	for _, endpoint := range cr.Spec.PodMetricsEndpoints {

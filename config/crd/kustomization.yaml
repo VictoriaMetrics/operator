@@ -18,6 +18,7 @@ resources:
 - bases/operator.victoriametrics.com_vmusers.yaml
 - bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml
 - bases/operator.victoriametrics.com_vlogs.yaml
+- bases/operator.victoriametrics.com_vlsingles.yaml
 patches:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
@@ -53,6 +54,10 @@ patches:
   target:
     kind: CustomResourceDefinition
     name: vlogs.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vlsingles.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vlsingles.operator.victoriametrics.com
 # - path: patches/webhook_in_operator_vmagents.yaml
 # - path: patches/webhook_in_operator_vmsingles.yaml
 # - path: patches/webhook_in_operator_vmalertmanagers.yaml
@@ -83,6 +88,7 @@ patches:
 #- path: patches/cainjection_in_operator_vmauths.yaml
 #- path: patches/cainjection_in_operator_vmscrapeconfigs.yaml
 #- path: patches/cainjection_in_operator_vlogs.yaml
+#- path: patches/cainjection_in_operator_vlsingles.yaml
 # +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # [WEBHOOK] To enable webhook, uncomment the following section

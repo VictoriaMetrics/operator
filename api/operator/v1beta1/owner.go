@@ -14,11 +14,6 @@ type CRDName int
 
 const (
 	Agent CRDName = iota
-	Alert
-	Single
-	Cluster
-	Auth
-	AlertManager
 )
 
 func (c CRDName) String() string {
@@ -45,16 +40,6 @@ func Init(ctx context.Context, rclient client.Client) error {
 		switch item.Name {
 		case "vmagents.operator.victoriametrics.com":
 			n = Agent
-		case "vmalerts.operator.victoriametrics.com":
-			n = Alert
-		case "vmsingles.operator.victoriametrics.com":
-			n = Single
-		case "vmclusters.operator.victoriametrics.com":
-			n = Cluster
-		case "vmauths.operator.victoriametrics.com":
-			n = Auth
-		case "vmalertmanagers.operator.victoriametrics.com":
-			n = AlertManager
 		default:
 			continue
 		}

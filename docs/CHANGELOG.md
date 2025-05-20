@@ -13,6 +13,11 @@ aliases:
 
 ## tip
 
+**Update Note 1:** This release by deprecates `VLogs` resource. It will transit into read-only state after `v0.60.0` release.
+To perform migration to the `VLSingle` please follow [this docs](https://docs.victoriametrics.com/operator/resources/vlsingle/#migration-from-vlogs)
+
+* FEATURE: [operator](https://docs.victoriametrics.com/operator/api): introduce new resource `VLSingle`. It replaces deprecated `VLogs`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1339) for details.
+
 ## [v0.58.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.58.0)
 
 **Release date:** 14 May 2025

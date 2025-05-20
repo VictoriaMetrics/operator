@@ -329,12 +329,13 @@ type VMAgentSpec struct {
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
-func (cr *VMAgent) setLastSpec(prevSpec VMAgentSpec) {
+// SetLastSpec implements objectWithLastAppliedState interface
+func (cr *VMAgent) SetLastSpec(prevSpec VMAgentSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
 func (cr *VMAgent) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
@@ -388,7 +389,7 @@ func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	if cr.Spec.APIServerConfigDeprecated != nil && cr.Spec.APIServerConfig == nil {
 		cr.Spec.APIServerConfig = cr.Spec.APIServerConfigDeprecated
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := ParseLastAppliedStateTo(cr); err != nil {
 		return err
 	}
 	return nil
@@ -669,12 +670,12 @@ func (cr *VMAgent) StreamAggrConfigName() string {
 }
 
 func (cr *VMAgent) HealthPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
 // GetMetricPath returns prefixed path for metric requests
 func (cr *VMAgent) GetMetricPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -721,7 +722,7 @@ func (cr *VMAgent) AsURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
 // AsCRDOwner implements interface
@@ -734,11 +735,11 @@ func (cr *VMAgent) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMAgent) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
 func (cr *VMAgent) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+	return strings.ToUpper(HTTPProtoFromFlags(cr.Spec.ExtraArgs))
 }
 
 func (cr *VMAgent) ProbePort() string {
@@ -826,12 +827,12 @@ func (cr *VMAgent) IsScrapeConfigUnmanaged() bool {
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VMAgent) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
 func (cr *VMAgent) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+	return HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VMAgent) Paused() bool {

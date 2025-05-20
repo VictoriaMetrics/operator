@@ -79,7 +79,7 @@ func (cr *VMStaticScrape) AsProxyKey(i int) string {
 
 // Validate returns error if CR is invalid
 func (cr *VMStaticScrape) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	for _, endpoint := range cr.Spec.TargetEndpoints {

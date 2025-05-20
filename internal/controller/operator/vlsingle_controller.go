@@ -21,23 +21,21 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	operatorv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vlsingle"
 )
 
-// VLogsReconciler reconciles a VLogs object
-type VLogsReconciler struct {
+// VLSingleReconciler reconciles a VLSingle object
+type VLSingleReconciler struct {
 	client.Client
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
@@ -45,47 +43,40 @@ type VLogsReconciler struct {
 }
 
 // Init implements crdController interface
-func (r *VLogsReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VLSingleReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller.VLogs")
+	r.Log = l.WithName("controller.VLSingle")
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
 
-// Scheme implements interface.
-func (r *VLogsReconciler) Scheme() *runtime.Scheme {
-	return r.OriginScheme
-}
-
-// Reconcile general reconcile method for controller
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlogs,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlogs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlogs/finalizers,verbs=*
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=*
-// +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=*
-// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=*
-func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vlogs", req.Name, "namespace", req.Namespace)
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlsingles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlsingles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlsingles/finalizers,verbs=update
+func (r *VLSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+	reqLogger := r.Log.WithValues("vlsingle", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, reqLogger)
-	instance := &vmv1beta1.VLogs{}
+	instance := &operatorv1.VLSingle{}
 
 	defer func() {
 		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
 	}()
 
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vlogs", req}
+		return result, &getError{err, "vlsingle", req}
 	}
 
-	RegisterObjectStat(instance, "vlogs")
+	RegisterObjectStat(instance, "vlsingle")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVLogsDelete(ctx, r.Client, instance); err != nil {
+		if err := finalize.OnVLSingleDelete(ctx, r.Client, instance); err != nil {
 			return result, err
 		}
 		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vlogs"}
+		return result, &parsingError{instance.Spec.ParsingError, "vlsingle"}
 	}
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
@@ -93,8 +84,8 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 	r.Client.Scheme().Default(instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err = vlsingle.CreateOrUpdateVLogs(ctx, r, instance); err != nil {
-			return result, fmt.Errorf("failed create or update vlogs: %w", err)
+		if err = vlsingle.CreateOrUpdate(ctx, r, instance); err != nil {
+			return result, fmt.Errorf("failed create or update vlsingle: %w", err)
 		}
 
 		return result, nil
@@ -102,15 +93,15 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 
 	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 
-	return
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *VLogsReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *VLSingleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&vmv1beta1.VLogs{}).
+		For(&operatorv1.VLSingle{}).
 		Owns(&appsv1.Deployment{}).
-		Owns(&corev1.ServiceAccount{}).
+		Owns(&corev1.Service{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

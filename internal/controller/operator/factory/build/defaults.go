@@ -1,7 +1,9 @@
 package build
 
 import (
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+
 	"github.com/VictoriaMetrics/operator/internal/config"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,6 +30,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAlertmanager{}, addVMAlertmanagerDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMCluster{}, addVMClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VLogs{}, addVlogsDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VLSingle{}, addVLSingleDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 }
 
@@ -239,6 +242,13 @@ func addVlogsDefaults(objI any) {
 	c := getCfg()
 
 	cv := config.ApplicationDefaults(c.VLogsDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+}
+
+func addVLSingleDefaults(objI any) {
+	cr := objI.(*vmv1.VLSingle)
+	c := getCfg()
+	cv := config.ApplicationDefaults(c.VLSingleDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
 }
 

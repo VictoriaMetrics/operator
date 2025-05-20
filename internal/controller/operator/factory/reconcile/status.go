@@ -199,10 +199,6 @@ func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ct
 	currMeta := currentStatus.GetStatusMetadata()
 	newUpdateStatus := actualStatus
 
-	pr, err := buildStatusPatch(currentStatus)
-	if err != nil {
-		return err
-	}
 	switch actualStatus {
 	case vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusPaused:
 	case vmv1beta1.UpdateStatusFailed:
@@ -231,6 +227,10 @@ func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ct
 	// it reload state of the object from API server
 	// which is not desired behaviour
 	objecToUpdate := object.DeepCopy()
+	pr, err := buildStatusPatch(currentStatus)
+	if err != nil {
+		return err
+	}
 	if err := rclient.Status().Patch(ctx, objecToUpdate, pr); err != nil {
 		return fmt.Errorf("cannot update resource status with patch: %w", err)
 	}

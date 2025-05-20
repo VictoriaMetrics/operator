@@ -51,7 +51,7 @@ func Test_buildPathWithPrefixFlag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := buildPathWithPrefixFlag(tt.args.flags, tt.args.defaultPath); got != tt.want {
+			if got := BuildPathWithPrefixFlag(tt.args.flags, tt.args.defaultPath); got != tt.want {
 				t.Errorf("buildPathWithPrefixFlag() = %v, want %v", got, tt.want)
 			}
 		})

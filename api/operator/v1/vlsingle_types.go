@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	"encoding/json"
@@ -25,34 +25,32 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// VLogsSpec defines the desired state of VLogs
+// VLSingleSpec defines the desired state of VLSingle
 // +k8s:openapi-gen=true
-// VLogs is deprecated, migrate to the VLSingle
-// +kubebuilder:validation:Schemaless
-// +kubebuilder:pruning:PreserveUnknownFields
-type VLogsSpec struct {
+type VLSingleSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
 
-	// PodMetadata configures Labels and Annotations which are propagated to the VLogs pods.
+	// PodMetadata configures Labels and Annotations which are propagated to the VLSingle pods.
 	// +optional
-	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	PodMetadata *v1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// ManagedMetadata defines metadata that will be added to the all objects
 	// created by operator for the given CustomResource
-	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+	ManagedMetadata *v1beta1.ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
-	CommonDefaultableParams           `json:",inline,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	v1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
+	v1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
 
 	// LogLevel for VictoriaLogs to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// LogFormat for VLogs to be configured with.
+	// LogFormat for VLSingle to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
@@ -60,54 +58,61 @@ type VLogsSpec struct {
 	// its users responsibility to mount proper device into given path.
 	// +optional
 	StorageDataPath string `json:"storageDataPath,omitempty"`
-	// Storage is the definition of how storage will be used by the VLogs
+	// Storage is the definition of how storage will be used by the VLSingle
 	// by default it`s empty dir
 	// +optional
 	Storage *v1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
-	// StorageMeta defines annotations and labels attached to PVC for given vlogs CR
+	// StorageMeta defines annotations and labels attached to PVC for given vlsingle CR
 	// +optional
-	StorageMetadata EmbeddedObjectMetadata `json:"storageMetadata,omitempty"`
-	// RemovePvcAfterDelete - if true, controller adds ownership to pvc
-	// and after VLogs object deletion - pvc will be garbage collected
-	// by controller manager
-	// +optional
-	RemovePvcAfterDelete bool `json:"removePvcAfterDelete,omitempty"`
+	StorageMetadata v1beta1.EmbeddedObjectMetadata `json:"storageMetadata,omitempty"`
 	// RetentionPeriod for the stored logs
-	RetentionPeriod string `json:"retentionPeriod"`
+	// https://docs.victoriametrics.com/victorialogs/#retention
+	// +optional
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y)?$"
+	RetentionPeriod string `json:"retentionPeriod,omitempty"`
+	// RetentionMaxDiskSpaceUsageBytes for the stored logs
+	// VictoriaLogs keeps at least two last days of data in order to guarantee that the logs for the last day can be returned in queries.
+	// This means that the total disk space usage may exceed the -retention.maxDiskSpaceUsageBytes,
+	// if the size of the last two days of data exceeds the -retention.maxDiskSpaceUsageBytes.
+	// https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage
+	// +optional
+	RetentionMaxDiskSpaceUsageBytes v1beta1.BytesString `json:"retentionMaxDiskSpaceUsageBytes,omitempty"`
 	// FutureRetention for the stored logs
 	// Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
+	// +optional
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y)?$"
 	FutureRetention string `json:"futureRetention,omitempty"`
 	// LogNewStreams Whether to log creation of new streams; this can be useful for debugging of high cardinality issues with log streams; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields
 	LogNewStreams bool `json:"logNewStreams,omitempty"`
 	// Whether to log all the ingested log entries; this can be useful for debugging of data ingestion; see https://docs.victoriametrics.com/victorialogs/data-ingestion/
 	LogIngestedRows bool `json:"logIngestedRows,omitempty"`
-	// ServiceSpec that will be added to vlogs service spec
+	// ServiceSpec that will be added to vlsingle service spec
 	// +optional
-	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vlogs VMServiceScrape spec
+	ServiceSpec *v1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceScrapeSpec that will be added to vlsingle VMServiceScrape spec
 	// +optional
-	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
-	// LivenessProbe that will be added to VLogs pod
-	*EmbeddedProbes `json:",inline"`
+	ServiceScrapeSpec *v1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
+	// LivenessProbe that will be added to VLSingle pod
+	*v1beta1.EmbeddedProbes `json:",inline"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
-// VLogsStatus defines the observed state of VLogs
-type VLogsStatus struct {
-	StatusMetadata `json:",inline"`
+// VLSingleStatus defines the observed state of VLSingle
+type VLSingleStatus struct {
+	v1beta1.StatusMetadata `json:",inline"`
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLogsStatus) GetStatusMetadata() *StatusMetadata {
+func (cr *VLSingleStatus) GetStatusMetadata() *v1beta1.StatusMetadata {
 	return &cr.StatusMetadata
 }
 
-// VLogs is fast, cost-effective and scalable logs database.
+// VLSingle is fast, cost-effective and scalable logs database.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VLogs App"
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VLSingle App"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
@@ -115,40 +120,40 @@ func (cr *VLogsStatus) GetStatusMetadata() *StatusMetadata {
 // +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=vlogs,scope=Namespaced
+// +kubebuilder:resource:path=vlsingles,scope=Namespaced
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status",description="Current status of logs instance update process"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// VLogs is the Schema for the vlogs API
-type VLogs struct {
+// VLSingle is the Schema for the API
+type VLSingle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VLogsSpec `json:"spec,omitempty"`
+	Spec VLSingleSpec `json:"spec,omitempty"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VLogsSpec `json:"-" yaml:"-"`
+	ParsedLastAppliedSpec *VLSingleSpec `json:"-" yaml:"-"`
 
-	Status VLogsStatus `json:"status,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-
-// VLogsList contains a list of VLogs
-type VLogsList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []VLogs `json:"items"`
+	Status VLSingleStatus `json:"status,omitempty"`
 }
 
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
-func (cr *VLogs) GetStatus() *VLogsStatus {
+func (cr *VLSingle) GetStatus() *VLSingleStatus {
 	return &cr.Status
 }
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
-func (cr *VLogs) DefaultStatusFields(vs *VLogsStatus) {
+func (cr *VLSingle) DefaultStatusFields(vs *VLSingleStatus) {
 }
 
-func (r *VLogs) PodAnnotations() map[string]string {
+// +kubebuilder:object:root=true
+
+// VLSingleList contains a list of VLSingle
+type VLSingleList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []VLSingle `json:"items"`
+}
+
+func (r *VLSingle) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if r.Spec.PodMetadata != nil {
 		for annotation, value := range r.Spec.PodMetadata.Annotations {
@@ -159,7 +164,7 @@ func (r *VLogs) PodAnnotations() map[string]string {
 }
 
 // AsOwner returns owner references with current object as owner
-func (r *VLogs) AsOwner() []metav1.OwnerReference {
+func (r *VLSingle) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
 			APIVersion:         r.APIVersion,
@@ -173,17 +178,17 @@ func (r *VLogs) AsOwner() []metav1.OwnerReference {
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VLogs) SetLastSpec(prevSpec VLogsSpec) {
+func (cr *VLSingle) SetLastSpec(prevSpec VLSingleSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLogs) UnmarshalJSON(src []byte) error {
-	type pcr VLogs
+func (cr *VLSingle) UnmarshalJSON(src []byte) error {
+	type pcr VLSingle
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
+	if err := v1beta1.ParseLastAppliedStateTo(cr); err != nil {
 		return err
 	}
 
@@ -191,59 +196,58 @@ func (cr *VLogs) UnmarshalJSON(src []byte) error {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLogsSpec) UnmarshalJSON(src []byte) error {
-	type pcr VLogsSpec
+func (cr *VLSingleSpec) UnmarshalJSON(src []byte) error {
+	type pcr VLSingleSpec
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vlogs spec: %s, err: %s", string(src), err)
+		cr.ParsingError = fmt.Sprintf("cannot parse vlsingle spec: %s, err: %s", string(src), err)
 		return nil
 	}
 	return nil
 }
 
-func (cr *VLogs) Probe() *EmbeddedProbes {
+func (cr *VLSingle) Probe() *v1beta1.EmbeddedProbes {
 	return cr.Spec.EmbeddedProbes
 }
 
-func (cr *VLogs) ProbePath() string {
-	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+func (cr *VLSingle) ProbePath() string {
+	return v1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
-func (cr *VLogs) ProbeScheme() string {
-	return strings.ToUpper(HTTPProtoFromFlags(cr.Spec.ExtraArgs))
+func (cr *VLSingle) ProbeScheme() string {
+	return strings.ToUpper(v1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
 }
 
-func (cr *VLogs) ProbePort() string {
+func (cr *VLSingle) ProbePort() string {
 	return cr.Spec.Port
 }
 
-func (cr *VLogs) ProbeNeedLiveness() bool {
+func (cr *VLSingle) ProbeNeedLiveness() bool {
 	return false
 }
 
-func (cr *VLogs) AnnotationsFiltered() map[string]string {
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
-	if cr.Spec.ManagedMetadata != nil {
-		if dst == nil {
-			dst = make(map[string]string)
-		}
-		for k, v := range cr.Spec.ManagedMetadata.Annotations {
-			dst[k] = v
-		}
+func (cr *VLSingle) AnnotationsFiltered() map[string]string {
+	if cr.Spec.ManagedMetadata == nil {
+		return nil
+	}
+	dst := make(map[string]string, len(cr.Spec.ManagedMetadata.Annotations))
+	for k, v := range cr.Spec.ManagedMetadata.Annotations {
+		dst[k] = v
 	}
 	return dst
 }
 
-func (cr *VLogs) SelectorLabels() map[string]string {
+// SelectorLabels returns unque labels for object
+func (cr *VLSingle) SelectorLabels() map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":      "vlogs",
+		"app.kubernetes.io/name":      "vlsingle",
 		"app.kubernetes.io/instance":  cr.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
-func (cr *VLogs) PodLabels() map[string]string {
+// PodLabels returns labels attached to the podMetadata
+func (cr *VLSingle) PodLabels() map[string]string {
 	lbls := cr.SelectorLabels()
 	if cr.Spec.PodMetadata == nil {
 		return lbls
@@ -251,35 +255,29 @@ func (cr *VLogs) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr *VLogs) AllLabels() map[string]string {
+// AllLabels returns combination of selector and managed labels
+func (cr *VLSingle) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+	if cr.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
-	var result map[string]string
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
-	}
-	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
-	}
-	return labels.Merge(result, selectorLabels)
+
+	return labels.Merge(selectorLabels, cr.Spec.ManagedMetadata.Labels)
 }
 
-func (cr *VLogs) PrefixedName() string {
-	return fmt.Sprintf("vlogs-%s", cr.Name)
+func (cr *VLSingle) PrefixedName() string {
+	return fmt.Sprintf("vlsingle-%s", cr.Name)
 }
 
 // GetMetricPath returns prefixed path for metric requests
-func (cr *VLogs) GetMetricPath() string {
-	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+func (cr *VLSingle) GetMetricPath() string {
+	return v1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // Validate checks if spec is correct
-func (cr *VLogs) Validate() error {
-	if MustSkipCRValidation(cr) {
+func (cr *VLSingle) Validate() error {
+	if v1beta1.MustSkipCRValidation(cr) {
 		return nil
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
@@ -289,31 +287,31 @@ func (cr *VLogs) Validate() error {
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr *VLogs) GetExtraArgs() map[string]string {
+func (cr *VLSingle) GetExtraArgs() map[string]string {
 	return cr.Spec.ExtraArgs
 }
 
 // GetServiceScrape returns overrides for serviceScrape builder
-func (cr *VLogs) GetServiceScrape() *VMServiceScrapeSpec {
+func (cr *VLSingle) GetServiceScrape() *v1beta1.VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
-func (cr *VLogs) GetServiceAccountName() string {
+func (cr *VLSingle) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
 	}
 	return cr.Spec.ServiceAccountName
 }
 
-func (cr *VLogs) IsOwnsServiceAccount() bool {
+func (cr *VLSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr *VLogs) GetNSName() string {
+func (cr *VLSingle) GetNSName() string {
 	return cr.GetNamespace()
 }
 
-func (cr *VLogs) AsURL() string {
+func (cr *VLSingle) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {
 		port = "8429"
@@ -326,28 +324,28 @@ func (cr *VLogs) AsURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", v1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
-// LastAppliedSpecAsPatch return last applied vlogs spec as patch annotation
-func (cr *VLogs) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+// LastAppliedSpecAsPatch return last applied vlsingle spec as patch annotation
+func (cr *VLSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
+	return v1beta1.LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
-// HasSpecChanges compares vlogs spec with last applied vlogs spec stored in annotation
-func (cr *VLogs) HasSpecChanges() (bool, error) {
-	return HasStateChanges(cr.ObjectMeta, cr.Spec)
+// HasSpecChanges compares vlsingle spec with last applied vlsingle spec stored in annotation
+func (cr *VLSingle) HasSpecChanges() (bool, error) {
+	return v1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
-func (cr *VLogs) Paused() bool {
+func (cr *VLSingle) Paused() bool {
 	return cr.Spec.Paused
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VLogs) GetAdditionalService() *AdditionalServiceSpec {
+func (cr *VLSingle) GetAdditionalService() *v1beta1.AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
 
 func init() {
-	SchemeBuilder.Register(&VLogs{}, &VLogsList{})
+	SchemeBuilder.Register(&VLSingle{}, &VLSingleList{})
 }

@@ -94,7 +94,8 @@ func (cr *VMSingle) HasAnyStreamAggrRule() bool {
 	return cr.Spec.StreamAggrConfig.HasAnyRule()
 }
 
-func (cr *VMSingle) setLastSpec(prevSpec VMSingleSpec) {
+// SetLastSpec implements objectWithLastAppliedState interface
+func (cr *VMSingle) SetLastSpec(prevSpec VMSingleSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
@@ -104,7 +105,7 @@ func (cr *VMSingle) UnmarshalJSON(src []byte) error {
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := ParseLastAppliedStateTo(cr); err != nil {
 		return err
 	}
 
@@ -168,11 +169,11 @@ func (cr *VMSingle) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMSingle) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
 func (cr *VMSingle) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+	return strings.ToUpper(HTTPProtoFromFlags(cr.Spec.ExtraArgs))
 }
 
 func (cr *VMSingle) ProbePort() string {
@@ -274,7 +275,7 @@ func (cr *VMSingle) StreamAggrConfigName() string {
 
 // GetMetricPath returns prefixed path for metric requests
 func (cr *VMSingle) GetMetricPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -316,22 +317,17 @@ func (cr *VMSingle) AsURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
-}
-
-// AsCRDOwner implements interface
-func (*VMSingle) AsCRDOwner() []metav1.OwnerReference {
-	return GetCRDAsOwner(Single)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
 // LastAppliedSpecAsPatch return last applied single spec as patch annotation
 func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares single spec with last applied single spec stored in annotation
 func (cr *VMSingle) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+	return HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VMSingle) Paused() bool {
@@ -339,7 +335,7 @@ func (cr *VMSingle) Paused() bool {
 }
 
 func (cr *VMSingle) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {

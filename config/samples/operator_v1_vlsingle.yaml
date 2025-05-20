@@ -1,0 +1,14 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VLSingle
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: vlsingle-sample
+spec:
+  retentionPeriod: 1y
+  retentionMaxDiskSpaceUsageBytes: 20GB
+  storage:
+    resources:
+      requests:
+        storage: 50Gi

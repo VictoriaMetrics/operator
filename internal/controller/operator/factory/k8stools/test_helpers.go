@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 
 	"github.com/go-test/deep"
@@ -37,6 +38,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VMScrapeConfigList{},
 		&vmv1beta1.VMClusterList{},
 		&vmv1beta1.VLogsList{},
+		&vmv1.VLSingleList{},
 	)
 	s.AddKnownTypes(vmv1beta1.GroupVersion,
 		&vmv1beta1.VMPodScrape{},
@@ -56,6 +58,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VMScrapeConfig{},
 		&vmv1beta1.VMCluster{},
 		&vmv1beta1.VLogs{},
+		&vmv1.VLSingle{},
 	)
 	return s
 }
@@ -84,6 +87,7 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 			&vmv1beta1.VMScrapeConfig{},
 			&vmv1beta1.VMStaticScrape{},
 			&vmv1beta1.VMNodeScrape{},
+			&vmv1.VLSingle{},
 		).
 		WithObjects(obj...).Build()
 	withStats := TestClientWithStatsTrack{

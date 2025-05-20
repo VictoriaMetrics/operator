@@ -25,29 +25,25 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 )
 
-// SetupVLogsWebhookWithManager will setup the manager to manage the webhooks
-func SetupVLogsWebhookWithManager(mgr ctrl.Manager) error {
+// SetupVLSingleWebhookWithManager will setup the manager to manage the webhooks
+func SetupVLSingleWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&vmv1beta1.VLogs{}).
-		WithValidator(&VLogsCustomValidator{}).
+		For(&vmv1.VLSingle{}).
+		WithValidator(&VLSingleCustomValidator{}).
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vlogs,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vlogs,verbs=create;update,versions=v1beta1,name=vvlogs-v1beta1.kb.io,admissionReviewVersions=v1
-type VLogsCustomValidator struct{}
+// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1-vlsingle,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vlsingles,verbs=create;update,versions=v1beta1,name=vvlsingles-v1.kb.io,admissionReviewVersions=v1
+type VLSingleCustomValidator struct{}
 
-var _ admission.CustomValidator = &VLogsCustomValidator{}
-
-var vlogsWarning = []string{
-	"VLogs resource is deprecated, please migrate to the VLSingle instead",
-}
+var _ admission.CustomValidator = &VLSingleCustomValidator{}
 
 // ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VLogsCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*vmv1beta1.VLogs)
+func (*VLSingleCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*vmv1.VLSingle)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
 	}
@@ -57,12 +53,12 @@ func (*VLogsCustomValidator) ValidateCreate(_ context.Context, obj runtime.Objec
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}
-	return vlogsWarning, nil
+	return nil, nil
 }
 
 // ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VLogsCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*vmv1beta1.VLogs)
+func (*VLSingleCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*vmv1.VLSingle)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
 	}
@@ -72,10 +68,10 @@ func (*VLogsCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}
-	return vlogsWarning, nil
+	return nil, nil
 }
 
 // ValidateDelete implements admission.CustomValidator so a webhook will be registered for the type
-func (*VLogsCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VLSingleCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

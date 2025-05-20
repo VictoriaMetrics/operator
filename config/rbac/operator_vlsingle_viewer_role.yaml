@@ -1,0 +1,23 @@
+# permissions for end users to view vlsingles.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: operator-vlsingle-viewer-role
+rules:
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vlsingles
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vlsingles/status
+  verbs:
+  - get

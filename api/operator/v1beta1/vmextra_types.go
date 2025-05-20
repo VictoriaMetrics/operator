@@ -104,7 +104,7 @@ OUTER:
 }
 
 // skip validation, if object has annotation.
-func mustSkipValidation(cr client.Object) bool {
+func MustSkipCRValidation(cr client.Object) bool {
 	return cr.GetAnnotations()[SkipValidationAnnotation] == SkipValidationValue
 }
 
@@ -375,19 +375,21 @@ func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 
 // BuildReloadPathWithPort builds reload api path for given args
 func BuildReloadPathWithPort(extraArgs map[string]string, port string) string {
-	proto := protoFromFlags(extraArgs)
-	urlPath := joinPathAuthKey(buildPathWithPrefixFlag(extraArgs, reloadPath), reloadAuthKey, extraArgs)
+	proto := HTTPProtoFromFlags(extraArgs)
+	urlPath := joinPathAuthKey(BuildPathWithPrefixFlag(extraArgs, reloadPath), reloadAuthKey, extraArgs)
 	return fmt.Sprintf("%s://localhost:%s%s", proto, port, urlPath)
 }
 
-func buildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
+// BuildPathWithPrefixFlag retruns provided path with possible prefix from flags
+func BuildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
 	if prefix, ok := flags[vmPathPrefixFlagName]; ok {
 		return path.Join(prefix, defaultPath)
 	}
 	return defaultPath
 }
 
-func protoFromFlags(flags map[string]string) string {
+// HTTPProtoFromFlags returns HTTP protocol prefix from provided flags
+func HTTPProtoFromFlags(flags map[string]string) string {
 	proto := "http"
 	if flags["tls"] == "true" {
 		proto = "https"
@@ -1081,10 +1083,11 @@ type ScrapeObjectStatus struct {
 
 type objectWithLastAppliedState[T, ST any] interface {
 	GetAnnotations() map[string]string
-	setLastSpec(ST)
+	SetLastSpec(ST)
 }
 
-func parseLastAppliedState[T objectWithLastAppliedState[T, ST], ST any](cr T) error {
+// ParseLastAppliedStateTo parses spec from provided CR annotations and sets it to the given CR
+func ParseLastAppliedStateTo[T objectWithLastAppliedState[T, ST], ST any](cr T) error {
 	lastAppliedSpecJSON := cr.GetAnnotations()[lastAppliedSpecAnnotationName]
 	if len(lastAppliedSpecJSON) == 0 {
 		return nil
@@ -1093,12 +1096,12 @@ func parseLastAppliedState[T objectWithLastAppliedState[T, ST], ST any](cr T) er
 	if err := json.Unmarshal([]byte(lastAppliedSpecJSON), &dst); err != nil {
 		return fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", lastAppliedSpecAnnotationName, err)
 	}
-	cr.setLastSpec(dst)
+	cr.SetLastSpec(dst)
 	return nil
 }
 
 // HasSpecChanges compares single spec with last applied single spec stored in annotation
-func hasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
+func HasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
 	lastAppliedSpecJSON := crMeta.GetAnnotations()[lastAppliedSpecAnnotationName]
 	if len(lastAppliedSpecJSON) == 0 {
 		return true, nil
@@ -1115,7 +1118,8 @@ func hasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
 	return false, nil
 }
 
-func lastAppliedChangesAsPatch(crMeta metav1.ObjectMeta, spec any) (client.Patch, error) {
+// LastAppliedChangesAsPatch builds patch request from provided spec
+func LastAppliedChangesAsPatch(crMeta metav1.ObjectMeta, spec any) (client.Patch, error) {
 	data, err := json.Marshal(spec)
 	if err != nil {
 		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json :%w", err)

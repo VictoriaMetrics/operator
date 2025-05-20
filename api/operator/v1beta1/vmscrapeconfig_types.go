@@ -521,7 +521,7 @@ type VMScrapeConfigList struct {
 
 // Validate returns error if CR is invalid
 func (cr *VMScrapeConfig) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	return cr.Spec.EndpointRelabelings.validate()

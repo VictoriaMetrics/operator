@@ -78,7 +78,7 @@ func (cr *VMNodeScrape) AsProxyKey() string {
 
 // Validate returns error if CR is invalid
 func (cr *VMNodeScrape) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	return cr.Spec.EndpointRelabelings.validate()

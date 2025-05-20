@@ -227,7 +227,7 @@ func (cr *VMUser) GetStatusMetadata() *StatusMetadata {
 }
 
 func (cr *VMUser) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	if cr.Spec.UserName != nil && cr.Spec.BearerToken != nil {

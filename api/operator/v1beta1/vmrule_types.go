@@ -146,7 +146,7 @@ func (cr *VMRule) GetStatusMetadata() *StatusMetadata {
 
 // Validate performs semantic validation of object
 func (cr *VMRule) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	initVMAlertTemplatesOnce.Do(func() {

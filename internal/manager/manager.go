@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	vmcontroller "github.com/VictoriaMetrics/operator/internal/controller/operator"
@@ -115,8 +116,8 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(vmv1beta1.AddToScheme(scheme))
+	utilruntime.Must(vmv1.AddToScheme(scheme))
 	utilruntime.Must(metav1.AddToScheme(scheme))
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(promv1.AddToScheme(scheme))
@@ -349,6 +350,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		webhookv1beta1.SetupVMSingleWebhookWithManager,
 		webhookv1beta1.SetupVMClusterWebhookWithManager,
 		webhookv1beta1.SetupVLogsWebhookWithManager,
+		webhookv1beta1.SetupVLSingleWebhookWithManager,
 		webhookv1beta1.SetupVMAlertmanagerWebhookWithManager,
 		webhookv1beta1.SetupVMAlertmanagerConfigWebhookWithManager,
 		webhookv1beta1.SetupVMAuthWebhookWithManager,
@@ -436,6 +438,7 @@ var controllersByName = map[string]crdController{
 	"VMAuth":               &vmcontroller.VMAuthReconciler{},
 	"VMSingle":             &vmcontroller.VMSingleReconciler{},
 	"VLogs":                &vmcontroller.VLogsReconciler{},
+	"VLSingle":             &vmcontroller.VLSingleReconciler{},
 	"VMAlertmanager":       &vmcontroller.VMAlertmanagerReconciler{},
 	"VMAlert":              &vmcontroller.VMAlertReconciler{},
 	"VMUser":               &vmcontroller.VMUserReconciler{},

@@ -133,6 +133,9 @@ rules:
   - vlogs
   - vlogs/finalizers
   - vlogs/status
+  - vlsingles
+  - vlsingles/finalizers
+  - vlsingles/status
   - vmagents
   - vmagents/finalizers
   - vmagents/status

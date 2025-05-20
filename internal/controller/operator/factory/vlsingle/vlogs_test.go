@@ -1,4 +1,4 @@
-package vlogs
+package vlsingle
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -81,7 +82,7 @@ func TestCreateOrUpdateVLogs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdateVLogs(context.TODO(), fclient, tt.args.cr)
+			err := CreateOrUpdateVLogs(context.Background(), fclient, tt.args.cr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVLogs() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -169,13 +170,14 @@ func TestCreateOrUpdateVLogsService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := createOrUpdateVLogsService(context.TODO(), fclient, tt.args.cr, nil)
+			got, err := createOrUpdateVLogsService(context.Background(), fclient, tt.args.cr, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVLogsService() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !reflect.DeepEqual(got.Name, tt.want.Name) {
-				t.Errorf("CreateOrUpdateVLogsService() got = %v, want %v", got, tt.want)
+				t.Errorf("CreateOrUpdateVLogsService(): %s", cmp.Diff(got, tt.want))
 			}
 			if len(got.Spec.Ports) != tt.wantPortsLen {
 				t.Fatalf("unexpected number of ports: %d, want: %d", len(got.Spec.Ports), tt.wantPortsLen)

@@ -117,7 +117,8 @@ func (cr *VMCluster) GetVMAuthLBName() string {
 	return fmt.Sprintf("vmclusterlb-%s", cr.Name)
 }
 
-func (cr *VMCluster) setLastSpec(prevSpec VMClusterSpec) {
+// SetLastSpec implements objectWithLastAppliedState interface
+func (cr *VMCluster) SetLastSpec(prevSpec VMClusterSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
@@ -127,7 +128,7 @@ func (cr *VMCluster) UnmarshalJSON(src []byte) error {
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := ParseLastAppliedStateTo(cr); err != nil {
 		return err
 	}
 	return nil
@@ -359,11 +360,11 @@ func (cr *VMInsert) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMInsert) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
 }
 
 func (cr *VMInsert) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(HTTPProtoFromFlags(cr.ExtraArgs))
 }
 
 func (cr *VMInsert) ProbePort() string {
@@ -579,7 +580,7 @@ func (cr *VMSelect) GetCacheMountVolumeName() string {
 }
 
 func (cr *VMCluster) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	if cr.Spec.VMSelect != nil {
@@ -772,12 +773,12 @@ func (cr *VMCluster) AnnotationsFiltered() map[string]string {
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares cluster spec with last applied cluster spec stored in annotation
 func (cr *VMCluster) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+	return HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VMCluster) Paused() bool {
@@ -789,7 +790,7 @@ func (cr *VMSelect) GetMetricPath() string {
 	if cr == nil {
 		return healthPath
 	}
-	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -807,7 +808,7 @@ func (cr *VMInsert) GetMetricPath() string {
 	if cr == nil {
 		return healthPath
 	}
-	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -825,7 +826,7 @@ func (cr *VMStorage) GetMetricPath() string {
 	if cr == nil {
 		return healthPath
 	}
-	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -840,12 +841,12 @@ func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
 
 // SnapshotCreatePathWithFlags returns url for accessing vmbackupmanager component
 func (*VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
-	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotCreate))), extraArgs)
+	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(BuildPathWithPrefixFlag(extraArgs, snapshotCreate))), extraArgs)
 }
 
 // SnapshotDeletePathWithFlags returns url for accessing vmbackupmanager component
 func (*VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
-	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete))), extraArgs)
+	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(BuildPathWithPrefixFlag(extraArgs, snapshotDelete))), extraArgs)
 }
 
 func joinBackupAuthKey(urlPath string, extraArgs map[string]string) string {
@@ -907,7 +908,7 @@ func (cr *VMCluster) VMSelectURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.GetVMSelectName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.GetVMSelectName(), cr.Namespace, port)
 }
 
 func (cr *VMCluster) VMInsertURL() string {
@@ -925,7 +926,7 @@ func (cr *VMCluster) VMInsertURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.GetVMInsertName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.GetVMInsertName(), cr.Namespace, port)
 }
 
 func (cr *VMCluster) VMStorageURL() string {
@@ -943,12 +944,7 @@ func (cr *VMCluster) VMStorageURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.VMStorage.ExtraArgs), cr.GetVMStorageName(), cr.Namespace, port)
-}
-
-// AsCRDOwner implements interface
-func (*VMCluster) AsCRDOwner() []metav1.OwnerReference {
-	return GetCRDAsOwner(Cluster)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMStorage.ExtraArgs), cr.GetVMStorageName(), cr.Namespace, port)
 }
 
 // GetNSName implements build.builderOpts interface
@@ -961,11 +957,11 @@ func (cr *VMSelect) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMSelect) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
 }
 
 func (cr *VMSelect) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(HTTPProtoFromFlags(cr.ExtraArgs))
 }
 
 func (cr *VMSelect) ProbePort() string {
@@ -981,11 +977,11 @@ func (cr *VMStorage) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMStorage) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
 }
 
 func (cr *VMStorage) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(HTTPProtoFromFlags(cr.ExtraArgs))
 }
 
 func (cr *VMStorage) ProbePort() string {
@@ -1068,12 +1064,12 @@ func (*VMAuthLoadBalancerSpec) ProbeNeedLiveness() bool {
 
 // ProbePath returns path for probe requests
 func (cr *VMAuthLoadBalancerSpec) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
 }
 
 // ProbeScheme returns scheme for probe requests
 func (cr *VMAuthLoadBalancerSpec) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(HTTPProtoFromFlags(cr.ExtraArgs))
 }
 
 // GetServiceScrape implements build.serviceScrapeBuilder interface
@@ -1088,5 +1084,5 @@ func (cr *VMAuthLoadBalancerSpec) GetExtraArgs() map[string]string {
 
 // GetMetricPath implements build.serviceScrapeBuilder interface
 func (cr *VMAuthLoadBalancerSpec) GetMetricPath() string {
-	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
 }

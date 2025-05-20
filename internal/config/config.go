@@ -138,6 +138,26 @@ type BaseOperatorConf struct {
 		ConfigReloaderMemory string `env:"-"`
 	} `prefix:"VLOGSDEFAULT_"`
 
+	VLSingleDefault struct {
+		Image               string `default:"victoriametrics/victoria-logs"`
+		Version             string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
+		ConfigReloadImage   string `env:"-"`
+		Port                string `default:"9428"`
+		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
+		Resource            struct {
+			Limit struct {
+				Mem string `default:"1500Mi"`
+				Cpu string `default:"1200m"`
+			} `prefix:"LIMIT_"`
+			Request struct {
+				Mem string `default:"500Mi"`
+				Cpu string `default:"150m"`
+			} `prefix:"REQUEST_"`
+		} `prefix:"RESOURCE_"`
+		ConfigReloaderCPU    string `env:"-"`
+		ConfigReloaderMemory string `env:"-"`
+	} `prefix:"VLSINGLEDEFAULT_"`
+
 	VMAlertDefault struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`

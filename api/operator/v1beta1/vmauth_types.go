@@ -361,7 +361,8 @@ func validateHTTPHeaders(headerValues []string) error {
 	return nil
 }
 
-func (cr *VMAuth) setLastSpec(prevSpec VMAuthSpec) {
+// SetLastSpec implements objectWithLastAppliedState interface
+func (cr *VMAuth) SetLastSpec(prevSpec VMAuthSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
@@ -371,7 +372,7 @@ func (cr *VMAuth) UnmarshalJSON(src []byte) error {
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := ParseLastAppliedStateTo(cr); err != nil {
 		return err
 	}
 
@@ -379,7 +380,7 @@ func (cr *VMAuth) UnmarshalJSON(src []byte) error {
 }
 
 func (cr *VMAuth) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
@@ -515,11 +516,11 @@ func (cr *VMAuth) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMAuth) ProbePath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
 func (cr *VMAuth) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+	return strings.ToUpper(HTTPProtoFromFlags(cr.Spec.ExtraArgs))
 }
 
 func (cr *VMAuth) ProbePort() string {
@@ -624,7 +625,7 @@ func (cr *VMAuth) ConfigSecretName() string {
 
 // GetMetricPath returns prefixed path for metric requests
 func (cr *VMAuth) GetMetricPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
@@ -653,11 +654,6 @@ func (cr *VMAuth) GetNSName() string {
 	return cr.GetNamespace()
 }
 
-// AsCRDOwner implements interface
-func (cr *VMAuth) AsCRDOwner() []metav1.OwnerReference {
-	return GetCRDAsOwner(Auth)
-}
-
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAuth) IsUnmanaged() bool {
 	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) ||
@@ -667,12 +663,12 @@ func (cr *VMAuth) IsUnmanaged() bool {
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VMAuth) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
 func (cr *VMAuth) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+	return HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VMAuth) Paused() bool {

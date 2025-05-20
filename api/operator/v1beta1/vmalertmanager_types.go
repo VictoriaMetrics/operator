@@ -201,7 +201,8 @@ type VMAlertmanagerSpec struct {
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
-func (cr *VMAlertmanager) setLastSpec(prevSpec VMAlertmanagerSpec) {
+// SetLastSpec implements objectWithLastAppliedState interface
+func (cr *VMAlertmanager) SetLastSpec(prevSpec VMAlertmanagerSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
@@ -211,7 +212,7 @@ func (cr *VMAlertmanager) UnmarshalJSON(src []byte) error {
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	if err := parseLastAppliedState(cr); err != nil {
+	if err := ParseLastAppliedStateTo(cr); err != nil {
 		return err
 	}
 
@@ -409,11 +410,6 @@ func (cr *VMAlertmanager) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
-// AsCRDOwner implements interface
-func (*VMAlertmanager) AsCRDOwner() []metav1.OwnerReference {
-	return GetCRDAsOwner(AlertManager)
-}
-
 // AsNotifiers converts VMAlertmanager into VMAlertNotifierSpec
 func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
 	var notifiers []VMAlertNotifierSpec
@@ -480,12 +476,12 @@ func (cr *VMAlertmanager) IsUnmanaged() bool {
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VMAlertmanager) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return lastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
 func (cr *VMAlertmanager) HasSpecChanges() (bool, error) {
-	return hasStateChanges(cr.ObjectMeta, cr.Spec)
+	return HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VMAlertmanager) Paused() bool {

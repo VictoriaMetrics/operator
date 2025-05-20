@@ -14,14 +14,16 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 )
 
 //nolint:dupl,lll
-var _ = Describe("test vlogs Controller", func() {
+var _ = Describe("test vlsingle Controller", func() {
 
-	Context("e2e vlogs", func() {
+	Context("e2e vlsingle", func() {
 		var ctx context.Context
 		namespace := "default"
 		namespacedName := types.NamespacedName{
@@ -31,45 +33,44 @@ var _ = Describe("test vlogs Controller", func() {
 			ctx = context.Background()
 		})
 		AfterEach(func() {
-			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VLogs{
+			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1.VLSingle{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      namespacedName.Name,
 					Namespace: namespacedName.Namespace,
 				},
 			})).To(Succeed())
 			Eventually(func() error {
-				return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VLogs{})
+				return k8sClient.Get(ctx, namespacedName, &vmv1.VLSingle{})
 			}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
 		})
 		Context("crud", func() {
 			DescribeTable("should create",
-				func(name string, cr *vmv1beta1.VLogs, verify func(*vmv1beta1.VLogs)) {
+				func(name string, cr *vmv1.VLSingle, verify func(*vmv1.VLSingle)) {
 					cr.Name = name
 					namespacedName.Name = name
 					Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VLogs{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLSingle{}, namespacedName)
 					}, eventualDeploymentAppReadyTimeout,
 					).Should(Succeed())
 
-					var created vmv1beta1.VLogs
+					var created vmv1.VLSingle
 					Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
 					verify(&created)
 				},
 				Entry("with strict security", "strict-security",
-					&vmv1beta1.VLogs{
+					&vmv1.VLSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 						},
-						Spec: vmv1beta1.VLogsSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						Spec: vmv1.VLSingleSpec{
+							CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonDefaultableParams: vmv1beta.CommonDefaultableParams{
 								UseStrictSecurity: ptr.To(true),
 							},
-							RetentionPeriod:      "1",
-							RemovePvcAfterDelete: true,
+							RetentionPeriod: "1",
 							Storage: &corev1.PersistentVolumeClaimSpec{
 								Resources: corev1.VolumeResourceRequirements{
 									Requests: corev1.ResourceList{
@@ -79,7 +80,7 @@ var _ = Describe("test vlogs Controller", func() {
 							},
 						},
 					},
-					func(cr *vmv1beta1.VLogs) {
+					func(cr *vmv1.VLSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
 						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
@@ -90,22 +91,21 @@ var _ = Describe("test vlogs Controller", func() {
 
 					}),
 				Entry("with data emptyDir", "emptydir",
-					&vmv1beta1.VLogs{
+					&vmv1.VLSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 						},
-						Spec: vmv1beta1.VLogsSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						Spec: vmv1.VLSingleSpec{
+							CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonDefaultableParams: vmv1beta.CommonDefaultableParams{
 								UseStrictSecurity: ptr.To(false),
 							},
-							RetentionPeriod:      "1",
-							RemovePvcAfterDelete: true,
+							RetentionPeriod: "1",
 						},
 					},
-					func(cr *vmv1beta1.VLogs) {
+					func(cr *vmv1.VLSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
 						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
@@ -115,12 +115,12 @@ var _ = Describe("test vlogs Controller", func() {
 						Expect(ts.Containers[0].VolumeMounts).To(HaveLen(1))
 					}),
 				Entry("with external volume", "externalvolume",
-					&vmv1beta1.VLogs{
+					&vmv1.VLSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 						},
-						Spec: vmv1beta1.VLogsSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						Spec: vmv1.VLSingleSpec{
+							CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 								Volumes: []corev1.Volume{
 									{
@@ -143,16 +143,15 @@ var _ = Describe("test vlogs Controller", func() {
 									},
 								},
 							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonDefaultableParams: vmv1beta.CommonDefaultableParams{
 								UseStrictSecurity: ptr.To(false),
 							},
-							RetentionPeriod:      "1",
-							RemovePvcAfterDelete: true,
-							StorageDataPath:      "/custom-path/internal/dir",
-							Storage:              &corev1.PersistentVolumeClaimSpec{},
+							RetentionPeriod: "1",
+							StorageDataPath: "/custom-path/internal/dir",
+							Storage:         &corev1.PersistentVolumeClaimSpec{},
 						},
 					},
-					func(cr *vmv1beta1.VLogs) {
+					func(cr *vmv1.VLSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
 						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
@@ -166,33 +165,32 @@ var _ = Describe("test vlogs Controller", func() {
 					}),
 			)
 
-			baseVLogs := &vmv1beta1.VLogs{
+			baseVLSingle := &vmv1.VLSingle{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 				},
-				Spec: vmv1beta1.VLogsSpec{
-					RemovePvcAfterDelete: true,
-					RetentionPeriod:      "10",
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				Spec: vmv1.VLSingleSpec{
+					RetentionPeriod: "10",
+					CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 				},
 			}
 			type testStep struct {
-				setup  func(*vmv1beta1.VLogs)
-				modify func(*vmv1beta1.VLogs)
-				verify func(*vmv1beta1.VLogs)
+				setup  func(*vmv1.VLSingle)
+				modify func(*vmv1.VLSingle)
+				verify func(*vmv1.VLSingle)
 			}
 
 			DescribeTable("should update exist",
-				func(name string, initCR *vmv1beta1.VLogs, steps ...testStep) {
+				func(name string, initCR *vmv1.VLSingle, steps ...testStep) {
 					initCR.Name = name
 					initCR.Namespace = namespace
 					namespacedName.Name = name
 					// setup test
 					Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VLogs{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLSingle{}, namespacedName)
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
 					for _, step := range steps {
@@ -201,16 +199,16 @@ var _ = Describe("test vlogs Controller", func() {
 						}
 						// perform update
 						Eventually(func() error {
-							var toUpdate vmv1beta1.VLogs
+							var toUpdate vmv1.VLSingle
 							Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
 							step.modify(&toUpdate)
 							return k8sClient.Update(ctx, &toUpdate)
 						}, eventualExpandingTimeout).Should(Succeed())
 						Eventually(func() error {
-							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VLogs{}, namespacedName)
+							return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLSingle{}, namespacedName)
 						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
-						var updated vmv1beta1.VLogs
+						var updated vmv1.VLSingle
 						Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 
 						// verify results
@@ -218,16 +216,16 @@ var _ = Describe("test vlogs Controller", func() {
 					}
 				},
 				Entry("add and remove annotations", "manage-annotations",
-					baseVLogs.DeepCopy(),
+					baseVLSingle.DeepCopy(),
 					testStep{
-						modify: func(cr *vmv1beta1.VLogs) {
-							cr.Spec.ManagedMetadata = &vmv1beta1.ManagedObjectsMetadata{
+						modify: func(cr *vmv1.VLSingle) {
+							cr.Spec.ManagedMetadata = &vmv1beta.ManagedObjectsMetadata{
 								Annotations: map[string]string{
 									"added-annotation": "some-value",
 								},
 							}
 						},
-						verify: func(cr *vmv1beta1.VLogs) {
+						verify: func(cr *vmv1.VLSingle) {
 							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 
 							expectedAnnotations := map[string]string{"added-annotation": "some-value"}
@@ -238,10 +236,10 @@ var _ = Describe("test vlogs Controller", func() {
 						},
 					},
 					testStep{
-						modify: func(cr *vmv1beta1.VLogs) {
+						modify: func(cr *vmv1.VLSingle) {
 							delete(cr.Spec.ManagedMetadata.Annotations, "added-annotation")
 						},
-						verify: func(cr *vmv1beta1.VLogs) {
+						verify: func(cr *vmv1.VLSingle) {
 							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 							expectedAnnotations := map[string]string{"added-annotation": ""}
 

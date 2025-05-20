@@ -1229,7 +1229,6 @@ up{baz="bar"} 123
 						}
 					},
 					verify: func(cr *v1beta1vm.VMCluster) {
-						GinkgoWriter.Println("STARTING WAIT")
 						expectedAnnotations := map[string]string{"annotation-1": "value-a-1", "annotation-2": ""}
 						expectedLabels := map[string]string{"label-1": "", "label-2": "", "managed-by": "vm-operator"}
 						selectN, insertN, storageN, lbName, saName := cr.GetVMSelectName(), cr.GetVMInsertName(), cr.GetVMStorageName(), cr.GetVMAuthLBName(), cr.PrefixedName()

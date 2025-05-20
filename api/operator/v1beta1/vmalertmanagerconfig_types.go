@@ -106,7 +106,7 @@ func (r *VMAlertmanagerConfig) GetStatusMetadata() *StatusMetadata {
 }
 
 func (r *VMAlertmanagerConfig) Validate() error {
-	if mustSkipValidation(r) {
+	if MustSkipCRValidation(r) {
 		return nil
 	}
 	validateSpec := r.DeepCopy()

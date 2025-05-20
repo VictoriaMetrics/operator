@@ -149,7 +149,7 @@ func (cr *VMProbe) GetStatusMetadata() *StatusMetadata {
 
 // Validate returns error if CR is invalid
 func (cr *VMProbe) Validate() error {
-	if mustSkipValidation(cr) {
+	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	if err := checkRelabelConfigs(cr.Spec.MetricRelabelConfigs); err != nil {

@@ -18,6 +18,14 @@
 | VM_VLOGSDEFAULT_RESOURCE_LIMIT_CPU: `1200m` <a href="#variables-vm-vlogsdefault-resource-limit-cpu" id="variables-vm-vlogsdefault-resource-limit-cpu">#</a> |
 | VM_VLOGSDEFAULT_RESOURCE_REQUEST_MEM: `500Mi` <a href="#variables-vm-vlogsdefault-resource-request-mem" id="variables-vm-vlogsdefault-resource-request-mem">#</a> |
 | VM_VLOGSDEFAULT_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vlogsdefault-resource-request-cpu" id="variables-vm-vlogsdefault-resource-request-cpu">#</a> |
+| VM_VLSINGLEDEFAULT_IMAGE: `victoriametrics/victoria-logs` <a href="#variables-vm-vlsingledefault-image" id="variables-vm-vlsingledefault-image">#</a> |
+| VM_VLSINGLEDEFAULT_VERSION: `${VM_LOGS_VERSION}-victorialogs` <a href="#variables-vm-vlsingledefault-version" id="variables-vm-vlsingledefault-version">#</a> |
+| VM_VLSINGLEDEFAULT_PORT: `9428` <a href="#variables-vm-vlsingledefault-port" id="variables-vm-vlsingledefault-port">#</a> |
+| VM_VLSINGLEDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vlsingledefault-usedefaultresources" id="variables-vm-vlsingledefault-usedefaultresources">#</a> |
+| VM_VLSINGLEDEFAULT_RESOURCE_LIMIT_MEM: `1500Mi` <a href="#variables-vm-vlsingledefault-resource-limit-mem" id="variables-vm-vlsingledefault-resource-limit-mem">#</a> |
+| VM_VLSINGLEDEFAULT_RESOURCE_LIMIT_CPU: `1200m` <a href="#variables-vm-vlsingledefault-resource-limit-cpu" id="variables-vm-vlsingledefault-resource-limit-cpu">#</a> |
+| VM_VLSINGLEDEFAULT_RESOURCE_REQUEST_MEM: `500Mi` <a href="#variables-vm-vlsingledefault-resource-request-mem" id="variables-vm-vlsingledefault-resource-request-mem">#</a> |
+| VM_VLSINGLEDEFAULT_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vlsingledefault-resource-request-cpu" id="variables-vm-vlsingledefault-resource-request-cpu">#</a> |
 | VM_VMALERTDEFAULT_IMAGE: `victoriametrics/vmalert` <a href="#variables-vm-vmalertdefault-image" id="variables-vm-vmalertdefault-image">#</a> |
 | VM_VMALERTDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmalertdefault-version" id="variables-vm-vmalertdefault-version">#</a> |
 | VM_VMALERTDEFAULT_CONFIGRELOADIMAGE: `jimmidyson/configmap-reload:v0.3.0` <a href="#variables-vm-vmalertdefault-configreloadimage" id="variables-vm-vmalertdefault-configreloadimage">#</a> |

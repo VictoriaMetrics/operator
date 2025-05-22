@@ -222,7 +222,7 @@ func mayGrow(ctx context.Context, pvc *corev1.PersistentVolumeClaim, newSize, ex
 		// do no return error
 		// probably, user updated pvc manually
 		// without applying this changes to the configuration.
-		logger.WithContext(ctx).Error(fmt.Errorf("cannot decrease PVC=%s size from=%s to=%s", pvc.Name, newSize.String(), existSize.String()),
+		logger.WithContext(ctx).Info(fmt.Sprintf("cannot decrease PVC=%s size from=%s to=%s", pvc.Name, newSize.String(), existSize.String()),
 			"cannot decrease PVC size, please check VolumeClaimTemplate configuration")
 		return false
 	default: // increase

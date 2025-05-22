@@ -740,7 +740,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 ### Features
 
-- [vmoperator](https://docs.victoriametrics.com/operator/) add ability to print default values for all [operator variables](https://docs.victoriametrics.com/operator/vars). See [this issue](https://github.com/VictoriaMetrics/operator/issues/675) for details.
+- [vmoperator](https://docs.victoriametrics.com/operator/) add ability to print default values for all [operator variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables). See [this issue](https://github.com/VictoriaMetrics/operator/issues/675) for details.
 
 ## [v0.37.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.37.1)
 
@@ -821,8 +821,8 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 - [vmcluster](https://docs.victoriametrics.com/operator/api#vmagent): add [example config](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmcluster_with_additional_claim.yaml) for cluster with custom storage claims.
 - [vmrule](https://docs.victoriametrics.com/operator/api#vmrule): support `update_entries_limit` field in rules, refer to [alerting rules](https://docs.victoriametrics.com/vmalert#alerting-rules). See [this PR](https://github.com/VictoriaMetrics/operator/pull/691) for details.
 - [vmrule](https://docs.victoriametrics.com/operator/api#vmrule): support `keep_firing_for` field in rules, refer to [alerting rules](https://docs.victoriametrics.com/vmalert/#alerting-rules). See [this PR](https://github.com/VictoriaMetrics/operator/pull/711) for details.
-- [vmoperator parameters](https://docs.victoriametrics.com/operator/vars): Add option `VM_ENABLESTRICTSECURITY` and enable strict security context by default. See [this issue](https://github.com/VictoriaMetrics/operator/issues/637), [this](https://github.com/VictoriaMetrics/operator/pull/692/) and [this](https://github.com/VictoriaMetrics/operator/pull/712) PR for details.
-- [vmoperator parameters](https://docs.victoriametrics.com/operator/vars): change option `VM_PSPAUTOCREATEENABLED` default value from `true` to `false` cause PodSecurityPolicy already got deprecated since [kubernetes v1.25](https://kubernetes.io/docs/reference/using-api/deprecation-guide/#psp-v125). See [this pr](https://github.com/VictoriaMetrics/operator/pull/726) for details.
+- [vmoperator parameters](https://docs.victoriametrics.com/operator/configuration/#environment-variables): Add option `VM_ENABLESTRICTSECURITY` and enable strict security context by default. See [this issue](https://github.com/VictoriaMetrics/operator/issues/637), [this](https://github.com/VictoriaMetrics/operator/pull/692/) and [this](https://github.com/VictoriaMetrics/operator/pull/712) PR for details.
+- [vmoperator parameters](https://docs.victoriametrics.com/operator/configuration/#environment-variables): change option `VM_PSPAUTOCREATEENABLED` default value from `true` to `false` cause PodSecurityPolicy already got deprecated since [kubernetes v1.25](https://kubernetes.io/docs/reference/using-api/deprecation-guide/#psp-v125). See [this pr](https://github.com/VictoriaMetrics/operator/pull/726) for details.
 
 ## [v0.35.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.35.1)
 

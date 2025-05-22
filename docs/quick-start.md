@@ -733,32 +733,32 @@ Make sure to use the same Host header you defined in your `VMAuth` config, or th
 
 ## Next steps
 
-That's it. We obtained a monitoring cluster corresponding to the target topology:
+Now that you have a working setup with [storage](https://docs.victoriametrics.com/operator/quick-start/#storage), [scraping](https://docs.victoriametrics.com/operator/quick-start/#scraping), [alerting](https://docs.victoriametrics.com/operator/quick-start/#alerting), and secure [access](https://docs.victoriametrics.com/operator/quick-start/#access),
+and a solid understanding of how everything fits together,
+you’re ready to take the next steps with VictoriaMetrics on Kubernetes.
 
-![Cluster Scheme](quick-start_cluster-scheme.webp)
+You might want to try a different way to install it.
+The [victoria-metrics-k8s-stack Helm chart](https://docs.victoriametrics.com/operator/setup/#installing-by-helm-charts) is a good choice if you want everything in one package — 
+VictoriaMetrics, Grafana, scraper and data sources — all preconfigured to work together.
 
-You have a full-stack monitoring cluster with VictoriaMetrics Operator.
+If you’re moving from Prometheus, VictoriaMetrics [makes the migration easy](https://docs.victoriametrics.com/operator/migration/).
+You can keep your current scrape configs and alert rules, and move your data with just a few changes.
 
-You can find information about these and other resources of operator on the [Custom resources page](https://docs.victoriametrics.com/operator/resources/).
+As you continue to explore, you might find the [resources](https://docs.victoriametrics.com/operator/resources/) and [their configuration reference](https://docs.victoriametrics.com/operator/api/) pages helpful.
 
-In addition, check out other sections of the documentation for VictoriaMetrics Operator:
+For most users, [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/) is the recommended option. 
+It offers excellent vertical scalability, efficient resource usage, and is much simpler to operate and maintain.
+In rare cases where a single node cannot handle the load, consider using [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/). 
+It distributes workloads across multiple storage pods, making it well-suited for large-scale environments with high data ingestion or query volume.
 
-- [Setup](https://docs.victoriametrics.com/operator/setup)
-- [Security](https://docs.victoriametrics.com/operator/security)
-- [Configuration](https://docs.victoriametrics.com/operator/configuration)
-- [Migration from Prometheus](https://docs.victoriametrics.com/operator/migration)
-- [Monitoring](https://docs.victoriametrics.com/operator/monitoring)
-- [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth)
-- [High Availability](https://docs.victoriametrics.com/operator/high-availability)
-- [Enterprise](https://docs.victoriametrics.com/operator/enterprise)
+If you're running at a larger scale, check out the [enterprise features](https://docs.victoriametrics.com/operator/enterprise/).
+These include multitenancy, downsampling, automated backups, advanced security and much more. All built for serious production use.
 
-If you have any questions, check out our [FAQ](https://docs.victoriametrics.com/operator/faq)
-and feel free to can ask them:
+If you have any questions, check out our [FAQ](https://docs.victoriametrics.com/operator/faq/), or ask in one of our communities:
 - [VictoriaMetrics Slack](https://victoriametrics.slack.com/)
 - [VictoriaMetrics Telegram](https://t.me/VictoriaMetrics_en)
 
-If you have any suggestions or find a bug, please create an issue
-on [GitHub](https://github.com/VictoriaMetrics/operator/issues/new).
+If you have suggestions or find a bug, please open an issue on [GitHub](https://github.com/VictoriaMetrics/operator/issues).
 
 ---
 

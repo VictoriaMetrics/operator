@@ -56,7 +56,7 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 
 ## Configuration
 
- Operator configured by env variables, list of it can be found at [link](https://docs.victoriametrics.com/operator/vars.html)
+ Operator configured by env variables, list of it can be found at [link](https://docs.victoriametrics.com/operator/configuration/#environment-variables)
 
  It defines default configuration options, like images for components, timeouts, features.
 

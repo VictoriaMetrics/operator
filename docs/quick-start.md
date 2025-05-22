@@ -116,7 +116,7 @@ You can interact with VictoriaMetrics resources in the same way as you would wit
 For example, to get a list of `VMSingle` resources, you can run `kubectl get vmsingle -n vm`. 
 This knowledge will help you manage and inspect the custom resources within the cluster efficiently in later sections.
 
-The operator is configured using [environment variables](https://docs.victoriametrics.com/operator/vars/). 
+The operator is configured using [environment variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables). 
 You can consult the documentation or explore the variables directly in your cluster (note that `kubectl exec` may require [additional permissions](https://discuss.kubernetes.io/t/adding-permission-to-exec-commands-in-containers-inside-pods-in-a-certain-namespace/22821/2)).
 Here’s an example showing how to get the default CPU and memory limits applied to the VMSingle resource:
 ```sh 

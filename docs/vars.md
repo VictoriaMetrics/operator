@@ -1,13 +1,11 @@
 ---
 weight: 11
 title: Variables
-menu:
-  docs:
-    parent: "operator"
-    weight: 11
+menu: false
 aliases:
   - /operator/vars/
   - /operator/vars/index.html
   - /operator/vars.html
 ---
-{{% content "env.md" %}}
+
+The page is deprecated. The content has been moved to [operator/configuration/#environment-variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables).

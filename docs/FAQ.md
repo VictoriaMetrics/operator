@@ -36,7 +36,7 @@ With Operator deployment:
 You can use `VM_CONTAINERREGISTRY` parameter for operator:
 
 - See details about tuning [operator settings here](https://docs.victoriametrics.com/operator/setup#settings).
-- See [available operator settings](https://docs.victoriametrics.com/operator/vars) here.
+- See [available operator settings](https://docs.victoriametrics.com/operator/configuration/#environment-variables) here.
 
 ## How to set up automatic backups?
 

@@ -9,47 +9,94 @@ aliases:
   - /operator/configuration/
   - /operator/configuration/index.html
 ---
-Operator configured by env variables and command-line flags, list of env variables can be found
-on [Variables](https://docs.victoriametrics.com/operator/vars/) page.
 
-It defines default configuration options, like images for components, timeouts, features.
+The operator is set up using [environment variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) and [command-line flags](https://docs.victoriametrics.com/operator/configuration/#flags).
+Most environment variables control settings related to [Resources](https://docs.victoriametrics.com/operator/resources/), like CPU and memory defaults, image versions.
+Command-line flags configure the operator itself, like leader election, TLS, webhook validation, and rate limits.
 
-In addition, the operator has a special startup mode for outputting all variables, their types and default values.
-For instance, with this mode you can know versions of VM components, which are used by default: 
+## Environment variables
 
-```sh
-./operator --printDefaults
+Run this command {{% available_from "v0.57.0" %}} to see all environment variables your operator supports:
+```sh 
+OPERATOR_POD_NAME=$(kubectl get pod -l "app.kubernetes.io/name=victoria-metrics-operator"  -n vm -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --printDefaults 2>&1
 
-# This application is configured via the environment. The following environment variables can be used:
-# 
-# KEY                                                          TYPE                              DEFAULT                                                           REQUIRED    DESCRIPTION
-# VM_USECUSTOMCONFIGRELOADER                                   True or False                     false                                                                                                                                                                                   
-# VM_CUSTOMCONFIGRELOADERIMAGE                                 String                            victoriametrics/operator:config-reloader-v0.32.0                                                                                                       
-# VM_VMALERTDEFAULT_IMAGE                                      String                            victoriametrics/vmalert                                                       
-# VM_VMALERTDEFAULT_VERSION                                    String                            v1.93.3                                                                                                                                                 
-# VM_VMALERTDEFAULT_USEDEFAULTRESOURCES                        True or False                     true                                                                          
-# VM_VMALERTDEFAULT_RESOURCE_LIMIT_MEM                         String                            500Mi                                                                         
-# VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU                         String                            200m                                                                                                                                                                                                                            
-# ...
+# Output:
+# KEY                   DEFAULT        REQUIRED    DESCRIPTION
+# VM_METRICS_VERSION    v1.117.0       false       
+# VM_LOGS_VERSION       v1.21.0        false 
+# ... 
 ```
 
-You can choose output format for variables with `--printFormat` flag, possible values: `json`, `yaml`, `list` and `table` (default):
+This is the latest operator environment variables:
+{{% content "env.md" %}}
 
+## Modify environment variables
+
+To add environment variables to the operator, use the following [Kustomize](https://kustomize.io/)-based approach. 
+This method assumes the operator was installed using the [Quick Start guide](https://docs.victoriametrics.com/operator/quick-start/#operator). 
+If a different installation method was used, some adjustments may be required.
+
+The following commands create a patch `operator-patch.yaml` that adds environment variables to the operator deployment, 
+a `kustomization.yaml` configuration to apply the patch, and then rewrite the `operator-and-crds.yaml` file with the applied changes:
+
+The example above customize CPU\Memory limits for `VMSingle` resource.
 ```sh
-.operator --printDefaults --printFormat=json
+cat <<'EOF' > operator-patch.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vm-operator
+  namespace: vm
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        env:
+        - name: VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_MEM
+          value: "3000Mi"
+        - name: VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_CPU
+          value: "2400m"
+EOF
 
-# {
-#     'VM_USECUSTOMCONFIGRELOADER': 'false',
-#     'VM_CUSTOMCONFIGRELOADERIMAGE': 'victoriametrics/operator:config-reloader-v0.32.0',
-#     'VM_VMALERTDEFAULT_IMAGE': 'victoriametrics/vmalert',
-#     'VM_VMALERTDEFAULT_VERSION': 'v1.93.3',
-# ...
-#     'VM_FORCERESYNCINTERVAL': '60s',
-#     'VM_ENABLESTRICTSECURITY': 'true'
-# }
+cat <<'EOF' > kustomization.yaml
+resources:
+  - operator-and-crds.yaml
+
+patches:
+  - path: operator-patch.yaml
+    target:
+      kind: Deployment
+      name: vm-operator
+EOF
+
+kustomize build -o operator-and-crds.yaml;
 ```
 
-## List of command-line flags
+Apply the changes to the operator deployment:
+```
+kubectl apply -f operator-and-crds.yaml;
+kubectl -n vm rollout status deployment vm-operator --watch=true;
+
+# Output:
+# Waiting for deployment "vm-operator" rollout to finish: 1 old replicas are pending termination...
+# Waiting for deployment "vm-operator" rollout to finish: 1 old replicas are pending termination...
+# deployment "vm-operator" successfully rolled out
+```
+
+Run this command to print modified environment variables:
+```sh
+kubectl get deployment -n vm vm-operator \
+    -o jsonpath='{range .spec.template.spec.containers[?(@.name=="manager")].env[*]}{.name}{"\n"}{end}';
+
+# Output:
+# WATCH_NAMESPACE
+# VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_MEM
+# VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_CPU
+```
+
+## Flags
 
 Pass `-help` to operator binary in order to see the list of supported command-line flags with their description:
 
@@ -145,7 +192,7 @@ In [Helm charts](https://docs.victoriametrics.com/helm) some important configura
 
 For possible values refer to [parameters](https://docs.victoriametrics.com/helm/victoriametrics-k8s-stack#parameters).
 
-Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/vars/) to configure operator behaviour.
+Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) to configure operator behaviour.
 ENV variables can be set in the `victoria-metrics-operator.env` section.
 
 ```yaml
@@ -220,7 +267,7 @@ victoria-metrics-operator:
 
 For possible values refer to [parameters](https://docs.victoriametrics.com/helm/victoriametrics-operator#parameters).
 
-Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/vars/) to configure operator behaviour.
+Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) to configure operator behaviour.
 ENV variables can be set in the `env` section.
 
 ```yaml
@@ -340,11 +387,21 @@ It can be simplified with cert-manager and kustomize command:
 kustomize build config/deployments/webhook/
 ```
 
-### Requirements
+## Requirements
 
 - Valid certificate with key must be provided to operator
 - Valid CABundle must be added to the `ValidatingWebhookConfiguration`
 
-### Useful links
+
+## Useful links
 
 - [k8s admission webhooks](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/)
+
+
+---
+
+The following legacy links are retained for historical reference.
+
+###### List of command-line flags
+
+Moved to [operator/configuration/#flags](https://docs.victoriametrics.com/operator/configuration/#flags)

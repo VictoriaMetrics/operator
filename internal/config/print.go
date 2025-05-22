@@ -28,11 +28,11 @@ var formats = map[string]string{
         [description]	{{ index $.Descriptions $idx }}
 {{ end -}}
 `,
-	"markdown": `
-| variable name | variable default value | variable required | variable description |
-| --- | --- | --- | --- |
+	"markdown": `| Environment variables |
+| --- |
 {{- range $idx, $item := .Params }}
-| {{ $item.Key }} | {{ if eq (len $item.DefaultValue) 0 -}}-{{- else -}}{{ $item.DefaultValue }}{{- end }} | {{ $item.Required }} | {{ index $.Descriptions $idx }} |
+| {{ $item.Key }}: ` + "`" + `{{ if gt (len $item.DefaultValue) 0 -}}{{ $item.DefaultValue }}{{- else -}}-{{- end }}` + "`" + ` <a href="#variables-{{ $item.Key | anchorize }}" id="variables-{{ $item.Key | anchorize }}">#</a>
+{{- if gt (len (index $.Descriptions $idx)) 0 -}}<br>{{ index $.Descriptions $idx }}{{- end }} |
 {{- end }}
 `,
 
@@ -62,7 +62,14 @@ func (boc *BaseOperatorConf) PrintDefaults(format string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get field params: %w", err)
 	}
-	tmpl, err := template.New("env").Parse(tpl)
+	tmpl, err := template.New("env").Funcs(map[string]any{
+		"anchorize": func(val string) string {
+			val = strings.ToLower(val)
+			val = strings.ReplaceAll(val, "_", "-")
+			val = strings.ReplaceAll(val, " ", "-")
+			return val
+		},
+	}).Parse(tpl)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}

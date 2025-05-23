@@ -3,7 +3,7 @@ weight: 20
 title: VLSingle
 menu:
   docs:
-    identifier: operator-cr-vlogs
+    identifier: operator-cr-vlsingle
     parent: operator-cr
     weight: 20
 aliases:

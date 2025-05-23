@@ -112,9 +112,7 @@ docs: build crd-ref-docs manifests
 	bin/$(REPO) \
 		-printDefaults \
 		-printFormat markdown > docs/env.md
-	echo '```' > docs/flags.md
-	bin/$(REPO) --help >> docs/flags.md 2>&1
-	echo '```' >> docs/flags.md
+	bin/$(REPO) --help > docs/flags.md 2>&1
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

@@ -1,4 +1,3 @@
-```
 Usage of bin/operator:
   -client.burst int
     	defines K8s client burst (default 100)
@@ -39,7 +38,7 @@ Usage of bin/operator:
   -mtls.CAName string
     	Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. By default the host system TLS Root CA is used for client certificate verification.  (default "clietCA.crt")
   -mtls.enable
-    	Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set. 
+    	Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set.
   -pprof-addr string
     	The address for pprof/debug API. Empty value disables server (default ":8435")
   -printDefaults
@@ -76,4 +75,3 @@ Usage of bin/operator:
     	Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
   -zap-time-encoding value
     	Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
-```

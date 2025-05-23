@@ -9,6 +9,9 @@ menu:
 aliases:
   - /operator/resources/vmsingle/
   - /operator/resources/vmsingle/index.html
+tags:
+   - kubernetes
+   - metrics
 ---
 `VMSingle` represents database for storing metrics.
 The `VMSingle` CRD declaratively defines a [single-node VM](https://docs.victoriametrics.com/)

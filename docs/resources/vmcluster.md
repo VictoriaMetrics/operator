@@ -9,6 +9,9 @@ menu:
 aliases:
   - /operator/resources/vmcluster/
   - /operator/resources/vmcluster/index.html
+tags:
+  - kubernetes
+  - metrics
 ---
 `VMCluster` represents a high-available and fault-tolerant version of VictoriaMetrics database.
 The `VMCluster` CRD defines a [cluster version VM](https://docs.victoriametrics.com/Cluster-VictoriaMetrics).

@@ -9,6 +9,9 @@ menu:
 aliases:
   - /operator/resources/vmpodscrape/
   - /operator/resources/vmpodscrape/index.html
+tags:
+  - kubernetes
+  - metrics
 ---
 The `VMPodScrape` CRD allows to declaratively define how a dynamic set of pods should be monitored.
 Use label selections to match pods for scraping. This allows an organization to introduce conventions

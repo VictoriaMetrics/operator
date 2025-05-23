@@ -9,6 +9,10 @@ menu:
 aliases:
   - /operator/resources/vmalertmanagerconfig/
   - /operator/resources/vmalertmanagerconfig/index.html
+tags:
+  - kubernetes
+  - metrics
+  - logs
 ---
 The `VMAlertmanagerConfig` provides way to configure [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager)
 configuration with CRD. It allows to define different configuration parts, which will be merged by operator into config.

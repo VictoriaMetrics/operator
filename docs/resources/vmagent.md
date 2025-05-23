@@ -9,6 +9,9 @@ menu:
 aliases:
   - /operator/resources/vmagent/
   - /operator/resources/vmagent/index.html
+tags:
+  - kubernetes
+  - metrics
 ---
 `VMAgent` represents agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics.
 The `VMAgent` CRD declaratively defines a desired [VMAgent](https://docs.victoriametrics.com/vmagent)

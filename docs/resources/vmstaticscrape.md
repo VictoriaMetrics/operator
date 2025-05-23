@@ -9,6 +9,9 @@ menu:
 aliases:
   - /operator/resources/vmstaticscrape/
   - /operator/resources/vmstaticscrape/index.html
+tags:
+  - kubernetes
+  - metrics
 ---
 The `VMStaticScrape` CRD provides mechanism for scraping metrics from static targets, configured by CRD targets.
 

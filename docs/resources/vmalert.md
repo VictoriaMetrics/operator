@@ -9,6 +9,10 @@ menu:
 aliases:
   - /operator/resources/vmalert/
   - /operator/resources/vmalert/index.html
+tags:
+  - kubernetes
+  - metrics
+  - logs
 ---
 `VMAlert` - executes a list of given [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) 
 or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules against configured address. 

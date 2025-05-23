@@ -9,6 +9,10 @@ menu:
 aliases:
   - /operator/resources/vmauth/
   - /operator/resources/vmauth/index.html
+tags:
+  - kubernetes
+  - metrics
+  - logs
 ---
 The `VMAuth` CRD provides mechanism for exposing application with authorization to outside world or to other applications inside kubernetes cluster.
 

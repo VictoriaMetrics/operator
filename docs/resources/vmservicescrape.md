@@ -9,6 +9,9 @@ menu:
 aliases:
   - /operator/resources/vmservicescrape/
   - /operator/resources/vmservicescrape/index.html
+tags:
+  - kubernetes
+  - metrics
 ---
 The `VMServiceScrape` CRD allows to define a dynamic set of services for monitoring. Services
 and scraping configurations can be matched via label selections. This allows an organization to introduce conventions

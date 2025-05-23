@@ -9,6 +9,9 @@ menu:
 aliases:
   - /operator/resources/vmnodescrape/
   - /operator/resources/vmnodescrape/index.html
+tags:
+  - kubernetes
+  - metrics
 ---
 The `VMNodeScrape` CRD provides discovery mechanism for scraping metrics kubernetes nodes,
 it is useful for node exporters monitoring.

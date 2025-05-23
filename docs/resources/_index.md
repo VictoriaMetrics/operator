@@ -9,5 +9,9 @@ menu:
 aliases:
 - /operator/resources/
 - /operator/resources/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 {{% content "README.md" %}}

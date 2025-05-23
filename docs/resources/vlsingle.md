@@ -11,6 +11,9 @@ aliases:
   - /operator/resources/vlsingle/index.html
   - /operator/resources/vlogs/
   - /operator/resources/vlogs/index.html
+tags:
+  - kubernetes
+  - metrics
 ---
 `VLSingle` represents database for storing logs.
 The `VLSingle` CRD declaratively defines a [single-node VictoriaLogs](https://docs.victoriametrics.com/victorialogs/)

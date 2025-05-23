@@ -9,6 +9,10 @@ menu:
 aliases:
   - /operator/resources/vmuser/
   - /operator/resources/vmuser/index.html
+tags:
+  - kubernetes
+  - metrics
+  - logs
 ---
 The `VMUser` CRD describes user configuration, its authentication methods `basic auth` or `Authorization` header. 
 User access permissions, with possible routing information.

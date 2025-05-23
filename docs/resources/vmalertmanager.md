@@ -9,6 +9,10 @@ menu:
 aliases:
   - /operator/resources/vmalertmanager/
   - /operator/resources/vmalertmanager/index.html
+tags:
+  - kubernetes
+  - metrics
+  - logs
 ---
 `VMAlertmanager` - represents [alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/) configuration.
 

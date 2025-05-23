@@ -9,6 +9,9 @@ menu:
 aliases:
   - /operator/resources/vmprobe/
   - /operator/resources/vmprobe/index.html
+tags:
+  - kubernetes
+  - metrics
 ---
 The `VMProbe` CRD provides probing target ability with some external prober. 
 The most common prober is [blackbox exporter](https://github.com/prometheus/blackbox_exporter).

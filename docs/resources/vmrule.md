@@ -9,6 +9,10 @@ menu:
 aliases:
   - /operator/resources/vmrule/
   - /operator/resources/vmrule/index.html
+tags:
+  - kubernetes
+  - metrics
+  - logs
 ---
 `VMRule` represents [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)
 or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules 

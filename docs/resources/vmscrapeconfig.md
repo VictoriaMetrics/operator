@@ -9,6 +9,9 @@ menu:
 aliases:
   - /operator/resources/vmscrapeconfig/
   - /operator/resources/vmscrapeconfig/index.html
+tags:
+  - kubernetes
+  - metrics
 ---
 The `VMScrapeConfig` CRD allows to define a scrape config using [any of the service discovery options supported in victoriametrics](https://docs.victoriametrics.com/sd_configs).
 

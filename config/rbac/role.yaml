@@ -136,6 +136,9 @@ rules:
   - vlsingles
   - vlsingles/finalizers
   - vlsingles/status
+  - vlclusters
+  - vlclusters/finalizers
+  - vlclusters/status
   - vmagents
   - vmagents/finalizers
   - vmagents/status

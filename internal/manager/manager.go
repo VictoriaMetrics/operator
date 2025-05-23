@@ -439,6 +439,7 @@ var controllersByName = map[string]crdController{
 	"VMSingle":             &vmcontroller.VMSingleReconciler{},
 	"VLogs":                &vmcontroller.VLogsReconciler{},
 	"VLSingle":             &vmcontroller.VLSingleReconciler{},
+	"VLCuster":             &vmcontroller.VLClusterReconciler{},
 	"VMAlertmanager":       &vmcontroller.VMAlertmanagerReconciler{},
 	"VMAlert":              &vmcontroller.VMAlertReconciler{},
 	"VMUser":               &vmcontroller.VMUserReconciler{},

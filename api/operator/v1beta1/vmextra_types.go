@@ -461,7 +461,8 @@ type EmbeddedHPA struct {
 	Behaviour   *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behaviour,omitempty"`
 }
 
-func (cr *EmbeddedHPA) validate() error {
+// Validate validates resource configuration
+func (cr *EmbeddedHPA) Validate() error {
 	if cr.MinReplicas != nil && *cr.MinReplicas > cr.MaxReplicas {
 		return fmt.Errorf("minReplicas cannot be greater then maxReplicas")
 	}

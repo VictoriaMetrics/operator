@@ -1,3 +1,4 @@
+```
 Usage of bin/operator:
   -client.burst int
     	defines K8s client burst (default 100)
@@ -75,3 +76,4 @@ Usage of bin/operator:
     	Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
   -zap-time-encoding value
     	Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
+```

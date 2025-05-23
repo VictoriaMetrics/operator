@@ -340,6 +340,55 @@ type BaseOperatorConf struct {
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VMAUTHDEFAULT_"`
 
+	VLClusterDefault struct {
+		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
+		VLSelectDefault     struct {
+			Image    string `default:"victoriametrics/victoria-logs"`
+			Version  string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
+			Port     string `default:"9471"`
+			Resource struct {
+				Limit struct {
+					Mem string `default:"1024Mi"`
+					Cpu string `default:"1000m"`
+				} `prefix:"LIMIT_"`
+				Request struct {
+					Mem string `default:"256Mi"`
+					Cpu string `default:"100m"`
+				} `prefix:"REQUEST_"`
+			} `prefix:"RESOURCE_"`
+		} `prefix:"VLSELECTDEFAULT_"`
+		VLStorageDefault struct {
+			Image    string `default:"victoriametrics/victoria-logs"`
+			Version  string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
+			Port     string `default:"9491"`
+			Resource struct {
+				Limit struct {
+					Mem string `default:"2048Mi"`
+					Cpu string `default:"1000m"`
+				} `prefix:"LIMIT_"`
+				Request struct {
+					Mem string `default:"512Mi"`
+					Cpu string `default:"200m"`
+				} `prefix:"REQUEST_"`
+			} `prefix:"RESOURCE_"`
+		} `prefix:"VLSTORAGEDEFAULT_"`
+		VLInsertDefault struct {
+			Image    string `default:"victoriametrics/victoria-logs"`
+			Version  string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
+			Port     string `default:"9481"`
+			Resource struct {
+				Limit struct {
+					Mem string `default:"1024Mi"`
+					Cpu string `default:"1000m"`
+				} `prefix:"LIMIT_"`
+				Request struct {
+					Mem string `default:"256Mi"`
+					Cpu string `default:"100m"`
+				} `prefix:"REQUEST_"`
+			} `prefix:"RESOURCE_"`
+		} `prefix:"VLINSERTDEFAULT_"`
+	} `prefix:"VLCLUSTERDEFAULT_"`
+
 	EnabledPrometheusConverter struct {
 		PodMonitor         bool `default:"true" env:"PODMONITOR"`
 		ServiceScrape      bool `default:"true" env:"SERVICESCRAPE"`

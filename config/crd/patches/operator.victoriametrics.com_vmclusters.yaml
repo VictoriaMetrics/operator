@@ -14,8 +14,10 @@
 - op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmstorage/properties/affinity/properties
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmstorage/properties/claimTemplates/items/properties/metadata/x-kubernetes-preserve-unknown-fields
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmstorage/properties/claimTemplates/items/x-kubernetes-preserve-unknown-fields
   value: true
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmstorage/properties/claimTemplates/items/properties
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmstorage/properties/containers/items/x-kubernetes-preserve-unknown-fields
   value: true
@@ -86,8 +88,10 @@
 - op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmselect/properties/affinity/properties
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmselect/properties/claimTemplates/items/properties/metadata/x-kubernetes-preserve-unknown-fields
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmselect/properties/claimTemplates/items/properties/x-kubernetes-preserve-unknown-fields
   value: true
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmselect/properties/claimTemplates/items/properties
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vmselect/properties/containers/items/x-kubernetes-preserve-unknown-fields
   value: true

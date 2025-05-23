@@ -24,7 +24,7 @@ The VLSingle `Pod`s are configured to mount an empty dir or `PersistentVolumeCla
 Deployment update strategy set to [recreate](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#recreate-deployment).
 No more than one replica allowed.
 
-For each `VLSingle` resource, the Operator adds `Service` and `VMServiceScrape` in the same namespace prefixed with name from `VLogs.metadata.name`.
+For each `VLSingle` resource, the Operator adds `Service` and `VMServiceScrape` in the same namespace prefixed with name from `VLSingle.metadata.name`.
 
 ## Specification
 
@@ -75,7 +75,7 @@ spec:
 
 ## Resource management
 
-You can specify resources for each `VLSingle` resource in the `spec` section of the `VLogs` CRD.
+You can specify resources for each `VLSingle` resource in the `spec` section of the `VLSingle` CRD.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1

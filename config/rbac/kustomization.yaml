@@ -13,6 +13,8 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the Project itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+# - operator_vlcluster_editor_role.yaml
+# - operator_vlcluster_viewer_role.yaml
 # - operator_vlsingle_editor_role.yaml
 # - operator_vlsingle_viewer_role.yaml
 # - operator_vlogs_editor_role.yaml

@@ -8,6 +8,10 @@ menu:
 aliases:
   - /operator/quick-start/
   - /operator/quick-start/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 
 This guide walks you through the easiest way to install VictoriaMetrics in a [Kubernetes](https://kubernetes.io/) cluster using the VictoriaMetrics [operator](https://github.com/VictoriaMetrics/operator/).

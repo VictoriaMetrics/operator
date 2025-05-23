@@ -8,6 +8,10 @@ menu:
 aliases:
   - /operator/setup/
   - /operator/setup/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 ## Installing by helm-charts
 

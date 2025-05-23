@@ -8,6 +8,10 @@ menu:
 aliases:
   - /operator/migration/
   - /operator/migration/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 Design and implementation inspired by [prometheus-operator](https://github.com/prometheus-operator/prometheus-operator).
 It's great a tool for managing monitoring configuration of your applications. VictoriaMetrics operator has api capability with it.

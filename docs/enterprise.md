@@ -8,6 +8,10 @@ menu:
 aliases:
   - /operator/enterprise/
   - /operator/enterprise/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 Operator doesn't have enterprise version for itself, but it supports 
 [enterprise features for VictoriaMetrics components](https://docs.victoriametrics.com/enterprise/):

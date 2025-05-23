@@ -9,6 +9,10 @@ menu:
 aliases:
   - /operator/faq/
   - /operator/faq/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 ## How do you monitor the operator itself?
 

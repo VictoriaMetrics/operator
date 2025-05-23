@@ -8,6 +8,10 @@ menu:
 aliases:
   - /operator/security/
   - /operator/security/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 ## Access control
 

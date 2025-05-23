@@ -8,6 +8,10 @@ menu:
 aliases:
   - /operator/monitoring
   - /operator/monitoring/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 VictoriaMetrics operator exports internal metrics in Prometheus exposition format at `/metrics` page.
 

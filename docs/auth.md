@@ -8,6 +8,10 @@ menu:
 aliases:
   - /operator/auth/
   - /operator/auth/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 ## Exposing components
 

@@ -8,6 +8,10 @@ menu:
 aliases:
   - /operator/high-availability/
   - /operator/high-availability/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 High availability is not only important for customer-facing software but if the monitoring infrastructure is not highly available, then there is a risk that operations people are not notified of alerts.
 Therefore, high availability must be just as thought through for the monitoring stack, as for anything else.

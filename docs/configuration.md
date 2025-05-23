@@ -8,6 +8,10 @@ menu:
 aliases:
   - /operator/configuration/
   - /operator/configuration/index.html
+tags:
+  - kubernetes
+  - logs
+  - metrics
 ---
 
 The operator is set up using [environment variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) and [command-line flags](https://docs.victoriametrics.com/operator/configuration/#flags).

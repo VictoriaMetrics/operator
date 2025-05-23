@@ -82,5 +82,6 @@ tags
 .vscode/*
 .history
 vendor
+vmdocs/
 config/crd/bases/*
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode

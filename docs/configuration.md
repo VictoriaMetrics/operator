@@ -99,7 +99,9 @@ kubectl get deployment -n vm vm-operator \
 
 Pass `-help` to operator binary in order to see the list of supported command-line flags with their description:
 
+```sh
 {{% content "flags.md" %}}
+```
 
 ## Conversion of prometheus-operator objects
 

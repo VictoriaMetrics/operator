@@ -16,6 +16,8 @@ aliases:
 **Update Note 1:** This release by deprecates `VLogs` resource. It will transit into read-only state after `v0.60.0` release.
 To perform migration to the `VLSingle` please follow [this docs](https://docs.victoriametrics.com/operator/resources/vlsingle/#migration-from-vlogs)
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.118.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.118.0) version
+
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/api): introduce new resource `VLSingle`. It replaces deprecated `VLogs`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1339) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/api): manifests distributed via [GitHub release](https://github.com/VictoriaMetrics/operator/releases) artifacts now include the label `app.kubernetes.io/instance: default`, and the value of `app.kubernetes.io/name` has been changed to `victoria-metrics-operator`. See [#1364](https://github.com/VictoriaMetrics/operator/pull/1364) for details.
 

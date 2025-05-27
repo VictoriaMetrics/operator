@@ -21,6 +21,8 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/api): introduce new resource `VLSingle`. It replaces deprecated `VLogs`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1339) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/api): manifests distributed via [GitHub release](https://github.com/VictoriaMetrics/operator/releases) artifacts now include the label `app.kubernetes.io/instance: default`, and the value of `app.kubernetes.io/name` has been changed to `victoria-metrics-operator`. See [#1364](https://github.com/VictoriaMetrics/operator/pull/1364) for details.
 
+* BUGFIX: [operator](https://docs.victoriametrics.com/operator/api): remove alerting rule `BadObjects` as metric `operator_controller_bad_objects_count` isn't exposed anymore.
+
 ## [v0.58.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.58.0)
 
 **Release date:** 14 May 2025

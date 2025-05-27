@@ -257,7 +257,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 	if err = gzipConfig(&buf, generatedConfig); err != nil {
 		return nil, fmt.Errorf("cannot gzip config for vmagent: %w", err)
 	}
-	s.Data[vmagentGzippedFilename] = buf.Bytes()
+	s.Data[gzippedFilename] = buf.Bytes()
 
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
@@ -1186,7 +1186,7 @@ func makeConfigSecret(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) *core
 	s := &corev1.Secret{
 		ObjectMeta: buildConfigMeta(cr),
 		Data: map[string][]byte{
-			vmagentGzippedFilename: {},
+			gzippedFilename: {},
 		},
 	}
 	for idx, rw := range cr.Spec.RemoteWrite {

@@ -563,7 +563,7 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 	if len(opt.DefaultURLs) > 0 {
 		dst = append(dst, yaml.MapItem{Key: "default_url", Value: opt.DefaultURLs})
 	}
-	res, err := cb.BuildTLSConfig(opt.TLSConfig, vmAuthConfigRawFolder)
+	res, err := cb.BuildTLSConfig(opt.TLSConfig, configRawFolder)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build tls config for vmauth %s under %s, err: %v", cb.CurrentCRName, cb.CurrentCRNamespace, err)
 	}

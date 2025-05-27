@@ -15,7 +15,7 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func TestCreateOrUpdateVMSingle(t *testing.T) {
+func TestCreateOrUpdate(t *testing.T) {
 	type args struct {
 		cr *vmv1beta1.VMSingle
 		c  *config.BaseOperatorConf
@@ -85,16 +85,16 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdateVMSingle(context.TODO(), tt.args.cr, fclient)
+			err := CreateOrUpdate(context.TODO(), tt.args.cr, fclient)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVMSingle() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 		})
 	}
 }
 
-func TestCreateOrUpdateVMSingleService(t *testing.T) {
+func TestCreateOrUpdateService(t *testing.T) {
 	type args struct {
 		cr *vmv1beta1.VMSingle
 	}
@@ -195,13 +195,13 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := createOrUpdateVMSingleService(context.TODO(), fclient, tt.args.cr, nil)
+			got, err := createOrUpdateService(context.TODO(), fclient, tt.args.cr, nil)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVMSingleService() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("createOrUpdateDeployService() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got.Name, tt.want.Name) {
-				t.Errorf("CreateOrUpdateVMSingleService() got = %v, want %v", got, tt.want)
+				t.Errorf("createOrUpdateDeployService() got = %v, want %v", got, tt.want)
 			}
 			if len(got.Spec.Ports) != tt.wantPortsLen {
 				t.Fatalf("unexpected number of ports: %d, want: %d", len(got.Spec.Ports), tt.wantPortsLen)

@@ -113,14 +113,14 @@ var (
 	}
 )
 
-// createVMAgentK8sAPIAccess - creates RBAC access rules for vmagent
-func createVMAgentK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, clusterWide bool) error {
+// createK8sAPIAccess - creates RBAC access rules for vmagent
+func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, clusterWide bool) error {
 
 	if err := migrateRBAC(ctx, rclient, cr, clusterWide); err != nil {
 		return fmt.Errorf("cannot perform RBAC migration: %w", err)
 	}
 	if clusterWide {
-		if err := ensureVMAgentCRExist(ctx, rclient, cr, prevCR); err != nil {
+		if err := ensureCRExist(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
 		}
 		if err := ensureCRBExist(ctx, rclient, cr, prevCR); err != nil {
@@ -132,14 +132,14 @@ func createVMAgentK8sAPIAccess(ctx context.Context, rclient client.Client, cr, p
 	if err := ensureRoleExist(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
 	}
-	if err := ensureVMAgentRBExist(ctx, rclient, cr, prevCR); err != nil {
+	if err := ensureRBExist(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot ensure state of vmagent's role binding: %w", err)
 	}
 
 	return nil
 }
 
-func ensureVMAgentCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	var prevClusterRole *rbacv1.ClusterRole
 	if prevCR != nil {
 		prevClusterRole = buildClusterRole(prevCR)
@@ -243,7 +243,7 @@ func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv
 	return reconcile.Role(ctx, rclient, nr, prevRole)
 }
 
-func ensureVMAgentRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	rb := buildNamespacedRoleBinding(cr)
 	var prevRB *rbacv1.RoleBinding
 	if prevCR != nil {

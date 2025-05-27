@@ -93,11 +93,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	r.Client.Scheme().Default(instance)
 
 	result, resultErr = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		maps, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, instance, nil)
-		if err != nil {
-			return result, err
-		}
-		if err := vmalert.CreateOrUpdateVMAlert(ctx, instance, r, maps); err != nil {
+		if err := vmalert.CreateOrUpdate(ctx, instance, r); err != nil {
 			return result, err
 		}
 

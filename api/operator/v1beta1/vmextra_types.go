@@ -231,9 +231,9 @@ type StorageSpec struct {
 	VolumeClaimTemplate EmbeddedPersistentVolumeClaim `json:"volumeClaimTemplate,omitempty"`
 }
 
-// IntoSTSVolume converts storageSpec into proper volume for statefulsetSpec
+// IntoStatefulSetVolume converts storageSpec into proper volume for statefulsetSpec
 // by default, it adds emptyDir volume.
-func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) {
+func (ss *StorageSpec) IntoStatefulSetVolume(name string, sts *appsv1.StatefulSetSpec) {
 	switch {
 	case ss == nil:
 		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, corev1.Volume{

@@ -39,7 +39,7 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 			return err
 		}
 	}
-	if err := createOrUpdateVLStorageSTS(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateVLStorageStatefulSet(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 
@@ -106,36 +106,36 @@ func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, 
 	return newHeadless, nil
 }
 
-func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdateVLStorageStatefulSet(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	var prevSts *appsv1.StatefulSet
 
 	if prevCR != nil && prevCR.Spec.VLStorage != nil {
 		var err error
-		prevSts, err = buildVLStorageSTSSpec(prevCR)
+		prevSts, err = buildVLStorageStatefulSetSpec(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot build prev storage spec: %w", err)
 		}
 	}
-	newSts, err := buildVLStorageSTSSpec(cr)
+	newSts, err := buildVLStorageStatefulSetSpec(cr)
 	if err != nil {
 		return err
 	}
 
-	stsOpts := reconcile.STSOptions{
+	stsOpts := reconcile.StatefulSetOptions{
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		SelectorLabels: cr.VLStorageSelectorLabels,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.HandleStatefulSetUpdate(ctx, rclient, stsOpts, newSts, prevSts)
 }
 
-func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
+func buildVLStorageStatefulSetSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 
-	podSpec, err := buildVLStoragePodSpec(cr)
+	podSpec, err := newPodSpecForVLStorage(cr)
 	if err != nil {
 		return nil, err
 	}
 
-	stsSpec := &appsv1.StatefulSet{
+	app := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetVLStorageName(),
 			Namespace:       cr.Namespace,
@@ -151,19 +151,25 @@ func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: cr.Spec.VLStorage.RollingUpdateStrategy,
 			},
-			Template:    *podSpec,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      cr.VLStoragePodLabels(),
+					Annotations: cr.VLStoragePodAnnotations(),
+				},
+				Spec: *podSpec,
+			},
 			ServiceName: cr.GetVLStorageName(),
 		},
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, false), &cr.Spec.VLStorage.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(app, ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, false), &cr.Spec.VLStorage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.VLStorage.Storage
-	storageSpec.IntoSTSVolume(cr.Spec.VLStorage.GetStorageVolumeName(), &stsSpec.Spec)
-	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VLStorage.ClaimTemplates...)
+	storageSpec.IntoStatefulSetVolume(cr.Spec.VLStorage.GetStorageVolumeName(), &app.Spec)
+	app.Spec.VolumeClaimTemplates = append(app.Spec.VolumeClaimTemplates, cr.Spec.VLStorage.ClaimTemplates...)
 
-	return stsSpec, nil
+	return app, nil
 }
 
-func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
+func newPodSpecForVLStorage(cr *vmv1.VLCluster) (*corev1.PodSpec, error) {
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VLStorage.Port),
 		fmt.Sprintf("-storageDataPath=%s", cr.Spec.VLStorage.StorageDataPath),
@@ -208,15 +214,15 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 		},
 	}
 	volumes := make([]corev1.Volume, 0)
-	vmMounts := make([]corev1.VolumeMount, 0)
+	volumeMounts := make([]corev1.VolumeMount, 0)
 
 	volumes = append(volumes, cr.Spec.VLStorage.Volumes...)
-	vmMounts = append(vmMounts, corev1.VolumeMount{
+	volumeMounts = append(volumeMounts, corev1.VolumeMount{
 		Name:      cr.Spec.VLStorage.GetStorageVolumeName(),
 		MountPath: cr.Spec.VLStorage.StorageDataPath,
 	})
 
-	vmMounts = append(vmMounts, cr.Spec.VLStorage.VolumeMounts...)
+	volumeMounts = append(volumeMounts, cr.Spec.VLStorage.VolumeMounts...)
 
 	for _, s := range cr.Spec.VLStorage.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -227,7 +233,7 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 				},
 			},
 		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.SecretsDir, s),
@@ -245,7 +251,7 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 				},
 			},
 		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
@@ -254,13 +260,13 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLStorage.ExtraArgs, "-")
 	sort.Strings(args)
-	vmstorageContainer := corev1.Container{
+	container := corev1.Container{
 		Name:                     "vlstorage",
 		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VLStorage.Image.Repository, cr.Spec.VLStorage.Image.Tag),
 		ImagePullPolicy:          cr.Spec.VLStorage.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
-		VolumeMounts:             vmMounts,
+		VolumeMounts:             volumeMounts,
 		Resources:                cr.Spec.VLStorage.Resources,
 		Env:                      envs,
 		EnvFrom:                  cr.Spec.VLStorage.ExtraEnvsFrom,
@@ -268,9 +274,9 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	vmstorageContainer = build.Probe(vmstorageContainer, cr.Spec.VLStorage)
+	container = build.Probe(container, cr.Spec.VLStorage)
 
-	storageContainers := []corev1.Container{vmstorageContainer}
+	containers := []corev1.Container{container}
 	var initContainers []corev1.Container
 
 	useStrictSecurity := ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, false)
@@ -280,8 +286,8 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 		return nil, fmt.Errorf("cannot patch storage init containers: %w", err)
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLStorage.SecurityContext, storageContainers, useStrictSecurity)
-	containers, err := k8stools.MergePatchContainers(storageContainers, cr.Spec.VLStorage.Containers)
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLStorage.SecurityContext, containers, useStrictSecurity)
+	containers, err = k8stools.MergePatchContainers(containers, cr.Spec.VLStorage.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch storage containers: %w", err)
 	}
@@ -294,18 +300,10 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 		}
 	}
 
-	vmStoragePodSpec := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      cr.VLStoragePodLabels(),
-			Annotations: cr.VLStoragePodAnnotations(),
-		},
-		Spec: corev1.PodSpec{
-			Volumes:            volumes,
-			InitContainers:     ic,
-			Containers:         containers,
-			ServiceAccountName: cr.GetServiceAccountName(),
-		},
-	}
-
-	return vmStoragePodSpec, nil
+	return &corev1.PodSpec{
+		Volumes:            volumes,
+		InitContainers:     ic,
+		Containers:         containers,
+		ServiceAccountName: cr.GetServiceAccountName(),
+	}, nil
 }

@@ -1,4 +1,4 @@
-package alertmanager
+package vmalertmanager
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func TestCreateOrUpdateAlertManager(t *testing.T) {
+func TestCreateOrUpdate(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		cr  *vmv1beta1.VMAlertmanager
@@ -237,14 +237,14 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 					}
 				}
 			}()
-			err := CreateOrUpdateAlertManager(ctx, tt.args.cr, fclient)
+			err := CreateOrUpdate(ctx, tt.args.cr, fclient)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// TODO add client.Default
 			var got appsv1.StatefulSet
 			if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
-				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err := tt.validate(&got); err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -352,7 +352,7 @@ func Test_createDefaultAMConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			if err := CreateOrUpdateConfig(tt.args.ctx, fclient, tt.args.cr, nil); (err != nil) != tt.wantErr {
-				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("CreateOrUpdateConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantErr {
 				return

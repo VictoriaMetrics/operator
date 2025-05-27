@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func TestCreateOrUpdateVMCluster(t *testing.T) {
+func TestCreateOrUpdate(t *testing.T) {
 	type args struct {
 		cr *vmv1beta1.VMCluster
 	}
@@ -429,9 +429,9 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 				})
 			}
 
-			err := CreateOrUpdateVMCluster(ctx, tt.args.cr, fclient)
+			err := CreateOrUpdate(ctx, tt.args.cr, fclient)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVMCluster() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if tt.validate != nil {

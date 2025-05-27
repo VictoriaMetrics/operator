@@ -28,7 +28,7 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.
 	if err := RemoveOrphanedDeployments(ctx, rclient, crd, nil); err != nil {
 		return err
 	}
-	if err := RemoveOrphanedSTSs(ctx, rclient, crd, nil); err != nil {
+	if err := RemoveOrphanedStatefulSets(ctx, rclient, crd, nil); err != nil {
 		return err
 	}
 	// check service

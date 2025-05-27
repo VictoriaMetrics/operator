@@ -288,7 +288,7 @@ groups:
 	}
 }
 
-func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
+func TestCreateOrUpdateConfig(t *testing.T) {
 	type args struct {
 		cr *vmv1beta1.VMAlert
 	}
@@ -324,13 +324,13 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateRuleConfigMaps(context.TODO(), fclient, tt.args.cr, nil)
+			got, err := CreateOrUpdateConfig(context.TODO(), fclient, tt.args.cr, nil)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateRuleConfigMaps() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdateConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CreateOrUpdateRuleConfigMaps() got = %v, want %v", got, tt.want)
+				t.Errorf("CreateOrUpdateConfig() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

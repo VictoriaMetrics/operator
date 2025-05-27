@@ -1,0 +1,163 @@
+package vmauth
+
+import (
+	"context"
+	"testing"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
+)
+
+func TestCreateOrUpdate(t *testing.T) {
+	mutateConf := func(cb func(c *config.BaseOperatorConf)) *config.BaseOperatorConf {
+		c := config.MustGetBaseConfig()
+		cb(c)
+		return c
+	}
+	type args struct {
+		cr *vmv1beta1.VMAuth
+		c  *config.BaseOperatorConf
+	}
+	tests := []struct {
+		name              string
+		args              args
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "simple-unmanaged",
+			args: args{
+				cr: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+				c: config.MustGetBaseConfig(),
+			},
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmauth-test", "default"),
+			},
+		},
+		{
+			name: "simple-with-external-config",
+			args: args{
+				cr: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAuthSpec{
+						ExternalConfig: vmv1beta1.ExternalConfig{
+							SecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "external-cfg",
+								},
+							},
+						},
+					},
+				},
+				c: config.MustGetBaseConfig(),
+			},
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmauth-test", "default"),
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "external-cfg",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"config.yaml": {},
+					},
+				},
+			},
+		},
+		{
+			name: "with-match-all",
+			args: args{
+				cr: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
+					},
+				},
+				c: config.MustGetBaseConfig(),
+			},
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmauth-test", "default"),
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						UserName: ptr.To("user-1"),
+						Password: ptr.To("password-1"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{
+									URLs: []string{"http://url-1", "http://url-2"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "with customer config reloader",
+			args: args{
+				cr: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
+					},
+				},
+				c: mutateConf(func(c *config.BaseOperatorConf) {
+					c.UseCustomConfigReloader = true
+				}),
+			},
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmauth-test", "default"),
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						UserName: ptr.To("user-1"),
+						Password: ptr.To("password-1"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{
+									URLs: []string{"http://url-1", "http://url-2"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			tc := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			// TODO fix
+			if err := CreateOrUpdate(ctx, tt.args.cr, tc); (err != nil) != tt.wantErr {
+				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

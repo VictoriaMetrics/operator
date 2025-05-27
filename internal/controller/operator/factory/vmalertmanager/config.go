@@ -1,4 +1,4 @@
-package alertmanager
+package vmalertmanager
 
 import (
 	"context"
@@ -8,14 +8,142 @@ import (
 	"sort"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"gopkg.in/yaml.v2"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+// CreateOrUpdateConfig - check if secret with config exist,
+// if not create with predefined or user value.
+func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, childCR *vmv1beta1.VMAlertmanagerConfig) error {
+	l := logger.WithContext(ctx)
+	var prevCR *vmv1beta1.VMAlertmanager
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+
+	// name of tls object and it's value
+	// e.g. namespace_secret_name_secret_key
+	tlsAssets := make(map[string]string)
+
+	var configSourceName string
+	var alertmananagerConfig []byte
+	switch {
+	// fetch content from user defined secret
+	case cr.Spec.ConfigSecret != "":
+		if cr.Spec.ConfigSecret == cr.ConfigSecretName() {
+			l.Info("ignoring content of ConfigSecret, "+
+				"since it has the same name as secreted created by operator for config",
+				"secretName", cr.Spec.ConfigSecret)
+		} else {
+			// retrieve content
+			secretContent, err := getSecretContent(ctx, rclient, cr.Spec.ConfigSecret, cr.Namespace)
+			if err != nil {
+				return fmt.Errorf("cannot fetch secret content for alertmanager config secret, err: %w", err)
+			}
+			alertmananagerConfig = secretContent
+			configSourceName = "configSecret ref: " + cr.Spec.ConfigSecret
+		}
+		// use in-line config
+	case cr.Spec.ConfigRawYaml != "":
+		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
+		configSourceName = "inline configuration at configRawYaml"
+	}
+	mergedCfg, err := buildConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, tlsAssets)
+	if err != nil {
+		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
+	}
+	alertmananagerConfig = mergedCfg.data
+	// apply default config to be able just start alertmanager
+	if len(alertmananagerConfig) == 0 {
+		alertmananagerConfig = []byte(defaultAMConfig)
+		configSourceName = "default config"
+	}
+
+	webCfg, err := buildWebServerConfigYAML(ctx, rclient, cr, tlsAssets)
+	if err != nil {
+		return fmt.Errorf("cannot build webserver config: %w", err)
+	}
+
+	gossipCfg, err := buildGossipConfigYAML(ctx, rclient, cr, tlsAssets)
+	if err != nil {
+		return fmt.Errorf("cannot build gossip config: %w", err)
+	}
+
+	// add templates from CR to alermanager config
+	if len(cr.Spec.Templates) > 0 {
+		templatePaths := make([]string, 0, len(cr.Spec.Templates))
+		for _, template := range cr.Spec.Templates {
+			templatePaths = append(templatePaths, path.Join(templatesDir, template.Name, template.Key))
+		}
+		mergedCfg, err := addConfigTemplates(alertmananagerConfig, templatePaths)
+		if err != nil {
+			return fmt.Errorf("cannot build alertmanager config with templates, err: %w", err)
+		}
+		alertmananagerConfig = mergedCfg
+	}
+
+	if err := vmv1beta1.ValidateAlertmanagerConfigSpec(alertmananagerConfig); err != nil {
+		return fmt.Errorf("incorrect result configuration, config source=%s,am cfgs count=%d: %w", configSourceName, len(mergedCfg.amcfgs), err)
+	}
+
+	newAMSecretConfig := &corev1.Secret{
+		ObjectMeta: *buildConfgSecretMeta(cr),
+		Data: map[string][]byte{
+			secretConfigKey: alertmananagerConfig,
+		}}
+	if cr.Spec.WebConfig != nil {
+		newAMSecretConfig.Data[webserverConfigKey] = webCfg
+	}
+	if cr.Spec.GossipConfig != nil {
+		newAMSecretConfig.Data[gossipConfigKey] = gossipCfg
+	}
+
+	for assetKey, assetValue := range tlsAssets {
+		newAMSecretConfig.Data[assetKey] = []byte(assetValue)
+	}
+
+	var prevSecretMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevSecretMeta = buildConfgSecretMeta(prevCR)
+	}
+
+	if err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta); err != nil {
+		return err
+	}
+
+	parent := fmt.Sprintf("%s.%s.vmalertmanager", cr.Name, cr.Namespace)
+
+	if childCR != nil {
+		// fast path update only single object
+		for _, amc := range mergedCfg.amcfgs {
+			if amc.Name == childCR.Name && amc.Namespace == childCR.Namespace {
+				return reconcile.StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMAlertmanagerConfig{amc})
+			}
+		}
+		for _, amc := range mergedCfg.brokenAMCfgs {
+			if amc.Name == childCR.Name && amc.Namespace == childCR.Namespace {
+				return reconcile.StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMAlertmanagerConfig{amc})
+			}
+		}
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, mergedCfg.amcfgs); err != nil {
+		return fmt.Errorf("failed to update vmconfigs statuses: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, mergedCfg.brokenAMCfgs); err != nil {
+		return fmt.Errorf("failed to update broken vmconfigs statuses: %w", err)
+	}
+	return nil
+}
 
 type parsedConfig struct {
 	data         []byte

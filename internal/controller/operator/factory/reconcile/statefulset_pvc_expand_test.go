@@ -17,11 +17,11 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func Test_reCreateSTS(t *testing.T) {
+func Test_reCreateStatefulSet(t *testing.T) {
 	type args struct {
-		ctx         context.Context
-		newSTS      *appsv1.StatefulSet
-		existingSTS *appsv1.StatefulSet
+		ctx                 context.Context
+		newStatefulSet      *appsv1.StatefulSet
+		existingStatefulSet *appsv1.StatefulSet
 	}
 	tests := []struct {
 		name                          string
@@ -35,13 +35,13 @@ func Test_reCreateSTS(t *testing.T) {
 			name: "add claim to sts",
 			args: args{
 				ctx: context.TODO(),
-				existingSTS: &appsv1.StatefulSet{
+				existingStatefulSet: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
 						Namespace: "default",
 					},
 				},
-				newSTS: &appsv1.StatefulSet{
+				newStatefulSet: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
 						Namespace: "default",
@@ -69,7 +69,7 @@ func Test_reCreateSTS(t *testing.T) {
 			name: "resize claim at sts",
 			args: args{
 				ctx: context.TODO(),
-				existingSTS: &appsv1.StatefulSet{
+				existingStatefulSet: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
 						Namespace: "default",
@@ -85,7 +85,7 @@ func Test_reCreateSTS(t *testing.T) {
 						},
 					}},
 				},
-				newSTS: &appsv1.StatefulSet{
+				newStatefulSet: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
 						Namespace: "default",
@@ -119,7 +119,7 @@ func Test_reCreateSTS(t *testing.T) {
 			name: "change claim storageClass name",
 			args: args{
 				ctx: context.TODO(),
-				existingSTS: &appsv1.StatefulSet{
+				existingStatefulSet: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
 						Namespace: "default",
@@ -138,7 +138,7 @@ func Test_reCreateSTS(t *testing.T) {
 						},
 					}},
 				},
-				newSTS: &appsv1.StatefulSet{
+				newStatefulSet: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
 						Namespace: "default",
@@ -175,7 +175,7 @@ func Test_reCreateSTS(t *testing.T) {
 			name: "change serviceName",
 			args: args{
 				ctx: context.TODO(),
-				existingSTS: &appsv1.StatefulSet{
+				existingStatefulSet: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmagent",
 						Namespace: "default",
@@ -184,7 +184,7 @@ func Test_reCreateSTS(t *testing.T) {
 						ServiceName: "old-service",
 					},
 				},
-				newSTS: &appsv1.StatefulSet{
+				newStatefulSet: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmagent",
 						Namespace: "default",
@@ -206,17 +206,17 @@ func Test_reCreateSTS(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cl := k8stools.GetTestClientWithObjects([]runtime.Object{tt.args.existingSTS})
-			stsRecreated, mustRecreatePod, err := recreateSTSIfNeed(tt.args.ctx, cl, tt.args.newSTS, tt.args.existingSTS)
+			cl := k8stools.GetTestClientWithObjects([]runtime.Object{tt.args.existingStatefulSet})
+			stsRecreated, mustRecreatePod, err := recreateStatefulSetIfNeed(tt.args.ctx, cl, tt.args.newStatefulSet, tt.args.existingStatefulSet)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("%s: \nwasCreatedSTS() error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				t.Errorf("%s: \nwasCreatedStatefulSet() error = %v, wantErr %v", tt.name, err, tt.wantErr)
 				return
 			}
-			var updatedSts appsv1.StatefulSet
-			if err := cl.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.newSTS.Namespace, Name: tt.args.newSTS.Name}, &updatedSts); err != nil {
+			var updatedStatefulSet appsv1.StatefulSet
+			if err := cl.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.newStatefulSet.Namespace, Name: tt.args.newStatefulSet.Name}, &updatedStatefulSet); err != nil {
 				t.Fatalf("%s: \nunexpected error: %v", tt.name, err)
 			}
-			if err := tt.validate(&updatedSts); err != nil {
+			if err := tt.validate(&updatedStatefulSet); err != nil {
 				t.Fatalf("%s: \nsts validation failed: %v", tt.name, err)
 			}
 			if stsRecreated != tt.stsRecreated {
@@ -229,7 +229,7 @@ func Test_reCreateSTS(t *testing.T) {
 	}
 }
 
-func Test_growSTSPVC(t *testing.T) {
+func Test_growStatefulSetPVC(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		sts *appsv1.StatefulSet
@@ -523,8 +523,8 @@ func Test_growSTSPVC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := growSTSPVC(tt.args.ctx, cl, tt.args.sts); (err != nil) != tt.wantErr {
-				t.Errorf("growSTSPVC() error = %v, wantErr %v", err, tt.wantErr)
+			if err := growStatefulSetPVC(tt.args.ctx, cl, tt.args.sts); (err != nil) != tt.wantErr {
+				t.Errorf("growStatefulSetPVC() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

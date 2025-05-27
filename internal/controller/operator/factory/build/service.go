@@ -38,7 +38,7 @@ func AdditionalServiceFromDefault(defaultSvc *corev1.Service, svcSpec *vmv1beta1
 }
 
 // Service builds service for the given args and applies optional callback for it
-func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Service)) *corev1.Service {
+func Service(cr deployOpts, defaultPort string, setOptions func(svc *corev1.Service)) *corev1.Service {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),

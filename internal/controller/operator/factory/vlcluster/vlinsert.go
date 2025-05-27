@@ -31,14 +31,14 @@ func createOrUpdateVLInsert(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdatePodDisruptionBudgetForVLInsert(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	if err := createOrUpdateVLInsertDeployment(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateDeployForVLInsert(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	insertSvc, err := createOrUpdateVLInsertService(ctx, rclient, cr, prevCR)
+	insertSvc, err := createOrUpdateServiceForVLInsert(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
-	if err := createOrUpdateVLInsertHPA(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateHPAForVLInsert(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 	if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, false) {
@@ -70,26 +70,26 @@ func createOrUpdatePodDisruptionBudgetForVLInsert(ctx context.Context, rclient c
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
-func createOrUpdateVLInsertDeployment(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdateDeployForVLInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	var prevDeploy *appsv1.Deployment
 
 	if prevCR != nil && prevCR.Spec.VLInsert != nil {
 		var err error
-		prevDeploy, err = buildVLInsertDeployment(prevCR)
+		prevDeploy, err = newDeployForVLInsert(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
-	newDeployment, err := buildVLInsertDeployment(cr)
+	newDeployment, err := newDeployForVLInsert(cr)
 	if err != nil {
 		return err
 	}
 	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, cr.Spec.VLInsert.HPA != nil)
 }
 
-func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
+func newDeployForVLInsert(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 
-	podSpec, err := buildVLInsertPodSpec(cr)
+	podSpec, err := newPodSpecForVLInsert(cr)
 	if err != nil {
 		return nil, err
 	}
@@ -118,14 +118,20 @@ func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VLInsertSelectorLabels(),
 			},
-			Template: *podSpec,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      cr.VLInsertPodLabels(),
+					Annotations: cr.VLInsertPodAnnotations(),
+				},
+				Spec: *podSpec,
+			},
 		},
 	}
 	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VLInsert.UseStrictSecurity, false), &cr.Spec.VLInsert.CommonApplicationDeploymentParams)
 	return stsSpec, nil
 }
 
-func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
+func newPodSpecForVLInsert(cr *vmv1.VLCluster) (*corev1.PodSpec, error) {
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VLInsert.Port),
 		"-internalselect.disable=true",
@@ -165,15 +171,15 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	volumes := make([]corev1.Volume, 0)
 	volumes = append(volumes, cr.Spec.VLInsert.Volumes...)
 
-	vmMounts := make([]corev1.VolumeMount, 0)
-	vmMounts = append(vmMounts, cr.Spec.VLInsert.VolumeMounts...)
+	volumeMounts := make([]corev1.VolumeMount, 0)
+	volumeMounts = append(volumeMounts, cr.Spec.VLInsert.VolumeMounts...)
 
 	if cr.Spec.VLInsert.SyslogSpec != nil && !cr.Spec.RequestsLoadBalancer.Enabled {
 		ports = addSyslogPortsTo(ports, cr.Spec.VLInsert.SyslogSpec)
 		args = buildSyslogArgs(args, cr.Spec.VLInsert.SyslogSpec)
 		for _, tcpC := range cr.Spec.VLInsert.SyslogSpec.TCPListeners {
 			volumes = addTLSConfigToVolumes(volumes, tcpC.TLSConfig)
-			vmMounts = addTLSConfigToVolumeMounts(vmMounts, tcpC.TLSConfig)
+			volumeMounts = addTLSConfigToVolumeMounts(volumeMounts, tcpC.TLSConfig)
 		}
 	}
 
@@ -186,7 +192,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 				},
 			},
 		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.SecretsDir, s),
@@ -204,7 +210,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 				},
 			},
 		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
@@ -214,24 +220,24 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLInsert.ExtraArgs, "-")
 	sort.Strings(args)
 
-	insertContainers := corev1.Container{
+	container := corev1.Container{
 		Name:                     "vlinsert",
 		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VLInsert.Image.Repository, cr.Spec.VLInsert.Image.Tag),
 		ImagePullPolicy:          cr.Spec.VLInsert.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
-		VolumeMounts:             vmMounts,
+		VolumeMounts:             volumeMounts,
 		Resources:                cr.Spec.VLInsert.Resources,
 		Env:                      envs,
 		EnvFrom:                  cr.Spec.VLInsert.ExtraEnvsFrom,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	insertContainers = build.Probe(insertContainers, cr.Spec.VLInsert)
-	operatorContainers := []corev1.Container{insertContainers}
+	container = build.Probe(container, cr.Spec.VLInsert)
+	containers := []corev1.Container{container}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLInsert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VLInsert.UseStrictSecurity, false))
-	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VLInsert.Containers)
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLInsert.SecurityContext, containers, ptr.Deref(cr.Spec.VLInsert.UseStrictSecurity, false))
+	containers, err := k8stools.MergePatchContainers(containers, cr.Spec.VLInsert.Containers)
 	if err != nil {
 		return nil, err
 	}
@@ -244,23 +250,15 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		}
 	}
 
-	podSpec := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      cr.VLInsertPodLabels(),
-			Annotations: cr.VLInsertPodAnnotations(),
-		},
-		Spec: corev1.PodSpec{
-			Volumes:            volumes,
-			InitContainers:     cr.Spec.VLInsert.InitContainers,
-			Containers:         containers,
-			ServiceAccountName: cr.GetServiceAccountName(),
-		},
-	}
-
-	return podSpec, nil
+	return &corev1.PodSpec{
+		Volumes:            volumes,
+		InitContainers:     cr.Spec.VLInsert.InitContainers,
+		Containers:         containers,
+		ServiceAccountName: cr.GetServiceAccountName(),
+	}, nil
 }
 
-func createOrUpdateVLInsertHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdateHPAForVLInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	if cr.Spec.VLInsert.HPA == nil {
 		return nil
 	}
@@ -279,11 +277,11 @@ func createOrUpdateVLInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
 }
 
-func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {
-	newService := buildVLInsertService(cr)
+func createOrUpdateServiceForVLInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {
+	newService := newServiceForVLInsert(cr)
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil && prevCR.Spec.VLInsert != nil {
-		prevService = buildVLInsertService(prevCR)
+		prevService = newServiceForVLInsert(prevCR)
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.VLInsert.ServiceSpec)
 	}
 	if err := cr.Spec.VLInsert.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
@@ -317,7 +315,7 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 	return newService, nil
 }
 
-func buildVLInsertService(cr *vmv1.VLCluster) *corev1.Service {
+func newServiceForVLInsert(cr *vmv1.VLCluster) *corev1.Service {
 	t := &optsBuilder{
 		cr,
 		cr.GetVLInsertName(),

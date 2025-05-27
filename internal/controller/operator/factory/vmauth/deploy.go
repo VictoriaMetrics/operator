@@ -24,23 +24,22 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 const (
-	vmAuthConfigMountGz   = "/opt/vmauth-config-gz"
-	vmAuthConfigFolder    = "/opt/vmauth"
-	vmAuthConfigRawFolder = "/opt/vmauth/config"
-	vmAuthConfigName      = "config.yaml"
-	vmAuthConfigNameGz    = "config.yaml.gz"
-	vmAuthVolumeName      = "config"
-	internalPortName      = "internal"
+	configMountGz    = "/opt/vmauth-config-gz"
+	configFolder     = "/opt/vmauth"
+	configRawFolder  = "/opt/vmauth/config"
+	configName       = "config.yaml"
+	configNameGz     = "config.yaml.gz"
+	volumeName       = "config"
+	internalPortName = "internal"
 )
 
-// CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
-func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
+// CreateOrUpdate - handles VMAuth deployment reconciliation.
+func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
 
 	var prevCR *vmv1beta1.VMAuth
 	if cr.ParsedLastAppliedSpec != nil {
@@ -61,11 +60,11 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 			}
 		}
 	}
-	svc, err := createOrUpdateVMAuthService(ctx, rclient, cr, prevCR)
+	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return fmt.Errorf("cannot create or update vmauth service :%w", err)
 	}
-	if err := createOrUpdateVMAuthIngress(ctx, rclient, cr); err != nil {
+	if err := createOrUpdateIngress(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
@@ -77,7 +76,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 		}
 	}
 
-	if err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr, nil); err != nil {
+	if err := CreateOrUpdateConfig(ctx, rclient, cr, nil); err != nil {
 		return err
 	}
 
@@ -92,13 +91,13 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	}
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
-		prevDeploy, err = newDeployForVMAuth(prevCR)
+		prevDeploy, err = newDeploy(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
 
-	newDeploy, err := newDeployForVMAuth(cr)
+	newDeploy, err := newDeploy(cr)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
@@ -111,14 +110,14 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	return nil
 }
 
-func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
+func newDeploy(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 
-	podSpec, err := makeSpecForVMAuth(cr)
+	podSpec, err := newPodSpec(cr)
 	if err != nil {
 		return nil, err
 	}
 
-	depSpec := &appsv1.Deployment{
+	app := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
@@ -133,216 +132,22 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 			Strategy: appsv1.DeploymentStrategy{
 				Type: appsv1.RollingUpdateDeploymentStrategyType,
 			},
-			Template: *podSpec,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      cr.PodLabels(),
+					Annotations: cr.PodAnnotations(),
+				},
+				Spec: *podSpec,
+			},
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(app, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
 
-	return depSpec, nil
+	return app, nil
 }
 
-func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
-	var args []string
-	configPath := path.Join(vmAuthConfigFolder, vmAuthConfigName)
-	if cr.Spec.LocalPath != "" {
-		configPath = cr.Spec.LocalPath
-	}
-	args = append(args, fmt.Sprintf("-auth.config=%s", configPath))
-
-	if cr.Spec.UseProxyProtocol {
-		args = append(args, "-httpListenAddr.useProxyProtocol=true")
-	}
-	if cr.Spec.LogLevel != "" {
-		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
-	}
-	if cr.Spec.LogFormat != "" {
-		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
-	}
-
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
-	if len(cr.Spec.InternalListenPort) > 0 {
-		args = append(args, fmt.Sprintf("-httpInternalListenAddr=:%s", cr.Spec.InternalListenPort))
-	}
-	if len(cr.Spec.ExtraEnvs) > 0 || len(cr.Spec.ExtraEnvsFrom) > 0 {
-		args = append(args, "-envflag.enable=true")
-	}
-
-	var envs []corev1.EnvVar
-	envs = append(envs, cr.Spec.ExtraEnvs...)
-
-	var ports []corev1.ContainerPort
-
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
-
-	if len(cr.Spec.InternalListenPort) > 0 {
-		ports = append(ports, corev1.ContainerPort{
-			Name:          internalPortName,
-			Protocol:      "TCP",
-			ContainerPort: intstr.Parse(cr.Spec.InternalListenPort).IntVal,
-		})
-	}
-
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
-
-	var volumes []corev1.Volume
-	var volumeMounts []corev1.VolumeMount
-
-	volumes = append(volumes, cr.Spec.Volumes...)
-	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
-
-	for _, s := range cr.Spec.Secrets {
-		volumes = append(volumes, corev1.Volume{
-			Name: k8stools.SanitizeVolumeName("secret-" + s),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: s,
-				},
-			},
-		})
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      k8stools.SanitizeVolumeName("secret-" + s),
-			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta1.SecretsDir, s),
-		})
-	}
-
-	for _, c := range cr.Spec.ConfigMaps {
-		volumes = append(volumes, corev1.Volume{
-			Name: k8stools.SanitizeVolumeName("configmap-" + c),
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: c,
-					},
-				},
-			},
-		})
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
-			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
-		})
-	}
-	volumes, volumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, volumeMounts, vmv1beta1.SecretsDir)
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
-
-	var initContainers []corev1.Container
-	var operatorContainers []corev1.Container
-	// config mount options
-	switch {
-	case cr.Spec.SecretRef != nil:
-		var keyToPath []corev1.KeyToPath
-		if cr.Spec.SecretRef.Key != "" {
-			keyToPath = append(keyToPath, corev1.KeyToPath{
-				Key:  cr.Spec.SecretRef.Key,
-				Path: vmAuthConfigName,
-			})
-		}
-		volumes = append(volumes, corev1.Volume{
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.Spec.SecretRef.Name,
-					Items:      keyToPath,
-				},
-			},
-			Name: vmAuthVolumeName,
-		})
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      vmAuthVolumeName,
-			MountPath: vmAuthConfigFolder,
-		})
-
-	case cr.Spec.LocalPath != "":
-		// no-op external managed configuration
-		// add check interval
-		args = append(args, "-configCheckInterval=1m")
-	default:
-		volumes = append(volumes, corev1.Volume{
-			Name: "config-out",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-		if !useVMConfigReloader {
-			volumes = append(volumes, corev1.Volume{
-				Name: vmAuthVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: cr.ConfigSecretName(),
-					},
-				},
-			})
-			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      vmAuthVolumeName,
-				MountPath: vmAuthConfigRawFolder,
-			})
-		}
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "config-out",
-			MountPath: vmAuthConfigFolder,
-		})
-
-		configReloader := buildVMAuthConfigReloaderContainer(cr)
-		operatorContainers = append(operatorContainers, configReloader)
-		initContainers = append(initContainers,
-			buildInitConfigContainer(useVMConfigReloader, cr, configReloader.Args)...)
-		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
-	}
-	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
-	if err != nil {
-		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
-	}
-
-	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
-	sort.Strings(args)
-
-	vmauthContainer := corev1.Container{
-		Name:                     "vmauth",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
-		Ports:                    ports,
-		Args:                     args,
-		VolumeMounts:             volumeMounts,
-		Resources:                cr.Spec.Resources,
-		Env:                      envs,
-		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
-	}
-	vmauthContainer = addVMAuthProbes(cr, vmauthContainer)
-	build.AddConfigReloadAuthKeyToApp(&vmauthContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
-
-	// move vmauth container to the 0 index
-	operatorContainers = append([]corev1.Container{vmauthContainer}, operatorContainers...)
-
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
-	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
-	if err != nil {
-		return nil, err
-	}
-
-	if useVMConfigReloader {
-		volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
-	}
-	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
-
-	vmAuthSpec := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      cr.PodLabels(),
-			Annotations: cr.PodAnnotations(),
-		},
-		Spec: corev1.PodSpec{
-			Volumes:            volumes,
-			InitContainers:     ic,
-			Containers:         containers,
-			ServiceAccountName: cr.GetServiceAccountName(),
-		},
-	}
-	return vmAuthSpec, nil
-}
-
-// CreateOrUpdateVMAuthConfig configuration secret for vmauth.
-func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth, childObject *vmv1beta1.VMUser) error {
+// CreateOrUpdateConfig configuration secret for vmauth.
+func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth, childObject *vmv1beta1.VMUser) error {
 	// fast path
 	if cr.Spec.SecretRef != nil || cr.Spec.LocalPath != "" {
 		return nil
@@ -355,7 +160,7 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	s := &corev1.Secret{
 		ObjectMeta: buildConfigSecretMeta(cr),
 		Data: map[string][]byte{
-			vmAuthConfigNameGz: {},
+			configNameGz: {},
 		},
 	}
 	// fetch exist users for vmauth.
@@ -376,7 +181,7 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	if err := gzipConfig(&buf, generatedConfig); err != nil {
 		return fmt.Errorf("cannot gzip config for vmagent: %w", err)
 	}
-	s.Data[vmAuthConfigNameGz] = buf.Bytes()
+	s.Data[configNameGz] = buf.Bytes()
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildConfigSecretMeta(prevCR))
@@ -425,8 +230,8 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {
 	}
 }
 
-// createOrUpdateVMAuthIngress handles ingress for vmauth.
-func createOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
+// createOrUpdateIngress handles ingress for vmauth.
+func createOrUpdateIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	if cr.Spec.Ingress == nil {
 		return nil
 	}
@@ -505,14 +310,14 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 	}
 }
 
-func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
+func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	port := cr.Spec.Port
 	if len(cr.Spec.InternalListenPort) > 0 {
 		port = cr.Spec.InternalListenPort
 	}
 	configReloaderArgs := []string{
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)),
-		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
+		fmt.Sprintf("--config-envsubst-file=%s", path.Join(configFolder, configName)),
 	}
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if useVMConfigReloader {
@@ -521,19 +326,19 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 			configReloaderArgs = append(configReloaderArgs, "--reload-use-proxy-protocol")
 		}
 	} else {
-		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))
+		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-file=%s", path.Join(configMountGz, configNameGz)))
 	}
 
 	reloaderMounts := []corev1.VolumeMount{
 		{
 			Name:      "config-out",
-			MountPath: vmAuthConfigFolder,
+			MountPath: configFolder,
 		},
 	}
 	if !useVMConfigReloader {
 		reloaderMounts = append(reloaderMounts, corev1.VolumeMount{
-			Name:      vmAuthVolumeName,
-			MountPath: vmAuthConfigMountGz,
+			Name:      volumeName,
+			MountPath: configMountGz,
 		})
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
@@ -590,7 +395,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, co
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "config-out",
-					MountPath: vmAuthConfigFolder,
+					MountPath: configFolder,
 				},
 			},
 			Resources: resources,
@@ -607,16 +412,16 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, co
 		},
 		Args: []string{
 			"-c",
-			fmt.Sprintf("gunzip -c %s > %s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz), path.Join(vmAuthConfigFolder, vmAuthConfigName)),
+			fmt.Sprintf("gunzip -c %s > %s", path.Join(configMountGz, configNameGz), path.Join(configFolder, configName)),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "config",
-				MountPath: vmAuthConfigMountGz,
+				MountPath: configMountGz,
 			},
 			{
 				Name:      "config-out",
-				MountPath: vmAuthConfigFolder,
+				MountPath: configFolder,
 			},
 		},
 		Resources: resources,
@@ -646,8 +451,8 @@ func setInternalSvcPort(cr *vmv1beta1.VMAuth) func(svc *corev1.Service) {
 	}
 }
 
-// createOrUpdateVMAuthService creates service for VMAuth
-func createOrUpdateVMAuthService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) (*corev1.Service, error) {
+// createOrUpdateService creates service for VMAuth
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) (*corev1.Service, error) {
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, setInternalSvcPort(prevCR))
@@ -737,7 +542,7 @@ func useProxyProtocol(cr *vmv1beta1.VMAuth) bool {
 	return false
 }
 
-func addVMAuthProbes(cr *vmv1beta1.VMAuth, vmauthContainer corev1.Container) corev1.Container {
+func addProbes(cr *vmv1beta1.VMAuth, vmauthContainer corev1.Container) corev1.Container {
 	if useProxyProtocol(cr) &&
 		len(cr.Spec.InternalListenPort) == 0 &&
 		cr.Spec.EmbeddedProbes == nil {

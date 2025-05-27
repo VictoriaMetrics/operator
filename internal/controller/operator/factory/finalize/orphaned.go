@@ -2,8 +2,10 @@ package finalize
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -58,15 +60,15 @@ type RemoveSvcArgs struct {
 	GetNameSpace   func() string
 }
 
-// RemoveOrphanedSTSs removes deployments detached from given object
-func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepSTSNames map[string]struct{}) error {
-	deployToRemove, err := discoverSTSsByLabels(ctx, rclient, cr.GetNamespace(), cr.SelectorLabels())
+// RemoveOrphanedStatefulSets removes deployments detached from given object
+func RemoveOrphanedStatefulSets(ctx context.Context, rclient client.Client, cr orphanedCRD, keepStatefulSetNames map[string]struct{}) error {
+	deployToRemove, err := discoverStatefulSetsByLabels(ctx, rclient, cr.GetNamespace(), cr.SelectorLabels())
 	if err != nil {
 		return err
 	}
 	for i := range deployToRemove {
 		dep := deployToRemove[i]
-		if _, ok := keepSTSNames[dep.Name]; !ok {
+		if _, ok := keepStatefulSetNames[dep.Name]; !ok {
 			// need to remove
 			if err := RemoveFinalizer(ctx, rclient, dep); err != nil {
 				return err
@@ -80,7 +82,7 @@ func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedC
 }
 
 // discoverDeploymentsByLabels - returns deployments with given args.
-func discoverSTSsByLabels(ctx context.Context, rclient client.Client, ns string, selector map[string]string) ([]*appsv1.StatefulSet, error) {
+func discoverStatefulSetsByLabels(ctx context.Context, rclient client.Client, ns string, selector map[string]string) ([]*appsv1.StatefulSet, error) {
 	var deps appsv1.StatefulSetList
 	opts := client.ListOptions{
 		Namespace:     ns,
@@ -94,4 +96,19 @@ func discoverSTSsByLabels(ctx context.Context, rclient client.Client, ns string,
 		resp = append(resp, &deps.Items[i])
 	}
 	return resp, nil
+}
+
+// RemoveOrphanedDaemonSet removes daemonset detached from given object
+func RemoveOrphanedDaemonSet(ctx context.Context, rclient client.Client, name, namespace string) error {
+	ds := appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	err := SafeDeleteWithFinalizer(ctx, rclient, &ds)
+	if err != nil {
+		return fmt.Errorf("cannot remove DaemonSet: %w", err)
+	}
+	return nil
 }

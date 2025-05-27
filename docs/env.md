@@ -1,7 +1,7 @@
 
 | variable name | variable default value | variable required | variable description |
 | --- | --- | --- | --- |
-| VM_METRICS_VERSION | v1.117.0 | false |  |
+| VM_METRICS_VERSION | v1.118.0 | false |  |
 | VM_LOGS_VERSION | v1.21.0 | false |  |
 | VM_USECUSTOMCONFIGRELOADER | false | false | enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY | - | false | container registry name prefix, e.g. docker.io |

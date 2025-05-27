@@ -231,9 +231,9 @@ type StorageSpec struct {
 	VolumeClaimTemplate EmbeddedPersistentVolumeClaim `json:"volumeClaimTemplate,omitempty"`
 }
 
-// IntoSTSVolume converts storageSpec into proper volume for statefulsetSpec
+// IntoStatefulSetVolume converts storageSpec into proper volume for statefulsetSpec
 // by default, it adds emptyDir volume.
-func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) {
+func (ss *StorageSpec) IntoStatefulSetVolume(name string, sts *appsv1.StatefulSetSpec) {
 	switch {
 	case ss == nil:
 		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, v1.Volume{
@@ -773,16 +773,16 @@ func (l *License) MaybeAddToArgs(args []string, secretMountDir string) []string 
 		return args
 	}
 	if l.Key != nil {
-		args = append(args, fmt.Sprintf("-license=%s", *l.Key))
+		args = append(args, fmt.Sprintf("--license=%s", *l.Key))
 	}
 	if l.KeyRef != nil {
-		args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(secretMountDir, l.KeyRef.Name, l.KeyRef.Key)))
+		args = append(args, fmt.Sprintf("--licenseFile=%s", path.Join(secretMountDir, l.KeyRef.Name, l.KeyRef.Key)))
 	}
 	if l.ForceOffline != nil {
-		args = append(args, fmt.Sprintf("-license.forceOffline=%v", *l.ForceOffline))
+		args = append(args, fmt.Sprintf("--license.forceOffline=%v", *l.ForceOffline))
 	}
 	if l.ReloadInterval != nil {
-		args = append(args, fmt.Sprintf("-licenseFile.reloadInterval=%s", *l.ReloadInterval))
+		args = append(args, fmt.Sprintf("--licenseFile.reloadInterval=%s", *l.ReloadInterval))
 	}
 	return args
 }

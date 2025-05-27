@@ -31,6 +31,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMCluster{}, addVMClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VLogs{}, addVlogsDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VLSingle{}, addVLSingleDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 }
 
@@ -249,6 +250,13 @@ func addVLSingleDefaults(objI any) {
 	cr := objI.(*vmv1.VLSingle)
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VLSingleDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+}
+
+func addVMAnomalyDefaults(objI any) {
+	cr := objI.(*vmv1.VMAnomaly)
+	c := getCfg()
+	cv := config.ApplicationDefaults(c.VMAnomalyDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
 }
 

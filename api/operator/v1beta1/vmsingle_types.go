@@ -299,11 +299,6 @@ func (cr *VMSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-// GetNSName implements build.builderOpts interface
-func (cr *VMSingle) GetNSName() string {
-	return cr.GetNamespace()
-}
-
 func (cr *VMSingle) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {

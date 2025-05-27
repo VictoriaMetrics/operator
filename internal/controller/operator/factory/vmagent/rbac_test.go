@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func TestCreateVMAgentClusterAccess(t *testing.T) {
+func TestCreateClusterAccess(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		cr  *vmv1beta1.VMAgent
@@ -87,8 +87,8 @@ func TestCreateVMAgentClusterAccess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := createVMAgentK8sAPIAccess(tt.args.ctx, fclient, tt.args.cr, nil, true); (err != nil) != tt.wantErr {
-				t.Errorf("CreateVMAgentK8sAPIAccess() error = %v, wantErr %v", err, tt.wantErr)
+			if err := createK8sAPIAccess(tt.args.ctx, fclient, tt.args.cr, nil, true); (err != nil) != tt.wantErr {
+				t.Errorf("createK8sAPIAccess() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

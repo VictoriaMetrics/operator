@@ -24,6 +24,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	webhookv1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1"
 	webhookv1beta1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1beta1"
 	"github.com/go-logr/logr"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -347,10 +348,11 @@ func addWebhooks(mgr ctrl.Manager) error {
 	return f([]func(ctrl.Manager) error{
 		webhookv1beta1.SetupVMAgentWebhookWithManager,
 		webhookv1beta1.SetupVMAlertWebhookWithManager,
+		webhookv1.SetupVMAnomalyWebhookWithManager,
 		webhookv1beta1.SetupVMSingleWebhookWithManager,
 		webhookv1beta1.SetupVMClusterWebhookWithManager,
 		webhookv1beta1.SetupVLogsWebhookWithManager,
-		webhookv1beta1.SetupVLSingleWebhookWithManager,
+		webhookv1.SetupVLSingleWebhookWithManager,
 		webhookv1beta1.SetupVMAlertmanagerWebhookWithManager,
 		webhookv1beta1.SetupVMAlertmanagerConfigWebhookWithManager,
 		webhookv1beta1.SetupVMAuthWebhookWithManager,
@@ -435,6 +437,7 @@ type crdController interface {
 var controllersByName = map[string]crdController{
 	"VMCluster":            &vmcontroller.VMClusterReconciler{},
 	"VMAgent":              &vmcontroller.VMAgentReconciler{},
+	"VMAnomaly":            &vmcontroller.VMAnomalyReconciler{},
 	"VMAuth":               &vmcontroller.VMAuthReconciler{},
 	"VMSingle":             &vmcontroller.VMSingleReconciler{},
 	"VLogs":                &vmcontroller.VLogsReconciler{},

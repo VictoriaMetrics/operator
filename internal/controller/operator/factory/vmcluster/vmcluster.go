@@ -153,21 +153,21 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 
 func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 
-	var prevSts *appsv1.StatefulSet
+	var prevStatefulSet *appsv1.StatefulSet
 	if prevCR != nil && prevCR.Spec.VMSelect != nil {
 		var err error
-		prevSts, err = genVMSelectSpec(prevCR)
+		prevStatefulSet, err = genVMSelectSpec(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot build prev storage spec: %w", err)
 		}
 	}
-	newSts, err := genVMSelectSpec(cr)
+	newStatefulSet, err := genVMSelectSpec(cr)
 	if err != nil {
 		return err
 	}
 
-	stsOpts := reconcile.STSOptions{
-		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
+	stsOpts := reconcile.StatefulSetOptions{
+		HasClaim:       len(newStatefulSet.Spec.VolumeClaimTemplates) > 0,
 		SelectorLabels: cr.VMSelectSelectorLabels,
 		HPA:            cr.Spec.VMSelect.HPA,
 		UpdateReplicaCount: func(count *int32) {
@@ -176,7 +176,7 @@ func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prev
 			}
 		},
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.HandleStatefulSetUpdate(ctx, rclient, stsOpts, newStatefulSet, prevStatefulSet)
 }
 
 func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
@@ -373,25 +373,25 @@ func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, c
 }
 
 func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	var prevSts *appsv1.StatefulSet
+	var prevStatefulSet *appsv1.StatefulSet
 
 	if prevCR != nil && prevCR.Spec.VMStorage != nil {
 		var err error
-		prevSts, err = buildVMStorageSpec(ctx, prevCR)
+		prevStatefulSet, err = buildVMStorageSpec(ctx, prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot build prev storage spec: %w", err)
 		}
 	}
-	newSts, err := buildVMStorageSpec(ctx, cr)
+	newStatefulSet, err := buildVMStorageSpec(ctx, cr)
 	if err != nil {
 		return err
 	}
 
-	stsOpts := reconcile.STSOptions{
-		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
+	stsOpts := reconcile.StatefulSetOptions{
+		HasClaim:       len(newStatefulSet.Spec.VolumeClaimTemplates) > 0,
 		SelectorLabels: cr.VMStorageSelectorLabels,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.HandleStatefulSetUpdate(ctx, rclient, stsOpts, newStatefulSet, prevStatefulSet)
 }
 
 func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) (*corev1.Service, error) {
@@ -522,7 +522,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 		if storageSpec == nil && cr.Spec.VMSelect.StorageSpec != nil {
 			storageSpec = cr.Spec.VMSelect.StorageSpec
 		}
-		storageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec)
+		storageSpec.IntoStatefulSetVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec)
 	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMSelect.ClaimTemplates...)
 	return stsSpec, nil
@@ -934,7 +934,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 	}
 	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.VMStorage.Storage
-	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
+	storageSpec.IntoStatefulSetVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)
 
 	return stsSpec, nil

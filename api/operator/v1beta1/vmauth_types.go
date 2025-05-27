@@ -649,11 +649,6 @@ func (cr *VMAuth) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-// GetNSName implements build.builderOpts interface
-func (cr *VMAuth) GetNSName() string {
-	return cr.GetNamespace()
-}
-
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAuth) IsUnmanaged() bool {
 	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) ||

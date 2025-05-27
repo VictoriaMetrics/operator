@@ -25,7 +25,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// recreateSTSIfNeed will check if sts needs recreate and perform recreate if needed,
+// recreateStatefulSetIfNeed will check if sts needs recreate and perform recreate if needed,
 // there are three different cases:
 // 1. sts's VolumeClaimTemplate's element changed[added or deleted];
 // 2. other VolumeClaimTemplate's attributes beside name changed, like size or storageClassName
@@ -33,33 +33,33 @@ import (
 // 3. sts's serviceName changed, which requires to recreate pods for proper service discovery
 //
 // Note, in some cases its possible to get orphaned objects,
-// if sts was deleted and user updates configuration with different STS name.
+// if sts was deleted and user updates configuration with different StatefulSet name.
 // One of possible solutions - save current sts to the object annotation and remove it later if needed.
 // Other solution, to check orphaned objects by selector.
 // Lets leave it as this for now and handle later.
-func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, oldStatefulSet *appsv1.StatefulSet) (bool, bool, error) {
+func recreateStatefulSetIfNeed(ctx context.Context, rclient client.Client, newStatefulSet, oldStatefulSet *appsv1.StatefulSet) (bool, bool, error) {
 	l := logger.WithContext(ctx)
 	handleRemove := func() error {
-		return removeStatefulSetKeepPods(ctx, rclient, newSTS, oldStatefulSet)
+		return removeStatefulSetKeepPods(ctx, rclient, newStatefulSet, oldStatefulSet)
 	}
-	if newSTS.Spec.ServiceName != oldStatefulSet.Spec.ServiceName {
+	if newStatefulSet.Spec.ServiceName != oldStatefulSet.Spec.ServiceName {
 		return true, true, handleRemove()
 	}
 
 	// if vct got added, removed or changed, recreate the sts
-	if len(newSTS.Spec.VolumeClaimTemplates) != len(oldStatefulSet.Spec.VolumeClaimTemplates) {
+	if len(newStatefulSet.Spec.VolumeClaimTemplates) != len(oldStatefulSet.Spec.VolumeClaimTemplates) {
 		l.Info("VolumeClaimTemplates count changes, recreating statefulset")
 		return true, true, handleRemove()
 	}
 
 	var vctChanged bool
-	for _, newVCT := range newSTS.Spec.VolumeClaimTemplates {
-		actualPVC := getPVCFromSTS(newVCT.Name, oldStatefulSet)
+	for _, newVCT := range newStatefulSet.Spec.VolumeClaimTemplates {
+		actualPVC := getPVCFromStatefulSet(newVCT.Name, oldStatefulSet)
 		if actualPVC == nil {
 			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s was not found at VolumeClaimTemplates, recreating statefulset", newVCT.Name))
 			return true, true, handleRemove()
 		}
-		if shouldRecreateSTSOnStorageChange(ctx, actualPVC, &newVCT) {
+		if shouldRecreateStatefulSetOnStorageChange(ctx, actualPVC, &newVCT) {
 			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s have some changes, recreating StatefulSet", newVCT.Name))
 			vctChanged = true
 		}
@@ -68,14 +68,14 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, oldSt
 	if vctChanged {
 		return true, false, handleRemove()
 	}
-	if shouldRecreateSTSOnImmutableFieldChange(ctx, newSTS, oldStatefulSet) {
+	if shouldRecreateStatefulSetOnImmutableFieldChange(ctx, newStatefulSet, oldStatefulSet) {
 		return true, false, handleRemove()
 	}
 
 	return false, false, nil
 }
 
-func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {
+func getPVCFromStatefulSet(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {
 	for _, claim := range sts.Spec.VolumeClaimTemplates {
 		if claim.Name == pvcName {
 			return &claim
@@ -84,7 +84,7 @@ func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVo
 	return nil
 }
 
-func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
+func growStatefulSetPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
 	// fast path
 	if sts.Spec.Replicas != nil && *sts.Spec.Replicas == 0 {
 		return nil
@@ -111,7 +111,7 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 		if idx <= 0 {
 			return fmt.Errorf("not expected name for PVC=%q, it must have - as separator for sts=%q", pvc.Name, sts.Name)
 		}
-		// pvc created by sts always has name of CLAIM_NAME-STS_NAME-REPLICA_IDX
+		// pvc created by sts always has name of CLAIM_NAME-StatefulSet_NAME-REPLICA_IDX
 		stsClaimName := pvc.Name[:idx]
 		stsClaim, ok := targetClaimsByName[stsClaimName]
 		if !ok {
@@ -230,7 +230,7 @@ func mayGrow(ctx context.Context, pvc *corev1.PersistentVolumeClaim, newSize, ex
 	}
 }
 
-func shouldRecreateSTSOnStorageChange(ctx context.Context, actualPVC, newPVC *corev1.PersistentVolumeClaim) bool {
+func shouldRecreateStatefulSetOnStorageChange(ctx context.Context, actualPVC, newPVC *corev1.PersistentVolumeClaim) bool {
 	// fast path
 	if actualPVC == nil && newPVC == nil {
 		return false
@@ -263,11 +263,11 @@ func shouldRecreateSTSOnStorageChange(ctx context.Context, actualPVC, newPVC *co
 	return false
 }
 
-// shouldRecreateSTSOnImmutableFieldChange checks if immutable statefulSet fields were changed
+// shouldRecreateStatefulSetOnImmutableFieldChange checks if immutable statefulSet fields were changed
 //
 // logic was borrowed from
 // https://github.com/kubernetes/kubernetes/blob/a866cbe2e5bbaa01cfd5e969aa3e033f3282a8a2/pkg/apis/apps/validation/validation.go#L166
-func shouldRecreateSTSOnImmutableFieldChange(ctx context.Context, statefulSet, oldStatefulSet *appsv1.StatefulSet) bool {
+func shouldRecreateStatefulSetOnImmutableFieldChange(ctx context.Context, statefulSet, oldStatefulSet *appsv1.StatefulSet) bool {
 	// statefulset updates aren't super common and general updates are likely to be touching spec, so we'll do this
 	// deep copy right away.  This avoids mutating our inputs
 	newStatefulSetClone := statefulSet.DeepCopy()

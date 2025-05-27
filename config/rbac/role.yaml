@@ -148,6 +148,9 @@ rules:
   - vmalerts
   - vmalerts/finalizers
   - vmalerts/status
+  - vmanomalies
+  - vmanomalies/finalizers
+  - vmanomalies/status
   - vmauths
   - vmauths/finalizers
   - vmauths/status

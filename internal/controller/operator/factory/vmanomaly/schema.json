@@ -1,0 +1,4915 @@
+{
+  "$defs": {
+    "AutoTunedModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. What your model class expects to receive.",
+          "examples": [
+            {
+              "some_arg_name": "some_arg_value"
+            }
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.auto.AutoTunedModel",
+          "description": "Class name of the model. Must be exactly model.auto.AutoTunedModel or simply 'auto'.",
+          "enum": [
+            "model.auto.AutoTunedModel",
+            "auto"
+          ],
+          "examples": [
+            "model.auto.AutoTunedModel",
+            "auto"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "optimization_params": {
+          "description": "Optimization parameters for unsupervised model tuning. Control percentage of found anomalies, as well as a tradeoff between time spent and the accuracy. The more `timeout` and `n_trials` are, the better model configuration can be found for `tuned_class_name`, but the longer it takes and vice versa. Set `n_jobs` to `-1` to use all the CPUs available, it makes sense if only you have a big dataset, otherwise overhead isn't worth it.",
+          "examples": [
+            {
+              "anomaly_percentage": 0.05,
+              "n_jobs": 1,
+              "n_splits": 4,
+              "n_trials": 128,
+              "optimized_business_params": [
+                "detection_direction",
+                "min_dev_from_expected"
+              ],
+              "seed": 4242,
+              "show_progress_bar": false,
+              "timeout": 10
+            }
+          ],
+          "title": "Optimization Params",
+          "type": "object"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "tuned_class_name": {
+          "description": "Built-in model class to tune, i.e. `model.zscore.ZScoreModel` or simply `zscore`.",
+          "examples": [
+            "model.prophet.ProphetModel",
+            "model.mad.MADModel",
+            "model.std.StdModel"
+          ],
+          "title": "Tuned Class Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tuned_class_name"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "BacktestingSchedulerConfig": {
+      "properties": {
+        "class": {
+          "default": "scheduler.backtesting.BacktestingScheduler",
+          "description": "Fits and runs model consecutively over historical data, using only the length of fit window and the frequency of fitting (fit_every). The period between consecutive fits is automatically considered as infer - the exact same model is used for inference, until (next) model is live. Best used for imitating the PeriodicScheduler behavior on historical data.",
+          "enum": [
+            "scheduler.backtesting.BacktestingScheduler",
+            "backtesting"
+          ],
+          "examples": [
+            "scheduler.backtesting.BacktestingScheduler",
+            "backtesting"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "fit_every": {
+          "default": null,
+          "description": "Time interval between consecutive training runs. Defined in difference units, e.g. days, hours, minutes, seconds.",
+          "examples": [
+            "6h",
+            "1d",
+            "2d"
+          ],
+          "title": "Fit Every",
+          "type": "string"
+        },
+        "fit_window": {
+          "description": "Time window to use for training. Defined in difference units, e.g. days, hours, minutes, seconds.",
+          "examples": [
+            "1d",
+            "3d",
+            "1w",
+            "2w"
+          ],
+          "title": "Fit Window",
+          "type": "string"
+        },
+        "from_iso": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start datetime to use for training a model. ISO string",
+          "examples": [
+            "2022-04-01T00:00:00Z",
+            "2022-04-01T00:00:00+01:00",
+            "2022-04-01T00:00:00+0100",
+            "2022-04-01T00:00:00+01"
+          ],
+          "title": "From Iso"
+        },
+        "from_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start datetime to use for training a model. UNIX time in seconds.",
+          "examples": [
+            1648771200
+          ],
+          "title": "From S"
+        },
+        "inference_only": {
+          "default": false,
+          "description": "If set to True, the scheduler will only run inference on provided (from/to) data range, while constructing respective fit intervals for each inference interval automatically based on fit_window as [fit_start, fit_end] = [infer_start - fit_window, infer_start). ",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Inference Only",
+          "type": "boolean"
+        },
+        "n_jobs": {
+          "default": 1,
+          "description": "Number of parallel jobs to run. Default is 1. Each job is a separate OneOffScheduler training/inference run.",
+          "examples": [
+            1,
+            2,
+            4
+          ],
+          "minimum": 1,
+          "title": "N Jobs",
+          "type": "integer"
+        },
+        "to_iso": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End datetime to use for training a model. Must be greater than from_*. ISO string",
+          "examples": [
+            "2022-04-10T00:00:00Z",
+            "2022-04-10T00:00:00+01:00",
+            "2022-04-10T00:00:00+0100",
+            "2022-04-10T00:00:00+01"
+          ],
+          "title": "To Iso"
+        },
+        "to_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End datetime to use for training a model. Must be greater than from_*. UNIX time in seconds.",
+          "examples": [
+            1649548800
+          ],
+          "title": "To S"
+        }
+      },
+      "required": [
+        "fit_window"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "CsvReaderConfig": {
+      "properties": {
+        "class": {
+          "default": "reader.csv.CsvReader",
+          "description": "Class name of the reader. Must be exactly reader.csv.CsvReader or 'csv'.",
+          "enum": [
+            "reader.csv.CsvReader",
+            "csv"
+          ],
+          "examples": [
+            "reader.csv.CsvReader",
+            "csv"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "metric_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name of the metric. If not set, the name of the CSV file is used.",
+          "examples": [
+            "series"
+          ],
+          "title": "Metric Name"
+        },
+        "path": {
+          "description": "Path to the CSV file. The file must exist.",
+          "examples": [
+            "data/some_series_data.csv"
+          ],
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "CsvWriterConfig": {
+      "properties": {
+        "class": {
+          "default": "writer.csv.CsvWriter",
+          "description": "Class name of the writer. Must be exactly writer.csv.CsvWriter or 'csv'.",
+          "enum": [
+            "writer.csv.CsvWriter",
+            "csv"
+          ],
+          "examples": [
+            "writer.csv.CsvWriter",
+            "csv"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "header": {
+          "default": true,
+          "description": "Whether to write header (column names).",
+          "examples": [
+            true
+          ],
+          "title": "Header",
+          "type": "boolean"
+        },
+        "override": {
+          "default": true,
+          "description": "Whether to override/overwrite the file.",
+          "examples": [
+            true
+          ],
+          "title": "Override",
+          "type": "boolean"
+        },
+        "path": {
+          "default": "data/io_csv_out.csv",
+          "description": "Path to the output file.",
+          "examples": [
+            "data/io_csv_out.csv"
+          ],
+          "title": "Path",
+          "type": "string"
+        },
+        "tz": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Convert default timestamps in UTC to desired timezone, e.g. 'US/Pacific'. By default uses local timezone.",
+          "examples": [
+            "US/Pacific"
+          ],
+          "title": "Tz"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "CustomModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. What your model class expects to receive.",
+          "examples": [
+            {
+              "some_arg_name": "some_arg_value"
+            }
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.custom.CustomModel",
+          "description": "Class name of the model. Must be exactly model.custom.CustomModel or simply 'custom'.",
+          "enum": [
+            "model.custom.CustomModel",
+            "custom"
+          ],
+          "examples": [
+            "model.custom.CustomModel",
+            "custom"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "HoltWintersModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Holt-Winters model args. See model documentation for more details",
+          "examples": [
+            {
+              "initialization_method": "estimated",
+              "seasonal": "add"
+            }
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.holtwinters.HoltWinters",
+          "description": "Class name of the model. Must be exactly model.holtwinters.HoltWinters or simply 'holtwinters'.",
+          "enum": [
+            "model.holtwinters.HoltWinters",
+            "holtwinters"
+          ],
+          "examples": [
+            "model.holtwinters.HoltWinters",
+            "holtwinters"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "frequency": {
+          "description": "Frequency of the data. As accepted by pandas.Timedelta. Required to be set by the user",
+          "examples": [
+            "1m",
+            "1H",
+            "1D"
+          ],
+          "title": "Frequency",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "anomaly_score",
+            "y",
+            "yhat",
+            "yhat_lower",
+            "yhat_upper"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "seasonality": {
+          "default": null,
+          "description": "Used to compute `seasonal_periods` param for the model. As accepted by pandas.Timedelta",
+          "examples": [
+            "1D",
+            "1W",
+            "1M"
+          ],
+          "title": "Seasonality",
+          "type": "string"
+        },
+        "z_threshold": {
+          "default": 2.5,
+          "description": "How much standard deviations to tolerate. Default is 2.5",
+          "examples": [
+            2.5,
+            3
+          ],
+          "minimum": 0,
+          "title": "Z Threshold",
+          "type": "number"
+        }
+      },
+      "required": [
+        "frequency"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "InMemoryWriterConfig": {
+      "properties": {
+        "class": {
+          "default": "writer.in_memory.InMemoryWriter",
+          "description": "Class name of the writer. Must be exactly writer.in_memory.InMemoryWriter or 'in_memory'.",
+          "enum": [
+            "writer.in_memory.InMemoryWriter",
+            "in_memory"
+          ],
+          "examples": [
+            "writer.in_memory.InMemoryWriter",
+            "in_memory"
+          ],
+          "title": "Class",
+          "type": "string"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "IsolationForestModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "default": {
+            "random_state": 42
+          },
+          "description": "Inner model args. See model documentation for more details",
+          "examples": [
+            {
+              "n_estimators": 100,
+              "random_state": 42
+            }
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "description": "Class name of the model. Must be one of \"['model.isolation_forest.IsolationForestModel', 'isolation_forest_univariate', 'model.isolation_forest.IsolationForestMultivariateModel', 'isolation_forest_multivariate']\"",
+          "enum": [
+            "model.isolation_forest.IsolationForestModel",
+            "isolation_forest_univariate",
+            "model.isolation_forest.IsolationForestMultivariateModel",
+            "isolation_forest_multivariate"
+          ],
+          "examples": [
+            "model.isolation_forest.IsolationForestModel",
+            "isolation_forest_univariate",
+            "model.isolation_forest.IsolationForestMultivariateModel",
+            "isolation_forest_multivariate"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "contamination": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "const": "auto",
+              "enum": [
+                "auto"
+              ],
+              "type": "string"
+            }
+          ],
+          "description": "The amount of contamination of the data set, i.e. the proportion of outliers in the data set. Should be in the range (0, 0.5].",
+          "examples": [
+            0.01,
+            0.05,
+            0.1,
+            "auto"
+          ],
+          "title": "Contamination"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "const": "both",
+          "default": "both",
+          "description": "`IsolationForestModel` does not support directed anomaly detection, only 'both' option is possible.",
+          "enum": [
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "groupby": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Column name to group by. If specified, a separate model will be fitted on each unique label combination, thus, anomaly score will be calculated for each group.",
+          "examples": [
+            "country",
+            "platform"
+          ],
+          "title": "Groupby"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "anomaly_score"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "seasonal_features": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of seasonality to encode, i.e. DoW (day of week). By default not used.",
+          "examples": [
+            [
+              "minute",
+              "hod",
+              "dow",
+              "month"
+            ]
+          ],
+          "title": "Seasonal Features"
+        }
+      },
+      "required": [
+        "class",
+        "contamination"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "MADModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. Not used for MADModel, for compatibility only.",
+          "examples": [
+            {}
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.mad.MADModel",
+          "description": "Class name of the model. Must be exactly model.mad.MADModel or simply 'mad'.",
+          "enum": [
+            "model.mad.MADModel",
+            "mad"
+          ],
+          "examples": [
+            "model.mad.MADModel",
+            "mad"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "anomaly_score",
+            "y",
+            "yhat",
+            "yhat_lower",
+            "yhat_upper"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "threshold": {
+          "default": 2.5,
+          "description": "Threshold for detecting anomalies. Default is 2.5",
+          "examples": [
+            2.5,
+            3
+          ],
+          "exclusiveMinimum": 3,
+          "minimum": 0,
+          "title": "Threshold",
+          "type": "number"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "MonitoringConfig": {
+      "properties": {
+        "pull": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MonitoringPullConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "push": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MonitoringPushConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "MonitoringPullConfig": {
+      "properties": {
+        "addr": {
+          "default": "0.0.0.0",
+          "description": "IP address of a monitoring server to listen on",
+          "examples": [
+            "0.0.0.0",
+            "127.0.0.1",
+            "::1",
+            "localhost"
+          ],
+          "title": "Addr",
+          "type": "string"
+        },
+        "port": {
+          "default": 8080,
+          "description": "Port of a monitoring server to listen on",
+          "examples": [
+            8080
+          ],
+          "minimum": 0,
+          "title": "Port",
+          "type": "integer"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "MonitoringPushConfig": {
+      "properties": {
+        "bearer_token": {
+          "default": null,
+          "description": "Token is passed in standard format with header: `Authorization: bearer {token}`",
+          "examples": [
+            "token"
+          ],
+          "title": "Bearer Token",
+          "type": "string"
+        },
+        "bearer_token_file": {
+          "default": null,
+          "description": "Path to a file, which contains token that is passed in standard format with header: `Authorization: bearer {token}`",
+          "examples": [
+            "token"
+          ],
+          "title": "Bearer Token File",
+          "type": "string"
+        },
+        "extra_labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Section for custom labels specified by user",
+          "examples": [
+            {
+              "job": "vmanomaly-push",
+              "test": "test-1"
+            }
+          ],
+          "title": "Extra Labels",
+          "type": "object"
+        },
+        "password": {
+          "default": null,
+          "description": "BasicAuth password",
+          "examples": [
+            "PASSWORD"
+          ],
+          "title": "Password",
+          "type": "string"
+        },
+        "push_frequency": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "15m",
+          "description": "Frequency for scheduled pushing of metrics, e.g., '30m'. Suggested to be less than the staleness interval `-search.maxStalenessInterval`. Set to `None` or empty string to disable scheduled pushing.",
+          "examples": [
+            "15m",
+            "30m",
+            "1h"
+          ],
+          "title": "Push Frequency"
+        },
+        "tenant_id": {
+          "default": "",
+          "description": "For cluster version only, tenants are identified by accountID or accountID:projectID or as `multitenant` string (starting from VictoriaMetrics cluster v1.104.0). Each accountID and projectID is identified by an arbitrary 32-bit integer ",
+          "examples": [
+            "0:0",
+            "0",
+            "multitenant"
+          ],
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "timeout": {
+          "default": "5s",
+          "description": "Stop waiting for a response after a given number of seconds",
+          "examples": [
+            "5s"
+          ],
+          "title": "Timeout",
+          "type": "string"
+        },
+        "tls_cert_file": {
+          "default": null,
+          "description": "Path to a file with the client certificate, i.e. `client.crt`",
+          "examples": [
+            "client.crt"
+          ],
+          "title": "Tls Cert File",
+          "type": "string"
+        },
+        "tls_key_file": {
+          "default": null,
+          "description": "Path to a file with the client certificate key, i.e. `client.key`",
+          "examples": [
+            "client.key"
+          ],
+          "title": "Tls Key File",
+          "type": "string"
+        },
+        "url": {
+          "description": "Link where to push metrics to",
+          "examples": [
+            "http://localhost:8480/"
+          ],
+          "format": "uri",
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        },
+        "user": {
+          "default": null,
+          "description": "BasicAuth username",
+          "examples": [
+            "USERNAME"
+          ],
+          "title": "User",
+          "type": "string"
+        },
+        "verify_tls": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": false,
+          "description": "Verify TLS certificate. If False, it will not verify the TLS certificate. If True, it will verify the certificate using the system's CA store. If a path to a CA bundle file, it will verify the certificate using the provided CA bundle.",
+          "examples": [
+            false,
+            true,
+            "ca.crt"
+          ],
+          "title": "Verify Tls"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "NdjsonReaderConfig": {
+      "properties": {
+        "class": {
+          "default": "reader.ndjson.NdjsonReader",
+          "description": "Class name of the reader. Must be exactly reader.ndjson.NdjsonReader or 'ndjson'.",
+          "enum": [
+            "reader.ndjson.NdjsonReader",
+            "ndjson"
+          ],
+          "examples": [
+            "reader.ndjson.NdjsonReader",
+            "ndjson"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "path": {
+          "description": "Path to file in JSON line format. The file must exist.",
+          "examples": [
+            "data/json_line_file.ndjson"
+          ],
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "NdjsonWriterConfig": {
+      "properties": {
+        "class": {
+          "default": "writer.ndjson_file_writer.NdjsonFileWriter",
+          "description": "Class name of the writer. Must be exactly writer.ndjson_file_writer.NdjsonFileWriter or 'ndjson'.",
+          "enum": [
+            "writer.ndjson_file_writer.NdjsonFileWriter",
+            "ndjson"
+          ],
+          "examples": [
+            "writer.ndjson_file_writer.NdjsonFileWriter",
+            "ndjson"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "metric_format": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {
+            "__name__": "$VAR",
+            "for": "$QUERY_KEY"
+          },
+          "description": "\n        Metrics to save the output (in metric names or labels).\n        Must have `__name__` key. \"\n        Must have a value with `$VAR` placeholder in it to distinguish between resulting metrics.\n        Supported placeholders:\n            - `$VAR` -- Variables that model provides, most of the models provide the following set:\n            {\"anomaly_score\", \"y\", \"yhat\", \"yhat_lower\", \"yhat_upper\"}.\n            Depending on model type it can provide more metrics, like \"trend\", \"seasonality\" etc.\n            - `$QUERY_KEY` -- E.g. \"ingestion_rate\".\n            Other keys are supposed to be configured by user to help identify generated metrics,\n            e.g. specific config file name etc.'\n        ",
+          "examples": [
+            {
+              "__name__": "$VAR",
+              "for": "$QUERY_KEY",
+              "run": "test_ndjson_metric_format"
+            }
+          ],
+          "title": "Metric Format",
+          "type": "object"
+        },
+        "override": {
+          "default": true,
+          "description": "Override file flag. Default True",
+          "examples": [
+            true
+          ],
+          "title": "Override",
+          "type": "boolean"
+        },
+        "path": {
+          "default": "data/io_ndjson_out.ndjson",
+          "description": "Path to file in JSON line format.",
+          "examples": [
+            "data/io_ndjson_out.ndjson"
+          ],
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "NoOpReaderConfig": {
+      "properties": {
+        "class": {
+          "default": "reader.noop.NoOpReader",
+          "description": "Class name of the reader. Must be exactly reader.noop.NoOpReader or 'noop'.",
+          "enum": [
+            "reader.noop.NoOpReader",
+            "noop"
+          ],
+          "examples": [
+            "reader.noop.NoOpReader",
+            "noop"
+          ],
+          "title": "Class",
+          "type": "string"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "NoOpSchedulerConfig": {
+      "properties": {
+        "class": {
+          "default": "scheduler.noop.NoOpScheduler",
+          "description": "Scheduler that runs indefinitely and does nothing. Useful in exploration mode.",
+          "enum": [
+            "scheduler.noop.NoOpScheduler",
+            "noop"
+          ],
+          "examples": [
+            "scheduler.noop.NoOpScheduler",
+            "noop"
+          ],
+          "title": "Class",
+          "type": "string"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "NoOpWriterConfig": {
+      "properties": {
+        "class": {
+          "default": "writer.noop.NoOpWriter",
+          "description": "Class name of the writer. Must be exactly writer.noop.NoOpWriter or 'noop'.",
+          "enum": [
+            "writer.noop.NoOpWriter",
+            "noop"
+          ],
+          "examples": [
+            "writer.noop.NoOpWriter",
+            "noop"
+          ],
+          "title": "Class",
+          "type": "string"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "OneoffSchedulerConfig": {
+      "properties": {
+        "class": {
+          "default": "scheduler.oneoff.OneoffScheduler",
+          "description": "Fits and runs model once, exits after that. Useful to backtest models and their parameters.",
+          "enum": [
+            "scheduler.oneoff.OneoffScheduler",
+            "oneoff"
+          ],
+          "examples": [
+            "scheduler.oneoff.OneoffScheduler",
+            "oneoff"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "fit_end_iso": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End datetime to use for training a model. Must be greater than fit_start_*. ISO string",
+          "examples": [
+            "2022-04-10T00:00:00Z",
+            "2022-04-10T00:00:00+01:00",
+            "2022-04-10T00:00:00+0100",
+            "2022-04-10T00:00:00+01"
+          ],
+          "title": "Fit End Iso"
+        },
+        "fit_end_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End datetime to use for training a model. Must be greater than fit_start_*. UNIX time in seconds.",
+          "examples": [
+            1649548800
+          ],
+          "title": "Fit End S"
+        },
+        "fit_start_iso": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start datetime to use for training a model. ISO string",
+          "examples": [
+            "2022-04-01T00:00:00Z",
+            "2022-04-01T00:00:00+01:00",
+            "2022-04-01T00:00:00+0100",
+            "2022-04-01T00:00:00+01"
+          ],
+          "title": "Fit Start Iso"
+        },
+        "fit_start_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start datetime to use for training a model. UNIX time in seconds.",
+          "examples": [
+            1648771200
+          ],
+          "title": "Fit Start S"
+        },
+        "infer_end_iso": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End datetime to use for a model inference. Must be greater than infer_start_*. ISO string",
+          "examples": [
+            "2022-04-14T00:00:00Z",
+            "2022-04-14T00:00:00+01:00",
+            "2022-04-14T00:00:00+0100",
+            "2022-04-14T00:00:00+01"
+          ],
+          "title": "Infer End Iso"
+        },
+        "infer_end_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End datetime to use for a model inference. Must be greater than infer_start_*. UNIX time in seconds.",
+          "examples": [
+            1649894400
+          ],
+          "title": "Infer End S"
+        },
+        "infer_start_iso": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start datetime to use for a model inference. ISO string",
+          "examples": [
+            "2022-04-11T00:00:00Z",
+            "2022-04-11T00:00:00+01:00",
+            "2022-04-11T00:00:00+0100",
+            "2022-04-11T00:00:00+01"
+          ],
+          "title": "Infer Start Iso"
+        },
+        "infer_start_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start datetime to use for a model inference. UNIX time in seconds.",
+          "examples": [
+            1649635200
+          ],
+          "title": "Infer Start S"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "OnlineMADModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. What your model class expects to receive.",
+          "examples": [
+            {
+              "some_arg_name": "some_arg_value"
+            }
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.online.OnlineMADModel",
+          "description": "Class name of the model. Must be exactly model.online.OnlineMADModel or simply 'mad_online'.",
+          "enum": [
+            "model.online.OnlineMADModel",
+            "mad_online"
+          ],
+          "examples": [
+            "model.online.OnlineMADModel",
+            "mad_online"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "compression": {
+          "default": 100,
+          "description": "Compression parameter for approximate quantiles calculation. Default is 100. Higher values lead to more accurate quantiles, but also higher memory usage.",
+          "examples": [
+            100,
+            200,
+            1000
+          ],
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Compression",
+          "type": "integer"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "min_n_samples_seen": {
+          "default": 16,
+          "description": "The minimum number of samples to be seen (int > 0) before computing the anomaly score. For the stability of produced results. Default is 16.",
+          "examples": [
+            0,
+            16,
+            1000
+          ],
+          "minimum": 1,
+          "title": "Min N Samples Seen",
+          "type": "integer"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "anomaly_score",
+            "y",
+            "yhat",
+            "yhat_lower",
+            "yhat_upper"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "threshold": {
+          "default": 3,
+          "description": "Threshold for detecting anomalies. Default is 3.0",
+          "examples": [
+            2.5,
+            3
+          ],
+          "exclusiveMinimum": 3,
+          "minimum": 0,
+          "title": "Threshold",
+          "type": "number"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "OnlineQuantileModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. What your model class expects to receive.",
+          "examples": [
+            {
+              "some_arg_name": "some_arg_value"
+            }
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.online.OnlineQuantileModel",
+          "description": "Class name of the model. Must be exactly model.online.OnlineQuantileModel or simply 'quantile_online'.",
+          "enum": [
+            "model.online.OnlineQuantileModel",
+            "quantile_online"
+          ],
+          "examples": [
+            "model.online.OnlineQuantileModel",
+            "quantile_online"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "compression": {
+          "default": 100,
+          "description": "Compression parameter for approximate quantiles calculation. Default is 100. Higher values lead to more accurate quantiles, but also higher memory usage.",
+          "examples": [
+            100,
+            200,
+            1000
+          ],
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Compression",
+          "type": "integer"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "global_smoothing": {
+          "default": 0,
+          "description": "The smoothing parameter for the global quantiles. i.e. the output is a weighted average of the global and seasonal quantiles. Should be in [0, 1], where 0 means no smoothing and 1 means only global quantile.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Global Smoothing",
+          "type": "number"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "min_n_samples_seen": {
+          "default": 16,
+          "description": "The minimum number of samples to be seen (int > 0) before computing the anomaly score. For the stability of produced results. Default is 16.",
+          "examples": [
+            0,
+            16,
+            1000
+          ],
+          "minimum": 1,
+          "title": "Min N Samples Seen",
+          "type": "integer"
+        },
+        "min_subseason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Minimum subseasonality we are interested to track, i.e. '1h', '30m'. As accepted by pandas.Timedelta. By default not used.Note that this value should be less than `seasonal_interval` and a divisor of it.I.e. if `seasonal_interval` is '1d', then `min_subseason` can be '1h', '30m', etc.",
+          "examples": [
+            "1h",
+            "30m",
+            "1d"
+          ],
+          "title": "Min Subseason"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "anomaly_score",
+            "y",
+            "yhat",
+            "yhat_lower",
+            "yhat_upper"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "quantiles": {
+          "default": [
+            0.01,
+            0.5,
+            0.99
+          ],
+          "description": "List of 3 quantiles to use for the model to define lower, center and upper bounds respectively. Should be in the range [0, 1] and ordered in ascending order.",
+          "examples": [
+            [
+              0.01,
+              0.5,
+              0.99
+            ],
+            [
+              0.05,
+              0.5,
+              0.95
+            ]
+          ],
+          "items": {
+            "type": "number"
+          },
+          "title": "Quantiles",
+          "type": "array"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "season_starts_from": {
+          "default": "1970-01-01",
+          "description": "The start date for the seasonal adjustment, as a reference point to start counting the intervals.By default, it is set to the beginning of the Unix epoch.",
+          "title": "Season Starts From",
+          "type": "string"
+        },
+        "seasonal_interval": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Interval than defines the longest possible seasonality, i.e. '1D', '2h30m', etc.As accepted by pandas.Timedelta. By default not used, which leads to model being 'simple' online quantile.",
+          "examples": [
+            "1d",
+            "2h30m",
+            "14d"
+          ],
+          "title": "Seasonal Interval"
+        },
+        "use_transform": {
+          "default": false,
+          "description": "Whether to use internal log1p(abs(y)) * sign(y) transform for stability of quantile calculation. False by default.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Use Transform",
+          "type": "boolean"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "OnlineZScoreModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. What your model class expects to receive.",
+          "examples": [
+            {
+              "some_arg_name": "some_arg_value"
+            }
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.online.OnlineZscoreModel",
+          "description": "Class name of the model. Must be exactly model.online.OnlineZscoreModel or simply 'zscore_online'.",
+          "enum": [
+            "model.online.OnlineZscoreModel",
+            "zscore_online"
+          ],
+          "examples": [
+            "model.online.OnlineZscoreModel",
+            "zscore_online"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "min_n_samples_seen": {
+          "default": 16,
+          "description": "The minimum number of samples to be seen (int > 0) before computing the anomaly score. For the stability of produced results. Default is 16.",
+          "examples": [
+            0,
+            16,
+            1000
+          ],
+          "minimum": 1,
+          "title": "Min N Samples Seen",
+          "type": "integer"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "anomaly_score",
+            "y",
+            "yhat",
+            "yhat_lower",
+            "yhat_upper"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "z_threshold": {
+          "default": 3,
+          "description": "How much standard deviations to tolerate. Default is 3.0",
+          "examples": [
+            2.5,
+            3
+          ],
+          "minimum": 0,
+          "title": "Z Threshold",
+          "type": "number"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "PeriodicSchedulerConfig": {
+      "properties": {
+        "class": {
+          "default": "scheduler.periodic.PeriodicScheduler",
+          "description": "Scheduler that periodically runs the models on new data. Useful for consecutive re-trainings to counter data drift and model degradation over time",
+          "enum": [
+            "scheduler.periodic.PeriodicScheduler",
+            "periodic"
+          ],
+          "examples": [
+            "scheduler.periodic.PeriodicScheduler",
+            "periodic"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "fit_every": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Time interval between consecutive training runs. Defined in difference units, e.g. days, hours, minutes, seconds.",
+          "examples": [
+            "6h",
+            "1d",
+            "2d"
+          ],
+          "title": "Fit Every"
+        },
+        "fit_window": {
+          "description": "Time window to use for training. Defined in difference units, e.g. days, hours, minutes, seconds.",
+          "examples": [
+            "1d",
+            "3d",
+            "1w",
+            "2w"
+          ],
+          "title": "Fit Window",
+          "type": "string"
+        },
+        "infer_every": {
+          "description": "Time interval between consecutive inference runs. Defined in difference units, e.g. days, hours, minutes, seconds.",
+          "examples": [
+            "1m",
+            "5m",
+            "1h",
+            "1d"
+          ],
+          "title": "Infer Every",
+          "type": "string"
+        },
+        "start_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISO 8601 datetime or time in HH:MM format to specify when the scheduler should first start. If the time is in the past, the next suitable time is calculated based on the `fit_every` interval.",
+          "examples": [
+            "2024-11-26T01:00:00Z",
+            "01:00"
+          ],
+          "title": "Start From"
+        },
+        "tz": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "UTC",
+          "description": "Time zone for interpreting `start_from` arg. Defaults to UTC.",
+          "examples": [
+            "UTC",
+            "Europe/Kyiv"
+          ],
+          "title": "Tz"
+        }
+      },
+      "required": [
+        "fit_window",
+        "infer_every"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "ProphetModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. See Prophet documentation for more details",
+          "examples": [
+            {
+              "interval_width": 0.98
+            }
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.prophet.ProphetModel",
+          "description": "Class name of the model. Must be exactly model.prophet.ProphetModel or simply 'prophet'.",
+          "enum": [
+            "model.prophet.ProphetModel",
+            "prophet"
+          ],
+          "examples": [
+            "model.prophet.ProphetModel",
+            "prophet"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "timestamp",
+            "anomaly_score",
+            "y",
+            "yhat",
+            "yhat_lower",
+            "yhat_upper",
+            "trend"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "seasonalities": {
+          "description": "List of seasonalities to use in the model. See Prophet documentation for more details",
+          "examples": [
+            [
+              {
+                "fourier_order": 30,
+                "mode": "additive",
+                "name": "hourly",
+                "period": 0.04166666666,
+                "prior_scale": 10
+              }
+            ]
+          ],
+          "items": {
+            "type": "object"
+          },
+          "title": "Seasonalities",
+          "type": "array"
+        },
+        "tz_aware": {
+          "default": false,
+          "description": "Whether to treat timestamps as timezone-aware. Default is False. Used in conjunction with `tz_seasonalities` and `tz_use_cyclical_encoding` args.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Tz Aware",
+          "type": "boolean"
+        },
+        "tz_seasonalities": {
+          "description": "Built-in tz-aware seasonalities to include in the model.",
+          "examples": [
+            [
+              {
+                "fourier_order": 3,
+                "mode": "additive",
+                "name": "dow",
+                "prior_scale": 15
+              },
+              {
+                "fourier_order": 5,
+                "mode": "multiplicative",
+                "name": "hod",
+                "prior_scale": 10
+              }
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "title": "Tz Seasonalities",
+          "type": "array"
+        },
+        "tz_use_cyclical_encoding": {
+          "default": false,
+          "description": "Whether to use cyclical encoding for timezone-aware seasonalities. Used in conjunction with `tz_aware` and `tz_seasonalities` args.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Tz Use Cyclical Encoding",
+          "type": "boolean"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "RollingQuantileModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. Not used for RollingQuantileModel, for compatibility only.",
+          "examples": [
+            {}
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.rolling_quantile.RollingQuantileModel",
+          "description": "Class name of the model. Must be exactly model.rolling_quantile.RollingQuantileModel or simply 'rolling_quantile'.",
+          "enum": [
+            "model.rolling_quantile.RollingQuantileModel",
+            "rolling_quantile"
+          ],
+          "examples": [
+            "model.rolling_quantile.RollingQuantileModel",
+            "rolling_quantile"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "anomaly_score",
+            "y",
+            "yhat",
+            "yhat_lower",
+            "yhat_upper"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "quantile": {
+          "description": "Quantile to use for the model to define upper and lower bounds",
+          "examples": [
+            0.95,
+            0.99
+          ],
+          "exclusiveMaximum": 0.99,
+          "maximum": 1,
+          "minimum": 0.5,
+          "title": "Quantile",
+          "type": "number"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "window_steps": {
+          "description": "Size of the rolling window",
+          "examples": [
+            24,
+            48,
+            96
+          ],
+          "minimum": 1,
+          "title": "Window Steps",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "window_steps",
+        "quantile"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "ServerConfig": {
+      "properties": {
+        "addr": {
+          "default": "0.0.0.0",
+          "description": "IP address of a query server to listen on.",
+          "examples": [
+            "0.0.0.0",
+            "127.0.0.1",
+            "::1",
+            "localhost"
+          ],
+          "title": "Addr",
+          "type": "string"
+        },
+        "port": {
+          "default": 8490,
+          "description": "Port of a query server to listen on.",
+          "examples": [
+            8490,
+            8080
+          ],
+          "minimum": 0,
+          "title": "Port",
+          "type": "integer"
+        },
+        "uvicorn_config": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": {
+            "log_level": "warning"
+          },
+          "description": "Uvicorn config. See https://www.uvicorn.org/settings/ for details.",
+          "examples": [
+            {
+              "log_level": "warning"
+            }
+          ],
+          "title": "Uvicorn Config"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "Settings": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "restore_state": {
+          "default": false,
+          "description": "Whether to restore anomaly detection service state from the previous run. If True, the service will attempt to restore the state from the previous run, including the instances of the anomaly detection models or the data used to train them. However, this option requires both MODEL_DUMP_DIR and DATA_DUMP_DIR to be set as environment variables. ",
+          "examples": [
+            false,
+            true
+          ],
+          "title": "Restore State",
+          "type": "boolean"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "StdModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. See model documentation for more details",
+          "examples": [
+            {
+              "model": "additive"
+            }
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.std.StdModel",
+          "description": "Class name of the model. Must be exactly model.std.StdModel or simply 'std'.",
+          "enum": [
+            "model.std.StdModel",
+            "std"
+          ],
+          "examples": [
+            "model.std.StdModel",
+            "std"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "period": {
+          "description": "Number of datapoints in one season",
+          "examples": [
+            24,
+            48,
+            96
+          ],
+          "minimum": 1,
+          "title": "Period",
+          "type": "integer"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "anomaly_score",
+            "y",
+            "yhat",
+            "yhat_lower",
+            "yhat_upper"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "z_threshold": {
+          "default": 2.5,
+          "description": "How much standard deviations to tolerate. Default is 2.5",
+          "examples": [
+            2.5,
+            3
+          ],
+          "minimum": 0,
+          "title": "Z Threshold",
+          "type": "number"
+        }
+      },
+      "required": [
+        "period"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "SyntheticVmReaderConfig": {
+      "properties": {
+        "class": {
+          "default": "reader.synthetic.SyntheticVmReader",
+          "description": "Class name of the reader. Must be exactly reader.synthetic.SyntheticVmReader or 'synthetic_vm'.",
+          "enum": [
+            "reader.synthetic.SyntheticVmReader",
+            "synthetic_vm"
+          ],
+          "examples": [
+            "reader.synthetic.SyntheticVmReader",
+            "synthetic_vm"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Boundaries for the valid input data. If not set, defaults to [-inf, inf]. ",
+          "examples": [
+            [
+              0,
+              ".inf"
+            ],
+            [
+              "-.inf",
+              100
+            ],
+            [
+              -10,
+              10
+            ],
+            [
+              "-.inf",
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "max_points_per_query": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Limit the maximum # of data points contained in a single chunk of a split query. Used to satisfy `-search.maxQueryDuration` limit by setting it < `-search.maxPointsPerTimeseries`.See https://docs.victoriametrics.com/?highlight=search.maxPointsPerTimeseries#list-of-command-line-flags for more details.",
+          "examples": [
+            5000,
+            10000
+          ],
+          "title": "Max Points Per Query"
+        },
+        "n_labels": {
+          "description": "Number of unique labels > 0 to attach to each series.",
+          "examples": [
+            3,
+            5
+          ],
+          "minimum": 1,
+          "title": "N Labels",
+          "type": "integer"
+        },
+        "n_queries": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Number of queries > 0 to generate.",
+          "examples": [
+            5,
+            10
+          ],
+          "title": "N Queries"
+        },
+        "n_series_per_query": {
+          "description": "Number > 0 of time series to generate per query.",
+          "examples": [
+            10,
+            20
+          ],
+          "minimum": 1,
+          "title": "N Series Per Query",
+          "type": "integer"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Dictionary of queries. Keys are query aliases, values are PromQL/MetricsQL queries to select data in format: QUERY_ALIAS:\"QUERY\", as accepted by \"/query_range?query=%s\" themselves. Also other specifics like \"data_range\". Please see https://docs.victoriametrics.com/anomaly-detection/components/reader/#per-query-parameters for more details.",
+          "examples": [
+            {
+              "ingestion_rate": {
+                "data_range": [
+                  0,
+                  ".inf"
+                ],
+                "expr": "sum(rate(vm_rows_inserted_total[5m])) by (type) > 0",
+                "max_points_per_query": 5000,
+                "n_lags": 0,
+                "step": "1m",
+                "tenant_id": "",
+                "timezone": "UTC"
+              }
+            }
+          ],
+          "title": "Queries"
+        },
+        "random_state": {
+          "default": 42,
+          "description": "Random state seed for reproducibility. Default is 42.",
+          "examples": [
+            42
+          ],
+          "minimum": 0,
+          "title": "Random State",
+          "type": "integer"
+        },
+        "sampling_period": {
+          "description": "Time resolution of the generated data points, e.g., '1m', '10s'. As accepted by pandas Timedelta.",
+          "examples": [
+            "10s",
+            "1min",
+            "2h"
+          ],
+          "title": "Sampling Period",
+          "type": "string"
+        },
+        "tenant_id": {
+          "default": "",
+          "description": "For cluster version only, tenants are identified by accountID or accountID:projectID or as `multitenant` string (starting from VictoriaMetrics cluster v1.104.0). Each accountID and projectID is identified by an arbitrary 32-bit integer ",
+          "examples": [
+            "0:0",
+            "0",
+            "multitenant"
+          ],
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "tz": {
+          "default": "UTC",
+          "description": "Global timezone for the reader, to be used for all queries. If not set, UTC is used.",
+          "examples": [
+            "UTC",
+            "America/New_York"
+          ],
+          "title": "Tz",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sampling_period",
+        "n_series_per_query",
+        "n_labels",
+        "queries"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "VmReaderConfig": {
+      "properties": {
+        "bearer_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Token is passed in standard format with header: `Authorization: bearer {token}`",
+          "examples": [
+            "token"
+          ],
+          "title": "Bearer Token"
+        },
+        "bearer_token_file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Path to a file, which contains token that is passed in standard format with header: `Authorization: bearer {token}`",
+          "examples": [
+            "token"
+          ],
+          "title": "Bearer Token File"
+        },
+        "class": {
+          "default": "reader.vm.VmReader",
+          "description": "Class name of the reader. Must be exactly reader.vm.VmReader or 'vm'.",
+          "enum": [
+            "reader.vm.VmReader",
+            "vm"
+          ],
+          "examples": [
+            "reader.vm.VmReader",
+            "vm"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Boundaries for the valid input data. If not set, defaults to [-inf, inf]. ",
+          "examples": [
+            [
+              0,
+              ".inf"
+            ],
+            [
+              "-.inf",
+              100
+            ],
+            [
+              -10,
+              10
+            ],
+            [
+              "-.inf",
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "datasource_url": {
+          "description": "URL address of the datasource. Must be valid URL.",
+          "examples": [
+            "http://localhost:8482/",
+            "https://victoriametrics-cluster:8481"
+          ],
+          "format": "uri",
+          "minLength": 1,
+          "title": "Datasource Url",
+          "type": "string"
+        },
+        "extra_filters": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of strings with series selector. See: https://docs.victoriametrics.com/#prometheus-querying-api-enhancements",
+          "examples": [
+            [
+              "metric_name=~\"^vm_.*\""
+            ]
+          ],
+          "title": "Extra Filters"
+        },
+        "latency_offset": {
+          "default": "1ms",
+          "description": "To override the `-search.latencyOffset` value of VictoriaMetrics (by default 30s). See https://docs.victoriametrics.com/?highlight=search.latencyOffset#list-of-command-line-flags for more details.",
+          "examples": [
+            "1ms",
+            "30s"
+          ],
+          "title": "Latency Offset",
+          "type": "string"
+        },
+        "max_points_per_query": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Limit the maximum # of data points contained in a single chunk of a split query. Used to satisfy `-search.maxQueryDuration` limit by setting it < `-search.maxPointsPerTimeseries`.See https://docs.victoriametrics.com/?highlight=search.maxPointsPerTimeseries#list-of-command-line-flags for more details.",
+          "examples": [
+            5000,
+            10000
+          ],
+          "title": "Max Points Per Query"
+        },
+        "password": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "BasicAuth password",
+          "examples": [
+            "PASSWORD"
+          ],
+          "title": "Password"
+        },
+        "queries": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "description": "Dictionary of queries. Keys are query aliases, values are PromQL/MetricsQL queries to select data in format: QUERY_ALIAS:\"QUERY\", as accepted by \"/query_range?query=%s\" themselves. Also other specifics like \"data_range\". Please see https://docs.victoriametrics.com/anomaly-detection/components/reader/#per-query-parameters for more details.",
+          "examples": [
+            {
+              "ingestion_rate": {
+                "data_range": [
+                  0,
+                  ".inf"
+                ],
+                "expr": "sum(rate(vm_rows_inserted_total[5m])) by (type) > 0",
+                "max_points_per_query": 5000,
+                "n_lags": 0,
+                "step": "1m",
+                "tenant_id": "",
+                "timezone": "UTC"
+              }
+            }
+          ],
+          "title": "Queries",
+          "type": "object"
+        },
+        "query_from_last_seen_timestamp": {
+          "default": false,
+          "description": "If True, then query will be performed from the last seen timestamp for a given series. If False, then query will be performed from the start timestamp, based on a schedule period.",
+          "examples": [
+            false,
+            true
+          ],
+          "title": "Query From Last Seen Timestamp",
+          "type": "boolean"
+        },
+        "query_range_path": {
+          "default": null,
+          "description": "Performs PromQL/MetricsQL range query. Defaults to `api/v1/query_range`",
+          "examples": [
+            "api/v1/query_range"
+          ],
+          "title": "Query Range Path",
+          "type": "string"
+        },
+        "sampling_period": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Frequency of the points returned. Will be converted to `/query_range?step=%s` param (in seconds).",
+          "examples": [
+            "1m",
+            "1h"
+          ],
+          "title": "Sampling Period"
+        },
+        "tenant_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "",
+          "description": "For cluster version only, tenants are identified by accountID or accountID:projectID or as `multitenant` string (starting from VictoriaMetrics cluster v1.104.0). Each accountID and projectID is identified by an arbitrary 32-bit integer ",
+          "examples": [
+            "0:0",
+            "0",
+            "multitenant"
+          ],
+          "title": "Tenant Id"
+        },
+        "timeout": {
+          "default": "30s",
+          "description": "Timeout for the request.",
+          "examples": [
+            "5s",
+            "30s",
+            "1m"
+          ],
+          "title": "Timeout",
+          "type": "string"
+        },
+        "tls_cert_file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Path to a file with the client certificate, i.e. `client.crt`",
+          "examples": [
+            "client.crt"
+          ],
+          "title": "Tls Cert File"
+        },
+        "tls_key_file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Path to a file with the client certificate key, i.e. `client.key`",
+          "examples": [
+            "client.key"
+          ],
+          "title": "Tls Key File"
+        },
+        "tz": {
+          "default": "UTC",
+          "description": "Global timezone for the reader, to be used for all queries. If not set, UTC is used.",
+          "examples": [
+            "UTC",
+            "America/New_York"
+          ],
+          "title": "Tz",
+          "type": "string"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "BasicAuth username",
+          "examples": [
+            "USERNAME"
+          ],
+          "title": "User"
+        },
+        "verify_tls": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": false,
+          "description": "Verify TLS certificate. If False, it will not verify the TLS certificate. If True, it will verify the certificate using the system's CA store. If a path to a CA bundle file, it will verify the certificate using the provided CA bundle.",
+          "examples": [
+            false,
+            true,
+            "ca.crt"
+          ],
+          "title": "Verify Tls"
+        }
+      },
+      "required": [
+        "queries",
+        "datasource_url",
+        "sampling_period"
+      ],
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "VmWriterConfig": {
+      "properties": {
+        "bearer_token": {
+          "default": null,
+          "description": "Token is passed in standard format with header: `Authorization: bearer {token}`",
+          "examples": [
+            "token"
+          ],
+          "title": "Bearer Token",
+          "type": "string"
+        },
+        "bearer_token_file": {
+          "default": null,
+          "description": "Path to a file, which contains token that is passed in standard format with header: `Authorization: bearer {token}`",
+          "examples": [
+            "token"
+          ],
+          "title": "Bearer Token File",
+          "type": "string"
+        },
+        "class": {
+          "default": "writer.vm.VmWriter",
+          "description": "Class name of the writer. Must be exactly writer.vm.VmWriter or 'vm'.",
+          "enum": [
+            "writer.vm.VmWriter",
+            "vm"
+          ],
+          "examples": [
+            "writer.vm.VmWriter",
+            "vm"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "datasource_url": {
+          "default": "http://localhost:8428/",
+          "description": "Datasource URL address.",
+          "examples": [
+            "http://localhost:8428/"
+          ],
+          "format": "uri",
+          "minLength": 1,
+          "title": "Datasource Url",
+          "type": "string"
+        },
+        "import_json_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional, to override default import path.",
+          "examples": [
+            "api/v1/import"
+          ],
+          "title": "Import Json Path"
+        },
+        "metric_format": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {
+            "__name__": "$VAR",
+            "for": "$QUERY_KEY"
+          },
+          "description": "\n        Metrics to save the output (in metric names or labels).\n        Must have `__name__` key. \"\n        Must have a value with `$VAR` placeholder in it to distinguish between resulting metrics.\n        Supported placeholders:\n            - `$VAR` -- Variables that model provides, most of the models provide the following set:\n            {\"anomaly_score\", \"y\", \"yhat\", \"yhat_lower\", \"yhat_upper\"}.\n            Depending on model type it can provide more metrics, like \"trend\", \"seasonality\" etc.\n            - `$QUERY_KEY` -- E.g. \"ingestion_rate\".\n            Other keys are supposed to be configured by user to help identify generated metrics,\n            e.g. specific config file name etc.'\n        ",
+          "examples": [
+            {
+              "__name__": "$VAR",
+              "for": "$QUERY_KEY",
+              "run": "test_ndjson_metric_format"
+            }
+          ],
+          "title": "Metric Format",
+          "type": "object"
+        },
+        "password": {
+          "default": null,
+          "description": "BasicAuth password",
+          "examples": [
+            "PASSWORD"
+          ],
+          "title": "Password",
+          "type": "string"
+        },
+        "tenant_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For cluster version only, tenants are identified by accountID or accountID:projectID.",
+          "examples": [
+            "0:0"
+          ],
+          "title": "Tenant Id"
+        },
+        "timeout": {
+          "default": "5s",
+          "description": "Timeout for the request.",
+          "examples": [
+            "5s"
+          ],
+          "title": "Timeout",
+          "type": "string"
+        },
+        "tls_cert_file": {
+          "default": null,
+          "description": "Path to a file with the client certificate, i.e. `client.crt`",
+          "examples": [
+            "client.crt"
+          ],
+          "title": "Tls Cert File",
+          "type": "string"
+        },
+        "tls_key_file": {
+          "default": null,
+          "description": "Path to a file with the client certificate key, i.e. `client.key`",
+          "examples": [
+            "client.key"
+          ],
+          "title": "Tls Key File",
+          "type": "string"
+        },
+        "user": {
+          "default": null,
+          "description": "BasicAuth username",
+          "examples": [
+            "USERNAME"
+          ],
+          "title": "User",
+          "type": "string"
+        },
+        "verify_tls": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": false,
+          "description": "Verify TLS certificate. If False, it will not verify the TLS certificate. If True, it will verify the certificate using the system's CA store. If a path to a CA bundle file, it will verify the certificate using the provided CA bundle.",
+          "examples": [
+            false,
+            true,
+            "ca.crt"
+          ],
+          "title": "Verify Tls"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    },
+    "ZScoreModelConfig": {
+      "properties": {
+        "anomaly_score_outside_data_range": {
+          "default": 1.01,
+          "description": "The value for anomaly score to be assigned to data points that are outside the data range if set in reader or reader.queries.query_xxx. If not set, defaults to 1.01",
+          "examples": [
+            1.01,
+            1,
+            1.5,
+            0
+          ],
+          "minimum": 0,
+          "title": "Anomaly Score Outside Data Range",
+          "type": "number"
+        },
+        "args": {
+          "description": "Inner model args. Not used for ZScoreModel, for compatibility only.",
+          "examples": [
+            {}
+          ],
+          "title": "Args",
+          "type": "object"
+        },
+        "class": {
+          "default": "model.zscore.ZscoreModel",
+          "description": "Class name of the model. Must be exactly model.zscore.ZscoreModel or simply 'zscore'.",
+          "enum": [
+            "model.zscore.ZscoreModel",
+            "zscore"
+          ],
+          "examples": [
+            "model.zscore.ZscoreModel",
+            "zscore"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "clip_predictions": {
+          "default": false,
+          "description": "Whether to clip the predicted value `yhat` and boundaries `yhat_lower`, `yhat_upper` to `data_range`. If True, the model will clip the values to the specified `data_range`. Note, it's only supported for models that produce `yhat`, `yhat_lower`, `yhat_upper` columns.",
+          "examples": [
+            true,
+            false
+          ],
+          "title": "Clip Predictions",
+          "type": "boolean"
+        },
+        "data_range": {
+          "default": [
+            "-.inf",
+            ".inf"
+          ],
+          "description": "Specifies the data domain for the query. If actual value `y` exceeds given domain, the model will produce anomaly score greater than 1.0 If predicted value `yhat` exceeds given domain, the model will produce anomaly score equal to 0.0.",
+          "examples": [
+            [
+              0,
+              0.1
+            ],
+            [
+              0,
+              ".inf"
+            ]
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Data Range",
+          "type": "array"
+        },
+        "detection_direction": {
+          "default": "both",
+          "description": "Specifies the direction for anomaly detection relative to the actual value. If 'above_expected', the model will produce anomalies only for actual values `y` above the expected `yhat` boundary. If 'below_expected', the model will produce anomalies only for actual values `y` below the expected `yhat` boundary. If 'both', the model will produce anomalies for both cases (default).",
+          "enum": [
+            "below_expected",
+            "above_expected",
+            "both"
+          ],
+          "title": "Detection Direction",
+          "type": "string"
+        },
+        "min_dev_from_expected": {
+          "default": 0,
+          "description": "Minimum deviation > 0 of `y` (actual) to `yhat` (expected value) to produce anomaly score for.",
+          "examples": [
+            0,
+            0.1,
+            0.5
+          ],
+          "minimum": 0,
+          "title": "Min Dev From Expected",
+          "type": "number"
+        },
+        "provide_series": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": [
+            "anomaly_score",
+            "y",
+            "yhat",
+            "yhat_lower",
+            "yhat_upper"
+          ],
+          "description": "List of columns to generate in model output. None means default columns. Can be as minimal as ['timestamp', 'anomaly_score']. If None, then default columns will be used, see example.",
+          "examples": [
+            [
+              "timestamp",
+              "anomaly_score",
+              "y",
+              "yhat",
+              "yhat_lower",
+              "yhat_upper"
+            ]
+          ],
+          "title": "Provide Series"
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of query aliases this model applies to. None means applicable to all queries.",
+          "examples": [
+            [
+              "query_alias_1",
+              "query_alias_2"
+            ]
+          ],
+          "title": "Queries"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "default": [
+            1,
+            1
+          ],
+          "description": "The scale parameter to adjust the margin between `yhat` and [`yhat_lower`, `yhat_upper`]. Should be a single positive float or a list of 2 positive floats. If a list of 2 floats is provided, the first value is used for the lower margin, the second value is used for the upper margin.New margins are = |yhat - yhat_lower| * scale_lb and |yhat - yhat_upper| * scale_ub.",
+          "examples": [
+            1,
+            [
+              1,
+              1
+            ],
+            [
+              0.8,
+              1.5
+            ],
+            [
+              1.2,
+              1.2
+            ]
+          ],
+          "title": "Scale"
+        },
+        "schedulers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "List of scheduler aliases this model applies to. None means model will be used in all schedulers.",
+          "examples": [
+            [
+              "scheduler_alias_1",
+              "scheduler_alias_2"
+            ]
+          ],
+          "title": "Schedulers"
+        },
+        "z_threshold": {
+          "default": 2.5,
+          "description": "How much standard deviations to tolerate. Default is 2.5",
+          "examples": [
+            2.5,
+            3
+          ],
+          "minimum": 0,
+          "title": "Z Threshold",
+          "type": "number"
+        }
+      },
+      "title": "Model Configuration",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "models": {
+      "additionalProperties": {
+        "discriminator": {
+          "mapping": {
+            "auto": "#/$defs/AutoTunedModelConfig",
+            "custom": "#/$defs/CustomModelConfig",
+            "holtwinters": "#/$defs/HoltWintersModelConfig",
+            "isolation_forest_multivariate": "#/$defs/IsolationForestModelConfig",
+            "isolation_forest_univariate": "#/$defs/IsolationForestModelConfig",
+            "mad": "#/$defs/MADModelConfig",
+            "mad_online": "#/$defs/OnlineMADModelConfig",
+            "model.auto.AutoTunedModel": "#/$defs/AutoTunedModelConfig",
+            "model.custom.CustomModel": "#/$defs/CustomModelConfig",
+            "model.holtwinters.HoltWinters": "#/$defs/HoltWintersModelConfig",
+            "model.isolation_forest.IsolationForestModel": "#/$defs/IsolationForestModelConfig",
+            "model.isolation_forest.IsolationForestMultivariateModel": "#/$defs/IsolationForestModelConfig",
+            "model.mad.MADModel": "#/$defs/MADModelConfig",
+            "model.online.OnlineMADModel": "#/$defs/OnlineMADModelConfig",
+            "model.online.OnlineQuantileModel": "#/$defs/OnlineQuantileModelConfig",
+            "model.online.OnlineZscoreModel": "#/$defs/OnlineZScoreModelConfig",
+            "model.prophet.ProphetModel": "#/$defs/ProphetModelConfig",
+            "model.rolling_quantile.RollingQuantileModel": "#/$defs/RollingQuantileModelConfig",
+            "model.std.StdModel": "#/$defs/StdModelConfig",
+            "model.zscore.ZscoreModel": "#/$defs/ZScoreModelConfig",
+            "prophet": "#/$defs/ProphetModelConfig",
+            "quantile_online": "#/$defs/OnlineQuantileModelConfig",
+            "rolling_quantile": "#/$defs/RollingQuantileModelConfig",
+            "std": "#/$defs/StdModelConfig",
+            "zscore": "#/$defs/ZScoreModelConfig",
+            "zscore_online": "#/$defs/OnlineZScoreModelConfig"
+          },
+          "propertyName": "class"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/AutoTunedModelConfig"
+          },
+          {
+            "$ref": "#/$defs/CustomModelConfig"
+          },
+          {
+            "$ref": "#/$defs/HoltWintersModelConfig"
+          },
+          {
+            "$ref": "#/$defs/IsolationForestModelConfig"
+          },
+          {
+            "$ref": "#/$defs/MADModelConfig"
+          },
+          {
+            "$ref": "#/$defs/OnlineMADModelConfig"
+          },
+          {
+            "$ref": "#/$defs/OnlineQuantileModelConfig"
+          },
+          {
+            "$ref": "#/$defs/OnlineZScoreModelConfig"
+          },
+          {
+            "$ref": "#/$defs/ProphetModelConfig"
+          },
+          {
+            "$ref": "#/$defs/RollingQuantileModelConfig"
+          },
+          {
+            "$ref": "#/$defs/StdModelConfig"
+          },
+          {
+            "$ref": "#/$defs/ZScoreModelConfig"
+          }
+        ]
+      },
+      "title": "Models",
+      "type": "object"
+    },
+    "monitoring": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MonitoringConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "preset": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "default",
+      "description": "Preset name to load from ./presets/<preset-name>/<version>/vmanomaly_config.yml. If key is not set, its value is an empty string or \"default\", then regular vmanomaly config is expected.",
+      "examples": [
+        "default",
+        "node-exporter:v1.0",
+        "ui"
+      ],
+      "title": "Preset"
+    },
+    "reader": {
+      "discriminator": {
+        "mapping": {
+          "csv": "#/$defs/CsvReaderConfig",
+          "ndjson": "#/$defs/NdjsonReaderConfig",
+          "noop": "#/$defs/NoOpReaderConfig",
+          "reader.csv.CsvReader": "#/$defs/CsvReaderConfig",
+          "reader.ndjson.NdjsonReader": "#/$defs/NdjsonReaderConfig",
+          "reader.noop.NoOpReader": "#/$defs/NoOpReaderConfig",
+          "reader.synthetic.SyntheticVmReader": "#/$defs/SyntheticVmReaderConfig",
+          "reader.vm.VmReader": "#/$defs/VmReaderConfig",
+          "synthetic_vm": "#/$defs/SyntheticVmReaderConfig",
+          "vm": "#/$defs/VmReaderConfig"
+        },
+        "propertyName": "class"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/CsvReaderConfig"
+        },
+        {
+          "$ref": "#/$defs/NdjsonReaderConfig"
+        },
+        {
+          "$ref": "#/$defs/NoOpReaderConfig"
+        },
+        {
+          "$ref": "#/$defs/SyntheticVmReaderConfig"
+        },
+        {
+          "$ref": "#/$defs/VmReaderConfig"
+        }
+      ],
+      "title": "Reader"
+    },
+    "schedulers": {
+      "additionalProperties": {
+        "discriminator": {
+          "mapping": {
+            "backtesting": "#/$defs/BacktestingSchedulerConfig",
+            "noop": "#/$defs/NoOpSchedulerConfig",
+            "oneoff": "#/$defs/OneoffSchedulerConfig",
+            "periodic": "#/$defs/PeriodicSchedulerConfig",
+            "scheduler.backtesting.BacktestingScheduler": "#/$defs/BacktestingSchedulerConfig",
+            "scheduler.noop.NoOpScheduler": "#/$defs/NoOpSchedulerConfig",
+            "scheduler.oneoff.OneoffScheduler": "#/$defs/OneoffSchedulerConfig",
+            "scheduler.periodic.PeriodicScheduler": "#/$defs/PeriodicSchedulerConfig"
+          },
+          "propertyName": "class"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/BacktestingSchedulerConfig"
+          },
+          {
+            "$ref": "#/$defs/NoOpSchedulerConfig"
+          },
+          {
+            "$ref": "#/$defs/OneoffSchedulerConfig"
+          },
+          {
+            "$ref": "#/$defs/PeriodicSchedulerConfig"
+          }
+        ]
+      },
+      "title": "Schedulers",
+      "type": "object"
+    },
+    "server": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ServerConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "settings": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Settings"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "writer": {
+      "discriminator": {
+        "mapping": {
+          "csv": "#/$defs/CsvWriterConfig",
+          "in_memory": "#/$defs/InMemoryWriterConfig",
+          "ndjson": "#/$defs/NdjsonWriterConfig",
+          "noop": "#/$defs/NoOpWriterConfig",
+          "vm": "#/$defs/VmWriterConfig",
+          "writer.csv.CsvWriter": "#/$defs/CsvWriterConfig",
+          "writer.in_memory.InMemoryWriter": "#/$defs/InMemoryWriterConfig",
+          "writer.ndjson_file_writer.NdjsonFileWriter": "#/$defs/NdjsonWriterConfig",
+          "writer.noop.NoOpWriter": "#/$defs/NoOpWriterConfig",
+          "writer.vm.VmWriter": "#/$defs/VmWriterConfig"
+        },
+        "propertyName": "class"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/CsvWriterConfig"
+        },
+        {
+          "$ref": "#/$defs/InMemoryWriterConfig"
+        },
+        {
+          "$ref": "#/$defs/NdjsonWriterConfig"
+        },
+        {
+          "$ref": "#/$defs/NoOpWriterConfig"
+        },
+        {
+          "$ref": "#/$defs/VmWriterConfig"
+        }
+      ],
+      "title": "Writer"
+    }
+  },
+  "required": [
+    "models",
+    "reader",
+    "writer",
+    "schedulers"
+  ],
+  "title": "Model Configuration",
+  "type": "object"
+}

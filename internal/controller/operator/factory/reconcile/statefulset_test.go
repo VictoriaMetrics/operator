@@ -286,7 +286,7 @@ func Test_podIsReady(t *testing.T) {
 	}
 }
 
-func Test_performRollingUpdateOnSts(t *testing.T) {
+func Test_performRollingUpdateOnStatefulSet(t *testing.T) {
 	type args struct {
 		stsName   string
 		ns        string
@@ -380,8 +380,8 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			if err := performRollingUpdateOnSts(context.Background(), false, fclient, tt.args.stsName, tt.args.ns, tt.args.podLabels); (err != nil) != tt.wantErr {
-				t.Errorf("performRollingUpdateOnSts() error = %v, wantErr %v", err, tt.wantErr)
+			if err := performRollingUpdateOnStatefulSet(context.Background(), false, fclient, tt.args.stsName, tt.args.ns, tt.args.podLabels); (err != nil) != tt.wantErr {
+				t.Errorf("performRollingUpdateOnStatefulSet() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -390,7 +390,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 func TestSortPodsByID(t *testing.T) {
 	f := func(unorderedPods []corev1.Pod, expectedOrder []corev1.Pod) {
 		t.Helper()
-		if err := sortStsPodsByID(unorderedPods); err != nil {
+		if err := sortStatefulSetPodsByID(unorderedPods); err != nil {
 			t.Fatalf("unexpected error during pod sorting: %s", err)
 		}
 		for idx, pod := range expectedOrder {
@@ -422,17 +422,17 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		clientStats := rclient.(*k8stools.TestClientWithStatsTrack)
 
 		waitTimeout := 5 * time.Second
-		prevSts := sts.DeepCopy()
+		prevStatefulSet := sts.DeepCopy()
 		createErr := make(chan error)
-		var emptyOpts STSOptions
+		var emptyOpts StatefulSetOptions
 		go func() {
-			err := HandleSTSUpdate(ctx, rclient, emptyOpts, sts, nil)
+			err := HandleStatefulSetUpdate(ctx, rclient, emptyOpts, sts, nil)
 			select {
 			case createErr <- err:
 			default:
 			}
 		}()
-		reloadSts := func() {
+		reloadStatefulSet := func() {
 			t.Helper()
 			if err := rclient.Get(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, sts); err != nil {
 				t.Fatalf("cannot reload created statefulset: %s", err)
@@ -441,16 +441,16 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 
 		err := wait.PollUntilContextTimeout(ctx, time.Millisecond*50,
 			waitTimeout, false, func(ctx context.Context) (done bool, err error) {
-				var createdSts appsv1.StatefulSet
-				if err := rclient.Get(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, &createdSts); err != nil {
+				var createdStatefulSet appsv1.StatefulSet
+				if err := rclient.Get(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, &createdStatefulSet); err != nil {
 					if errors.IsNotFound(err) {
 						return false, nil
 					}
 					return false, err
 				}
-				createdSts.Status.ReadyReplicas = *sts.Spec.Replicas
-				createdSts.Status.UpdatedReplicas = *sts.Spec.Replicas
-				if err := rclient.Status().Update(ctx, &createdSts); err != nil {
+				createdStatefulSet.Status.ReadyReplicas = *sts.Spec.Replicas
+				createdStatefulSet.Status.UpdatedReplicas = *sts.Spec.Replicas
+				if err := rclient.Status().Update(ctx, &createdStatefulSet); err != nil {
 					return false, err
 				}
 				return true, nil
@@ -463,32 +463,32 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		// expect 1 create
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		// expect 0 update
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 0 update")
+		assert.NoErrorf(t, HandleStatefulSetUpdate(ctx, rclient, emptyOpts, sts, prevStatefulSet), "expect 0 update")
 
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		assert.Equal(t, int64(0), clientStats.UpdateCalls.Load())
 
 		// expect 1 UpdateCalls
-		reloadSts()
+		reloadStatefulSet()
 		sts.Spec.Template.ObjectMeta.Annotations = map[string]string{"new-annotation": "value"}
 
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 1 update")
+		assert.NoErrorf(t, HandleStatefulSetUpdate(ctx, rclient, emptyOpts, sts, prevStatefulSet), "expect 1 update")
 
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
 
 		// expected still same 1 update
-		reloadSts()
+		reloadStatefulSet()
 
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect still 1 update")
+		assert.NoErrorf(t, HandleStatefulSetUpdate(ctx, rclient, emptyOpts, sts, prevStatefulSet), "expect still 1 update")
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
 
 		// expected 2 updates
-		prevSts.Spec.Template.ObjectMeta.Annotations = sts.Spec.Template.ObjectMeta.Annotations
+		prevStatefulSet.Spec.Template.ObjectMeta.Annotations = sts.Spec.Template.ObjectMeta.Annotations
 		sts.Spec.Template.ObjectMeta.Annotations = nil
 
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 2 updates")
+		assert.NoErrorf(t, HandleStatefulSetUpdate(ctx, rclient, emptyOpts, sts, prevStatefulSet), "expect 2 updates")
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		assert.Equal(t, int64(2), clientStats.UpdateCalls.Load())
 	}

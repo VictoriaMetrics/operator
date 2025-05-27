@@ -947,11 +947,6 @@ func (cr *VMCluster) VMStorageURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMStorage.ExtraArgs), cr.GetVMStorageName(), cr.Namespace, port)
 }
 
-// GetNSName implements build.builderOpts interface
-func (cr *VMCluster) GetNSName() string {
-	return cr.GetNamespace()
-}
-
 func (cr *VMSelect) Probe() *EmbeddedProbes {
 	return cr.EmbeddedProbes
 }

@@ -1717,7 +1717,7 @@ scrape_configs:
 			if err := testClient.Get(context.TODO(), types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &expectSecret); err != nil {
 				t.Fatalf("cannot get vmagent config secret: %s", err)
 			}
-			gotCfg := expectSecret.Data[vmagentGzippedFilename]
+			gotCfg := expectSecret.Data[gzippedFilename]
 			cfgB := bytes.NewBuffer(gotCfg)
 			gr, err := gzip.NewReader(cfgB)
 			if err != nil {

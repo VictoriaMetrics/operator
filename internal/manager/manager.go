@@ -73,23 +73,26 @@ var (
 	clientQPSLimit = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "operator_rest_client_qps_limit", Help: "rest client max query per second limit"}, func() float64 {
 		return float64(*clientQPS)
 	})
-	scheme               = runtime.NewScheme()
-	setupLog             = ctrl.Log.WithName("setup")
-	leaderElect          = managerFlags.Bool("leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	leaderElectNamespace = managerFlags.String("leader-elect-namespace", "", "Defines optional namespace name in which the leader election resource will be created. By default, uses in-cluster namespace name.")
-	leaderElectID        = managerFlags.String("leader-elect-id", "57410f0d.victoriametrics.com", "Defines the name of the resource that leader election will use for holding the leader lock.")
-	enableWebhook        = managerFlags.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
-	webhookPort          = managerFlags.Int("webhook.port", defaultWebhookPort, "port to start webhook server on")
-	disableCRDOwnership  = managerFlags.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
-	webhookCertDir       = managerFlags.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
-	webhookCertName      = managerFlags.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
-	webhookCertKey       = managerFlags.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
-	tlsEnable            = managerFlags.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
-	tlsCertDir           = managerFlags.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
-	tlsCertName          = managerFlags.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
-	tlsCertKey           = managerFlags.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
-	mtlsEnable           = managerFlags.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set.")
-	mtlsCAFile           = managerFlags.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
+	scheme                   = runtime.NewScheme()
+	setupLog                 = ctrl.Log.WithName("setup")
+	leaderElect              = managerFlags.Bool("leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	leaderElectNamespace     = managerFlags.String("leader-elect-namespace", "", "Defines optional namespace name in which the leader election resource will be created. By default, uses in-cluster namespace name.")
+	leaderElectID            = managerFlags.String("leader-elect-id", "57410f0d.victoriametrics.com", "Defines the name of the resource that leader election will use for holding the leader lock.")
+	leaderElectLeaseDuration = managerFlags.Duration("leader-elect-lease-duration", 15*time.Second, "Defines the duration that non-leader candidates will wait to force acquire leadership. This is measured against time of last observed ack.")
+	leaderElectRenewDeadline = managerFlags.Duration("leader-elect-renew-deadline", 10*time.Second, "Defines the duration that the acting controlplane will retry refreshing leadership lock before giving up.")
+
+	enableWebhook       = managerFlags.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
+	webhookPort         = managerFlags.Int("webhook.port", defaultWebhookPort, "port to start webhook server on")
+	disableCRDOwnership = managerFlags.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
+	webhookCertDir      = managerFlags.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
+	webhookCertName     = managerFlags.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
+	webhookCertKey      = managerFlags.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	tlsEnable           = managerFlags.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
+	tlsCertDir          = managerFlags.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
+	tlsCertName         = managerFlags.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
+	tlsCertKey          = managerFlags.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
+	mtlsEnable          = managerFlags.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set.")
+	mtlsCAFile          = managerFlags.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
 		"By default the host system TLS Root CA is used for client certificate verification. ")
 	metricsAddr                   = managerFlags.String("metrics-bind-address", defaultMetricsAddr, "The address the metric endpoint binds to.")
 	pprofAddr                     = managerFlags.String("pprof-addr", ":8435", "The address for pprof/debug API. Empty value disables server")
@@ -228,6 +231,8 @@ func RunManager(ctx context.Context) error {
 		LeaderElection:          *leaderElect,
 		LeaderElectionNamespace: *leaderElectNamespace,
 		LeaderElectionID:        *leaderElectID,
+		LeaseDuration:           leaderElectLeaseDuration,
+		RenewDeadline:           leaderElectRenewDeadline,
 		Cache: cache.Options{
 			DefaultNamespaces: watchNsCacheByName,
 		},

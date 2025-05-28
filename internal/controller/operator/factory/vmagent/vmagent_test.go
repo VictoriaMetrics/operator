@@ -1524,6 +1524,32 @@ func TestBuildRemoteWrites(t *testing.T) {
 				`-remoteWrite.url=localhost:8428,localhost:8429,localhost:8430,localhost:8431,localhost:8432`,
 			},
 		},
+		{
+			name: "test with proxyURL (one remote write with defaults)",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				cr: &vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "http://localhost:8431",
+							},
+							{
+								URL:      "http://localhost:8432",
+								ProxyURL: ptr.To("http://proxy.example.com"),
+							},
+							{
+								URL: "http://localhost:8433",
+							},
+						},
+					},
+				},
+			},
+			want: []string{
+				`-remoteWrite.proxyURL=,http://proxy.example.com,`,
+				`-remoteWrite.url=http://localhost:8431,http://localhost:8432,http://localhost:8433`,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

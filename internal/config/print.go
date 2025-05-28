@@ -1,6 +1,7 @@
 package config
 
 import (
+	_ "embed"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -13,6 +14,9 @@ import (
 
 	"github.com/caarlos0/env/v11"
 )
+
+//go:embed config.go
+var configFile []byte
 
 var formats = map[string]string{
 	"table": `KEY	DEFAULT	REQUIRED	DESCRIPTION
@@ -75,7 +79,7 @@ func (boc *BaseOperatorConf) PrintDefaults(format string) error {
 	}
 	w := tabwriter.NewWriter(os.Stdout, 1, 0, 4, ' ', 0)
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "internal/config/config.go", nil, parser.ParseComments)
+	f, err := parser.ParseFile(fset, "config.go", configFile, parser.ParseComments)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}

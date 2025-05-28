@@ -66,6 +66,12 @@ metadata:
 spec:
   retentionPeriod: "4"
   replicationFactor: 1
+  vminsert:
+    replicaCount: 1
+  vmselect:
+    replicaCount: 1
+  vmstorage:
+    replicaCount: 1
   requestsLoadBalancer:
     enabled: true
     spec:

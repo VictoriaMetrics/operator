@@ -475,7 +475,7 @@ func addVMClusterDefaults(objI any) {
 		if cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape == nil {
 			cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
-		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.VMInsert.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
+		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
 		if cr.Spec.RequestsLoadBalancer.Spec.Image.Tag == "" {
 			cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = cr.Spec.ClusterVersion
 		}

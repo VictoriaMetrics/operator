@@ -137,6 +137,7 @@ func (dw *dirWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 	filesContentHashPath := map[string][]byte{}
 	dirHash := sha256.New()
 	fHash := sha256.New()
+
 	updateCache := func(eventPath string) (bool, error) {
 		dirHash.Reset()
 		walkDir, err := filepath.EvalSymlinks(eventPath)
@@ -144,17 +145,22 @@ func (dw *dirWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			return false, fmt.Errorf("cannot eval symlinks for path: %s", eventPath)
 		}
 
-		err = filepath.Walk(walkDir, func(path string, info fs.FileInfo, err error) error {
+		err = filepath.WalkDir(walkDir, func(path string, d fs.DirEntry, err error) error {
+			// hack for kubernetes configmaps and secrets.
+			// it uses ..YEAR_MONTH_DAY_HOUR.MIN.S directory for content updates
+			// and links it as a symlink
+			// just skip it, stat for the file will be evaluated with os.Stat below
+			if strings.Contains(path, "..") {
+				return nil
+			}
+
 			if err != nil {
 				if os.IsNotExist(err) {
 					return nil
 				}
 				return fmt.Errorf("unexpected error during walk, base path: %s, err: %w", walkDir, err)
 			}
-			// hack for kubernetes configmaps.
-			if strings.Contains(path, "..") {
-				return nil
-			}
+
 			f, err := os.Stat(path)
 			if err != nil {
 				return fmt.Errorf("cannot check file stat for path: %s, err: %w", path, err)
@@ -187,6 +193,7 @@ func (dw *dirWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			logger.Errorf("cannot walk: %s", err)
 			return false, fmt.Errorf("cannot walk path: %s, err: %w", eventPath, err)
 		}
+
 		newHash := dirHash.Sum(nil)
 		prevHash := filesContentHashPath[eventPath]
 		if bytes.Equal(prevHash, newHash) {

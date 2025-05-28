@@ -267,6 +267,8 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 	}
 
 	var volumeMounts []corev1.VolumeMount
+	var configReloaderWatchMounts []corev1.VolumeMount
+
 	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
 	volumeMounts = append(volumeMounts, corev1.VolumeMount{
 		Name:      "tls-assets",
@@ -323,11 +325,13 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 				},
 			},
 		})
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		vm := corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
-		})
+		}
+		volumeMounts = append(volumeMounts, vm)
+		configReloaderWatchMounts = append(configReloaderWatchMounts, vm)
 	}
 
 	for _, name := range ruleConfigMapNames {
@@ -367,7 +371,10 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 	build.AddConfigReloadAuthKeyToApp(&vmalertContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
-	vmalertContainers = buildConfigReloaderContainer(vmalertContainers, cr, ruleConfigMapNames)
+	if !cr.IsUnmanaged() {
+		crc := buildConfigReloaderContainer(cr, ruleConfigMapNames, configReloaderWatchMounts)
+		vmalertContainers = append(vmalertContainers, crc)
+	}
 
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
@@ -922,10 +929,7 @@ func buildCacheKey(ns, keyName string) string {
 	return fmt.Sprintf("%s/%s", ns, keyName)
 }
 
-func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert, ruleConfigMapNames []string) []corev1.Container {
-	if cr.IsUnmanaged() {
-		return dst
-	}
+func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, extraWatchVolumeMounts []corev1.VolumeMount) corev1.Container {
 	volumeWatchArg := "-volume-dir"
 	reloadURLArg := "-webhook-url"
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
@@ -938,6 +942,9 @@ func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert,
 	}
 	for _, cm := range ruleConfigMapNames {
 		confReloadArgs = append(confReloadArgs, fmt.Sprintf("%s=%s", volumeWatchArg, path.Join(vmAlertConfigDir, cm)))
+	}
+	for _, wm := range extraWatchVolumeMounts {
+		confReloadArgs = append(confReloadArgs, fmt.Sprintf("%s=%s", volumeWatchArg, wm.MountPath))
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
 		for idx, arg := range confReloadArgs {
@@ -959,6 +966,7 @@ func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert,
 			MountPath: path.Join(vmAlertConfigDir, name),
 		})
 	}
+	reloaderVolumes = append(reloaderVolumes, extraWatchVolumeMounts...)
 	sort.Slice(reloaderVolumes, func(i, j int) bool {
 		return reloaderVolumes[i].Name < reloaderVolumes[j].Name
 	})
@@ -974,9 +982,7 @@ func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert,
 		build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &configReloaderContainer)
 	}
 	build.AddConfigReloadAuthKeyToReloader(&configReloaderContainer, &cr.Spec.CommonConfigReloaderParams)
-
-	dst = append(dst, configReloaderContainer)
-	return dst
+	return configReloaderContainer
 }
 
 func discoverNotifierIfNeeded(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {

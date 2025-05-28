@@ -3,6 +3,7 @@ package vmalert
 import (
 	"context"
 	"fmt"
+	"path"
 	"reflect"
 	"strings"
 	"testing"
@@ -16,6 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -778,4 +781,178 @@ func Test_buildVMAlertArgs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuildConfigReloaderContainer(t *testing.T) {
+	f := func(cr *vmv1beta1.VMAlert, cmNames []string, expectedContainer corev1.Container) {
+		t.Helper()
+		var extraVolumes []corev1.VolumeMount
+		for _, cm := range cr.Spec.ConfigMaps {
+			extraVolumes = append(extraVolumes, corev1.VolumeMount{
+				Name:      k8stools.SanitizeVolumeName("configmap-" + cm),
+				ReadOnly:  true,
+				MountPath: path.Join(vmv1beta1.ConfigMapsDir, cm),
+			})
+		}
+		got := buildConfigReloaderContainer(cr, cmNames, extraVolumes)
+		assert.Equal(t, expectedContainer, got)
+	}
+
+	// base case
+	cr := &vmv1beta1.VMAlert{}
+	cmNames := []string{"cm-0", "cm-1"}
+	expected := corev1.Container{
+		Name: "config-reloader",
+		Args: []string{
+			"-webhook-url=http://localhost:/-/reload",
+			"-volume-dir=/etc/vmalert/config/cm-0",
+			"-volume-dir=/etc/vmalert/config/cm-1",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "cm-0",
+				MountPath: "/etc/vmalert/config/cm-0",
+			},
+			{
+				Name:      "cm-1",
+				MountPath: "/etc/vmalert/config/cm-1",
+			},
+		},
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+	}
+	f(cr, cmNames, expected)
+
+	// vm config-reloader
+	cr = &vmv1beta1.VMAlert{
+		Spec: vmv1beta1.VMAlertSpec{
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				UseVMConfigReloader: ptr.To(true),
+			},
+		},
+	}
+	cmNames = []string{"cm-0"}
+	expected = corev1.Container{
+		Name: "config-reloader",
+		Args: []string{
+			"--reload-url=http://localhost:/-/reload",
+			"--watched-dir=/etc/vmalert/config/cm-0",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "cm-0",
+				MountPath: "/etc/vmalert/config/cm-0",
+			},
+		},
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "reloader-http",
+				Protocol:      corev1.ProtocolTCP,
+				ContainerPort: 8435,
+			},
+		},
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/health",
+					Port:   intstr.FromInt32(8435),
+					Scheme: "HTTP",
+				},
+			},
+			TimeoutSeconds:   1,
+			PeriodSeconds:    10,
+			SuccessThreshold: 1,
+			FailureThreshold: 3,
+		},
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/health",
+					Port:   intstr.FromInt32(8435),
+					Scheme: "HTTP",
+				},
+			},
+			InitialDelaySeconds: 5,
+			TimeoutSeconds:      1,
+			PeriodSeconds:       10,
+			SuccessThreshold:    1,
+			FailureThreshold:    3,
+		},
+	}
+	f(cr, cmNames, expected)
+
+	// extra volumes
+	cr = &vmv1beta1.VMAlert{
+		Spec: vmv1beta1.VMAlertSpec{
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				UseVMConfigReloader: ptr.To(true),
+			},
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ConfigMaps: []string{"extra-template-1", "extra-template-2"},
+			},
+		},
+	}
+	cmNames = []string{"cm-0"}
+	expected = corev1.Container{
+		Name: "config-reloader",
+		Args: []string{
+			"--reload-url=http://localhost:/-/reload",
+			"--watched-dir=/etc/vmalert/config/cm-0",
+			"--watched-dir=/etc/vm/configs/extra-template-1",
+			"--watched-dir=/etc/vm/configs/extra-template-2",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "cm-0",
+				MountPath: "/etc/vmalert/config/cm-0",
+			},
+			{
+				Name:      "configmap-extra-template-1",
+				ReadOnly:  true,
+				MountPath: "/etc/vm/configs/extra-template-1",
+			},
+			{
+				Name:      "configmap-extra-template-2",
+				ReadOnly:  true,
+				MountPath: "/etc/vm/configs/extra-template-2",
+			},
+		},
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "reloader-http",
+				Protocol:      corev1.ProtocolTCP,
+				ContainerPort: 8435,
+			},
+		},
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/health",
+					Port:   intstr.FromInt32(8435),
+					Scheme: "HTTP",
+				},
+			},
+			TimeoutSeconds:   1,
+			PeriodSeconds:    10,
+			SuccessThreshold: 1,
+			FailureThreshold: 3,
+		},
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/health",
+					Port:   intstr.FromInt32(8435),
+					Scheme: "HTTP",
+				},
+			},
+			InitialDelaySeconds: 5,
+			TimeoutSeconds:      1,
+			PeriodSeconds:       10,
+			SuccessThreshold:    1,
+			FailureThreshold:    3,
+		},
+	}
+	f(cr, cmNames, expected)
+
 }

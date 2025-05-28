@@ -523,6 +523,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
 	var agentVolumeMounts []corev1.VolumeMount
+	var configReloaderWatchMounts []corev1.VolumeMount
 	// mount data path any way, even if user changes its value
 	// we cannot rely on value of remoteWriteSettings.
 	pqMountPath := vmAgentPersistentQueueDir
@@ -669,11 +670,13 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 				},
 			},
 		})
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+		cvm := corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
-		})
+		}
+		agentVolumeMounts = append(agentVolumeMounts, cvm)
+		configReloaderWatchMounts = append(configReloaderWatchMounts, cvm)
 	}
 
 	volumes, agentVolumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, agentVolumeMounts, vmv1beta1.SecretsDir)
@@ -736,7 +739,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 	var ic []corev1.Container
 	// conditional add config reloader container
 	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-		configReloader := buildConfigReloaderContainer(cr)
+		configReloader := buildConfigReloaderContainer(cr, configReloaderWatchMounts)
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
 			ic = append(ic,
@@ -1442,7 +1445,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	return finalArgs
 }
 
-func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
+func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, extraWatchsMounts []corev1.VolumeMount) corev1.Container {
 	var configReloadVolumeMounts []corev1.VolumeMount
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if !cr.Spec.IngestOnlyMode {
@@ -1477,7 +1480,9 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
 			})
 	}
 
-	configReloadArgs := buildConfigReloaderArgs(cr)
+	configReloadArgs := buildConfigReloaderArgs(cr, extraWatchsMounts)
+
+	configReloadVolumeMounts = append(configReloadVolumeMounts, extraWatchsMounts...)
 	cntr := corev1.Container{
 		Name:                     "config-reloader",
 		Image:                    cr.Spec.ConfigReloaderImageTag,
@@ -1504,7 +1509,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
 	return cntr
 }
 
-func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
+func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, extraWatchVolumes []corev1.VolumeMount) []string {
 	// by default use watched-dir
 	// it should simplify parsing for latest and empty version tags.
 	dirsArg := "watched-dir"
@@ -1528,6 +1533,9 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
 	}
 	if cr.HasAnyRelabellingConfigs() {
 		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.RelabelingConfigDir))
+	}
+	for _, vl := range extraWatchVolumes {
+		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vl.MountPath))
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
 		for idx, arg := range args {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path"
 	"reflect"
 	"slices"
 	"sort"
@@ -2093,10 +2094,54 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				"--watched-dir=/etc/vm/stream-aggr",
 			},
 		},
+		{
+			name: "with configMaps mount",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ConfigMaps: []string{"cm-0", "cm-1"},
+						},
+						IngestOnlyMode:      false,
+						InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "http://some",
+								StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
+									Rules: []vmv1beta1.StreamAggrRule{
+										{
+											Outputs: []string{"dst"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []string{
+				"--reload-url=http://localhost:8429/-/reload",
+				"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
+				"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
+				"--watched-dir=/etc/vm/configs/cm-0",
+				"--watched-dir=/etc/vm/configs/cm-1",
+				"--watched-dir=/etc/vm/relabeling",
+				"--watched-dir=/etc/vm/stream-aggr",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildConfigReloaderArgs(tt.args.cr)
+			var exvms []corev1.VolumeMount
+			for _, cm := range tt.args.cr.Spec.ConfigMaps {
+				exvms = append(exvms, corev1.VolumeMount{
+					Name:      k8stools.SanitizeVolumeName("configmap-" + cm),
+					ReadOnly:  true,
+					MountPath: path.Join(vmv1beta1.ConfigMapsDir, cm),
+				})
+			}
+			got := buildConfigReloaderArgs(tt.args.cr, exvms)
 			sort.Strings(got)
 			sort.Strings(tt.want)
 			assert.Equal(t, tt.want, got)

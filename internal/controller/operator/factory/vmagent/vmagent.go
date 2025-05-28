@@ -1226,6 +1226,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	streamAggrEnableWindows := remoteFlag{flagSetting: "-remoteWrite.streamAggr.enableWindows="}
 	maxDiskUsagePerURL := remoteFlag{flagSetting: "-remoteWrite.maxDiskUsagePerURL="}
 	forceVMProto := remoteFlag{flagSetting: "-remoteWrite.forceVMProto="}
+	proxyURL := remoteFlag{flagSetting: "-remoteWrite.proxyURL="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
@@ -1422,15 +1423,21 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 			maxDiskUsagePerURL.isNotNull = true
 		}
 		maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", value)
-		value = ""
 
 		if rws.ForceVMProto {
 			forceVMProto.isNotNull = true
 		}
 		forceVMProto.flagSetting += fmt.Sprintf("%t,", rws.ForceVMProto)
+
+		value = ""
+		if rws.ProxyURL != nil {
+			proxyURL.isNotNull = true
+			value = *rws.ProxyURL
+		}
+		proxyURL.flagSetting += fmt.Sprintf("%s,", value)
 	}
 
-	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)
+	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout, proxyURL)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
 	remoteArgs = append(remoteArgs, headers, authPasswordFile)

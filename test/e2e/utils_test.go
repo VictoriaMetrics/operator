@@ -102,7 +102,7 @@ func expectHTTPRequestToSucceed(ctx context.Context, object httpRequestCRDObject
 set -e 
 set -o pipefail
 set -x
-response_code=$(curl --write-out %%{http_code} -X %s %s -d "%s" -o /tmp/curl_log --connect-timeout 5 --max-time 6 --silent --show-error 2>>/tmp/curl_log)
+response_code=$(curl --write-out %%{http_code} -X %s '%s' -d '%s' -o /tmp/curl_log --connect-timeout 5 --max-time 6 --silent --show-error 2>>/tmp/curl_log)
 if [[ "$response_code" -ne %d ]] ; then
   echo "unexpected status code: $response_code" | tee >> /tmp/curl_log
   cat /tmp/curl_log | tr '\n' ' ' | tee > /dev/termination-log

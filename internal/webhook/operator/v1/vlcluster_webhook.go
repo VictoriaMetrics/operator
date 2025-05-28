@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	"context"
@@ -28,22 +28,22 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 )
 
-// SetupVLSingleWebhookWithManager will setup the manager to manage the webhooks
-func SetupVLSingleWebhookWithManager(mgr ctrl.Manager) error {
+// SetupVLClusterWebhookWithManager will setup the manager to manage the webhooks
+func SetupVLClusterWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&vmv1.VLSingle{}).
 		WithValidator(&VLSingleCustomValidator{}).
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1-vlsingle,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vlsingles,verbs=create;update,versions=v1beta1,name=vvlsingles-v1.kb.io,admissionReviewVersions=v1
-type VLSingleCustomValidator struct{}
+// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1-vlcluster,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vlcluster,verbs=create;update,versions=v1,name=vvlsingles-v1.kb.io,admissionReviewVersions=v1
+type VLClusterCustomValidator struct{}
 
-var _ admission.CustomValidator = &VLSingleCustomValidator{}
+var _ admission.CustomValidator = (*VLClusterCustomValidator)(nil)
 
 // ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VLSingleCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*vmv1.VLSingle)
+func (*VLClusterCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*vmv1.VLCluster)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
 	}
@@ -57,8 +57,8 @@ func (*VLSingleCustomValidator) ValidateCreate(_ context.Context, obj runtime.Ob
 }
 
 // ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VLSingleCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*vmv1.VLSingle)
+func (*VLClusterCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*vmv1.VLCluster)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
 	}
@@ -72,6 +72,6 @@ func (*VLSingleCustomValidator) ValidateUpdate(_ context.Context, _, newObj runt
 }
 
 // ValidateDelete implements admission.CustomValidator so a webhook will be registered for the type
-func (*VLSingleCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VLClusterCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

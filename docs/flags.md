@@ -30,8 +30,12 @@ Usage of bin/operator:
     	Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
   -leader-elect-id string
     	Defines the name of the resource that leader election will use for holding the leader lock. (default "57410f0d.victoriametrics.com")
+  -leader-elect-lease-duration duration
+      Defines the duration that non-leader candidates will wait to force acquire leadership. This is measured against time of last observed ack. (default 15s)
   -leader-elect-namespace string
-    	Defines optional namespace name in which the leader election resource will be created. By default, uses in-cluster namespace name.
+      Defines optional namespace name in which the leader election resource will be created. By default, uses in-cluster namespace name.
+  -leader-elect-renew-deadline duration
+      Defines the duration that the acting controlplane will retry refreshing leadership lock before giving up. (default 10s)
   -loggerJSONFields string
     	Allows renaming fields in JSON formatted logsExample: "ts:timestamp,msg:message" renames "ts" to "timestamp" and "msg" to "message".Supported fields: ts, level, caller, msg
   -metrics-bind-address string

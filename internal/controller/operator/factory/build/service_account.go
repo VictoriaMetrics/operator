@@ -12,7 +12,7 @@ type objectForServiceAccountBuilder interface {
 	AllLabels() map[string]string
 	AnnotationsFiltered() map[string]string
 	AsOwner() []metav1.OwnerReference
-	GetNSName() string
+	GetNamespace() string
 	GetServiceAccountName() string
 	IsOwnsServiceAccount() bool
 	PrefixedName() string
@@ -23,7 +23,7 @@ func ServiceAccount(cr objectForServiceAccountBuilder) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetServiceAccountName(),
-			Namespace:       cr.GetNSName(),
+			Namespace:       cr.GetNamespace(),
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),

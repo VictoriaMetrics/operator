@@ -309,10 +309,6 @@ func (cr *VLogs) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr *VLogs) GetNSName() string {
-	return cr.GetNamespace()
-}
-
 func (cr *VLogs) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {

@@ -45,6 +45,7 @@ WORKDIR /
 COPY --from=builder /workspace/app .
 # This file is used by the --printDefaults flag. It is read by internal/config/print.go
 COPY internal/config/config.go /internal/config/config.go
+COPY internal/controller/operator/factory/vmanomaly/schema.json .
 USER 65532:65532
 
 ENTRYPOINT ["/app"]

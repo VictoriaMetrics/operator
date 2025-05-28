@@ -353,11 +353,6 @@ func (cr *VMAlertmanager) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-// GetNSName implements build.builderOpts interface
-func (cr *VMAlertmanager) GetNSName() string {
-	return cr.GetNamespace()
-}
-
 // Port returns port for accessing alertmanager
 func (cr *VMAlertmanager) Port() string {
 	port := cr.Spec.Port

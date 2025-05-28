@@ -29,7 +29,7 @@ import (
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -112,7 +112,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	r.Client.Scheme().Default(instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err = vmagent.CreateOrUpdateVMAgent(ctx, instance, r); err != nil {
+		if err = vmagent.CreateOrUpdateDeploy(ctx, instance, r); err != nil {
 			return result, err
 		}
 
@@ -138,7 +138,7 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&vmv1beta1.VMAgent{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&appsv1.StatefulSet{}).
-		Owns(&v1.ServiceAccount{}).
+		Owns(&corev1.ServiceAccount{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

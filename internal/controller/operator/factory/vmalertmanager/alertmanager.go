@@ -1,4 +1,4 @@
-package alertmanager
+package vmalertmanager
 
 import (
 	"context"
@@ -58,7 +58,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		}
 	}
 
-	service, err := createOrUpdateAlertManagerService(ctx, rclient, cr, prevCR)
+	service, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
@@ -81,21 +81,21 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 	var prevSts *appsv1.StatefulSet
 	if prevCR != nil {
 		var err error
-		prevSts, err = newStsForAlertManager(prevCR)
+		prevSts, err = newStatefulSet(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev alertmanager sts, name: %s,err: %w", cr.Name, err)
 		}
 	}
-	newSts, err := newStsForAlertManager(cr)
+	newSts, err := newStatefulSet(cr)
 	if err != nil {
 		return fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}
 
-	stsOpts := reconcile.STSOptions{
+	stsOpts := reconcile.StatefulSetOptions{
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		SelectorLabels: cr.SelectorLabels,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.HandleStatefulSetUpdate(ctx, rclient, stsOpts, newSts, prevSts)
 }
 
 func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {

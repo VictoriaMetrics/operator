@@ -3,14 +3,16 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
 
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -108,7 +110,7 @@ type VMAgentSpec struct {
 	// This relabeling is applied to all the collected metrics before sending them to remote storage.
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig name",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
-	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
+	RelabelConfig *corev1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
 	// InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD.
 	// +optional
 	InlineRelabelConfig []*RelabelConfig `json:"inlineRelabelConfig,omitempty"`
@@ -220,7 +222,7 @@ type VMAgentSpec struct {
 	// notes to ensure that no incompatible scrape configs are going to break
 	// VMAgent after the upgrade.
 	// +optional
-	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
+	AdditionalScrapeConfigs *corev1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// InsertPorts - additional listen ports for data ingestion.
 	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 
@@ -299,7 +301,7 @@ type VMAgentSpec struct {
 	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
 
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
-	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 	// IngestOnlyMode switches vmagent into unmanaged mode
 	// it disables any config generation for scraping
 	// Currently it prevents vmagent from managing tls and auth options for remote write
@@ -449,12 +451,12 @@ type VMAgentRemoteWriteSpec struct {
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 
 	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
-	UrlRelabelConfig *v1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
+	UrlRelabelConfig *corev1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
 	// InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec.
 	// +optional
 	InlineUrlRelabelConfig []*RelabelConfig `json:"inlineUrlRelabelConfig,omitempty"`
@@ -703,11 +705,6 @@ func (cr *VMAgent) GetClusterRoleName() string {
 	return fmt.Sprintf("monitoring:%s:vmagent-%s", cr.Namespace, cr.Name)
 }
 
-// GetNSName implements build.builderOpts interface
-func (cr *VMAgent) GetNSName() string {
-	return cr.GetNamespace()
-}
-
 // AsURL - returns url for http access
 func (cr *VMAgent) AsURL() string {
 	port := cr.Spec.Port
@@ -853,6 +850,52 @@ func (cr *VMAgent) HasAnyRelabellingConfigs() bool {
 	return false
 }
 
+func (cr *VMAgent) GetShardCount() int {
+	if cr == nil || cr.Spec.ShardCount == nil {
+		return 0
+	}
+	return *cr.Spec.ShardCount
+}
+
+func (cr *VMAgent) AddShardSettings(dep runtime.Object, shardNum int) {
+	if cr == nil || cr.Spec.ShardCount == nil {
+		return
+	}
+	shardCount := *cr.Spec.ShardCount
+	var containers []corev1.Container
+	switch dep := dep.(type) {
+	case *appsv1.StatefulSet:
+		containers = dep.Spec.Template.Spec.Containers
+		dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
+		// need to mutate selectors ?
+		dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
+		dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
+	case *appsv1.Deployment:
+		containers = dep.Spec.Template.Spec.Containers
+		dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
+		// need to mutate selectors ?
+		dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
+		dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
+	}
+	for i := range containers {
+		container := &containers[i]
+		if container.Name != "vmagent" {
+			continue
+		}
+		args := container.Args[:0]
+		for _, arg := range container.Args {
+			if !strings.Contains(arg, "promscrape.cluster.membersCount") && !strings.Contains(arg, "promscrape.cluster.memberNum") {
+				args = append(args, arg)
+			}
+		}
+		container.Args = append(
+			args,
+			fmt.Sprintf("-promscrape.cluster.membersCount=%d", shardCount),
+			fmt.Sprintf("-promscrape.cluster.memberNum=%d", shardNum),
+		)
+	}
+}
+
 // HasAnyStreamAggrRule checks if vmagent has any defined aggregation rules
 func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 	if cr.Spec.StreamAggrConfig.HasAnyRule() {
@@ -870,6 +913,13 @@ func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
+}
+
+func (cr *VMAgent) GetVolumeName() string {
+	if cr.Spec.StatefulStorage != nil && cr.Spec.StatefulStorage.VolumeClaimTemplate.Name != "" {
+		return cr.Spec.StatefulStorage.VolumeClaimTemplate.Name
+	}
+	return "persistent-queue-data"
 }
 
 func checkRelabelConfigs(src []*RelabelConfig) error {

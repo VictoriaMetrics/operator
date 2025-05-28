@@ -19,9 +19,14 @@ resources:
 - bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml
 - bases/operator.victoriametrics.com_vlogs.yaml
 - bases/operator.victoriametrics.com_vlsingles.yaml
+- bases/operator.victoriametrics.com_vmanomalies.yaml
 patches:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
+- path: patches/operator.victoriametrics.com_vmanomalies.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vmanomalies.operator.victoriametrics.com
 - path: patches/operator.victoriametrics.com_vmagents.yaml
   target:
     kind: CustomResourceDefinition

@@ -3,18 +3,12 @@ package vmagent
 import (
 	"context"
 	"fmt"
-	"iter"
-	"path"
-	"sort"
-	"strconv"
-	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 
 	"gopkg.in/yaml.v2"
@@ -23,24 +17,21 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	vmAgentConfDir                  = "/etc/vmagent/config"
-	vmAgentConOfOutDir              = "/etc/vmagent/config_out"
-	vmAgentPersistentQueueDir       = "/tmp/vmagent-remotewrite-data"
-	vmAgentPersistentQueueSTSDir    = "/vmagent_pq/vmagent-remotewrite-data"
-	vmAgentPersistentQueueMountName = "persistent-queue-data"
-	globalRelabelingName            = "global_relabeling.yaml"
-	urlRelabelingName               = "url_relabeling-%d.yaml"
-	globalAggregationConfigName     = "global_aggregation.yaml"
+	confDir                       = "/etc/vmagent/config"
+	confOutDir                    = "/etc/vmagent/config_out"
+	persistentQueueDir            = "/tmp/vmagent-remotewrite-data"
+	persistentQueueStatefulSetDir = "/vmagent_pq/vmagent-remotewrite-data"
+	globalRelabelingName          = "global_relabeling.yaml"
+	urlRelabelingName             = "url_relabeling-%d.yaml"
+	globalAggregationConfigName   = "global_aggregation.yaml"
 
-	shardNumPlaceholder    = "%SHARD_NUM%"
 	tlsAssetsDir           = "/etc/vmagent-tls/certs"
-	vmagentGzippedFilename = "vmagent.yaml.gz"
+	gzippedFilename        = "vmagent.yaml.gz"
 	configEnvsubstFilename = "vmagent.env.yaml"
 	defaultMaxDiskUsage    = "1073741824"
 
@@ -48,11 +39,7 @@ const (
 	kubeNodeEnvTemplate = "%{" + kubeNodeEnvName + "}"
 )
 
-// To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
-var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
-
-func createOrUpdateVMAgentService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
-
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
@@ -89,9 +76,9 @@ func createOrUpdateVMAgentService(ctx context.Context, rclient client.Client, cr
 	return newService, nil
 }
 
-// CreateOrUpdateVMAgent creates deployment for vmagent and configures it
+// CreateOrUpdateDeploy creates deployment for vmagent and configures it
 // waits for healthy state
-func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+func CreateOrUpdateDeploy(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
 	var prevCR *vmv1beta1.VMAgent
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -109,13 +96,13 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !cr.Spec.IngestOnlyMode {
-			if err := createVMAgentK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}
 	}
 
-	svc, err := createOrUpdateVMAgentService(ctx, rclient, cr, prevCR)
+	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
@@ -159,211 +146,34 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	var prevDeploy runtime.Object
 
 	if prevCR != nil {
-		prevDeploy, err = newDeployForVMAgent(prevCR, ssCache)
+		prevDeploy, err = newDeploy(prevCR, ssCache)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 		}
 	}
-	newDeploy, err := newDeployForVMAgent(cr, ssCache)
+	newDeploy, err := newDeploy(cr, ssCache)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
 	if !cr.Spec.DaemonSetMode && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
-		return createOrUpdateShardedDeploy(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
+		err = build.CreateOrUpdateShardedDeploy(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
+	} else {
+		err = build.CreateOrUpdateDeploy(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
 	}
-	return createOrUpdateDeploy(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
-}
-
-func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, _ *vmv1beta1.VMAgent, newDeploy, prevObjectSpec runtime.Object) error {
-	deploymentNames := make(map[string]struct{})
-	stsNames := make(map[string]struct{})
-
-	var err error
-	switch newDeploy := newDeploy.(type) {
-	case *appsv1.Deployment:
-		var prevDeploy *appsv1.Deployment
-		if prevObjectSpec != nil {
-			prevAppObject, ok := prevObjectSpec.(*appsv1.Deployment)
-			if ok {
-				prevDeploy = prevAppObject
-				prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, defaultPlaceholders)
-				if err != nil {
-					return fmt.Errorf("cannot fill placeholders for prev deployment in vmagent: %w", err)
-				}
-			}
-		}
-
-		newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
-		if err != nil {
-			return fmt.Errorf("cannot fill placeholders for deployment in vmagent: %w", err)
-		}
-		if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false); err != nil {
-			return err
-		}
-		deploymentNames[newDeploy.Name] = struct{}{}
-	case *appsv1.StatefulSet:
-		var prevSTS *appsv1.StatefulSet
-		if prevObjectSpec != nil {
-			prevAppObject, ok := prevObjectSpec.(*appsv1.StatefulSet)
-			if ok {
-				prevSTS = prevAppObject
-				prevSTS, err = k8stools.RenderPlaceholders(prevSTS, defaultPlaceholders)
-				if err != nil {
-					return fmt.Errorf("cannot fill placeholders for prev sts in vmagent: %w", err)
-				}
-			}
-		}
-		newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
-		if err != nil {
-			return fmt.Errorf("cannot fill placeholders for sts in vmagent: %w", err)
-		}
-		stsOpts := reconcile.STSOptions{
-			HasClaim:       len(newDeploy.Spec.VolumeClaimTemplates) > 0,
-			SelectorLabels: cr.SelectorLabels,
-		}
-		if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, prevSTS); err != nil {
-			return err
-		}
-		stsNames[newDeploy.Name] = struct{}{}
-	case *appsv1.DaemonSet:
-		var prevDeploy *appsv1.DaemonSet
-		if prevObjectSpec != nil {
-			prevAppObject, ok := prevObjectSpec.(*appsv1.DaemonSet)
-			if ok {
-				prevDeploy = prevAppObject
-			}
-		}
-		if err := reconcile.DaemonSet(ctx, rclient, newDeploy, prevDeploy); err != nil {
-			return err
-		}
-	default:
-		panic(fmt.Sprintf("BUG: unexpected deploy object type: %T", newDeploy))
-	}
-	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
+	if err != nil {
 		return err
 	}
-	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsNames); err != nil {
-		return err
+	if !cr.Spec.DaemonSetMode {
+		return nil
 	}
-	if err := removeStaleDaemonSet(ctx, rclient, cr); err != nil {
-		return fmt.Errorf("cannot remove vmagent daemonSet: %w", err)
-	}
-	return nil
+	return finalize.RemoveOrphanedDaemonSet(ctx, rclient, cr.GetName(), cr.GetNamespace())
 }
 
-func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, newDeploy, prevDeploy runtime.Object) error {
-	deploymentNames := make(map[string]struct{})
-	var err error
-	stsNames := make(map[string]struct{})
-	shardsCount := *cr.Spec.ShardCount
-	logger.WithContext(ctx).Info(fmt.Sprintf("using cluster version of VMAgent with shards count=%d", shardsCount))
+// newDeploy builds vmagent deployment spec.
+func newDeploy(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (runtime.Object, error) {
 
-	isUpscaling := false
-	if prevCR != nil && prevCR.Spec.ShardCount != nil {
-		if *prevCR.Spec.ShardCount < shardsCount {
-			logger.WithContext(ctx).Info(fmt.Sprintf("VMAgent shard upscaling from=%d to=%d", *prevCR.Spec.ShardCount, shardsCount))
-			isUpscaling = true
-		}
-	}
-	for shardNum := range shardNumIter(isUpscaling, shardsCount) {
-		shardedDeploy := newDeploy.DeepCopyObject()
-		var prevShardedObject runtime.Object
-		addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy)
-		if prevDeploy != nil {
-			prevShardedObject = prevDeploy.DeepCopyObject()
-			addShardSettingsToVMAgent(shardNum, shardsCount, prevShardedObject)
-		}
-		placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
-		switch shardedDeploy := shardedDeploy.(type) {
-		case *appsv1.Deployment:
-			var prevDeploy *appsv1.Deployment
-			shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
-			if err != nil {
-				return fmt.Errorf("cannot fill placeholders for deployment sharded vmagent: %w", err)
-			}
-			if prevShardedObject != nil {
-				// prev object could be deployment due to switching from statefulmode
-				prevObjApp, ok := prevShardedObject.(*appsv1.Deployment)
-				if ok {
-					prevDeploy = prevObjApp
-					prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
-					if err != nil {
-						return fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent: %w", err)
-					}
-				}
-			}
-			if err := reconcile.Deployment(ctx, rclient, shardedDeploy, prevDeploy, false); err != nil {
-				return err
-			}
-			deploymentNames[shardedDeploy.Name] = struct{}{}
-		case *appsv1.StatefulSet:
-			var prevSts *appsv1.StatefulSet
-			shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
-			if err != nil {
-				return fmt.Errorf("cannot fill placeholders for sts in sharded vmagent: %w", err)
-			}
-			if prevShardedObject != nil {
-				// prev object could be deployment due to switching to statefulmode
-				prevObjApp, ok := prevShardedObject.(*appsv1.StatefulSet)
-				if ok {
-					prevSts = prevObjApp
-					prevSts, err = k8stools.RenderPlaceholders(prevSts, placeholders)
-					if err != nil {
-						return fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent: %w", err)
-					}
-				}
-			}
-			stsOpts := reconcile.STSOptions{
-				HasClaim: len(shardedDeploy.Spec.VolumeClaimTemplates) > 0,
-				SelectorLabels: func() map[string]string {
-					selectorLabels := cr.SelectorLabels()
-					selectorLabels["shard-num"] = strconv.Itoa(shardNum)
-					return selectorLabels
-				},
-			}
-			if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, prevSts); err != nil {
-				return err
-			}
-			stsNames[shardedDeploy.Name] = struct{}{}
-		}
-	}
-	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
-		return err
-	}
-	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsNames); err != nil {
-		return err
-	}
-	if err := removeStaleDaemonSet(ctx, rclient, cr); err != nil {
-		return fmt.Errorf("cannot remove vmagent daemonSet: %w", err)
-	}
-	return nil
-}
-
-func shardNumIter(backward bool, shardCount int) iter.Seq[int] {
-	if backward {
-		return func(yield func(int) bool) {
-			for shardCount > 0 {
-				shardCount--
-				if !yield(shardCount) {
-					return
-				}
-			}
-		}
-	}
-	return func(yield func(int) bool) {
-		for i := 0; i < shardCount; i++ {
-			if !yield(i) {
-				return
-			}
-		}
-	}
-}
-
-// newDeployForVMAgent builds vmagent deployment spec.
-func newDeployForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (runtime.Object, error) {
-
-	podSpec, err := makeSpecForVMAgent(cr, ssCache)
+	podSpec, err := newPodSpec(cr, ssCache)
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +227,7 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (r
 					Type: cr.Spec.StatefulRollingUpdateStrategy,
 				},
 				PodManagementPolicy: appsv1.ParallelPodManagement,
-				ServiceName:         buildSTSServiceName(cr),
+				ServiceName:         buildStatefulSetServiceName(cr),
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels:      cr.PodLabels(),
@@ -429,7 +239,7 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (r
 		}
 		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
-		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
+		cr.Spec.StatefulStorage.IntoStatefulSetVolume(cr.GetVolumeName(), &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
 	}
@@ -470,7 +280,7 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (r
 	return depSpec, nil
 }
 
-func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
+func buildStatefulSetServiceName(cr *vmv1beta1.VMAgent) string {
 	// set service name for sts if additional service is headless
 	if cr.Spec.ServiceSpec != nil &&
 		!cr.Spec.ServiceSpec.UseAsDefault &&
@@ -484,335 +294,6 @@ func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
 	return ""
 }
 
-func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
-	var args []string
-
-	if len(cr.Spec.RemoteWrite) > 0 {
-		args = append(args, buildRemoteWrites(cr, ssCache)...)
-	}
-	args = append(args, buildRemoteWriteSettings(cr)...)
-
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
-
-	if cr.Spec.LogLevel != "" {
-		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
-	}
-	if cr.Spec.LogFormat != "" {
-		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
-	}
-	if len(cr.Spec.ExtraEnvs) > 0 || len(cr.Spec.ExtraEnvsFrom) > 0 {
-		args = append(args, "-envflag.enable=true")
-	}
-
-	var envs []corev1.EnvVar
-	envs = append(envs, cr.Spec.ExtraEnvs...)
-
-	if cr.Spec.DaemonSetMode {
-		envs = append(envs, corev1.EnvVar{
-			Name: kubeNodeEnvName,
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "spec.nodeName",
-				},
-			},
-		})
-	}
-
-	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
-	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
-
-	var agentVolumeMounts []corev1.VolumeMount
-	// mount data path any way, even if user changes its value
-	// we cannot rely on value of remoteWriteSettings.
-	pqMountPath := vmAgentPersistentQueueDir
-	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
-	}
-	agentVolumeMounts = append(agentVolumeMounts,
-		corev1.VolumeMount{
-			Name:      vmAgentPersistentQueueMountName,
-			MountPath: pqMountPath,
-		},
-	)
-	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
-
-	var volumes []corev1.Volume
-	// in case for sts, we have to use persistentVolumeClaimTemplate instead
-	if !cr.Spec.StatefulMode {
-		volumes = append(volumes, corev1.Volume{
-			Name: vmAgentPersistentQueueMountName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-	}
-
-	volumes = append(volumes, cr.Spec.Volumes...)
-
-	if !cr.Spec.IngestOnlyMode {
-		args = append(args,
-			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
-
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "tls-assets",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: cr.TLSAssetName(),
-					},
-				},
-			},
-			corev1.Volume{
-				Name: "config-out",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			},
-		)
-
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "config-out",
-				ReadOnly:  true,
-				MountPath: vmAgentConOfOutDir,
-			},
-			corev1.VolumeMount{
-				Name:      "tls-assets",
-				ReadOnly:  true,
-				MountPath: tlsAssetsDir,
-			},
-		)
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "config",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: cr.PrefixedName(),
-					},
-				},
-			})
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "config",
-				ReadOnly:  true,
-				MountPath: vmAgentConfDir,
-			})
-	}
-	if cr.HasAnyStreamAggrRule() {
-		volumes = append(volumes, corev1.Volume{
-			Name: "stream-aggr-conf",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cr.StreamAggrConfigName(),
-					},
-				},
-			},
-		},
-		)
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      "stream-aggr-conf",
-			ReadOnly:  true,
-			MountPath: vmv1beta1.StreamAggrConfigDir,
-		},
-		)
-	}
-
-	if cr.HasAnyRelabellingConfigs() {
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "relabeling-assets",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: cr.RelabelingAssetName(),
-						},
-					},
-				},
-			},
-		)
-
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "relabeling-assets",
-				ReadOnly:  true,
-				MountPath: vmv1beta1.RelabelingConfigDir,
-			},
-		)
-	}
-
-	for _, s := range cr.Spec.Secrets {
-		volumes = append(volumes, corev1.Volume{
-			Name: k8stools.SanitizeVolumeName("secret-" + s),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: s,
-				},
-			},
-		})
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      k8stools.SanitizeVolumeName("secret-" + s),
-			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta1.SecretsDir, s),
-		})
-	}
-
-	for _, c := range cr.Spec.ConfigMaps {
-		volumes = append(volumes, corev1.Volume{
-			Name: k8stools.SanitizeVolumeName("configmap-" + c),
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: c,
-					},
-				},
-			},
-		})
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
-			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
-		})
-	}
-
-	volumes, agentVolumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, agentVolumeMounts, vmv1beta1.SecretsDir)
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
-
-	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
-		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmv1beta1.RelabelingConfigDir, globalRelabelingName))
-	}
-
-	if cr.Spec.StreamAggrConfig != nil {
-		if cr.Spec.StreamAggrConfig.HasAnyRule() {
-			args = append(args, "-streamAggr.config="+path.Join(vmv1beta1.StreamAggrConfigDir, globalAggregationConfigName))
-		}
-		if cr.Spec.StreamAggrConfig.KeepInput {
-			args = append(args, "-streamAggr.keepInput=true")
-		}
-		if cr.Spec.StreamAggrConfig.DropInput {
-			args = append(args, "-streamAggr.dropInput=true")
-		}
-		if cr.Spec.StreamAggrConfig.DedupInterval != "" {
-			args = append(args, fmt.Sprintf("-streamAggr.dedupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
-		}
-		if len(cr.Spec.StreamAggrConfig.DropInputLabels) > 0 {
-			args = append(args, fmt.Sprintf("-streamAggr.dropInputLabels=%s", strings.Join(cr.Spec.StreamAggrConfig.DropInputLabels, ",")))
-		}
-		if cr.Spec.StreamAggrConfig.IgnoreOldSamples {
-			args = append(args, "-streamAggr.ignoreOldSamples=true")
-		}
-		if cr.Spec.StreamAggrConfig.EnableWindows {
-			args = append(args, "-streamAggr.enableWindows=true")
-		}
-	}
-
-	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
-
-	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
-	sort.Strings(args)
-
-	vmagentContainer := corev1.Container{
-		Name:                     "vmagent",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
-		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
-		Ports:                    ports,
-		Args:                     args,
-		Env:                      envs,
-		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
-		VolumeMounts:             agentVolumeMounts,
-		Resources:                cr.Spec.Resources,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-	}
-
-	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, &cr.Spec.CommonApplicationDeploymentParams)
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
-	vmagentContainer = build.Probe(vmagentContainer, cr)
-
-	build.AddConfigReloadAuthKeyToApp(&vmagentContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
-
-	var operatorContainers []corev1.Container
-	var ic []corev1.Container
-	// conditional add config reloader container
-	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-		configReloader := buildConfigReloaderContainer(cr)
-		operatorContainers = append(operatorContainers, configReloader)
-		if !cr.Spec.IngestOnlyMode {
-			ic = append(ic,
-				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, false), cr, configReloader.Args)...)
-			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
-		}
-	}
-	var err error
-	ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
-	if err != nil {
-		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
-	}
-
-	operatorContainers = append(operatorContainers, vmagentContainer)
-
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
-
-	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range cr.Spec.TopologySpreadConstraints {
-		if cr.Spec.TopologySpreadConstraints[i].LabelSelector == nil {
-			cr.Spec.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(),
-			}
-		}
-	}
-	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
-
-	return &corev1.PodSpec{
-		Volumes:            volumes,
-		InitContainers:     ic,
-		Containers:         containers,
-		ServiceAccountName: cr.GetServiceAccountName(),
-	}, nil
-}
-
-func addShardSettingsToVMAgent(shardNum, shardsCount int, dep runtime.Object) {
-	var containers []corev1.Container
-	switch dep := dep.(type) {
-	case *appsv1.StatefulSet:
-		containers = dep.Spec.Template.Spec.Containers
-		dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
-		// need to mutate selectors ?
-		dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
-		dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
-	case *appsv1.Deployment:
-		containers = dep.Spec.Template.Spec.Containers
-		dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
-		// need to mutate selectors ?
-		dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
-		dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
-	}
-	for i := range containers {
-		container := &containers[i]
-		if container.Name == "vmagent" {
-			args := container.Args
-			// filter extraArgs defined by user
-			cnt := 0
-			for i := range args {
-				arg := args[i]
-				if !strings.Contains(arg, "promscrape.cluster.membersCount") && !strings.Contains(arg, "promscrape.cluster.memberNum") {
-					args[cnt] = arg
-					cnt++
-				}
-			}
-			args = args[:cnt]
-			args = append(args, fmt.Sprintf("-promscrape.cluster.membersCount=%d", shardsCount))
-			args = append(args, fmt.Sprintf("-promscrape.cluster.memberNum=%d", shardNum))
-			container.Args = args
-		}
-	}
-}
-
 func buildRelabelingsAssetsMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Namespace:       cr.Namespace,
@@ -823,8 +304,8 @@ func buildRelabelingsAssetsMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
 	}
 }
 
-// buildVMAgentRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.
-func buildVMAgentRelabelingsAssets(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) (*corev1.ConfigMap, error) {
+// buildRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.
+func buildRelabelingsAssets(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
 		ObjectMeta: buildRelabelingsAssetsMeta(cr),
 		Data:       make(map[string]string),
@@ -885,7 +366,7 @@ func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Clie
 	if !cr.HasAnyRelabellingConfigs() {
 		return nil
 	}
-	assestsCM, err := buildVMAgentRelabelingsAssets(ctx, rclient, cr)
+	assestsCM, err := buildRelabelingsAssets(ctx, rclient, cr)
 	if err != nil {
 		return err
 	}
@@ -1095,503 +576,6 @@ func addAssetsToCache(
 	return nil
 }
 
-type remoteFlag struct {
-	isNotNull   bool
-	flagSetting string
-}
-
-func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
-	// limit to 1GB
-	// most people do not care about this setting,
-	// but it may harmfully affect kubernetes cluster health
-	maxDiskUsage := defaultMaxDiskUsage
-	var containsMaxDiskUsage bool
-	for i := range cr.Spec.RemoteWrite {
-		rws := cr.Spec.RemoteWrite[i]
-		if rws.MaxDiskUsage != nil {
-			containsMaxDiskUsage = true
-			break
-		}
-	}
-	var args []string
-	if cr.Spec.RemoteWriteSettings == nil {
-		// fast path
-		pqMountPath := vmAgentPersistentQueueDir
-		if cr.Spec.StatefulMode {
-			pqMountPath = vmAgentPersistentQueueSTSDir
-		}
-		args = append(args,
-			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
-
-		if !containsMaxDiskUsage {
-			args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", maxDiskUsage))
-		}
-		return args
-	}
-
-	rws := *cr.Spec.RemoteWriteSettings
-	if rws.FlushInterval != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.flushInterval=%s", *rws.FlushInterval))
-	}
-	if rws.MaxBlockSize != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.maxBlockSize=%d", *rws.MaxBlockSize))
-	}
-
-	if rws.Queues != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.queues=%d", *rws.Queues))
-	}
-	if rws.ShowURL != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.showURL=%t", *rws.ShowURL))
-	}
-	pqMountPath := vmAgentPersistentQueueDir
-	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
-	}
-	if rws.TmpDataPath != nil {
-		pqMountPath = *rws.TmpDataPath
-	}
-	args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
-
-	if rws.MaxDiskUsagePerURL != nil {
-		maxDiskUsage = rws.MaxDiskUsagePerURL.String()
-	}
-	if !containsMaxDiskUsage {
-		args = append(args, "-remoteWrite.maxDiskUsagePerURL="+maxDiskUsage)
-	}
-	if rws.Labels != nil {
-		lbls := sortMap(rws.Labels)
-		flagValue := "-remoteWrite.label="
-		if len(lbls) > 0 {
-			flagValue += fmt.Sprintf("%s=%s", lbls[0].key, lbls[0].value)
-			for _, lv := range lbls[1:] {
-				flagValue += fmt.Sprintf(",%s=%s", lv.key, lv.value)
-			}
-			args = append(args, flagValue)
-		}
-
-	}
-	if rws.UseMultiTenantMode {
-		args = append(args, "-enableMultitenantHandlers=true")
-	}
-	return args
-}
-
-type item struct {
-	key, value string
-}
-
-func sortMap(m map[string]string) []item {
-	var kv []item
-	for k, v := range m {
-		kv = append(kv, item{key: k, value: v})
-	}
-	sort.Slice(kv, func(i, j int) bool {
-		return kv[i].key < kv[j].key
-	})
-	return kv
-}
-
-func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []string {
-	var finalArgs []string
-	var remoteArgs []remoteFlag
-	remoteTargets := cr.Spec.RemoteWrite
-
-	url := remoteFlag{flagSetting: "-remoteWrite.url=", isNotNull: true}
-
-	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
-	authPasswordFile := remoteFlag{flagSetting: "-remoteWrite.basicAuth.passwordFile="}
-	bearerTokenFile := remoteFlag{flagSetting: "-remoteWrite.bearerTokenFile="}
-	urlRelabelConfig := remoteFlag{flagSetting: "-remoteWrite.urlRelabelConfig="}
-	sendTimeout := remoteFlag{flagSetting: "-remoteWrite.sendTimeout="}
-	tlsCAs := remoteFlag{flagSetting: "-remoteWrite.tlsCAFile="}
-	tlsCerts := remoteFlag{flagSetting: "-remoteWrite.tlsCertFile="}
-	tlsKeys := remoteFlag{flagSetting: "-remoteWrite.tlsKeyFile="}
-	tlsInsecure := remoteFlag{flagSetting: "-remoteWrite.tlsInsecureSkipVerify="}
-	tlsServerName := remoteFlag{flagSetting: "-remoteWrite.tlsServerName="}
-	oauth2ClientID := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientID="}
-	oauth2ClientSecretFile := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientSecretFile="}
-	oauth2Scopes := remoteFlag{flagSetting: "-remoteWrite.oauth2.scopes="}
-	oauth2TokenURL := remoteFlag{flagSetting: "-remoteWrite.oauth2.tokenUrl="}
-	headers := remoteFlag{flagSetting: "-remoteWrite.headers="}
-	streamAggrConfig := remoteFlag{flagSetting: "-remoteWrite.streamAggr.config="}
-	streamAggrKeepInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.keepInput="}
-	streamAggrDropInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInput="}
-	streamAggrDedupInterval := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dedupInterval="}
-	streamAggrDropInputLabels := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInputLabels="}
-	streamAggrIgnoreFirstIntervals := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreFirstIntervals="}
-	streamAggrIgnoreOldSamples := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreOldSamples="}
-	streamAggrEnableWindows := remoteFlag{flagSetting: "-remoteWrite.streamAggr.enableWindows="}
-	maxDiskUsagePerURL := remoteFlag{flagSetting: "-remoteWrite.maxDiskUsagePerURL="}
-	forceVMProto := remoteFlag{flagSetting: "-remoteWrite.forceVMProto="}
-
-	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
-
-	maxDiskUsage := defaultMaxDiskUsage
-	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
-		maxDiskUsage = cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL.String()
-	}
-
-	for i := range remoteTargets {
-		rws := remoteTargets[i]
-		url.flagSetting += fmt.Sprintf("%s,", rws.URL)
-
-		var caPath, certPath, keyPath, ServerName string
-		var insecure bool
-		if rws.TLSConfig != nil {
-			if rws.TLSConfig.CAFile != "" {
-				caPath = rws.TLSConfig.CAFile
-			} else if rws.TLSConfig.CA.PrefixedName() != "" {
-				caPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.CA.PrefixedName(), rws.TLSConfig.CA.Key())
-			}
-			if caPath != "" {
-				tlsCAs.isNotNull = true
-			}
-			if rws.TLSConfig.CertFile != "" {
-				certPath = rws.TLSConfig.CertFile
-			} else if rws.TLSConfig.Cert.PrefixedName() != "" {
-				certPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.Cert.PrefixedName(), rws.TLSConfig.Cert.Key())
-			}
-			if certPath != "" {
-				tlsCerts.isNotNull = true
-			}
-			switch {
-			case rws.TLSConfig.KeyFile != "":
-				keyPath = rws.TLSConfig.KeyFile
-			case rws.TLSConfig.KeySecret != nil:
-				keyPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.KeySecret.Name, rws.TLSConfig.KeySecret.Key)
-			}
-			if keyPath != "" {
-				tlsKeys.isNotNull = true
-			}
-			if rws.TLSConfig.InsecureSkipVerify {
-				tlsInsecure.isNotNull = true
-			}
-			if rws.TLSConfig.ServerName != "" {
-				ServerName = rws.TLSConfig.ServerName
-				tlsServerName.isNotNull = true
-			}
-			insecure = rws.TLSConfig.InsecureSkipVerify
-		}
-		tlsCAs.flagSetting += fmt.Sprintf("%s,", caPath)
-		tlsCerts.flagSetting += fmt.Sprintf("%s,", certPath)
-		tlsKeys.flagSetting += fmt.Sprintf("%s,", keyPath)
-		tlsServerName.flagSetting += fmt.Sprintf("%s,", ServerName)
-		tlsInsecure.flagSetting += fmt.Sprintf("%v,", insecure)
-
-		var user string
-		var passFile string
-		if rws.BasicAuth != nil {
-			if s, ok := ssCache.baSecrets[rws.AsMapKey()]; ok {
-				authUser.isNotNull = true
-
-				user = s.Username
-				if len(s.Password) > 0 {
-					authPasswordFile.isNotNull = true
-					passFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "basicAuthPassword"))
-				}
-				if len(rws.BasicAuth.PasswordFile) > 0 {
-					passFile = rws.BasicAuth.PasswordFile
-					authPasswordFile.isNotNull = true
-				}
-			}
-		}
-		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
-		authPasswordFile.flagSetting += fmt.Sprintf("%s,", passFile)
-
-		var value string
-		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
-			bearerTokenFile.isNotNull = true
-			value = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "bearerToken"))
-		}
-		bearerTokenFile.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(value, `"`, `\"`))
-
-		value = ""
-
-		if rws.UrlRelabelConfig != nil || len(rws.InlineUrlRelabelConfig) > 0 {
-			urlRelabelConfig.isNotNull = true
-			value = path.Join(vmv1beta1.RelabelingConfigDir, fmt.Sprintf(urlRelabelingName, i))
-		}
-
-		urlRelabelConfig.flagSetting += fmt.Sprintf("%s,", value)
-
-		value = ""
-		if rws.SendTimeout != nil {
-			if !sendTimeout.isNotNull {
-				sendTimeout.isNotNull = true
-			}
-			value = *rws.SendTimeout
-		}
-		sendTimeout.flagSetting += fmt.Sprintf("%s,", value)
-
-		value = ""
-		if len(rws.Headers) > 0 {
-			headers.isNotNull = true
-			for _, headerValue := range rws.Headers {
-				value += headerValue + "^^"
-			}
-			value = strings.TrimSuffix(value, "^^")
-		}
-		headers.flagSetting += fmt.Sprintf("%s,", value)
-		var oaturl, oascopes, oaclientID, oaSecretKeyFile string
-		if rws.OAuth2 != nil {
-			if len(rws.OAuth2.TokenURL) > 0 {
-				oauth2TokenURL.isNotNull = true
-				oaturl = rws.OAuth2.TokenURL
-			}
-
-			if len(rws.OAuth2.Scopes) > 0 {
-				oauth2Scopes.isNotNull = true
-				oascopes = strings.Join(rws.OAuth2.Scopes, ",")
-			}
-
-			if len(rws.OAuth2.ClientSecretFile) > 0 {
-				oauth2ClientSecretFile.isNotNull = true
-				oaSecretKeyFile = rws.OAuth2.ClientSecretFile
-			}
-
-			sv := ssCache.oauth2Secrets[rws.AsMapKey()]
-			if rws.OAuth2.ClientSecret != nil && sv != nil {
-				oauth2ClientSecretFile.isNotNull = true
-				oaSecretKeyFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "oauth2Secret"))
-			}
-
-			if len(rws.OAuth2.ClientID.PrefixedName()) > 0 && sv != nil {
-				oaclientID = sv.ClientID
-				oauth2ClientID.isNotNull = true
-			}
-
-		}
-		oauth2TokenURL.flagSetting += fmt.Sprintf("%s,", oaturl)
-		oauth2ClientSecretFile.flagSetting += fmt.Sprintf("%s,", oaSecretKeyFile)
-		oauth2ClientID.flagSetting += fmt.Sprintf("%s,", oaclientID)
-		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
-
-		var dedupIntVal, streamConfVal string
-		var keepInputVal, dropInputVal, ignoreOldSamples, enableWindows bool
-		var ignoreFirstIntervalsVal int
-		if rws.StreamAggrConfig != nil {
-			if rws.StreamAggrConfig.HasAnyRule() {
-				streamAggrConfig.isNotNull = true
-				streamConfVal = path.Join(vmv1beta1.StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
-			}
-
-			dedupIntVal = rws.StreamAggrConfig.DedupInterval
-			if dedupIntVal != "" {
-				streamAggrDedupInterval.isNotNull = true
-			}
-
-			keepInputVal = rws.StreamAggrConfig.KeepInput
-			if keepInputVal {
-				streamAggrKeepInput.isNotNull = true
-			}
-			dropInputVal = rws.StreamAggrConfig.DropInput
-			if dropInputVal {
-				streamAggrDropInput.isNotNull = true
-			}
-			if len(rws.StreamAggrConfig.DropInputLabels) > 0 {
-				streamAggrDropInputLabels.isNotNull = true
-				streamAggrDropInputLabels.flagSetting += fmt.Sprintf("%s,", strings.Join(rws.StreamAggrConfig.DropInputLabels, ","))
-			}
-			ignoreFirstIntervalsVal = rws.StreamAggrConfig.IgnoreFirstIntervals
-			if ignoreFirstIntervalsVal > 0 {
-				streamAggrIgnoreFirstIntervals.isNotNull = true
-			}
-			ignoreOldSamples = rws.StreamAggrConfig.IgnoreOldSamples
-			if ignoreOldSamples {
-				streamAggrIgnoreOldSamples.isNotNull = true
-			}
-			enableWindows = rws.StreamAggrConfig.EnableWindows
-			if enableWindows {
-				streamAggrEnableWindows.isNotNull = true
-			}
-		}
-		streamAggrConfig.flagSetting += fmt.Sprintf("%s,", streamConfVal)
-		streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", keepInputVal)
-		streamAggrDropInput.flagSetting += fmt.Sprintf("%v,", dropInputVal)
-		streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", dedupIntVal)
-		streamAggrIgnoreFirstIntervals.flagSetting += fmt.Sprintf("%d,", ignoreFirstIntervalsVal)
-		streamAggrIgnoreOldSamples.flagSetting += fmt.Sprintf("%v,", ignoreOldSamples)
-		streamAggrEnableWindows.flagSetting += fmt.Sprintf("%v", enableWindows)
-
-		value = maxDiskUsage
-		if rws.MaxDiskUsage != nil {
-			value = rws.MaxDiskUsage.String()
-			maxDiskUsagePerURL.isNotNull = true
-		}
-		maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", value)
-		value = ""
-
-		if rws.ForceVMProto {
-			forceVMProto.isNotNull = true
-		}
-		forceVMProto.flagSetting += fmt.Sprintf("%t,", rws.ForceVMProto)
-	}
-
-	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)
-	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
-	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
-	remoteArgs = append(remoteArgs, headers, authPasswordFile)
-	remoteArgs = append(remoteArgs, streamAggrConfig, streamAggrKeepInput, streamAggrDedupInterval, streamAggrDropInput, streamAggrDropInputLabels, streamAggrIgnoreFirstIntervals, streamAggrIgnoreOldSamples, streamAggrEnableWindows)
-	remoteArgs = append(remoteArgs, maxDiskUsagePerURL, forceVMProto)
-
-	for _, remoteArgType := range remoteArgs {
-		if remoteArgType.isNotNull {
-			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))
-		}
-	}
-	return finalArgs
-}
-
-func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
-	var configReloadVolumeMounts []corev1.VolumeMount
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
-	if !cr.Spec.IngestOnlyMode {
-		configReloadVolumeMounts = append(configReloadVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "config-out",
-				MountPath: vmAgentConOfOutDir,
-			},
-		)
-		if !useVMConfigReloader {
-			configReloadVolumeMounts = append(configReloadVolumeMounts,
-				corev1.VolumeMount{
-					Name:      "config",
-					MountPath: vmAgentConfDir,
-				})
-		}
-	}
-	if cr.HasAnyRelabellingConfigs() {
-		configReloadVolumeMounts = append(configReloadVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "relabeling-assets",
-				ReadOnly:  true,
-				MountPath: vmv1beta1.RelabelingConfigDir,
-			})
-	}
-	if cr.HasAnyStreamAggrRule() {
-		configReloadVolumeMounts = append(configReloadVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "stream-aggr-conf",
-				ReadOnly:  true,
-				MountPath: vmv1beta1.StreamAggrConfigDir,
-			})
-	}
-
-	configReloadArgs := buildConfigReloaderArgs(cr)
-	cntr := corev1.Container{
-		Name:                     "config-reloader",
-		Image:                    cr.Spec.ConfigReloaderImageTag,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		Env: []corev1.EnvVar{
-			{
-				Name: "POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
-				},
-			},
-		},
-		Command:      []string{"/bin/prometheus-config-reloader"},
-		Args:         configReloadArgs,
-		VolumeMounts: configReloadVolumeMounts,
-		Resources:    cr.Spec.ConfigReloaderResources,
-	}
-	if useVMConfigReloader {
-		cntr.Command = nil
-		build.AddServiceAccountTokenVolumeMount(&cntr, &cr.Spec.CommonApplicationDeploymentParams)
-	}
-	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &cntr)
-	build.AddConfigReloadAuthKeyToReloader(&cntr, &cr.Spec.CommonConfigReloaderParams)
-	return cntr
-}
-
-func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
-	// by default use watched-dir
-	// it should simplify parsing for latest and empty version tags.
-	dirsArg := "watched-dir"
-
-	args := []string{
-		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
-	}
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
-
-	if !cr.Spec.IngestOnlyMode {
-		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
-		if useVMConfigReloader {
-			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
-			args = append(args, "--config-secret-key=vmagent.yaml.gz")
-		} else {
-			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, vmagentGzippedFilename)))
-		}
-	}
-	if cr.HasAnyStreamAggrRule() {
-		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.StreamAggrConfigDir))
-	}
-	if cr.HasAnyRelabellingConfigs() {
-		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.RelabelingConfigDir))
-	}
-	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		for idx, arg := range args {
-			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
-				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
-				args[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
-			}
-		}
-		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			args = append(args, fmt.Sprintf(`--%s=%s`, k, v))
-		}
-		sort.Strings(args)
-	}
-
-	return args
-}
-
-func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, configReloaderArgs []string) []corev1.Container {
-	var initReloader corev1.Container
-	baseImage := cr.Spec.ConfigReloaderImageTag
-	resources := cr.Spec.ConfigReloaderResources
-	if useVMConfigReloader {
-		initReloader = corev1.Container{
-			Image: baseImage,
-			Name:  "config-init",
-			Args:  append(configReloaderArgs, "--only-init-config"),
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "config-out",
-					MountPath: vmAgentConOfOutDir,
-				},
-			},
-			Resources: resources,
-		}
-		build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
-		return []corev1.Container{initReloader}
-	}
-	initReloader = corev1.Container{
-		Image: baseImage,
-		Name:  "config-init",
-		Command: []string{
-			"/bin/sh",
-		},
-		Args: []string{
-			"-c",
-			fmt.Sprintf("gunzip -c %s > %s", path.Join(vmAgentConfDir, vmagentGzippedFilename), path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
-		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "config",
-				MountPath: vmAgentConfDir,
-			},
-			{
-				Name:      "config-out",
-				MountPath: vmAgentConOfOutDir,
-			},
-		},
-		Resources: resources,
-	}
-
-	return []corev1.Container{initReloader}
-}
-
 func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	if prevCR == nil {
 		return nil
@@ -1639,17 +623,4 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 	}
 
 	return nil
-}
-
-func removeStaleDaemonSet(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
-	if cr.Spec.DaemonSetMode {
-		return nil
-	}
-	ds := appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.PrefixedName(),
-			Namespace: cr.Namespace,
-		},
-	}
-	return finalize.SafeDeleteWithFinalizer(ctx, rclient, &ds)
 }

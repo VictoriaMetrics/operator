@@ -1,4 +1,4 @@
-package alertmanager
+package vmalertmanager
 
 import (
 	"context"

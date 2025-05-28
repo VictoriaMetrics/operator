@@ -84,6 +84,7 @@ api-gen: client-gen lister-gen informer-gen
 		--clientset-name versioned \
 		--input-base "" \
                 --plural-exceptions "VLogs:VLogs" \
+		--plural-excaptions "VMAnomaly:VMAnomalies" \
 		--input github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client \
 		--output-dir ./api/client \
@@ -93,12 +94,14 @@ api-gen: client-gen lister-gen informer-gen
 		--output-dir ./api/client/listers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/listers \
 		--plural-exceptions "VLogs:VLogs" \
+		--plural-excaptions "VMAnomaly:VMAnomalies" \
 		--go-header-file hack/boilerplate.go.txt
 	@echo ">> generating with informer-gen"
 	$(INFORMER_GEN) github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
 		--versioned-clientset-package github.com/VictoriaMetrics/operator/api/client/versioned \
 		--listers-package github.com/VictoriaMetrics/operator/api/client/listers \
 		--plural-exceptions "VLogs:VLogs" \
+		--plural-excaptions "VMAnomaly:VMAnomalies" \
 		--output-dir ./api/client/informers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/informers \
 		--go-header-file hack/boilerplate.go.txt

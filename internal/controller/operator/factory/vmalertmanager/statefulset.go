@@ -1,4 +1,4 @@
-package alertmanager
+package vmalertmanager
 
 import (
 	"context"
@@ -46,7 +46,7 @@ receivers:
 `
 )
 
-func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, error) {
+func newStatefulSet(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, error) {
 	if cr.Spec.Retention == "" {
 		cr.Spec.Retention = defaultRetention
 	}
@@ -68,13 +68,13 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 		Spec: *spec,
 	}
 	build.StatefulSetAddCommonParams(statefulset, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
-	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &statefulset.Spec)
+	cr.Spec.Storage.IntoStatefulSetVolume(cr.GetVolumeName(), &statefulset.Spec)
 	statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 
 	return statefulset, nil
 }
 
-func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) (*corev1.Service, error) {
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) (*corev1.Service, error) {
 	port, err := strconv.ParseInt(cr.Port(), 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
@@ -401,7 +401,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 	}
 	vmaContainer = build.Probe(vmaContainer, cr)
 	operatorContainers := []corev1.Container{vmaContainer}
-	operatorContainers = append(operatorContainers, buildVMAlertmanagerConfigReloader(cr, crVolumeMounts))
+	operatorContainers = append(operatorContainers, buildConfigReloader(cr, crVolumeMounts))
 
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
@@ -468,7 +468,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 				"secretName", cr.Spec.ConfigSecret)
 		} else {
 			// retrieve content
-			secretContent, err := getSecretContentForAlertmanager(ctx, rclient, cr.Spec.ConfigSecret, cr.Namespace)
+			secretContent, err := getSecretContentForApp(ctx, rclient, cr.Spec.ConfigSecret, cr.Namespace)
 			if err != nil {
 				return fmt.Errorf("cannot fetch secret content for alertmanager config secret, err: %w", err)
 			}
@@ -480,7 +480,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
 		configSourceName = "inline configuration at configRawYaml"
 	}
-	mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, tlsAssets)
+	mergedCfg, err := buildConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, tlsAssets)
 	if err != nil {
 		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 	}
@@ -608,7 +608,7 @@ func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
 	return []corev1.Container{initReloader}
 }
 
-func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMounts []corev1.VolumeMount) corev1.Container {
+func buildConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMounts []corev1.VolumeMount) corev1.Container {
 	localReloadURL := &url.URL{
 		Scheme: "http",
 		Host:   fmt.Sprintf("%s:%s", "127.0.0.1", cr.Port()),
@@ -668,7 +668,7 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 	return configReloaderContainer
 }
 
-func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client, secretName, ns string) ([]byte, error) {
+func getSecretContentForApp(ctx context.Context, rclient client.Client, secretName, ns string) ([]byte, error) {
 	var s corev1.Secret
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, &s); err != nil {
 		// return nil for backward compatibility
@@ -684,7 +684,7 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	return nil, fmt.Errorf("cannot find alertmanager config key: %q at secret: %q", alertmanagerSecretConfigKey, secretName)
 }
 
-func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, tlsAssets map[string]string) (*parsedConfig, error) {
+func buildConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, tlsAssets map[string]string) (*parsedConfig, error) {
 	var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 	var badCfgs []*vmv1beta1.VMAlertmanagerConfig
 	var namespacedNames []string

@@ -307,10 +307,6 @@ func (cr *VLSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr *VLSingle) GetNSName() string {
-	return cr.GetNamespace()
-}
-
 func (cr *VLSingle) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {

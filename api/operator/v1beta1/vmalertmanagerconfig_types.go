@@ -30,7 +30,7 @@ import (
 	amcfg "github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/alertmanager/pkg/labels"
 	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -369,7 +369,7 @@ type TelegramConfig struct {
 	APIUrl string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 	// BotToken token for the bot
 	// https://core.telegram.org/bots/api
-	BotToken *v1.SecretKeySelector `json:"bot_token" yaml:"bot_token"`
+	BotToken *corev1.SecretKeySelector `json:"bot_token" yaml:"bot_token"`
 	// ChatID is ID of the chat where to send the messages.
 	ChatID int `json:"chat_id" yaml:"chat_id"`
 	// MessageThreadID defines ID of the message thread where to send the messages.
@@ -404,7 +404,7 @@ type WebhookConfig struct {
 	// It must contain the webhook URL.
 	// one of `urlSecret` and `url` must be defined.
 	// +optional
-	URLSecret *v1.SecretKeySelector `json:"url_secret,omitempty" yaml:"url_secret,omitempty"`
+	URLSecret *corev1.SecretKeySelector `json:"url_secret,omitempty" yaml:"url_secret,omitempty"`
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
@@ -429,7 +429,7 @@ type WeChatConfig struct {
 	// The secret needs to be in the same namespace as the AlertmanagerConfig
 	// fallback to global alertmanager setting if empty
 	// +optional
-	APISecret *v1.SecretKeySelector `json:"api_secret,omitempty" yaml:"api_secret,omitempty"`
+	APISecret *corev1.SecretKeySelector `json:"api_secret,omitempty" yaml:"api_secret,omitempty"`
 	// The WeChat API URL.
 	// fallback to global alertmanager setting if empty
 	// +optional
@@ -479,11 +479,11 @@ type EmailConfig struct {
 	AuthUsername string `json:"auth_username,omitempty" yaml:"auth_username,omitempty"`
 	// AuthPassword defines secret name and key at CRD namespace.
 	// +optional
-	AuthPassword *v1.SecretKeySelector `json:"auth_password,omitempty" yaml:"auth_password,omitempty"`
+	AuthPassword *corev1.SecretKeySelector `json:"auth_password,omitempty" yaml:"auth_password,omitempty"`
 	// AuthSecret defines secrent name and key at CRD namespace.
 	// It must contain the CRAM-MD5 secret.
 	// +optional
-	AuthSecret *v1.SecretKeySelector `json:"auth_secret,omitempty" yaml:"auth_secret,omitempty"`
+	AuthSecret *corev1.SecretKeySelector `json:"auth_secret,omitempty" yaml:"auth_secret,omitempty"`
 	// The identity to use for authentication.
 	// +optional
 	AuthIdentity string `json:"auth_identity,omitempty" yaml:"auth_identity,omitempty"`
@@ -515,7 +515,7 @@ type VictorOpsConfig struct {
 	// It must be at them same namespace as CRD
 	// fallback to global setting if empty
 	// +optional
-	APIKey *v1.SecretKeySelector `json:"api_key,omitempty" yaml:"api_key,omitempty"`
+	APIKey *corev1.SecretKeySelector `json:"api_key,omitempty" yaml:"api_key,omitempty"`
 	// The VictorOps API URL.
 	// +optional
 	APIURL string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
@@ -550,10 +550,10 @@ type PushoverConfig struct {
 	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The secret's key that contains the recipient user’s user key.
 	// It must be at them same namespace as CRD
-	UserKey *v1.SecretKeySelector `json:"user_key,omitempty" yaml:"user_key,omitempty"`
+	UserKey *corev1.SecretKeySelector `json:"user_key,omitempty" yaml:"user_key,omitempty"`
 	// The secret's key that contains the registered application’s API token, see https://pushover.net/apps.
 	// It must be at them same namespace as CRD
-	Token *v1.SecretKeySelector `json:"token,omitempty"`
+	Token *corev1.SecretKeySelector `json:"token,omitempty"`
 	// Notification title.
 	// +optional
 	Title string `json:"title,omitempty"`
@@ -598,7 +598,7 @@ type SlackConfig struct {
 	// It must be at them same namespace as CRD
 	// fallback to global setting if empty
 	// +optional
-	APIURL *v1.SecretKeySelector `json:"api_url,omitempty" yaml:"api_url,omitempty"`
+	APIURL *corev1.SecretKeySelector `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 	// The channel or user to send notifications to.
 	// +optional
 	Channel string `json:"channel,omitempty"`
@@ -708,7 +708,7 @@ type OpsGenieConfig struct {
 	// It must be at them same namespace as CRD
 	// fallback to global setting if empty
 	// +optional
-	APIKey *v1.SecretKeySelector `json:"api_key,omitempty" yaml:"api_key,omitempty"`
+	APIKey *corev1.SecretKeySelector `json:"api_key,omitempty" yaml:"api_key,omitempty"`
 	// The URL to send OpsGenie API requests to.
 	// +optional
 	APIURL string `json:"apiURL,omitempty" yaml:"apiURL,omitempty"`
@@ -776,13 +776,13 @@ type PagerDutyConfig struct {
 	// Events API v2). Either this field or `serviceKey` needs to be defined.
 	// It must be at them same namespace as CRD
 	// +optional
-	RoutingKey *v1.SecretKeySelector `json:"routing_key,omitempty" yaml:"routing_key,omitempty"`
+	RoutingKey *corev1.SecretKeySelector `json:"routing_key,omitempty" yaml:"routing_key,omitempty"`
 	// The secret's key that contains the PagerDuty service key (when using
 	// integration type "Prometheus"). Either this field or `routingKey` needs to
 	// be defined.
 	// It must be at them same namespace as CRD
 	// +optional
-	ServiceKey *v1.SecretKeySelector `json:"service_key,omitempty" yaml:"service_key,omitempty"`
+	ServiceKey *corev1.SecretKeySelector `json:"service_key,omitempty" yaml:"service_key,omitempty"`
 	// The URL to send requests to.
 	// +optional
 	URL string `json:"url,omitempty"`
@@ -852,7 +852,7 @@ type MSTeamsConfig struct {
 	// It must contain the webhook URL.
 	// one of `urlSecret` and `url` must be defined.
 	// +optional
-	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
+	URLSecret *corev1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
 	// The title of the teams notification.
 	// +optional
 	Title string `json:"title,omitempty"`
@@ -876,7 +876,7 @@ type DiscordConfig struct {
 	// It must contain the webhook URL.
 	// one of `urlSecret` and `url` must be defined.
 	// +optional
-	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
+	URLSecret *corev1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
 	// The message title template
 	// +optional
 	Title string `json:"title,omitempty"`
@@ -944,10 +944,10 @@ type Sigv4Config struct {
 	AccessKey string `json:"access_key,omitempty" yaml:"access_key,omitempty"`
 	// secret key selector to get the keys from a Kubernetes Secret
 	// +optional
-	AccessKeySelector *v1.SecretKeySelector `json:"access_key_selector,omitempty" yaml:"access_key_selector,omitempty"`
+	AccessKeySelector *corev1.SecretKeySelector `json:"access_key_selector,omitempty" yaml:"access_key_selector,omitempty"`
 	// secret key selector to get the keys from a Kubernetes Secret
 	// +optional
-	SecretKey *v1.SecretKeySelector `json:"secret_key_selector,omitempty" yaml:"secret_key_selector,omitempty"`
+	SecretKey *corev1.SecretKeySelector `json:"secret_key_selector,omitempty" yaml:"secret_key_selector,omitempty"`
 	// Named AWS profile used to authenticate
 	// +optional
 	Profile string `json:"profile,omitempty"`
@@ -1049,9 +1049,9 @@ type RocketchatConfig struct {
 	// The sender token and token_id
 	// See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens
 	// +optional
-	TokenID *v1.SecretKeySelector `yaml:"token_id,omitempty" json:"token_id,omitempty"`
+	TokenID *corev1.SecretKeySelector `yaml:"token_id,omitempty" json:"token_id,omitempty"`
 	// +optional
-	Token *v1.SecretKeySelector `yaml:"token,omitempty" json:"token,omitempty"`
+	Token *corev1.SecretKeySelector `yaml:"token,omitempty" json:"token,omitempty"`
 
 	// RocketChat channel override, (like #other-channel or @username).
 	// +optional
@@ -1127,7 +1127,7 @@ type MSTeamsV2Config struct {
 	// It must contain the webhook URL.
 	// one of `webhook_url` or `webhook_url_secret` must be defined.
 	// +optional
-	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
+	URLSecret *corev1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
 
 	// Message title template.
 	// +optional
@@ -1151,7 +1151,7 @@ type HTTPConfig struct {
 	// The secret's key that contains the bearer token
 	// It must be at them same namespace as CRD
 	// +optional
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearer_token_secret,omitempty" yaml:"bearer_token_secret,omitempty"`
+	BearerTokenSecret *corev1.SecretKeySelector `json:"bearer_token_secret,omitempty" yaml:"bearer_token_secret,omitempty"`
 	// BearerTokenFile defines filename for bearer token, it must be mounted to pod.
 	// +optional
 	BearerTokenFile string `json:"bearer_token_file,omitempty" yaml:"bearer_token_file,omitempty"`

@@ -42,7 +42,7 @@ func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Ser
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
-			Namespace:       cr.GetNSName(),
+			Namespace:       cr.GetNamespace(),
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),

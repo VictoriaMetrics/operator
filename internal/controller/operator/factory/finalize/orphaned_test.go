@@ -103,7 +103,7 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 				t.Errorf("RemoveOrphanedDeployments() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var existDep appsv1.DeploymentList
-			opts := client.ListOptions{Namespace: tt.args.cr.GetNSName(), LabelSelector: labels.SelectorFromSet(tt.args.cr.SelectorLabels())}
+			opts := client.ListOptions{Namespace: tt.args.cr.GetNamespace(), LabelSelector: labels.SelectorFromSet(tt.args.cr.SelectorLabels())}
 			if err := cl.List(tt.args.ctx, &existDep, &opts); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

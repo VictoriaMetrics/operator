@@ -211,7 +211,7 @@ type SyslogTCPListener struct {
 	// IgnoreFields to ignore at logs
 	// see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
 	// +optional
-	IgnoreFields FieldsListString `json:"ingoreFields,omitempty"`
+	IgnoreFields FieldsListString `json:"ignoreFields,omitempty"`
 	// DecolorizeFields to remove ANSI color codes across logs
 	// see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
 	// +optional
@@ -240,7 +240,7 @@ type SyslogUDPListener struct {
 	// IgnoreFields to ignore at logs
 	// see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
 	// +optional
-	IgnoreFields FieldsListString `json:"ingoreFields,omitempty"`
+	IgnoreFields FieldsListString `json:"ignoreFields,omitempty"`
 	// DecolorizeFields to remove ANSI color codes across logs
 	// see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
 	// +optional
@@ -256,7 +256,7 @@ type SyslogUDPListener struct {
 	CompressMethod string `json:"compressMethod,omitempty"`
 }
 
-// FieldsListString reprents list of json encoded strings
+// FieldsListString represents list of json encoded strings
 // ["field"] or ["field1","field2"]
 type FieldsListString string
 

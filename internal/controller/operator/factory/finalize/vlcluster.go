@@ -94,7 +94,7 @@ func OnVLSelectDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLClu
 		Name:      cr.GetVLSelectName(),
 	}
 	objsToRemove := []client.Object{
-		&appsv1.StatefulSet{ObjectMeta: objMeta},
+		&appsv1.Deployment{ObjectMeta: objMeta},
 		&corev1.Service{ObjectMeta: objMeta},
 	}
 	if obj.ServiceSpec != nil && !obj.ServiceSpec.UseAsDefault {

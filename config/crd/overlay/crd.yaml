@@ -772,7 +772,7 @@ spec:
                                 DecolorizeFields to remove ANSI color codes across logs
                                 see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
                               type: string
-                            ingoreFields:
+                            ignoreFields:
                               description: |-
                                 IgnoreFields to ignore at logs
                                 see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
@@ -880,7 +880,7 @@ spec:
                                 DecolorizeFields to remove ANSI color codes across logs
                                 see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
                               type: string
-                            ingoreFields:
+                            ignoreFields:
                               description: |-
                                 IgnoreFields to ignore at logs
                                 see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields

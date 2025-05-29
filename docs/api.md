@@ -68,7 +68,7 @@ Appears in: [SyslogServerSpec](#syslogserverspec)
 | --- | --- |
 | compressMethod<a href="#syslogtcplistener-compressmethod" id="syslogtcplistener-compressmethod">#</a><br/>_string_ | _(Optional)_<br/>CompressMethod for syslog messages<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression |
 | decolorizeFields<a href="#syslogtcplistener-decolorizefields" id="syslogtcplistener-decolorizefields">#</a><br/>_[FieldsListString](#fieldsliststring)_ | _(Optional)_<br/>DecolorizeFields to remove ANSI color codes across logs<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields |
-| ingoreFields<a href="#syslogtcplistener-ingorefields" id="syslogtcplistener-ingorefields">#</a><br/>_[FieldsListString](#fieldsliststring)_ | _(Optional)_<br/>IgnoreFields to ignore at logs<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields |
+| ignoreFields<a href="#syslogtcplistener-ignorefields" id="syslogtcplistener-ignorefields">#</a><br/>_[FieldsListString](#fieldsliststring)_ | _(Optional)_<br/>IgnoreFields to ignore at logs<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields |
 | listenPort<a href="#syslogtcplistener-listenport" id="syslogtcplistener-listenport">#</a><br/>_integer_ | _(Required)_<br/>ListenPort defines listen port |
 | streamFields<a href="#syslogtcplistener-streamfields" id="syslogtcplistener-streamfields">#</a><br/>_[FieldsListString](#fieldsliststring)_ | _(Optional)_<br/>StreamFields to use as log stream labels<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields |
 | tenantID<a href="#syslogtcplistener-tenantid" id="syslogtcplistener-tenantid">#</a><br/>_string_ | _(Optional)_<br/>TenantID for logs ingested in form of accountID:projectID<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multiple-configs |
@@ -87,7 +87,7 @@ Appears in: [SyslogServerSpec](#syslogserverspec)
 | --- | --- |
 | compressMethod<a href="#syslogudplistener-compressmethod" id="syslogudplistener-compressmethod">#</a><br/>_string_ | _(Optional)_<br/>CompressMethod for syslog messages<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression |
 | decolorizeFields<a href="#syslogudplistener-decolorizefields" id="syslogudplistener-decolorizefields">#</a><br/>_[FieldsListString](#fieldsliststring)_ | _(Optional)_<br/>DecolorizeFields to remove ANSI color codes across logs<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields |
-| ingoreFields<a href="#syslogudplistener-ingorefields" id="syslogudplistener-ingorefields">#</a><br/>_[FieldsListString](#fieldsliststring)_ | _(Optional)_<br/>IgnoreFields to ignore at logs<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields |
+| ignoreFields<a href="#syslogudplistener-ignorefields" id="syslogudplistener-ignorefields">#</a><br/>_[FieldsListString](#fieldsliststring)_ | _(Optional)_<br/>IgnoreFields to ignore at logs<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields |
 | listenPort<a href="#syslogudplistener-listenport" id="syslogudplistener-listenport">#</a><br/>_integer_ | _(Required)_<br/>ListenPort defines listen port |
 | streamFields<a href="#syslogudplistener-streamfields" id="syslogudplistener-streamfields">#</a><br/>_[FieldsListString](#fieldsliststring)_ | _(Optional)_<br/>StreamFields to use as log stream labels<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields |
 | tenantID<a href="#syslogudplistener-tenantid" id="syslogudplistener-tenantid">#</a><br/>_string_ | _(Optional)_<br/>TenantID for logs ingested in form of accountID:projectID<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multiple-configs |
@@ -1031,8 +1031,8 @@ Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage
 
 | Field | Description |
 | --- | --- |
-| maxUnavailable<a href="#embeddedpoddisruptionbudgetspec-maxunavailable" id="embeddedpoddisruptionbudgetspec-maxunavailable">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#intorstring-intstr-util)_ | _(Optional)_<br/>An eviction is allowed if at most "maxUnavailable" pods selected by<br />"selector" are unavailable after the eviction, i.e. even in absence of<br />the evicted pod. For example, one can prevent all voluntary evictions<br />by specifying 0. This is a mutually exclusive setting with "minAvailable". |
-| minAvailable<a href="#embeddedpoddisruptionbudgetspec-minavailable" id="embeddedpoddisruptionbudgetspec-minavailable">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#intorstring-intstr-util)_ | _(Optional)_<br/>An eviction is allowed if at least "minAvailable" pods selected by<br />"selector" will still be available after the eviction, i.e. even in the<br />absence of the evicted pod.  So for example you can prevent all voluntary<br />evictions by specifying "100%". |
+| maxUnavailable<a href="#embeddedpoddisruptionbudgetspec-maxunavailable" id="embeddedpoddisruptionbudgetspec-maxunavailable">#</a><br/>_[IntOrString](#intorstring)_ | _(Optional)_<br/>An eviction is allowed if at most "maxUnavailable" pods selected by<br />"selector" are unavailable after the eviction, i.e. even in absence of<br />the evicted pod. For example, one can prevent all voluntary evictions<br />by specifying 0. This is a mutually exclusive setting with "minAvailable". |
+| minAvailable<a href="#embeddedpoddisruptionbudgetspec-minavailable" id="embeddedpoddisruptionbudgetspec-minavailable">#</a><br/>_[IntOrString](#intorstring)_ | _(Optional)_<br/>An eviction is allowed if at least "minAvailable" pods selected by<br />"selector" will still be available after the eviction, i.e. even in the<br />absence of the evicted pod.  So for example you can prevent all voluntary<br />evictions by specifying "100%". |
 | selectorLabels<a href="#embeddedpoddisruptionbudgetspec-selectorlabels" id="embeddedpoddisruptionbudgetspec-selectorlabels">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>replaces default labels selector generated by operator<br />it's useful when you need to create custom budget |
 
 
@@ -1085,7 +1085,7 @@ Appears in: [VMServiceScrapeSpec](#vmservicescrapespec)
 | scrapeTimeout<a href="#endpoint-scrapetimeout" id="endpoint-scrapetimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout after which the scrape is ended |
 | scrape_interval<a href="#endpoint-scrape_interval" id="endpoint-scrape_interval">#</a><br/>_string_ | _(Optional)_<br/>ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used |
 | seriesLimit<a href="#endpoint-serieslimit" id="endpoint-serieslimit">#</a><br/>_integer_ | _(Optional)_<br/>SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. |
-| targetPort<a href="#endpoint-targetport" id="endpoint-targetport">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#intorstring-intstr-util)_ | _(Optional)_<br/>TargetPort<br />Name or number of the pod port this endpoint refers to. Mutually exclusive with port. |
+| targetPort<a href="#endpoint-targetport" id="endpoint-targetport">#</a><br/>_[IntOrString](#intorstring)_ | _(Optional)_<br/>TargetPort<br />Name or number of the pod port this endpoint refers to. Mutually exclusive with port. |
 | tlsConfig<a href="#endpoint-tlsconfig" id="endpoint-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
 | vm_scrape_params<a href="#endpoint-vm_scrape_params" id="endpoint-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
 
@@ -1336,7 +1336,7 @@ Appears in: [Receiver](#receiver)
 | Field | Description |
 | --- | --- |
 | api_url<a href="#jiraconfig-api_url" id="jiraconfig-api_url">#</a><br/>_string_ | _(Optional)_<br/>The URL to send API requests to. The full API path must be included.<br />Example: https://company.atlassian.net/rest/api/2/ |
-| custom_fields<a href="#jiraconfig-custom_fields" id="jiraconfig-custom_fields">#</a><br/>_object (keys:string, values:[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io))_ | _(Optional)_<br/>Other issue and custom fields.<br />Jira issue field can have multiple types.<br />Depends on the field type, the values must be provided differently.<br />See https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#setting-custom-field-data-for-other-field-types for further examples. |
+| custom_fields<a href="#jiraconfig-custom_fields" id="jiraconfig-custom_fields">#</a><br/>_object (keys:string, values:JSON)_ | _(Optional)_<br/>Other issue and custom fields.<br />Jira issue field can have multiple types.<br />Depends on the field type, the values must be provided differently.<br />See https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#setting-custom-field-data-for-other-field-types for further examples. |
 | description<a href="#jiraconfig-description" id="jiraconfig-description">#</a><br/>_string_ | _(Optional)_<br/>Issue description template. |
 | http_config<a href="#jiraconfig-http_config" id="jiraconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>The HTTP client's configuration. You must use this configuration to supply the personal access token (PAT) as part of the HTTP `Authorization` header.<br />For Jira Cloud, use basic_auth with the email address as the username and the PAT as the password.<br />For Jira Data Center, use the 'authorization' field with 'credentials: <PAT value>'. |
 | issue_type<a href="#jiraconfig-issue_type" id="jiraconfig-issue_type">#</a><br/>_string_ | _(Required)_<br/>Type of the issue (e.g. Bug) |
@@ -1667,7 +1667,7 @@ Appears in: [VMPodScrapeSpec](#vmpodscrapespec)
 | scrapeTimeout<a href="#podmetricsendpoint-scrapetimeout" id="podmetricsendpoint-scrapetimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout after which the scrape is ended |
 | scrape_interval<a href="#podmetricsendpoint-scrape_interval" id="podmetricsendpoint-scrape_interval">#</a><br/>_string_ | _(Optional)_<br/>ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used |
 | seriesLimit<a href="#podmetricsendpoint-serieslimit" id="podmetricsendpoint-serieslimit">#</a><br/>_integer_ | _(Optional)_<br/>SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. |
-| targetPort<a href="#podmetricsendpoint-targetport" id="podmetricsendpoint-targetport">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#intorstring-intstr-util)_ | _(Optional)_<br/>TargetPort defines name or number of the pod port this endpoint refers to.<br />Mutually exclusive with Port and PortNumber. |
+| targetPort<a href="#podmetricsendpoint-targetport" id="podmetricsendpoint-targetport">#</a><br/>_[IntOrString](#intorstring)_ | _(Optional)_<br/>TargetPort defines name or number of the pod port this endpoint refers to.<br />Mutually exclusive with Port and PortNumber. |
 | tlsConfig<a href="#podmetricsendpoint-tlsconfig" id="podmetricsendpoint-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
 | vm_scrape_params<a href="#podmetricsendpoint-vm_scrape_params" id="podmetricsendpoint-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
 
@@ -1772,7 +1772,7 @@ Appears in: [Endpoint](#endpoint), [EndpointRelabelings](#endpointrelabelings), 
 | Field | Description |
 | --- | --- |
 | action<a href="#relabelconfig-action" id="relabelconfig-action">#</a><br/>_string_ | _(Optional)_<br/>Action to perform based on regex matching. Default is 'replace' |
-| if<a href="#relabelconfig-if" id="relabelconfig-if">#</a><br/>_[StringOrArray](#stringorarray)_ | _(Optional)_<br/>If represents metricsQL match expression (or list of expressions): '\{__name__=~"foo_.*"\}' |
+| if<a href="#relabelconfig-if" id="relabelconfig-if">#</a><br/>_[StringOrArray](#stringorarray)_ | _(Optional)_<br/>If represents metricsQL match expression (or list of expressions): '{__name__=~"foo_.*"}' |
 | labels<a href="#relabelconfig-labels" id="relabelconfig-labels">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Labels is used together with Match for `action: graphite` |
 | match<a href="#relabelconfig-match" id="relabelconfig-match">#</a><br/>_string_ | _(Optional)_<br/>Match is used together with Labels for `action: graphite` |
 | modulus<a href="#relabelconfig-modulus" id="relabelconfig-modulus">#</a><br/>_integer_ | _(Optional)_<br/>Modulus to take of the hash of the source label values. |
@@ -1870,7 +1870,7 @@ Appears in: [SubRoute](#subroute), [VMAlertmanagerConfigSpec](#vmalertmanagercon
 | mute_time_intervals<a href="#route-mute_time_intervals" id="route-mute_time_intervals">#</a><br/>_string array_ | _(Optional)_<br/>MuteTimeIntervals is a list of interval names that will mute matched alert |
 | receiver<a href="#route-receiver" id="route-receiver">#</a><br/>_string_ | _(Required)_<br/>Name of the receiver for this route. |
 | repeat_interval<a href="#route-repeat_interval" id="route-repeat_interval">#</a><br/>_string_ | _(Optional)_<br/>How long to wait before repeating the last notification. |
-| routes<a href="#route-routes" id="route-routes">#</a><br/>_[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io) array_ | _(Required)_<br/>Child routes.<br />https://prometheus.io/docs/alerting/latest/configuration/#route |
+| routes<a href="#route-routes" id="route-routes">#</a><br/>_JSON array_ | _(Required)_<br/>Child routes.<br />https://prometheus.io/docs/alerting/latest/configuration/#route |
 
 
 #### Rule

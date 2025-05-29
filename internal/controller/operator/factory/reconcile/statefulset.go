@@ -310,7 +310,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 
 // PodIsReady check is pod is ready
 func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
-	if pod.ObjectMeta.DeletionTimestamp != nil {
+	if pod.DeletionTimestamp != nil {
 		return false
 	}
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -41,7 +41,7 @@ type VMSingleSpec struct {
 	// by default it`s empty dir
 	// this option is ignored if storageDataPath is set
 	// +optional
-	Storage *v1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
+	Storage *corev1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
 
 	// StorageMeta defines annotations and labels attached to PVC for given vmsingle CR
 	// +optional

@@ -250,8 +250,8 @@ func shouldRecreateSTSOnStorageChange(ctx context.Context, actualPVC, newPVC *co
 	}
 
 	// compare meta and spec for pvc
-	if !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Labels, actualPVC.ObjectMeta.Labels) ||
-		!equality.Semantic.DeepEqual(newPVC.ObjectMeta.Annotations, actualPVC.ObjectMeta.Annotations) ||
+	if !equality.Semantic.DeepEqual(newPVC.Labels, actualPVC.Labels) ||
+		!equality.Semantic.DeepEqual(newPVC.Annotations, actualPVC.Annotations) ||
 		!equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
 		metaD := diffDeep(actualPVC.ObjectMeta, newPVC.ObjectMeta)
 		specD := diffDeep(actualPVC.Spec, newPVC.Spec)

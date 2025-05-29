@@ -78,7 +78,7 @@ func (cb *TLSConfigBuilder) fetchSecretWithAssets(ss *corev1.SecretKeySelector, 
 		if v, ok := cb.SecretCache[ss.Name]; ok {
 			s = *v
 		} else {
-			if err := cb.Client.Get(cb.Ctx, types.NamespacedName{Namespace: cb.CurrentCRNamespace, Name: ss.Name}, &s); err != nil {
+			if err := cb.Get(cb.Ctx, types.NamespacedName{Namespace: cb.CurrentCRNamespace, Name: ss.Name}, &s); err != nil {
 				return fmt.Errorf("cannot fetch secret=%q for tlsAsset, err=%w", ss.Name, err)
 			}
 			cb.SecretCache[ss.Name] = &s
@@ -90,7 +90,7 @@ func (cb *TLSConfigBuilder) fetchSecretWithAssets(ss *corev1.SecretKeySelector, 
 		if v, ok := cb.ConfigmapCache[cs.Name]; ok {
 			c = *v
 		} else {
-			if err := cb.Client.Get(cb.Ctx, types.NamespacedName{Namespace: cb.CurrentCRNamespace, Name: cs.Name}, &c); err != nil {
+			if err := cb.Get(cb.Ctx, types.NamespacedName{Namespace: cb.CurrentCRNamespace, Name: cs.Name}, &c); err != nil {
 				return fmt.Errorf("cannot fetch configmap=%q for tlsAssert, err=%w", cs.Name, err)
 			}
 		}

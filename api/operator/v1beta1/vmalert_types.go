@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -84,7 +84,7 @@ type VMAlertSpec struct {
 	// NotifierConfigRef reference for secret with notifier configuration for vmalert
 	// only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
 	// +optional
-	NotifierConfigRef *v1.SecretKeySelector `json:"notifierConfigRef,omitempty"`
+	NotifierConfigRef *corev1.SecretKeySelector `json:"notifierConfigRef,omitempty"`
 
 	// RemoteWrite Optional URL to remote-write compatible storage to persist
 	// vmalert state and rule results to.

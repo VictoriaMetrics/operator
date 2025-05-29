@@ -434,7 +434,7 @@ var _ = Describe("test vmauth Controller", func() {
 					testStep{
 						modify: func(cr *v1beta1vm.VMAuth) {
 							cr.Spec.ConfigSecret = ""
-							cr.Spec.ExternalConfig.SecretRef = &corev1.SecretKeySelector{
+							cr.Spec.SecretRef = &corev1.SecretKeySelector{
 								Key: "config.yaml",
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "auth-ext-config",
@@ -491,7 +491,7 @@ var _ = Describe("test vmauth Controller", func() {
 							})
 						},
 						modify: func(cr *v1beta1vm.VMAuth) {
-							cr.Spec.ExternalConfig.LocalPath = "/etc/local-config/vmauth.yaml"
+							cr.Spec.LocalPath = "/etc/local-config/vmauth.yaml"
 							cr.Spec.Volumes = append(cr.Spec.Volumes, corev1.Volume{
 								Name: "local-cfg",
 								VolumeSource: corev1.VolumeSource{

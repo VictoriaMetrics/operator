@@ -470,7 +470,7 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 
 		// expect 1 UpdateCalls
 		reloadSts()
-		sts.Spec.Template.ObjectMeta.Annotations = map[string]string{"new-annotation": "value"}
+		sts.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
 
 		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 1 update")
 
@@ -485,8 +485,8 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
 
 		// expected 2 updates
-		prevSts.Spec.Template.ObjectMeta.Annotations = sts.Spec.Template.ObjectMeta.Annotations
-		sts.Spec.Template.ObjectMeta.Annotations = nil
+		prevSts.Spec.Template.Annotations = sts.Spec.Template.Annotations
+		sts.Spec.Template.Annotations = nil
 
 		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 2 updates")
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())

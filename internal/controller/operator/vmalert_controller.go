@@ -21,7 +21,7 @@ import (
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -115,7 +115,7 @@ func (r *VMAlertReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vmv1beta1.VMAlert{}).
 		Owns(&appsv1.Deployment{}).
-		Owns(&v1.ServiceAccount{}).
+		Owns(&corev1.ServiceAccount{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

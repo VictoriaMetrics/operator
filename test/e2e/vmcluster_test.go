@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -32,7 +31,7 @@ var _ = Describe("e2e vmcluster", func() {
 			ctx = context.Background()
 		})
 		AfterEach(func() {
-			Expect(k8sClient.Delete(ctx, &v1beta1vm.VMCluster{
+			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      namespacedName.Name,
@@ -42,7 +41,7 @@ var _ = Describe("e2e vmcluster", func() {
 				err := k8sClient.Get(ctx, types.NamespacedName{
 					Name:      namespacedName.Name,
 					Namespace: namespace,
-				}, &v1beta1vm.VMCluster{})
+				}, &vmv1beta1.VMCluster{})
 				if errors.IsNotFound(err) {
 					return nil
 				}
@@ -50,47 +49,47 @@ var _ = Describe("e2e vmcluster", func() {
 			}, eventualDeletionTimeout, 1).WithContext(ctx).Should(Succeed())
 		})
 
-		DescribeTable("should create vmcluster", func(name string, cr *v1beta1vm.VMCluster, verify func(cr *v1beta1vm.VMCluster)) {
+		DescribeTable("should create vmcluster", func(name string, cr *vmv1beta1.VMCluster, verify func(cr *vmv1beta1.VMCluster)) {
 			namespacedName.Name = name
 			cr.Name = name
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMCluster{}, namespacedName)
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 			if verify != nil {
-				var createdCluster v1beta1vm.VMCluster
+				var createdCluster vmv1beta1.VMCluster
 				Expect(k8sClient.Get(ctx, namespacedName, &createdCluster)).To(Succeed())
 				verify(&createdCluster)
 			}
 
 		},
-			Entry("without any components", "empty", &v1beta1vm.VMCluster{
+			Entry("without any components", "empty", &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      namespacedName.Name,
 				},
-				Spec: v1beta1vm.VMClusterSpec{RetentionPeriod: "1"},
+				Spec: vmv1beta1.VMClusterSpec{RetentionPeriod: "1"},
 			}, nil,
 			),
 			Entry("with all components", "all-services",
-				&v1beta1vm.VMCluster{
+				&vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
 						Name:      namespacedName.Name,
 					},
-					Spec: v1beta1vm.VMClusterSpec{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
@@ -98,40 +97,40 @@ var _ = Describe("e2e vmcluster", func() {
 				},
 				nil,
 			),
-			Entry("with vmstorage and vmselect", "with-select", &v1beta1vm.VMCluster{
+			Entry("with vmstorage and vmselect", "with-select", &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      namespacedName.Name,
 				},
-				Spec: v1beta1vm.VMClusterSpec{
+				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
-					VMStorage: &v1beta1vm.VMStorage{
-						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
-					VMSelect: &v1beta1vm.VMSelect{
-						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
 				},
 			}, nil,
 			),
-			Entry("with vmstorage and vminsert", "with-insert", &v1beta1vm.VMCluster{
+			Entry("with vmstorage and vminsert", "with-insert", &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      namespacedName.Name,
 				},
-				Spec: v1beta1vm.VMClusterSpec{
+				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
-					VMStorage: &v1beta1vm.VMStorage{
-						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
-					VMInsert: &v1beta1vm.VMInsert{
-						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
@@ -139,44 +138,44 @@ var _ = Describe("e2e vmcluster", func() {
 			},
 				nil),
 			Entry("with security enable and without default resources", "all-secure",
-				&v1beta1vm.VMCluster{
+				&vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
 						Name:      namespacedName.Name,
 					},
-					Spec: v1beta1vm.VMClusterSpec{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
 							},
 
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 					},
 				},
-				func(cr *v1beta1vm.VMCluster) {
+				func(cr *vmv1beta1.VMCluster) {
 					clusterNsnObjects := map[types.NamespacedName]client.Object{
 						{Namespace: cr.Namespace, Name: cr.GetVMInsertName()}:  &appsv1.Deployment{},
 						{Namespace: cr.Namespace, Name: cr.GetVMStorageName()}: &appsv1.StatefulSet{},
@@ -197,63 +196,63 @@ var _ = Describe("e2e vmcluster", func() {
 				},
 			),
 			Entry("with external security enable and UseStrictSecurity:false", "all-secure-external",
-				&v1beta1vm.VMCluster{
+				&vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
 						Name:      namespacedName.Name,
 					},
-					Spec: v1beta1vm.VMClusterSpec{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
-								SecurityContext: &v1beta1vm.SecurityContext{
+								SecurityContext: &vmv1beta1.SecurityContext{
 									PodSecurityContext: &corev1.PodSecurityContext{
 										RunAsNonRoot: ptr.To(true),
 										RunAsUser:    ptr.To(int64(65534)),
 										RunAsGroup:   ptr.To(int64(65534)),
 									},
-									ContainerSecurityContext: &v1beta1vm.ContainerSecurityContext{
+									ContainerSecurityContext: &vmv1beta1.ContainerSecurityContext{
 										Privileged: ptr.To(false),
 									},
 								},
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
 
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
-								SecurityContext: &v1beta1vm.SecurityContext{
+								SecurityContext: &vmv1beta1.SecurityContext{
 									PodSecurityContext: &corev1.PodSecurityContext{
 										RunAsNonRoot: ptr.To(true),
 										RunAsUser:    ptr.To(int64(65534)),
 										RunAsGroup:   ptr.To(int64(65534)),
 									},
-									ContainerSecurityContext: &v1beta1vm.ContainerSecurityContext{
+									ContainerSecurityContext: &vmv1beta1.ContainerSecurityContext{
 										Privileged: ptr.To(false),
 									},
 								},
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
-								SecurityContext: &v1beta1vm.SecurityContext{
+								SecurityContext: &vmv1beta1.SecurityContext{
 									PodSecurityContext: &corev1.PodSecurityContext{
 										RunAsNonRoot: ptr.To(true),
 										RunAsUser:    ptr.To(int64(65534)),
 										RunAsGroup:   ptr.To(int64(65534)),
 									},
-									ContainerSecurityContext: &v1beta1vm.ContainerSecurityContext{
+									ContainerSecurityContext: &vmv1beta1.ContainerSecurityContext{
 										Privileged: ptr.To(false),
 									},
 								},
@@ -261,7 +260,7 @@ var _ = Describe("e2e vmcluster", func() {
 						},
 					},
 				},
-				func(cr *v1beta1vm.VMCluster) {
+				func(cr *vmv1beta1.VMCluster) {
 					clusterNsnObjects := map[types.NamespacedName]client.Object{
 						{Namespace: cr.Namespace, Name: cr.GetVMInsertName()}:  &appsv1.Deployment{},
 						{Namespace: cr.Namespace, Name: cr.GetVMStorageName()}: &appsv1.StatefulSet{},
@@ -285,7 +284,7 @@ var _ = Describe("e2e vmcluster", func() {
 	})
 	Context("update", func() {
 		AfterEach(func() {
-			Expect(k8sClient.Delete(ctx, &v1beta1vm.VMCluster{
+			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      namespacedName.Name,
@@ -295,19 +294,19 @@ var _ = Describe("e2e vmcluster", func() {
 				return k8sClient.Get(context.Background(), types.NamespacedName{
 					Name:      namespacedName.Name,
 					Namespace: namespace,
-				}, &v1beta1vm.VMCluster{})
+				}, &vmv1beta1.VMCluster{})
 
 			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(errors.IsNotFound, "want not found error"))
 		})
 
 		type testStep struct {
-			setup  func(*v1beta1vm.VMCluster)
-			modify func(*v1beta1vm.VMCluster)
-			verify func(*v1beta1vm.VMCluster)
+			setup  func(*vmv1beta1.VMCluster)
+			modify func(*vmv1beta1.VMCluster)
+			verify func(*vmv1beta1.VMCluster)
 		}
 
 		DescribeTable("should update exist cluster",
-			func(name string, initCR *v1beta1vm.VMCluster, steps ...testStep) {
+			func(name string, initCR *vmv1beta1.VMCluster, steps ...testStep) {
 				namespacedName.Name = name
 				initCR.Namespace = namespace
 				initCR.Name = name
@@ -322,7 +321,7 @@ var _ = Describe("e2e vmcluster", func() {
 					}
 					// update and wait ready
 					Eventually(func() error {
-						var toUpdate v1beta1.VMCluster
+						var toUpdate vmv1beta1.VMCluster
 						if err := k8sClient.Get(ctx, namespacedName, &toUpdate); err != nil {
 							return err
 						}
@@ -335,64 +334,64 @@ var _ = Describe("e2e vmcluster", func() {
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, initCR, namespacedName)
 					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
-					var updated v1beta1vm.VMCluster
+					var updated vmv1beta1.VMCluster
 					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 					step.verify(&updated)
 				}
 			},
 			Entry("by scaling select and storage replicas to 2", "storage-select-r-2",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMStorage.ReplicaCount = ptr.To[int32](2)
 						cr.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						Expect(expectPodCount(k8sClient, 2, namespace, cr.VMStorageSelectorLabels())).To(BeEmpty())
 						Expect(expectPodCount(k8sClient, 2, namespace, cr.VMSelectSelectorLabels())).To(BeEmpty())
 					},
 				},
 			),
 			Entry("by adding vmbackupmanager to vmstorage ", "with-backup",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMStorage.InitContainers = []corev1.Container{
 							{
 								Name:  "create-dir",
@@ -421,7 +420,7 @@ var _ = Describe("e2e vmcluster", func() {
 						cr.Spec.VMStorage.Volumes = []corev1.Volume{
 							{Name: "backup", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 						}
-						cr.Spec.VMStorage.VMBackup = &v1beta1.VMBackup{
+						cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
 							AcceptEULA:  true,
 							Destination: "fs:///opt/backup-dir",
 							VolumeMounts: []corev1.VolumeMount{
@@ -430,7 +429,7 @@ var _ = Describe("e2e vmcluster", func() {
 						}
 
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						nss := types.NamespacedName{
 							Namespace: namespace,
 							Name:      cr.GetVMStorageName(),
@@ -438,39 +437,39 @@ var _ = Describe("e2e vmcluster", func() {
 						var svc corev1.Service
 						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
 						Expect(svc.Spec.Ports).To(HaveLen(4))
-						var vss v1beta1.VMServiceScrape
+						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(vss.Spec.Endpoints).To(HaveLen(2))
 					},
 				},
 			),
 			Entry("by scaling storage and insert replicas to 2", "storage-insert-r-2",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMStorage.ReplicaCount = ptr.To[int32](2)
 						cr.Spec.VMInsert.ReplicaCount = ptr.To[int32](2)
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						Expect(expectPodCount(k8sClient, 2, namespace, cr.VMStorageSelectorLabels())).To(BeEmpty())
 						Eventually(func() string {
 							return expectPodCount(k8sClient, 2, namespace, cr.VMInsertSelectorLabels())
@@ -479,62 +478,62 @@ var _ = Describe("e2e vmcluster", func() {
 				},
 			),
 			Entry("by changing storage revisionHistoryLimit to 2", "storage-revision-2",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMStorage.RevisionHistoryLimitCount = ptr.To[int32](2)
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
-						var updatedCluster v1beta1vm.VMCluster
+					verify: func(cr *vmv1beta1.VMCluster) {
+						var updatedCluster vmv1beta1.VMCluster
 						Expect(k8sClient.Get(ctx, namespacedName, &updatedCluster)).To(Succeed())
 						Expect(*updatedCluster.Spec.VMStorage.RevisionHistoryLimitCount).To(Equal(int32(2)))
 					},
 				},
 			),
 			Entry("by adding clusterNative ports", "storage-native-r-2",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMInsert.ClusterNativePort = "8035"
 						cr.Spec.VMSelect.ClusterNativePort = "8036"
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						var updatedSvc corev1.Service
 						Expect(k8sClient.Get(ctx,
 							types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name},
@@ -552,35 +551,35 @@ var _ = Describe("e2e vmcluster", func() {
 				},
 			),
 			Entry("by deleting select component", "select-delete",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					setup: func(cr *v1beta1vm.VMCluster) {
+					setup: func(cr *vmv1beta1.VMCluster) {
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &appsv1.StatefulSet{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &corev1.Service{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &v1beta1vm.VMServiceScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &vmv1beta1.VMServiceScrape{})).To(Succeed())
 					},
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMSelect = nil
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						Eventually(func() error {
 							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &appsv1.StatefulSet{})
 						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
@@ -588,66 +587,66 @@ var _ = Describe("e2e vmcluster", func() {
 							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &corev1.Service{})
 						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
 						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &v1beta1vm.VMServiceScrape{})
+							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &vmv1beta1.VMServiceScrape{})
 						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
 
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
-						cr.Spec.VMSelect = &v1beta1vm.VMSelect{
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+					modify: func(cr *vmv1beta1.VMCluster) {
+						cr.Spec.VMSelect = &vmv1beta1.VMSelect{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						}
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &appsv1.StatefulSet{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &corev1.Service{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &v1beta1vm.VMServiceScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &vmv1beta1.VMServiceScrape{})).To(Succeed())
 					},
 				},
 			),
 			Entry("by deleting storage and insert components", "storage-insert-delete",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					setup: func(cr *v1beta1vm.VMCluster) {
+					setup: func(cr *vmv1beta1.VMCluster) {
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &appsv1.StatefulSet{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &corev1.Service{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &v1beta1vm.VMServiceScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &vmv1beta1.VMServiceScrape{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &appsv1.Deployment{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &corev1.Service{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &v1beta1vm.VMServiceScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &vmv1beta1.VMServiceScrape{})).To(Succeed())
 					},
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMStorage = nil
 						cr.Spec.VMInsert = nil
 						cr.Spec.VMSelect.ExtraArgs = map[string]string{
 							"storageNode": "http://non-exist-vmstorage:8402",
 						}
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						Eventually(func() error {
 							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &appsv1.StatefulSet{})
 						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
@@ -655,7 +654,7 @@ var _ = Describe("e2e vmcluster", func() {
 							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &corev1.Service{})
 						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
 						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &v1beta1vm.VMServiceScrape{})
+							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &vmv1beta1.VMServiceScrape{})
 						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
 						Eventually(func() error {
 							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &appsv1.Deployment{})
@@ -664,44 +663,44 @@ var _ = Describe("e2e vmcluster", func() {
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
-						cr.Spec.VMStorage = &v1beta1vm.VMStorage{
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+					modify: func(cr *vmv1beta1.VMCluster) {
+						cr.Spec.VMStorage = &vmv1beta1.VMStorage{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						}
-						cr.Spec.VMInsert = &v1beta1vm.VMInsert{
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+						cr.Spec.VMInsert = &vmv1beta1.VMInsert{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						}
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &appsv1.StatefulSet{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &corev1.Service{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &v1beta1vm.VMServiceScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &vmv1beta1.VMServiceScrape{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &appsv1.Deployment{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &corev1.Service{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &v1beta1vm.VMServiceScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &vmv1beta1.VMServiceScrape{})).To(Succeed())
 					},
 				},
 			),
 			Entry("by deleting deleting and renaming additional services", "select-additional-svc",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							ServiceSpec: &v1beta1vm.AdditionalServiceSpec{
-								EmbeddedObjectMetadata: v1beta1vm.EmbeddedObjectMetadata{
+							ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+								EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
 									Name: "my-service-name",
 								},
 								Spec: corev1.ServiceSpec{
@@ -716,11 +715,11 @@ var _ = Describe("e2e vmcluster", func() {
 								},
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							ServiceSpec: &v1beta1vm.AdditionalServiceSpec{
+							ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 								Spec: corev1.ServiceSpec{
 									Type: corev1.ServiceTypeClusterIP,
 									Ports: []corev1.ServicePort{
@@ -736,15 +735,15 @@ var _ = Describe("e2e vmcluster", func() {
 					},
 				},
 				testStep{
-					setup: func(cr *v1beta1vm.VMCluster) {
+					setup: func(cr *vmv1beta1.VMCluster) {
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name + "-additional-service"}, &corev1.Service{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "my-service-name"}, &corev1.Service{})).To(Succeed())
 					},
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMSelect.ServiceSpec = nil
 						cr.Spec.VMStorage.ServiceSpec.Name = ""
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						Eventually(func() error {
 							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name + "-additional-service"}, &corev1.Service{})
 						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
@@ -753,10 +752,10 @@ var _ = Describe("e2e vmcluster", func() {
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMStorage.ServiceSpec.UseAsDefault = true
-						cr.Spec.VMSelect.ServiceSpec = &v1beta1vm.AdditionalServiceSpec{
-							EmbeddedObjectMetadata: v1beta1vm.EmbeddedObjectMetadata{
+						cr.Spec.VMSelect.ServiceSpec = &vmv1beta1.AdditionalServiceSpec{
+							EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
 								Name: "my-service-name-v2",
 							},
 							Spec: corev1.ServiceSpec{
@@ -771,7 +770,7 @@ var _ = Describe("e2e vmcluster", func() {
 							},
 						}
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						Eventually(func() error {
 							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name + "-additional-service"}, &corev1.Service{})
 						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
@@ -783,28 +782,28 @@ var _ = Describe("e2e vmcluster", func() {
 				},
 			),
 			Entry("by adding imagePullSecret", "storage-image-pull-secret",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod:  "1",
 						ImagePullSecrets: nil,
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					setup: func(v *v1beta1vm.VMCluster) {
+					setup: func(v *vmv1beta1.VMCluster) {
 						pullSecret := corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{Name: "test-pull-secret", Namespace: namespace},
 							Data: map[string][]byte{
@@ -814,12 +813,12 @@ var _ = Describe("e2e vmcluster", func() {
 						}
 						Expect(k8sClient.Create(ctx, &pullSecret)).To(Succeed())
 					},
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
 							{Name: "test-pull-secret"},
 						}
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						var sts appsv1.StatefulSet
 						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMStorageName()}
 						Expect(k8sClient.Get(ctx, nss, &sts)).To(Succeed())
@@ -831,30 +830,30 @@ var _ = Describe("e2e vmcluster", func() {
 				},
 			),
 			Entry("by switching to vmauth loadbalancer", "with-load-balancing",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						RequestsLoadBalancer: v1beta1vm.VMAuthLoadBalancer{
+						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
 							Enabled: false,
 						},
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					setup: func(cr *v1beta1vm.VMCluster) {
+					setup: func(cr *vmv1beta1.VMCluster) {
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.GetVMInsertName(), namespace),
 							payload: `up{bar="baz"} 123
@@ -866,10 +865,10 @@ up{baz="bar"} 123
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.GetVMSelectName(), namespace),
 						})
 					},
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.RequestsLoadBalancer.Enabled = true
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						By("switching enabling loadbalanacer")
 						var lbDep appsv1.Deployment
 						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
@@ -880,7 +879,7 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
-						var vss v1beta1vm.VMServiceScrape
+						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
@@ -899,10 +898,10 @@ up{baz="bar"} 123
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.RequestsLoadBalancer.Enabled = false
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						By("disabling loadbalancer")
 						var lbDep appsv1.Deployment
 						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
@@ -915,7 +914,7 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(MatchError(errors.IsNotFound, "IsNotFound"))
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
-						var vss v1beta1vm.VMServiceScrape
+						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(MatchError(errors.IsNotFound, "IsNotFound"))
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)).To(Succeed())
@@ -935,34 +934,34 @@ up{baz="bar"} 123
 				},
 			),
 			Entry("by switching partially to vmauth loadbalanacer", "with-partial-load-balancing",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						RequestsLoadBalancer: v1beta1vm.VMAuthLoadBalancer{
+						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
 							Enabled: false,
 						},
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.RequestsLoadBalancer.Enabled = true
 						cr.Spec.RequestsLoadBalancer.DisableInsertBalancing = true
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.GetVMInsertName(), namespace),
 							payload: `up{bar="baz"} 123
@@ -982,7 +981,7 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
-						var vss v1beta1vm.VMServiceScrape
+						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(MatchError(errors.IsNotFound, "IsNotFound"))
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
@@ -992,12 +991,12 @@ up{baz="bar"} 123
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.RequestsLoadBalancer.Enabled = true
 						cr.Spec.RequestsLoadBalancer.DisableInsertBalancing = false
 						cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = ptr.To[int32](2)
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						var lbDep appsv1.Deployment
 						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
 						Expect(k8sClient.Get(ctx, nss, &lbDep)).To(Succeed())
@@ -1008,7 +1007,7 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
-						var vss v1beta1vm.VMServiceScrape
+						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
@@ -1027,13 +1026,13 @@ up{baz="bar"} 123
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.RequestsLoadBalancer.Enabled = true
 						cr.Spec.RequestsLoadBalancer.DisableInsertBalancing = false
 						cr.Spec.RequestsLoadBalancer.DisableSelectBalancing = true
 						cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = ptr.To[int32](2)
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						By("disabling select loadbalancing")
 						var lbDep appsv1.Deployment
 						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
@@ -1045,7 +1044,7 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(MatchError(errors.IsNotFound, "IsNotFound"))
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
-						var vss v1beta1vm.VMServiceScrape
+						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(MatchError(errors.IsNotFound, "IsNotFound"))
@@ -1065,48 +1064,48 @@ up{baz="bar"} 123
 				},
 			),
 			Entry("by running with load-balancer and modify vmauth", "with-load-balancing-modify-auth",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
-						RequestsLoadBalancer: v1beta1vm.VMAuthLoadBalancer{
+						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
 							Enabled: true,
-							Spec: v1beta1vm.VMAuthLoadBalancerSpec{
-								CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+							Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+								CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 									Port: "8431",
 								},
 							},
 						},
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](2),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = ptr.To[int32](2)
 						cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity = ptr.To(true)
-						cr.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec = &v1beta1vm.AdditionalServiceSpec{
+						cr.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec = &vmv1beta1.AdditionalServiceSpec{
 							Spec: corev1.ServiceSpec{
 								Type:      corev1.ServiceTypeClusterIP,
 								ClusterIP: corev1.ClusterIPNone,
 							},
 						}
-						cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget = &v1beta1vm.EmbeddedPodDisruptionBudgetSpec{
+						cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget = &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 							MaxUnavailable: ptr.To(intstr.Parse("1")),
 						}
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.GetVMInsertName(), namespace),
 							payload: `up{bar="baz"} 123
@@ -1130,7 +1129,7 @@ up{baz="bar"} 123
 						Expect(svc.Spec.ClusterIP).To(Equal(corev1.ClusterIPNone))
 						Expect(svc.Spec.Ports).To(HaveLen(1))
 						Expect(svc.Spec.Ports[0].TargetPort).To(Equal(intstr.Parse("8431")))
-						var vss v1beta1vm.VMServiceScrape
+						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
@@ -1141,14 +1140,14 @@ up{baz="bar"} 123
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
+					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = ptr.To[int32](1)
 						cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity = ptr.To(false)
 						cr.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec = nil
 						cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget = nil
 						cr.Spec.RequestsLoadBalancer.Spec.Port = ""
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.GetVMInsertName(), namespace),
 							payload: `up{bar="baz"} 123
@@ -1175,35 +1174,35 @@ up{baz="bar"} 123
 				},
 			),
 			Entry("by changing annotations for created objects", "manage-annotations",
-				&v1beta1vm.VMCluster{
-					Spec: v1beta1vm.VMClusterSpec{
-						RequestsLoadBalancer: v1beta1vm.VMAuthLoadBalancer{Enabled: true},
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
+						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{Enabled: true},
 						RetentionPeriod:      "1",
-						VMStorage: &v1beta1vm.VMStorage{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMSelect: &v1beta1vm.VMSelect{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
-						cr.Spec.ManagedMetadata = &v1beta1vm.ManagedObjectsMetadata{
+					modify: func(cr *vmv1beta1.VMCluster) {
+						cr.Spec.ManagedMetadata = &vmv1beta1.ManagedObjectsMetadata{
 							// attempt to change selector label should fail
 							Labels:      map[string]string{"label-1": "value-1", "label-2": "value-2", "managed-by": "wrong-value"},
 							Annotations: map[string]string{"annotation-1": "value-a-1", "annotation-2": "value-a-2"},
 						}
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						expectedAnnotations := map[string]string{"annotation-1": "value-a-1", "annotation-2": "value-a-2"}
 						expectedLabels := map[string]string{"label-1": "value-1", "label-2": "value-2", "managed-by": "vm-operator"}
 						selectN, insertN, storageN, lbName, saName := cr.GetVMSelectName(), cr.GetVMInsertName(), cr.GetVMStorageName(), cr.GetVMAuthLBName(), cr.PrefixedName()
@@ -1223,12 +1222,12 @@ up{baz="bar"} 123
 					},
 				},
 				testStep{
-					modify: func(cr *v1beta1vm.VMCluster) {
-						cr.Spec.ManagedMetadata = &v1beta1vm.ManagedObjectsMetadata{
+					modify: func(cr *vmv1beta1.VMCluster) {
+						cr.Spec.ManagedMetadata = &vmv1beta1.ManagedObjectsMetadata{
 							Annotations: map[string]string{"annotation-1": "value-a-1"},
 						}
 					},
-					verify: func(cr *v1beta1vm.VMCluster) {
+					verify: func(cr *vmv1beta1.VMCluster) {
 						expectedAnnotations := map[string]string{"annotation-1": "value-a-1", "annotation-2": ""}
 						expectedLabels := map[string]string{"label-1": "", "label-2": "", "managed-by": "vm-operator"}
 						selectN, insertN, storageN, lbName, saName := cr.GetVMSelectName(), cr.GetVMInsertName(), cr.GetVMStorageName(), cr.GetVMAuthLBName(), cr.PrefixedName()

@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -126,7 +126,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 func (r *VMUserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vmv1beta1.VMUser{}).
-		Owns(&v1.Secret{}, builder.OnlyMetadata).
+		Owns(&corev1.Secret{}, builder.OnlyMetadata).
 		WithEventFilter(predicate.TypedGenerationChangedPredicate[client.Object]{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)

@@ -14,7 +14,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -225,7 +225,7 @@ type StorageSpec struct {
 	// EmptyDirVolumeSource to be used by the Prometheus StatefulSets. If specified, used in place of any volumeClaimTemplate. More
 	// info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
 	// +optional
-	EmptyDir *v1.EmptyDirVolumeSource `json:"emptyDir,omitempty"`
+	EmptyDir *corev1.EmptyDirVolumeSource `json:"emptyDir,omitempty"`
 	// A PVC spec to be used by the VMAlertManager StatefulSets.
 	// +optional
 	VolumeClaimTemplate EmbeddedPersistentVolumeClaim `json:"volumeClaimTemplate,omitempty"`
@@ -236,22 +236,22 @@ type StorageSpec struct {
 func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) {
 	switch {
 	case ss == nil:
-		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, v1.Volume{
+		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, corev1.Volume{
 			Name: name,
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
 	case ss.EmptyDir != nil:
-		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, v1.Volume{
+		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, corev1.Volume{
 			Name: name,
-			VolumeSource: v1.VolumeSource{
+			VolumeSource: corev1.VolumeSource{
 				EmptyDir: ss.EmptyDir,
 			},
 		})
 	default:
 		claimTemplate := ss.VolumeClaimTemplate
-		stsClaim := v1.PersistentVolumeClaim{
+		stsClaim := corev1.PersistentVolumeClaim{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: claimTemplate.APIVersion,
 				Kind:       claimTemplate.Kind,
@@ -265,7 +265,7 @@ func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) {
 			Status: claimTemplate.Status,
 		}
 		if stsClaim.Spec.AccessModes == nil {
-			stsClaim.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
+			stsClaim.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
 		}
 		sts.VolumeClaimTemplates = append(sts.VolumeClaimTemplates, stsClaim)
 	}
@@ -283,13 +283,13 @@ type EmbeddedPersistentVolumeClaim struct {
 	// Spec defines the desired characteristics of a volume requested by a pod author.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
 	// +optional
-	Spec v1.PersistentVolumeClaimSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Spec corev1.PersistentVolumeClaimSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 
 	// Status represents the current information/status of a persistent volume claim.
 	// Read-only.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
 	// +optional
-	Status v1.PersistentVolumeClaimStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+	Status corev1.PersistentVolumeClaimStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
 // HTTPAuth generic auth used with http protocols
@@ -318,7 +318,7 @@ type BearerAuth struct {
 	TokenFilePath string `json:"bearerTokenFile,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
-	TokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	TokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 }
 
 // BasicAuth allow an endpoint to authenticate over basic authentication
@@ -327,11 +327,11 @@ type BasicAuth struct {
 	// Username defines reference for secret with username value
 	// The secret needs to be in the same namespace as scrape object
 	// +optional
-	Username v1.SecretKeySelector `json:"username,omitempty"`
+	Username corev1.SecretKeySelector `json:"username,omitempty"`
 	// Password defines reference for secret with password value
 	// The secret needs to be in the same namespace as scrape object
 	// +optional
-	Password v1.SecretKeySelector `json:"password,omitempty"`
+	Password corev1.SecretKeySelector `json:"password,omitempty"`
 	// PasswordFile defines path to password file at disk
 	// must be pre-mounted
 	// +optional
@@ -354,7 +354,7 @@ type AdditionalServiceSpec struct {
 	EmbeddedObjectMetadata `json:"metadata,omitempty"`
 	// ServiceSpec describes the attributes that a user creates on a service.
 	// More info: https://kubernetes.io/docs/concepts/services-networking/service/
-	Spec v1.ServiceSpec `json:"spec"`
+	Spec corev1.ServiceSpec `json:"spec"`
 }
 
 // IsSomeAndThen applies callback to the addtionalServiceSpec if it's not nil or do not used as default service
@@ -380,7 +380,7 @@ func BuildReloadPathWithPort(extraArgs map[string]string, port string) string {
 	return fmt.Sprintf("%s://localhost:%s%s", proto, port, urlPath)
 }
 
-// BuildPathWithPrefixFlag retruns provided path with possible prefix from flags
+// BuildPathWithPrefixFlag returns provided path with possible prefix from flags
 func BuildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
 	if prefix, ok := flags[vmPathPrefixFlagName]; ok {
 		return path.Join(prefix, defaultPath)
@@ -443,13 +443,13 @@ func (epdbs *EmbeddedPodDisruptionBudgetSpec) SelectorLabelsWithDefaults(default
 type EmbeddedProbes struct {
 	// LivenessProbe that will be added CRD pod
 	// +optional
-	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
+	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
 	// ReadinessProbe that will be added CRD pod
 	// +optional
-	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
+	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
 	// StartupProbe that will be added to CRD pod
 	// +optional
-	StartupProbe *v1.Probe `json:"startupProbe,omitempty"`
+	StartupProbe *corev1.Probe `json:"startupProbe,omitempty"`
 }
 
 // EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
@@ -494,7 +494,7 @@ func (ds *DiscoverySelector) AsListOptions() (*client.ListOptions, error) {
 // ConfigMapKeyReference refers to a key in a ConfigMap.
 type ConfigMapKeyReference struct {
 	// The ConfigMap to refer to.
-	v1.LocalObjectReference `json:",inline"`
+	corev1.LocalObjectReference `json:",inline"`
 	// The ConfigMap key to refer to.
 	Key string `json:"key"`
 }
@@ -507,7 +507,7 @@ type StreamAggrConfig struct {
 	Rules []StreamAggrRule `json:"rules"`
 	// ConfigMap with stream aggregation rules
 	// +optional
-	RuleConfigMap *v1.ConfigMapKeySelector `json:"configmap,omitempty"`
+	RuleConfigMap *corev1.ConfigMapKeySelector `json:"configmap,omitempty"`
 	// Allows writing both raw and aggregate data
 	// +optional
 	KeepInput bool `json:"keepInput,omitempty"`
@@ -745,14 +745,14 @@ func (m *StringOrArray) MarshalJSON() ([]byte, error) {
 }
 
 // License holds license key for enterprise features.
-// Using license key is supported starting from VictoriaMetrics v1.94.0.
+// Using license key is supported starting from VictoriaMetrics corev1.94.0.
 // See [here](https://docs.victoriametrics.com/enterprise)
 type License struct {
 	// Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/enterprise).
 	// To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
 	Key *string `json:"key,omitempty"`
 	// KeyRef is reference to secret with license key for enterprise features.
-	KeyRef *v1.SecretKeySelector `json:"keyRef,omitempty"`
+	KeyRef *corev1.SecretKeySelector `json:"keyRef,omitempty"`
 	// Enforce offline verification of the license key.
 	ForceOffline *bool `json:"forceOffline,omitempty"`
 	// Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
@@ -789,19 +789,19 @@ func (l *License) MaybeAddToArgs(args []string, secretMountDir string) []string 
 }
 
 // MaybeAddToVolumes conditionally mounts secret with license key into given volumes and mounts
-func (l *License) MaybeAddToVolumes(volumes []v1.Volume, mounts []v1.VolumeMount, secretMountDir string) ([]v1.Volume, []v1.VolumeMount) {
+func (l *License) MaybeAddToVolumes(volumes []corev1.Volume, mounts []corev1.VolumeMount, secretMountDir string) ([]corev1.Volume, []corev1.VolumeMount) {
 	if l == nil || l.KeyRef == nil {
 		return volumes, mounts
 	}
-	volumes = append(volumes, v1.Volume{
+	volumes = append(volumes, corev1.Volume{
 		Name: "license",
-		VolumeSource: v1.VolumeSource{
-			Secret: &v1.SecretVolumeSource{
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
 				SecretName: l.KeyRef.Name,
 			},
 		},
 	})
-	mounts = append(mounts, v1.VolumeMount{
+	mounts = append(mounts, corev1.VolumeMount{
 		Name:      "license",
 		ReadOnly:  true,
 		MountPath: path.Join(secretMountDir, l.KeyRef.Name),
@@ -829,10 +829,10 @@ func (l *License) validate() error {
 type SecretOrConfigMap struct {
 	// Secret containing data to use for the targets.
 	// +optional
-	Secret *v1.SecretKeySelector `json:"secret,omitempty"`
+	Secret *corev1.SecretKeySelector `json:"secret,omitempty"`
 	// ConfigMap containing data to use for the targets.
 	// +optional
-	ConfigMap *v1.ConfigMapKeySelector `json:"configMap,omitempty"`
+	ConfigMap *corev1.ConfigMapKeySelector `json:"configMap,omitempty"`
 }
 
 // TLSConfig specifies TLSConfig configuration parameters.
@@ -857,7 +857,7 @@ type TLSConfig struct {
 	KeyFile string `json:"keyFile,omitempty" yaml:"key_file,omitempty"`
 	// Secret containing the client key file for the targets.
 	// +optional
-	KeySecret *v1.SecretKeySelector `json:"keySecret,omitempty" yaml:"key_secret,omitempty"`
+	KeySecret *corev1.SecretKeySelector `json:"keySecret,omitempty" yaml:"key_secret,omitempty"`
 
 	// Used to verify the hostname for the targets.
 	// +optional
@@ -999,7 +999,7 @@ type Certs struct {
 	// CertSecretRef defines reference for secret with certificate content under given key
 	// mutually exclusive with CertFile
 	// +optional
-	CertSecretRef *v1.SecretKeySelector `json:"cert_secret_ref,omitempty"`
+	CertSecretRef *corev1.SecretKeySelector `json:"cert_secret_ref,omitempty"`
 	// CertFile defines path to the pre-mounted file with certificate
 	// mutually exclusive with CertSecretRef
 	// +optional
@@ -1007,7 +1007,7 @@ type Certs struct {
 	// Key defines reference for secret with certificate key content under given key
 	// mutually exclusive with KeyFile
 	// +optional
-	KeySecretRef *v1.SecretKeySelector `json:"key_secret_ref,omitempty"`
+	KeySecretRef *corev1.SecretKeySelector `json:"key_secret_ref,omitempty"`
 	// KeyFile defines path to the pre-mounted file with certificate key
 	// mutually exclusive with KeySecretRef
 	// +optional
@@ -1019,7 +1019,7 @@ type TLSServerConfig struct {
 	// ClientCASecretRef defines reference for secret with CA content under given key
 	// mutually exclusive with ClientCAFile
 	// +optional
-	ClientCASecretRef *v1.SecretKeySelector `json:"client_ca_secret_ref,omitempty"`
+	ClientCASecretRef *corev1.SecretKeySelector `json:"client_ca_secret_ref,omitempty"`
 	// ClientCAFile defines path to the pre-mounted file with CA
 	// mutually exclusive with ClientCASecretRef
 	// +optional
@@ -1061,7 +1061,7 @@ type TLSClientConfig struct {
 	// CA defines reference for secret with CA content under given key
 	// mutually exclusive with CAFile
 	// +optional
-	CASecretRef *v1.SecretKeySelector `json:"ca_secret_ref,omitempty"`
+	CASecretRef *corev1.SecretKeySelector `json:"ca_secret_ref,omitempty"`
 	// CAFile defines path to the pre-mounted file with CA
 	// mutually exclusive with CASecretRef
 	// +optional
@@ -1141,7 +1141,7 @@ type CommonDefaultableParams struct {
 	// if not defined default resources from operator config will be used
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 	// UseDefaultResources controls resource settings
 	// By default, operator sets built-in resource requirements
 	// +optional
@@ -1175,7 +1175,7 @@ type CommonConfigReloaderParams struct {
 	// if not defined default resources from operator config will be used
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
-	ConfigReloaderResources v1.ResourceRequirements `json:"configReloaderResources,omitempty"`
+	ConfigReloaderResources corev1.ResourceRequirements `json:"configReloaderResources,omitempty"`
 	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
 	// for example resyncInterval: "30s"
 	// +optional
@@ -1184,7 +1184,7 @@ type CommonConfigReloaderParams struct {
 	// Given secret reference will be added to the application and vm-config-reloader as volume
 	// available since v0.57.0 version
 	// +optional
-	ConfigReloadAuthKeySecret *v1.SecretKeySelector `json:"configReloadAuthKeySecret,omitempty"`
+	ConfigReloadAuthKeySecret *corev1.SecretKeySelector `json:"configReloadAuthKeySecret,omitempty"`
 }
 
 // CommonApplicationDeploymentParams defines common params
@@ -1192,10 +1192,10 @@ type CommonConfigReloaderParams struct {
 type CommonApplicationDeploymentParams struct {
 	// Affinity If specified, the pod's scheduling constraints.
 	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 	// Tolerations If specified, the pod's tolerations.
 	// +optional
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// SchedulerName - defines kubernetes scheduler name
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
@@ -1207,13 +1207,13 @@ type CommonApplicationDeploymentParams struct {
 	// that would be propagated to pod,
 	// cannot be used with HostNetwork.
 	// +optional
-	HostAliases []v1.HostAlias `json:"hostAliases,omitempty"`
+	HostAliases []corev1.HostAlias `json:"hostAliases,omitempty"`
 	// HostAliasesUnderScore provides mapping for ip and hostname,
 	// that would be propagated to pod,
 	// cannot be used with HostNetwork.
 	// Has Priority over hostAliases field
 	// +optional
-	HostAliasesUnderScore []v1.HostAlias `json:"host_aliases,omitempty"`
+	HostAliasesUnderScore []corev1.HostAlias `json:"host_aliases,omitempty"`
 	// PriorityClassName class assigned to the Pods
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
@@ -1222,12 +1222,12 @@ type CommonApplicationDeploymentParams struct {
 	HostNetwork bool `json:"hostNetwork,omitempty"`
 	// DNSPolicy sets DNS policy for the pod
 	// +optional
-	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
 	// Specifies the DNS parameters of a pod.
 	// Parameters specified here will be merged to the generated DNS
 	// configuration based on DNSPolicy.
 	// +optional
-	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
 	// NodeSelector Define which Nodes the Pods are scheduled on.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
@@ -1240,17 +1240,17 @@ type CommonApplicationDeploymentParams struct {
 	// such as regions, zones, nodes, and other user-defined topology domains
 	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
 	// +optional
-	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
 	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
-	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// TerminationGracePeriodSeconds period for container graceful termination
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// ReadinessGates defines pod readiness gates
-	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+	ReadinessGates []corev1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
 	// if previous in healthy state
 	// Has no effect for VLogs and VMSingle
@@ -1270,12 +1270,12 @@ type CommonApplicationDeploymentParams struct {
 	// Containers property allows to inject additions sidecars or to patch existing containers.
 	// It can be useful for proxies, backup, etc.
 	// +optional
-	Containers []v1.Container `json:"containers,omitempty"`
+	Containers []corev1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition.
 	// Any errors during the execution of an initContainer will lead to a restart of the Pod.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
 	// +optional
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the Application
 	// object, which shall be mounted into the Application container
 	// at /etc/vm/secrets/SECRET_NAME folder
@@ -1289,18 +1289,18 @@ type CommonApplicationDeploymentParams struct {
 	// Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
 	// Volumes specified will be appended to other volumes that are generated.
 	/// +optional
-	Volumes []v1.Volume `json:"volumes,omitempty"`
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the Application container
 	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 	// ExtraArgs that will be passed to the application container
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// ExtraEnvs that will be passed to the application container
 	// +optional
-	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	ExtraEnvs []corev1.EnvVar `json:"extraEnvs,omitempty"`
 	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
@@ -1316,14 +1316,14 @@ type CommonApplicationDeploymentParams struct {
 	// ExtraEnvsFrom defines source of env variables for the application container
 	// could either be secret or configmap
 	// +optional
-	ExtraEnvsFrom []v1.EnvFromSource `json:"extraEnvsFrom,omitempty"`
+	ExtraEnvsFrom []corev1.EnvFromSource `json:"extraEnvsFrom,omitempty"`
 }
 
 // SecurityContext extends PodSecurityContext with ContainerSecurityContext
 // It allows to globally configure security params for pod and all containers
 type SecurityContext struct {
-	*v1.PodSecurityContext    `json:",inline"`
-	*ContainerSecurityContext `json:",inline"`
+	*corev1.PodSecurityContext `json:",inline"`
+	*ContainerSecurityContext  `json:",inline"`
 }
 
 // ContainerSecurityContext defines security context for each application container
@@ -1337,7 +1337,7 @@ type ContainerSecurityContext struct {
 	// Defaults to the default set of capabilities granted by the container runtime.
 	// Note that this field cannot be set when spec.os.name is windows.
 	// +optional
-	Capabilities *v1.Capabilities `json:"capabilities,omitempty"`
+	Capabilities *corev1.Capabilities `json:"capabilities,omitempty"`
 	// Whether this containers has a read-only root filesystem.
 	// Default is false.
 	// Note that this field cannot be set when spec.os.name is windows.
@@ -1358,14 +1358,14 @@ type ContainerSecurityContext struct {
 	// This requires the ProcMountType feature flag to be enabled.
 	// Note that this field cannot be set when spec.os.name is windows.
 	// +optional
-	ProcMount *v1.ProcMountType `json:"procMount,omitempty"`
+	ProcMount *corev1.ProcMountType `json:"procMount,omitempty"`
 }
 
 // ExternalConfig defines external source of configuration
 type ExternalConfig struct {
 	// SecretRef defines selector for externally managed secret which contains configuration
 	// +optional
-	SecretRef *v1.SecretKeySelector `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
+	SecretRef *corev1.SecretKeySelector `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
 	// LocalPath contains static path to a config, which is managed externally for cases
 	// when using secrets is not applicable, e.g.: Vault sidecar.
 	// +optional
@@ -1415,7 +1415,7 @@ type Image struct {
 	// Tag contains desired docker image version
 	Tag string `json:"tag,omitempty"`
 	// PullPolicy describes how to pull docker image
-	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
+	PullPolicy corev1.PullPolicy `json:"pullPolicy,omitempty"`
 }
 
 // Condition defines status condition of the resource

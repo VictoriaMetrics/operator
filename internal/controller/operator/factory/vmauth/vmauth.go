@@ -144,8 +144,8 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	var args []string
 	configPath := path.Join(vmAuthConfigFolder, vmAuthConfigName)
-	if cr.Spec.ExternalConfig.LocalPath != "" {
-		configPath = cr.Spec.ExternalConfig.LocalPath
+	if cr.Spec.LocalPath != "" {
+		configPath = cr.Spec.LocalPath
 	}
 	args = append(args, fmt.Sprintf("-auth.config=%s", configPath))
 
@@ -231,18 +231,18 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	var operatorContainers []corev1.Container
 	// config mount options
 	switch {
-	case cr.Spec.ExternalConfig.SecretRef != nil:
+	case cr.Spec.SecretRef != nil:
 		var keyToPath []corev1.KeyToPath
-		if cr.Spec.ExternalConfig.SecretRef.Key != "" {
+		if cr.Spec.SecretRef.Key != "" {
 			keyToPath = append(keyToPath, corev1.KeyToPath{
-				Key:  cr.Spec.ExternalConfig.SecretRef.Key,
+				Key:  cr.Spec.SecretRef.Key,
 				Path: vmAuthConfigName,
 			})
 		}
 		volumes = append(volumes, corev1.Volume{
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.Spec.ExternalConfig.SecretRef.Name,
+					SecretName: cr.Spec.SecretRef.Name,
 					Items:      keyToPath,
 				},
 			},
@@ -253,7 +253,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 			MountPath: vmAuthConfigFolder,
 		})
 
-	case cr.Spec.ExternalConfig.LocalPath != "":
+	case cr.Spec.LocalPath != "":
 		// no-op external managed configuration
 		// add check interval
 		args = append(args, "-configCheckInterval=1m")
@@ -344,7 +344,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 // CreateOrUpdateVMAuthConfig configuration secret for vmauth.
 func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth, childObject *vmv1beta1.VMUser) error {
 	// fast path
-	if cr.Spec.ExternalConfig.SecretRef != nil || cr.Spec.ExternalConfig.LocalPath != "" {
+	if cr.Spec.SecretRef != nil || cr.Spec.LocalPath != "" {
 		return nil
 	}
 	var prevCR *vmv1beta1.VMAuth

@@ -28,7 +28,7 @@ func generateProbeConfig(
 	if cr.Spec.VMProberSpec.Path == "" {
 		cr.Spec.VMProberSpec.Path = "/probe"
 	}
-	cr.Spec.EndpointScrapeParams.Path = cr.Spec.VMProberSpec.Path
+	cr.Spec.Path = cr.Spec.VMProberSpec.Path
 
 	if len(cr.Spec.Module) > 0 {
 		if cr.Spec.Params == nil {
@@ -37,7 +37,7 @@ func generateProbeConfig(
 		cr.Spec.Params["module"] = []string{cr.Spec.Module}
 	}
 	if len(cr.Spec.VMProberSpec.Scheme) > 0 {
-		cr.Spec.EndpointScrapeParams.Scheme = cr.Spec.VMProberSpec.Scheme
+		cr.Spec.Scheme = cr.Spec.VMProberSpec.Scheme
 	}
 
 	setScrapeIntervalToWithLimit(ctx, &cr.Spec.EndpointScrapeParams, vmagentCR)

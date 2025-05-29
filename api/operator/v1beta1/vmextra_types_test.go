@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"k8s.io/utils/ptr"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func Test_buildPathWithPrefixFlag(t *testing.T) {
@@ -136,8 +136,8 @@ func TestLicense_MaybeAddToArgs(t *testing.T) {
 		{
 			name: "license key provided with reload interval",
 			license: License{
-				KeyRef: &v1.SecretKeySelector{
-					LocalObjectReference: v1.LocalObjectReference{Name: "license-secret"},
+				KeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "license-secret"},
 					Key:                  "license-key",
 				},
 				ReloadInterval: ptr.To("30s"),
@@ -151,8 +151,8 @@ func TestLicense_MaybeAddToArgs(t *testing.T) {
 		{
 			name: "license key provided via secret with force offline",
 			license: License{
-				KeyRef: &v1.SecretKeySelector{
-					LocalObjectReference: v1.LocalObjectReference{Name: "license-secret"},
+				KeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "license-secret"},
 					Key:                  "license-key",
 				},
 				ForceOffline: ptr.To(true),

@@ -7,7 +7,7 @@ import (
 
 	amlabels "github.com/prometheus/alertmanager/pkg/labels"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -181,7 +181,7 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
-	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
 	// WebConfig defines configuration for webserver
 	// https://github.com/prometheus/alertmanager/blob/main/docs/https.md

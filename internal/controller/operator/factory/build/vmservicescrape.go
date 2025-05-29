@@ -3,7 +3,7 @@ package build
 import (
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
@@ -17,7 +17,7 @@ type serviceScrapeBuilder interface {
 }
 
 // VMServiceScrapeForServiceWithSpec build VMServiceScrape for VMAlertmanager
-func VMServiceScrapeForAlertmanager(service *v1.Service, amCR *vmv1beta1.VMAlertmanager) *vmv1beta1.VMServiceScrape {
+func VMServiceScrapeForAlertmanager(service *corev1.Service, amCR *vmv1beta1.VMAlertmanager) *vmv1beta1.VMServiceScrape {
 	var extraArgs map[string]string
 
 	isTLS := amCR.Spec.WebConfig != nil && amCR.Spec.WebConfig.TLSServerConfig != nil
@@ -33,14 +33,14 @@ func VMServiceScrapeForAlertmanager(service *v1.Service, amCR *vmv1beta1.VMAlert
 
 // VMServiceScrapeForServiceWithSpec creates corresponding object with `http` port endpoint obtained from given service
 // add additionalPortNames to the monitoring if needed
-func VMServiceScrapeForServiceWithSpec(service *v1.Service, builder serviceScrapeBuilder, additionalPortNames ...string) *vmv1beta1.VMServiceScrape {
+func VMServiceScrapeForServiceWithSpec(service *corev1.Service, builder serviceScrapeBuilder, additionalPortNames ...string) *vmv1beta1.VMServiceScrape {
 	serviceScrapeSpec, extraArgs, metricPath := builder.GetServiceScrape(), builder.GetExtraArgs(), builder.GetMetricPath()
 	return vmServiceScrapeForServiceWithSpec(service, serviceScrapeSpec, extraArgs, metricPath, additionalPortNames...)
 }
 
 // VMServiceScrapeForServiceWithSpec build VMServiceScrape for given service with optional spec
 // optionally could filter out ports from service
-func vmServiceScrapeForServiceWithSpec(service *v1.Service, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]string, metricPath string, additionalPortNames ...string) *vmv1beta1.VMServiceScrape {
+func vmServiceScrapeForServiceWithSpec(service *corev1.Service, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]string, metricPath string, additionalPortNames ...string) *vmv1beta1.VMServiceScrape {
 	var endPoints []vmv1beta1.Endpoint
 	var isTLS bool
 	v, ok := extraArgs["tls"]

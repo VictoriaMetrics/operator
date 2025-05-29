@@ -8,7 +8,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -152,7 +151,7 @@ func addServiceDefaults(objI any) {
 	}
 
 	if obj.Spec.InternalTrafficPolicy == nil {
-		if obj.Spec.Type == corev1.ServiceTypeNodePort || obj.Spec.Type == corev1.ServiceTypeLoadBalancer || obj.Spec.Type == v1.ServiceTypeClusterIP {
+		if obj.Spec.Type == corev1.ServiceTypeNodePort || obj.Spec.Type == corev1.ServiceTypeLoadBalancer || obj.Spec.Type == corev1.ServiceTypeClusterIP {
 			serviceInternalTrafficPolicyCluster := corev1.ServiceInternalTrafficPolicyCluster
 			obj.Spec.InternalTrafficPolicy = &serviceInternalTrafficPolicyCluster
 		}
@@ -177,7 +176,7 @@ func addVMAuthDefaults(objI any) {
 
 	if cr.Spec.ConfigSecret != "" {
 		// Removed if later with ConfigSecret field later
-		cr.Spec.ExternalConfig.SecretRef = &corev1.SecretKeySelector{
+		cr.Spec.SecretRef = &corev1.SecretKeySelector{
 			Key: "config.yaml",
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: cr.Spec.ConfigSecret,

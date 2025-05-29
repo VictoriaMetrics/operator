@@ -11,13 +11,13 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/notifier"
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/templates"
 	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // MaxConfigMapDataSize is a maximum `Data` field size of a ConfigMap.
 // Limit it to the half size of constant value, since it may be different for kubernetes versions.
-var MaxConfigMapDataSize = int(float64(v1.MaxSecretSize) * 0.5)
+var MaxConfigMapDataSize = int(float64(corev1.MaxSecretSize) * 0.5)
 
 var initVMAlertTemplatesOnce sync.Once
 

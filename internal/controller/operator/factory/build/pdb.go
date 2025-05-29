@@ -15,7 +15,7 @@ func PodDisruptionBudget(cr builderOpts, spec *vmv1beta1.EmbeddedPodDisruptionBu
 			Annotations:     cr.AnnotationsFiltered(),
 			Labels:          cr.AllLabels(),
 			OwnerReferences: cr.AsOwner(),
-			Namespace:       cr.GetNSName(),
+			Namespace:       cr.GetNamespace(),
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
 			MinAvailable:   spec.MinAvailable,

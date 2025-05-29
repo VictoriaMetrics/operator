@@ -10,12 +10,12 @@ import (
 
 type orphanedCRD interface {
 	SelectorLabels() map[string]string
-	GetNSName() string
+	GetNamespace() string
 }
 
 // RemoveOrphanedDeployments removes deployments detached from given object
 func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr orphanedCRD, keepDeployments map[string]struct{}) error {
-	deployToRemove, err := discoverDeploymentsByLabels(ctx, rclient, cr.GetNSName(), cr.SelectorLabels())
+	deployToRemove, err := discoverDeploymentsByLabels(ctx, rclient, cr.GetNamespace(), cr.SelectorLabels())
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ type RemoveSvcArgs struct {
 
 // RemoveOrphanedSTSs removes deployments detached from given object
 func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepSTSNames map[string]struct{}) error {
-	deployToRemove, err := discoverSTSsByLabels(ctx, rclient, cr.GetNSName(), cr.SelectorLabels())
+	deployToRemove, err := discoverSTSsByLabels(ctx, rclient, cr.GetNamespace(), cr.SelectorLabels())
 	if err != nil {
 		return err
 	}

@@ -66,31 +66,31 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.
 	}
 	// remove vmagents service discovery rbac.
 	if config.IsClusterWideAccessAllowed() {
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRoleBinding{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRoleBinding{}, crd.GetClusterRoleName(), crd.GetNamespace()); err != nil {
 			return err
 		}
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRole{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRole{}, crd.GetClusterRoleName(), crd.GetNamespace()); err != nil {
 			return err
 		}
-		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNamespace()}}); err != nil {
 			return err
 		}
 
-		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNamespace()}}); err != nil {
 			return err
 		}
 	} else {
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.RoleBinding{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.RoleBinding{}, crd.GetClusterRoleName(), crd.GetNamespace()); err != nil {
 			return err
 		}
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, crd.GetClusterRoleName(), crd.GetNamespace()); err != nil {
 			return err
 		}
-		if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNamespace()}}); err != nil {
 			return err
 		}
 
-		if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNamespace()}}); err != nil {
 			return err
 		}
 	}

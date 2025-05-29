@@ -24,7 +24,7 @@ type builderOpts interface {
 	AllLabels() map[string]string
 	SelectorLabels() map[string]string
 	AsOwner() []metav1.OwnerReference
-	GetNSName() string
+	GetNamespace() string
 	GetAdditionalService() *vmv1beta1.AdditionalServiceSpec
 }
 

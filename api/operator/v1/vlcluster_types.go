@@ -889,11 +889,6 @@ func (cr *VLCluster) StorageURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.VLStorage.ExtraArgs), cr.GetVLStorageName(), cr.Namespace, port)
 }
 
-// GetNSName implements build.builderOpts interface
-func (cr *VLCluster) GetNSName() string {
-	return cr.GetNamespace()
-}
-
 // +kubebuilder:object:root=true
 
 // VLClusterList contains a list of VLCluster

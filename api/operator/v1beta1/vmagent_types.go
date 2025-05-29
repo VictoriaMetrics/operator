@@ -706,11 +706,6 @@ func (cr *VMAgent) GetClusterRoleName() string {
 	return fmt.Sprintf("monitoring:%s:vmagent-%s", cr.Namespace, cr.Name)
 }
 
-// GetNSName implements build.builderOpts interface
-func (cr *VMAgent) GetNSName() string {
-	return cr.GetNamespace()
-}
-
 // AsURL - returns url for http access
 func (cr *VMAgent) AsURL() string {
 	port := cr.Spec.Port

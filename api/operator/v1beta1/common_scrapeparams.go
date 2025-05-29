@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // AttachMetadata configures metadata attachment
@@ -54,9 +54,9 @@ type VMScrapeParams struct {
 // Only VictoriaMetrics scrapers supports it.
 // See https://github.com/VictoriaMetrics/VictoriaMetrics/commit/a6a71ef861444eb11fe8ec6d2387f0fc0c4aea87
 type ProxyAuth struct {
-	BasicAuth       *BasicAuth            `json:"basic_auth,omitempty"`
-	BearerToken     *v1.SecretKeySelector `json:"bearer_token,omitempty"`
-	BearerTokenFile string                `json:"bearer_token_file,omitempty"`
+	BasicAuth       *BasicAuth                `json:"basic_auth,omitempty"`
+	BearerToken     *corev1.SecretKeySelector `json:"bearer_token,omitempty"`
+	BearerTokenFile string                    `json:"bearer_token_file,omitempty"`
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
@@ -69,7 +69,7 @@ type OAuth2 struct {
 	ClientID SecretOrConfigMap `json:"client_id" yaml:"client_id,omitempty"`
 	// The secret containing the OAuth2 client secret
 	// +optional
-	ClientSecret *v1.SecretKeySelector `json:"client_secret,omitempty" yaml:"client_secret,omitempty"`
+	ClientSecret *corev1.SecretKeySelector `json:"client_secret,omitempty" yaml:"client_secret,omitempty"`
 	// ClientSecretFile defines path for client secret file.
 	// +optional
 	ClientSecretFile string `json:"client_secret_file,omitempty" yaml:"client_secret_file,omitempty"`
@@ -127,7 +127,7 @@ type Authorization struct {
 	// +optional
 	Type string `json:"type,omitempty"`
 	// Reference to the secret with value for authorization
-	Credentials *v1.SecretKeySelector `json:"credentials,omitempty"`
+	Credentials *corev1.SecretKeySelector `json:"credentials,omitempty"`
 	// File with value for authorization
 	// +optional
 	CredentialsFile string `json:"credentialsFile,omitempty" yaml:"credentials_file,omitempty"`
@@ -303,7 +303,7 @@ type EndpointAuth struct {
 	// the victoria-metrics operator.
 	// +optional
 	// +nullable
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
 	// +optional
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`

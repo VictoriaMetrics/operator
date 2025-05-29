@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -61,7 +61,7 @@ type VLSingleSpec struct {
 	// Storage is the definition of how storage will be used by the VLSingle
 	// by default it`s empty dir
 	// +optional
-	Storage *v1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
+	Storage *corev1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
 	// StorageMeta defines annotations and labels attached to PVC for given vlsingle CR
 	// +optional
 	StorageMetadata v1beta1.EmbeddedObjectMetadata `json:"storageMetadata,omitempty"`
@@ -236,7 +236,7 @@ func (cr *VLSingle) AnnotationsFiltered() map[string]string {
 	return dst
 }
 
-// SelectorLabels returns unque labels for object
+// SelectorLabels returns unique labels for object
 func (cr *VLSingle) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlsingle",

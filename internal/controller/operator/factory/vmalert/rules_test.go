@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,7 +33,7 @@ func Test_selectNamespaces(t *testing.T) {
 		{
 			name:         "select 1 ns",
 			args:         args{selector: labels.SelectorFromValidatedSet(labels.Set{})},
-			predefinedNs: []runtime.Object{&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}},
+			predefinedNs: []runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}},
 			want:         []string{"ns1"},
 			wantErr:      false,
 		},
@@ -41,8 +41,8 @@ func Test_selectNamespaces(t *testing.T) {
 			name: "select 1 ns with label selector",
 			args: args{selector: labels.SelectorFromValidatedSet(labels.Set{"name": "kube-system"})},
 			predefinedNs: []runtime.Object{
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", Labels: map[string]string{"name": "kube-system"}}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", Labels: map[string]string{"name": "kube-system"}}},
 			},
 			want:    []string{"kube-system"},
 			wantErr: false,
@@ -109,7 +109,7 @@ groups:
 			},
 			predefinedObjects: []runtime.Object{
 				// we need namespace for filter + object inside this namespace
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: vmv1beta1.VMRuleSpec{
 					Groups: []vmv1beta1.RuleGroup{{
 						Name: "error-alert", Interval: "10s",
@@ -149,8 +149,8 @@ groups:
 			},
 			predefinedObjects: []runtime.Object{
 				// we need namespace for filter + object inside this namespace
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
 				&vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: vmv1beta1.VMRuleSpec{
 					Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
 						{Record: "recording", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
@@ -184,8 +184,8 @@ groups:
 			},
 			predefinedObjects: []runtime.Object{
 				// we need namespace for filter + object inside this namespace
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
 				&vmv1beta1.VMRule{
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
 					Spec: vmv1beta1.VMRuleSpec{
@@ -235,8 +235,8 @@ groups:
 			},
 			predefinedObjects: []runtime.Object{
 				// we need namespace for filter + object inside this namespace
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
 				&vmv1beta1.VMRule{
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
 					Spec: vmv1beta1.VMRuleSpec{
@@ -465,20 +465,20 @@ func Test_deduplicateRules(t *testing.T) {
 
 func Test_rulesCMDiff(t *testing.T) {
 	type args struct {
-		currentCMs []v1.ConfigMap
-		newCMs     []v1.ConfigMap
+		currentCMs []corev1.ConfigMap
+		newCMs     []corev1.ConfigMap
 	}
 	tests := []struct {
 		name     string
 		args     args
-		toCreate []v1.ConfigMap
-		toUpdate []v1.ConfigMap
+		toCreate []corev1.ConfigMap
+		toUpdate []corev1.ConfigMap
 	}{
 		{
 			name: "create one new",
 			args: args{
-				currentCMs: []v1.ConfigMap{},
-				newCMs: []v1.ConfigMap{
+				currentCMs: []corev1.ConfigMap{},
+				newCMs: []corev1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "rules-cm-1",
@@ -486,7 +486,7 @@ func Test_rulesCMDiff(t *testing.T) {
 					},
 				},
 			},
-			toCreate: []v1.ConfigMap{
+			toCreate: []corev1.ConfigMap{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "rules-cm-1",
@@ -497,27 +497,27 @@ func Test_rulesCMDiff(t *testing.T) {
 		{
 			name: "skip exist",
 			args: args{
-				currentCMs: []v1.ConfigMap{
+				currentCMs: []corev1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "rules-cm-1",
 						},
 					},
 				},
-				newCMs: []v1.ConfigMap{},
+				newCMs: []corev1.ConfigMap{},
 			},
 		},
 		{
 			name: "update one",
 			args: args{
-				currentCMs: []v1.ConfigMap{
+				currentCMs: []corev1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "rules-cm-1",
 						},
 					},
 				},
-				newCMs: []v1.ConfigMap{
+				newCMs: []corev1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "rules-cm-1",
@@ -526,7 +526,7 @@ func Test_rulesCMDiff(t *testing.T) {
 					},
 				},
 			},
-			toUpdate: []v1.ConfigMap{
+			toUpdate: []corev1.ConfigMap{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "rules-cm-1",
@@ -540,7 +540,7 @@ func Test_rulesCMDiff(t *testing.T) {
 		{
 			name: "update two",
 			args: args{
-				currentCMs: []v1.ConfigMap{
+				currentCMs: []corev1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:        "rules-cm-0",
@@ -562,7 +562,7 @@ func Test_rulesCMDiff(t *testing.T) {
 						},
 					},
 				},
-				newCMs: []v1.ConfigMap{
+				newCMs: []corev1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:        "rules-cm-0",
@@ -581,7 +581,7 @@ func Test_rulesCMDiff(t *testing.T) {
 					},
 				},
 			},
-			toUpdate: []v1.ConfigMap{
+			toUpdate: []corev1.ConfigMap{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "rules-cm-0",

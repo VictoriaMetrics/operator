@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -22,14 +22,14 @@ func TestRenderPlaceholders(t *testing.T) {
 		{
 			name: "render without placeholders",
 			args: args{
-				resource: &v1.ConfigMap{
+				resource: &corev1.ConfigMap{
 					Data: map[string]string{
 						"key_1": "value_1",
 						"key_2": "value_2",
 					},
 				},
 			},
-			want: &v1.ConfigMap{
+			want: &corev1.ConfigMap{
 				Data: map[string]string{
 					"key_1": "value_1",
 					"key_2": "value_2",
@@ -39,7 +39,7 @@ func TestRenderPlaceholders(t *testing.T) {
 		{
 			name: "render without placeholders, but with specified values",
 			args: args{
-				resource: &v1.ConfigMap{
+				resource: &corev1.ConfigMap{
 					Data: map[string]string{
 						"key_1": "value_1",
 						"key_2": "value_2",
@@ -50,7 +50,7 @@ func TestRenderPlaceholders(t *testing.T) {
 					"%PLACEHOLDER_2%": "new_value_2",
 				},
 			},
-			want: &v1.ConfigMap{
+			want: &corev1.ConfigMap{
 				Data: map[string]string{
 					"key_1": "value_1",
 					"key_2": "value_2",
@@ -60,7 +60,7 @@ func TestRenderPlaceholders(t *testing.T) {
 		{
 			name: "render with placeholders and specified values",
 			args: args{
-				resource: &v1.ConfigMap{
+				resource: &corev1.ConfigMap{
 					Data: map[string]string{
 						"key_1": "%PLACEHOLDER_1%",
 						"key_2": "%PLACEHOLDER_2%",
@@ -74,7 +74,7 @@ func TestRenderPlaceholders(t *testing.T) {
 					"%PLACEHOLDER_4%": "new_value_4",
 				},
 			},
-			want: &v1.ConfigMap{
+			want: &corev1.ConfigMap{
 				Data: map[string]string{
 					"key_1": "new_value_1",
 					"key_2": "new_value_2",
@@ -86,7 +86,7 @@ func TestRenderPlaceholders(t *testing.T) {
 		{
 			name: "render without combined placeholders in different places of resource",
 			args: args{
-				resource: &v1.ConfigMap{
+				resource: &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "test-%PLACEHOLDER_3%-%PLACEHOLDER_4%-configmap",
 					},
@@ -103,7 +103,7 @@ func TestRenderPlaceholders(t *testing.T) {
 					"%PLACEHOLDER_4%": "new-value-4",
 				},
 			},
-			want: &v1.ConfigMap{
+			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-new-value-3-new-value-4-configmap",
 				},
@@ -117,7 +117,7 @@ func TestRenderPlaceholders(t *testing.T) {
 		{
 			name: "placeholder with % in value",
 			args: args{
-				resource: &v1.ConfigMap{
+				resource: &corev1.ConfigMap{
 					Data: map[string]string{
 						"key_1": "%PLACEHOLDER_1%",
 						"key_2": "%PLACEHOLDER_2%",
@@ -128,7 +128,7 @@ func TestRenderPlaceholders(t *testing.T) {
 					"%PLACEHOLDER_2%": "%PLACEHOLDER_2%",
 				},
 			},
-			want: &v1.ConfigMap{
+			want: &corev1.ConfigMap{
 				Data: map[string]string{
 					"key_1": "%PLACEHOLDER_1%",
 					"key_2": "%PLACEHOLDER_2%",
@@ -138,7 +138,7 @@ func TestRenderPlaceholders(t *testing.T) {
 		{
 			name: "placeholder with incorrect name 1",
 			args: args{
-				resource: &v1.ConfigMap{
+				resource: &corev1.ConfigMap{
 					Data: map[string]string{
 						"key_1": "%PLACEHOLDER_1%",
 					},
@@ -152,7 +152,7 @@ func TestRenderPlaceholders(t *testing.T) {
 		{
 			name: "placeholder with incorrect name 2",
 			args: args{
-				resource: &v1.ConfigMap{
+				resource: &corev1.ConfigMap{
 					Data: map[string]string{
 						"key_1": "%PLACEHOLDER_1%",
 					},
@@ -166,7 +166,7 @@ func TestRenderPlaceholders(t *testing.T) {
 		{
 			name: "placeholder with incorrect name 3",
 			args: args{
-				resource: &v1.ConfigMap{
+				resource: &corev1.ConfigMap{
 					Data: map[string]string{
 						"key_1": "%PLACEHOLDER_1%",
 					},
@@ -180,7 +180,7 @@ func TestRenderPlaceholders(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resource := tt.args.resource.(*v1.ConfigMap)
+			resource := tt.args.resource.(*corev1.ConfigMap)
 			_, err := k8stools.RenderPlaceholders(resource, tt.args.placeholders)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RenderPlaceholders() error = %v, wantErr = %v", err, tt.wantErr)

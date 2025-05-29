@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	operatorv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 )
 
 var _ = Describe("VLCluster Controller", func() {
@@ -40,13 +40,13 @@ var _ = Describe("VLCluster Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vlcluster := &operatorv1.VLCluster{}
+		vlcluster := &vmv1beta1.VLCluster{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind VLCluster")
 			err := k8sClient.Get(ctx, typeNamespacedName, vlcluster)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &operatorv1.VLCluster{
+				resource := &vmv1beta1.VLCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,7 +59,7 @@ var _ = Describe("VLCluster Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &operatorv1.VLCluster{}
+			resource := &vmv1beta1.VLCluster{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 

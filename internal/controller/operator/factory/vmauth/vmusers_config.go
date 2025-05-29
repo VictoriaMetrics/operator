@@ -771,32 +771,32 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 				Value: ref.Hosts,
 			})
 		}
-		if ref.URLMapCommon.DiscoverBackendIPs != nil {
+		if ref.DiscoverBackendIPs != nil {
 			urlMap = append(urlMap, yaml.MapItem{
 				Key:   "discover_backend_ips",
-				Value: *ref.URLMapCommon.DiscoverBackendIPs,
+				Value: *ref.DiscoverBackendIPs,
 			},
 			)
 		}
-		urlMap = appendIfNotEmpty(ref.URLMapCommon.SrcHeaders, "src_headers", urlMap)
-		urlMap = appendIfNotEmpty(ref.URLMapCommon.SrcQueryArgs, "src_query_args", urlMap)
-		if len(ref.URLMapCommon.RequestHeaders) > 0 {
+		urlMap = appendIfNotEmpty(ref.SrcHeaders, "src_headers", urlMap)
+		urlMap = appendIfNotEmpty(ref.SrcQueryArgs, "src_query_args", urlMap)
+		if len(ref.RequestHeaders) > 0 {
 			urlMap = append(urlMap, yaml.MapItem{
 				Key:   "headers",
-				Value: ref.URLMapCommon.RequestHeaders,
+				Value: ref.RequestHeaders,
 			})
 		}
-		if len(ref.URLMapCommon.ResponseHeaders) > 0 {
-			urlMap = append(urlMap, yaml.MapItem{Key: "response_headers", Value: ref.URLMapCommon.ResponseHeaders})
+		if len(ref.ResponseHeaders) > 0 {
+			urlMap = append(urlMap, yaml.MapItem{Key: "response_headers", Value: ref.ResponseHeaders})
 		}
-		if len(ref.URLMapCommon.RetryStatusCodes) > 0 {
-			urlMap = append(urlMap, yaml.MapItem{Key: "retry_status_codes", Value: ref.URLMapCommon.RetryStatusCodes})
+		if len(ref.RetryStatusCodes) > 0 {
+			urlMap = append(urlMap, yaml.MapItem{Key: "retry_status_codes", Value: ref.RetryStatusCodes})
 		}
-		if ref.URLMapCommon.DropSrcPathPrefixParts != nil {
-			urlMap = append(urlMap, yaml.MapItem{Key: "drop_src_path_prefix_parts", Value: ref.URLMapCommon.DropSrcPathPrefixParts})
+		if ref.DropSrcPathPrefixParts != nil {
+			urlMap = append(urlMap, yaml.MapItem{Key: "drop_src_path_prefix_parts", Value: ref.DropSrcPathPrefixParts})
 		}
-		if ref.URLMapCommon.LoadBalancingPolicy != nil {
-			urlMap = append(urlMap, yaml.MapItem{Key: "load_balancing_policy", Value: ref.URLMapCommon.LoadBalancingPolicy})
+		if ref.LoadBalancingPolicy != nil {
+			urlMap = append(urlMap, yaml.MapItem{Key: "load_balancing_policy", Value: ref.LoadBalancingPolicy})
 		}
 		urlMaps = append(urlMaps, urlMap)
 	}

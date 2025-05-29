@@ -7,8 +7,8 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
-	v2 "k8s.io/api/autoscaling/v2"
-	v1 "k8s.io/api/core/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -23,10 +23,10 @@ func OnVMInsertDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1
 	}
 	objsToRemove := []client.Object{
 		&appsv1.Deployment{ObjectMeta: objMeta},
-		&v1.Service{ObjectMeta: objMeta},
+		&corev1.Service{ObjectMeta: objMeta},
 	}
 	if obj.ServiceSpec != nil && !obj.ServiceSpec.UseAsDefault {
-		objsToRemove = append(objsToRemove, &v1.Service{
+		objsToRemove = append(objsToRemove, &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: crd.Namespace,
 				Name:      obj.ServiceSpec.NameOrDefault(crd.GetVMInsertName()),
@@ -37,7 +37,7 @@ func OnVMInsertDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1
 		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
 	}
 	if obj.HPA != nil {
-		objsToRemove = append(objsToRemove, &v2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
+		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	if !ptr.Deref(obj.DisableSelfServiceScrape, false) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta})
@@ -45,7 +45,7 @@ func OnVMInsertDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1
 	}
 
 	if crd.Spec.RequestsLoadBalancer.Enabled && !crd.Spec.RequestsLoadBalancer.DisableInsertBalancing {
-		objsToRemove = append(objsToRemove, &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: crd.GetVMInsertLBName(), Namespace: crd.Namespace}})
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: crd.GetVMInsertLBName(), Namespace: crd.Namespace}})
 	}
 	for _, objToRemove := range objsToRemove {
 		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
@@ -63,10 +63,10 @@ func OnVMSelectDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1
 	}
 	objsToRemove := []client.Object{
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
-		&v1.Service{ObjectMeta: objMeta},
+		&corev1.Service{ObjectMeta: objMeta},
 	}
 	if obj.ServiceSpec != nil && !obj.ServiceSpec.UseAsDefault {
-		objsToRemove = append(objsToRemove, &v1.Service{
+		objsToRemove = append(objsToRemove, &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: crd.Namespace,
 				Name:      obj.ServiceSpec.NameOrDefault(crd.GetVMSelectName()),
@@ -77,14 +77,14 @@ func OnVMSelectDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1
 		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
 	}
 	if obj.HPA != nil {
-		objsToRemove = append(objsToRemove, &v2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
+		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	if !ptr.Deref(obj.DisableSelfServiceScrape, false) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta})
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: crd.GetVMSelectLBName(), Namespace: crd.Namespace}})
 	}
 	if crd.Spec.RequestsLoadBalancer.Enabled && !crd.Spec.RequestsLoadBalancer.DisableSelectBalancing {
-		objsToRemove = append(objsToRemove, &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: crd.GetVMSelectLBName(), Namespace: crd.Namespace}})
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: crd.GetVMSelectLBName(), Namespace: crd.Namespace}})
 	}
 	for _, objToRemove := range objsToRemove {
 		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
@@ -102,10 +102,10 @@ func OnVMStorageDelete(ctx context.Context, rclient client.Client, crd *vmv1beta
 	}
 	objsToRemove := []client.Object{
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
-		&v1.Service{ObjectMeta: objMeta},
+		&corev1.Service{ObjectMeta: objMeta},
 	}
 	if obj.ServiceSpec != nil && !obj.ServiceSpec.UseAsDefault {
-		objsToRemove = append(objsToRemove, &v1.Service{
+		objsToRemove = append(objsToRemove, &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: crd.Namespace,
 				Name:      obj.ServiceSpec.NameOrDefault(crd.GetVMStorageName()),
@@ -168,8 +168,8 @@ func OnVMClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, c
 
 	objsToRemove := []client.Object{
 		&appsv1.Deployment{ObjectMeta: lbMeta},
-		&v1.Secret{ObjectMeta: lbMeta},
-		&v1.Service{ObjectMeta: lbMeta},
+		&corev1.Secret{ObjectMeta: lbMeta},
+		&corev1.Service{ObjectMeta: lbMeta},
 	}
 	if !ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, false) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: lbMeta})
@@ -183,7 +183,7 @@ func OnVMClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, c
 			objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{
 				ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMSelectLBName(), Namespace: cr.Namespace}})
 		}
-		objsToRemove = append(objsToRemove, &v1.Service{ObjectMeta: metav1.ObjectMeta{
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.GetVMSelectLBName(),
 			Namespace: cr.Namespace,
 		}})
@@ -193,7 +193,7 @@ func OnVMClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, c
 			objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{
 				ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMInsertLBName(), Namespace: cr.Namespace}})
 		}
-		objsToRemove = append(objsToRemove, &v1.Service{ObjectMeta: metav1.ObjectMeta{
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.GetVMInsertLBName(),
 			Namespace: cr.Namespace,
 		}})

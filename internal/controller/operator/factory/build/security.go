@@ -57,18 +57,18 @@ func containerSecurityContext(p *vmv1beta1.SecurityContext) *corev1.SecurityCont
 	}
 	var sc corev1.SecurityContext
 	if p.ContainerSecurityContext != nil {
-		sc.Privileged = p.ContainerSecurityContext.Privileged
-		sc.Capabilities = p.ContainerSecurityContext.Capabilities
-		sc.ReadOnlyRootFilesystem = p.ContainerSecurityContext.ReadOnlyRootFilesystem
-		sc.AllowPrivilegeEscalation = p.ContainerSecurityContext.AllowPrivilegeEscalation
-		sc.ProcMount = p.ContainerSecurityContext.ProcMount
+		sc.Privileged = p.Privileged
+		sc.Capabilities = p.Capabilities
+		sc.ReadOnlyRootFilesystem = p.ReadOnlyRootFilesystem
+		sc.AllowPrivilegeEscalation = p.AllowPrivilegeEscalation
+		sc.ProcMount = p.ProcMount
 	}
 	if p.PodSecurityContext != nil {
-		sc.RunAsUser = p.PodSecurityContext.RunAsUser
-		sc.RunAsGroup = p.PodSecurityContext.RunAsGroup
-		sc.RunAsNonRoot = p.PodSecurityContext.RunAsNonRoot
-		sc.AppArmorProfile = p.PodSecurityContext.AppArmorProfile
-		sc.SeccompProfile = p.PodSecurityContext.SeccompProfile
+		sc.RunAsUser = p.RunAsUser
+		sc.RunAsGroup = p.RunAsGroup
+		sc.RunAsNonRoot = p.RunAsNonRoot
+		sc.AppArmorProfile = p.AppArmorProfile
+		sc.SeccompProfile = p.SeccompProfile
 
 	}
 	return &sc

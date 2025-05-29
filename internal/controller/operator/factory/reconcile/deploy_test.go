@@ -92,7 +92,7 @@ func TestDeployOk(t *testing.T) {
 		}
 
 		dep.Spec.Replicas = ptr.To[int32](10)
-		dep.Spec.Template.ObjectMeta.Annotations = map[string]string{"new-annotation": "value"}
+		dep.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
 		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("expect 1 failed to update created deploy: %s", err)
 		}
@@ -108,8 +108,8 @@ func TestDeployOk(t *testing.T) {
 		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
 
 		// expected 2 updates
-		prevDeploy.Spec.Template.ObjectMeta.Annotations = dep.Spec.Template.ObjectMeta.Annotations
-		dep.Spec.Template.ObjectMeta.Annotations = nil
+		prevDeploy.Spec.Template.Annotations = dep.Spec.Template.Annotations
+		dep.Spec.Template.Annotations = nil
 
 		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("expect 2 failed to update deploy: %s", err)

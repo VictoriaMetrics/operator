@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,10 +24,10 @@ type VMUserSpec struct {
 	Password *string `json:"password,omitempty"`
 	// PasswordRef allows fetching password from user-create secret by its name and key.
 	// +optional
-	PasswordRef *v1.SecretKeySelector `json:"passwordRef,omitempty"`
+	PasswordRef *corev1.SecretKeySelector `json:"passwordRef,omitempty"`
 	// TokenRef allows fetching token from user-created secrets by its name and key.
 	// +optional
-	TokenRef *v1.SecretKeySelector `json:"tokenRef,omitempty"`
+	TokenRef *corev1.SecretKeySelector `json:"tokenRef,omitempty"`
 	// GeneratePassword instructs operator to generate password for user
 	// if spec.password if empty.
 	// +optional
@@ -122,11 +122,11 @@ type TargetRefBasicAuth struct {
 	// The secret in the service scrape namespace that contains the username
 	// for authentication.
 	// It must be at them same namespace as CRD
-	Username v1.SecretKeySelector `json:"username"`
+	Username corev1.SecretKeySelector `json:"username"`
 	// The secret in the service scrape namespace that contains the password
 	// for authentication.
 	// It must be at them same namespace as CRD
-	Password v1.SecretKeySelector `json:"password"`
+	Password corev1.SecretKeySelector `json:"password"`
 }
 
 // VMUserStatus defines the observed state of VMUser

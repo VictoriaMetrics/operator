@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -108,7 +108,7 @@ type VMAgentSpec struct {
 	// This relabeling is applied to all the collected metrics before sending them to remote storage.
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig name",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
-	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
+	RelabelConfig *corev1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
 	// InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD.
 	// +optional
 	InlineRelabelConfig []*RelabelConfig `json:"inlineRelabelConfig,omitempty"`
@@ -220,7 +220,7 @@ type VMAgentSpec struct {
 	// notes to ensure that no incompatible scrape configs are going to break
 	// VMAgent after the upgrade.
 	// +optional
-	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
+	AdditionalScrapeConfigs *corev1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// InsertPorts - additional listen ports for data ingestion.
 	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 
@@ -299,7 +299,7 @@ type VMAgentSpec struct {
 	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
 
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
-	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 	// IngestOnlyMode switches vmagent into unmanaged mode
 	// it disables any config generation for scraping
 	// Currently it prevents vmagent from managing tls and auth options for remote write
@@ -449,12 +449,12 @@ type VMAgentRemoteWriteSpec struct {
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 
 	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
-	UrlRelabelConfig *v1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
+	UrlRelabelConfig *corev1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
 	// InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec.
 	// +optional
 	InlineUrlRelabelConfig []*RelabelConfig `json:"inlineUrlRelabelConfig,omitempty"`

@@ -2,7 +2,7 @@
 
 # Builds spellcheck image.
 codespell:
-	@docker build codespell -t codespell
+	@-docker build codespell -t codespell
 
 # Runs cspell container commands.
 codespell-check: codespell

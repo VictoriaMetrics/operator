@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -50,7 +50,7 @@ type VMClusterSpec struct {
 	// to use for pulling images from registries
 	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
-	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
@@ -274,7 +274,7 @@ type VMSelect struct {
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
-	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
 	CommonDefaultableParams           `json:",inline"`
 	CommonApplicationDeploymentParams `json:",inline"`
@@ -445,7 +445,7 @@ type VMStorage struct {
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
 
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
-	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
 	CommonDefaultableParams           `json:",inline"`
 	CommonApplicationDeploymentParams `json:",inline"`
@@ -479,7 +479,7 @@ type VMBackup struct {
 	// CredentialsSecret is secret in the same namespace for access to remote storage
 	// The secret is mounted into /etc/vm/creds.
 	// +optional
-	CredentialsSecret *v1.SecretKeySelector `json:"credentialsSecret,omitempty"`
+	CredentialsSecret *corev1.SecretKeySelector `json:"credentialsSecret,omitempty"`
 
 	// Defines if hourly backups disabled (default false)
 	// +optional
@@ -510,22 +510,22 @@ type VMBackup struct {
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not defined default resources from operator config will be used
 	// +optional
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 	// extra args like maxBytesPerSecond default 0
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// +optional
-	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	ExtraEnvs []corev1.EnvVar `json:"extraEnvs,omitempty"`
 	// ExtraEnvsFrom defines source of env variables for the application container
 	// could either be secret or configmap
 	// +optional
-	ExtraEnvsFrom []v1.EnvFromSource `json:"extraEnvsFrom,omitempty"`
+	ExtraEnvsFrom []corev1.EnvFromSource `json:"extraEnvsFrom,omitempty"`
 
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the vmbackupmanager container,
 	// that are generated as a result of StorageSpec objects.
 	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Restore Allows to enable restore options for pod
 	// Read [more](https://docs.victoriametrics.com/vmbackupmanager#restore-commands)

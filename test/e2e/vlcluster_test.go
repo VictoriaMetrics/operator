@@ -64,7 +64,7 @@ var _ = Describe("test vlsingle Controller", func() {
 			verify func(*vmv1.VLCluster)
 		}
 
-		DescribeTable("should peform update steps",
+		DescribeTable("should perform update steps",
 			func(name string, initCR *vmv1.VLCluster, steps ...testStep) {
 				initCR.Name = name
 				initCR.Namespace = namespace

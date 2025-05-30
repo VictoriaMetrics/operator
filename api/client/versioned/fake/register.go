@@ -18,6 +18,7 @@ limitations under the License.
 package fake
 
 import (
+	operatorv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +32,7 @@ var codecs = serializer.NewCodecFactory(scheme)
 
 var localSchemeBuilder = runtime.SchemeBuilder{
 	operatorv1beta1.AddToScheme,
+	operatorv1.AddToScheme,
 }
 
 // AddToScheme adds all types of this clientset into the given scheme. This allows composition

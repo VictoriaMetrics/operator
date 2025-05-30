@@ -21,6 +21,7 @@ import (
 	fmt "fmt"
 	http "net/http"
 
+	operatorv1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1"
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
@@ -30,17 +31,24 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	OperatorV1beta1() operatorv1beta1.OperatorV1beta1Interface
+	OperatorV1() operatorv1.OperatorV1Interface
 }
 
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	operatorV1beta1 *operatorv1beta1.OperatorV1beta1Client
+	operatorV1      *operatorv1.OperatorV1Client
 }
 
 // OperatorV1beta1 retrieves the OperatorV1beta1Client
 func (c *Clientset) OperatorV1beta1() operatorv1beta1.OperatorV1beta1Interface {
 	return c.operatorV1beta1
+}
+
+// OperatorV1 retrieves the OperatorV1Client
+func (c *Clientset) OperatorV1() operatorv1.OperatorV1Interface {
+	return c.operatorV1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -91,6 +99,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.operatorV1, err = operatorv1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
@@ -113,6 +125,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.operatorV1beta1 = operatorv1beta1.New(c)
+	cs.operatorV1 = operatorv1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

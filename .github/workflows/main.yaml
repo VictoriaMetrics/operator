@@ -49,7 +49,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
           check-latest: true
           cache: true
         id: go
@@ -81,6 +81,7 @@ jobs:
         run: |
           make lint
           make manifests
+          make api-gen
           # check for uncommited changes crds
           git diff --exit-code
           make test

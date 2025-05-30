@@ -20,7 +20,7 @@ package externalversions
 import (
 	fmt "fmt"
 
-	v1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	v1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -51,39 +51,9 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=operator, Version=v1beta1
-	case v1beta1.SchemeGroupVersion.WithResource("vlogs"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VLogs().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmagents"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMAgents().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmalerts"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMAlerts().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmalertmanagers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMAlertmanagers().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmalertmanagerconfigs"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMAlertmanagerConfigs().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmauths"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMAuths().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmclusters"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMClusters().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmnodescrapes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMNodeScrapes().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmpodscrapes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMPodScrapes().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmprobes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMProbes().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmrules"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMRules().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmscrapeconfigs"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMScrapeConfigs().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmservicescrapes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMServiceScrapes().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmsingles"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMSingles().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmstaticscrapes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMStaticScrapes().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("vmusers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VMUsers().Informer()}, nil
+	// Group=operator, Version=v1
+	case v1.SchemeGroupVersion.WithResource("vlsingles"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1().VLSingles().Informer()}, nil
 
 	}
 

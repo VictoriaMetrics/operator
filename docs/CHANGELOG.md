@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): properly apply `replicaCount` for `VLSelect` component
+
 ## [v0.59.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.59.0)
 
 **Release date:** 30 May 2025

@@ -279,6 +279,90 @@ var _ = Describe("test vlsingle Controller", func() {
 					},
 				},
 			),
+			Entry("by upscaling and downscaling components", "scale",
+				baseVLCluster.DeepCopy(),
+				testStep{
+					modify: func(cr *vmv1.VLCluster) {
+						By("upscaling vlinsert, removing vlselect", func() {
+							cr.Spec.VLSelect = nil
+							cr.Spec.VLInsert.ReplicaCount = ptr.To(int32(3))
+							cr.Spec.VLStorage.ReplicaCount = ptr.To(int32(1))
+						})
+					},
+					verify: func(cr *vmv1.VLCluster) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVLStorageName()}
+						sts := &appsv1.StatefulSet{}
+						Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
+						Expect(*sts.Spec.Replicas).To(Equal(int32(1)))
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
+						dep := &appsv1.Deployment{}
+						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
+						Expect(*dep.Spec.Replicas).To(Equal(int32(3)))
+
+						// vlselect must be removed
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLSelectName()}
+						Expect(k8sClient.Get(ctx, nsn, dep)).To(MatchError(errors.IsNotFound, "IsNotFound"))
+					},
+				},
+				testStep{
+					modify: func(cr *vmv1.VLCluster) {
+						By("upscaling vlselect, removing vlinsert", func() {
+							cr.Spec.VLSelect = &vmv1.VLSelect{
+								CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To(int32(2)),
+								},
+							}
+							cr.Spec.VLInsert = nil
+							cr.Spec.VLStorage.ReplicaCount = ptr.To(int32(2))
+						})
+					},
+					verify: func(cr *vmv1.VLCluster) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVLStorageName()}
+						sts := &appsv1.StatefulSet{}
+						Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
+						Expect(*sts.Spec.Replicas).To(Equal(int32(2)))
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLSelectName()}
+						dep := &appsv1.Deployment{}
+						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
+						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
+						// vlselect must be removed
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
+						Expect(k8sClient.Get(ctx, nsn, dep)).To(MatchError(errors.IsNotFound, "IsNotFound"))
+					},
+				},
+				testStep{
+					modify: func(cr *vmv1.VLCluster) {
+						By("downscaling all components to 0 replicas", func() {
+							cr.Spec.VLSelect = &vmv1.VLSelect{
+								CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To(int32(0)),
+								},
+							}
+							cr.Spec.VLInsert = &vmv1.VLInsert{
+								CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To(int32(0)),
+								},
+							}
+							cr.Spec.VLStorage.ReplicaCount = ptr.To(int32(0))
+						})
+					},
+					verify: func(cr *vmv1.VLCluster) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVLStorageName()}
+						sts := &appsv1.StatefulSet{}
+						Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
+						Expect(*sts.Spec.Replicas).To(Equal(int32(0)))
+						dep := &appsv1.Deployment{}
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
+						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
+						Expect(*dep.Spec.Replicas).To(Equal(int32(0)))
+
+						GinkgoWriter.Println("DEBUG DEBUG ", *cr.Spec.VLSelect.ReplicaCount)
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLSelectName()}
+						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
+						Expect(*dep.Spec.Replicas).To(Equal(int32(0)))
+					},
+				},
+			),
 		)
 	},
 	)

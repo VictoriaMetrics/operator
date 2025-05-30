@@ -59,7 +59,7 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 			return fmt.Errorf("cannot create VMServiceScrape for VLSelect: %w", err)
 		}
 	}
-	if err := createOrUpdateVLSelectSTS(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateVLSelectDeployment(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 	return nil
@@ -145,7 +145,7 @@ func buildVLSelectService(cr *vmv1.VLCluster) *corev1.Service {
 
 }
 
-func createOrUpdateVLSelectSTS(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdateVLSelectDeployment(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	var prevDep *appsv1.Deployment
 	if prevCR != nil && prevCR.Spec.VLSelect != nil {
 		var err error
@@ -159,7 +159,7 @@ func createOrUpdateVLSelectSTS(ctx context.Context, rclient client.Client, cr, p
 		return err
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDep, prevDep, true)
+	return reconcile.Deployment(ctx, rclient, newDep, prevDep, cr.Spec.VLSelect.HPA != nil)
 }
 
 func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
@@ -168,7 +168,7 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		return nil, err
 	}
 	strategyType := appsv1.RollingUpdateDeploymentStrategyType
-	if cr.Spec.VLInsert.UpdateStrategy != nil {
+	if cr.Spec.VLSelect.UpdateStrategy != nil {
 		strategyType = *cr.Spec.VLSelect.UpdateStrategy
 	}
 	depSpec := &appsv1.Deployment{
@@ -181,12 +181,9 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas:             cr.Spec.VLInsert.ReplicaCount,
-			RevisionHistoryLimit: cr.Spec.VLInsert.RevisionHistoryLimitCount,
-			MinReadySeconds:      cr.Spec.VLInsert.MinReadySeconds,
 			Strategy: appsv1.DeploymentStrategy{
 				Type:          strategyType,
-				RollingUpdate: cr.Spec.VLInsert.RollingUpdate,
+				RollingUpdate: cr.Spec.VLSelect.RollingUpdate,
 			},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VLSelectSelectorLabels(),

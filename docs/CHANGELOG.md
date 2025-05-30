@@ -27,6 +27,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): add `spec.configMaps` as `volumeMounts` for watch with `config-reloader` container for `VMAgent` and `VMAlert` components. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1370) for details.
 
 * BUGFIX: [operator](https://docs.victoriametrics.com/operator/api): remove alerting rule `BadObjects` as metric `operator_controller_bad_objects_count` isn't exposed anymore.
+* BUGFIX: [operator](https://docs.victoriametrics.com/operator/api): properly validate `HPA` object. `metrics` and `behaviour` are optional fields.
 * BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): fixes typo at `addDefaults` function for `VMCLuster`, it prevents possible panic if `VMInsert` is not configured. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1375) for details.
 
 ## [v0.58.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.58.0)

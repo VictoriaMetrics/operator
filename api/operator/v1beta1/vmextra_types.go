@@ -466,9 +466,6 @@ func (cr *EmbeddedHPA) Validate() error {
 	if cr.MinReplicas != nil && *cr.MinReplicas > cr.MaxReplicas {
 		return fmt.Errorf("minReplicas cannot be greater then maxReplicas")
 	}
-	if cr.Behaviour == nil && len(cr.Metrics) == 0 {
-		return fmt.Errorf("at least behaviour or metrics property must be configuread")
-	}
 	return nil
 }
 

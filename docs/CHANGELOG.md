@@ -13,7 +13,11 @@ aliases:
 
 ## tip
 
-**Update Note 1:** This release by deprecates `VLogs` resource. It will transit into read-only state after `v0.60.0` release.
+## [v0.59.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.59.0)
+
+**Release date:** 30 May 2025
+
+**Update Note 1:** This release by deprecates `VLogs` resource. It will transit into read-only state after `v0.61.0` release.
 To perform migration to the `VLSingle` please follow [this docs](https://docs.victoriametrics.com/operator/resources/vlsingle/#migration-from-vlogs)
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.118.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.118.0) version

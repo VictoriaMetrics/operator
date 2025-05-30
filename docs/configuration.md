@@ -38,14 +38,17 @@ This is the latest operator environment variables:
 ## Modify environment variables
 
 To add environment variables to the operator, use the following [Kustomize](https://kustomize.io/)-based approach. 
-This method assumes the operator was installed using the [Quick Start guide](https://docs.victoriametrics.com/operator/quick-start/#operator). 
-If a different installation method was used, some adjustments may be required.
+This method assumes the operator was installed using the [Quick Start guide](https://docs.victoriametrics.com/operator/quick-start/#operator).
+Alternatively, you can edit the manifest file directly. 
+If you used Helm, apply the changes using Helm’s values configuration.
 
-The example below customize CPU\Memory limits for `VMSingle` resource.
-The commands create a patch `operator-patch.yaml` that adds environment variables to the operator deployment, 
-a `kustomization.yaml` configuration to apply the patch, and then call `kustomize build` to rewrite the `operator-and-crds.yaml` file with the applied changes:
+The example below customize CPU\Memory default limits for `VMSingle` resource.
+The commands create a patch `add-operator-envs/patch.yaml` that adds environment variables to the operator deployment, 
+a `add-operator-envs/kustomization.yaml` configuration to apply the patch, and then call `kustomize build` to rewrite the `operator-and-crds.yaml` file with the applied changes:
 ```sh
-cat <<'EOF' > operator-patch.yaml
+mkdir -p add-operator-envs;
+
+cat <<'EOF' > add-operator-envs/patch.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -63,18 +66,25 @@ spec:
           value: "2400m"
 EOF
 
-cat <<'EOF' > kustomization.yaml
+cat <<'EOF' > add-operator-envs/kustomization.yaml
 resources:
-  - operator-and-crds.yaml
+  - ../operator-and-crds.yaml
 
 patches:
-  - path: operator-patch.yaml
+  - path: patch.yaml
     target:
       kind: Deployment
       name: vm-operator
 EOF
 
-kustomize build -o operator-and-crds.yaml;
+kustomize build add-operator-envs -o operator-and-crds.yaml --load-restrictor=LoadRestrictionsNone;
+cat operator-and-crds.yaml | grep -E -A 1 "VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_MEM|VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_CPU";
+
+# Output:
+#        - name: VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_MEM
+#          value: 3000Mi
+#        - name: VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_CPU
+#          value: 2400m
 ```
 
 Apply the changes to the operator deployment:
@@ -101,9 +111,77 @@ kubectl get deployment -n vm vm-operator \
 
 ## Flags
 
-Pass `-help` to operator binary in order to see the list of supported command-line flags with their description:
+Run this command to see all flags your operator supports:
+```sh 
+OPERATOR_POD_NAME=$(kubectl get pod -l "app.kubernetes.io/name=victoria-metrics-operator"  -n vm -o jsonpath="{.items[0].metadata.name}");
+kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --help 2>&1;
 
+# Output:
+# Usage of /app:
+#   -client.burst int
+#       defines K8s client burst (default 100)
+# ...
+```
+
+This is the latest operator flags:
 {{% content "flags.md" %}}
+
+## Modify flags
+
+To add flags to the operator, use the following [Kustomize](https://kustomize.io/)-based approach.
+This method assumes the operator was installed using the [Quick Start guide](https://docs.victoriametrics.com/operator/quick-start/#operator).
+Alternatively, you can edit the manifest file directly.
+If you used Helm, apply the changes using Helm’s values configuration.
+
+The example below shows how to change log level.
+The commands create a patch `add-operator-flag/patch.yaml` that adds command line argument to the operator deployment,
+a `add-operator-flag/kustomization.yaml` configuration to apply the patch, and then call `kustomize build` to rewrite the `operator-and-crds.yaml` file with the applied changes:
+```sh
+mkdir -p add-operator-flag;
+
+cat <<'EOF' > add-operator-flag/patch.yaml
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: '-zap-log-level=debug'
+EOF
+
+cat <<'EOF' > add-operator-flag/kustomization.yaml
+resources:
+  - ../operator-and-crds.yaml
+
+patches:
+  - path: patch.yaml
+    target:
+      kind: Deployment
+      name: vm-operator
+EOF
+
+kustomize build add-operator-flag -o operator-and-crds.yaml --load-restrictor=LoadRestrictionsNone;
+cat operator-and-crds.yaml | grep "zap-log-level";
+
+# Output:
+#        - -zap-log-level=debug
+```
+
+Apply the changes to the operator deployment:
+```
+kubectl apply -f operator-and-crds.yaml;
+kubectl -n vm rollout status deployment vm-operator --watch=true;
+
+# Output:
+# Waiting for deployment "vm-operator" rollout to finish: 1 old replicas are pending termination...
+# Waiting for deployment "vm-operator" rollout to finish: 1 old replicas are pending termination...
+# deployment "vm-operator" successfully rolled out
+```
+
+Run this command to print modified flags variables:
+```sh
+kubectl get deployment -n vm vm-operator \
+  -o jsonpath='{range .spec.template.spec.containers[?(@.name=="manager")]}{.args[*]}{end}{"\n"}'
+
+# Output:
+# --leader-elect --health-probe-bind-address=:8081 --metrics-bind-address=:8080 -zap-log-level=debug
+```
 
 ## Conversion of prometheus-operator objects
 

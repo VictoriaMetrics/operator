@@ -31,8 +31,8 @@ import (
 // SetupVLClusterWebhookWithManager will setup the manager to manage the webhooks
 func SetupVLClusterWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&vmv1.VLSingle{}).
-		WithValidator(&VLSingleCustomValidator{}).
+		For(&vmv1.VLCluster{}).
+		WithValidator(&VLClusterCustomValidator{}).
 		Complete()
 }
 

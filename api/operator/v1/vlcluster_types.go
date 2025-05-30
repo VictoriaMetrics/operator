@@ -503,6 +503,7 @@ func (cr *VLStorage) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 // +kubebuilder:printcolumn:name="Select Count",type="string",JSONPath=".spec.vlselect.replicaCount",description="replicas of VLSelect"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of cluster"
+// +genclient
 type VLCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

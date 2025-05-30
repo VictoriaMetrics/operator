@@ -20,6 +20,7 @@ package externalversions
 import (
 	fmt "fmt"
 
+	v1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	v1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -51,7 +52,13 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=operator, Version=v1beta1
+	// Group=operator, Version=v1
+	case v1.SchemeGroupVersion.WithResource("vlclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1().VLClusters().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("vlsingles"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1().VLSingles().Informer()}, nil
+
+		// Group=operator, Version=v1beta1
 	case v1beta1.SchemeGroupVersion.WithResource("vlogs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1beta1().VLogs().Informer()}, nil
 	case v1beta1.SchemeGroupVersion.WithResource("vmagents"):

@@ -745,7 +745,7 @@ func (m *StringOrArray) MarshalJSON() ([]byte, error) {
 }
 
 // License holds license key for enterprise features.
-// Using license key is supported starting from VictoriaMetrics corev1.94.0.
+// Using license key is supported starting from VictoriaMetrics v1.94.0.
 // See [here](https://docs.victoriametrics.com/enterprise)
 type License struct {
 	// Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/enterprise).

@@ -84,18 +84,20 @@ api-gen: client-gen lister-gen informer-gen
 		--clientset-name versioned \
 		--input-base "" \
                 --plural-exceptions "VLogs:VLogs" \
-		--input github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client \
 		--output-dir ./api/client \
-		--go-header-file hack/boilerplate.go.txt
+		--go-header-file hack/boilerplate.go.txt \
+		$(foreach version,$(wildcard api/operator/*),--input github.com/VictoriaMetrics/operator/$(version))
 	@echo ">> generating with lister-gen"
-	$(LISTER_GEN) github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
+	$(LISTER_GEN) \
+		$(foreach version,$(wildcard api/operator/*),github.com/VictoriaMetrics/operator/$(version)) \
 		--output-dir ./api/client/listers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/listers \
 		--plural-exceptions "VLogs:VLogs" \
 		--go-header-file hack/boilerplate.go.txt
 	@echo ">> generating with informer-gen"
-	$(INFORMER_GEN) github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
+	$(INFORMER_GEN)	\
+		$(foreach version,$(wildcard api/operator/*),github.com/VictoriaMetrics/operator/$(version)) \
 		--versioned-clientset-package github.com/VictoriaMetrics/operator/api/client/versioned \
 		--listers-package github.com/VictoriaMetrics/operator/api/client/listers \
 		--plural-exceptions "VLogs:VLogs" \

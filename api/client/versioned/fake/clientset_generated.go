@@ -19,6 +19,8 @@ package fake
 
 import (
 	clientset "github.com/VictoriaMetrics/operator/api/client/versioned"
+	operatorv1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1"
+	fakeoperatorv1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1/fake"
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1beta1"
 	fakeoperatorv1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,6 +83,11 @@ var (
 	_ clientset.Interface = &Clientset{}
 	_ testing.FakeClient  = &Clientset{}
 )
+
+// OperatorV1 retrieves the OperatorV1Client
+func (c *Clientset) OperatorV1() operatorv1.OperatorV1Interface {
+	return &fakeoperatorv1.FakeOperatorV1{Fake: &c.Fake}
+}
 
 // OperatorV1beta1 retrieves the OperatorV1beta1Client
 func (c *Clientset) OperatorV1beta1() operatorv1beta1.OperatorV1beta1Interface {

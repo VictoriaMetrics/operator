@@ -604,7 +604,7 @@ func addVMServiceScrapeDefaults(objI any) {
 }
 
 const (
-	vlStorageDefaultDBPath = "vlstorage-data"
+	vlStorageDefaultDBPath = "/vlstorage-data"
 )
 
 func addVLClusterDefaults(objI any) {

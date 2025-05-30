@@ -497,7 +497,7 @@ func (cr *VLStorage) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// VLCluster is the Schema for the vlclusters API
+// VLCluster is fast, cost-effective and scalable logs database.
 // +kubebuilder:printcolumn:name="Insert Count",type="string",JSONPath=".spec.vlinsert.replicaCount",description="replicas of VLInsert"
 // +kubebuilder:printcolumn:name="Storage Count",type="string",JSONPath=".spec.vlstorage.replicaCount",description="replicas of VLStorage"
 // +kubebuilder:printcolumn:name="Select Count",type="string",JSONPath=".spec.vlselect.replicaCount",description="replicas of VLSelect"

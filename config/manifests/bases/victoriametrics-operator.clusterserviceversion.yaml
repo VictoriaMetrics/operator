@@ -37,6 +37,48 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: VLCluster is fast, cost-effective and scalable logs database.
+      displayName: VLCluster
+      kind: VLCluster
+      name: vlclusters.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: vlinsert.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: vlinsert.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: vlselect.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: vlselect.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: vlstorage.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: vlstorage.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1
     - description: |-
         VLogs is fast, cost-effective and scalable logs database.
         VLogs is the Schema for the vlogs API
@@ -57,6 +99,26 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
+    - description: |-
+        VLSingle is fast, cost-effective and scalable logs database.
+        VLSingle is the Schema for the API
+      displayName: VLSingle
+      kind: VLSingle
+      name: vlsingles.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1
     - description: |-
         VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics
         or any other Prometheus-compatible storage system that supports the remote_write protocol.

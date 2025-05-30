@@ -524,7 +524,7 @@ func (cr *VMScrapeConfig) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
-	return cr.Spec.EndpointRelabelings.validate()
+	return cr.Spec.validate()
 }
 
 // AsProxyKey builds key for proxy cache maps

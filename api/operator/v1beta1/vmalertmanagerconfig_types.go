@@ -1244,12 +1244,12 @@ func validateTimeRangeForInterval(tr TimeRange) error {
 		return fmt.Errorf("start and end are required")
 	}
 
-	start, err := parseTime(string(tr.StartTime))
+	start, err := parseTime(tr.StartTime)
 	if err != nil {
 		return fmt.Errorf("start time invalid: %w", err)
 	}
 
-	end, err := parseTime(string(tr.EndTime))
+	end, err := parseTime(tr.EndTime)
 	if err != nil {
 		return fmt.Errorf("end time invalid: %w", err)
 	}

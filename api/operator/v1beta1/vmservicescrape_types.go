@@ -156,7 +156,7 @@ func (cr *VMServiceScrape) Validate() error {
 		return nil
 	}
 	for _, endpoint := range cr.Spec.Endpoints {
-		if err := endpoint.EndpointRelabelings.validate(); err != nil {
+		if err := endpoint.validate(); err != nil {
 			return err
 		}
 	}

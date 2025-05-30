@@ -164,7 +164,7 @@ func (vmuua *VMAuthUnauthorizedUserAccessSpec) Validate() error {
 			return fmt.Errorf("incorrect metricLabelName=%q, must match pattern=%q", k, labelNameRegexp)
 		}
 	}
-	if err := vmuua.VMUserConfigOptions.validate(); err != nil {
+	if err := vmuua.validate(); err != nil {
 		return fmt.Errorf("incorrect UnauthorizedUserAccess options: %w", err)
 	}
 
@@ -191,7 +191,7 @@ type UnauthorizedAccessConfigURLMap struct {
 
 // Validate performs syntax logic validation
 func (uac *UnauthorizedAccessConfigURLMap) validate() error {
-	if len(uac.SrcPaths) == 0 && len(uac.SrcHosts) == 0 && len(uac.SrcQueryArgs) == 0 && len(uac.URLMapCommon.SrcQueryArgs) == 0 {
+	if len(uac.SrcPaths) == 0 && len(uac.SrcHosts) == 0 && len(uac.SrcQueryArgs) == 0 && len(uac.SrcQueryArgs) == 0 {
 		return fmt.Errorf("incorrect url_map config at least of one src_paths,src_hosts,src_query_args or src_headers must be defined")
 	}
 	if len(uac.URLPrefix) == 0 {
@@ -397,19 +397,19 @@ func (cr *VMAuth) Validate() error {
 			return fmt.Errorf("spec.ingress.tlsHosts cannot be empty with non-empty spec.ingress.tlsSecretName")
 		}
 	}
-	if cr.Spec.ConfigSecret != "" && cr.Spec.ExternalConfig.SecretRef != nil {
+	if cr.Spec.ConfigSecret != "" && cr.Spec.SecretRef != nil {
 		return fmt.Errorf("spec.configSecret and spec.externalConfig.secretRef cannot be used at the same time")
 	}
-	if cr.Spec.ExternalConfig.SecretRef != nil && cr.Spec.ExternalConfig.LocalPath != "" {
+	if cr.Spec.SecretRef != nil && cr.Spec.LocalPath != "" {
 		return fmt.Errorf("at most one option can be used for externalConfig: spec.configSecret or spec.externalConfig.secretRef")
 	}
-	if cr.Spec.ExternalConfig.SecretRef != nil {
-		if cr.Spec.ExternalConfig.SecretRef.Name == cr.PrefixedName() {
+	if cr.Spec.SecretRef != nil {
+		if cr.Spec.SecretRef.Name == cr.PrefixedName() {
 			return fmt.Errorf("spec.externalConfig.secretRef cannot be equal to the vmauth-config-CR_NAME=%q, it's operator reserved value", cr.ConfigSecretName())
 		}
-		if cr.Spec.ExternalConfig.SecretRef.Name == "" || cr.Spec.ExternalConfig.SecretRef.Key == "" {
+		if cr.Spec.SecretRef.Name == "" || cr.Spec.SecretRef.Key == "" {
 			return fmt.Errorf("name=%q and key=%q fields must be non-empty for spec.externalConfig.secretRef",
-				cr.Spec.ExternalConfig.SecretRef.Name, cr.Spec.ExternalConfig.SecretRef.Key)
+				cr.Spec.SecretRef.Name, cr.Spec.SecretRef.Key)
 		}
 	}
 	if len(cr.Spec.UnauthorizedAccessConfig) > 0 && cr.Spec.UnauthorizedUserAccessSpec != nil {
@@ -421,7 +421,7 @@ func (cr *VMAuth) Validate() error {
 				return fmt.Errorf("incorrect cr.spec.UnauthorizedAccessConfig: %w", err)
 			}
 		}
-		if err := cr.Spec.VMUserConfigOptions.validate(); err != nil {
+		if err := cr.Spec.validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec UnauthorizedAccessConfig options: %w", err)
 		}
 	}
@@ -569,7 +569,7 @@ func (cr *VMAuth) PodAnnotations() map[string]string {
 
 func (cr *VMAuth) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+	dst := filterMapKeysByPrefixes(cr.Annotations, annotationFilterPrefixes)
 	if cr.Spec.ManagedMetadata != nil {
 		if dst == nil {
 			dst = make(map[string]string)
@@ -601,13 +601,13 @@ func (cr *VMAuth) PodLabels() map[string]string {
 func (cr *VMAuth) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+	if cr.Labels == nil && cr.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	if cr.Labels != nil {
+		result = filterMapKeysByPrefixes(cr.Labels, labelFilterPrefixes)
 	}
 	if cr.Spec.ManagedMetadata != nil {
 		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
@@ -652,8 +652,8 @@ func (cr *VMAuth) IsOwnsServiceAccount() bool {
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAuth) IsUnmanaged() bool {
 	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) ||
-		cr.Spec.ExternalConfig.SecretRef != nil ||
-		cr.Spec.ExternalConfig.LocalPath != ""
+		cr.Spec.SecretRef != nil ||
+		cr.Spec.LocalPath != ""
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation

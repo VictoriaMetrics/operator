@@ -193,7 +193,7 @@ func (cr *VMRule) Validate() error {
 }
 
 func validateRuleGroupTenantID(id string) error {
-	ids := strings.TrimSpace(string(id))
+	ids := strings.TrimSpace(id)
 	idx := strings.Index(ids, ":")
 	if idx < 0 {
 		if _, err := strconv.ParseInt(ids, 10, 32); err != nil {

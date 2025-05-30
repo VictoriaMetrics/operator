@@ -218,7 +218,7 @@ func (cr *VMSingle) PodAnnotations() map[string]string {
 
 func (cr *VMSingle) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+	dst := filterMapKeysByPrefixes(cr.Annotations, annotationFilterPrefixes)
 	if cr.Spec.ManagedMetadata != nil {
 		if dst == nil {
 			dst = make(map[string]string)
@@ -251,13 +251,13 @@ func (cr *VMSingle) PodLabels() map[string]string {
 func (cr *VMSingle) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+	if cr.Labels == nil && cr.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	if cr.Labels != nil {
+		result = filterMapKeysByPrefixes(cr.Labels, labelFilterPrefixes)
 	}
 	if cr.Spec.ManagedMetadata != nil {
 		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)

@@ -81,7 +81,7 @@ func (cr *VMNodeScrape) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
-	return cr.Spec.EndpointRelabelings.validate()
+	return cr.Spec.validate()
 }
 
 // AsMapKey - returns cr name with suffix for token/auth maps.

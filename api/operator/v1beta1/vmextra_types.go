@@ -1501,7 +1501,7 @@ func (bs *BytesString) MarshalJSON() ([]byte, error) {
 		return nil, nil
 	}
 	bsStr := string(*bs)
-	iv, err := strconv.ParseInt(bsStr, 64, 10)
+	iv, err := strconv.ParseInt(bsStr, 10, 64)
 	if err == nil {
 		return json.Marshal(iv)
 	}

@@ -287,7 +287,7 @@ func (cr *VMAlertmanager) PodAnnotations() map[string]string {
 
 func (cr *VMAlertmanager) AnnotationsFiltered() map[string]string {
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
+	dst := filterMapKeysByPrefixes(cr.Annotations, annotationFilterPrefixes)
 	if cr.Spec.ManagedMetadata != nil {
 		if dst == nil {
 			dst = make(map[string]string)
@@ -319,13 +319,13 @@ func (cr *VMAlertmanager) PodLabels() map[string]string {
 func (cr *VMAlertmanager) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
-	if cr.ObjectMeta.Labels == nil && cr.Spec.ManagedMetadata == nil {
+	if cr.Labels == nil && cr.Spec.ManagedMetadata == nil {
 		return selectorLabels
 	}
 	var result map[string]string
 	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.ObjectMeta.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	if cr.Labels != nil {
+		result = filterMapKeysByPrefixes(cr.Labels, labelFilterPrefixes)
 	}
 	if cr.Spec.ManagedMetadata != nil {
 		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
@@ -490,7 +490,7 @@ func (cr *VMAlertmanager) Validate() error {
 	for idx, matchers := range cr.Spec.EnforcedTopRouteMatchers {
 		_, err := amlabels.ParseMatchers(matchers)
 		if err != nil {
-			fmt.Errorf("incorrect EnforcedTopRouteMatchers=%q at idx=%d: %w", matchers, idx, err)
+			return fmt.Errorf("incorrect EnforcedTopRouteMatchers=%q at idx=%d: %w", matchers, idx, err)
 		}
 	}
 
@@ -510,10 +510,10 @@ func (cr *VMAlertmanager) Validate() error {
 		}
 		if cr.Spec.WebConfig.TLSServerConfig != nil {
 			tc := cr.Spec.WebConfig.TLSServerConfig
-			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+			if tc.CertFile == "" && tc.CertSecretRef == nil {
 				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
 			}
-			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+			if tc.KeyFile == "" && tc.KeySecretRef == nil {
 				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_server_config")
 			}
 			if tc.ClientAuthType == "RequireAndVerifyClientCert" {
@@ -527,10 +527,10 @@ func (cr *VMAlertmanager) Validate() error {
 	if cr.Spec.GossipConfig != nil {
 		if cr.Spec.GossipConfig.TLSServerConfig != nil {
 			tc := cr.Spec.GossipConfig.TLSServerConfig
-			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+			if tc.CertFile == "" && tc.CertSecretRef == nil {
 				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
 			}
-			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+			if tc.KeyFile == "" && tc.KeySecretRef == nil {
 				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_server_config")
 			}
 			if tc.ClientAuthType == "RequireAndVerifyClientCert" {
@@ -541,10 +541,10 @@ func (cr *VMAlertmanager) Validate() error {
 		}
 		if cr.Spec.GossipConfig.TLSClientConfig != nil {
 			tc := cr.Spec.GossipConfig.TLSClientConfig
-			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+			if tc.CertFile == "" && tc.CertSecretRef == nil {
 				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_client_config")
 			}
-			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+			if tc.KeyFile == "" && tc.KeySecretRef == nil {
 				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_client_config")
 			}
 		}

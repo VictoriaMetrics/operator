@@ -147,10 +147,12 @@ test-e2e: load-kind ginkgo
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
+	cd api && $(GOLANGCI_LINT) run operator/...
 	$(GOLANGCI_LINT) run
 
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
+	cd api && 	$(GOLANGCI_LINT) run --fix operator/...
 	$(GOLANGCI_LINT) run --fix
 
 ##@ Build
@@ -420,6 +422,7 @@ $(OPM): $(LOCALBIN)
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
 .PHONY: kind

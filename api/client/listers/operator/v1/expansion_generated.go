@@ -17,6 +17,14 @@ limitations under the License.
 
 package v1
 
+// VLClusterListerExpansion allows custom methods to be added to
+// VLClusterLister.
+type VLClusterListerExpansion interface{}
+
+// VLClusterNamespaceListerExpansion allows custom methods to be added to
+// VLClusterNamespaceLister.
+type VLClusterNamespaceListerExpansion interface{}
+
 // VLSingleListerExpansion allows custom methods to be added to
 // VLSingleLister.
 type VLSingleListerExpansion interface{}

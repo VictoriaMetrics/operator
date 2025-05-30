@@ -277,8 +277,8 @@ func TestConvertServiceMonitor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ConvertServiceMonitor(tt.args.serviceMon, &config.BaseOperatorConf{
-				FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
-				FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
+				FilterPrometheusConverterLabelPrefixes:      []string{"app.kubernetes", "helm.sh"},
+				FilterPrometheusConverterAnnotationPrefixes: []string{"another-annotation-filter", "app.kubernetes"},
 			})
 			if !reflect.DeepEqual(*got, tt.want) {
 				t.Errorf("ConvertServiceMonitor() got = \n%v, \nwant \n%v", got, tt.want)

@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -11,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -851,6 +853,52 @@ func (cr *VMAgent) HasAnyRelabellingConfigs() bool {
 	return false
 }
 
+func (cr *VMAgent) GetShardCount() int {
+	if cr == nil || cr.Spec.ShardCount == nil {
+		return 0
+	}
+	return *cr.Spec.ShardCount
+}
+
+func (cr *VMAgent) AddShardSettings(dep runtime.Object, shardNum int) {
+	if cr == nil || cr.Spec.ShardCount == nil {
+		return
+	}
+	shardCount := *cr.Spec.ShardCount
+	var containers []corev1.Container
+	switch dep := dep.(type) {
+	case *appsv1.StatefulSet:
+		containers = dep.Spec.Template.Spec.Containers
+		dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
+		// need to mutate selectors ?
+		dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
+		dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
+	case *appsv1.Deployment:
+		containers = dep.Spec.Template.Spec.Containers
+		dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
+		// need to mutate selectors ?
+		dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
+		dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
+	}
+	for i := range containers {
+		container := &containers[i]
+		if container.Name != "vmagent" {
+			continue
+		}
+		args := container.Args[:0]
+		for _, arg := range container.Args {
+			if !strings.Contains(arg, "promscrape.cluster.membersCount") && !strings.Contains(arg, "promscrape.cluster.memberNum") {
+				args = append(args, arg)
+			}
+		}
+		container.Args = append(
+			args,
+			fmt.Sprintf("-promscrape.cluster.membersCount=%d", shardCount),
+			fmt.Sprintf("-promscrape.cluster.memberNum=%d", shardNum),
+		)
+	}
+}
+
 // HasAnyStreamAggrRule checks if vmagent has any defined aggregation rules
 func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 	if cr.Spec.StreamAggrConfig.HasAnyRule() {
@@ -868,6 +916,13 @@ func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
+}
+
+func (cr *VMAgent) GetVolumeName() string {
+	if cr.Spec.StatefulStorage != nil && cr.Spec.StatefulStorage.VolumeClaimTemplate.Name != "" {
+		return cr.Spec.StatefulStorage.VolumeClaimTemplate.Name
+	}
+	return "persistent-queue-data"
 }
 
 func checkRelabelConfigs(src []*RelabelConfig) error {

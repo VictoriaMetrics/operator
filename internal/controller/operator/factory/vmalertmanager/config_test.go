@@ -1,4 +1,4 @@
-package alertmanager
+package vmalertmanager
 
 import (
 	"context"
@@ -1820,7 +1820,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 						Name:      "vmalertmanager-test-am-config",
 						Namespace: "default",
 					},
-					Data: map[string][]byte{alertmanagerSecretConfigKey: {}},
+					Data: map[string][]byte{secretConfigKey: {}},
 				},
 				&vmv1beta1.VMAlertmanagerConfig{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1873,7 +1873,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 
 			// Create secret with alert manager config
 			if err := CreateOrUpdateConfig(tt.args.ctx, fclient, tt.args.cr, nil); (err != nil) != tt.wantErr {
-				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("CreateOrUpdateConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 			if err := k8stools.VisitObjectsForSelectorsAtNs(tt.args.ctx, fclient, tt.args.cr.Spec.ConfigNamespaceSelector, tt.args.cr.Spec.ConfigSelector, tt.args.cr.Namespace, tt.args.cr.Spec.SelectAllByDefault,
@@ -1903,7 +1903,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			}
 
 			// check secret config after creating
-			d, ok := createdSecret.Data[alertmanagerSecretConfigKey]
+			d, ok := createdSecret.Data[secretConfigKey]
 			if !ok {
 				t.Fatalf("config for alertmanager not exist, err: %v", err)
 			}
@@ -1936,7 +1936,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 
 			// Update secret with alert manager config
 			if err = CreateOrUpdateConfig(tt.args.ctx, fclient, tt.args.cr, nil); (err != nil) != tt.wantErr {
-				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("CreateOrUpdateConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			err = fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
@@ -1948,7 +1948,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			}
 
 			// check secret config after updating
-			d, ok = createdSecret.Data[alertmanagerSecretConfigKey]
+			d, ok = createdSecret.Data[secretConfigKey]
 			if !ok {
 				t.Fatalf("config for alertmanager not exist, err: %v", err)
 			}

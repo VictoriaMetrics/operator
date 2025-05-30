@@ -45,8 +45,8 @@ var (
 	}
 )
 
-// CreateOrUpdateRuleConfigMaps conditionally selects vmrules and stores content at configmaps
-func CreateOrUpdateRuleConfigMaps(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule) ([]string, error) {
+// CreateOrUpdateConfig conditionally selects vmrules and stores content at configmaps
+func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule) ([]string, error) {
 	// fast path
 	if cr.IsUnmanaged() {
 		return nil, nil

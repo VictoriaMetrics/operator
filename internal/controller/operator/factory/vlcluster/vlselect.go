@@ -41,10 +41,10 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 			return err
 		}
 	}
-	if err := createOrUpdateVLSelectHPA(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateHPAForVLSelect(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	selectSvc, err := createOrUpdateVLSelectService(ctx, rclient, cr, prevCR)
+	selectSvc, err := createOrUpdateServiceForVLSelect(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
@@ -59,13 +59,13 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 			return fmt.Errorf("cannot create VMServiceScrape for VLSelect: %w", err)
 		}
 	}
-	if err := createOrUpdateVLSelectSTS(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateDeployForVLSelect(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createOrUpdateVLSelectHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdateHPAForVLSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	if cr.Spec.VLSelect.HPA == nil {
 		return nil
 	}
@@ -86,14 +86,14 @@ func createOrUpdateVLSelectHPA(ctx context.Context, rclient client.Client, cr, p
 
 }
 
-func createOrUpdateVLSelectService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {
+func createOrUpdateServiceForVLSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {
 
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil && prevCR.Spec.VLSelect != nil {
-		prevService = buildVLSelectService(prevCR)
+		prevService = newServiceForVLSelect(prevCR)
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.VLSelect.ServiceSpec)
 	}
-	svc := buildVLSelectService(cr)
+	svc := newServiceForVLSelect(cr)
 	if err := cr.Spec.VLSelect.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(svc, s)
 		if additionalService.Name == svc.Name {
@@ -122,7 +122,7 @@ func createOrUpdateVLSelectService(ctx context.Context, rclient client.Client, c
 	return svc, nil
 }
 
-func buildVLSelectService(cr *vmv1.VLCluster) *corev1.Service {
+func newServiceForVLSelect(cr *vmv1.VLCluster) *corev1.Service {
 	b := &optsBuilder{
 		cr,
 		cr.GetVLSelectName(),
@@ -145,16 +145,16 @@ func buildVLSelectService(cr *vmv1.VLCluster) *corev1.Service {
 
 }
 
-func createOrUpdateVLSelectSTS(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdateDeployForVLSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	var prevDep *appsv1.Deployment
 	if prevCR != nil && prevCR.Spec.VLSelect != nil {
 		var err error
-		prevDep, err = buildVLSelectDeployment(prevCR)
+		prevDep, err = newDeployForVLSelect(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot build prev select spec: %w", err)
 		}
 	}
-	newDep, err := buildVLSelectDeployment(cr)
+	newDep, err := newDeployForVLSelect(cr)
 	if err != nil {
 		return err
 	}
@@ -162,8 +162,8 @@ func createOrUpdateVLSelectSTS(ctx context.Context, rclient client.Client, cr, p
 	return reconcile.Deployment(ctx, rclient, newDep, prevDep, true)
 }
 
-func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
-	podSpec, err := buildVLSelectPodSpec(cr)
+func newDeployForVLSelect(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
+	podSpec, err := newPodSpecForVLSelect(cr)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 	if cr.Spec.VLInsert.UpdateStrategy != nil {
 		strategyType = *cr.Spec.VLSelect.UpdateStrategy
 	}
-	depSpec := &appsv1.Deployment{
+	app := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetVLSelectName(),
 			Namespace:       cr.Namespace,
@@ -191,14 +191,20 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VLSelectSelectorLabels(),
 			},
-			Template: *podSpec,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      cr.VLSelectPodLabels(),
+					Annotations: cr.VLSelectPodAnnotations(),
+				},
+				Spec: *podSpec,
+			},
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, false), &cr.Spec.VLSelect.CommonApplicationDeploymentParams)
-	return depSpec, nil
+	build.DeploymentAddCommonParams(app, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, false), &cr.Spec.VLSelect.CommonApplicationDeploymentParams)
+	return app, nil
 }
 
-func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
+func newPodSpecForVLSelect(cr *vmv1.VLCluster) (*corev1.PodSpec, error) {
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VLSelect.Port),
 		"-internalinsert.disable=true",
@@ -238,8 +244,8 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	volumes := make([]corev1.Volume, 0)
 	volumes = append(volumes, cr.Spec.VLSelect.Volumes...)
 
-	vmMounts := make([]corev1.VolumeMount, 0)
-	vmMounts = append(vmMounts, cr.Spec.VLSelect.VolumeMounts...)
+	volumeMounts := make([]corev1.VolumeMount, 0)
+	volumeMounts = append(volumeMounts, cr.Spec.VLSelect.VolumeMounts...)
 
 	for _, s := range cr.Spec.VLSelect.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -250,7 +256,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 				},
 			},
 		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.SecretsDir, s),
@@ -268,7 +274,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 				},
 			},
 		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
@@ -277,13 +283,13 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLSelect.ExtraArgs, "-")
 	sort.Strings(args)
-	selectContainers := corev1.Container{
+	container := corev1.Container{
 		Name:                     "vlselect",
 		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VLSelect.Image.Repository, cr.Spec.VLSelect.Image.Tag),
 		ImagePullPolicy:          cr.Spec.VLSelect.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
-		VolumeMounts:             vmMounts,
+		VolumeMounts:             volumeMounts,
 		Resources:                cr.Spec.VLSelect.Resources,
 		Env:                      envs,
 		EnvFrom:                  cr.Spec.VLSelect.ExtraEnvsFrom,
@@ -291,11 +297,11 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	selectContainers = build.Probe(selectContainers, cr.Spec.VLSelect)
-	operatorContainers := []corev1.Container{selectContainers}
+	container = build.Probe(container, cr.Spec.VLSelect)
+	containers := []corev1.Container{container}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, false))
-	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VLSelect.Containers)
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLSelect.SecurityContext, containers, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, false))
+	containers, err := k8stools.MergePatchContainers(containers, cr.Spec.VLSelect.Containers)
 	if err != nil {
 		return nil, err
 	}
@@ -308,19 +314,11 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		}
 	}
 
-	podSpec := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      cr.VLSelectPodLabels(),
-			Annotations: cr.VLSelectPodAnnotations(),
-		},
-		Spec: corev1.PodSpec{
-			Volumes:            volumes,
-			InitContainers:     cr.Spec.VLSelect.InitContainers,
-			Containers:         containers,
-			ServiceAccountName: cr.GetServiceAccountName(),
-			RestartPolicy:      "Always",
-		},
-	}
-
-	return podSpec, nil
+	return &corev1.PodSpec{
+		Volumes:            volumes,
+		InitContainers:     cr.Spec.VLSelect.InitContainers,
+		Containers:         containers,
+		ServiceAccountName: cr.GetServiceAccountName(),
+		RestartPolicy:      "Always",
+	}, nil
 }

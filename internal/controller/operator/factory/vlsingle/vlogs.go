@@ -148,7 +148,7 @@ func makeVLogsPodSpec(r *vmv1beta.VLogs) (*corev1.PodTemplateSpec, error) {
 	// if customStorageDataPath is not empty, do not add pvc.
 	shouldAddPVC := r.Spec.StorageDataPath == ""
 
-	storagePath := vlsingleDataDir
+	storagePath := dataDir
 	if r.Spec.StorageDataPath != "" {
 		storagePath = r.Spec.StorageDataPath
 	}
@@ -184,14 +184,14 @@ func makeVLogsPodSpec(r *vmv1beta.VLogs) (*corev1.PodTemplateSpec, error) {
 
 	if storageSpec == nil {
 		volumes = append(volumes, corev1.Volume{
-			Name: vlsingleDataVolumeName,
+			Name: dataVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
 	} else if shouldAddPVC {
 		volumes = append(volumes, corev1.Volume{
-			Name: vlsingleDataVolumeName,
+			Name: dataVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: r.PrefixedName(),
@@ -202,7 +202,7 @@ func makeVLogsPodSpec(r *vmv1beta.VLogs) (*corev1.PodTemplateSpec, error) {
 	volumes = append(volumes, r.Spec.Volumes...)
 	vmMounts := []corev1.VolumeMount{
 		{
-			Name:      vlsingleDataVolumeName,
+			Name:      dataVolumeName,
 			MountPath: storagePath,
 		},
 	}

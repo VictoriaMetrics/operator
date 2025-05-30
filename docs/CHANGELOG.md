@@ -39,7 +39,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new flags for leader election configuration - `leader-elect-lease-duration`, `leader-elect-renew-deadline`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1362) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): add `spec.configMaps` as `volumeMounts` for watch with `config-reloader` container for `VMAgent` and `VMAlert` components. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1370) for details.
 
-* BUGFIX: [converter](https://docs.victoriametrics.com/operator/migration/#objects-conversion): properly apply filter prefixes for objects with `VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES` and `VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES` env variables. See this PR [1391](https://github.com/VictoriaMetrics/operator/pull/1391) for details. Thanks to the @padlyuck
+* BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): properly apply filter prefixes for objects with `VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES` and `VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES` env variables. See this PR [1391](https://github.com/VictoriaMetrics/operator/pull/1391) for details. Thanks to the @padlyuck
 * BUGFIX: [operator](https://docs.victoriametrics.com/operator/api): remove alerting rule `BadObjects` as metric `operator_controller_bad_objects_count` isn't exposed anymore.
 * BUGFIX: [operator](https://docs.victoriametrics.com/operator/api): properly validate `HPA` object. `metrics` and `behaviour` are optional fields.
 * BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): fixes typo at `addDefaults` function for `VMCLuster`, it prevents possible panic if `VMInsert` is not configured. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1375) for details.
@@ -60,7 +60,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 * FEATURE: [vmpodscrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/), [vmnodescrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape/), [vmservicescrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/), [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/), [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/) and [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): properly validate parsing errors at spec definition. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1329) for details.
 
 
-* BUGFIX: [converter](https://docs.victoriametrics.com/operator/migration/#objects-conversion): properly retry watch request errors. Previously watcher could stale and ignore any Prometheus CRD object events. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1322) for details.
+* BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): properly retry watch request errors. Previously watcher could stale and ignore any Prometheus CRD object events. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1322) for details.
 
 ## [v0.57.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.57.0)
 
@@ -72,7 +72,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce [FIPS](https://go.dev/doc/security/fips140) builds for `operator` and `config-reloader` containers with `-fips` tag prefix. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1348) for details. 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new field `spec.configReloadAuthKeySecret` for `VMAgent`, `VMAlert` and `VMAuth` components. It instructs application to use provided value for `-configReload` auth key. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1323) for details.
-* FEATURE: [converter](https://docs.victoriametrics.com/operator/migration/#objects-conversion): add `msteamsv2_configs` conversion from Prometheus resource AlertmanagerConfig. See [this commit](https://github.com/VictoriaMetrics/operator/commit/5cc7457e9eef325f75d9b1d9633d161230a6e0f7) for details.
+* FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): add `msteamsv2_configs` conversion from Prometheus resource AlertmanagerConfig. See [this commit](https://github.com/VictoriaMetrics/operator/commit/5cc7457e9eef325f75d9b1d9633d161230a6e0f7) for details.
 * FEATURE: upgrade Go builder from Go1.24.0 to Go1.24.4 See [Go1.24 release notes](https://tip.golang.org/doc/go1.24).
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `timeout` field to the `webhook_configs` definition. It's supported by [alertmanager v0.28.0+](https://github.com/prometheus/alertmanager/releases/tag/v0.28.0). See [this commit](https://github.com/VictoriaMetrics/operator/commit/5cc7457e9eef325f75d9b1d9633d161230a6e0f7) for details.
 * FEATURE: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): add `8428` port alias to the `VMSingle` `Service`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1343) for details.
@@ -215,7 +215,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Properly expose service ports for `VMServiceScrape` generated for CRD objects by operator. Add `-vmbackupmanager` suffix to the `VMServiceScrape` job name and expose only well-known `http` port. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1216) for details.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly build `relabelConfigs` with empty string values for `separator` and `replacement` fields. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1214) for details.
-* BUGFIX: [converter](https://docs.victoriametrics.com/operator/migration/#objects-conversion): properly format `regex` single value expression at Prometheus Operator CRD `relabelings` and `metricsRelabelings`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1219) for details.
+* BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): properly format `regex` single value expression at Prometheus Operator CRD `relabelings` and `metricsRelabelings`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1219) for details.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): keep `spec.template.annotations` added by 3rd party tools, kike `kubectl rollout restart`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1215) for details.
 
 ## [v0.51.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.51.3)
@@ -297,7 +297,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 ![AppVersion: v0.32.0](https://img.shields.io/badge/v0.32.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0320)
 
 - [vmrule](https://docs.victoriametrics.com/operator/resources/vmrule/): properly validate rules for [vlogs](https://docs.victoriametrics.com/victorialogs/vmalert/) group `type`.
-- [operator](https://docs.victoriametrics.com/operator/): properly apply changes to the [converted](https://docs.victoriametrics.com/operator/migration/#objects-conversion) `VMScrapeConfig` during operator start-up.
+- [operator](https://docs.victoriametrics.com/operator/): properly apply changes to the [converted](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion) `VMScrapeConfig` during operator start-up.
 - [operator](https://docs.victoriametrics.com/operator/): properly set  `operational` update status for CRDs. Previously, `operational` status could be set before rollout finishes at Kubernetes due to bug at Kubernetes `controller-manager`.
 
 

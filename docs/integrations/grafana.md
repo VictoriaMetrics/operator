@@ -4,7 +4,7 @@ title: Grafana
 menu:
   docs:
     parent: operator-integrations
-    weight: 3
+    weight: 1
 ---
 
 Content coming soon.

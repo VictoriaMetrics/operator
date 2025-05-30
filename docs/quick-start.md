@@ -745,7 +745,7 @@ You might want to try a different way to install it.
 The [victoria-metrics-k8s-stack Helm chart](https://docs.victoriametrics.com/operator/setup/#installing-by-helm-charts) is a good choice if you want everything in one package — 
 VictoriaMetrics, Grafana, scraper and data sources — all preconfigured to work together.
 
-If you’re moving from Prometheus, VictoriaMetrics [makes the migration easy](https://docs.victoriametrics.com/operator/migration/).
+If you’re moving from Prometheus, VictoriaMetrics [makes the migration easy](https://docs.victoriametrics.com/operator/integrations/prometheus/).
 You can keep your current scrape configs and alert rules, and move your data with just a few changes.
 
 As you continue to explore, you might find the [resources](https://docs.victoriametrics.com/operator/resources/) and [their configuration reference](https://docs.victoriametrics.com/operator/api/) pages helpful.

@@ -13,6 +13,13 @@ aliases:
 
 ## tip
 
+## [v0.59.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.59.1)
+
+**Release date:** 30 May 2025
+
+**Update Note 1:** This release by deprecates `VLogs` resource. It will transit into read-only state after `v0.61.0` release.
+To perform migration to the `VLSingle` please follow [this docs](https://docs.victoriametrics.com/operator/resources/vlsingle/#migration-from-vlogs)
+
 * BUGFIX: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): properly apply `replicaCount` for `VLSelect` component
 
 ## [v0.59.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.59.0)

@@ -197,7 +197,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLStorageName(), Namespace: cr.Namespace}, &sts))
 		assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
 		cnt = sts.Spec.Template.Spec.Containers[0]
-		assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9491", "-storageDataPath=vlstorage-data"})
+		assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9491", "-storageDataPath=/vlstorage-data"})
 		assert.Nil(t, sts.Annotations)
 		assert.Equal(t, sts.Labels, cr.FinalLabels(cr.VLStorageSelectorLabels()))
 

@@ -1,5 +1,7 @@
 Operator serves to make running VictoriaMetrics applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
 
+test mr
+
 VictoriaMetrics Operator (`vmoperator`) is the classic kubernetes-operator for VictoriaMetrics with many [great features](#features-of-vmoperator).
 It allows you to manage Victoria Metrics components in Kubernetes or OpenShift clusters
 in a declarative style according to [GitOps](https://www.redhat.com/en/topics/devops/what-is-gitops)

@@ -13,7 +13,7 @@ Learn more about [key concepts](#key-concepts) of `vmoperator` and follow the **
 ## Features of vmoperator
 
 - Deployment and management in a kubernetes clusters of any number of VictoriaMetrics applications (like vmsingle/vmcluster instances and another components like vmauth, vmagent, vmalert, etc...)
-- Seamless [migration from prometheus-operator](https://docs.victoriametrics.com/operator/migration/) with auto-conversion of prometheus [custom resources](#custom-resources)
+- Seamless [migration from prometheus-operator](https://docs.victoriametrics.com/operator/integrations/prometheus/) with auto-conversion of prometheus [custom resources](#custom-resources)
 - Simple VictoriaMetrics cluster installation, configuring, upgrading and managing with [crd-objects](https://docs.victoriametrics.com/operator/resources/).
 - Ability to delegate the configuration (parts of configuration) of applications monitoring to the end-users and managing access to different configurations or configuration sections.
 - Integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager/) - advanced tools for making backups. Check [Backup automation for VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle#backup-automation) or [Backup automation for VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster#backup-automation).
@@ -66,7 +66,7 @@ The basic workflow of working with the operator can be simplified as the followi
 - [Setup](https://docs.victoriametrics.com/operator/setup/)
 - [Security](https://docs.victoriametrics.com/operator/security/)
 - [Configuration](https://docs.victoriametrics.com/operator/configuration/)
-- [Migration from Prometheus](https://docs.victoriametrics.com/operator/migration/)
+- [Migration from Prometheus](https://docs.victoriametrics.com/operator/integrations/prometheus/)
 - [Monitoring](https://docs.victoriametrics.com/operator/monitoring/)
 - [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth/)
 - [High Availability](https://docs.victoriametrics.com/operator/high-availability/)

@@ -107,7 +107,7 @@ Pass `-help` to operator binary in order to see the list of supported command-li
 
 ## Conversion of prometheus-operator objects
 
-You can read detailed instructions about configuring prometheus-objects conversion in [this document](https://docs.victoriametrics.com/operator/migration/).
+You can read detailed instructions about configuring prometheus-objects conversion in [this document](https://docs.victoriametrics.com/operator/integrations/prometheus/).
 
 ## Helm-charts
 

@@ -516,10 +516,13 @@ func FilterPrefixes(src map[string]string, filterPrefixes []string) map[string]s
 	}
 	dst := make(map[string]string, len(src))
 	for k, v := range src {
+		ignoreKey := false
 		for _, filterPref := range filterPrefixes {
-			if strings.HasPrefix(k, filterPref) {
-				continue
+			if ignoreKey = strings.HasPrefix(k, filterPref); ignoreKey {
+				break
 			}
+		}
+		if !ignoreKey {
 			dst[k] = v
 		}
 	}

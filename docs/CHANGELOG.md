@@ -26,6 +26,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): introduce new flags for leader election configuration - `leader-elect-lease-duration`, `leader-elect-renew-deadline`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1362) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator): add `spec.configMaps` as `volumeMounts` for watch with `config-reloader` container for `VMAgent` and `VMAlert` components. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1370) for details.
 
+* BUGFIX: [converter](https://docs.victoriametrics.com/operator/migration/#objects-conversion): properly apply filter prefixes for objects with `VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES` and `VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES` env variables. See this PR [1391](https://github.com/VictoriaMetrics/operator/pull/1391) for details. Thanks to the @padlyuck
 * BUGFIX: [operator](https://docs.victoriametrics.com/operator/api): remove alerting rule `BadObjects` as metric `operator_controller_bad_objects_count` isn't exposed anymore.
 * BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): fixes typo at `addDefaults` function for `VMCLuster`, it prevents possible panic if `VMInsert` is not configured. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1375) for details.
 

@@ -27,6 +27,10 @@ type FakeOperatorV1 struct {
 	*testing.Fake
 }
 
+func (c *FakeOperatorV1) VLClusters(namespace string) v1.VLClusterInterface {
+	return newFakeVLClusters(c, namespace)
+}
+
 func (c *FakeOperatorV1) VLSingles(namespace string) v1.VLSingleInterface {
 	return newFakeVLSingles(c, namespace)
 }

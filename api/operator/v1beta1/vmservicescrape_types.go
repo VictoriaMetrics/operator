@@ -95,6 +95,10 @@ type VMServiceScrapeList struct {
 	Items           []VMServiceScrape `json:"items"`
 }
 
+func (l *VMServiceScrapeList) ItemsList() []VMServiceScrape {
+	return l.Items
+}
+
 // NamespaceSelector is a selector for selecting either all namespaces or a
 // list of namespaces.
 // +k8s:openapi-gen=true

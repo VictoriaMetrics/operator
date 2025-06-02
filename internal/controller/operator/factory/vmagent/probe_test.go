@@ -155,8 +155,8 @@ relabel_configs:
 			args: args{
 				ssCache: &scrapesSecretsCache{
 					bearerTokens:  map[string]string{},
-					baSecrets:     map[string]*k8stools.BasicAuthCredentials{},
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{},
+					baSecrets:     map[string]*k8stools.BasicAuthCreds{},
+					oauth2Secrets: map[string]*k8stools.OAuth2Creds{},
 				},
 				cr: &vmv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{

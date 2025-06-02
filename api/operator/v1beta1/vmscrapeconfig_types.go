@@ -519,6 +519,10 @@ type VMScrapeConfigList struct {
 	Items           []VMScrapeConfig `json:"items"`
 }
 
+func (l *VMScrapeConfigList) ItemsList() []VMScrapeConfig {
+	return l.Items
+}
+
 // Validate returns error if CR is invalid
 func (cr *VMScrapeConfig) Validate() error {
 	if MustSkipCRValidation(cr) {

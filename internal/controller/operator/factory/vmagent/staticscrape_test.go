@@ -115,7 +115,7 @@ relabel_configs:
 			name: "complete cfg with overrides",
 			args: args{
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*k8stools.BasicAuthCreds{
 						"staticScrapeProxy/default/static-1/0": {
 							Password: "proxy-password",
 							Username: "proxy-user",
@@ -126,7 +126,7 @@ relabel_configs:
 						},
 					},
 					bearerTokens: map[string]string{},
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{
+					oauth2Secrets: map[string]*k8stools.OAuth2Creds{
 						"staticScrape/default/static-1/0": {
 							ClientID:     "some-id",
 							ClientSecret: "some-secret",

@@ -225,4 +225,220 @@ resources:
   webhooks:
     validation: true
     webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomaly
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyOneoffScheduler
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyPeriodicScheduler
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyBacktestingScheduler
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyAutoTunedModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyProphetModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyZScoreModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyOnlineZScoreModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyHoltWintersModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyMadModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyOnlineMadModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyRollingQuantileModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyOnlineQuantileModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyStdModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyIsolationForestModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyIsolationForestMultivariateModel
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyVMReader
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VMAnomalyVMWriter
+  path: github.com/VictoriaMetrics/operator/api/operator/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 version: "3"

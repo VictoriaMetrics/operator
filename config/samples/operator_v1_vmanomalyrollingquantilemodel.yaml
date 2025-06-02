@@ -1,0 +1,9 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VMAnomalyRollingQuantileModel
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: vmanomalyrollingquantilemodel-sample
+spec:
+  # TODO(user): Add fields here

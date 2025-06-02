@@ -241,6 +241,10 @@ type VMAlertmanagerList struct {
 	Items []VMAlertmanager `json:"items"`
 }
 
+func (l *VMAlertmanagerList) ItemsList() []VMAlertmanager {
+	return l.Items
+}
+
 // VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cluster
 // Operator API itself. More info:
 type VMAlertmanagerStatus struct {

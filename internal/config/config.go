@@ -208,6 +208,28 @@ type BaseOperatorConf struct {
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VMAGENTDEFAULT_"`
 
+	VMAnomalyDefault struct {
+		Image               string `default:"victoriametrics/vmanomaly"`
+		Version             string `env:",expand" default:"${VM_ANOMALY_VERSION}"`
+		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
+		Port                string `default:"8490"`
+		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
+		Resource            struct {
+			Limit struct {
+				Mem string `default:"500Mi"`
+				Cpu string `default:"200m"`
+			} `prefix:"LIMIT_"`
+			Request struct {
+				Mem string `default:"200Mi"`
+				Cpu string `default:"50m"`
+			} `prefix:"REQUEST_"`
+		} `prefix:"RESOURCE_"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
+		// deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+	} `prefix:"VMANOMALYDEFAULT_"`
+
 	VMSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-metrics"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
@@ -560,6 +582,9 @@ func (boc BaseOperatorConf) Validate() error {
 		return err
 	}
 	if err := validateResource("vlogs", Resource(boc.VLogsDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmanomaly", Resource(boc.VMAnomalyDefault.Resource)); err != nil {
 		return err
 	}
 

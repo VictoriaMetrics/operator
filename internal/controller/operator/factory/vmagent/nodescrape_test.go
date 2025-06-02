@@ -72,9 +72,9 @@ relabel_configs:
 			args: args{
 				apiserverConfig: nil,
 				ssCache: &scrapesSecretsCache{
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{},
+					oauth2Secrets: map[string]*k8stools.OAuth2Creds{},
 					bearerTokens:  map[string]string{},
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*k8stools.BasicAuthCreds{
 						"nodeScrape/default/nodes-basic": {
 							Username: "username",
 						},

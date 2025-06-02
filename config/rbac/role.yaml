@@ -1,188 +1,77 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: vm-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: operator
+  name: manager-role
 rules:
-- nonResourceURLs:
-  - /metrics
-  - /metrics/resources
-  - /metrics/slis
-  verbs:
-  - get
-  - watch
-  - list
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - configmaps/finalizers
-  - endpoints
-  - events
-  - persistentvolumeclaims
-  - persistentvolumeclaims/finalizers
-  - pods
-  - secrets
-  - secrets/finalizers
-  - services
-  - services/finalizers
-  - serviceaccounts
-  - serviceaccounts/finalizers
-  verbs:
-  - "*"
-- apiGroups:
-  - ""
-  resources:
-  - configmaps/status
-  - nodes
-  - nodes/proxy
-  - nodes/metrics
-  - namespaces
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  - deployments/finalizers
-  - statefulsets
-  - statefulsets/finalizers
-  - daemonsets
-  - daemonsets/finalizers
-  - replicasets
-  - statefulsets
-  - statefulsets/finalizers
-  - statefulsets/status
-  verbs:
-  - "*"
-- apiGroups:
-  - monitoring.coreos.com
-  resources:
-  - "*"
-  verbs:
-  - "*"
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterrolebindings
-  - clusterrolebindings/finalizers
-  - clusterroles
-  - clusterroles/finalizers
-  - roles
-  - rolebindings
-  verbs:
-  - "*"
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - list
-  - get
-  - watch
-- apiGroups:
-  - policy
-  resources:
-  - poddisruptionbudgets
-  - poddisruptionbudgets/finalizers
-  verbs:
-  - "*"
-- apiGroups:
-  - route.openshift.io
-  - image.openshift.io
-  resources:
-  - routers/metrics
-  - registry/metrics
-  verbs:
-  - get
-- apiGroups:
-  - autoscaling
-  verbs:
-  - "*"
-  resources:
-  - horizontalpodautoscalers
-- apiGroups:
-  - networking.k8s.io
-  resources:
-  - ingresses
-  - ingresses/finalizers
-  verbs:
-  - "*"
-- apiGroups:
-  - apiextensions.k8s.io
-  resources:
-  - customresourcedefinitions
-  verbs:
-  - get
-  - list
-- apiGroups:
-  - discovery.k8s.io
-  resources:
-  - endpointslices
-  verbs:
-  - list
-  - watch
-  - get
 - apiGroups:
   - operator.victoriametrics.com
   resources:
-  - vlogs
-  - vlogs/finalizers
-  - vlogs/status
-  - vlsingles
-  - vlsingles/finalizers
-  - vlsingles/status
-  - vlclusters
-  - vlclusters/finalizers
-  - vlclusters/status
-  - vmagents
-  - vmagents/finalizers
-  - vmagents/status
-  - vmalertmanagerconfigs
-  - vmalertmanagerconfigs/finalizers
-  - vmalertmanagerconfigs/status
-  - vmalertmanagers
-  - vmalertmanagers/finalizers
-  - vmalertmanagers/status
-  - vmalerts
-  - vmalerts/finalizers
-  - vmalerts/status
-  - vmauths
-  - vmauths/finalizers
-  - vmauths/status
-  - vmclusters
-  - vmclusters/finalizers
-  - vmclusters/status
-  - vmnodescrapes
-  - vmnodescrapes/finalizers
-  - vmnodescrapes/status
-  - vmpodscrapes
-  - vmpodscrapes/finalizers
-  - vmpodscrapes/status
-  - vmprobes
-  - vmprobes/finalizers
-  - vmprobes/status
-  - vmrules
-  - vmrules/finalizers
-  - vmrules/status
-  - vmscrapeconfigs
-  - vmscrapeconfigs/finalizers
-  - vmscrapeconfigs/status
-  - vmservicescrapes
-  - vmservicescrapes/finalizers
-  - vmservicescrapes/status
-  - vmsingles
-  - vmsingles/finalizers
-  - vmsingles/status
-  - vmstaticscrapes
-  - vmstaticscrapes/finalizers
-  - vmstaticscrapes/status
-  - vmusers
-  - vmusers/finalizers
-  - vmusers/status
+  - vmanomalyautotunedmodels
+  - vmanomalyholtwintersmodels
+  - vmanomalyisolationforestmodels
+  - vmanomalyisolationforestmultivariatemodels
+  - vmanomalymadmodels
+  - vmanomalyoneoffschedulers
+  - vmanomalyonlinemadmodels
+  - vmanomalyonlinequantilemodels
+  - vmanomalyonlinezscoremodels
+  - vmanomalyperiodicschedulers
+  - vmanomalyprophetmodels
+  - vmanomalyrollingquantilemodels
+  - vmanomalystdmodels
+  - vmanomalyvmreaders
+  - vmanomalyvmwriters
+  - vmanomalyzscoremodels
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmanomalyautotunedmodels/finalizers
+  - vmanomalyholtwintersmodels/finalizers
+  - vmanomalyisolationforestmodels/finalizers
+  - vmanomalyisolationforestmultivariatemodels/finalizers
+  - vmanomalymadmodels/finalizers
+  - vmanomalyoneoffschedulers/finalizers
+  - vmanomalyonlinemadmodels/finalizers
+  - vmanomalyonlinequantilemodels/finalizers
+  - vmanomalyonlinezscoremodels/finalizers
+  - vmanomalyperiodicschedulers/finalizers
+  - vmanomalyprophetmodels/finalizers
+  - vmanomalyrollingquantilemodels/finalizers
+  - vmanomalystdmodels/finalizers
+  - vmanomalyvmreaders/finalizers
+  - vmanomalyvmwriters/finalizers
+  - vmanomalyzscoremodels/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmanomalyautotunedmodels/status
+  - vmanomalyholtwintersmodels/status
+  - vmanomalyisolationforestmodels/status
+  - vmanomalyisolationforestmultivariatemodels/status
+  - vmanomalymadmodels/status
+  - vmanomalyoneoffschedulers/status
+  - vmanomalyonlinemadmodels/status
+  - vmanomalyonlinequantilemodels/status
+  - vmanomalyonlinezscoremodels/status
+  - vmanomalyperiodicschedulers/status
+  - vmanomalyprophetmodels/status
+  - vmanomalyrollingquantilemodels/status
+  - vmanomalystdmodels/status
+  - vmanomalyvmreaders/status
+  - vmanomalyvmwriters/status
+  - vmanomalyzscoremodels/status
+  verbs:
+  - get
+  - patch
+  - update

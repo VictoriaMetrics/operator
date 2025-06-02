@@ -543,6 +543,10 @@ type VMAuthList struct {
 	Items           []VMAuth `json:"items"`
 }
 
+func (l *VMAuthList) ItemsList() []VMAuth {
+	return l.Items
+}
+
 // AsOwner returns owner references with current object as owner
 func (cr *VMAuth) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{

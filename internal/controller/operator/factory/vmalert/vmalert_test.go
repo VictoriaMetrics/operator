@@ -66,7 +66,7 @@ func Test_loadVMAlertRemoteSecrets(t *testing.T) {
 				},
 			},
 			want: map[string]*authSecret{
-				"remoteWrite": {BasicAuthCredentials: &k8stools.BasicAuthCredentials{Password: "pass", Username: "user"}},
+				"remoteWrite": {BasicAuthCreds: &k8stools.BasicAuthCreds{Password: "pass", Username: "user"}},
 				"datasource":  {},
 			},
 		},
@@ -661,7 +661,7 @@ func TestBuildNotifiers(t *testing.T) {
 						},
 					},
 				},
-				ntBasicAuth: map[string]*authSecret{"notifier-0": {OAuthCreds: &k8stools.OAuthCreds{ClientSecret: "some-secret", ClientID: "some-id"}}, "notifier-1": {bearerValue: "some-v"}},
+				ntBasicAuth: map[string]*authSecret{"notifier-0": {OAuth2Creds: &k8stools.OAuth2Creds{ClientSecret: "some-secret", ClientID: "some-id"}}, "notifier-1": {bearerValue: "some-v"}},
 			},
 			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerTokenFile=,/etc/vmalert/remote_secrets/NOTIFIER-1_BEARERTOKEN", "-notifier.oauth2.clientSecretFile=/etc/vmalert/remote_secrets/NOTIFIER-0_OAUTH2SECRETKEY,", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.tokenUrl=http://some-url,"},
 		},

@@ -771,7 +771,7 @@ bearer_token_file: /var/run/token
 				i:               0,
 				apiserverConfig: nil,
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*k8stools.BasicAuthCreds{
 						"serviceScrape/default/test-scrape/0": {
 							Username: "user",
 							Password: "pass",
@@ -779,7 +779,7 @@ bearer_token_file: /var/run/token
 					},
 					tlsAssets:    map[string]string{},
 					bearerTokens: map[string]string{},
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{
+					oauth2Secrets: map[string]*k8stools.OAuth2Creds{
 						"serviceScrape/default/test-scrape/0": {ClientSecret: "some-secret", ClientID: "some-id"},
 					},
 				},

@@ -3,9 +3,11 @@ package build
 import (
 	"fmt"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 // MustSkipRuntimeValidation defines whether runtime object validation must be skipped
@@ -17,7 +19,7 @@ func SetSkipRuntimeValidation(mustSkip bool) {
 	MustSkipRuntimeValidation = mustSkip
 }
 
-type builderOpts interface {
+type deployOpts interface {
 	client.Object
 	PrefixedName() string
 	AnnotationsFiltered() map[string]string
@@ -26,6 +28,14 @@ type builderOpts interface {
 	AsOwner() []metav1.OwnerReference
 	GetNamespace() string
 	GetAdditionalService() *vmv1beta1.AdditionalServiceSpec
+}
+
+type shardOpts interface {
+	GetShardCount() int
+	AddShardSettings(runtime.Object, int)
+	SelectorLabels() map[string]string
+	GetNamespace() string
+	PrefixedName() string
 }
 
 // PodDNSAddress formats pod dns address with optional domain name

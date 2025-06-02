@@ -185,7 +185,7 @@ kubectl get deployment -n vm vm-operator \
 
 ## Conversion of prometheus-operator objects
 
-You can read detailed instructions about configuring prometheus-objects conversion in [this document](https://docs.victoriametrics.com/operator/migration/).
+You can read detailed instructions about configuring prometheus-objects conversion in [this document](https://docs.victoriametrics.com/operator/integrations/prometheus/).
 
 ## Helm-charts
 

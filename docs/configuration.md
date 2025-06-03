@@ -183,6 +183,50 @@ kubectl get deployment -n vm vm-operator \
 # --leader-elect --health-probe-bind-address=:8081 --metrics-bind-address=:8080 -zap-log-level=debug
 ```
 
+## Scrape operator metrics
+
+To collect the operator metrics, you can create a [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) resource.
+Configure it to collects metrics from the pods that match the operator labels. 
+Apply scrape config in `vm` namespace, same where the operator is running.
+
+The example below works if you installed the operator using the [Quick Start - Operator](https://docs.victoriametrics.com/operator/quick-start/#operator) section.
+You may need to update the match labels and\or namespace to fit your own operator setup.
+
+```sh
+cat <<'EOF' > operator-scrape.yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: operator-service-scrape
+  namespace: vm
+spec:
+  selector:
+    matchLabels:
+      # You might need to change the labels below
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/name: victoria-metrics-operator
+  endpoints:
+    - port: http
+  # Uncomment the lines below if the VMServiceScrape is applied in  a namespace
+  # different from the one where the operator is running.
+  # namespaceSelector:
+  #  matchNames:
+  #    - default
+EOF
+
+kubectl apply -f operator-scrape.yaml;
+kubectl wait -n vm --for=jsonpath='{.status.updateStatus}'=operational vmservicescrape/operator-service-scrape;
+
+# Output:
+# vmservicescrape.operator.victoriametrics.com/operator-service-scrape created
+# vmservicescrape.operator.victoriametrics.com/operator-service-scrape condition met
+```
+
+You can check if the operator metrics are collected correctly by using the vmagent UI.
+Note, It may take a minute or two for vmagent to load the new scrape config and begin collecting the metrics.
+
+You can find instructions for accessing the vmagent UI in the [Quick Start - Scraping](https://docs.victoriametrics.com/operator/quick-start/#scraping) section.
+
 ## Conversion of prometheus-operator objects
 
 You can read detailed instructions about configuring prometheus-objects conversion in [this document](https://docs.victoriametrics.com/operator/integrations/prometheus/).

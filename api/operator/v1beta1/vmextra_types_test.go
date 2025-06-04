@@ -103,6 +103,7 @@ func TestLicense_MaybeAddToArgs(t *testing.T) {
 	type args struct {
 		args           []string
 		secretMountDir string
+		doubleDash     bool
 	}
 	tests := []struct {
 		name    string
@@ -163,10 +164,25 @@ func TestLicense_MaybeAddToArgs(t *testing.T) {
 			},
 			want: []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-license.forceOffline=true"},
 		},
+		{
+			name: "license key provided via secret with double dash",
+			license: License{
+				KeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "license-secret"},
+					Key:                  "license-key",
+				},
+			},
+			args: args{
+				args:           []string{},
+				secretMountDir: "/etc/secrets",
+				doubleDash:     true,
+			},
+			want: []string{"--licenseFile=/etc/secrets/license-secret/license-key"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.license.MaybeAddToArgs(tt.args.args, tt.args.secretMountDir)
+			got := tt.license.MaybeAddToArgs(tt.args.args, tt.args.secretMountDir, tt.args.doubleDash)
 			slices.Sort(got)
 			slices.Sort(tt.want)
 

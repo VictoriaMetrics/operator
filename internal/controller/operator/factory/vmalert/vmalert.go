@@ -547,7 +547,7 @@ func buildVMAlertArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remote
 		args = append(args, "-envflag.enable=true")
 	}
 
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir, false)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)

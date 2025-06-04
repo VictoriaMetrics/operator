@@ -72,10 +72,6 @@ type VMStaticScrapeList struct {
 	Items           []VMStaticScrape `json:"items"`
 }
 
-func (l *VMStaticScrapeList) ItemsList() []VMStaticScrape {
-	return l.Items
-}
-
 // AsProxyKey builds key for proxy cache maps
 func (cr *VMStaticScrape) AsProxyKey(i int) string {
 	return fmt.Sprintf("staticScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)

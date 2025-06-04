@@ -562,10 +562,6 @@ type VMAgentList struct {
 	Items           []VMAgent `json:"items"`
 }
 
-func (l *VMAgentList) ItemsList() []VMAgent {
-	return l.Items
-}
-
 // AsOwner returns owner references with current object as owner
 func (cr *VMAgent) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{

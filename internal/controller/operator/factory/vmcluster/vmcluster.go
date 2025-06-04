@@ -645,7 +645,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 
 	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, vmv1beta1.SecretsDir)
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir, false)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs, "-")
 	sort.Strings(args)
@@ -843,7 +843,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		})
 	}
 	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, vmv1beta1.SecretsDir)
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir, false)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs, "-")
 	sort.Strings(args)
@@ -1055,7 +1055,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	}
 
 	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, vmv1beta1.SecretsDir)
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir, false)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs, "-")
 	sort.Strings(args)
@@ -1487,7 +1487,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 		args = append(args, "-envflag.enable=true")
 	}
 	volumes, vmounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmounts, vmv1beta1.SecretsDir)
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir, false)
 
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
 	vmauthLBCnt := corev1.Container{

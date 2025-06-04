@@ -279,7 +279,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 	}
 
 	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, vmv1beta1.SecretsDir)
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir, false)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)

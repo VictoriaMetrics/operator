@@ -2,394 +2,266 @@ package vmanomaly
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"strconv"
+	"strings"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
+	"github.com/goccy/go-yaml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
+type validatable interface {
+	validate() error
+}
+
 type config struct {
-	schedulers []any
-	models     []any
-	reader     any
-	writer     any
+	Schedulers map[string]*scheduler `yaml:"schedulers,omitempty"`
+	Models     map[string]*model     `yaml:"models,omitempty"`
+	Reader     *reader               `yaml:"reader,omitempty"`
+	Writer     *writer               `yaml:"writer,omitempty"`
+	Monitoring *monitoring           `yaml:"monitoring,omitempty"`
 }
 
-const defaultAnomalyConfig = `
-writer:
-  class: noop
-reader:
-  class: noop
-`
+func (c *config) override(cr *vmv1.VMAnomaly, ac *k8stools.AssetsCache) error {
+	if cr.Spec.Reader != nil {
+		data, err := yaml.Marshal(cr.Spec.Reader)
+		if err != nil {
+			return fmt.Errorf("failed to marshal anomaly reader CR, name=%q: %w", cr.Name, err)
+		}
+		var r reader
+		if err := yaml.Unmarshal(data, &r); err != nil {
+			return fmt.Errorf("failed to unmarshal anomaly reader CR config, name=%q: %w", cr.Name, err)
+		}
+		if err = r.ClientConfig.override(cr, &cr.Spec.Reader.VMAnomalyHTTPClientSpec, ac); err != nil {
+			return fmt.Errorf("failed to update HTTP client for anomaly reader, name=%q: %w", cr.Name, err)
+		}
+		r.Class = "vm"
+		c.Reader = &r
+	}
+	if cr.Spec.Writer != nil {
+		data, err := yaml.Marshal(cr.Spec.Writer)
+		if err != nil {
+			return fmt.Errorf("failed to marshal anomaly writer CR, name=%q: %w", cr.Name, err)
+		}
+		var w vmWriter
+		if err = yaml.Unmarshal(data, &w); err != nil {
+			return fmt.Errorf("failed to unmarshal anomaly writer CR config, name=%q: %w", cr.Name, err)
+		}
+		if err = w.ClientConfig.override(cr, &cr.Spec.Writer.VMAnomalyHTTPClientSpec, ac); err != nil {
+			return fmt.Errorf("failed to update HTTP client for anomaly writer, name=%q: %w", cr.Name, err)
+		}
+		w.Class = "vm"
+		c.Writer.Data = &w
+	}
+	return nil
+}
 
-func selectModels(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) ([]any, error) {
+func (c *config) validate() error {
+	if len(c.Schedulers) < 1 {
+		return fmt.Errorf("at least one scheduler is required")
+	}
+	if len(c.Models) < 1 {
+		return fmt.Errorf("at least on model is required")
+	}
+	if c.Reader == nil {
+		return fmt.Errorf("reader is required")
+	}
+	for modelName, m := range c.Models {
+		for _, q := range m.Common.Queries {
+			if _, ok := c.Reader.Queries[q]; !ok {
+				return fmt.Errorf(`models.%s.queries contains %q, which is not listed in reader.queries`, modelName, q)
+			}
+		}
+		for _, s := range m.Common.Schedulers {
+			if _, ok := c.Schedulers[s]; !ok {
+				return fmt.Errorf(`models.%s.schedulers contains %q, which is not listed in schedulers`, modelName, s)
+			}
+		}
+	}
+	for name, s := range c.Schedulers {
+		if err := s.validate(); err != nil {
+			return fmt.Errorf("failed to validate scheduler=%q: %w", name, err)
+		}
+	}
+	for name, m := range c.Models {
+		if err := m.validate(); err != nil {
+			return fmt.Errorf("failed to validate model=%q: %w", name, err)
+		}
+	}
+	if err := c.Reader.validate(); err != nil {
+		return fmt.Errorf("failed to validate reader section: %w", err)
+	}
+	if err := c.Writer.validate(); err != nil {
+		return fmt.Errorf("failed to validate writer section: %w", err)
+	}
+	if err := c.Monitoring.validate(); err != nil {
+		return fmt.Errorf("failed to validate monitoring section: %w", err)
+	}
+	return nil
+}
+
+func marshalValues[T validatable](vs map[string]T) yaml.MapSlice {
 	var keys []string
-	var models []any
-	opts := &k8stools.SelectorOpts{
-		SelectAll:         cr.Spec.SelectAllByDefault,
-		ObjectSelector:    cr.Spec.ModelSelectors.Object,
-		NamespaceSelector: cr.Spec.ModelSelectors.Namespace,
-		DefaultNamespace:  cr.Namespace,
+	var output yaml.MapSlice
+	for name, v := range vs {
+		keys = append(keys, name)
+		output = append(output, yaml.MapItem{Key: name, Value: v})
 	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyAutoTunedModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyAutoTunedModel failed: %w", err)
-	}
-	keysLen := len(keys)
-	logger.SelectedObjects(ctx, "VMAnomalyAutoTunedModel", keysLen, 0, keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyHoltWintersModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyHoltWintersModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyHoltWintersModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyIsolationForestModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyIsolationForestModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyIsolationForestMultivariateModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyIsolationForestMultivariateModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyIsolationForestMultivariateModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyIsolationForestMultivariateModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyMadModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyMadModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyMadModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyOnlineMadModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyOnlineMadModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyOnlineMadModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyOnlineQuantileModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyOnlineQuantileModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyOnlineQuantileModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyOnlineZScoreModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyOnlineZScoreModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyOnlineZScoreModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyProphetModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyProphetModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyProphetModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyRollingQuantileModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyRollingQuantileModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyRollingQuantileModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyStdModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyStdModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyStdModel", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyZScoreModelList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			models = append(models, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyZScoreModel failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyZScoreModel", len(keys)-keysLen, 0, keys[keysLen:])
-	build.OrderByKeys(models, keys)
-	return models, nil
+	build.OrderByKeys(output, keys)
+	return output
 }
 
-func selectSchedulers(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) ([]any, error) {
-	var keys []string
-	var schedulers []any
-	opts := &k8stools.SelectorOpts{
-		SelectAll:         cr.Spec.SelectAllByDefault,
-		ObjectSelector:    cr.Spec.SchedulerSelectors.Object,
-		NamespaceSelector: cr.Spec.SchedulerSelectors.Namespace,
-		DefaultNamespace:  cr.Namespace,
+func (c *config) marshal() yaml.MapSlice {
+	output := yaml.MapSlice{
+		yaml.MapItem{Key: "models", Value: marshalValues(c.Models)},
+		yaml.MapItem{Key: "schedulers", Value: marshalValues(c.Schedulers)},
 	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyOneoffSchedulerList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			schedulers = append(schedulers, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyOneoffScheduler failed: %w", err)
+	if c.Reader != nil {
+		output = append(output, yaml.MapItem{Key: "reader", Value: c.Reader})
 	}
-	keysLen := len(keys)
-	logger.SelectedObjects(ctx, "VMAnomalyOneoffScheduler", keysLen, 0, keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyPeriodicSchedulerList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			schedulers = append(schedulers, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyPeriodicScheduler failed: %w", err)
+	if c.Writer != nil {
+		output = append(output, yaml.MapItem{Key: "writer", Value: c.Writer})
 	}
-	logger.SelectedObjects(ctx, "VMAnomalyPeriodicScheduler", len(keys)-keysLen, 0, keys[keysLen:])
-	keysLen = len(keys)
-
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyBacktestingSchedulerList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			schedulers = append(schedulers, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyBacktestingScheduler failed: %w", err)
+	if c.Monitoring != nil {
+		output = append(output, yaml.MapItem{Key: "monitoring", Value: c.Monitoring})
 	}
-	logger.SelectedObjects(ctx, "VMAnomalyBacktestingScheduler", len(keys)-keysLen, 0, keys[keysLen:])
-	build.OrderByKeys(schedulers, keys)
-	return schedulers, nil
+	return output
 }
 
-func selectReaders(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) ([]any, error) {
-	var keys []string
-	var readers []any
-	opts := &k8stools.SelectorOpts{
-		SelectAll:         cr.Spec.SelectAllByDefault,
-		ObjectSelector:    cr.Spec.ReaderSelectors.Object,
-		NamespaceSelector: cr.Spec.ReaderSelectors.Namespace,
-		DefaultNamespace:  cr.Namespace,
-	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyVMReaderList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			readers = append(readers, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+type duration string
+
+func (d *duration) UnmarshalYAML(data []byte) (err error) {
+	v := strings.TrimSpace(string(data))
+	if len(v) > 1 && (v[0] == '"' || v[0] == '`') && v[0] == v[len(v)-1] {
+		if v, err = strconv.Unquote(v); err != nil {
+			return
 		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyVMReader failed: %w", err)
 	}
-	logger.SelectedObjects(ctx, "VMAnomalyVMReader", len(keys), 0, keys)
-	build.OrderByKeys(readers, keys)
-	return readers, nil
+	_, err = timeutil.ParseDuration(v)
+	if err != nil {
+		return fmt.Errorf("failed to parse duration %q: %w", v, err)
+	}
+	*d = duration(v)
+	return nil
 }
 
-func selectWriters(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) ([]any, error) {
-	var keys []string
-	var writers []any
-	opts := &k8stools.SelectorOpts{
-		SelectAll:         cr.Spec.SelectAllByDefault,
-		ObjectSelector:    cr.Spec.WriterSelectors.Object,
-		NamespaceSelector: cr.Spec.WriterSelectors.Namespace,
-		DefaultNamespace:  cr.Namespace,
-	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(l *vmv1.VMAnomalyVMWriterList) {
-		for i := range l.Items {
-			item := &l.Items[i]
-			if !item.GetDeletionTimestamp().IsZero() {
-				continue
-			}
-			writers = append(writers, item)
-			keys = append(keys, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-		}
-	}); err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyVMWriter failed: %w", err)
-	}
-	logger.SelectedObjects(ctx, "VMAnomalyVMWriter", len(keys), 0, keys)
-	build.OrderByKeys(writers, keys)
-	return writers, nil
+type clientConfig struct {
+	TenantID        string    `yaml:"tenant_id,omitempty"`
+	HealthPath      string    `yaml:"health_path,omitempty"`
+	Timeout         *duration `yaml:"timeout,omitempty"`
+	User            string    `yaml:"user,omitempty"`
+	Password        string    `yaml:"password,omitempty"`
+	BearerToken     string    `yaml:"bearer_token,omitempty"`
+	BearerTokenFile string    `yaml:"bearer_token_file,omitempty"`
+	VerifyTLS       bool      `yaml:"verify_tls,omitempty"`
+	TLSCertFile     string    `yaml:"tls_cert_file,omitempty"`
+	TLSKeyFile      string    `yaml:"tls_key_file,omitempty"`
 }
 
-// CreateOrUpdateConfig - check if secret with config exist,
-// if not create with predefined or user value.
-func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject client.Object) error {
-	var prevCR *vmv1.VMAnomaly
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+func (c *clientConfig) override(cr *vmv1.VMAnomaly, cfg *vmv1.VMAnomalyHTTPClientSpec, ac *k8stools.AssetsCache) error {
+	if cfg.TLSConfig != nil {
+		creds, err := ac.BuildTLSCreds(cr.Namespace, cfg.TLSConfig)
+		if err != nil {
+			return fmt.Errorf("failed to load TLS config: %w", err)
+		}
+		c.TLSCertFile = creds.CertFile
+		c.TLSKeyFile = creds.KeyFile
+		c.VerifyTLS = !cfg.TLSConfig.InsecureSkipVerify
 	}
+	if cfg.BasicAuth != nil {
+		creds, err := ac.BuildBasicAuthCreds(cr.Namespace, cfg.BasicAuth)
+		if err != nil {
+			return fmt.Errorf("failed to load basic auth: %w", err)
+		}
+		c.User = creds.Username
+		c.Password = creds.Password
+	}
+	if cfg.BearerAuth != nil {
+		if bearerToken, err := ac.LoadKeyFromSecret(cr.Namespace, cfg.BearerAuth.TokenSecret); err != nil {
+			return err
+		} else if len(bearerToken) > 0 {
+			c.BearerToken = bearerToken
+		}
+		c.BearerTokenFile = cfg.BearerAuth.TokenFilePath
+	}
+	return nil
+}
 
-	if err := createOrUpdateConfig(ctx, rclient, cr, prevCR, childObject); err != nil {
+func Validate(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
+	_, err := loadConfig(ctx, rclient, cr)
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, childObject client.Object) error {
-	c := &config{}
-	schedulers, err := selectSchedulers(ctx, rclient, cr)
-	if err != nil {
-		return err
-	}
-	c.schedulers = schedulers
-
-	models, err := selectModels(ctx, rclient, cr)
-	if err != nil {
-		return err
-	}
-	c.models = models
-
-	readers, err := selectReaders(ctx, rclient, cr)
-	if err != nil {
-		return err
-	}
-	if len(readers) != 1 {
-		return fmt.Errorf("failed to get exactly one reader, got %d", len(readers))
-	}
-	c.reader = readers[0]
-
-	writers, err := selectWriters(ctx, rclient, cr)
-	if err != nil {
-		return err
-	}
-	c.writer = writers[0]
-
+func loadConfig(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) ([]byte, error) {
 	assetsCache := k8stools.NewAssetsCache(ctx, rclient, tlsAssetsDir)
-	var config []byte
+	var data []byte
 	switch {
 	case cr.Spec.ConfigSecret != nil:
 		secret, err := assetsCache.LoadKeyFromSecret(cr.Namespace, cr.Spec.ConfigSecret)
 		if err != nil {
-			return fmt.Errorf("cannot fetch secret content for anomaly config secret, err: %w", err)
+			return nil, fmt.Errorf("cannot fetch secret content for anomaly config secret, name=%q: %w", cr.Name, err)
 		}
-		config = []byte(secret)
+		data = []byte(secret)
 	case cr.Spec.ConfigRawYaml != "":
-		config = []byte(cr.Spec.ConfigRawYaml)
+		data = []byte(cr.Spec.ConfigRawYaml)
+	default:
+		return nil, fmt.Errorf(`either "configRawYaml" or "configSecret" are required`)
+	}
+	c := &config{}
+	err := yaml.Unmarshal(data, c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal anomaly configuration, name=%q: %w", cr.Name, err)
+	}
+	if err = c.override(cr, assetsCache); err != nil {
+		return nil, fmt.Errorf("failed to update secret values with values from anomaly instance, name=%q: %w", cr.Name, err)
+	}
+	if err = c.validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate anomaly configuration, name=%q: %w", cr.Name, err)
+	}
+	output := c.marshal()
+	if data, err = yaml.Marshal(output); err != nil {
+		return nil, fmt.Errorf("failed to marshal anomaly configuration, name=%q: %w", cr.Name, err)
+	}
+	return data, nil
+}
+
+func buildConfgSecretMeta(cr *vmv1.VMAnomaly) *metav1.ObjectMeta {
+	return &metav1.ObjectMeta{
+		Name:            cr.ConfigSecretName(),
+		Namespace:       cr.Namespace,
+		Labels:          cr.AllLabels(),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: cr.AsOwner(),
+		Finalizers:      []string{vmv1beta1.FinalizerName},
 	}
 
+}
+
+func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly) (string, error) {
+	data, err := loadConfig(ctx, rclient, cr)
+	if err != nil {
+		return "", err
+	}
 	newSecretConfig := &corev1.Secret{
 		ObjectMeta: *buildConfgSecretMeta(cr),
 		Data: map[string][]byte{
-			secretConfigKey: config,
-		}}
+			secretConfigKey: data,
+		},
+	}
 
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
@@ -397,8 +269,11 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 	}
 
 	if err := reconcile.Secret(ctx, rclient, newSecretConfig, prevSecretMeta); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	hash := sha256.New()
+	hash.Write(data)
+	hashBytes := hash.Sum(nil)
+	return hex.EncodeToString(hashBytes), nil
 }

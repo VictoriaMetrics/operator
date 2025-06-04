@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,6 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 // VMAnomalySpec defines the desired state of VMAnomaly.
@@ -82,36 +83,12 @@ type VMAnomalySpec struct {
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Secret with anomaly config",xDescriptors="urn:alm:descriptor:io.kubernetes:Secret"
 	ConfigSecret *corev1.SecretKeySelector `json:"configSecret,omitempty"`
-	// SelectAllByDefault changes default behavior for empty CRD selectors, such as SchedulerSelectors.
-	// with selectAllByDefault: true and empty SchedulerSelectors
-	// Operator selects all existing VMAnomaly schedulers
-	// with selectAllByDefault: false - selects nothing
-	// +optional
-	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
-	// SchedulerSelectors defines Object and Namespace selectors for VMAnomaly schedulers
-	// If Namespace nil - only objects at VMAgent namespace.
-	// schedulerSelectors.namespace nil - only objects at anomaly namespaces.
-	// If both nil - behaviour controlled by selectAllByDefault
-	// +optional
-	SchedulerSelectors *EntitySelectors `json:"schedulerSelectors,omitempty"`
-	// ModelSelectors defines Object and Namespace selectors for VMAnomaly models
-	// If Namespace nil - only objects at VMAgent namespace.
-	// modelSelectors.namespace nil - only objects at anomaly namespaces.
-	// If both nil - behaviour controlled by selectAllByDefault
-	// +optional
-	ModelSelectors *EntitySelectors `json:"modelSelectors,omitempty"`
-	// ReaderSelectors defines Object and Namespace selectors for VMAnomaly readers
-	// If Namespace nil - only objects at VMAgent namespace.
-	// readerSelectors.namespace nil - only objects at anomaly namespaces.
-	// If both nil - behaviour controlled by selectAllByDefault
-	// +optional
-	ReaderSelectors *EntitySelectors `json:"readerSelectors,omitempty"`
-	// WriterSelectors defines Object and Namespace selectors for VMAnomaly writers
-	// If Namespace nil - only objects at VMAgent namespace.
-	// writerSelectors.namespace nil - only objects at anomaly namespaces.
-	// If both nil - behaviour controlled by selectAllByDefault
-	// +optional
-	WriterSelectors *EntitySelectors `json:"writerSelectors,omitempty"`
+	// Metrics source for VMAnomaly
+	// See https://docs.victoriametrics.com/anomaly-detection/components/reader/
+	Reader *VMAnomalyReaderSpec `json:"reader,omitempty"`
+	// Metrics destination for VMAnomaly
+	// See https://docs.victoriametrics.com/anomaly-detection/components/writer/
+	Writer *VMAnomalyWriterSpec `json:"writer,omitempty"`
 	// StatefulMode enables StatefulSet for `VMAnomaly` instead of Deployment
 	// +optional
 	StatefulMode bool `json:"statefulMode,omitempty"`
@@ -126,7 +103,7 @@ type VMAnomalySpec struct {
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 	// Monitoring configures how expose anomaly metrics
 	// See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/
-	Monitoring *VMAnomalyMonitoringSpec
+	Monitoring *VMAnomalyMonitoringSpec `json:"monitoring,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/enterprise)
@@ -138,6 +115,78 @@ type VMAnomalySpec struct {
 	v1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
 	v1beta1.CommonConfigReloaderParams        `json:",inline,omitempty"`
 	v1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+}
+
+// VMAnomalyWriterSpec defines the desired state of VMAnomalyWriter.
+type VMAnomalyWriterSpec struct {
+	// VMAnomaly Writer class name
+	Class string `json:"class"`
+	// Datasource URL address
+	DatasourceURL string `json:"datasourceURL" yaml:"datasource_url,omitempty"`
+	// Metrics to save the output (in metric names or labels). Must have __name__ key.
+	// Must have a value with $VAR placeholder in it to distinguish between resulting metrics
+	VMAnomalyWriterMetricFormatSpec `json:"metricFormat,omitempty" yaml:"metric_format,omitempty"`
+	VMAnomalyHTTPClientSpec         `json:",inline,omitempty"`
+}
+
+// VMAnomalyWriterMetricFormatSpec defines the desired state of VMAnomalyWriterMetricFormat
+type VMAnomalyWriterMetricFormatSpec struct {
+	Name string `json:"__name__"`
+	For  string `json:"for"`
+}
+
+// VMAnomalyHTTPClientSpec defines the desired state of VMAnomalyHTTPClient
+type VMAnomalyHTTPClientSpec struct {
+	// Absolute or relative URL address where to check availability of the datasource.
+	HealthPath string `json:"healthPath,omitempty"`
+	// Timeout for the requests, passed as a string
+	Timeout string `json:"timeout,omitempty"`
+	// For VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant.
+	TenantID   string              `json:"tenantID,omitempty" yaml:"tenant_id,omitempty"`
+	BasicAuth  *v1beta1.BasicAuth  `json:"basicAuth,omitempty"`
+	TLSConfig  *v1beta1.TLSConfig  `json:"tlsConfig,omitempty"`
+	BearerAuth *v1beta1.BearerAuth `json:"bearer,omitempty"`
+}
+
+// VMAnomalyReaderSpec defines the desired state of VMAnomalyReader.
+type VMAnomalyReaderSpec struct {
+	// VMAnomaly Reader class name
+	Class string `json:"class"`
+	// Datasource URL address
+	DatasourceURL string `json:"datasourceURL" yaml:"datasource_url,omitempty"`
+	// Frequency of the points returned
+	SamplingPeriod string `json:"samplingPeriod" yaml:"sampling_period,omitempty"`
+	// Performs PromQL/MetricsQL range query
+	QueryRangePath string `json:"queryRangePath,omitempty" yaml:"query_range_path,omitempty"`
+	// List of strings with series selector.
+	ExtraFilters []string `json:"extraFilters,omitempty" yaml:"extra_filters,omitempty"`
+	// If True, then query will be performed from the last seen timestamp for a given series.
+	QueryFromLastSeenTimestamp bool `json:"queryFromLastSeenTimestamp,omitempty" yaml:"query_from_last_seen_timestamp,omitempty"`
+	// It allows overriding the default -search.latencyOffsetflag of VictoriaMetrics
+	LatencyOffset string `json:"latencyOffset,omitempty" yaml:"latency_offset,omitempty"`
+	// Optional argoverrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals
+	MaxPointsPerQuery int `json:"maxPointsPerQuery,omitempty"`
+	// Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns
+	Timezone string `json:"tz,omitempty"`
+	// Optional argumentallows defining valid data ranges for input of all the queries in queries
+	DataRange               []string                             `json:"dataRange,omitempty" yaml:"data_range,omitempty"`
+	Queries                 map[string]*VMAnomalyReaderQuerySpec `json:"queries,omitempty"`
+	VMAnomalyHTTPClientSpec `json:",inline"`
+}
+
+type VMAnomalyReaderQuerySpec struct {
+	// MetricsQL/PromQL expression that defines an input for VmReader
+	Expr string `json:"expr"`
+	// Query-level frequency of the points returned, i.e. 30s
+	Step string `json:"step,omitempty"`
+	// It allows defining valid data ranges for input per individual query in queries
+	DataRange []string `json:"dataRange,omitempty" yaml:"data_range,omitempty"`
+	// Optional arg, overrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals
+	MaxPointsPerInterval int `json:"maxPointsPerInterval,omitempty" yaml:"max_points_per_interval,omitempty"`
+	// This optional argument enables timezone specification per query, overriding the reader’s default tz
+	TZ string `json:"tz,omitempty"`
+	// This optional argument enables tenant-level separation for queries
+	TenantID string `json:"tenantID,omitempty" yaml:"tenant_id,omitempty"`
 }
 
 // VMAnomalyStatus defines the observed state of VMAnomaly.
@@ -179,26 +228,20 @@ type VMAnomaly struct {
 }
 
 type VMAnomalyMonitoringSpec struct {
-	VMAnomalyMonitoringPullParams `json:"pull"`
-	VMAnomalyMonitoringPushParams `json:"push"`
+	Pull *VMAnomalyMonitoringPullSpec `json:"pull,omitempty"`
+	Push *VMAnomalyMonitoringPushSpec `json:"push,omitempty"`
 }
 
-type VMAnomalyMonitoringPullParams struct {
+type VMAnomalyMonitoringPullSpec struct {
 	Addr string `json:"addr,omitempty"`
-	Port string `json:"port,omitempty"`
+	Port string `json:"port"`
 }
 
-type VMAnomalyMonitoringPushParams struct {
-	URL               string                    `json:"url"`
-	TenantID          string                    `json:"tenant_id,omitempty"`
-	HealthPath        string                    `json:"health_path,omitempty"`
-	PushFrequency     metav1.Duration           `json:"push_frequency,omitempty"`
-	Timeout           metav1.Duration           `json:"timeout,omitempty"`
-	ExtraLabels       map[string]string         `json:"extra_labels,omitempty"`
-	BearerToken       *corev1.SecretKeySelector `json:"bearer_token,omitempty"`
-	BearerTokenFile   string                    `json:"bearer_token_file,omitempty"`
-	v1beta1.BasicAuth `json:",inline"`
-	v1beta1.TLSConfig `json:",inline"`
+type VMAnomalyMonitoringPushSpec struct {
+	URL                     string            `json:"url"`
+	PushFrequency           string            `json:"pushFrequency,omitempty"`
+	ExtraLabels             map[string]string `json:"extraLabels,omitempty"`
+	VMAnomalyHTTPClientSpec `json:",inline"`
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface
@@ -331,12 +374,7 @@ func (cr *VMAnomaly) GetServiceScrape() *v1beta1.VMServiceScrapeSpec {
 
 // Port returns port for accessing anomaly
 func (cr *VMAnomaly) Port() string {
-	port := cr.Spec.Port
-	if port == "" {
-		port = "8490"
-	}
-
-	return port
+	return cr.Spec.Port
 }
 
 func (cr *VMAnomaly) GetVolumeName() string {
@@ -364,7 +402,7 @@ func (cr *VMAnomaly) ProbeScheme() string {
 }
 
 func (cr *VMAnomaly) ProbePort() string {
-	return cr.Spec.Port
+	return cr.Port()
 }
 
 func (*VMAnomaly) ProbeNeedLiveness() bool {
@@ -382,7 +420,7 @@ func (cr *VMAnomaly) Validate() error {
 }
 
 func (cr *VMAnomaly) GetShardCount() int {
-	if cr.Spec.ShardCount == nil {
+	if cr == nil || cr.Spec.ShardCount == nil {
 		return 0
 	}
 	return *cr.Spec.ShardCount
@@ -458,39 +496,6 @@ func (cr *VMAnomaly) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
-// IsUnmanaged checks if object should managed any config objects
-func (cr *VMAnomaly) IsUnmanaged() bool {
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.SchedulerSelectors.Object == nil && cr.Spec.SchedulerSelectors.Namespace == nil &&
-		cr.Spec.ModelSelectors.Object == nil && cr.Spec.ModelSelectors.Namespace == nil &&
-		cr.Spec.ReaderSelectors.Object == nil && cr.Spec.ReaderSelectors.Namespace == nil &&
-		cr.Spec.WriterSelectors.Object == nil && cr.Spec.WriterSelectors.Namespace == nil
-}
-
-// IsSchedulerUnmanaged checks if vmagent should managed any VMAnomaly scheduler objects
-func (cr *VMAnomaly) IsSchedulerUnmanaged() bool {
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.SchedulerSelectors.Object == nil && cr.Spec.SchedulerSelectors.Namespace == nil
-}
-
-// IsModelUnmanaged checks if vmagent should managed any VMAnomaly model objects
-func (cr *VMAnomaly) IsModelUnmanaged() bool {
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.ModelSelectors.Object == nil && cr.Spec.ModelSelectors.Namespace == nil
-}
-
-// IsReaderUnmanaged checks if vmagent should managed any VMAnomaly reader objects
-func (cr *VMAnomaly) IsReaderUnmanaged() bool {
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.ReaderSelectors.Object == nil && cr.Spec.ReaderSelectors.Namespace == nil
-}
-
-// IsWriterUnmanaged checks if vmagent should managed any VMAnomaly writer objects
-func (cr *VMAnomaly) IsWriterUnmanaged() bool {
-	return !cr.Spec.SelectAllByDefault &&
-		cr.Spec.WriterSelectors.Object == nil && cr.Spec.WriterSelectors.Namespace == nil
-}
-
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAnomalySpec) UnmarshalJSON(src []byte) error {
 	type pcr VMAnomalySpec
@@ -508,10 +513,6 @@ type VMAnomalyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VMAnomaly `json:"items"`
-}
-
-func (l *VMAnomalyList) ItemsList() []VMAnomaly {
-	return l.Items
 }
 
 func init() {

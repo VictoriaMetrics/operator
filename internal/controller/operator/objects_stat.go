@@ -49,12 +49,6 @@ func newCollector() *objectCollector {
 		"vmagent", "vmalert", "vmsingle", "vmcluster", "vmalertmanager", "vmauth", "vlogs", "vlsingle",
 		"vlcluster", "vmalertmanagerconfig", "vmrule", "vmuser", "vmservicescrape", "vmstaticscrape",
 		"vmnodescrape", "vmpodscrape", "vmprobescrape", "vmscrapeconfig", "vmanomaly",
-		"vmanomalyoneoffscheduler", "vmanomalyperiodicscheduler", "vmanomalybacktestingscheduler",
-		"vmanomalyautotunedmodel", "vmanomalyholtwintersmodel", "vmanomalyisolationforestmodel",
-		"vmanomalyisolationforestmultivariatemodel", "vmanomalymadmodel", "vmanomalyonlinemadmodel",
-		"vmanomalyonlinequantilemodel", "vmanomalyonlinezscoremodel", "vmanomalyprophetmodel",
-		"vmanomalyrollingquantilemodel", "vmanomalystdmodel", "vmanomalyzscoremodel",
-		"vmanomalyvmreader", "vmanomalyvmwriter",
 	}
 	for _, controller := range registeredObjects {
 		oc.objectsByController[controller] = map[string]struct{}{}

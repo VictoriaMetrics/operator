@@ -196,10 +196,6 @@ type VMAlertmanagerConfigList struct {
 	Items           []VMAlertmanagerConfig `json:"items"`
 }
 
-func (l *VMAlertmanagerConfigList) ItemsList() []VMAlertmanagerConfig {
-	return l.Items
-}
-
 // Route defines a node in the routing tree.
 type Route struct {
 	// Name of the receiver for this route.

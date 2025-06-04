@@ -133,10 +133,6 @@ type VMProbeList struct {
 	Items           []VMProbe `json:"items"`
 }
 
-func (l *VMProbeList) ItemsList() []VMProbe {
-	return l.Items
-}
-
 // AsProxyKey builds key for proxy cache maps
 func (cr *VMProbe) AsProxyKey() string {
 	return fmt.Sprintf("probeScrapeProxy/%s/%s", cr.Namespace, cr.Name)

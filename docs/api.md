@@ -28,6 +28,11 @@ Package v1 contains API Schema definitions for the operator v1 API group
 ### Resource Types
 - [VLCluster](#vlcluster)
 - [VLSingle](#vlsingle)
+- [VMAnomaly](#vmanomaly)
+
+
+
+
 
 
 
@@ -412,6 +417,224 @@ Appears in: [VLClusterSpec](#vlclusterspec)
 | volumes<a href="#vlstorage-volumes" id="vlstorage-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
 
 
+#### VMAnomaly
+
+
+
+VMAnomaly is the Schema for the vmanomalies API.
+
+
+
+| Field | Description |
+| --- | --- |
+| apiVersion<br/>_string_ | (Required)<br/>`operator.victoriametrics.com/v1` |
+| kind<br/>_string_ | (Required)<br/>`VMAnomaly` |
+| metadata<a href="#vmanomaly-metadata" id="vmanomaly-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#objectmeta-v1-meta)_ | _(Required)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
+| spec<a href="#vmanomaly-spec" id="vmanomaly-spec">#</a><br/>_[VMAnomalySpec](#vmanomalyspec)_ | _(Required)_<br/> |
+
+
+#### VMAnomalyHTTPClientSpec
+
+
+
+VMAnomalyHTTPClientSpec defines the desired state of VMAnomalyHTTPClient
+
+Appears in: [VMAnomalyMonitoringPushParams](#vmanomalymonitoringpushparams), [VMAnomalyReaderSpec](#vmanomalyreaderspec), [VMAnomalyWriterSpec](#vmanomalywriterspec)
+
+| Field | Description |
+| --- | --- |
+| health_path<a href="#vmanomalyhttpclientspec-health_path" id="vmanomalyhttpclientspec-health_path">#</a><br/>_string_ | _(Required)_<br/>Absolute or relative URL address where to check availability of the datasource. |
+| tenant_id<a href="#vmanomalyhttpclientspec-tenant_id" id="vmanomalyhttpclientspec-tenant_id">#</a><br/>_string_ | _(Required)_<br/>For VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
+| timeout<a href="#vmanomalyhttpclientspec-timeout" id="vmanomalyhttpclientspec-timeout">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Required)_<br/>Timeout for the requests, passed as a string |
+
+
+#### VMAnomalyMonitoringPullParams
+
+
+
+
+
+Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
+
+| Field | Description |
+| --- | --- |
+| addr<a href="#vmanomalymonitoringpullparams-addr" id="vmanomalymonitoringpullparams-addr">#</a><br/>_string_ | _(Required)_<br/> |
+| port<a href="#vmanomalymonitoringpullparams-port" id="vmanomalymonitoringpullparams-port">#</a><br/>_string_ | _(Required)_<br/> |
+
+
+#### VMAnomalyMonitoringPushParams
+
+
+
+
+
+Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
+
+| Field | Description |
+| --- | --- |
+| extra_labels<a href="#vmanomalymonitoringpushparams-extra_labels" id="vmanomalymonitoringpushparams-extra_labels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/> |
+| push_frequency<a href="#vmanomalymonitoringpushparams-push_frequency" id="vmanomalymonitoringpushparams-push_frequency">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Required)_<br/> |
+| url<a href="#vmanomalymonitoringpushparams-url" id="vmanomalymonitoringpushparams-url">#</a><br/>_string_ | _(Required)_<br/> |
+
+
+#### VMAnomalyMonitoringSpec
+
+
+
+
+
+Appears in: [VMAnomalySpec](#vmanomalyspec)
+
+| Field | Description |
+| --- | --- |
+| pull<a href="#vmanomalymonitoringspec-pull" id="vmanomalymonitoringspec-pull">#</a><br/>_[VMAnomalyMonitoringPullParams](#vmanomalymonitoringpullparams)_ | _(Required)_<br/> |
+| push<a href="#vmanomalymonitoringspec-push" id="vmanomalymonitoringspec-push">#</a><br/>_[VMAnomalyMonitoringPushParams](#vmanomalymonitoringpushparams)_ | _(Required)_<br/> |
+
+
+#### VMAnomalyReaderQuerySpec
+
+
+
+
+
+Appears in: [VMAnomalyReaderSpec](#vmanomalyreaderspec)
+
+| Field | Description |
+| --- | --- |
+| data_range<a href="#vmanomalyreaderqueryspec-data_range" id="vmanomalyreaderqueryspec-data_range">#</a><br/>_string array_ | _(Required)_<br/>It allows defining valid data ranges for input per individual query in queries |
+| expr<a href="#vmanomalyreaderqueryspec-expr" id="vmanomalyreaderqueryspec-expr">#</a><br/>_string_ | _(Required)_<br/>MetricsQL/PromQL expression that defines an input for VmReader |
+| max_points_per_interval<a href="#vmanomalyreaderqueryspec-max_points_per_interval" id="vmanomalyreaderqueryspec-max_points_per_interval">#</a><br/>_integer_ | _(Required)_<br/>Optional arg, overrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fit_window queries into smaller sub-intervals |
+| step<a href="#vmanomalyreaderqueryspec-step" id="vmanomalyreaderqueryspec-step">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Required)_<br/>Query-level frequency of the points returned, i.e. 30s |
+| tenant_id<a href="#vmanomalyreaderqueryspec-tenant_id" id="vmanomalyreaderqueryspec-tenant_id">#</a><br/>_string_ | _(Required)_<br/>This optional argument enables tenant-level separation for queries |
+| tz<a href="#vmanomalyreaderqueryspec-tz" id="vmanomalyreaderqueryspec-tz">#</a><br/>_string_ | _(Required)_<br/>This optional argument enables timezone specification per query, overriding the reader’s default tz |
+
+
+#### VMAnomalyReaderSpec
+
+
+
+VMAnomalyReaderSpec defines the desired state of VMAnomalyReader.
+
+Appears in: [VMAnomalySpec](#vmanomalyspec)
+
+| Field | Description |
+| --- | --- |
+| class<a href="#vmanomalyreaderspec-class" id="vmanomalyreaderspec-class">#</a><br/>_string_ | _(Required)_<br/>VMAnomaly Reader class name |
+| data_range<a href="#vmanomalyreaderspec-data_range" id="vmanomalyreaderspec-data_range">#</a><br/>_string array_ | _(Required)_<br/>Optional argumentallows defining valid data ranges for input of all the queries in queries |
+| datasource_url<a href="#vmanomalyreaderspec-datasource_url" id="vmanomalyreaderspec-datasource_url">#</a><br/>_string_ | _(Required)_<br/>Datasource URL address |
+| extra_filters<a href="#vmanomalyreaderspec-extra_filters" id="vmanomalyreaderspec-extra_filters">#</a><br/>_string array_ | _(Required)_<br/>List of strings with series selector. |
+| latency_duration<a href="#vmanomalyreaderspec-latency_duration" id="vmanomalyreaderspec-latency_duration">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Required)_<br/>It allows overriding the default -search.latencyOffsetflag of VictoriaMetrics |
+| max_points_per_query<a href="#vmanomalyreaderspec-max_points_per_query" id="vmanomalyreaderspec-max_points_per_query">#</a><br/>_integer_ | _(Required)_<br/>Optional argoverrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fit_window queries into smaller sub-intervals |
+| queries<a href="#vmanomalyreaderspec-queries" id="vmanomalyreaderspec-queries">#</a><br/>_object (keys:string, values:[VMAnomalyReaderQuerySpec](#vmanomalyreaderqueryspec))_ | _(Required)_<br/> |
+| query_from_last_seen_timestamp<a href="#vmanomalyreaderspec-query_from_last_seen_timestamp" id="vmanomalyreaderspec-query_from_last_seen_timestamp">#</a><br/>_boolean_ | _(Required)_<br/>If True, then query will be performed from the last seen timestamp for a given series. |
+| query_range_path<a href="#vmanomalyreaderspec-query_range_path" id="vmanomalyreaderspec-query_range_path">#</a><br/>_string_ | _(Required)_<br/>Performs PromQL/MetricsQL range query |
+| sampling_duration<a href="#vmanomalyreaderspec-sampling_duration" id="vmanomalyreaderspec-sampling_duration">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Required)_<br/>Frequency of the points returned |
+| tz<a href="#vmanomalyreaderspec-tz" id="vmanomalyreaderspec-tz">#</a><br/>_string_ | _(Required)_<br/>Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns |
+
+
+#### VMAnomalySpec
+
+
+
+VMAnomalySpec defines the desired state of VMAnomaly.
+
+Appears in: [VMAnomaly](#vmanomaly)
+
+| Field | Description |
+| --- | --- |
+| affinity<a href="#vmanomalyspec-affinity" id="vmanomalyspec-affinity">#</a><br/>_[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#affinity-v1-core)_ | _(Optional)_<br/>Affinity If specified, the pod's scheduling constraints. |
+| claimTemplates<a href="#vmanomalyspec-claimtemplates" id="vmanomalyspec-claimtemplates">#</a><br/>_[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#persistentvolumeclaim-v1-core) array_ | _(Required)_<br/>ClaimTemplates allows adding additional VolumeClaimTemplates for VMAnomaly in StatefulMode |
+| configMaps<a href="#vmanomalyspec-configmaps" id="vmanomalyspec-configmaps">#</a><br/>_string array_ | _(Optional)_<br/>ConfigMaps is a list of ConfigMaps in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/configs/CONFIGMAP_NAME folder |
+| configRawYaml<a href="#vmanomalyspec-configrawyaml" id="vmanomalyspec-configrawyaml">#</a><br/>_string_ | _(Optional)_<br/>ConfigRawYaml - raw configuration for anomaly,<br />it helps it to start without secret.<br />priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret. |
+| configReloadAuthKeySecret<a href="#vmanomalyspec-configreloadauthkeysecret" id="vmanomalyspec-configreloadauthkeysecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.<br />Given secret reference will be added to the application and vm-config-reloader as volume<br />available since v0.57.0 version |
+| configReloaderExtraArgs<a href="#vmanomalyspec-configreloaderextraargs" id="vmanomalyspec-configreloaderextraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container<br />for example resyncInterval: "30s" |
+| configReloaderImageTag<a href="#vmanomalyspec-configreloaderimagetag" id="vmanomalyspec-configreloaderimagetag">#</a><br/>_string_ | _(Optional)_<br/>ConfigReloaderImageTag defines image:tag for config-reloader container |
+| configReloaderResources<a href="#vmanomalyspec-configreloaderresources" id="vmanomalyspec-configreloaderresources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | _(Optional)_<br/>ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
+| configSecret<a href="#vmanomalyspec-configsecret" id="vmanomalyspec-configsecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>ConfigSecret is the name of a Kubernetes Secret in the same namespace as the<br />VMAnomaly object, which contains configuration for this VMAnomaly,<br />configuration must be inside secret key: anomaly.yaml.<br />It must be created by user.<br />instance. Defaults to 'vmanomaly-<anomaly-name>'<br />The secret is mounted into /etc/anomaly/config. |
+| containers<a href="#vmanomalyspec-containers" id="vmanomalyspec-containers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. |
+| disableAutomountServiceAccountToken<a href="#vmanomalyspec-disableautomountserviceaccounttoken" id="vmanomalyspec-disableautomountserviceaccounttoken">#</a><br/>_boolean_ | _(Optional)_<br/>DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).<br />Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.<br />For example, vmagent and vm-config-reloader requires k8s API access.<br />Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.<br />And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount. |
+| disableSelfServiceScrape<a href="#vmanomalyspec-disableselfservicescrape" id="vmanomalyspec-disableselfservicescrape">#</a><br/>_boolean_ | _(Optional)_<br/>DisableSelfServiceScrape controls creation of VMServiceScrape by operator<br />for the application.<br />Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable |
+| dnsConfig<a href="#vmanomalyspec-dnsconfig" id="vmanomalyspec-dnsconfig">#</a><br/>_[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#poddnsconfig-v1-core)_ | _(Optional)_<br/>Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. |
+| dnsPolicy<a href="#vmanomalyspec-dnspolicy" id="vmanomalyspec-dnspolicy">#</a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
+| extraArgs<a href="#vmanomalyspec-extraargs" id="vmanomalyspec-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
+| extraEnvs<a href="#vmanomalyspec-extraenvs" id="vmanomalyspec-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| extraEnvsFrom<a href="#vmanomalyspec-extraenvsfrom" id="vmanomalyspec-extraenvsfrom">#</a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
+| hostAliases<a href="#vmanomalyspec-hostaliases" id="vmanomalyspec-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
+| hostNetwork<a href="#vmanomalyspec-hostnetwork" id="vmanomalyspec-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
+| host_aliases<a href="#vmanomalyspec-host_aliases" id="vmanomalyspec-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
+| image<a href="#vmanomalyspec-image" id="vmanomalyspec-image">#</a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
+| imagePullSecrets<a href="#vmanomalyspec-imagepullsecrets" id="vmanomalyspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
+| initContainers<a href="#vmanomalyspec-initcontainers" id="vmanomalyspec-initcontainers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
+| license<a href="#vmanomalyspec-license" id="vmanomalyspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/enterprise) |
+| logLevel<a href="#vmanomalyspec-loglevel" id="vmanomalyspec-loglevel">#</a><br/>_string_ | _(Optional)_<br/>LogLevel for VMAnomaly to be configured with.<br />INFO, WARN, ERROR, FATAL, PANIC |
+| managedMetadata<a href="#vmanomalyspec-managedmetadata" id="vmanomalyspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
+| minReadySeconds<a href="#vmanomalyspec-minreadyseconds" id="vmanomalyspec-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
+| monitoring<a href="#vmanomalyspec-monitoring" id="vmanomalyspec-monitoring">#</a><br/>_[VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)_ | _(Required)_<br/>Monitoring configures how expose anomaly metrics<br />See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/ |
+| nodeSelector<a href="#vmanomalyspec-nodeselector" id="vmanomalyspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
+| paused<a href="#vmanomalyspec-paused" id="vmanomalyspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
+| podDisruptionBudget<a href="#vmanomalyspec-poddisruptionbudget" id="vmanomalyspec-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
+| podMetadata<a href="#vmanomalyspec-podmetadata" id="vmanomalyspec-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Optional)_<br/>PodMetadata configures Labels and Annotations which are propagated to the vmanomaly pods. |
+| port<a href="#vmanomalyspec-port" id="vmanomalyspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
+| priorityClassName<a href="#vmanomalyspec-priorityclassname" id="vmanomalyspec-priorityclassname">#</a><br/>_string_ | _(Optional)_<br/>PriorityClassName class assigned to the Pods |
+| reader<a href="#vmanomalyspec-reader" id="vmanomalyspec-reader">#</a><br/>_[VMAnomalyReaderSpec](#vmanomalyreaderspec)_ | _(Required)_<br/>Metrics source for VMAnomaly<br />See https://docs.victoriametrics.com/anomaly-detection/components/reader/ |
+| readinessGates<a href="#vmanomalyspec-readinessgates" id="vmanomalyspec-readinessgates">#</a><br/>_[PodReadinessGate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#podreadinessgate-v1-core) array_ | _(Required)_<br/>ReadinessGates defines pod readiness gates |
+| replicaCount<a href="#vmanomalyspec-replicacount" id="vmanomalyspec-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
+| resources<a href="#vmanomalyspec-resources" id="vmanomalyspec-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
+| revisionHistoryLimitCount<a href="#vmanomalyspec-revisionhistorylimitcount" id="vmanomalyspec-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
+| rollingUpdate<a href="#vmanomalyspec-rollingupdate" id="vmanomalyspec-rollingupdate">#</a><br/>_[RollingUpdateDeployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#rollingupdatedeployment-v1-apps)_ | _(Optional)_<br/>RollingUpdate - overrides deployment update params. |
+| runtimeClassName<a href="#vmanomalyspec-runtimeclassname" id="vmanomalyspec-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
+| schedulerName<a href="#vmanomalyspec-schedulername" id="vmanomalyspec-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
+| secrets<a href="#vmanomalyspec-secrets" id="vmanomalyspec-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
+| securityContext<a href="#vmanomalyspec-securitycontext" id="vmanomalyspec-securitycontext">#</a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
+| serviceAccountName<a href="#vmanomalyspec-serviceaccountname" id="vmanomalyspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
+| serviceScrapeSpec<a href="#vmanomalyspec-servicescrapespec" id="vmanomalyspec-servicescrapespec">#</a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vmanomaly VMPodScrape spec |
+| shardCount<a href="#vmanomalyspec-shardcount" id="vmanomalyspec-shardcount">#</a><br/>_integer_ | _(Optional)_<br/>ShardCount - numbers of shards of VMAnomaly<br />in this case operator will use 1 deployment/sts per shard with<br />replicas count according to spec.replicas. |
+| statefulMode<a href="#vmanomalyspec-statefulmode" id="vmanomalyspec-statefulmode">#</a><br/>_boolean_ | _(Optional)_<br/>StatefulMode enables StatefulSet for `VMAnomaly` instead of Deployment |
+| statefulRollingUpdateStrategy<a href="#vmanomalyspec-statefulrollingupdatestrategy" id="vmanomalyspec-statefulrollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>StatefulRollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
+| statefulStorage<a href="#vmanomalyspec-statefulstorage" id="vmanomalyspec-statefulstorage">#</a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>StatefulStorage configures storage for StatefulSet |
+| terminationGracePeriodSeconds<a href="#vmanomalyspec-terminationgraceperiodseconds" id="vmanomalyspec-terminationgraceperiodseconds">#</a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
+| tolerations<a href="#vmanomalyspec-tolerations" id="vmanomalyspec-tolerations">#</a><br/>_[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#toleration-v1-core) array_ | _(Optional)_<br/>Tolerations If specified, the pod's tolerations. |
+| topologySpreadConstraints<a href="#vmanomalyspec-topologyspreadconstraints" id="vmanomalyspec-topologyspreadconstraints">#</a><br/>_[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#topologyspreadconstraint-v1-core) array_ | _(Optional)_<br/>TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ |
+| updateStrategy<a href="#vmanomalyspec-updatestrategy" id="vmanomalyspec-updatestrategy">#</a><br/>_[DeploymentStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#deploymentstrategytype-v1-apps)_ | _(Optional)_<br/>UpdateStrategy - overrides default update strategy.<br />works only for deployments, statefulset always use OnDelete. |
+| useDefaultResources<a href="#vmanomalyspec-usedefaultresources" id="vmanomalyspec-usedefaultresources">#</a><br/>_boolean_ | _(Optional)_<br/>UseDefaultResources controls resource settings<br />By default, operator sets built-in resource requirements |
+| useStrictSecurity<a href="#vmanomalyspec-usestrictsecurity" id="vmanomalyspec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
+| useVMConfigReloader<a href="#vmanomalyspec-usevmconfigreloader" id="vmanomalyspec-usevmconfigreloader">#</a><br/>_boolean_ | _(Optional)_<br/>UseVMConfigReloader replaces prometheus-like config-reloader<br />with vm one. It uses secrets watch instead of file watch<br />which greatly increases speed of config updates |
+| volumeMounts<a href="#vmanomalyspec-volumemounts" id="vmanomalyspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
+| volumes<a href="#vmanomalyspec-volumes" id="vmanomalyspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| writer<a href="#vmanomalyspec-writer" id="vmanomalyspec-writer">#</a><br/>_[VMAnomalyWriterSpec](#vmanomalywriterspec)_ | _(Required)_<br/>Metrics destination for VMAnomaly<br />See https://docs.victoriametrics.com/anomaly-detection/components/writer/ |
+
+
+
+
+#### VMAnomalyWriterMetricFormatSpec
+
+
+
+VMAnomalyWriterMetricFormatSpec defines the desired state of VMAnomalyWriterMetricFormat
+
+Appears in: [VMAnomalyWriterSpec](#vmanomalywriterspec)
+
+| Field | Description |
+| --- | --- |
+| __name__<a href="#vmanomalywritermetricformatspec-__name__" id="vmanomalywritermetricformatspec-__name__">#</a><br/>_string_ | _(Required)_<br/> |
+| for<a href="#vmanomalywritermetricformatspec-for" id="vmanomalywritermetricformatspec-for">#</a><br/>_string_ | _(Required)_<br/> |
+
+
+#### VMAnomalyWriterSpec
+
+
+
+VMAnomalyWriterSpec defines the desired state of VMAnomalyWriter.
+
+Appears in: [VMAnomalySpec](#vmanomalyspec)
+
+| Field | Description |
+| --- | --- |
+| class<a href="#vmanomalywriterspec-class" id="vmanomalywriterspec-class">#</a><br/>_string_ | _(Required)_<br/>VMAnomaly Writer class name |
+| datasource_url<a href="#vmanomalywriterspec-datasource_url" id="vmanomalywriterspec-datasource_url">#</a><br/>_string_ | _(Required)_<br/>Datasource URL address |
+| metric_format<a href="#vmanomalywriterspec-metric_format" id="vmanomalywriterspec-metric_format">#</a><br/>_[VMAnomalyWriterMetricFormatSpec](#vmanomalywritermetricformatspec)_ | _(Required)_<br/>Metrics to save the output (in metric names or labels). Must have __name__ key.<br />Must have a value with $VAR placeholder in it to distinguish between resulting metrics |
+
+
 
 ## operator.victoriametrics.com/v1beta1
 
@@ -592,7 +815,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -607,7 +830,7 @@ Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfi
 
 BearerAuth defines auth with bearer token
 
-Appears in: [HTTPAuth](#httpauth), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
+Appears in: [HTTPAuth](#httpauth), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec)
 
 | Field | Description |
 | --- | --- |
@@ -666,7 +889,7 @@ Appears in: [TLSClientConfig](#tlsclientconfig), [TLSServerConfig](#tlsservercon
 CommonApplicationDeploymentParams defines common params
 for deployment and statefulset specifications
 
-Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
+Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -708,7 +931,7 @@ Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsing
 
 
 
-Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthSpec](#vmauthspec)
+Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec)
 
 | Field | Description |
 | --- | --- |
@@ -726,7 +949,7 @@ Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertma
 CommonDefaultableParams contains Application settings
 with known values populated from operator configuration
 
-Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
+Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -744,7 +967,7 @@ Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsing
 
 Condition defines status condition of the resource
 
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus)
+Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus)
 
 | Field | Description |
 | --- | --- |
@@ -997,7 +1220,7 @@ Appears in: [VMAuthSpec](#vmauthspec)
 EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
 Only fields which are relevant to embedded resources are included.
 
-Appears in: [AdditionalServiceSpec](#additionalservicespec), [EmbeddedIngress](#embeddedingress), [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
+Appears in: [AdditionalServiceSpec](#additionalservicespec), [EmbeddedIngress](#embeddedingress), [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -1027,7 +1250,7 @@ Appears in: [StorageSpec](#storagespec)
 
 
 
-Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMStorage](#vmstorage)
+Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -1044,7 +1267,7 @@ EmbeddedProbes - it allows to override some probe params.
 its not necessary to specify all options,
 operator will replace missing spec with default values.
 
-Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
+Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -1262,7 +1485,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 Image defines docker image settings
 
-Appears in: [CommonDefaultableParams](#commondefaultableparams), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMBackup](#vmbackup), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
+Appears in: [CommonDefaultableParams](#commondefaultableparams), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMBackup](#vmbackup), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -1401,7 +1624,7 @@ License holds license key for enterprise features.
 Using license key is supported starting from VictoriaMetrics corev1.94.0.
 See [here](https://docs.victoriametrics.com/enterprise)
 
-Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec)
+Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -1472,7 +1695,7 @@ Appears in: [Receiver](#receiver)
 
 ManagedObjectsMetadata contains Labels and Annotations
 
-Appears in: [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec)
+Appears in: [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -1946,7 +2169,7 @@ Appears in: [OAuth2](#oauth2), [TLSConfig](#tlsconfig)
 SecurityContext extends PodSecurityContext with ContainerSecurityContext
 It allows to globally configure security params for pod and all containers
 
-Appears in: [CommonApplicationDeploymentParams](#commonapplicationdeploymentparams), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
+Appears in: [CommonApplicationDeploymentParams](#commonapplicationdeploymentparams), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 
 
@@ -2118,7 +2341,7 @@ Appears in: [TargetRef](#targetref)
 
 StatusMetadata holds metadata of application update status
 
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus)
+Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus)
 
 | Field | Description |
 | --- | --- |
@@ -2135,7 +2358,7 @@ Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLClusterStatus](#vlclus
 StorageSpec defines the configured storage for a group Prometheus servers.
 If neither `emptyDir` nor `volumeClaimTemplate` is specified, then by default an [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) will be used.
 
-Appears in: [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMSelect](#vmselect), [VMStorage](#vmstorage)
+Appears in: [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMSelect](#vmselect), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2231,7 +2454,7 @@ Appears in: [AlertmanagerGossipConfig](#alertmanagergossipconfig)
 
 TLSConfig specifies TLSConfig configuration parameters.
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |
@@ -2454,7 +2677,7 @@ _Underlying type:_ _string_
 
 UpdateStatus defines status for application
 
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus)
+Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus)
 
 
 
@@ -3795,7 +4018,7 @@ result config will scrape service endpoints
 
 VMServiceScrapeSpec defines the desired state of VMServiceScrape
 
-Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMServiceScrape](#vmservicescrape), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
+Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMServiceScrape](#vmservicescrape), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |

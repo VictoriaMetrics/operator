@@ -49,6 +49,17 @@
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmagentdefault-resource-request-cpu" id="variables-vm-vmagentdefault-resource-request-cpu">#</a> |
 | VM_VMAGENTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmagentdefault-configreloadercpu" id="variables-vm-vmagentdefault-configreloadercpu">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead |
 | VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmagentdefault-configreloadermemory" id="variables-vm-vmagentdefault-configreloadermemory">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
+| VM_VMANOMALYDEFAULT_IMAGE: `victoriametrics/vmanomaly` <a href="#variables-vm-vmanomalydefault-image" id="variables-vm-vmanomalydefault-image">#</a> |
+| VM_VMANOMALYDEFAULT_VERSION: `${VM_ANOMALY_VERSION}` <a href="#variables-vm-vmanomalydefault-version" id="variables-vm-vmanomalydefault-version">#</a> |
+| VM_VMANOMALYDEFAULT_CONFIGRELOADIMAGE: `quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1` <a href="#variables-vm-vmanomalydefault-configreloadimage" id="variables-vm-vmanomalydefault-configreloadimage">#</a> |
+| VM_VMANOMALYDEFAULT_PORT: `8490` <a href="#variables-vm-vmanomalydefault-port" id="variables-vm-vmanomalydefault-port">#</a> |
+| VM_VMANOMALYDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmanomalydefault-usedefaultresources" id="variables-vm-vmanomalydefault-usedefaultresources">#</a> |
+| VM_VMANOMALYDEFAULT_RESOURCE_LIMIT_MEM: `500Mi` <a href="#variables-vm-vmanomalydefault-resource-limit-mem" id="variables-vm-vmanomalydefault-resource-limit-mem">#</a> |
+| VM_VMANOMALYDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmanomalydefault-resource-limit-cpu" id="variables-vm-vmanomalydefault-resource-limit-cpu">#</a> |
+| VM_VMANOMALYDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmanomalydefault-resource-request-mem" id="variables-vm-vmanomalydefault-resource-request-mem">#</a> |
+| VM_VMANOMALYDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmanomalydefault-resource-request-cpu" id="variables-vm-vmanomalydefault-resource-request-cpu">#</a> |
+| VM_VMANOMALYDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmanomalydefault-configreloadercpu" id="variables-vm-vmanomalydefault-configreloadercpu">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMANOMALYDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmanomalydefault-configreloadermemory" id="variables-vm-vmanomalydefault-configreloadermemory">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMSINGLEDEFAULT_IMAGE: `victoriametrics/victoria-metrics` <a href="#variables-vm-vmsingledefault-image" id="variables-vm-vmsingledefault-image">#</a> |
 | VM_VMSINGLEDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmsingledefault-version" id="variables-vm-vmsingledefault-version">#</a> |
 | VM_VMSINGLEDEFAULT_PORT: `8429` <a href="#variables-vm-vmsingledefault-port" id="variables-vm-vmsingledefault-port">#</a> |

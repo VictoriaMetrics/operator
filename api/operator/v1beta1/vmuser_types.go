@@ -158,10 +158,6 @@ type VMUserList struct {
 	Items           []VMUser `json:"items"`
 }
 
-func (l *VMUserList) ItemsList() []VMUser {
-	return l.Items
-}
-
 // SecretName builds secret name for VMUser.
 func (cr *VMUser) SecretName() string {
 	return fmt.Sprintf("vmuser-%s", cr.Name)

@@ -71,54 +71,6 @@ type ConverterController struct {
 	baseConf        *config.BaseOperatorConf
 }
 
-type PrometheusRuleList struct {
-	promv1.PrometheusRuleList
-}
-
-func (l *PrometheusRuleList) ItemsList() []promv1.PrometheusRule {
-	return l.Items
-}
-
-type PodMonitorList struct {
-	promv1.PodMonitorList
-}
-
-func (l *PodMonitorList) ItemsList() []promv1.PodMonitor {
-	return l.Items
-}
-
-type ServiceMonitorList struct {
-	promv1.ServiceMonitorList
-}
-
-func (l *ServiceMonitorList) ItemsList() []promv1.ServiceMonitor {
-	return l.Items
-}
-
-type AlertmanagerConfigList struct {
-	promv1alpha1.AlertmanagerConfigList
-}
-
-func (l *AlertmanagerConfigList) ItemsList() []promv1alpha1.AlertmanagerConfig {
-	return l.Items
-}
-
-type ProbeList struct {
-	promv1.ProbeList
-}
-
-func (l *ProbeList) ItemsList() []promv1.Probe {
-	return l.Items
-}
-
-type ScrapeConfigList struct {
-	promv1alpha1.ScrapeConfigList
-}
-
-func (l *ScrapeConfigList) ItemsList() []promv1alpha1.ScrapeConfig {
-	return l.Items
-}
-
 // NewConverterController builder for vmprometheusconverter service
 func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientset, rclient client.WithWatch, resyncPeriod time.Duration, baseConf *config.BaseOperatorConf) (*ConverterController, error) {
 	c := &ConverterController{
@@ -135,7 +87,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				var objects promv1.PrometheusRuleList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *PrometheusRuleList) {
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *promv1.PrometheusRuleList) {
 					objects.Items = append(objects.Items, dst.Items...)
 				}); err != nil {
 					return nil, fmt.Errorf("cannot list prometheus_rules: %w", err)
@@ -160,7 +112,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				var objects promv1.PodMonitorList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *PodMonitorList) {
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *promv1.PodMonitorList) {
 					objects.Items = append(objects.Items, dst.Items...)
 				}); err != nil {
 					return nil, fmt.Errorf("cannot list pod_monitors: %w", err)
@@ -186,7 +138,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				var objects promv1.ServiceMonitorList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *ServiceMonitorList) {
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *promv1.ServiceMonitorList) {
 					objects.Items = append(objects.Items, dst.Items...)
 				}); err != nil {
 					return nil, fmt.Errorf("cannot list service_monitors: %w", err)
@@ -212,7 +164,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				var objects promv1alpha1.AlertmanagerConfigList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *AlertmanagerConfigList) {
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *promv1alpha1.AlertmanagerConfigList) {
 					objects.Items = append(objects.Items, dst.Items...)
 				}); err != nil {
 					return nil, fmt.Errorf("cannot list alertmanager_configs: %w", err)
@@ -239,7 +191,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				var objects promv1.ProbeList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *ProbeList) {
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *promv1.ProbeList) {
 					objects.Items = append(objects.Items, dst.Items...)
 				}); err != nil {
 					return nil, fmt.Errorf("cannot list probes: %w", err)
@@ -264,7 +216,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				var objects promv1alpha1.ScrapeConfigList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *ScrapeConfigList) {
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *promv1alpha1.ScrapeConfigList) {
 					objects.Items = append(objects.Items, dst.Items...)
 				}); err != nil {
 					return nil, fmt.Errorf("cannot list scrapeConfig: %w", err)

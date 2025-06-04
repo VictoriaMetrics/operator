@@ -32,6 +32,7 @@ var (
 	defaultEnvs = map[string]string{
 		"VM_METRICS_VERSION": "v1.118.0",
 		"VM_LOGS_VERSION":    "v1.21.0",
+		"VM_ANOMALY_VERSION": "v1.22.1",
 	}
 )
 
@@ -98,14 +99,14 @@ type BaseOperatorConf struct {
 	// DO NOT FORGET TO MODIFY VERSIONS IN defaultEnvs
 
 	MetricsVersion string `default:"v1.118.0" env:"METRICS_VERSION"`
-	LogsVersion    string `default:"v1.21.0" env:"LOGS_VERSION"`
+	LogsVersion    string `default:"v1.23.3" env:"LOGS_VERSION"`
 
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
 	UseCustomConfigReloader bool `default:"false" env:"USECUSTOMCONFIGRELOADER"`
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry                string `default:"" env:"CONTAINERREGISTRY"`
-	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.57.0" env:"CUSTOMCONFIGRELOADERIMAGE"`
+	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.59.1" env:"CUSTOMCONFIGRELOADERIMAGE"`
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false" env:"PSPAUTOCREATEENABLED"`
 

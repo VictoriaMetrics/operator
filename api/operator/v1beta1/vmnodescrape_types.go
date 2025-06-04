@@ -71,10 +71,6 @@ type VMNodeScrapeList struct {
 	Items           []VMNodeScrape `json:"items"`
 }
 
-func (l *VMNodeScrapeList) ItemsList() []VMNodeScrape {
-	return l.Items
-}
-
 // AsProxyKey builds key for proxy cache maps
 func (cr *VMNodeScrape) AsProxyKey() string {
 	return fmt.Sprintf("nodeScrapeProxy/%s/%s", cr.Namespace, cr.Name)

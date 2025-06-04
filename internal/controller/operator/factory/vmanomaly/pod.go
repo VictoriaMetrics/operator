@@ -19,9 +19,10 @@ import (
 
 const (
 	secretConfigKey     = "vmanomaly.yaml"
-	confDir             = "/etc/vmanomaly"
+	anomalyDir          = "/etc/vmanomaly"
+	confDir             = anomalyDir + "/config"
 	confFile            = confDir + "/vmanomaly.yaml"
-	tlsAssetsDir        = confDir + "/tls"
+	tlsAssetsDir        = anomalyDir + "/tls"
 	tlsAssetsVolumeName = "tls-assets"
 	storageDir          = "/storage"
 	configVolumeName    = "config-volume"
@@ -178,7 +179,7 @@ func newPodSpec(cr *vmv1.VMAnomaly) (*corev1.PodSpec, error) {
 	}
 
 	volumes, volumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, volumeMounts, vmv1beta1.SecretsDir)
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir, true)
 	args = append(args, confFile)
 
 	container := corev1.Container{
@@ -193,8 +194,8 @@ func newPodSpec(cr *vmv1.VMAnomaly) (*corev1.PodSpec, error) {
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	container = build.Probe(container, cr)
+	build.AddServiceAccountTokenVolumeMount(&container, &cr.Spec.CommonApplicationDeploymentParams)
 	containers := []corev1.Container{container}
-
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, containers, useStrictSecurity)
 	containers, err = k8stools.MergePatchContainers(containers, cr.Spec.Containers)
 	if err != nil {
@@ -221,18 +222,6 @@ func newPodSpec(cr *vmv1.VMAnomaly) (*corev1.PodSpec, error) {
 		Volumes:            volumes,
 		ServiceAccountName: cr.GetServiceAccountName(),
 	}, nil
-}
-
-func buildConfgSecretMeta(cr *vmv1.VMAnomaly) *metav1.ObjectMeta {
-	return &metav1.ObjectMeta{
-		Name:            cr.ConfigSecretName(),
-		Namespace:       cr.Namespace,
-		Labels:          cr.AllLabels(),
-		Annotations:     cr.AnnotationsFiltered(),
-		OwnerReferences: cr.AsOwner(),
-		Finalizers:      []string{vmv1beta1.FinalizerName},
-	}
-
 }
 
 func buildInitConfigContainer(cr *vmv1.VMAnomaly) []corev1.Container {

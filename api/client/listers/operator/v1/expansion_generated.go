@@ -32,3 +32,11 @@ type VLSingleListerExpansion interface{}
 // VLSingleNamespaceListerExpansion allows custom methods to be added to
 // VLSingleNamespaceLister.
 type VLSingleNamespaceListerExpansion interface{}
+
+// VMAnomalyListerExpansion allows custom methods to be added to
+// VMAnomalyLister.
+type VMAnomalyListerExpansion interface{}
+
+// VMAnomalyNamespaceListerExpansion allows custom methods to be added to
+// VMAnomalyNamespaceLister.
+type VMAnomalyNamespaceListerExpansion interface{}

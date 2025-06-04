@@ -48,9 +48,18 @@ func TestCreateOrUpdate(t *testing.T) {
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To(int32(1)),
 						},
+						StatefulMode: true,
+						License: &vmv1beta1.License{
+							Key: ptr.To("test"),
+						},
 						ConfigRawYaml: `
 reader:
+  class: vm
   datasource_url: "http://test.com"
+  sampling_period: 1m
+  queries:
+    query_alias2:
+      expr: vm_metric
 writer:
   class: vm
   datasource_url: "http://test.com"
@@ -62,9 +71,9 @@ models:
 schedulers:
   scheduler_periodic_1m:
     class: "scheduler.periodic.PeriodicScheduler"
-    infer_every: "1m"
-    fit_every: "2m"
-    fit_window: "3h"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
 `,
 					},
 				},
@@ -76,12 +85,12 @@ schedulers:
 				}
 				if diff := deep.Equal(set.Spec.Template.Spec.Containers[0].Resources, corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("100m"),
-						corev1.ResourceMemory: resource.MustParse("256Mi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+						corev1.ResourceMemory: resource.MustParse("500Mi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("30m"),
-						corev1.ResourceMemory: resource.MustParse("56Mi"),
+						corev1.ResourceCPU:    resource.MustParse("50m"),
+						corev1.ResourceMemory: resource.MustParse("200Mi"),
 					},
 				}); len(diff) > 0 {
 					return fmt.Errorf("unexpected diff with resources: %v", diff)
@@ -91,7 +100,6 @@ schedulers:
 					"app.kubernetes.io/instance":  "test-anomaly",
 					"app.kubernetes.io/name":      "vmanomaly",
 					"managed-by":                  "vm-operator",
-					"main":                        "system",
 				}); len(diff) > 0 {
 					return fmt.Errorf("unexpected diff with labels: %v", diff)
 				}
@@ -113,9 +121,18 @@ schedulers:
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To(int32(1)),
 						},
+						StatefulMode: true,
+						License: &vmv1beta1.License{
+							Key: ptr.To("test"),
+						},
 						ConfigRawYaml: `
 reader:
+  class: vm
   datasource_url: "http://test.com"
+  sampling_period: 1m
+  queries:
+    query_alias2:
+      expr: vm_metric
 writer:
   class: vm
   datasource_url: "http://test.com"
@@ -127,9 +144,9 @@ models:
 schedulers:
   scheduler_periodic_1m:
     class: "scheduler.periodic.PeriodicScheduler"
-    infer_every: "1m"                           
-    fit_every: "2m"
-    fit_window: "3h"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
 `,
 						EmbeddedProbes: &vmv1beta1.EmbeddedProbes{
 							LivenessProbe: &corev1.Probe{
@@ -234,7 +251,12 @@ func Test_createDefaultConfig(t *testing.T) {
 					Spec: vmv1.VMAnomalySpec{
 						ConfigRawYaml: `
 reader:
+  class: vm
   datasource_url: "http://test.com"
+  sampling_period: 1m
+  queries:
+    query_alias2:
+      expr: vm_metric
 writer:
   class: vm
   datasource_url: "http://test.com"
@@ -246,14 +268,63 @@ models:
 schedulers:
   scheduler_periodic_1m:
     class: "scheduler.periodic.PeriodicScheduler"
-    infer_every: "1m"
-    fit_every: "2m"
-    fit_window: "3h"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
 `,
+						Reader: &vmv1.VMAnomalyReaderSpec{
+							Class:          "vm",
+							DatasourceURL:  "http://test",
+							QueryRangePath: "/api/v1/query_range",
+							SamplingPeriod: "10s",
+							Queries: map[string]*vmv1.VMAnomalyReaderQuerySpec{
+								"query_alias2": {
+									Expr: "apiserver_cache_list_total",
+								},
+							},
+							VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+								TenantID: "0",
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CA: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls",
+											},
+											Key: "remote-ca",
+										},
+									},
+									Cert: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls",
+											},
+											Key: "remote-cert",
+										},
+									},
+									KeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls",
+										},
+										Key: "remote-key",
+									},
+								},
+							},
+						},
 					},
 				},
 			},
-			predefinedObjects: []runtime.Object{},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "tls",
+					},
+					Data: map[string][]byte{
+						"remote-ca":   []byte("ca"),
+						"remote-cert": []byte("cert"),
+						"remote-key":  []byte("key"),
+					},
+				},
+			},
 		},
 		{
 			name: "with raw config",
@@ -275,8 +346,8 @@ schedulers:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := CreateOrUpdateConfig(tt.args.ctx, fclient, tt.args.cr, nil); (err != nil) != tt.wantErr {
-				t.Fatalf("CreateOrUpdateConfig() error = %v, wantErr %v", err, tt.wantErr)
+			if _, err := createOrUpdateConfig(tt.args.ctx, fclient, tt.args.cr, nil); (err != nil) != tt.wantErr {
+				t.Fatalf("createOrUpdateConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantErr {
 				return

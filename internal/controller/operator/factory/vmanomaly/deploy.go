@@ -2,8 +2,6 @@ package vmanomaly
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -47,7 +45,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 
-	err := createOrUpdateConfig(ctx, rclient, cr, prevCR, nil)
+	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
@@ -70,10 +68,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 	}
 
 	var prevDeploy runtime.Object
-	hash := sha256.New()
-	hash.Write([]byte("bla"))
-	hashBytes := hash.Sum(nil)
-	configHash := hex.EncodeToString(hashBytes)
 
 	if prevCR != nil {
 		var err error
@@ -189,7 +183,7 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1.VMAnomaly, rclient c
 		}
 	}
 	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}
 	}

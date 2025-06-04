@@ -318,10 +318,6 @@ type VMAlertList struct {
 	Items           []VMAlert `json:"items"`
 }
 
-func (l *VMAlertList) ItemsList() []VMAlert {
-	return l.Items
-}
-
 // AsOwner returns owner references with current object as owner
 func (cr *VMAlert) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{

@@ -83,10 +83,6 @@ type VMPodScrapeList struct {
 	Items           []VMPodScrape `json:"items"`
 }
 
-func (l *VMPodScrapeList) ItemsList() []VMPodScrape {
-	return l.Items
-}
-
 // PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving metrics.
 // +k8s:openapi-gen=true
 type PodMetricsEndpoint struct {

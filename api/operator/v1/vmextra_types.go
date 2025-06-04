@@ -1,11 +1,6 @@
 package v1
 
 import (
-	"encoding/json"
-	"fmt"
-	"strconv"
-	"time"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -52,61 +47,4 @@ type EntitySelectors struct {
 	// Selector nil - only objects at Namespace selector namespaces.
 	// +optional
 	Namespace *metav1.LabelSelector `json:"namespace,omitempty"`
-}
-
-type Time struct {
-	time.Time
-}
-
-// UnmarshalJSON implements json.Unmarshaller interface
-func (t *Time) UnmarshalJSON(data []byte) error {
-	if len(data) == 4 && string(data) == "null" {
-		t.Time = time.Time{}
-		return nil
-	}
-
-	var str string
-	err := json.Unmarshal(data, &str)
-	if err != nil {
-		return err
-	}
-
-	ts, err := strconv.ParseInt(str, 10, 64)
-	if err == nil {
-		t.Time = time.Unix(ts, 0).Local()
-		return nil
-	}
-	pt, err := time.Parse(time.RFC3339, str)
-	if err == nil {
-		t.Time = pt.Local()
-		return nil
-	}
-	return fmt.Errorf("failed to parse %q value neither as Unix time nor in ISO8601 format", str)
-}
-
-func (t *Time) DeepCopyInto(out *Time) {
-	*out = *t
-}
-
-type Location struct {
-	time.Location
-}
-
-func (l *Location) DeepCopyInto(out *Location) {
-	*out = *l
-}
-
-// UnmarshalJSON implements json.Unmarshaller interface
-func (l *Location) UnmarshalJSON(data []byte) error {
-	var str string
-	err := json.Unmarshal(data, &str)
-	if err != nil {
-		return err
-	}
-	location, err := time.LoadLocation(str)
-	if err != nil {
-		return err
-	}
-	l.Location = *location
-	return nil
 }

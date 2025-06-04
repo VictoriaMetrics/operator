@@ -369,6 +369,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		webhookv1beta1.SetupVMScrapeConfigWebhookWithManager,
 		webhookv1beta1.SetupVMStaticScrapeWebhookWithManager,
 		webhookv1beta1.SetupVMProbeWebhookWithManager,
+		webhookv1.SetupPromethuesRuleWebhookWithManager,
 	})
 }
 

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [operator](https://docs.victoriametrics.com/operator/api): consistently use `^[0-9]+(h|d|w|y)?$` validation pattern for `retentionPeriod` configuration at `VMCluster`, `VMSingle`, `VLSingle`.
+
 ## [v0.59.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.59.1)
 
 **Release date:** 30 May 2025

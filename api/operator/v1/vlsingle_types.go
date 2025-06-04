@@ -68,7 +68,7 @@ type VLSingleSpec struct {
 	// RetentionPeriod for the stored logs
 	// https://docs.victoriametrics.com/victorialogs/#retention
 	// +optional
-	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y)?$"
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y)?$"
 	RetentionPeriod string `json:"retentionPeriod,omitempty"`
 	// RetentionMaxDiskSpaceUsageBytes for the stored logs
 	// VictoriaLogs keeps at least two last days of data in order to guarantee that the logs for the last day can be returned in queries.

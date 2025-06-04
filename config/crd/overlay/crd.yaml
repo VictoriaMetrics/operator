@@ -3390,7 +3390,7 @@ spec:
                 description: |-
                   RetentionPeriod for the stored logs
                   https://docs.victoriametrics.com/victorialogs/#retention
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|w|y)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-
@@ -19540,7 +19540,7 @@ spec:
                   Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|w|y)?$
                 type: string
               serviceAccountName:
                 description: |-
@@ -31106,7 +31106,7 @@ spec:
                   Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|w|y)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-

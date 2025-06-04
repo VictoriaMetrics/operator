@@ -60,7 +60,7 @@ type VMSingleSpec struct {
 	// The default value is 1 (one month).
 	// See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
 	// +optional
-	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y)?$"
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y)?$"
 	RetentionPeriod string `json:"retentionPeriod,omitempty"`
 	// VMBackup configuration for backup
 	// +optional

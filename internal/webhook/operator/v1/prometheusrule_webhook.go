@@ -33,7 +33,6 @@ import (
 
 // SetupVLClusterWebhookWithManager will setup the manager to manage the webhooks
 func SetupPromethuesRuleWebhookWithManager(mgr ctrl.Manager) error {
-	println("setting up")
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&promv1.PrometheusRule{}).
 		WithValidator(&PrometheusRuleValidator{}).

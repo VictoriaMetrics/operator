@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/VictoriaMetrics/metricsql"
+	"github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

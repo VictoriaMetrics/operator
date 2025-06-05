@@ -7,15 +7,16 @@ import (
 	"testing"
 	"time"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_genUserCfg(t *testing.T) {
@@ -175,7 +176,7 @@ bearer_token: secret-token
   - /api/v1/targets
   - /targets
   headers:
-  - 'baz: bar'
+  - "baz: bar"
 - url_prefix:
   - http://vmcluster-remote.mydomain.com:8401/insert/0/prometheus?extra_label=key%3Dvalue
   src_paths:
@@ -249,8 +250,8 @@ bearer_token: secret-token
 			want: `url_prefix:
 - http://vmagent-base.monitoring.svc:8429
 headers:
-- 'X-Scope-OrgID: abc'
-- 'X-Scope-Team: baz'
+- "X-Scope-OrgID: abc"
+- "X-Scope-Team: baz"
 name: user2
 bearer_token: secret-token
 `,
@@ -438,7 +439,7 @@ password: pass
   src_query_args:
   - foo=bar
   headers:
-  - 'X-Scope-OrgID: abc'
+  - "X-Scope-OrgID: abc"
   response_headers:
   - RH1:V3
   retry_status_codes:
@@ -994,8 +995,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 - url_prefix:
   - http://some-static
   headers:
-  - 'baz: bar'
-  - 'Authorization: Basic dXNlcjpwYXNz'
+  - "baz: bar"
+  - "Authorization: Basic dXNlcjpwYXNz"
   name: user-1
   username: some-user
   password: generated-password
@@ -1316,9 +1317,9 @@ func Test_buildVMAuthConfig(t *testing.T) {
 - url_prefix:
   - http://vmagent-test.default.svc:8429/prometheus?extra_label=key%3Dvalue
   headers:
-  - 'X-Scope-OrgID: abc'
+  - "X-Scope-OrgID: abc"
   response_headers:
-  - 'X-Server-Hostname: a'
+  - "X-Server-Hostname: a"
   discover_backend_ips: true
   retry_status_codes:
   - 500
@@ -1465,11 +1466,11 @@ unauthorized_user:
     src_query_args:
     - db=foo
     src_headers:
-    - 'TenantID: 123:456'
+    - "TenantID: 123:456"
     headers:
-    - 'X-Scope-OrgID: abc'
+    - "X-Scope-OrgID: abc"
     response_headers:
-    - 'X-Server-Hostname: a'
+    - "X-Server-Hostname: a"
     discover_backend_ips: true
     retry_status_codes:
     - 500
@@ -1494,9 +1495,9 @@ unauthorized_user:
     deny_list:
     - 10.0.0.43
   headers:
-  - 'X-Scope-OrgID: cba'
+  - "X-Scope-OrgID: cba"
   response_headers:
-  - 'X-Server-Hostname: b'
+  - "X-Server-Hostname: b"
   discover_backend_ips: false
   retry_status_codes:
   - 503
@@ -1808,7 +1809,7 @@ unauthorized_user:
     - /internal/resetRollupResultCache
     - /prometheus/api/v1/admin/.*
     headers:
-    - 'Authorization: Basic c29tZS0xOnNvbWUtMg=='
+    - "Authorization: Basic c29tZS0xOnNvbWUtMg=="
   - url_prefix:
     - http://vminsert-main-cluster.default.svc:8480
     src_paths:
@@ -1819,7 +1820,7 @@ unauthorized_user:
     - /influx/.*
     - /datadog/.*
     headers:
-    - 'Authorization: Basic c29tZS0xOnNvbWUtMg=='
+    - "Authorization: Basic c29tZS0xOnNvbWUtMg=="
   name: user1
   default_url:
   - https://default1:8888/unsupported_url_handler
@@ -1835,9 +1836,9 @@ unauthorized_user:
     deny_list:
     - 10.0.0.43
   headers:
-  - 'X-Scope-OrgID: cba'
+  - "X-Scope-OrgID: cba"
   response_headers:
-  - 'X-Server-Hostname: b'
+  - "X-Server-Hostname: b"
   discover_backend_ips: false
   retry_status_codes:
   - 503
@@ -2128,11 +2129,11 @@ unauthorized_user:
     src_query_args:
     - db=foo
     src_headers:
-    - 'TenantID: 123:456'
+    - "TenantID: 123:456"
     headers:
-    - 'X-Scope-OrgID: abc'
+    - "X-Scope-OrgID: abc"
     response_headers:
-    - 'X-Server-Hostname: a'
+    - "X-Server-Hostname: a"
     discover_backend_ips: true
     retry_status_codes:
     - 500
@@ -2160,9 +2161,9 @@ unauthorized_user:
     deny_list:
     - 10.0.0.43
   headers:
-  - 'X-Scope-OrgID: cba'
+  - "X-Scope-OrgID: cba"
   response_headers:
-  - 'X-Server-Hostname: b'
+  - "X-Server-Hostname: b"
   discover_backend_ips: false
   retry_status_codes:
   - 503

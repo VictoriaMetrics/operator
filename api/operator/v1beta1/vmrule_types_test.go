@@ -1,9 +1,9 @@
 package v1beta1
 
 import (
+	"github.com/goccy/go-yaml"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"gopkg.in/yaml.v2"
 )
 
 var _ = Describe("VMRule Webhook", func() {

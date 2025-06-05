@@ -12,12 +12,9 @@ import (
 	"testing"
 	"time"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/go-test/deep"
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -26,6 +23,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestShardNumIter(t *testing.T) {
@@ -2333,69 +2334,58 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		},
 	}, nil, `
 volumes:
-    - name: persistent-queue-data
-      volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
-initcontainers: []
+  - name: persistent-queue-data
+    emptyDir: {}
 containers:
-    - name: vmagent
-      image: vm-repo:v1.97.1
-      args:
-        - -httpListenAddr=:8425
-        - -remoteWrite.maxDiskUsagePerURL=1073741824
-        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
-      ports:
-        - name: http
-          hostport: 0
-          containerport: 8425
-          protocol: TCP
-      resources:
-        limits:
-            cpu:
-                format: DecimalSI
-            memory:
-                format: BinarySI
-        requests:
-            cpu:
-                format: DecimalSI
-            memory:
-                format: BinarySI
-        claims: []
-      volumemounts:
-        - name: persistent-queue-data
-          readonly: false
-          mountpath: /tmp/vmagent-remotewrite-data
-      livenessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    type: 0
-                    intval: 8425
-                    strval: ""
-                scheme: HTTP
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-      readinessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
-        initialdelayseconds: 0
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-      terminationmessagepolicy: FallbackToLogsOnError
-      imagepullpolicy: IfNotPresent
-serviceaccountname: vmagent-agent
-
+  - name: vmagent
+    image: 'vm-repo:v1.97.1'
+    args:
+      - '-httpListenAddr=:8425'
+      - '-remoteWrite.maxDiskUsagePerURL=1073741824'
+      - '-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data'
+    ports:
+      - name: http
+        containerPort: 8425
+        protocol: TCP
+    resources:
+      limits:
+        cpu:
+          format: DecimalSI
+        memory:
+          format: BinarySI
+      requests:
+        cpu:
+          format: DecimalSI
+        memory:
+          format: BinarySI
+    volumeMounts:
+      - name: persistent-queue-data
+        readonly: false
+        mountPath: /tmp/vmagent-remotewrite-data
+    livenessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8425
+        scheme: HTTP
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    readinessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8425
+        scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    terminationMessagePolicy: FallbackToLogsOnError
+    imagePullPolicy: IfNotPresent
+serviceAccountName: vmagent-agent
     `)
 	f(&vmv1beta1.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
@@ -2415,155 +2405,123 @@ serviceaccountname: vmagent-agent
 		},
 	}, nil, `
 volumes:
-    - name: persistent-queue-data
-      volumesource:
-        emptydir: {}
-    - name: tls-assets
-      volumesource:
-        secret:
-            secretname: tls-assets-vmagent-agent
-    - name: config-out
-      volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
-    - name: config
-      volumesource:
-        secret:
-            secretname: vmagent-agent
-initcontainers:
-    - name: config-init
-      image: vmcustomer:v1
-      args:
-        - --reload-url=http://localhost:8429/-/reload
-        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml
-        - --config-secret-name=default/vmagent-agent
-        - --config-secret-key=vmagent.yaml.gz
-        - --only-init-config
-      volumemounts:
-        - name: config-out
-          readonly: false
-          mountpath: /etc/vmagent/config_out
+  - name: persistent-queue-data
+    emptyDir: {}
+  - name: tls-assets
+    secret:
+      secretName: tls-assets-vmagent-agent
+  - name: config-out
+    emptyDir: {}
+  - name: config
+    secret:
+      secretName: vmagent-agent
+initContainers:
+  - name: config-init
+    image: 'vmcustomer:v1'
+    args:
+      - '--reload-url=http://localhost:8429/-/reload'
+      - '--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml'
+      - '--config-secret-name=default/vmagent-agent'
+      - '--config-secret-key=vmagent.yaml.gz'
+      - '--only-init-config'
+    volumeMounts:
+      - name: config-out
+        mountPath: /etc/vmagent/config_out
 containers:
-    - name: config-reloader
-      image: vmcustomer:v1
-      args:
-        - --reload-url=http://localhost:8429/-/reload
-        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml
-        - --config-secret-name=default/vmagent-agent
-        - --config-secret-key=vmagent.yaml.gz
-      ports:
-        - name: reloader-http
-          hostport: 0
-          containerport: 8435
-          protocol: TCP
-          hostip: ""
-      env:
-        - name: POD_NAME
-          valuefrom:
-            fieldref:
-                fieldpath: metadata.name
-      resources:
-        limits: {}
-        requests: {}
-        claims: []
-      resizepolicy: []
-      volumemounts:
-        - name: config-out
-          readonly: false
-          mountpath: /etc/vmagent/config_out
-      livenessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8435
-                scheme: HTTP
-        initialdelayseconds: 0
-        timeoutseconds: 1
-        periodseconds: 10
-        successthreshold: 1
-        failurethreshold: 3
-      readinessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8435
-                scheme: HTTP
-        initialdelayseconds: 5
-        timeoutseconds: 1
-        periodseconds: 10
-        successthreshold: 1
-        failurethreshold: 3
-        terminationgraceperiodseconds: null
-      terminationmessagepolicy: FallbackToLogsOnError
-    - name: vmagent
-      image: victoriametrics/vmagent:v1.97.1
-      args:
-        - -httpListenAddr=:8429
-        - -promscrape.config=/etc/vmagent/config_out/vmagent.env.yaml
-        - -remoteWrite.maxDiskUsagePerURL=1073741824
-        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
-      ports:
-        - name: http
-          containerport: 8429
-          protocol: TCP
-      volumemounts:
-        - name: persistent-queue-data
-          readonly: false
-          mountpath: /tmp/vmagent-remotewrite-data
-          subpath: ""
-          mountpropagation: null
-          subpathexpr: ""
-        - name: config-out
-          readonly: true
-          mountpath: /etc/vmagent/config_out
-          subpath: ""
-          mountpropagation: null
-          subpathexpr: ""
-        - name: tls-assets
-          readonly: true
-          mountpath: /etc/vmagent-tls/certs
-          subpath: ""
-          mountpropagation: null
-          subpathexpr: ""
-        - name: config
-          readonly: true
-          mountpath: /etc/vmagent/config
-          subpath: ""
-          mountpropagation: null
-          subpathexpr: ""
-      livenessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8429
-                scheme: HTTP
-        initialdelayseconds: 0
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-        terminationgraceperiodseconds: null
-      readinessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8429
-                scheme: HTTP
-        initialdelayseconds: 0
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-        terminationgraceperiodseconds: null
-      terminationmessagepolicy: FallbackToLogsOnError
-      imagepullpolicy: IfNotPresent
-
-serviceaccountname: vmagent-agent
+  - name: config-reloader
+    image: 'vmcustomer:v1'
+    args:
+      - '--reload-url=http://localhost:8429/-/reload'
+      - '--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml'
+      - '--config-secret-name=default/vmagent-agent'
+      - '--config-secret-key=vmagent.yaml.gz'
+    ports:
+      - name: reloader-http
+        containerPort: 8435
+        protocol: TCP
+    env:
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+    volumeMounts:
+      - name: config-out
+        mountPath: /etc/vmagent/config_out
+    livenessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8435
+        scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 1
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8435
+        scheme: HTTP
+      initialDelaySeconds: 5
+      timeoutSeconds: 1
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+      terminationgraceperiodSeconds: null
+    terminationMessagePolicy: FallbackToLogsOnError
+  - name: vmagent
+    image: 'victoriametrics/vmagent:v1.97.1'
+    args:
+      - '-httpListenAddr=:8429'
+      - '-promscrape.config=/etc/vmagent/config_out/vmagent.env.yaml'
+      - '-remoteWrite.maxDiskUsagePerURL=1073741824'
+      - '-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data'
+    ports:
+      - name: http
+        containerPort: 8429
+        protocol: TCP
+    volumeMounts:
+      - name: persistent-queue-data
+        readOnly: false
+        mountPath: /tmp/vmagent-remotewrite-data
+      - name: config-out
+        readOnly: true
+        mountPath: /etc/vmagent/config_out
+      - name: tls-assets
+        readOnly: true
+        mountPath: /etc/vmagent-tls/certs
+      - name: config
+        readOnly: true
+        mountPath: /etc/vmagent/config
+    livenessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8429
+        scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+      terminationgraceperiodSeconds: null
+    readinessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8429
+        scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+      terminationgraceperiodSeconds: null
+    terminationMessagePolicy: FallbackToLogsOnError
+    imagePullPolicy: IfNotPresent
+serviceAccountName: vmagent-agent
 `)
 
 	// test maxDiskUsage and empty remoteWriteSettings
@@ -2598,62 +2556,48 @@ serviceaccountname: vmagent-agent
 		},
 	}, nil, `
 volumes:
-    - name: persistent-queue-data
-      volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
-initcontainers: []
+  - name: persistent-queue-data
+    emptyDir: {}
 containers:
-    - name: vmagent
-      image: victoriametrics/vmagent:v1.97.1
-      args:
-        - -httpListenAddr=:8425
-        - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,1073741824
-        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
-        - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
-      ports:
-        - name: http
-          hostport: 0
-          containerport: 8425
-          protocol: TCP
-      resources:
-        limits: {}
-        requests: {}
-        claims: []
-      volumemounts:
-        - name: persistent-queue-data
-          readonly: false
-          mountpath: /tmp/vmagent-remotewrite-data
-      livenessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    type: 0
-                    intval: 8425
-                    strval: ""
-                scheme: HTTP
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-      readinessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
-        initialdelayseconds: 0
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-      terminationmessagepolicy: FallbackToLogsOnError
-      imagepullpolicy: IfNotPresent
-serviceaccountname: vmagent-agent
-
+  - name: vmagent
+    image: 'victoriametrics/vmagent:v1.97.1'
+    args:
+      - '-httpListenAddr=:8425'
+      - '-remoteWrite.maxDiskUsagePerURL=10GB,10GB,1073741824'
+      - '-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data'
+      - >-
+        -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+    ports:
+      - name: http
+        containerPort: 8425
+        protocol: TCP
+    volumeMounts:
+      - name: persistent-queue-data
+        mountPath: /tmp/vmagent-remotewrite-data
+    livenessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8425
+        scheme: HTTP
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    readinessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8425
+        scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    terminationMessagePolicy: FallbackToLogsOnError
+    imagePullPolicy: IfNotPresent
+serviceAccountName: vmagent-agent
     `)
 
 	// test MaxDiskUsage with RemoteWriteSettings
@@ -2691,62 +2635,48 @@ serviceaccountname: vmagent-agent
 		},
 	}, nil, `
 volumes:
-    - name: persistent-queue-data
-      volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
-initcontainers: []
+  - name: persistent-queue-data
+    emptyDir: {}
 containers:
-    - name: vmagent
-      image: victoriametrics/vmagent:v1.97.1
-      args:
-        - -httpListenAddr=:8425
-        - -remoteWrite.maxDiskUsagePerURL=10GB,20MB,10GB
-        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
-        - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
-      ports:
-        - name: http
-          hostport: 0
-          containerport: 8425
-          protocol: TCP
-      resources:
-        limits: {}
-        requests: {}
-        claims: []
-      volumemounts:
-        - name: persistent-queue-data
-          readonly: false
-          mountpath: /tmp/vmagent-remotewrite-data
-      livenessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    type: 0
-                    intval: 8425
-                    strval: ""
-                scheme: HTTP
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-      readinessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
-        initialdelayseconds: 0
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-      terminationmessagepolicy: FallbackToLogsOnError
-      imagepullpolicy: IfNotPresent
-serviceaccountname: vmagent-agent
-
+  - name: vmagent
+    image: 'victoriametrics/vmagent:v1.97.1'
+    args:
+      - '-httpListenAddr=:8425'
+      - '-remoteWrite.maxDiskUsagePerURL=10GB,20MB,10GB'
+      - '-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data'
+      - >-
+        -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+    ports:
+      - name: http
+        containerPort: 8425
+        protocol: TCP
+    volumeMounts:
+      - name: persistent-queue-data
+        mountPath: /tmp/vmagent-remotewrite-data
+    livenessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8425
+        scheme: HTTP
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    readinessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8425
+        scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    terminationMessagePolicy: FallbackToLogsOnError
+    imagePullPolicy: IfNotPresent
+serviceAccountName: vmagent-agent
     `)
 	// test MaxDiskUsage with RemoteWriteSettings and extraArgs overwrite
 	f(&vmv1beta1.VMAgent{
@@ -2790,63 +2720,49 @@ serviceaccountname: vmagent-agent
 		},
 	}, nil, `
 volumes:
-    - name: persistent-queue-data
-      volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
-initcontainers: []
+  - name: persistent-queue-data
+    emptyDir: {}
 containers:
-    - name: vmagent
-      image: victoriametrics/vmagent:v1.97.1
-      args:
-        - -httpListenAddr=:8425
-        - -remoteWrite.forceVMProto=false
-        - -remoteWrite.maxDiskUsagePerURL=35GiB
-        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
-        - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
-      ports:
-        - name: http
-          hostport: 0
-          containerport: 8425
-          protocol: TCP
-      resources:
-        limits: {}
-        requests: {}
-        claims: []
-      volumemounts:
-        - name: persistent-queue-data
-          readonly: false
-          mountpath: /tmp/vmagent-remotewrite-data
-      livenessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    type: 0
-                    intval: 8425
-                    strval: ""
-                scheme: HTTP
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-      readinessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
-        initialdelayseconds: 0
-        timeoutseconds: 5
-        periodseconds: 5
-        successthreshold: 1
-        failurethreshold: 10
-      terminationmessagepolicy: FallbackToLogsOnError
-      imagepullpolicy: IfNotPresent
-serviceaccountname: vmagent-agent
-
+  - name: vmagent
+    image: 'victoriametrics/vmagent:v1.97.1'
+    args:
+      - '-httpListenAddr=:8425'
+      - '-remoteWrite.forceVMProto=false'
+      - '-remoteWrite.maxDiskUsagePerURL=35GiB'
+      - '-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data'
+      - >-
+        -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+    ports:
+      - name: http
+        containerPort: 8425
+        protocol: TCP
+    volumeMounts:
+      - name: persistent-queue-data
+        mountPath: /tmp/vmagent-remotewrite-data
+    livenessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8425
+        scheme: HTTP
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    readinessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8425
+        scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    terminationMessagePolicy: FallbackToLogsOnError
+    imagePullPolicy: IfNotPresent
+serviceAccountName: vmagent-agent
     `)
 
 }

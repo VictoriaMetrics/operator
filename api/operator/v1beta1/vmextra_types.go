@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v2"
-
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -692,9 +690,7 @@ func (m *StringOrArray) UnmarshalYAML(unmarshal func(any) error) error {
 		*m = match
 		return nil
 	default:
-		return &yaml.TypeError{Errors: []string{
-			fmt.Sprintf("cannot unmarshal %#v into StringOrArray of type %v", raw, rawType),
-		}}
+		return fmt.Errorf("cannot unmarshal %#v into StringOrArray of type %v", raw, rawType)
 	}
 }
 

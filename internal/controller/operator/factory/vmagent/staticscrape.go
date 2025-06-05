@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/goccy/go-yaml"
+
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"gopkg.in/yaml.v2"
 )
 
 func generateStaticScrapeConfig(

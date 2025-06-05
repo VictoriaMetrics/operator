@@ -27,9 +27,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/goccy/go-yaml"
 	amcfg "github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/alertmanager/pkg/labels"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1233,7 +1233,7 @@ func (r *VMAlertmanagerConfig) AsKey() string {
 // according to alertmanager config parser
 func ValidateAlertmanagerConfigSpec(srcYAML []byte) error {
 	var cfgForTest amcfg.Config
-	if err := yaml.UnmarshalStrict(srcYAML, &cfgForTest); err != nil {
+	if err := yaml.UnmarshalWithOptions(srcYAML, &cfgForTest, yaml.Strict()); err != nil {
 		return err
 	}
 	return nil

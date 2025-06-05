@@ -7,11 +7,10 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
-	"k8s.io/utils/ptr"
-
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 )
 
 func Test_buildPathWithPrefixFlag(t *testing.T) {

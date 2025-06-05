@@ -6,11 +6,8 @@ import (
 	"testing"
 	"time"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +17,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestCreateOrUpdateVMCluster(t *testing.T) {
@@ -502,21 +503,21 @@ func TestCreatOrUpdateClusterServices(t *testing.T) {
 			VMStorage: &vmv1beta1.VMStorage{},
 		},
 	}, `
-objectmeta:
+metadata:
     name: vmstorage-test
     namespace: default-1
-    resourceversion: "1"
+    resourceVersion: "1"
     labels:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmstorage
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
-    ownerreferences:
+    ownerReferences:
         - apiversion: ""
           name: test
           controller: true
-          blockownerdeletion: true
+          blockOwnerDeletion: true
     finalizers:
         - apps.victoriametrics.com/finalizer
 spec:
@@ -524,26 +525,26 @@ spec:
         - name: http
           protocol: TCP
           port: 8482
-          targetport:
+          targetPort:
             intval: 8482
         - name: vminsert
           protocol: TCP
           port: 8400
-          targetport:
+          targetPort:
             intval: 8400
         - name: vmselect
           protocol: TCP
           port: 8401
-          targetport:
+          targetPort:
             intval: 8401
     selector:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmstorage
         managed-by: vm-operator
-    clusterip: None
+    clusterIP: None
     type: ClusterIP
-    publishnotreadyaddresses: true
+    publishNotReadyAddresses: true
 `)
 	// with vmbackup and additional service ports
 	f("storage", &vmv1beta1.VMCluster{
@@ -569,57 +570,57 @@ spec:
 			},
 		},
 	}, `
-objectmeta:
+metadata:
     name: vmstorage-test
     namespace: default-1
-    resourceversion: "1"
+    resourceVersion: "1"
     labels:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmstorage
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
-    ownerreferences:
+    ownerReferences:
         - apiversion: ""
           name: test
           controller: true
-          blockownerdeletion: true
+          blockOwnerDeletion: true
     finalizers:
         - apps.victoriametrics.com/finalizer
 spec:
     ports:
         - name: web-rpc
           port: 8011
-          targetport:
+          targetPort:
             intval: 8011
         - name: http
           protocol: TCP
           port: 8482
-          targetport:
+          targetPort:
             intval: 8482
         - name: vminsert
           protocol: TCP
           port: 8400
-          targetport:
+          targetPort:
             intval: 8400
         - name: vmselect
           protocol: TCP
           port: 8401
-          targetport:
+          targetPort:
             intval: 8401
         - name: vmbackupmanager
           protocol: TCP
           port: 8300
-          targetport:
+          targetPort:
             intval: 8300
     selector:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmstorage
         managed-by: vm-operator
-    clusterip: None
+    clusterIP: None
     type: ClusterIP
-    publishnotreadyaddresses: true
+    publishNotReadyAddresses: true
 `)
 
 	f("select", &vmv1beta1.VMCluster{
@@ -633,21 +634,21 @@ spec:
 			},
 		},
 	}, `
-objectmeta:
+metadata:
     name: vmselect-test
     namespace: default-1
-    resourceversion: "1"
+    resourceVersion: "1"
     labels:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmselect
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
-    ownerreferences:
+    ownerReferences:
         - apiversion: ""
           name: test
           controller: true
-          blockownerdeletion: true
+          blockOwnerDeletion: true
     finalizers:
         - apps.victoriametrics.com/finalizer
 spec:
@@ -655,16 +656,16 @@ spec:
         - name: http
           protocol: TCP
           port: 8352
-          targetport:
+          targetPort:
             intval: 8352
     selector:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmselect
         managed-by: vm-operator
-    clusterip: None
+    clusterIP: None
     type: ClusterIP
-    publishnotreadyaddresses: true
+    publishNotReadyAddresses: true
 `)
 	// with native and extra service
 	f("select", &vmv1beta1.VMCluster{
@@ -675,21 +676,21 @@ spec:
 				ClusterNativePort: "8477", ServiceSpec: &vmv1beta1.AdditionalServiceSpec{Spec: corev1.ServiceSpec{Type: "LoadBalancer"}}},
 		},
 	}, `
-objectmeta:
+metadata:
     name: vmselect-test
     namespace: default-1
-    resourceversion: "1"
+    resourceVersion: "1"
     labels:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmselect
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
-    ownerreferences:
+    ownerReferences:
         - apiversion: ""
           name: test
           controller: true
-          blockownerdeletion: true
+          blockOwnerDeletion: true
     finalizers:
         - apps.victoriametrics.com/finalizer
 spec:
@@ -697,21 +698,21 @@ spec:
         - name: http
           protocol: TCP
           port: 8352
-          targetport:
+          targetPort:
             intval: 8352
         - name: clusternative
           protocol: TCP
           port: 8477
-          targetport:
+          targetPort:
             intval: 8477
     selector:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vmselect
         managed-by: vm-operator
-    clusterip: None
+    clusterIP: None
     type: ClusterIP
-    publishnotreadyaddresses: true
+    publishNotReadyAddresses: true
 `)
 	f("insert", &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
@@ -723,21 +724,21 @@ spec:
 			},
 		},
 	}, `
-objectmeta:
+metadata:
     name: vminsert-test
     namespace: default-1
-    resourceversion: "1"
+    resourceVersion: "1"
     labels:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
-    ownerreferences:
+    ownerReferences:
         - apiversion: ""
           name: test
           controller: true
-          blockownerdeletion: true
+          blockOwnerDeletion: true
     finalizers:
         - apps.victoriametrics.com/finalizer
 spec:
@@ -745,19 +746,19 @@ spec:
         - name: http
           protocol: TCP
           port: 8480
-          targetport:
+          targetPort:
             intval: 8480
         - name: opentsdb-http
           protocol: TCP
           port: 8087
-          targetport:
+          targetPort:
             intval: 8087
     selector:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
-    clusterip: ""
+    clusterIP: ""
     type: ClusterIP
 `)
 	// transit to headless
@@ -779,21 +780,21 @@ spec:
 			},
 		},
 	}, `
-objectmeta:
+metadata:
     name: vminsert-test
     namespace: default-1
-    resourceversion: "1"
+    resourceVersion: "1"
     labels:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
-    ownerreferences:
+    ownerReferences:
         - apiversion: ""
           name: test
           controller: true
-          blockownerdeletion: true
+          blockOwnerDeletion: true
     finalizers:
         - apps.victoriametrics.com/finalizer
 spec:
@@ -801,24 +802,24 @@ spec:
         - name: http
           protocol: TCP
           port: 8480
-          targetport:
+          targetPort:
             intval: 8480
         - name: opentsdb-http
           protocol: TCP
           port: 8087
-          targetport:
+          targetPort:
             intval: 8087
         - name: clusternative
           protocol: TCP
           port: 8055
-          targetport:
+          targetPort:
             intval: 8055
     selector:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
-    clusterip: "None"
+    clusterIP: "None"
     type: ClusterIP
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -864,10 +865,10 @@ spec:
 			},
 		},
 	}, `
-objectmeta:
+metadata:
     name: vminsert-test
     namespace: default-1
-    resourceversion: "1"
+    resourceVersion: "1"
     labels:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
@@ -876,11 +877,11 @@ objectmeta:
         managed-by: vm-operator
     annotations:
       "service.beta.kubernetes.io/aws-load-balancer-type": "external"
-    ownerreferences:
+    ownerReferences:
         - apiversion: ""
           name: test
           controller: true
-          blockownerdeletion: true
+          blockOwnerDeletion: true
     finalizers:
         - apps.victoriametrics.com/finalizer
 spec:
@@ -888,17 +889,17 @@ spec:
         - name: http
           protocol: TCP
           port: 8480
-          targetport:
+          targetPort:
             intval: 8480
         - name: opentsdb-http
           protocol: TCP
           port: 8087
-          targetport:
+          targetPort:
             intval: 8087
         - name: clusternative
           protocol: TCP
           port: 8055
-          targetport:
+          targetPort:
             intval: 8055
     selector:
         app.kubernetes.io/component: monitoring
@@ -906,7 +907,7 @@ spec:
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
     type: LoadBalancer
-    loadbalancerclass: service.k8s.aws/nlb
+    loadBalancerClass: service.k8s.aws/nlb
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "vminsert-test",
@@ -954,10 +955,10 @@ spec:
 			},
 		},
 	}, `
-objectmeta:
+metadata:
     name: vminsertinternal-test
     namespace: default-1
-    resourceversion: "1"
+    resourceVersion: "1"
     labels:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
@@ -967,11 +968,11 @@ objectmeta:
         operator.victoriametrics.com/vmauthlb-proxy-job-name: vminsert-test
     annotations:
       "service.beta.kubernetes.io/aws-load-balancer-type": "external"
-    ownerreferences:
+    ownerReferences:
         - apiversion: ""
           name: test
           controller: true
-          blockownerdeletion: true
+          blockOwnerDeletion: true
     finalizers:
         - apps.victoriametrics.com/finalizer
 spec:
@@ -979,17 +980,17 @@ spec:
         - name: http
           protocol: TCP
           port: 8480
-          targetport:
+          targetPort:
             intval: 8480
         - name: opentsdb-http
           protocol: TCP
           port: 8087
-          targetport:
+          targetPort:
             intval: 8087
         - name: clusternative
           protocol: TCP
           port: 8055
-          targetport:
+          targetPort:
             intval: 8055
     selector:
         app.kubernetes.io/component: monitoring
@@ -997,8 +998,8 @@ spec:
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
     type: ClusterIP
-    clusterip: "None"
-    loadbalancerclass: service.k8s.aws/nlb
+    clusterIP: "None"
+    loadBalancerClass: service.k8s.aws/nlb
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "vminsert-test",

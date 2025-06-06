@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -57,8 +58,8 @@ func (r *VMRuleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules/status,verbs=get;update;patch
 func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	instance := &vmv1beta1.VMRule{}
-	reqLogger := r.Log.WithValues("vmrule", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vmrule", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 
 	defer func() {
 		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
@@ -83,20 +84,24 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmalertItem := range objects.Items {
-		if vmalertItem.DeletionTimestamp != nil || vmalertItem.Spec.ParsingError != "" {
+	for i := range objects.Items {
+		item := &objects.Items[i]
+		if item.DeletionTimestamp != nil || item.Spec.ParsingError != "" {
 			continue
 		}
-		currVMAlert := &vmalertItem
-		reqLogger := reqLogger.WithValues("vmalert", currVMAlert.Name, "parent_namespace", currVMAlert.Namespace)
-		ctx := logger.AddToContext(ctx, reqLogger)
+		l := l.WithValues("vmalert", item.Name, "parent_namespace", item.Namespace)
+		ctx := logger.AddToContext(ctx, l)
 
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currVMAlert, currVMAlert.Spec.RuleSelector, currVMAlert.Spec.RuleNamespaceSelector, currVMAlert.Spec.SelectAllByDefault)
+			selectors := &vmv1.EntitySelectors{
+				Object:    item.Spec.RuleSelector,
+				Namespace: item.Spec.RuleNamespaceSelector,
+			}
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, selectors, item.Spec.SelectAllByDefault)
 			if err != nil {
-				reqLogger.Error(err, "cannot match vmalert and vmRule")
+				l.Error(err, "cannot match vmalert and vmRule")
 				continue
 			}
 			if !match {
@@ -104,7 +109,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			}
 		}
 
-		_, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, currVMAlert, instance)
+		_, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, item, instance)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot update rules configmaps: %w", err)
 		}

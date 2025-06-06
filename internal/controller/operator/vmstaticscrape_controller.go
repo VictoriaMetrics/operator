@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -41,7 +42,7 @@ func (r *VMStaticScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes/status,verbs=get;update;patch
 func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	instance := &vmv1beta1.VMStaticScrape{}
-	reqLogger := r.Log.WithValues("vmstaticscrape", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues("vmstaticscrape", req.Name, "namespace", req.Namespace)
 	defer func() {
 		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
 	}()
@@ -52,12 +53,12 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if instance.Spec.ParsingError != "" {
 		return result, &parsingError{instance.Spec.ParsingError, "vmstaticscrape"}
 	}
-	if vmAgentReconcileLimit.MustThrottleReconcile() {
+	if agentReconcileLimit.MustThrottleReconcile() {
 		// fast path, rate limited
 		return ctrl.Result{}, nil
 	}
-	vmAgentSync.Lock()
-	defer vmAgentSync.Unlock()
+	agentSync.Lock()
+	defer agentSync.Unlock()
 
 	var objects vmv1beta1.VMAgentList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAgentList) {
@@ -66,22 +67,26 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmagentItem := range objects.Items {
-		if !vmagentItem.DeletionTimestamp.IsZero() || vmagentItem.Spec.ParsingError != "" || vmagentItem.IsStaticScrapeUnmanaged() {
+	for i := range objects.Items {
+		item := &objects.Items[i]
+		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsStaticScrapeUnmanaged() {
 			continue
 		}
-		currentVMagent := &vmagentItem
-		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
-		ctx := logger.AddToContext(ctx, reqLogger)
-		if currentVMagent.Spec.DaemonSetMode {
+		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
+		ctx := logger.AddToContext(ctx, l)
+		if item.Spec.DaemonSetMode {
 			continue
 		}
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.StaticScrapeSelector, currentVMagent.Spec.StaticScrapeNamespaceSelector, currentVMagent.Spec.SelectAllByDefault)
+			selectors := &vmv1.EntitySelectors{
+				Object:    item.Spec.StaticScrapeSelector,
+				Namespace: item.Spec.StaticScrapeNamespaceSelector,
+			}
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, selectors, item.Spec.SelectAllByDefault)
 			if err != nil {
-				reqLogger.Error(err, "cannot match vmagent and vmStaticScrape")
+				l.Error(err, "cannot match vmagent and vmStaticScrape")
 				continue
 			}
 			if !match {
@@ -89,7 +94,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}
 		}
 
-		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, r, currentVMagent, instance); err != nil {
+		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, r, item, instance); err != nil {
 			continue
 		}
 	}

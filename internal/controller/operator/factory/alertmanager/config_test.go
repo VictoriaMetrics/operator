@@ -1876,14 +1876,19 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var amCfgs []*vmv1beta1.VMAlertmanagerConfig
-			if err := k8stools.VisitObjectsForSelectorsAtNs(tt.args.ctx, fclient, tt.args.cr.Spec.ConfigNamespaceSelector, tt.args.cr.Spec.ConfigSelector, tt.args.cr.Namespace, tt.args.cr.Spec.SelectAllByDefault,
-				func(ams *vmv1beta1.VMAlertmanagerConfigList) {
-					for i := range ams.Items {
-						item := ams.Items[i]
+			opts := &k8stools.SelectorOpts{
+				SelectAll:         tt.args.cr.Spec.SelectAllByDefault,
+				ObjectSelector:    tt.args.cr.Spec.ConfigSelector,
+				NamespaceSelector: tt.args.cr.Spec.ConfigNamespaceSelector,
+				DefaultNamespace:  tt.args.cr.Namespace,
+			}
+			if err := k8stools.VisitSelected(tt.args.ctx, fclient, opts, func(ams *vmv1beta1.VMAlertmanagerConfigList) {
+				for i := range ams.Items {
+					item := ams.Items[i]
 
-						amCfgs = append(amCfgs, &item)
-					}
-				}); err != nil {
+					amCfgs = append(amCfgs, &item)
+				}
+			}); err != nil {
 				t.Fatalf("cannot select configs: %s", err)
 			}
 			for _, amc := range amCfgs {

@@ -903,17 +903,22 @@ func genPassword() (string, error) {
 func selectVMUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) (*skipableVMUsers, error) {
 	var res []*vmv1beta1.VMUser
 	var namespacedNames []string
-	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
-		func(list *vmv1beta1.VMUserList) {
-			for _, item := range list.Items {
-				if !item.DeletionTimestamp.IsZero() {
-					continue
-				}
-				item.Status.ObservedGeneration = item.GetGeneration()
-				res = append(res, item.DeepCopy())
-				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+	opts := &k8stools.SelectorOpts{
+		SelectAll:         cr.Spec.SelectAllByDefault,
+		ObjectSelector:    cr.Spec.UserSelector,
+		NamespaceSelector: cr.Spec.UserNamespaceSelector,
+		DefaultNamespace:  cr.Namespace,
+	}
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMUserList) {
+		for _, item := range list.Items {
+			if !item.DeletionTimestamp.IsZero() {
+				continue
 			}
-		}); err != nil {
+			item.Status.ObservedGeneration = item.GetGeneration()
+			res = append(res, item.DeepCopy())
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+		}
+	}); err != nil {
 		return nil, err
 	}
 	return &skipableVMUsers{users: res, namespacedNames: namespacedNames}, nil

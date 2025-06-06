@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/alertmanager"
@@ -85,19 +86,23 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, item := range objects.Items {
-		am := &item
-		if !am.DeletionTimestamp.IsZero() || am.Spec.ParsingError != "" || am.IsUnmanaged() {
+	for i := range objects.Items {
+		item := &objects.Items[i]
+		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsUnmanaged() {
 			continue
 		}
 
-		l := l.WithValues("vmalertmanager", am.Name, "parent_namespace", am.Namespace)
+		l := l.WithValues("vmalertmanager", item.Name, "parent_namespace", item.Namespace)
 		ctx := logger.AddToContext(ctx, l)
 
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, am, am.Spec.ConfigSelector, am.Spec.ConfigNamespaceSelector, am.Spec.SelectAllByDefault)
+			selectors := &vmv1.EntitySelectors{
+				Object:    item.Spec.ConfigSelector,
+				Namespace: item.Spec.ConfigNamespaceSelector,
+			}
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, item, selectors, item.Spec.SelectAllByDefault)
 			if err != nil {
 				l.Error(err, "cannot match alertmanager against selector, probably bug")
 				continue
@@ -106,7 +111,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 				continue
 			}
 		}
-		if err := alertmanager.CreateOrUpdateConfig(ctx, r.Client, am, &instance); err != nil {
+		if err := alertmanager.CreateOrUpdateConfig(ctx, r.Client, item, &instance); err != nil {
 			continue
 		}
 	}

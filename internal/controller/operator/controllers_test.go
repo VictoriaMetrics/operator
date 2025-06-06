@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -313,7 +314,11 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, tt.sourceCRD, tt.targetCRD, tt.selector, tt.namespaceSelector, tt.selectAll)
+			selectors := &vmv1.EntitySelectors{
+				Object:    tt.selector,
+				Namespace: tt.namespaceSelector,
+			}
+			matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, tt.sourceCRD, tt.targetCRD, selectors, tt.selectAll)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -274,15 +275,15 @@ func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sour
 	return false, nil
 }
 
-// isSelectorsMatchesTargetCRD checks if targetCRD matches sourceCRD by selector, namespaceSelector and selectAll.
+// isSelectorsMatchesTargetCRD checks if targetCRD matches sourceCRD by entity selectors and selectAll.
 // see https://docs.victoriametrics.com/operator/resources/vmagent/#scraping for details
-func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selector, namespaceSelector *metav1.LabelSelector, selectAll bool) (bool, error) {
-	// selectAll only works when NamespaceSelector and Selector both undefined
-	if selector == nil && namespaceSelector == nil {
+func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selectors *vmv1.EntitySelectors, selectAll bool) (bool, error) {
+	// selectAll only works when Namespace and Object selectors are undefined
+	if selectors == nil || (selectors.Object == nil && selectors.Namespace == nil) {
 		return selectAll, nil
 	}
 	// check namespace selector, only return when NS not match
-	if isNsMatch, err := isNamespaceSelectorMatches(ctx, rclient, sourceCRD, targetCRD, namespaceSelector); !isNsMatch || err != nil {
+	if isNsMatch, err := isNamespaceSelectorMatches(ctx, rclient, sourceCRD, targetCRD, selectors.Namespace); !isNsMatch || err != nil {
 		return isNsMatch, err
 	}
 	// in case of empty namespace object must be synchronized in any way,
@@ -293,11 +294,11 @@ func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sou
 	}
 
 	// filter selector label.
-	if selector == nil {
+	if selectors.Object == nil {
 		return true, nil
 	}
 
-	labelSelector, err := metav1.LabelSelectorAsSelector(selector)
+	labelSelector, err := metav1.LabelSelectorAsSelector(selectors.Object)
 	if err != nil {
 		return false, fmt.Errorf("cannot parse ruleSelector selector as labelSelector: %w", err)
 	}

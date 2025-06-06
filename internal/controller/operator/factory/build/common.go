@@ -4,12 +4,42 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sort"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type keysSorter[T any] struct {
+	target []T
+	sorter []string
+}
+
+func OrderByKeys[T any](target []T, sorter []string) {
+	if len(target) != len(sorter) {
+		panic("BUG: target and sorter names are expected to be equal")
+	}
+	s := &keysSorter[T]{
+		target: target,
+		sorter: sorter,
+	}
+	sort.Sort(s)
+}
+
+func (s *keysSorter[T]) Len() int {
+	return len(s.sorter)
+}
+
+func (s *keysSorter[T]) Less(i, j int) bool {
+	return s.sorter[i] < s.sorter[j]
+}
+
+func (s *keysSorter[T]) Swap(i, j int) {
+	s.target[i], s.target[j] = s.target[j], s.target[i]
+	s.sorter[i], s.sorter[j] = s.sorter[j], s.sorter[i]
+}
 
 // TLSConfigBuilder help cache and build tls config
 type TLSConfigBuilder struct {

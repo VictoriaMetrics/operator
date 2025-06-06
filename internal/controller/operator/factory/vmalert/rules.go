@@ -7,12 +7,6 @@ import (
 	"sort"
 	"strconv"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -23,6 +17,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 var badConfigsTotal = prometheus.NewCounter(prometheus.CounterOpts{
@@ -198,16 +199,21 @@ func reconcileVMAlertConfig(ctx context.Context, rclient client.Client, cr *vmv1
 func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (map[string]string, []*vmv1beta1.VMRule, error) {
 	var vmRules []*vmv1beta1.VMRule
 	var namespacedNames []string
-	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
-		func(list *vmv1beta1.VMRuleList) {
-			for _, item := range list.Items {
-				if !item.DeletionTimestamp.IsZero() {
-					continue
-				}
-				vmRules = append(vmRules, item.DeepCopy())
-				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+	opts := &k8stools.SelectorOpts{
+		SelectAll:         cr.Spec.SelectAllByDefault,
+		ObjectSelector:    cr.Spec.RuleSelector,
+		NamespaceSelector: cr.Spec.RuleNamespaceSelector,
+		DefaultNamespace:  cr.Namespace,
+	}
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMRuleList) {
+		for _, item := range list.Items {
+			if !item.DeletionTimestamp.IsZero() {
+				continue
 			}
-		}); err != nil {
+			vmRules = append(vmRules, item.DeepCopy())
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+		}
+	}); err != nil {
 		return nil, nil, err
 	}
 

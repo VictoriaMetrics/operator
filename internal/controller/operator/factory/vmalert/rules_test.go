@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -18,50 +17,6 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
-
-func Test_selectNamespaces(t *testing.T) {
-	type args struct {
-		selector labels.Selector
-	}
-	tests := []struct {
-		name         string
-		args         args
-		predefinedNs []runtime.Object
-		want         []string
-		wantErr      bool
-	}{
-		{
-			name:         "select 1 ns",
-			args:         args{selector: labels.SelectorFromValidatedSet(labels.Set{})},
-			predefinedNs: []runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}},
-			want:         []string{"ns1"},
-			wantErr:      false,
-		},
-		{
-			name: "select 1 ns with label selector",
-			args: args{selector: labels.SelectorFromValidatedSet(labels.Set{"name": "kube-system"})},
-			predefinedNs: []runtime.Object{
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", Labels: map[string]string{"name": "kube-system"}}},
-			},
-			want:    []string{"kube-system"},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedNs)
-			got, err := k8stools.SelectNamespaces(context.TODO(), fclient, tt.args.selector)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("selectNamespaces() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("selectNamespaces() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestSelectRules(t *testing.T) {
 	type args struct {

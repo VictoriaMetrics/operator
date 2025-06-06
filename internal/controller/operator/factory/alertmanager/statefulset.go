@@ -688,31 +688,36 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 	var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 	var badCfgs []*vmv1beta1.VMAlertmanagerConfig
 	var namespacedNames []string
-	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
-		func(ams *vmv1beta1.VMAlertmanagerConfigList) {
-			for i := range ams.Items {
-				item := ams.Items[i]
-				if !item.DeletionTimestamp.IsZero() {
-					continue
-				}
-				namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-				item.Status.ObservedGeneration = item.Generation
-				if item.Spec.ParsingError != "" {
-					item.Status.CurrentSyncError = item.Spec.ParsingError
-					badCfgs = append(badCfgs, &item)
-					continue
-				}
-				if !build.MustSkipRuntimeValidation {
-					if err := item.Validate(); err != nil {
-						item.Status.CurrentSyncError = err.Error()
-						badCfgs = append(badCfgs, &item)
-						continue
-					}
-
-				}
-				amCfgs = append(amCfgs, &item)
+	opts := &k8stools.SelectorOpts{
+		SelectAll:         cr.Spec.SelectAllByDefault,
+		ObjectSelector:    cr.Spec.ConfigSelector,
+		NamespaceSelector: cr.Spec.ConfigNamespaceSelector,
+		DefaultNamespace:  cr.Namespace,
+	}
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(ams *vmv1beta1.VMAlertmanagerConfigList) {
+		for i := range ams.Items {
+			item := &ams.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
 			}
-		}); err != nil {
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			item.Status.ObservedGeneration = item.Generation
+			if item.Spec.ParsingError != "" {
+				item.Status.CurrentSyncError = item.Spec.ParsingError
+				badCfgs = append(badCfgs, item)
+				continue
+			}
+			if !build.MustSkipRuntimeValidation {
+				if err := item.Validate(); err != nil {
+					item.Status.CurrentSyncError = err.Error()
+					badCfgs = append(badCfgs, item)
+					continue
+				}
+
+			}
+			amCfgs = append(amCfgs, item)
+		}
+	}); err != nil {
 		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
 

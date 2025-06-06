@@ -289,7 +289,7 @@ disable_compression: true
 scrape_offset: 10s
 disable_keepalive: true
 headers:
-- 'customer-header: with-value'
+- "customer-header: with-value"
 proxy_basic_auth:
   username: proxy-user
   password: proxy-password

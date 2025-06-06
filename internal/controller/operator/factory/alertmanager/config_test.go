@@ -1057,9 +1057,9 @@ receivers:
     labels:
     - dev
     fields:
-      components: '{ name: "Monitoring" }'
-      customfield_10001: '"Random text"'
-      customfield_10002: '{"value": "red"}'
+      components: "{ name: \"Monitoring\" }"
+      customfield_10001: "\"Random text\""
+      customfield_10002: "{\"value\": \"red\"}"
 - name: default-base-jira-cloud
   jira_configs:
   - http_config:
@@ -1073,9 +1073,9 @@ receivers:
     labels:
     - dev
     fields:
-      components: '{ name: "Monitoring" }'
-      customfield_10001: '"Random text"'
-      customfield_10002: '{"value": "red"}'
+      components: "{ name: \"Monitoring\" }"
+      customfield_10001: "\"Random text\""
+      customfield_10002: "{\"value\": \"red\"}"
 templates: []
 `,
 		},

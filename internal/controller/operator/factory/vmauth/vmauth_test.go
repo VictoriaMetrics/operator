@@ -212,11 +212,8 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 		}, `
 volumes:
   - name: config-out
-    volumesource:
-      emptydir:
-        medium: ""
-        sizelimit: null
-initcontainers:
+    emptyDir: {}
+initContainers:
   - name: config-init
     image: vmcustom:config-reloader-v0.35.0
     args:
@@ -224,58 +221,45 @@ initcontainers:
       - --config-envsubst-file=/opt/vmauth/config.yaml
       - --config-secret-name=default/vmauth-config-auth
       - --only-init-config
-    resources:
-      limits: {}
-      requests: {}
-    volumemounts:
+    volumeMounts:
       - name: config-out
-        readonly: false
-        mountpath: /opt/vmauth
+        mountPath: /opt/vmauth
 containers:
   - name: vmauth
     image: vm-repo:v1.97.1
-    imagepullpolicy: IfNotPresent
+    imagePullPolicy: IfNotPresent
     args:
       - -auth.config=/opt/vmauth/config.yaml
       - -httpListenAddr=:8429
     ports:
       - name: http
-        hostport: 0
-        containerport: 8429
+        containerPort: 8429
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
-    volumemounts:
+    volumeMounts:
       - name: config-out
-        readonly: false
-        mountpath: /opt/vmauth
-    livenessprobe:
-      probehandler:
-        httpget:
-          path: /health
-          port:
-            type: 0
-            intval: 8429
-            strval: ""
-          scheme: HTTP
-      timeoutseconds: 5
-      periodseconds: 5
-      successthreshold: 1
-      failurethreshold: 10
-    readinessprobe:
-      probehandler:
-        httpget:
-          path: /health
-          port:
-            intval: 8429
-          scheme: HTTP
-      initialdelayseconds: 0
-      timeoutseconds: 5
-      periodseconds: 5
-      successthreshold: 1
-      failurethreshold: 10
-    terminationmessagepolicy: FallbackToLogsOnError
+        mountPath: /opt/vmauth
+    livenessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8429
+        scheme: HTTP
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    readinessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8429
+        scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    terminationMessagePolicy: FallbackToLogsOnError
   - name: config-reloader
     image: vmcustom:config-reloader-v0.35.0
     args:
@@ -284,48 +268,39 @@ containers:
       - --config-secret-name=default/vmauth-config-auth
     env:
       - name: POD_NAME
-        valuefrom:
-          fieldref:
-            apiversion: ""
-            fieldpath: metadata.name
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
     ports:
       - name: reloader-http
-        containerport: 8435
+        containerPort: 8435
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
-    volumemounts:
+    volumeMounts:
       - name: config-out
-        readonly: false
-        mountpath: /opt/vmauth
-    livenessprobe:
-      probehandler:
-        httpget:
-          path: /health
-          port:
-            type: 0
-            intval: 8435
-            strval: ""
-          scheme: HTTP
-      timeoutseconds: 1
-      periodseconds: 10
-      successthreshold: 1
-      failurethreshold: 3
-    readinessprobe:
-      probehandler:
-        httpget:
-          path: /health
-          port:
-            intval: 8435
-          scheme: HTTP
-      initialdelayseconds: 5
-      timeoutseconds: 1
-      periodseconds: 10
-      successthreshold: 1
-      failurethreshold: 3
-    terminationmessagepolicy: FallbackToLogsOnError
-serviceaccountname: vmauth-auth
+        mountPath: /opt/vmauth
+    livenessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8435
+        scheme: HTTP
+      timeoutSeconds: 1
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8435
+        scheme: HTTP
+      initialDelaySeconds: 5
+      timeoutSeconds: 1
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+    terminationMessagePolicy: FallbackToLogsOnError
+serviceAccountName: vmauth-auth
 
 `)
 	})
@@ -349,15 +324,11 @@ serviceaccountname: vmauth-auth
 		}, `
 volumes:
   - name: config-out
-    volumesource:
-      emptydir:
-        medium: ""
-        sizelimit: null
+    emptyDir: {}
   - name: config
-    volumesource:
-      secret:
-        secretname: vmauth-config-auth
-initcontainers:
+    secret:
+      secretName: vmauth-config-auth
+initContainers:
   - name: config-init
     image: quay.io/prometheus-operator/prometheus-config-reloader:v1
     command:
@@ -365,60 +336,49 @@ initcontainers:
     args:
       - -c
       - "gunzip -c /opt/vmauth-config-gz/config.yaml.gz > /opt/vmauth/config.yaml"
-    resources:
-      limits: {}
-      requests: {}
-    volumemounts:
+    volumeMounts:
       - name: config
-        mountpath: /opt/vmauth-config-gz
+        mountPath: /opt/vmauth-config-gz
       - name: config-out
-        mountpath: /opt/vmauth
+        mountPath: /opt/vmauth
 containers:
   - name: vmauth
     image: vm-repo:v1.97.1
-    imagepullpolicy: IfNotPresent
+    imagePullPolicy: IfNotPresent
     args:
       - -auth.config=/opt/vmauth/config.yaml
       - -httpListenAddr=:8429
     ports:
       - name: http
-        hostport: 0
-        containerport: 8429
+        containerPort: 8429
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
-    volumemounts:
+    volumeMounts:
       - name: config
-        mountpath: /opt/vmauth/config
+        mountPath: /opt/vmauth/config
       - name: config-out
-        mountpath: /opt/vmauth
-    livenessprobe:
-      probehandler:
-        httpget:
-          path: /health
-          port:
-            type: 0
-            intval: 8429
-            strval: ""
-          scheme: HTTP
-      timeoutseconds: 5
-      periodseconds: 5
-      successthreshold: 1
-      failurethreshold: 10
-    readinessprobe:
-      probehandler:
-        httpget:
-          path: /health
-          port:
-            intval: 8429
-          scheme: HTTP
-      initialdelayseconds: 0
-      timeoutseconds: 5
-      periodseconds: 5
-      successthreshold: 1
-      failurethreshold: 10
-    terminationmessagepolicy: FallbackToLogsOnError
+        mountPath: /opt/vmauth
+    livenessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8429
+        scheme: HTTP
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    readinessProbe:
+      httpGet:
+        path: /health
+        port:
+          intval: 8429
+        scheme: HTTP
+      initialDelaySeconds: 0
+      timeoutSeconds: 5
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 10
+    terminationMessagePolicy: FallbackToLogsOnError
   - name: config-reloader
     image: quay.io/prometheus-operator/prometheus-config-reloader:v1
     command:
@@ -429,21 +389,16 @@ containers:
       - --config-file=/opt/vmauth-config-gz/config.yaml.gz
     env:
       - name: POD_NAME
-        valuefrom:
-          fieldref:
-            apiversion: ""
-            fieldpath: metadata.name
-    resources:
-      limits: {}
-      requests: {}
-    volumemounts:
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+    volumeMounts:
       - name: config-out
-        readonly: false
-        mountpath: /opt/vmauth
+        mountPath: /opt/vmauth
       - name: config
-        mountpath: /opt/vmauth-config-gz
-    terminationmessagepolicy: FallbackToLogsOnError
-serviceaccountname: vmauth-auth
+        mountPath: /opt/vmauth-config-gz
+    terminationMessagePolicy: FallbackToLogsOnError
+serviceAccountName: vmauth-auth
 
 `)
 	})

@@ -103,7 +103,12 @@ groups:
 			args: args{
 				p: &vmv1beta1.VMAlert{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec:       vmv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}},
+					Spec: vmv1beta1.VMAlertSpec{
+						RuleNamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{},
+						},
+						RuleSelector: &metav1.LabelSelector{},
+					},
 				},
 				l: logf.Log.WithName("unit-test"),
 			},

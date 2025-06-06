@@ -462,8 +462,8 @@ func appendIfNotEmpty(src []string, key string, origin yaml.MapSlice) yaml.MapSl
 	return origin
 }
 
-func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, cb *build.TLSConfigBuilder) ([]yaml.MapItem, error) {
-	var result []yaml.MapItem
+func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, cb *build.TLSConfigBuilder) (yaml.MapSlice, error) {
+	var result yaml.MapSlice
 
 	switch {
 	case cr.Spec.UnauthorizedUserAccessSpec != nil:

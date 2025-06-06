@@ -1956,8 +1956,8 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 					return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
 				}
 				wantRemote := `- match:
-  - '{__name__="count1"}'
-  - '{__name__="count2"}'
+  - "{__name__=\"count1\"}"
+  - "{__name__=\"count2\"}"
   interval: 1m
   staleness_interval: 2m
   outputs:
@@ -2011,8 +2011,8 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 					return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
 				}
 				wantGlobal := `- match:
-  - '{__name__="count1"}'
-  - '{__name__="count2"}'
+  - "{__name__=\"count1\"}"
+  - "{__name__=\"count2\"}"
   interval: 1m
   staleness_interval: 2m
   outputs:

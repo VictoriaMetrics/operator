@@ -90,7 +90,7 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr,
 		if ba == nil {
 			return
 		}
-		if ha.BasicAuth != nil && ba.BasicAuthCredentials != nil {
+		if ha.BasicAuth != nil && ba.BasicAuthCreds != nil {
 			if len(ba.Password) > 0 {
 				s.Data[buildRemoteSecretKey(sourcePrefix, basicAuthPasswordKey)] = []byte(ba.Password)
 			}
@@ -98,7 +98,7 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr,
 		if ha.BearerAuth != nil && len(ba.bearerValue) > 0 {
 			s.Data[buildRemoteSecretKey(sourcePrefix, bearerTokenKey)] = []byte(ba.bearerValue)
 		}
-		if ha.OAuth2 != nil && ba.OAuthCreds != nil {
+		if ha.OAuth2 != nil && ba.OAuth2Creds != nil {
 			if len(ba.ClientSecret) > 0 {
 				s.Data[buildRemoteSecretKey(sourcePrefix, oauth2SecretKey)] = []byte(ba.ClientSecret)
 			}
@@ -547,7 +547,7 @@ func buildVMAlertArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remote
 		args = append(args, "-envflag.enable=true")
 	}
 
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir, false)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
@@ -556,8 +556,8 @@ func buildVMAlertArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remote
 
 type authSecret struct {
 	bearerValue string
-	*k8stools.BasicAuthCredentials
-	*k8stools.OAuthCreds
+	*k8stools.BasicAuthCreds
+	*k8stools.OAuth2Creds
 }
 
 func loadVMAlertRemoteSecrets(
@@ -580,7 +580,7 @@ func loadVMAlertRemoteSecrets(
 			if err != nil {
 				return nil, fmt.Errorf("could not load basicAuth config. %w", err)
 			}
-			as.BasicAuthCredentials = &credentials
+			as.BasicAuthCreds = &credentials
 		}
 		if httpAuth.BearerAuth != nil && httpAuth.TokenSecret != nil {
 			token, err := k8stools.GetCredFromSecret(ctx, rclient, cr.Namespace, httpAuth.TokenSecret, buildCacheKey(ns, httpAuth.TokenSecret.Name), nsSecretCache)
@@ -594,7 +594,7 @@ func loadVMAlertRemoteSecrets(
 			if err != nil {
 				return nil, fmt.Errorf("cannot load oauth2 creds err: %w", err)
 			}
-			as.OAuthCreds = oauth2
+			as.OAuth2Creds = oauth2
 		}
 		return &as, nil
 	}

@@ -62,8 +62,8 @@ func (r *VMAlertmanagerReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=*
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=*
 func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vmalertmanager", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vmalertmanager", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1beta1.VMAlertmanager{}
 
 	defer func() {

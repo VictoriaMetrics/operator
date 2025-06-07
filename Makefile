@@ -84,6 +84,7 @@ api-gen: client-gen lister-gen informer-gen
 		--clientset-name versioned \
 		--input-base "" \
                 --plural-exceptions "VLogs:VLogs" \
+		--plural-exceptions "VMAnomaly:VMAnomalies" \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client \
 		--output-dir ./api/client \
 		--go-header-file hack/boilerplate.go.txt \
@@ -94,12 +95,14 @@ api-gen: client-gen lister-gen informer-gen
 		--output-dir ./api/client/listers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/listers \
 		--plural-exceptions "VLogs:VLogs" \
+		--plural-exceptions "VMAnomaly:VMAnomalies" \
 		--go-header-file hack/boilerplate.go.txt
 	@echo ">> generating with informer-gen"
 	$(INFORMER_GEN) github.com/VictoriaMetrics/operator/api/operator/... \
 		--versioned-clientset-package github.com/VictoriaMetrics/operator/api/client/versioned \
 		--listers-package github.com/VictoriaMetrics/operator/api/client/listers \
 		--plural-exceptions "VLogs:VLogs" \
+		--plural-exceptions "VMAnomaly:VMAnomalies" \
 		--output-dir ./api/client/informers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/informers \
 		--go-header-file hack/boilerplate.go.txt
@@ -348,7 +351,7 @@ GINKGO_VERSION ?= v2.23.0
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.6.0
-CONTROLLER_TOOLS_VERSION ?= v0.17.2
+CONTROLLER_TOOLS_VERSION ?= v0.18.0
 ENVTEST_VERSION ?= release-0.20
 GOLANGCI_LINT_VERSION ?= v2.1.3
 CODEGENERATOR_VERSION ?= v0.32.2

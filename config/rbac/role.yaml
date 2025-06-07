@@ -1,132 +1,9 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: vm-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: operator
+  name: manager-role
 rules:
-- nonResourceURLs:
-  - /metrics
-  - /metrics/resources
-  - /metrics/slis
-  verbs:
-  - get
-  - watch
-  - list
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - configmaps/finalizers
-  - endpoints
-  - events
-  - persistentvolumeclaims
-  - persistentvolumeclaims/finalizers
-  - pods
-  - secrets
-  - secrets/finalizers
-  - services
-  - services/finalizers
-  - serviceaccounts
-  - serviceaccounts/finalizers
-  verbs:
-  - "*"
-- apiGroups:
-  - ""
-  resources:
-  - configmaps/status
-  - nodes
-  - nodes/proxy
-  - nodes/metrics
-  - namespaces
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  - deployments/finalizers
-  - statefulsets
-  - statefulsets/finalizers
-  - daemonsets
-  - daemonsets/finalizers
-  - replicasets
-  - statefulsets
-  - statefulsets/finalizers
-  - statefulsets/status
-  verbs:
-  - "*"
-- apiGroups:
-  - monitoring.coreos.com
-  resources:
-  - "*"
-  verbs:
-  - "*"
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterrolebindings
-  - clusterrolebindings/finalizers
-  - clusterroles
-  - clusterroles/finalizers
-  - roles
-  - rolebindings
-  verbs:
-  - "*"
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - list
-  - get
-  - watch
-- apiGroups:
-  - policy
-  resources:
-  - poddisruptionbudgets
-  - poddisruptionbudgets/finalizers
-  verbs:
-  - "*"
-- apiGroups:
-  - route.openshift.io
-  - image.openshift.io
-  resources:
-  - routers/metrics
-  - registry/metrics
-  verbs:
-  - get
-- apiGroups:
-  - autoscaling
-  verbs:
-  - "*"
-  resources:
-  - horizontalpodautoscalers
-- apiGroups:
-  - networking.k8s.io
-  resources:
-  - ingresses
-  - ingresses/finalizers
-  verbs:
-  - "*"
-- apiGroups:
-  - apiextensions.k8s.io
-  resources:
-  - customresourcedefinitions
-  verbs:
-  - get
-  - list
-- apiGroups:
-  - discovery.k8s.io
-  resources:
-  - endpointslices
-  verbs:
-  - list
-  - watch
-  - get
 - apiGroups:
   - operator.victoriametrics.com
   resources:
@@ -184,5 +61,10 @@ rules:
   - vmusers
   - vmusers/finalizers
   - vmusers/status
+  - vmanomalies
+  - vmanomalies/finalizers
+  - vmanomalies/status
   verbs:
-  - '*'
+  - get
+  - patch
+  - update

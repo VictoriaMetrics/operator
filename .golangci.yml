@@ -15,6 +15,9 @@ linters:
     - unconvert
     - unparam
     - unused
+  settings:
+    dupl:
+      threshold: 200
   exclusions:
     generated: lax
     rules:

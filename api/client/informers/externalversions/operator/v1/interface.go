@@ -27,6 +27,8 @@ type Interface interface {
 	VLClusters() VLClusterInformer
 	// VLSingles returns a VLSingleInformer.
 	VLSingles() VLSingleInformer
+	// VMAnomalies returns a VMAnomalyInformer.
+	VMAnomalies() VMAnomalyInformer
 }
 
 type version struct {
@@ -48,4 +50,9 @@ func (v *version) VLClusters() VLClusterInformer {
 // VLSingles returns a VLSingleInformer.
 func (v *version) VLSingles() VLSingleInformer {
 	return &vLSingleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// VMAnomalies returns a VMAnomalyInformer.
+func (v *version) VMAnomalies() VMAnomalyInformer {
+	return &vMAnomalyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

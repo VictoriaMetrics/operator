@@ -59,7 +59,7 @@ func TestGenerateScrapeConfig(t *testing.T) {
 					},
 				},
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*k8stools.BasicAuthCreds{
 						"scrapeConfig/default/static-1//0": {
 							Password: "dangerous",
 							Username: "admin",
@@ -115,7 +115,7 @@ static_configs:
 					},
 				},
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*k8stools.BasicAuthCreds{
 						"scrapeConfig/default/file-1//0": {
 							Username: "user",
 						},
@@ -172,7 +172,7 @@ file_sd_configs:
 					},
 				},
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*k8stools.BasicAuthCreds{
 						"scrapeConfig/default/file-1//0": {
 							Username: "user",
 						},
@@ -346,7 +346,7 @@ kubernetes_sd_configs:
 					},
 				},
 				ssCache: &scrapesSecretsCache{
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{
+					oauth2Secrets: map[string]*k8stools.OAuth2Creds{
 						"scrapeConfig/default/mixconfigs-1/digitaloceansd/0": {ClientSecret: "some-secret", ClientID: "some-id"},
 					},
 				},

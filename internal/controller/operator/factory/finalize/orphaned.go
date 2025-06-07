@@ -2,8 +2,10 @@ package finalize
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -94,4 +96,19 @@ func discoverSTSsByLabels(ctx context.Context, rclient client.Client, ns string,
 		resp = append(resp, &deps.Items[i])
 	}
 	return resp, nil
+}
+
+// RemoveOrphanedDaemonSet removes daemonset detached from given object
+func RemoveOrphanedDaemonSet(ctx context.Context, rclient client.Client, name, namespace string) error {
+	ds := appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	err := SafeDeleteWithFinalizer(ctx, rclient, &ds)
+	if err != nil {
+		return fmt.Errorf("cannot remove DaemonSet: %w", err)
+	}
+	return nil
 }

@@ -1291,7 +1291,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 			name: "test oauth2",
 			args: args{
 				ssCache: &scrapesSecretsCache{
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{func() string {
+					oauth2Secrets: map[string]*k8stools.OAuth2Creds{func() string {
 						rws := vmv1beta1.VMAgentRemoteWriteSpec{
 							URL: "localhost:8431",
 						}

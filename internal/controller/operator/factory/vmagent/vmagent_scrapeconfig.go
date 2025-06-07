@@ -42,8 +42,8 @@ func init() {
 
 type scrapesSecretsCache struct {
 	bearerTokens         map[string]string
-	baSecrets            map[string]*k8stools.BasicAuthCredentials
-	oauth2Secrets        map[string]*k8stools.OAuthCreds
+	baSecrets            map[string]*k8stools.BasicAuthCreds
+	oauth2Secrets        map[string]*k8stools.OAuth2Creds
 	authorizationSecrets map[string]string
 	nsSecretCache        map[string]*corev1.Secret
 	nsCMCache            map[string]*corev1.ConfigMap
@@ -204,7 +204,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 
 	statics, err := selectStaticScrapes(ctx, cr, rclient)
 	if err != nil {
-		return nil, fmt.Errorf("selecting PodScrapes failed: %w", err)
+		return nil, fmt.Errorf("selecting VMStaticScrapes failed: %w", err)
 	}
 
 	scrapeConfigs, err := selectScrapeConfig(ctx, cr, rclient)
@@ -478,8 +478,8 @@ func loadScrapeSecrets(
 	remoteWriteSpecs []vmv1beta1.VMAgentRemoteWriteSpec,
 ) (*scrapesSecretsCache, error) {
 	ssCache := &scrapesSecretsCache{
-		baSecrets:            map[string]*k8stools.BasicAuthCredentials{},
-		oauth2Secrets:        map[string]*k8stools.OAuthCreds{},
+		baSecrets:            map[string]*k8stools.BasicAuthCreds{},
+		oauth2Secrets:        map[string]*k8stools.OAuth2Creds{},
 		bearerTokens:         map[string]string{},
 		authorizationSecrets: map[string]string{},
 		nsSecretCache:        map[string]*corev1.Secret{},
@@ -774,7 +774,7 @@ func loadScrapeSecrets(
 				if err != nil {
 					return fmt.Errorf("could not generate token for azureSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err)
 				}
-				ssCache.oauth2Secrets[scrapeConfig.AsMapKey("azuresd", i)] = &k8stools.OAuthCreds{ClientSecret: token}
+				ssCache.oauth2Secrets[scrapeConfig.AsMapKey("azuresd", i)] = &k8stools.OAuth2Creds{ClientSecret: token}
 			}
 		}
 		for i, oc := range scrapeConfig.Spec.OpenStackSDConfigs {
@@ -883,7 +883,7 @@ func loadScrapeSecrets(
 	return ssCache, nil
 }
 
-func loadBasicAuthSecretFromAPI(ctx context.Context, rclient client.Client, basicAuth *vmv1beta1.BasicAuth, ns string, cache map[string]*corev1.Secret) (*k8stools.BasicAuthCredentials, error) {
+func loadBasicAuthSecretFromAPI(ctx context.Context, rclient client.Client, basicAuth *vmv1beta1.BasicAuth, ns string, cache map[string]*corev1.Secret) (*k8stools.BasicAuthCreds, error) {
 	var username string
 	var password string
 	var err error
@@ -896,14 +896,14 @@ func loadBasicAuthSecretFromAPI(ctx context.Context, rclient client.Client, basi
 		return nil, err
 	}
 
-	return &k8stools.BasicAuthCredentials{Username: username, Password: password}, nil
+	return &k8stools.BasicAuthCreds{Username: username, Password: password}, nil
 }
 
 func buildCacheKey(ns, keyName string) string {
 	return fmt.Sprintf("%s/%s", ns, keyName)
 }
 
-func loadProxySecrets(ctx context.Context, rclient client.Client, proxyCfg *vmv1beta1.ProxyAuth, ns string, cache map[string]*corev1.Secret) (ba *k8stools.BasicAuthCredentials, token string, err error) {
+func loadProxySecrets(ctx context.Context, rclient client.Client, proxyCfg *vmv1beta1.ProxyAuth, ns string, cache map[string]*corev1.Secret) (ba *k8stools.BasicAuthCreds, token string, err error) {
 	if proxyCfg.BasicAuth != nil {
 		ba, err = loadBasicAuthSecretFromAPI(ctx, rclient, proxyCfg.BasicAuth, ns, cache)
 		if err != nil {
@@ -1613,7 +1613,7 @@ func addAuthorizationConfigTo(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1
 	return dst
 }
 
-func addOAuth2ConfigTo(dst yaml.MapSlice, namespace, cacheKey string, cfg *vmv1beta1.OAuth2, oauth2Cache map[string]*k8stools.OAuthCreds) yaml.MapSlice {
+func addOAuth2ConfigTo(dst yaml.MapSlice, namespace, cacheKey string, cfg *vmv1beta1.OAuth2, oauth2Cache map[string]*k8stools.OAuth2Creds) yaml.MapSlice {
 	cachedSecret := oauth2Cache[cacheKey]
 	if cfg == nil || cachedSecret == nil {
 		// fast path

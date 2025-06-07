@@ -3,8 +3,6 @@ package k8stools
 import (
 	"context"
 	"fmt"
-	"strings"
-	"unicode"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -12,52 +10,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var disabledSpaceTrim bool
-
-// SetSpaceTrim configures option to trim space
-// at Secret/Configmap keys
-func SetSpaceTrim(disabled bool) {
-	disabledSpaceTrim = disabled
-}
-
-func maybeTrimSpace(s string) string {
-	if disabledSpaceTrim {
-		return s
-	}
-	return strings.TrimRightFunc(s, unicode.IsSpace)
-}
-
-// KeyNotFoundError represents an error if expected key
-// was not found at secret or configmap data
-type KeyNotFoundError struct {
-	key      string
-	cacheKey string
-	context  string
-}
-
-// NewKeyNotFoundError returns NewKeyNotFoundError
-func NewKeyNotFoundError(key, cacheKey, object string) *KeyNotFoundError {
-	return &KeyNotFoundError{
-		key:      key,
-		cacheKey: cacheKey,
-		context:  object,
-	}
-}
-
-// Error implements interface
-func (ke *KeyNotFoundError) Error() string {
-	return fmt.Sprintf("expected key=%q was not found at=%q cache_key=%q", ke.key, ke.context, ke.cacheKey)
-}
-
-// OAuthCreds represents OAuth2 secret values within plain text
-type OAuthCreds struct {
-	ClientSecret string
-	ClientID     string
-}
-
 // LoadOAuthSecrets fetches content of OAuth secret and returns it plain text value
-func LoadOAuthSecrets(ctx context.Context, rclient client.Client, oauth2 *vmv1beta1.OAuth2, ns string, cache map[string]*corev1.Secret, cmCache map[string]*corev1.ConfigMap) (*OAuthCreds, error) {
-	var r OAuthCreds
+func LoadOAuthSecrets(ctx context.Context, rclient client.Client, oauth2 *vmv1beta1.OAuth2, ns string, cache map[string]*corev1.Secret, cmCache map[string]*corev1.ConfigMap) (*OAuth2Creds, error) {
+	var r OAuth2Creds
 	if oauth2.ClientSecret != nil {
 		s, err := GetCredFromSecret(ctx, rclient, ns, oauth2.ClientSecret, buildCacheKey(ns, oauth2.ClientSecret.Name), cache)
 		if err != nil {
@@ -82,17 +37,10 @@ func LoadOAuthSecrets(ctx context.Context, rclient client.Client, oauth2 *vmv1be
 	return &r, nil
 }
 
-// BasicAuthCredentials represents a username password pair to be used with
-// basic http authentication, see https://tools.ietf.org/html/rfc7617.
-type BasicAuthCredentials struct {
-	Username string
-	Password string
-}
-
 // LoadBasicAuthSecret fetch content of kubernetes secrets and returns it within plain text
-func LoadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, basicAuth *vmv1beta1.BasicAuth, secretCache map[string]*corev1.Secret) (BasicAuthCredentials, error) {
+func LoadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, basicAuth *vmv1beta1.BasicAuth, secretCache map[string]*corev1.Secret) (BasicAuthCreds, error) {
 	var err error
-	var bac BasicAuthCredentials
+	var bac BasicAuthCreds
 	userNameContent, err := GetCredFromSecret(ctx, rclient, ns, &basicAuth.Username, fmt.Sprintf("%s/%s", ns, basicAuth.Username.Name), secretCache)
 	if err != nil {
 		return bac, err
@@ -164,8 +112,4 @@ func GetCredFromConfigMap(
 		return maybeTrimSpace(a), nil
 	}
 	return "", &KeyNotFoundError{sel.Key, cacheKey, "configmap"}
-}
-
-func buildCacheKey(ns, keyName string) string {
-	return fmt.Sprintf("%s/%s", ns, keyName)
 }

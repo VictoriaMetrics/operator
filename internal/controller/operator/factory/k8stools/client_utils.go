@@ -110,11 +110,8 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 }
 
 // ListObjectsByNamespace performs object list for given namespaces
-func ListObjectsByNamespace[T any, PT interface {
-	*T
-	client.ObjectList
-}](ctx context.Context, rclient client.Client, nss []string, collect func(PT), opts ...client.ListOption) error {
-	dst := PT(new(T))
+func ListObjectsByNamespace[L any, PL listing[L]](ctx context.Context, rclient client.Client, nss []string, collect func(PL), opts ...client.ListOption) error {
+	dst := PL(new(L))
 	if len(nss) == 0 {
 		if err := rclient.List(ctx, dst, opts...); err != nil {
 			return fmt.Errorf("cannot list objects at cluster scope: %w", err)

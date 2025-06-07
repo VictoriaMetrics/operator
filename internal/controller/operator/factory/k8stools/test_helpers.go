@@ -40,6 +40,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VLogsList{},
 		&vmv1.VLSingleList{},
 		&vmv1.VLClusterList{},
+		&vmv1.VMAnomalyList{},
 	)
 	s.AddKnownTypes(vmv1beta1.GroupVersion,
 		&vmv1beta1.VMPodScrape{},
@@ -61,6 +62,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VLogs{},
 		&vmv1.VLSingle{},
 		&vmv1.VLCluster{},
+		&vmv1.VMAnomaly{},
 	)
 	return s
 }
@@ -91,6 +93,7 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 			&vmv1beta1.VMNodeScrape{},
 			&vmv1.VLSingle{},
 			&vmv1.VLCluster{},
+			&vmv1.VMAnomaly{},
 		).
 		WithObjects(obj...).Build()
 	withStats := TestClientWithStatsTrack{

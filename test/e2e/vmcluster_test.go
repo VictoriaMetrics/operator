@@ -643,7 +643,7 @@ var _ = Describe("e2e vmcluster", func() {
 						cr.Spec.VMStorage = nil
 						cr.Spec.VMInsert = nil
 						cr.Spec.VMSelect.ExtraArgs = map[string]string{
-							"storageNode": "http://non-exist-vmstorage:8402",
+							"storageNode": "non-exist-vmstorage:8402",
 						}
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {

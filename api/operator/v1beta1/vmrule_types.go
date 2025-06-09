@@ -40,7 +40,7 @@ type RuleGroup struct {
 	// Limit the number of alerts an alerting rule and series a recording
 	// rule can produce
 	// +optional
-	Limit int `json:"limit,omitempty"`
+	Limit int `json:"limit,omitempty" yaml:"limit,omitempty"`
 	// Optional
 	// Group will be evaluated at the exact offset in the range of [0...interval].
 	EvalOffset string `json:"eval_offset,omitempty" yaml:"eval_offset,omitempty"`
@@ -86,7 +86,7 @@ type RuleGroup struct {
 	//    - "CustomHeader: foo"
 	//    - "CustomHeader2: bar"
 	// +optional
-	Headers []string `json:"headers,omitempty"`
+	Headers []string `json:"headers,omitempty" yaml:"headers,omitempty"`
 	// NotifierHeaders contains optional HTTP headers added to each alert request which will send to notifier
 	// Must be in form `header-name: value`
 	// For example:
@@ -112,7 +112,7 @@ type Rule struct {
 	// Debug enables logging for rule
 	// it useful for tracking
 	// +optional
-	Debug *bool `json:"debug,omitempty"`
+	Debug *bool `json:"debug,omitempty" yaml:"debug,omitempty"`
 	// For evaluation interval in time.Duration format
 	// 30s, 1m, 1h  or nanoseconds
 	// +optional

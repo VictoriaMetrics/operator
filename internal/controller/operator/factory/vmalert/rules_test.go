@@ -129,8 +129,8 @@ groups:
   eval_alignment: false
   eval_delay: 40s
   eval_offset: 10s
-  interval: 10s
   name: error-alert
+  interval: 10s
   rules:
   - alert: alerting
     expr: "10"
@@ -163,8 +163,8 @@ groups:
 				}},
 			},
 			want: map[string]string{"monitoring-error-alert-at-monitoring.yaml": `groups:
-- interval: 10s
-  name: error-alert
+- name: error-alert
+  interval: 10s
   rules:
   - alert: alerting-2
     expr: "10"
@@ -205,16 +205,16 @@ groups:
 			},
 			want: map[string]string{
 				"default-error-alert.yaml": `groups:
-- interval: 10s
-  name: error-alert
+- name: error-alert
+  interval: 10s
   rules:
   - alert: err indicator
     expr: rate(err_metric[1m]) > 10
     for: 10s
 `,
 				"monitoring-error-alert-at-monitoring.yaml": `groups:
-- interval: 10s
-  name: error-alert
+- name: error-alert
+  interval: 10s
   rules:
   - alert: alerting-2
     expr: "10"

@@ -1,7 +1,7 @@
 | Environment variables |
 | --- |
-| VM_METRICS_VERSION: `v1.118.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
-| VM_LOGS_VERSION: `v1.21.0` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
+| VM_METRICS_VERSION: `v1.119.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
+| VM_LOGS_VERSION: `v1.23.3` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
 | VM_USECUSTOMCONFIGRELOADER: `false` <a href="#variables-vm-usecustomconfigreloader" id="variables-vm-usecustomconfigreloader">#</a><br>enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |
 | VM_CUSTOMCONFIGRELOADERIMAGE: `victoriametrics/operator:config-reloader-v0.57.0` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a> |

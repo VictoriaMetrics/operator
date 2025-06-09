@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -95,11 +94,13 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
-			selectors := &vmv1.EntitySelectors{
-				Object:    item.Spec.RuleSelector,
-				Namespace: item.Spec.RuleNamespaceSelector,
+			opts := &k8stools.SelectorOpts{
+				SelectAll:         item.Spec.SelectAllByDefault,
+				NamespaceSelector: item.Spec.RuleNamespaceSelector,
+				ObjectSelector:    item.Spec.RuleSelector,
+				DefaultNamespace:  instance.Namespace,
 			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, selectors, item.Spec.SelectAllByDefault)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
 			if err != nil {
 				l.Error(err, "cannot match vmalert and vmRule")
 				continue

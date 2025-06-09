@@ -17,6 +17,7 @@ type keysSorter[T any] struct {
 	sorter []string
 }
 
+// OrderByKeys orders targets slice according sorter slice sorting result
 func OrderByKeys[T any](target []T, sorter []string) {
 	if len(target) != len(sorter) {
 		panic("BUG: target and sorter names are expected to be equal")

@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -102,11 +101,13 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
-			selectors := &vmv1.EntitySelectors{
-				Object:    item.Spec.NodeScrapeSelector,
-				Namespace: item.Spec.NodeScrapeNamespaceSelector,
+			opts := &k8stools.SelectorOpts{
+				SelectAll:         item.Spec.SelectAllByDefault,
+				NamespaceSelector: item.Spec.NodeScrapeNamespaceSelector,
+				ObjectSelector:    item.Spec.NodeScrapeSelector,
+				DefaultNamespace:  instance.Namespace,
 			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, selectors, item.Spec.SelectAllByDefault)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
 			if err != nil {
 				l.Error(err, "cannot match vmagent and vmNodeScrape")
 				continue

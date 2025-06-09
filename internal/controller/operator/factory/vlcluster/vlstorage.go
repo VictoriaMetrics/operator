@@ -173,10 +173,10 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.VLStorage.RetentionPeriod))
 	}
 	if cr.Spec.VLStorage.FutureRetention != "" {
-		args = append(args, fmt.Sprintf("-futureRetention=%s", cr.Spec.VLStorage.RetentionPeriod))
+		args = append(args, fmt.Sprintf("-futureRetention=%s", cr.Spec.VLStorage.FutureRetention))
 	}
 	if cr.Spec.VLStorage.RetentionMaxDiskSpaceUsageBytes != "" {
-		args = append(args, fmt.Sprintf("-retention.maxDiskSpaceUsageBytes=%s", cr.Spec.VLStorage.RetentionPeriod))
+		args = append(args, fmt.Sprintf("-retention.maxDiskSpaceUsageBytes=%s", cr.Spec.VLStorage.RetentionMaxDiskSpaceUsageBytes))
 	}
 	if cr.Spec.VLStorage.LogNewStreams {
 		args = append(args, "-logNewStreams")

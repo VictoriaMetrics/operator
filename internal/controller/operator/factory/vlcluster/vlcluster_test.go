@@ -139,6 +139,8 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 		}
 	}
+
+	// base cluster
 	cr := &vmv1.VLCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "base",
@@ -204,6 +206,38 @@ func TestCreateOrUpdate(t *testing.T) {
 		return nil
 	}
 
+	f(cr, validate, nil)
+
+	// with storage retention
+	cr = &vmv1.VLCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "retention",
+			Namespace: "default",
+		},
+		Spec: vmv1.VLClusterSpec{
+			VLStorage: &vmv1.VLStorage{
+				RetentionPeriod:                 "1w",
+				RetentionMaxDiskSpaceUsageBytes: "5GB",
+				FutureRetention:                 "2d",
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
+	}
+	validate = func(ctx context.Context, rclient client.Client) error {
+
+		// check storage
+		var sts appsv1.StatefulSet
+		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLStorageName(), Namespace: cr.Namespace}, &sts))
+		assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
+		cnt := sts.Spec.Template.Spec.Containers[0]
+		assert.Equal(t, cnt.Args, []string{"-futureRetention=2d", "-httpListenAddr=:9491", "-retention.maxDiskSpaceUsageBytes=5GB", "-retentionPeriod=1w", "-storageDataPath=/vlstorage-data"})
+
+		return nil
+	}
+
 	// base cluster
 	f(cr, validate, nil)
+
 }

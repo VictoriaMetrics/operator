@@ -16,6 +16,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.119.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.119.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.23.3](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.23.3-victorialogs) version
 
+* BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): properly set `spec.vlstorage.retentionMaxDiskSpaceUsageBytes` and `spec.vlstorage.futureRetention` settings. See this issue [1402](https://github.com/VictoriaMetrics/operator/issues/1402) for details.
 * BUGFIX: [operator](https://docs.victoriametrics.com/operator/api): consistently use `^[0-9]+(h|d|w|y)?$` validation pattern for `retentionPeriod` configuration at `VMCluster`, `VMSingle`, `VLSingle`.
 
 ## [v0.59.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.59.1)

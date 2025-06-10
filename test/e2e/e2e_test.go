@@ -62,7 +62,7 @@ var (
 		},
 	)
 
-	//_ = AfterSuite()
+	// _ = AfterSuite()
 
 	k8sClient client.Client
 )

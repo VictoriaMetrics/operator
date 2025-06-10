@@ -35,8 +35,8 @@
 | VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmalertdefault-resource-limit-cpu" id="variables-vm-vmalertdefault-resource-limit-cpu">#</a> |
 | VM_VMALERTDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmalertdefault-resource-request-mem" id="variables-vm-vmalertdefault-resource-request-mem">#</a> |
 | VM_VMALERTDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmalertdefault-resource-request-cpu" id="variables-vm-vmalertdefault-resource-request-cpu">#</a> |
-| VM_VMALERTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertdefault-configreloadercpu" id="variables-vm-vmalertdefault-configreloadercpu">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VMALERTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertdefault-configreloadermemory" id="variables-vm-vmalertdefault-configreloadermemory">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
+| VM_VMALERTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertdefault-configreloadercpu" id="variables-vm-vmalertdefault-configreloadercpu">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMALERTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertdefault-configreloadermemory" id="variables-vm-vmalertdefault-configreloadermemory">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMSERVICESCRAPEDEFAULT_ENFORCEENDPOINTSLICES: `false` <a href="#variables-vm-vmservicescrapedefault-enforceendpointslices" id="variables-vm-vmservicescrapedefault-enforceendpointslices">#</a><br>Use endpointslices instead of endpoints as discovery role for vmservicescrape when generate scrape config for vmagent. |
 | VM_VMAGENTDEFAULT_IMAGE: `victoriametrics/vmagent` <a href="#variables-vm-vmagentdefault-image" id="variables-vm-vmagentdefault-image">#</a> |
 | VM_VMAGENTDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmagentdefault-version" id="variables-vm-vmagentdefault-version">#</a> |
@@ -47,8 +47,8 @@
 | VM_VMAGENTDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmagentdefault-resource-limit-cpu" id="variables-vm-vmagentdefault-resource-limit-cpu">#</a> |
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmagentdefault-resource-request-mem" id="variables-vm-vmagentdefault-resource-request-mem">#</a> |
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmagentdefault-resource-request-cpu" id="variables-vm-vmagentdefault-resource-request-cpu">#</a> |
-| VM_VMAGENTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmagentdefault-configreloadercpu" id="variables-vm-vmagentdefault-configreloadercpu">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmagentdefault-configreloadermemory" id="variables-vm-vmagentdefault-configreloadermemory">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
+| VM_VMAGENTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmagentdefault-configreloadercpu" id="variables-vm-vmagentdefault-configreloadercpu">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmagentdefault-configreloadermemory" id="variables-vm-vmagentdefault-configreloadermemory">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMSINGLEDEFAULT_IMAGE: `victoriametrics/victoria-metrics` <a href="#variables-vm-vmsingledefault-image" id="variables-vm-vmsingledefault-image">#</a> |
 | VM_VMSINGLEDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmsingledefault-version" id="variables-vm-vmsingledefault-version">#</a> |
 | VM_VMSINGLEDEFAULT_PORT: `8429` <a href="#variables-vm-vmsingledefault-port" id="variables-vm-vmsingledefault-port">#</a> |
@@ -82,8 +82,8 @@
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmclusterdefault-vminsertdefault-resource-request-mem" id="variables-vm-vmclusterdefault-vminsertdefault-resource-request-mem">#</a> |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vmclusterdefault-vminsertdefault-resource-request-cpu" id="variables-vm-vmclusterdefault-vminsertdefault-resource-request-cpu">#</a> |
 | VM_VMALERTMANAGER_CONFIGRELOADERIMAGE: `jimmidyson/configmap-reload:v0.3.0` <a href="#variables-vm-vmalertmanager-configreloaderimage" id="variables-vm-vmalertmanager-configreloaderimage">#</a> |
-| VM_VMALERTMANAGER_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertmanager-configreloadercpu" id="variables-vm-vmalertmanager-configreloadercpu">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VMALERTMANAGER_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertmanager-configreloadermemory" id="variables-vm-vmalertmanager-configreloadermemory">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
+| VM_VMALERTMANAGER_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertmanager-configreloadercpu" id="variables-vm-vmalertmanager-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMALERTMANAGER_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertmanager-configreloadermemory" id="variables-vm-vmalertmanager-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE: `prom/alertmanager` <a href="#variables-vm-vmalertmanager-alertmanagerdefaultbaseimage" id="variables-vm-vmalertmanager-alertmanagerdefaultbaseimage">#</a> |
 | VM_VMALERTMANAGER_ALERTMANAGERVERSION: `v0.28.1` <a href="#variables-vm-vmalertmanager-alertmanagerversion" id="variables-vm-vmalertmanager-alertmanagerversion">#</a> |
 | VM_VMALERTMANAGER_LOCALHOST: `127.0.0.1` <a href="#variables-vm-vmalertmanager-localhost" id="variables-vm-vmalertmanager-localhost">#</a> |
@@ -110,8 +110,8 @@
 | VM_VMAUTHDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmauthdefault-resource-limit-cpu" id="variables-vm-vmauthdefault-resource-limit-cpu">#</a> |
 | VM_VMAUTHDEFAULT_RESOURCE_REQUEST_MEM: `100Mi` <a href="#variables-vm-vmauthdefault-resource-request-mem" id="variables-vm-vmauthdefault-resource-request-mem">#</a> |
 | VM_VMAUTHDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmauthdefault-resource-request-cpu" id="variables-vm-vmauthdefault-resource-request-cpu">#</a> |
-| VM_VMAUTHDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmauthdefault-configreloadercpu" id="variables-vm-vmauthdefault-configreloadercpu">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VMAUTHDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmauthdefault-configreloadermemory" id="variables-vm-vmauthdefault-configreloadermemory">#</a><br>deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
+| VM_VMAUTHDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmauthdefault-configreloadercpu" id="variables-vm-vmauthdefault-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMAUTHDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmauthdefault-configreloadermemory" id="variables-vm-vmauthdefault-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VLCLUSTERDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vlclusterdefault-usedefaultresources" id="variables-vm-vlclusterdefault-usedefaultresources">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_IMAGE: `victoriametrics/victoria-logs` <a href="#variables-vm-vlclusterdefault-vlselectdefault-image" id="variables-vm-vlclusterdefault-vlselectdefault-image">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_VERSION: `${VM_LOGS_VERSION}-victorialogs` <a href="#variables-vm-vlclusterdefault-vlselectdefault-version" id="variables-vm-vlclusterdefault-vlselectdefault-version">#</a> |

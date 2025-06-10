@@ -174,9 +174,9 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead
 		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VMALERTDEFAULT_"`
 
@@ -202,9 +202,9 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead
 		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VMAGENTDEFAULT_"`
 
@@ -281,9 +281,9 @@ type BaseOperatorConf struct {
 
 	VMAlertManager struct {
 		ConfigReloaderImage string `default:"jimmidyson/configmap-reload:v0.3.0" env:"CONFIGRELOADERIMAGE"`
-		// deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
 		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory         string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
 		AlertManagerVersion          string `default:"v0.28.1" env:"ALERTMANAGERVERSION"`
@@ -334,9 +334,9 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// deprecated use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
 		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// deprecated use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VMAUTHDEFAULT_"`
 

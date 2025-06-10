@@ -125,9 +125,9 @@ func (boc *BaseOperatorConf) PrintDefaults(format string) error {
 func getFieldsDescriptions(currStruct *ast.StructType) []string {
 	var descriptions []string
 	for _, field := range currStruct.Fields.List {
-		switch field.Type.(type) {
+		switch t := field.Type.(type) {
 		case *ast.StructType:
-			descriptions = append(descriptions, getFieldsDescriptions(field.Type.(*ast.StructType))...)
+			descriptions = append(descriptions, getFieldsDescriptions(t)...)
 		case *ast.Ident, *ast.SelectorExpr, *ast.ArrayType, *ast.MapType:
 			if field.Tag != nil {
 				tag := reflect.StructTag(field.Tag.Value[1 : len(field.Tag.Value)-1])

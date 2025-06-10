@@ -228,11 +228,9 @@ func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, 
 				}
 				needToCreateSecrets = append(needToCreateSecrets, userSecret)
 
-			} else {
+			} else if injectAuthSettings(&vmus, user) {
 				// secret exists, check it's state
-				if injectAuthSettings(&vmus, user) {
-					needToUpdateSecrets = append(needToUpdateSecrets, &vmus)
-				}
+				needToUpdateSecrets = append(needToUpdateSecrets, &vmus)
 			}
 		}
 		if err := injectBackendAuthHeader(ctx, rclient, user, dst); err != nil {

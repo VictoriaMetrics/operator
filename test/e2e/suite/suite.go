@@ -200,8 +200,7 @@ func getLocalIPs() ([]string, error) {
 
 		for _, addr := range addrs {
 			// Check if the address is IP
-			switch v := addr.(type) {
-			case *net.IPNet:
+			if v, ok := addr.(*net.IPNet); ok {
 				// Skip loopback and link-local addresses
 				if v.IP.IsLoopback() || v.IP.IsLinkLocalUnicast() || v.IP.IsLinkLocalMulticast() {
 					continue

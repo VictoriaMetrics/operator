@@ -17764,7 +17764,7 @@ spec:
                   configuration must be inside secret key: config.yaml.
                   It must be created and managed manually.
                   If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
-                  Deprecated, use externalConfig.secretRef instead
+                  Deprecated: use externalConfig.secretRef instead
                 type: string
               containers:
                 description: |-
@@ -18718,7 +18718,7 @@ spec:
                 description: |-
                   UnauthorizedAccessConfig configures access for un authorized users
 
-                  Deprecated, use unauthorizedUserAccessSpec instead
+                  Deprecated: use unauthorizedUserAccessSpec instead
                   will be removed at v1.0 release
                 x-kubernetes-preserve-unknown-fields: true
               unauthorizedUserAccessSpec:
@@ -26000,7 +26000,7 @@ spec:
                         ExtraFilterLabels optional list of label filters applied to every rule's
                         request within a group. Is compatible only with VM datasource.
                         See more details [here](https://docs.victoriametrics.com/#prometheus-querying-api-enhancements)
-                        Deprecated, use params instead
+                        Deprecated use params instead
                       type: object
                     headers:
                       description: |-

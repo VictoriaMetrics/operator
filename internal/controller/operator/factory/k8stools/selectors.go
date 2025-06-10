@@ -16,6 +16,7 @@ type listing[L any] interface {
 	*L
 }
 
+// SelectorOpts defines object query objects for given selectors
 type SelectorOpts struct {
 	SelectAll         bool
 	NamespaceSelector *metav1.LabelSelector
@@ -23,13 +24,15 @@ type SelectorOpts struct {
 	DefaultNamespace  string
 }
 
-func (s *SelectorOpts) IsUnmanaged() bool {
+// isUnmanaged checks if provided Selectors are not defined
+// and there is no need to perform any query requests for Kubernetes objects
+func (s *SelectorOpts) isUnmanaged() bool {
 	return s.NamespaceSelector == nil && s.ObjectSelector == nil && !s.SelectAll
 }
 
 // VisitSelected applies given function to any T child object matched by selectors defined in parent obj selectors
 func VisitSelected[L any, PL listing[L]](ctx context.Context, rclient client.Client, s *SelectorOpts, cb func(PL)) error {
-	if s.IsUnmanaged() {
+	if s.isUnmanaged() {
 		return nil
 	}
 	nss, err := discoverNamespaces(ctx, rclient, s)

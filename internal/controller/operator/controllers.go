@@ -314,7 +314,6 @@ type objectWithStatusTrack[T client.Object, ST reconcile.StatusWithMetadata[STC]
 	client.Object
 	HasSpecChanges() (bool, error)
 	LastAppliedSpecAsPatch() (client.Patch, error)
-	// TODO: remove
 	reconcile.ObjectWithDeepCopyAndStatus[T, ST, STC]
 	Paused() bool
 }
@@ -346,9 +345,6 @@ func createGenericEventForObject(ctx context.Context, c client.Client, object cl
 	return nil
 }
 
-// TODO :@f41gh7 replace object with generic type
-// it allows to use DeepClone method to prevent hidden object updates
-// made by controller-runtime client
 func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any](
 	ctx context.Context,
 	c client.Client,
@@ -369,10 +365,6 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 	}
 	var diffPatch client.Patch
 	if specChanged {
-		// TODO: @f41gh7 replace error prone patch
-		// with client.Status.Update()
-		// it should simplify code
-		// and reduce surface of possible errors
 		diffPatch, err = object.LastAppliedSpecAsPatch()
 		if err != nil {
 			resultErr = fmt.Errorf("cannot parse last applied spec for cluster: %w", err)

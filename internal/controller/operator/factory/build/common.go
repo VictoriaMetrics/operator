@@ -29,14 +29,17 @@ func OrderByKeys[T any](target []T, sorter []string) {
 	sort.Sort(s)
 }
 
+// Len implements sort.Interface
 func (s *keysSorter[T]) Len() int {
 	return len(s.sorter)
 }
 
+// Less implements sort.Interface
 func (s *keysSorter[T]) Less(i, j int) bool {
 	return s.sorter[i] < s.sorter[j]
 }
 
+// Swap implements sort.Interface
 func (s *keysSorter[T]) Swap(i, j int) {
 	s.target[i], s.target[j] = s.target[j], s.target[i]
 	s.sorter[i], s.sorter[j] = s.sorter[j], s.sorter[i]

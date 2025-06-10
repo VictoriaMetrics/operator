@@ -68,15 +68,20 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{},
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
 				&vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "default-monitor"},
-					Spec:       vmv1beta1.VMServiceScrapeSpec{},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "default-monitor",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{},
 				},
 			},
 			want:    []string{"default/default-monitor"},

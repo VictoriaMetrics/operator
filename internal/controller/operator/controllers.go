@@ -21,12 +21,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	k8sreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	operatorreconcile "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 // BindFlags binds package flags to the given flagSet
@@ -72,7 +73,7 @@ func init() {
 func getDefaultOptions() controller.Options {
 	optionsInit.Do(func() {
 		defaultOptions = &controller.Options{
-			RateLimiter:             workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](2*time.Second, 2*time.Minute),
+			RateLimiter:             workqueue.NewTypedItemExponentialFailureRateLimiter[k8sreconcile.Request](2*time.Second, 2*time.Minute),
 			CacheSyncTimeout:        *cacheSyncTimeout,
 			MaxConcurrentReconciles: *maxConcurrency,
 		}
@@ -110,10 +111,10 @@ func (ge *getError) Error() string {
 	return fmt.Sprintf("get_object error for controller=%q object_name=%q at namespace=%q, origin=%q", ge.controller, ge.requestObject.Name, ge.requestObject.Namespace, ge.origin)
 }
 
-func handleReconcileErr[T client.Object, ST operatorreconcile.StatusWithMetadata[STC], STC any](
+func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any](
 	ctx context.Context,
 	rclient client.Client,
-	object operatorreconcile.ObjectWithDeepCopyAndStatus[T, ST, STC],
+	object reconcile.ObjectWithDeepCopyAndStatus[T, ST, STC],
 	originResult ctrl.Result,
 	err error,
 ) (ctrl.Result, error) {
@@ -130,7 +131,7 @@ func handleReconcileErr[T client.Object, ST operatorreconcile.StatusWithMetadata
 		namespacedName := "unknown"
 		if object != nil && !reflect.ValueOf(object).IsNil() {
 			namespacedName = fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
-			if err := operatorreconcile.UpdateObjectStatus(ctx, rclient, object, vmv1beta1.UpdateStatusFailed, err); err != nil {
+			if err := reconcile.UpdateObjectStatus(ctx, rclient, object, vmv1beta1.UpdateStatusFailed, err); err != nil {
 				logger.WithContext(ctx).Error(err, "failed to update status with parsing error")
 			}
 		}
@@ -274,15 +275,15 @@ func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sour
 	return false, nil
 }
 
-// isSelectorsMatchesTargetCRD checks if targetCRD matches sourceCRD by selector, namespaceSelector and selectAll.
+// isSelectorsMatchesTargetCRD checks if targetCRD matches sourceCRD by entity selectors and selectAll.
 // see https://docs.victoriametrics.com/operator/resources/vmagent/#scraping for details
-func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selector, namespaceSelector *metav1.LabelSelector, selectAll bool) (bool, error) {
-	// selectAll only works when NamespaceSelector and Selector both undefined
-	if selector == nil && namespaceSelector == nil {
-		return selectAll, nil
+func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, opts *k8stools.SelectorOpts) (bool, error) {
+	// selectAll only works when opts.NamespaceSelector and opts.ObjectSelector opts are undefined
+	if opts == nil || (opts.ObjectSelector == nil && opts.NamespaceSelector == nil) {
+		return opts.SelectAll, nil
 	}
-	// check namespace selector, only return when NS not match
-	if isNsMatch, err := isNamespaceSelectorMatches(ctx, rclient, sourceCRD, targetCRD, namespaceSelector); !isNsMatch || err != nil {
+	// check opts.NamespaceSelector, only return when NS not match
+	if isNsMatch, err := isNamespaceSelectorMatches(ctx, rclient, sourceCRD, targetCRD, opts.NamespaceSelector); !isNsMatch || err != nil {
 		return isNsMatch, err
 	}
 	// in case of empty namespace object must be synchronized in any way,
@@ -293,11 +294,11 @@ func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sou
 	}
 
 	// filter selector label.
-	if selector == nil {
+	if opts.ObjectSelector == nil {
 		return true, nil
 	}
 
-	labelSelector, err := metav1.LabelSelectorAsSelector(selector)
+	labelSelector, err := metav1.LabelSelectorAsSelector(opts.ObjectSelector)
 	if err != nil {
 		return false, fmt.Errorf("cannot parse ruleSelector selector as labelSelector: %w", err)
 	}
@@ -309,12 +310,11 @@ func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sou
 	return true, nil
 }
 
-type objectWithStatusTrack[T client.Object, ST operatorreconcile.StatusWithMetadata[STC], STC any] interface {
+type objectWithStatusTrack[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any] interface {
 	client.Object
 	HasSpecChanges() (bool, error)
 	LastAppliedSpecAsPatch() (client.Patch, error)
-	// TODO: remove
-	operatorreconcile.ObjectWithDeepCopyAndStatus[T, ST, STC]
+	reconcile.ObjectWithDeepCopyAndStatus[T, ST, STC]
 	Paused() bool
 }
 
@@ -345,17 +345,14 @@ func createGenericEventForObject(ctx context.Context, c client.Client, object cl
 	return nil
 }
 
-// TODO :@f41gh7 replace object with generic type
-// it allows to use DeepClone method to prevent hidden object updates
-// made by controller-runtime client
-func reconcileAndTrackStatus[T client.Object, ST operatorreconcile.StatusWithMetadata[STC], STC any](
+func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any](
 	ctx context.Context,
 	c client.Client,
 	object objectWithStatusTrack[T, ST, STC],
 	cb func() (ctrl.Result, error),
 ) (result ctrl.Result, resultErr error) {
 	if object.Paused() {
-		if err := operatorreconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusPaused, nil); err != nil {
+		if err := reconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusPaused, nil); err != nil {
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
@@ -368,17 +365,13 @@ func reconcileAndTrackStatus[T client.Object, ST operatorreconcile.StatusWithMet
 	}
 	var diffPatch client.Patch
 	if specChanged {
-		// TODO: @f41gh7 replace error prone patch
-		// with client.Status.Update()
-		// it should simplify code
-		// and reduce surface of possible errors
 		diffPatch, err = object.LastAppliedSpecAsPatch()
 		if err != nil {
 			resultErr = fmt.Errorf("cannot parse last applied spec for cluster: %w", err)
 			return
 		}
 
-		if err := operatorreconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusExpanding, nil); err != nil {
+		if err := reconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusExpanding, nil); err != nil {
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
@@ -403,10 +396,10 @@ func reconcileAndTrackStatus[T client.Object, ST operatorreconcile.StatusWithMet
 			return
 		}
 		desiredStatus := vmv1beta1.UpdateStatusFailed
-		if operatorreconcile.IsErrorWaitTimeout(err) {
+		if reconcile.IsErrorWaitTimeout(err) {
 			desiredStatus = vmv1beta1.UpdateStatusExpanding
 		}
-		if updateErr := operatorreconcile.UpdateObjectStatus(ctx, c, object, desiredStatus, err); updateErr != nil {
+		if updateErr := reconcile.UpdateObjectStatus(ctx, c, object, desiredStatus, err); updateErr != nil {
 			resultErr = fmt.Errorf("failed to update object status: %q, origin err: %w", updateErr, err)
 			return
 		}
@@ -419,7 +412,7 @@ func reconcileAndTrackStatus[T client.Object, ST operatorreconcile.StatusWithMet
 		}
 		logger.WithContext(ctx).Info("object was successfully reconciled")
 	}
-	if err := operatorreconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusOperational, nil); err != nil {
+	if err := reconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusOperational, nil); err != nil {
 		resultErr = fmt.Errorf("failed to update object status: %w", err)
 		return
 	}

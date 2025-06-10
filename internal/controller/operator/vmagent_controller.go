@@ -36,8 +36,8 @@ import (
 )
 
 var (
-	vmAgentSync           sync.Mutex
-	vmAgentReconcileLimit = limiter.NewRateLimiter("vmagent", 5)
+	agentSync           sync.Mutex
+	agentReconcileLimit = limiter.NewRateLimiter("vmagent", 5)
 )
 
 // VMAgentReconciler reconciles a VMAgent object
@@ -78,8 +78,8 @@ func (r *VMAgentReconciler) Init(rclient client.Client, l logr.Logger, sc *runti
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=*
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vmagent", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vmagent", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1beta1.VMAgent{}
 
 	defer func() {
@@ -90,8 +90,8 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return result, &getError{origin: err, controller: "vmagent", requestObject: req}
 	}
 	if !instance.IsUnmanaged() {
-		vmAgentSync.Lock()
-		defer vmAgentSync.Unlock()
+		agentSync.Lock()
+		defer agentSync.Unlock()
 	}
 
 	RegisterObjectStat(instance, "vmagent")

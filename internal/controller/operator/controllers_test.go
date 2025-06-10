@@ -313,7 +313,12 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, tt.sourceCRD, tt.targetCRD, tt.selector, tt.namespaceSelector, tt.selectAll)
+			opts := &k8stools.SelectorOpts{
+				SelectAll:         tt.selectAll,
+				NamespaceSelector: tt.namespaceSelector,
+				ObjectSelector:    tt.selector,
+			}
+			matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, tt.sourceCRD, tt.targetCRD, opts)
 			if err != nil {
 				t.Fatal(err)
 			}

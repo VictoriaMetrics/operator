@@ -57,8 +57,8 @@ func (r *VMPodScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmpodscrapes/status,verbs=get;update;patch
 func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	instance := &vmv1beta1.VMPodScrape{}
-	reqLogger := r.Log.WithValues("vmpodscrape", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vmpodscrape", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 
 	defer func() {
 		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
@@ -72,12 +72,12 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if instance.Spec.ParsingError != "" {
 		return result, &parsingError{instance.Spec.ParsingError, "vmpodscrape"}
 	}
-	if vmAgentReconcileLimit.MustThrottleReconcile() {
+	if agentReconcileLimit.MustThrottleReconcile() {
 		return
 	}
 
-	vmAgentSync.Lock()
-	defer vmAgentSync.Unlock()
+	agentSync.Lock()
+	defer agentSync.Unlock()
 
 	var objects vmv1beta1.VMAgentList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAgentList) {
@@ -86,20 +86,26 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmagentItem := range objects.Items {
-		if !vmagentItem.DeletionTimestamp.IsZero() || vmagentItem.Spec.ParsingError != "" || vmagentItem.IsPodScrapeUnmanaged() {
+	for i := range objects.Items {
+		item := &objects.Items[i]
+		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsPodScrapeUnmanaged() {
 			continue
 		}
-		currentVMagent := &vmagentItem
-		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
-		ctx := logger.AddToContext(ctx, reqLogger)
+		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
+		ctx := logger.AddToContext(ctx, l)
 
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.PodScrapeSelector, currentVMagent.Spec.PodScrapeNamespaceSelector, currentVMagent.Spec.SelectAllByDefault)
+			opts := &k8stools.SelectorOpts{
+				SelectAll:         item.Spec.SelectAllByDefault,
+				NamespaceSelector: item.Spec.PodScrapeNamespaceSelector,
+				ObjectSelector:    item.Spec.PodScrapeSelector,
+				DefaultNamespace:  instance.Namespace,
+			}
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
 			if err != nil {
-				reqLogger.Error(err, "cannot match vmagent and vmPodScrape")
+				l.Error(err, "cannot match vmagent and vmPodScrape")
 				continue
 			}
 			if !match {
@@ -107,7 +113,7 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 		}
 
-		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, r, currentVMagent, instance); err != nil {
+		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, r, item, instance); err != nil {
 			continue
 		}
 	}

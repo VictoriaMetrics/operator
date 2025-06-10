@@ -87,26 +87,32 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	if vmauthRateLimiter.MustThrottleReconcile() {
 		return
 	}
-	var vmauthes vmv1beta1.VMAuthList
+	var objects vmv1beta1.VMAuthList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAuthList) {
-		vmauthes.Items = append(vmauthes.Items, dst.Items...)
+		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmauthItem := range vmauthes.Items {
-		if !vmauthItem.DeletionTimestamp.IsZero() || vmauthItem.Spec.ParsingError != "" || vmauthItem.IsUnmanaged() {
+	for i := range objects.Items {
+		item := &objects.Items[i]
+		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsUnmanaged() {
 			continue
 		}
 		// reconcile users for given vmauth.
-		currentVMAuth := &vmauthItem
-		l = l.WithValues("vmauth", currentVMAuth.Name, "parent_namespace", currentVMAuth.Namespace)
+		l = l.WithValues("vmauth", item.Name, "parent_namespace", item.Namespace)
 		ctx := logger.AddToContext(ctx, l)
 
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, currentVMAuth, currentVMAuth.Spec.UserSelector, currentVMAuth.Spec.UserNamespaceSelector, currentVMAuth.Spec.SelectAllByDefault)
+			opts := &k8stools.SelectorOpts{
+				SelectAll:         item.Spec.SelectAllByDefault,
+				NamespaceSelector: item.Spec.UserNamespaceSelector,
+				ObjectSelector:    item.Spec.UserSelector,
+				DefaultNamespace:  instance.Namespace,
+			}
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, item, opts)
 			if err != nil {
 				l.Error(err, "cannot match vmauth and VMUser")
 				continue
@@ -115,7 +121,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				continue
 			}
 		}
-		if err := vmauth.CreateOrUpdateVMAuthConfig(ctx, r, currentVMAuth, &instance); err != nil {
+		if err := vmauth.CreateOrUpdateVMAuthConfig(ctx, r, item, &instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot create or update vmauth deploy for vmuser: %w", err)
 		}
 	}

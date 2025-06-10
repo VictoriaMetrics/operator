@@ -57,8 +57,8 @@ func (r *VMServiceScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
 func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	instance := &vmv1beta1.VMServiceScrape{}
-	reqLogger := r.Log.WithValues("vmservicescrape", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vmservicescrape", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	defer func() {
 		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
 	}()
@@ -73,13 +73,13 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return result, &parsingError{instance.Spec.ParsingError, "vmservicescrape"}
 	}
 
-	if vmAgentReconcileLimit.MustThrottleReconcile() {
+	if agentReconcileLimit.MustThrottleReconcile() {
 		// fast path, rate limited
 		return
 	}
 
-	vmAgentSync.Lock()
-	defer vmAgentSync.Unlock()
+	agentSync.Lock()
+	defer agentSync.Unlock()
 	var objects vmv1beta1.VMAgentList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAgentList) {
 		objects.Items = append(objects.Items, dst.Items...)
@@ -87,22 +87,28 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmagentItem := range objects.Items {
-		if !vmagentItem.DeletionTimestamp.IsZero() || vmagentItem.Spec.ParsingError != "" || vmagentItem.IsServiceScrapeUnmanaged() {
+	for i := range objects.Items {
+		item := &objects.Items[i]
+		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsServiceScrapeUnmanaged() {
 			continue
 		}
-		currentVMagent := &vmagentItem
-		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
-		ctx := logger.AddToContext(ctx, reqLogger)
-		if currentVMagent.Spec.DaemonSetMode {
+		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
+		ctx := logger.AddToContext(ctx, l)
+		if item.Spec.DaemonSetMode {
 			continue
 		}
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.ServiceScrapeSelector, currentVMagent.Spec.ServiceScrapeNamespaceSelector, currentVMagent.Spec.SelectAllByDefault)
+			opts := &k8stools.SelectorOpts{
+				SelectAll:         item.Spec.SelectAllByDefault,
+				NamespaceSelector: item.Spec.ServiceScrapeNamespaceSelector,
+				ObjectSelector:    item.Spec.ServiceScrapeSelector,
+				DefaultNamespace:  instance.Namespace,
+			}
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
 			if err != nil {
-				reqLogger.Error(err, "cannot match vmagent and vmServiceScrape")
+				l.Error(err, "cannot match vmagent and vmServiceScrape")
 				continue
 			}
 			if !match {
@@ -110,7 +116,7 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			}
 		}
 
-		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, r, currentVMagent, instance); err != nil {
+		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, r, item, instance); err != nil {
 			continue
 		}
 	}

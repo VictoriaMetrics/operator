@@ -26000,7 +26000,7 @@ spec:
                         ExtraFilterLabels optional list of label filters applied to every rule's
                         request within a group. Is compatible only with VM datasource.
                         See more details [here](https://docs.victoriametrics.com/#prometheus-querying-api-enhancements)
-                        Deprecated use params instead
+                        Deprecated: use params instead
                       type: object
                     headers:
                       description: |-

@@ -495,10 +495,10 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, cb *build.TLSConfigBuilder) (
 			return nil, err
 		}
 
-	case len(cr.Spec.UnauthorizedAccessConfig) > 0:
+	case len(cr.Spec.UnauthorizedAccessConfig) > 0: //nolint:staticcheck
 		// Deprecated and will be removed at v1.0
 		var urlMapYAML []yaml.MapSlice
-		for _, uc := range cr.Spec.UnauthorizedAccessConfig {
+		for _, uc := range cr.Spec.UnauthorizedAccessConfig { //nolint:staticcheck
 			urlMap := appendIfNotEmpty(uc.SrcPaths, "src_paths", yaml.MapSlice{})
 			urlMap = appendIfNotEmpty(uc.SrcHosts, "src_hosts", urlMap)
 			urlMap = appendIfNotEmpty(uc.URLPrefix, "url_prefix", urlMap)

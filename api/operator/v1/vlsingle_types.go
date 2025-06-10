@@ -27,7 +27,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 // VLSingleSpec defines the desired state of VLSingle
@@ -38,13 +38,13 @@ type VLSingleSpec struct {
 
 	// PodMetadata configures Labels and Annotations which are propagated to the VLSingle pods.
 	// +optional
-	PodMetadata *v1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// ManagedMetadata defines metadata that will be added to the all objects
 	// created by operator for the given CustomResource
-	ManagedMetadata *v1beta1.ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+	ManagedMetadata *vmv1beta1.ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
-	v1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	v1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
+	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
 
 	// LogLevel for VictoriaLogs to be configured with.
 	// +optional
@@ -64,7 +64,7 @@ type VLSingleSpec struct {
 	Storage *corev1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
 	// StorageMeta defines annotations and labels attached to PVC for given vlsingle CR
 	// +optional
-	StorageMetadata v1beta1.EmbeddedObjectMetadata `json:"storageMetadata,omitempty"`
+	StorageMetadata vmv1beta1.EmbeddedObjectMetadata `json:"storageMetadata,omitempty"`
 	// RetentionPeriod for the stored logs
 	// https://docs.victoriametrics.com/victorialogs/#retention
 	// +optional
@@ -76,7 +76,7 @@ type VLSingleSpec struct {
 	// if the size of the last two days of data exceeds the -retention.maxDiskSpaceUsageBytes.
 	// https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage
 	// +optional
-	RetentionMaxDiskSpaceUsageBytes v1beta1.BytesString `json:"retentionMaxDiskSpaceUsageBytes,omitempty"`
+	RetentionMaxDiskSpaceUsageBytes vmv1beta1.BytesString `json:"retentionMaxDiskSpaceUsageBytes,omitempty"`
 	// FutureRetention for the stored logs
 	// Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
 	// +optional
@@ -88,12 +88,12 @@ type VLSingleSpec struct {
 	LogIngestedRows bool `json:"logIngestedRows,omitempty"`
 	// ServiceSpec that will be added to vlsingle service spec
 	// +optional
-	ServiceSpec *v1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vlsingle VMServiceScrape spec
 	// +optional
-	ServiceScrapeSpec *v1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
+	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// LivenessProbe that will be added to VLSingle pod
-	*v1beta1.EmbeddedProbes `json:",inline"`
+	*vmv1beta1.EmbeddedProbes `json:",inline"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
@@ -102,11 +102,11 @@ type VLSingleSpec struct {
 
 // VLSingleStatus defines the observed state of VLSingle
 type VLSingleStatus struct {
-	v1beta1.StatusMetadata `json:",inline"`
+	vmv1beta1.StatusMetadata `json:",inline"`
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLSingleStatus) GetStatusMetadata() *v1beta1.StatusMetadata {
+func (cr *VLSingleStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
 	return &cr.StatusMetadata
 }
 
@@ -188,7 +188,7 @@ func (cr *VLSingle) UnmarshalJSON(src []byte) error {
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	if err := v1beta1.ParseLastAppliedStateTo(cr); err != nil {
+	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
 		return err
 	}
 
@@ -205,16 +205,16 @@ func (cr *VLSingleSpec) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
-func (cr *VLSingle) Probe() *v1beta1.EmbeddedProbes {
+func (cr *VLSingle) Probe() *vmv1beta1.EmbeddedProbes {
 	return cr.Spec.EmbeddedProbes
 }
 
 func (cr *VLSingle) ProbePath() string {
-	return v1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
 func (cr *VLSingle) ProbeScheme() string {
-	return strings.ToUpper(v1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
+	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
 }
 
 func (cr *VLSingle) ProbePort() string {
@@ -272,12 +272,12 @@ func (cr *VLSingle) PrefixedName() string {
 
 // GetMetricPath returns prefixed path for metric requests
 func (cr *VLSingle) GetMetricPath() string {
-	return v1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // Validate checks if spec is correct
 func (cr *VLSingle) Validate() error {
-	if v1beta1.MustSkipCRValidation(cr) {
+	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
@@ -292,7 +292,7 @@ func (cr *VLSingle) GetExtraArgs() map[string]string {
 }
 
 // GetServiceScrape returns overrides for serviceScrape builder
-func (cr *VLSingle) GetServiceScrape() *v1beta1.VMServiceScrapeSpec {
+func (cr *VLSingle) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
@@ -320,17 +320,17 @@ func (cr *VLSingle) AsURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", v1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
 // LastAppliedSpecAsPatch return last applied vlsingle spec as patch annotation
 func (cr *VLSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return v1beta1.LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return vmv1beta1.LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
 }
 
 // HasSpecChanges compares vlsingle spec with last applied vlsingle spec stored in annotation
 func (cr *VLSingle) HasSpecChanges() (bool, error) {
-	return v1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
+	return vmv1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 func (cr *VLSingle) Paused() bool {
@@ -338,7 +338,7 @@ func (cr *VLSingle) Paused() bool {
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VLSingle) GetAdditionalService() *v1beta1.AdditionalServiceSpec {
+func (cr *VLSingle) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
 

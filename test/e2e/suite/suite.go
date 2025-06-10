@@ -64,7 +64,7 @@ func GetClient() client.Client {
 
 // StopClient stop test env
 func StopClient() {
-	testEnv.Stop()
+	Expect(testEnv.Stop()).To(Succeed())
 }
 
 // InitOperatorProcess prepares operator process for usage

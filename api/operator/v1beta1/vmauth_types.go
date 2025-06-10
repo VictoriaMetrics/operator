@@ -69,7 +69,7 @@ type VMAuthSpec struct {
 	*EmbeddedProbes `json:",inline"`
 	// UnauthorizedAccessConfig configures access for un authorized users
 	//
-	// Deprecated, use unauthorizedUserAccessSpec instead
+	// Deprecated: use unauthorizedUserAccessSpec instead
 	// will be removed at v1.0 release
 	// +deprecated
 	// +kubebuilder:validation:Schemaless
@@ -99,7 +99,7 @@ type VMAuthSpec struct {
 	// configuration must be inside secret key: config.yaml.
 	// It must be created and managed manually.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
-	// Deprecated, use externalConfig.secretRef instead
+	// Deprecated: use externalConfig.secretRef instead
 	ConfigSecret string `json:"configSecret,omitempty" yaml:"configSecret,omitempty"`
 	// ExternalConfig defines a source of external VMAuth configuration.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders

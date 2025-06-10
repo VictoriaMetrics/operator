@@ -121,7 +121,7 @@ fi
 		},
 	}
 	Expect(k8sClient.Create(ctx, job)).To(Succeed())
-	defer k8sClient.Delete(ctx, job, &client.DeleteOptions{PropagationPolicy: ptr.To(metav1.DeletePropagationForeground)})
+	defer Expect(k8sClient.Delete(ctx, job, &client.DeleteOptions{PropagationPolicy: ptr.To(metav1.DeletePropagationForeground)})).To(Succeed())
 	nss := types.NamespacedName{Name: job.Name, Namespace: job.Namespace}
 	Eventually(func() error {
 		var jb batchv1.Job

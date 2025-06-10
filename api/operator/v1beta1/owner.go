@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -30,7 +30,7 @@ var crdCache map[CRDName]*crdInfo
 
 func Init(ctx context.Context, rclient client.Client) error {
 	crdCache = make(map[CRDName]*crdInfo)
-	var crds metav1.CustomResourceDefinitionList
+	var crds apiextensionsv1.CustomResourceDefinitionList
 	if err := rclient.List(ctx, &crds); err != nil {
 		return fmt.Errorf("cannot list CRDs during init: %w", err)
 	}
@@ -45,7 +45,7 @@ func Init(ctx context.Context, rclient client.Client) error {
 		}
 		crdCache[n] = &crdInfo{
 			uuid:       item.UID,
-			apiVersion: metav1.SchemeGroupVersion.String(),
+			apiVersion: apiextensionsv1.SchemeGroupVersion.String(),
 			kind:       "CustomResourceDefinition",
 		}
 	}
@@ -54,12 +54,12 @@ func Init(ctx context.Context, rclient client.Client) error {
 
 // GetCRDAsOwner returns owner references with global CustomResourceDefinition object as owner
 // useful for non-namespaced objects, like clusterRole
-func GetCRDAsOwner(name CRDName) []v1.OwnerReference {
+func GetCRDAsOwner(name CRDName) []metav1.OwnerReference {
 	crdData := crdCache[name]
 	if crdData == nil {
 		return nil
 	}
-	return []v1.OwnerReference{
+	return []metav1.OwnerReference{
 		{
 			Name:       name.String(),
 			UID:        crdData.uuid,

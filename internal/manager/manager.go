@@ -138,7 +138,9 @@ func RunManager(ctx context.Context) error {
 
 	opts.BindFlags(managerFlags)
 	vmcontroller.BindFlags(managerFlags)
-	managerFlags.Parse(os.Args[1:])
+	if err := managerFlags.Parse(os.Args[1:]); err != nil {
+		return fmt.Errorf("cannot parse provided flags: %w", err)
+	}
 
 	if *version {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", buildinfo.Version)
@@ -199,7 +201,7 @@ func RunManager(ctx context.Context) error {
 	setupLog.Info(fmt.Sprintf("starting VictoriaMetrics operator build version: %s, short_version: %s", buildinfo.Version, versionRe.FindString(buildinfo.Version)))
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt, clientQPSLimit)
-	addRestClientMetrics(r)
+	mustAddRestClientMetrics(r)
 	setupLog.Info("Registering Components.")
 	var watchNsCacheByName map[string]cache.Config
 	watchNss := config.MustGetWatchNamespaces()
@@ -428,10 +430,10 @@ func (lmw *latencyMetricWrapper) Observe(ctx context.Context, verb string, u url
 	lmw.collector.WithLabelValues(verb, apiPath).Observe(latency.Seconds())
 }
 
-func addRestClientMetrics(r metrics.RegistererGatherer) {
+func mustAddRestClientMetrics(r metrics.RegistererGatherer) {
 	// replace global go-client RequestLatency metric
 	restmetrics.RequestLatency = &latencyMetricWrapper{collector: restClientLatency}
-	r.Register(restClientLatency)
+	r.MustRegister(restClientLatency)
 }
 
 type crdController interface {

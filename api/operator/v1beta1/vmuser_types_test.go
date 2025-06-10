@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 )
 
 func TestVMUser_Validate(t *testing.T) {
 	type fields struct {
-		TypeMeta   v1.TypeMeta
-		ObjectMeta v1.ObjectMeta
+		TypeMeta   metav1.TypeMeta
+		ObjectMeta metav1.ObjectMeta
 		Spec       VMUserSpec
 		Status     VMUserStatus
 	}

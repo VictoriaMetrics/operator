@@ -15,8 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	vmv1beta "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 )
 
@@ -52,7 +51,7 @@ var _ = Describe("test vlsingle Controller", func() {
 				VLSelect: &vmv1.VLSelect{},
 				VLStorage: &vmv1.VLStorage{
 					RetentionPeriod: "1",
-					CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 				},
@@ -101,7 +100,7 @@ var _ = Describe("test vlsingle Controller", func() {
 				baseVLCluster.DeepCopy(),
 				testStep{
 					modify: func(cr *vmv1.VLCluster) {
-						cr.Spec.ManagedMetadata = &vmv1beta.ManagedObjectsMetadata{
+						cr.Spec.ManagedMetadata = &vmv1beta1.ManagedObjectsMetadata{
 							Annotations: map[string]string{
 								"added-annotation": "some-value",
 							},
@@ -308,7 +307,7 @@ var _ = Describe("test vlsingle Controller", func() {
 					modify: func(cr *vmv1.VLCluster) {
 						By("upscaling vlselect, removing vlinsert", func() {
 							cr.Spec.VLSelect = &vmv1.VLSelect{
-								CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 									ReplicaCount: ptr.To(int32(2)),
 								},
 							}
@@ -334,12 +333,12 @@ var _ = Describe("test vlsingle Controller", func() {
 					modify: func(cr *vmv1.VLCluster) {
 						By("downscaling all components to 0 replicas", func() {
 							cr.Spec.VLSelect = &vmv1.VLSelect{
-								CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 									ReplicaCount: ptr.To(int32(0)),
 								},
 							}
 							cr.Spec.VLInsert = &vmv1.VLInsert{
-								CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 									ReplicaCount: ptr.To(int32(0)),
 								},
 							}

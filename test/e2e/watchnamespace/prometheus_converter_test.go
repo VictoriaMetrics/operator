@@ -3,13 +3,14 @@ package watchnamespace
 import (
 	"fmt"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 var _ = Describe("VM Operator", func() {
@@ -58,21 +59,21 @@ var _ = Describe("VM Operator", func() {
 	AfterEach(func() {
 		DeleteAllObjectsOf(namespace,
 			&monitoringv1.ServiceMonitorList{},
-			&v1beta1vm.VMServiceScrapeList{},
+			&vmv1beta1.VMServiceScrapeList{},
 			&monitoringv1.PodMonitorList{},
-			&v1beta1vm.VMPodScrapeList{},
+			&vmv1beta1.VMPodScrapeList{},
 			&monitoringv1.ProbeList{},
-			&v1beta1vm.VMProbeList{},
+			&vmv1beta1.VMProbeList{},
 			&monitoringv1.PrometheusRuleList{},
-			&v1beta1vm.VMRuleList{},
+			&vmv1beta1.VMRuleList{},
 		)
 	})
 
 	vmObjectListProtos := []client.ObjectList{
-		&v1beta1vm.VMServiceScrapeList{},
-		&v1beta1vm.VMPodScrapeList{},
-		&v1beta1vm.VMProbeList{},
-		&v1beta1vm.VMRuleList{},
+		&vmv1beta1.VMServiceScrapeList{},
+		&vmv1beta1.VMPodScrapeList{},
+		&vmv1beta1.VMProbeList{},
+		&vmv1beta1.VMRuleList{},
 	}
 
 	Context("when Prometheus operator objects are inside WATCH_NAMESPACE", func() {

@@ -7,7 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	v1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,7 +17,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	operator "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
@@ -42,7 +42,7 @@ func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]
 }
 
 func getRevisionHistoryLimit(rclient client.Client, name types.NamespacedName) int32 {
-	deployment := &v1.Deployment{}
+	deployment := &appsv1.Deployment{}
 	if err := rclient.Get(context.TODO(), name, deployment); err != nil {
 		return 0
 	}
@@ -53,13 +53,13 @@ func expectObjectStatusExpanding(ctx context.Context,
 	rclient client.Client,
 	object client.Object,
 	name types.NamespacedName) error {
-	return suite.ExpectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusExpanding)
+	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusExpanding)
 }
 func expectObjectStatusOperational(ctx context.Context,
 	rclient client.Client,
 	object client.Object,
 	name types.NamespacedName) error {
-	return suite.ExpectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusOperational)
+	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusOperational)
 }
 
 type httpRequestOpts struct {

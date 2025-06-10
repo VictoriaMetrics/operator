@@ -27,7 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -58,7 +58,7 @@ func (r *VLSingleReconciler) Init(rclient client.Client, l logr.Logger, sc *runt
 func (r *VLSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vlsingle", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, reqLogger)
-	instance := &vmv1beta1.VLSingle{}
+	instance := &vmv1.VLSingle{}
 
 	defer func() {
 		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
@@ -99,7 +99,7 @@ func (r *VLSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 // SetupWithManager sets up the controller with the Manager.
 func (r *VLSingleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&vmv1beta1.VLSingle{}).
+		For(&vmv1.VLSingle{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		WithOptions(getDefaultOptions()).

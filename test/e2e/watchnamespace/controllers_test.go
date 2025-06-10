@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"reflect"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 // formattableType wraps reflect.Type to provide a friendly diagnostic when assertions on it fail
@@ -23,68 +24,68 @@ func (ft formattableType) GomegaString() string {
 var _ = Describe("Controllers", func() {
 	var namespace string
 	objectListProtos := []client.ObjectList{
-		&v1beta1vm.VMClusterList{},
-		&v1beta1vm.VMAgentList{},
-		&v1beta1vm.VMAlertList{},
-		&v1beta1vm.VMAlertmanagerList{},
-		&v1beta1vm.VMSingleList{},
-		&v1beta1vm.VMUserList{},
+		&vmv1beta1.VMClusterList{},
+		&vmv1beta1.VMAgentList{},
+		&vmv1beta1.VMAlertList{},
+		&vmv1beta1.VMAlertmanagerList{},
+		&vmv1beta1.VMSingleList{},
+		&vmv1beta1.VMUserList{},
 	}
 
 	JustBeforeEach(func() {
 		objects := []client.Object{
-			&v1beta1vm.VMCluster{
+			&vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "test-vmcluster",
 				},
-				Spec: v1beta1vm.VMClusterSpec{RetentionPeriod: "1"},
+				Spec: vmv1beta1.VMClusterSpec{RetentionPeriod: "1"},
 			},
-			&v1beta1vm.VMAgent{
+			&vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "test-vmagent",
 				},
-				Spec: v1beta1vm.VMAgentSpec{
-					RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://some-url"},
 					},
 				},
 			},
-			&v1beta1vm.VMAlert{
+			&vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "test-vmalert",
 				},
-				Spec: v1beta1vm.VMAlertSpec{
-					Notifier:   &v1beta1vm.VMAlertNotifierSpec{URL: "http://some-notifier-url"},
-					Datasource: v1beta1vm.VMAlertDatasourceSpec{URL: "http://some-single-url"},
+				Spec: vmv1beta1.VMAlertSpec{
+					Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://some-notifier-url"},
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://some-single-url"},
 				},
 			},
-			&v1beta1vm.VMAlertmanager{
+			&vmv1beta1.VMAlertmanager{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "test-vmalertmanager",
 				},
 			},
-			&v1beta1vm.VMSingle{
+			&vmv1beta1.VMSingle{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "test-vmsingle",
 				},
-				Spec: v1beta1vm.VMSingleSpec{
+				Spec: vmv1beta1.VMSingleSpec{
 					RetentionPeriod: "1",
 				},
 			},
-			&v1beta1vm.VMUser{
+			&vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "test-vmuser",
 				},
-				Spec: v1beta1vm.VMUserSpec{
-					TargetRefs: []v1beta1vm.TargetRef{
+				Spec: vmv1beta1.VMUserSpec{
+					TargetRefs: []vmv1beta1.TargetRef{
 						{
-							Static: &v1beta1vm.StaticRef{
+							Static: &vmv1beta1.StaticRef{
 								URL: "http://vmselect",
 							},
 							Paths: []string{

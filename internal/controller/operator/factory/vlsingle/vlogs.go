@@ -6,13 +6,6 @@ import (
 	"path"
 	"sort"
 
-	vmv1beta "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,12 +13,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 // VLogs component is deprecated and will be transited into no-op
 // TODO: transit it into no-op at v0.60.0
 
-func createOrUpdateVLogsPVC(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta.VLogs) error {
+func createOrUpdateVLogsPVC(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VLogs) error {
 	newPvc := newVLogsPVC(cr)
 	var prevPVC *corev1.PersistentVolumeClaim
 	if prevCR != nil && prevCR.Spec.Storage != nil {
@@ -34,14 +33,14 @@ func createOrUpdateVLogsPVC(ctx context.Context, rclient client.Client, cr, prev
 	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC)
 }
 
-func newVLogsPVC(r *vmv1beta.VLogs) *corev1.PersistentVolumeClaim {
+func newVLogsPVC(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            r.PrefixedName(),
 			Namespace:       r.Namespace,
 			Labels:          labels.Merge(r.Spec.StorageMetadata.Labels, r.SelectorLabels()),
 			Annotations:     r.Spec.StorageMetadata.Annotations,
-			Finalizers:      []string{vmv1beta.FinalizerName},
+			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: r.AsOwner(),
 		},
 		Spec: *r.Spec.Storage,
@@ -56,8 +55,8 @@ func newVLogsPVC(r *vmv1beta.VLogs) *corev1.PersistentVolumeClaim {
 }
 
 // CreateOrUpdate performs an update for vlsingle resource
-func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1beta.VLogs) error {
-	var prevCR *vmv1beta.VLogs
+func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VLogs) error {
+	var prevCR *vmv1beta1.VLogs
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
@@ -109,7 +108,7 @@ func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1bet
 	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
 }
 
-func newVLogsDeployment(r *vmv1beta.VLogs) (*appsv1.Deployment, error) {
+func newVLogsDeployment(r *vmv1beta1.VLogs) (*appsv1.Deployment, error) {
 	podSpec, err := makeVLogsPodSpec(r)
 	if err != nil {
 		return nil, err
@@ -122,7 +121,7 @@ func newVLogsDeployment(r *vmv1beta.VLogs) (*appsv1.Deployment, error) {
 			Labels:          r.AllLabels(),
 			Annotations:     r.AnnotationsFiltered(),
 			OwnerReferences: r.AsOwner(),
-			Finalizers:      []string{vmv1beta.FinalizerName},
+			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: r.Spec.ReplicaCount,
@@ -140,7 +139,7 @@ func newVLogsDeployment(r *vmv1beta.VLogs) (*appsv1.Deployment, error) {
 	return depSpec, nil
 }
 
-func makeVLogsPodSpec(r *vmv1beta.VLogs) (*corev1.PodTemplateSpec, error) {
+func makeVLogsPodSpec(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-retentionPeriod=%s", r.Spec.RetentionPeriod),
 	}
@@ -221,7 +220,7 @@ func makeVLogsPodSpec(r *vmv1beta.VLogs) (*corev1.PodTemplateSpec, error) {
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta.SecretsDir, s),
+			MountPath: path.Join(vmv1beta1.SecretsDir, s),
 		})
 	}
 
@@ -239,7 +238,7 @@ func makeVLogsPodSpec(r *vmv1beta.VLogs) (*corev1.PodTemplateSpec, error) {
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta.ConfigMapsDir, c),
+			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		})
 	}
 
@@ -286,7 +285,7 @@ func makeVLogsPodSpec(r *vmv1beta.VLogs) (*corev1.PodTemplateSpec, error) {
 }
 
 // createOrUpdateService creates service for vlsingle
-func createOrUpdateVLogsService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta.VLogs) (*corev1.Service, error) {
+func createOrUpdateVLogsService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VLogs) (*corev1.Service, error) {
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
@@ -294,7 +293,7 @@ func createOrUpdateVLogsService(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	newService := build.Service(cr, cr.Spec.Port, nil)
-	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta.AdditionalServiceSpec) error {
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			return fmt.Errorf("vlsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
@@ -313,7 +312,7 @@ func createOrUpdateVLogsService(ctx context.Context, rclient client.Client, cr, 
 	return newService, nil
 }
 
-func deleteVLogsPrevStateResources(ctx context.Context, cr *vmv1beta.VLogs, rclient client.Client) error {
+func deleteVLogsPrevStateResources(ctx context.Context, cr *vmv1beta1.VLogs, rclient client.Client) error {
 	if cr.ParsedLastAppliedSpec == nil {
 		return nil
 	}
@@ -324,7 +323,7 @@ func deleteVLogsPrevStateResources(ctx context.Context, cr *vmv1beta.VLogs, rcli
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}
 	}

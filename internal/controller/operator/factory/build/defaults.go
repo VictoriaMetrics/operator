@@ -1,16 +1,15 @@
 package build
 
 import (
-	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-
-	"github.com/VictoriaMetrics/operator/internal/config"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 func getCfg() *config.BaseOperatorConf {

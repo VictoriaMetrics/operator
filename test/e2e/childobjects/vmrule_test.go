@@ -3,14 +3,15 @@ package childobjects
 import (
 	"strings"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
 //nolint:dupl,lll
@@ -18,8 +19,8 @@ var _ = Describe("test vmrule Controller", func() {
 	namespace := "default"
 	ctx := context.Background()
 	type opts struct {
-		alerts []*v1beta1vm.VMAlert
-		rules  []*v1beta1vm.VMRule
+		alerts []*vmv1beta1.VMAlert
+		rules  []*vmv1beta1.VMRule
 	}
 	type step struct {
 		setup  func()
@@ -39,7 +40,7 @@ var _ = Describe("test vmrule Controller", func() {
 				for _, alert := range args.alerts {
 					nsn := types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace}
 					Eventually(func() error {
-						return k8sClient.Get(ctx, nsn, &v1beta1vm.VMAlert{})
+						return k8sClient.Get(ctx, nsn, &vmv1beta1.VMAlert{})
 					}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "isNotFound"))
 				}
 			})
@@ -58,9 +59,9 @@ var _ = Describe("test vmrule Controller", func() {
 				Eventually(func() error {
 					return suite.ExpectObjectStatus(ctx,
 						k8sClient,
-						&v1beta1vm.VMAlert{},
+						&vmv1beta1.VMAlert{},
 						types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace},
-						v1beta1vm.UpdateStatusOperational)
+						vmv1beta1.UpdateStatusOperational)
 				}, eventualReadyTimeout).Should(Succeed())
 			}
 			if step.modify != nil {
@@ -78,31 +79,31 @@ var _ = Describe("test vmrule Controller", func() {
 			}
 		},
 			Entry("by applying rule to the single vmalert ok", &opts{
-				alerts: []*v1beta1vm.VMAlert{
+				alerts: []*vmv1beta1.VMAlert{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "vmalert-single-test",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertSpec{
+						Spec: vmv1beta1.VMAlertSpec{
 							SelectAllByDefault: true,
-							Datasource: v1beta1vm.VMAlertDatasourceSpec{
+							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
 						},
 					},
 				},
-				rules: []*v1beta1vm.VMRule{
+				rules: []*vmv1beta1.VMRule{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rule-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMRuleSpec{
-							Groups: []v1beta1vm.RuleGroup{
+						Spec: vmv1beta1.VMRuleSpec{
+							Groups: []vmv1beta1.RuleGroup{
 								{
 									Name: "simple-rule",
-									Rules: []v1beta1vm.Rule{
+									Rules: []vmv1beta1.Rule{
 										{
 											Expr:   `vector(1) > 0`,
 											Alert:  "always firing",
@@ -120,31 +121,31 @@ var _ = Describe("test vmrule Controller", func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "rule-1", Namespace: namespace},
 						} {
-							var vmrule v1beta1vm.VMRule
+							var vmrule vmv1beta1.VMRule
 							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
-							Expect(vmrule.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusOperational))
+							Expect(vmrule.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 						}
 					},
 				},
 			},
 			),
 			Entry("by using vmalert selector", &opts{
-				alerts: []*v1beta1vm.VMAlert{
+				alerts: []*vmv1beta1.VMAlert{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "selector-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertSpec{
+						Spec: vmv1beta1.VMAlertSpec{
 							SelectAllByDefault: false,
 							RuleSelector:       metav1.SetAsLabelSelector(map[string]string{"exact-match-label": "value-1"}),
-							Datasource: v1beta1vm.VMAlertDatasourceSpec{
+							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
 						},
 					},
 				},
-				rules: []*v1beta1vm.VMRule{
+				rules: []*vmv1beta1.VMRule{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "selector-1",
@@ -153,11 +154,11 @@ var _ = Describe("test vmrule Controller", func() {
 								"exact-match-label": "value-1",
 							},
 						},
-						Spec: v1beta1vm.VMRuleSpec{
-							Groups: []v1beta1vm.RuleGroup{
+						Spec: vmv1beta1.VMRuleSpec{
+							Groups: []vmv1beta1.RuleGroup{
 								{
 									Name: "simple-rule",
-									Rules: []v1beta1vm.Rule{
+									Rules: []vmv1beta1.Rule{
 										{
 											Expr:   `vector(1) > 0`,
 											Alert:  "always firing",
@@ -176,11 +177,11 @@ var _ = Describe("test vmrule Controller", func() {
 								"exact-match-label": "value-2",
 							},
 						},
-						Spec: v1beta1vm.VMRuleSpec{
-							Groups: []v1beta1vm.RuleGroup{
+						Spec: vmv1beta1.VMRuleSpec{
+							Groups: []vmv1beta1.RuleGroup{
 								{
 									Name: "simple-rule",
-									Rules: []v1beta1vm.Rule{
+									Rules: []vmv1beta1.Rule{
 										{
 											Expr:   `vector(1) > 0`,
 											Alert:  "always firing",
@@ -198,9 +199,9 @@ var _ = Describe("test vmrule Controller", func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "selector-1", Namespace: namespace},
 						} {
-							var vmrule v1beta1vm.VMRule
+							var vmrule vmv1beta1.VMRule
 							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
-							Expect(vmrule.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusOperational))
+							Expect(vmrule.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 							var matched bool
 							for _, stCond := range vmrule.Status.Conditions {
 								if strings.Contains(stCond.Type, "selector-1") {
@@ -214,7 +215,7 @@ var _ = Describe("test vmrule Controller", func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "selector-miss-1", Namespace: namespace},
 						} {
-							var vmrule v1beta1vm.VMRule
+							var vmrule vmv1beta1.VMRule
 							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
 							var matched bool
 							for _, stCond := range vmrule.Status.Conditions {
@@ -230,31 +231,31 @@ var _ = Describe("test vmrule Controller", func() {
 			},
 			),
 			Entry("by skipping broken vmrules", &opts{
-				alerts: []*v1beta1vm.VMAlert{
+				alerts: []*vmv1beta1.VMAlert{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "parsing-test",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertSpec{
+						Spec: vmv1beta1.VMAlertSpec{
 							SelectAllByDefault: true,
-							Datasource: v1beta1vm.VMAlertDatasourceSpec{
+							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
 						},
 					},
 				},
-				rules: []*v1beta1vm.VMRule{
+				rules: []*vmv1beta1.VMRule{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "bad-func-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMRuleSpec{
-							Groups: []v1beta1vm.RuleGroup{
+						Spec: vmv1beta1.VMRuleSpec{
+							Groups: []vmv1beta1.RuleGroup{
 								{
 									Name: "func-rule",
-									Rules: []v1beta1vm.Rule{
+									Rules: []vmv1beta1.Rule{
 										{
 											Expr:   `non_exist_func(1) > 0`,
 											Alert:  "always firing",
@@ -270,11 +271,11 @@ var _ = Describe("test vmrule Controller", func() {
 							Name:      "bad-template-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMRuleSpec{
-							Groups: []v1beta1vm.RuleGroup{
+						Spec: vmv1beta1.VMRuleSpec{
+							Groups: []vmv1beta1.RuleGroup{
 								{
 									Name: "templ-rule",
-									Rules: []v1beta1vm.Rule{
+									Rules: []vmv1beta1.Rule{
 										{
 											Expr:   `vector(1) > 0`,
 											Alert:  "always firing vector",
@@ -293,11 +294,11 @@ var _ = Describe("test vmrule Controller", func() {
 							{Name: "bad-func-1", Namespace: namespace},
 							{Name: "bad-template-1", Namespace: namespace},
 						} {
-							var vmrule v1beta1vm.VMRule
+							var vmrule vmv1beta1.VMRule
 							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
-							Expect(vmrule.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusFailed))
+							Expect(vmrule.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
 							for _, cond := range vmrule.Status.Conditions {
-								if strings.HasSuffix(cond.Type, v1beta1vm.ConditionDomainTypeAppliedSuffix) {
+								if strings.HasSuffix(cond.Type, vmv1beta1.ConditionDomainTypeAppliedSuffix) {
 									Expect(cond.Status).To(Equal(metav1.ConditionFalse), "reason=%q,type=%q,rule=%q", cond.Reason, cond.Type, vmrule.Name)
 								}
 							}

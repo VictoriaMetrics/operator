@@ -4,9 +4,10 @@ import (
 	"context"
 	"reflect"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 func CreateObjects(objects ...client.Object) {
@@ -58,7 +59,7 @@ func EventuallyShouldHaveFinalizer(namespace string, listProto client.ObjectList
 		var objectsWithoutFinalizers []client.Object
 		for _, object := range objects {
 			finalizers := object.GetFinalizers()
-			if len(finalizers) != 1 || finalizers[0] != v1beta1vm.FinalizerName {
+			if len(finalizers) != 1 || finalizers[0] != vmv1beta1.FinalizerName {
 				objectsWithoutFinalizers = append(objectsWithoutFinalizers, object)
 			}
 		}

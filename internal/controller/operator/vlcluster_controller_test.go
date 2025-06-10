@@ -22,12 +22,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 )
 
 var _ = Describe("VLCluster Controller", func() {
@@ -40,13 +39,13 @@ var _ = Describe("VLCluster Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vlcluster := &vmv1beta1.VLCluster{}
+		vlcluster := &vmv1.VLCluster{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind VLCluster")
 			err := k8sClient.Get(ctx, typeNamespacedName, vlcluster)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &vmv1beta1.VLCluster{
+				resource := &vmv1.VLCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,7 +58,7 @@ var _ = Describe("VLCluster Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &vmv1beta1.VLCluster{}
+			resource := &vmv1.VLCluster{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 

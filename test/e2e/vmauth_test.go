@@ -1,9 +1,6 @@
 package e2e
 
 import (
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
@@ -17,6 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 )
 
 //nolint:dupl
@@ -34,41 +34,41 @@ var _ = Describe("test vmauth Controller", func() {
 				ctx = context.Background()
 			})
 			AfterEach(func() {
-				Expect(finalize.SafeDelete(ctx, k8sClient, &v1beta1vm.VMAuth{
+				Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      namespacedName.Name,
 						Namespace: namespacedName.Namespace,
 					},
 				})).To(Succeed())
 				Eventually(func() error {
-					return k8sClient.Get(ctx, namespacedName, &v1beta1vm.VMAuth{})
+					return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMAuth{})
 				}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
 			})
-			DescribeTable("should create vmauth", func(name string, cr *v1beta1vm.VMAuth, verify func(cr *v1beta1vm.VMAuth)) {
+			DescribeTable("should create vmauth", func(name string, cr *vmv1beta1.VMAuth, verify func(cr *vmv1beta1.VMAuth)) {
 				namespacedName.Name = name
 				cr.Name = name
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAuth{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, namespacedName)
 				}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 				verify(cr)
 			},
-				Entry("with 1 replica", "replica-1", &v1beta1vm.VMAuth{
+				Entry("with 1 replica", "replica-1", &vmv1beta1.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespacedName.Namespace,
 					},
-					Spec: v1beta1vm.VMAuthSpec{
-						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+					Spec: vmv1beta1.VMAuthSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
-						UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+						UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 							{
 								URLPrefix: []string{"http://localhost:8490"},
 								SrcPaths:  []string{"/.*"},
 							},
 						},
 					},
-				}, func(cr *v1beta1vm.VMAuth) {
+				}, func(cr *vmv1beta1.VMAuth) {
 					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
@@ -80,30 +80,30 @@ var _ = Describe("test vmauth Controller", func() {
 					Expect(reloaderContainer.Resources.Requests.Cpu()).To(Equal(ptr.To(resource.MustParse("10m"))))
 					Expect(reloaderContainer.Resources.Requests.Memory()).To(Equal(ptr.To(resource.MustParse("25Mi"))))
 				}),
-				Entry("with strict security and vm config-reloader", "strict-with-reloader", &v1beta1vm.VMAuth{
+				Entry("with strict security and vm config-reloader", "strict-with-reloader", &vmv1beta1.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespacedName.Namespace,
 					},
-					Spec: v1beta1vm.VMAuthSpec{
-						CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+					Spec: vmv1beta1.VMAuthSpec{
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 							UseStrictSecurity:   ptr.To(true),
 							UseDefaultResources: ptr.To(false),
 						},
-						CommonConfigReloaderParams: v1beta1vm.CommonConfigReloaderParams{
+						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 							UseVMConfigReloader: ptr.To(true),
 						},
-						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,
 						},
-						UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+						UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 							{
 								URLPrefix: []string{"http://localhost:8490"},
 								SrcPaths:  []string{"/.*"},
 							},
 						},
 					},
-				}, func(cr *v1beta1vm.VMAuth) {
+				}, func(cr *vmv1beta1.VMAuth) {
 					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
@@ -130,12 +130,12 @@ var _ = Describe("test vmauth Controller", func() {
 			)
 
 			type testStep struct {
-				setup  func(*v1beta1vm.VMAuth)
-				modify func(*v1beta1vm.VMAuth)
-				verify func(*v1beta1vm.VMAuth)
+				setup  func(*vmv1beta1.VMAuth)
+				modify func(*vmv1beta1.VMAuth)
+				verify func(*vmv1beta1.VMAuth)
 			}
 			DescribeTable("should update exist vmauth",
-				func(name string, initCR *v1beta1vm.VMAuth, steps ...testStep) {
+				func(name string, initCR *vmv1beta1.VMAuth, steps ...testStep) {
 
 					initCR.Name = name
 					initCR.Namespace = namespace
@@ -143,7 +143,7 @@ var _ = Describe("test vmauth Controller", func() {
 					// setup test
 					Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAuth{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, namespacedName)
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 					for _, step := range steps {
 						if step.setup != nil {
@@ -151,15 +151,15 @@ var _ = Describe("test vmauth Controller", func() {
 						}
 						// perform update
 						Eventually(func() error {
-							var toUpdate v1beta1vm.VMAuth
+							var toUpdate vmv1beta1.VMAuth
 							Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
 							step.modify(&toUpdate)
 							return k8sClient.Update(ctx, &toUpdate)
 						}, eventualExpandingTimeout).Should(Succeed())
 						Eventually(func() error {
-							return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMAuth{}, namespacedName)
+							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, namespacedName)
 						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
-						var updated v1beta1vm.VMAuth
+						var updated vmv1beta1.VMAuth
 						Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 						// verify results
 						step.verify(&updated)
@@ -167,12 +167,12 @@ var _ = Describe("test vmauth Controller", func() {
 
 				},
 				Entry("by changing replicas to 2", "update-replicas-2",
-					&v1beta1vm.VMAuth{
-						Spec: v1beta1vm.VMAuthSpec{
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+					&vmv1beta1.VMAuth{
+						Spec: vmv1beta1.VMAuthSpec{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									URLPrefix: []string{"http://localhost:8490"},
 									SrcPaths:  []string{"/.*"},
@@ -181,10 +181,10 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 					testStep{
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.ReplicaCount = ptr.To[int32](2)
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {
+						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() string {
 								return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())
 							}, eventualDeploymentPodTimeout).Should(BeEmpty())
@@ -192,13 +192,13 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				),
 				Entry("by switching to vm config reloader", "vm-reloader",
-					&v1beta1vm.VMAuth{
-						Spec: v1beta1vm.VMAuthSpec{
+					&vmv1beta1.VMAuth{
+						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									URLPrefix: []string{"http://localhost:8490"},
 									SrcPaths:  []string{"/.*"},
@@ -207,18 +207,18 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 					testStep{
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.UseVMConfigReloader = ptr.To(true)
 							cr.Spec.UseDefaultResources = ptr.To(false)
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {
+						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() string {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
 							}, eventualDeploymentPodTimeout).Should(BeEmpty())
 						},
 					},
 					testStep{
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							authSecret := corev1.Secret{
 								ObjectMeta: metav1.ObjectMeta{
 									Name:      "reload-auth-key",
@@ -239,7 +239,7 @@ var _ = Describe("test vmauth Controller", func() {
 								},
 							}
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {
+						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() string {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
 							}, eventualDeploymentPodTimeout).Should(BeEmpty())
@@ -247,20 +247,20 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				),
 				Entry("by switching to internal listen port", "vm-internal-listen",
-					&v1beta1vm.VMAuth{
-						Spec: v1beta1vm.VMAuthSpec{
+					&vmv1beta1.VMAuth{
+						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonConfigReloaderParams: v1beta1vm.CommonConfigReloaderParams{
+							CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 								UseVMConfigReloader: ptr.To(true),
 							},
 
-							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									URLPrefix: []string{"http://localhost:8490"},
 									SrcPaths:  []string{"/.*"},
@@ -269,10 +269,10 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 					testStep{
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.InternalListenPort = "8426"
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {
+						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() string {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
 							}, eventualDeploymentPodTimeout).Should(BeEmpty())
@@ -288,7 +288,7 @@ var _ = Describe("test vmauth Controller", func() {
 							var svc corev1.Service
 							Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
 							Expect(svc.Spec.Ports).To(HaveLen(2))
-							var vmss v1beta1vm.VMServiceScrape
+							var vmss vmv1beta1.VMServiceScrape
 							Expect(k8sClient.Get(ctx, nsn, &vmss)).To(Succeed())
 							Expect(vmss.Spec.Endpoints).To(HaveLen(1))
 							ep := vmss.Spec.Endpoints[0]
@@ -297,19 +297,19 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				),
 				Entry("by removing podDistruptionBudget and keeping exist ingress", "vm-keep-ingress-change-pdb",
-					&v1beta1vm.VMAuth{
-						Spec: v1beta1vm.VMAuthSpec{
+					&vmv1beta1.VMAuth{
+						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](2),
 							},
-							PodDisruptionBudget: &v1beta1vm.EmbeddedPodDisruptionBudgetSpec{
+							PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 								MaxUnavailable: &intstr.IntOrString{IntVal: 1},
 							},
-							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									URLPrefix: []string{"http://localhost:8490"},
 									SrcPaths:  []string{"/.*"},
@@ -318,7 +318,7 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 					testStep{
-						setup: func(cr *v1beta1vm.VMAuth) {
+						setup: func(cr *vmv1beta1.VMAuth) {
 							ing := &networkingv1.Ingress{
 								// intentionally use the same prefixed name
 								ObjectMeta: metav1.ObjectMeta{
@@ -350,10 +350,10 @@ var _ = Describe("test vmauth Controller", func() {
 								types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace},
 								&policyv1.PodDisruptionBudget{})).To(Succeed())
 						},
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.PodDisruptionBudget = nil
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {
+						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() string {
 								return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())
 							}, eventualDeploymentPodTimeout).Should(BeEmpty())
@@ -365,12 +365,12 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 					testStep{
-						modify: func(cr *v1beta1vm.VMAuth) {
-							cr.Spec.PodDisruptionBudget = &v1beta1vm.EmbeddedPodDisruptionBudgetSpec{
+						modify: func(cr *vmv1beta1.VMAuth) {
+							cr.Spec.PodDisruptionBudget = &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 								MaxUnavailable: &intstr.IntOrString{IntVal: 1},
 							}
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {
+						verify: func(cr *vmv1beta1.VMAuth) {
 							nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
 							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).To(Succeed())
 							Expect(k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})).To(Succeed())
@@ -382,13 +382,13 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				),
 				Entry("by migrating from configSecret to externalConfig.secretRef", "ext-config",
-					&v1beta1vm.VMAuth{
-						Spec: v1beta1vm.VMAuthSpec{
+					&vmv1beta1.VMAuth{
+						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									URLPrefix: []string{"http://localhost:8490"},
 									SrcPaths:  []string{"/.*"},
@@ -397,7 +397,7 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 					testStep{
-						setup: func(v *v1beta1vm.VMAuth) {
+						setup: func(v *vmv1beta1.VMAuth) {
 							extSecret := &corev1.Secret{
 								ObjectMeta: metav1.ObjectMeta{
 									Name:      "auth-ext-config",
@@ -417,10 +417,10 @@ var _ = Describe("test vmauth Controller", func() {
 								Expect(k8sClient.Delete(ctx, extSecret)).To(Succeed())
 							})
 						},
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.ConfigSecret = "auth-ext-config"
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {
+						verify: func(cr *vmv1beta1.VMAuth) {
 							var dep appsv1.Deployment
 							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
 								To(Succeed())
@@ -432,7 +432,7 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 					testStep{
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.ConfigSecret = ""
 							cr.Spec.SecretRef = &corev1.SecretKeySelector{
 								Key: "config.yaml",
@@ -441,7 +441,7 @@ var _ = Describe("test vmauth Controller", func() {
 								},
 							}
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {
+						verify: func(cr *vmv1beta1.VMAuth) {
 							var dep appsv1.Deployment
 							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
 								To(Succeed())
@@ -455,13 +455,13 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				),
 				Entry("by switching to local config", "local-config",
-					&v1beta1vm.VMAuth{
-						Spec: v1beta1vm.VMAuthSpec{
+					&vmv1beta1.VMAuth{
+						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									URLPrefix: []string{"http://localhost:8490"},
 									SrcPaths:  []string{"/.*"},
@@ -470,7 +470,7 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 					testStep{
-						setup: func(v *v1beta1vm.VMAuth) {
+						setup: func(v *vmv1beta1.VMAuth) {
 							extSecret := &corev1.Secret{
 								ObjectMeta: metav1.ObjectMeta{
 									Name:      "local-ext-config",
@@ -490,7 +490,7 @@ var _ = Describe("test vmauth Controller", func() {
 								Expect(k8sClient.Delete(ctx, extSecret)).To(Succeed())
 							})
 						},
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.LocalPath = "/etc/local-config/vmauth.yaml"
 							cr.Spec.Volumes = append(cr.Spec.Volumes, corev1.Volume{
 								Name: "local-cfg",
@@ -505,7 +505,7 @@ var _ = Describe("test vmauth Controller", func() {
 								MountPath: "/etc/local-config",
 							})
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {
+						verify: func(cr *vmv1beta1.VMAuth) {
 							var dep appsv1.Deployment
 							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
 								To(Succeed())
@@ -518,16 +518,16 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				),
 				Entry("by switching to proxy-protocol", "proxy-protocol",
-					&v1beta1vm.VMAuth{
-						Spec: v1beta1vm.VMAuthSpec{
+					&vmv1beta1.VMAuth{
+						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							CommonConfigReloaderParams: v1beta1vm.CommonConfigReloaderParams{
+							CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 								UseVMConfigReloader: ptr.To(true),
 							},
-							UnauthorizedAccessConfig: []v1beta1vm.UnauthorizedAccessConfigURLMap{
+							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									URLPrefix: []string{"http://localhost:8490"},
 									SrcPaths:  []string{"/.*"},
@@ -536,16 +536,16 @@ var _ = Describe("test vmauth Controller", func() {
 						},
 					},
 					testStep{
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.UseProxyProtocol = true
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {},
+						verify: func(cr *vmv1beta1.VMAuth) {},
 					},
 					testStep{
-						modify: func(cr *v1beta1vm.VMAuth) {
+						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.UseVMConfigReloader = ptr.To(false)
 						},
-						verify: func(cr *v1beta1vm.VMAuth) {},
+						verify: func(cr *vmv1beta1.VMAuth) {},
 					},
 				),
 			)

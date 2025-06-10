@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
@@ -19,8 +19,8 @@ var _ = Describe("test vmuser Controller", func() {
 	namespace := "default"
 	ctx := context.Background()
 	type opts struct {
-		vmauths []*v1beta1vm.VMAuth
-		vmusers []*v1beta1vm.VMUser
+		vmauths []*vmv1beta1.VMAuth
+		vmusers []*vmv1beta1.VMUser
 	}
 	type step struct {
 		setup  func()
@@ -40,7 +40,7 @@ var _ = Describe("test vmuser Controller", func() {
 				for _, alert := range args.vmauths {
 					nsn := types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace}
 					Eventually(func() error {
-						return k8sClient.Get(ctx, nsn, &v1beta1vm.VMAuth{})
+						return k8sClient.Get(ctx, nsn, &vmv1beta1.VMAuth{})
 					}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "isNotFound"))
 				}
 			})
@@ -59,9 +59,9 @@ var _ = Describe("test vmuser Controller", func() {
 				Eventually(func() error {
 					return suite.ExpectObjectStatus(ctx,
 						k8sClient,
-						&v1beta1vm.VMAuth{},
+						&vmv1beta1.VMAuth{},
 						types.NamespacedName{Name: am.Name, Namespace: am.Namespace},
-						v1beta1vm.UpdateStatusOperational)
+						vmv1beta1.UpdateStatusOperational)
 				}, eventualReadyTimeout).Should(Succeed())
 			}
 			if step.modify != nil {
@@ -79,34 +79,34 @@ var _ = Describe("test vmuser Controller", func() {
 			}
 		},
 			Entry("by creating single auth and user", &opts{
-				vmauths: []*v1beta1vm.VMAuth{
+				vmauths: []*vmv1beta1.VMAuth{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "single-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAuthSpec{
+						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
-								Image: v1beta1vm.Image{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+								Image: vmv1beta1.Image{
 									Tag: "v1.108.0",
 								},
 							},
 						},
 					},
 				},
-				vmusers: []*v1beta1vm.VMUser{
+				vmusers: []*vmv1beta1.VMUser{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "inline-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMUserSpec{
+						Spec: vmv1beta1.VMUserSpec{
 							UserName: ptr.To("user"),
 							Password: ptr.To("password-1"),
-							TargetRefs: []v1beta1vm.TargetRef{
+							TargetRefs: []vmv1beta1.TargetRef{
 								{
-									Static: &v1beta1vm.StaticRef{
+									Static: &vmv1beta1.StaticRef{
 										URL: "http://localhost:8085",
 									},
 								},
@@ -120,38 +120,38 @@ var _ = Describe("test vmuser Controller", func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "inline-1", Namespace: namespace},
 						} {
-							var vmuser v1beta1vm.VMUser
+							var vmuser vmv1beta1.VMUser
 							Expect(k8sClient.Get(ctx, nsn, &vmuser)).To(Succeed())
-							Expect(vmuser.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusOperational))
+							Expect(vmuser.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 						}
 					},
 				},
 			},
 			),
 			Entry("by creating single auth and 1 broken user with transition to ok", &opts{
-				vmauths: []*v1beta1vm.VMAuth{
+				vmauths: []*vmv1beta1.VMAuth{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "multiple-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAuthSpec{
+						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
-								Image: v1beta1vm.Image{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+								Image: vmv1beta1.Image{
 									Tag: "v1.108.0",
 								},
 							},
 						},
 					},
 				},
-				vmusers: []*v1beta1vm.VMUser{
+				vmusers: []*vmv1beta1.VMUser{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "missing-ref-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMUserSpec{
+						Spec: vmv1beta1.VMUserSpec{
 							UserName: ptr.To("user"),
 							PasswordRef: &corev1.SecretKeySelector{
 								Key: "password",
@@ -159,9 +159,9 @@ var _ = Describe("test vmuser Controller", func() {
 									Name: "non-exist-secret",
 								},
 							},
-							TargetRefs: []v1beta1vm.TargetRef{
+							TargetRefs: []vmv1beta1.TargetRef{
 								{
-									Static: &v1beta1vm.StaticRef{
+									Static: &vmv1beta1.StaticRef{
 										URL: "http://localhost:8085",
 									},
 								},
@@ -175,9 +175,9 @@ var _ = Describe("test vmuser Controller", func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "missing-ref-1", Namespace: namespace},
 						} {
-							var vmuser v1beta1vm.VMUser
+							var vmuser vmv1beta1.VMUser
 							Expect(k8sClient.Get(ctx, nsn, &vmuser)).To(Succeed())
-							Expect(vmuser.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusFailed))
+							Expect(vmuser.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
 							Expect(vmuser.Status.Conditions).NotTo(BeEmpty())
 						}
 					},
@@ -198,7 +198,7 @@ var _ = Describe("test vmuser Controller", func() {
 					},
 					modify: func() {
 						nsn := types.NamespacedName{Name: "missing-ref-1", Namespace: namespace}
-						var toUpdate v1beta1vm.VMUser
+						var toUpdate vmv1beta1.VMUser
 						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 						toUpdate.Spec.PasswordRef.Name = "backend-e2e-access-1"
 						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
@@ -208,7 +208,7 @@ var _ = Describe("test vmuser Controller", func() {
 							{Name: "missing-ref-1", Namespace: namespace},
 						} {
 							Eventually(func() error {
-								var toUpdate v1beta1vm.VMUser
+								var toUpdate vmv1beta1.VMUser
 								Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 								return expectConditionOkFor(toUpdate.Status.Conditions, "multiple-1.")
 							}, eventualReadyTimeout, 2).Should(Succeed())

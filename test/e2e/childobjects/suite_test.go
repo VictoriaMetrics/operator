@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
@@ -39,7 +39,7 @@ var _ = SynchronizedAfterSuite(
 		suite.ShutdownOperatorProcess()
 	})
 
-func expectConditionOkFor(conds []v1beta1vm.Condition, typeCondtains string) error {
+func expectConditionOkFor(conds []vmv1beta1.Condition, typeCondtains string) error {
 	for _, cond := range conds {
 		if strings.Contains(cond.Type, typeCondtains) {
 			if cond.Status == "True" {

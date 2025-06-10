@@ -6,14 +6,6 @@ import (
 	"path"
 	"sort"
 
-	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	vmv1beta "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,6 +13,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 const (
@@ -44,7 +43,7 @@ func newPVC(r *vmv1.VLSingle) *corev1.PersistentVolumeClaim {
 			Namespace:       r.Namespace,
 			Labels:          labels.Merge(r.Spec.StorageMetadata.Labels, r.SelectorLabels()),
 			Annotations:     r.Spec.StorageMetadata.Annotations,
-			Finalizers:      []string{vmv1beta.FinalizerName},
+			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: r.AsOwner(),
 		},
 		Spec: *r.Spec.Storage,
@@ -125,7 +124,7 @@ func newDeployment(r *vmv1.VLSingle) (*appsv1.Deployment, error) {
 			Labels:          r.AllLabels(),
 			Annotations:     r.AnnotationsFiltered(),
 			OwnerReferences: r.AsOwner(),
-			Finalizers:      []string{vmv1beta.FinalizerName},
+			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: r.Spec.ReplicaCount,
@@ -229,7 +228,7 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta.SecretsDir, s),
+			MountPath: path.Join(vmv1beta1.SecretsDir, s),
 		})
 	}
 
@@ -247,7 +246,7 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta.ConfigMapsDir, c),
+			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		})
 	}
 
@@ -302,7 +301,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	}
 
 	newService := build.Service(cr, cr.Spec.Port, nil)
-	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta.AdditionalServiceSpec) error {
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			return fmt.Errorf("vlsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
@@ -332,7 +331,7 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1.VLSingle, rclient cl
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}
 	}

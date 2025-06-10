@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	operator "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 // ExpectObjectStatus perform assert on given object status
@@ -19,7 +19,7 @@ func ExpectObjectStatus(ctx context.Context,
 	rclient client.Client,
 	object client.Object,
 	name types.NamespacedName,
-	status operator.UpdateStatus) error {
+	status vmv1beta1.UpdateStatus) error {
 	if err := rclient.Get(ctx, name, object); err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func ExpectObjectStatus(ctx context.Context,
 	}
 	type objectStatus struct {
 		Status struct {
-			operator.StatusMetadata `json:",inline"`
+			vmv1beta1.StatusMetadata `json:",inline"`
 		} `json:"status"`
 	}
 	var obs objectStatus

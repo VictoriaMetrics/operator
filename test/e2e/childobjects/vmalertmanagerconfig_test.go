@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
@@ -19,8 +19,8 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 	namespace := "default"
 	ctx := context.Background()
 	type opts struct {
-		ams    []*v1beta1vm.VMAlertmanager
-		amCfgs []*v1beta1vm.VMAlertmanagerConfig
+		ams    []*vmv1beta1.VMAlertmanager
+		amCfgs []*vmv1beta1.VMAlertmanagerConfig
 	}
 	type step struct {
 		setup  func()
@@ -40,7 +40,7 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 				for _, alert := range args.ams {
 					nsn := types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace}
 					Eventually(func() error {
-						return k8sClient.Get(ctx, nsn, &v1beta1vm.VMAlertmanager{})
+						return k8sClient.Get(ctx, nsn, &vmv1beta1.VMAlertmanager{})
 					}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "isNotFound"))
 				}
 			})
@@ -59,9 +59,9 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 				Eventually(func() error {
 					return suite.ExpectObjectStatus(ctx,
 						k8sClient,
-						&v1beta1vm.VMAlertmanager{},
+						&vmv1beta1.VMAlertmanager{},
 						types.NamespacedName{Name: am.Name, Namespace: am.Namespace},
-						v1beta1vm.UpdateStatusOperational)
+						vmv1beta1.UpdateStatusOperational)
 				}, eventualReadyTimeout).Should(Succeed())
 			}
 			if step.modify != nil {
@@ -79,26 +79,26 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 			}
 		},
 			Entry("by creating single alertmanager and rule", &opts{
-				ams: []*v1beta1vm.VMAlertmanager{
+				ams: []*vmv1beta1.VMAlertmanager{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "single-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertmanagerSpec{
+						Spec: vmv1beta1.VMAlertmanagerSpec{
 							SelectAllByDefault: true,
 						},
 					},
 				},
-				amCfgs: []*v1beta1vm.VMAlertmanagerConfig{
+				amCfgs: []*vmv1beta1.VMAlertmanagerConfig{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "blackhole-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertmanagerConfigSpec{
-							Route:     &v1beta1vm.Route{Receiver: "blackhole"},
-							Receivers: []v1beta1vm.Receiver{{Name: "blackhole"}},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route:     &vmv1beta1.Route{Receiver: "blackhole"},
+							Receivers: []vmv1beta1.Receiver{{Name: "blackhole"}},
 						},
 					},
 				},
@@ -108,22 +108,22 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "blackhole-1", Namespace: namespace},
 						} {
-							var amcfg v1beta1vm.VMAlertmanagerConfig
+							var amcfg vmv1beta1.VMAlertmanagerConfig
 							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
-							Expect(amcfg.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusOperational))
+							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 						}
 					},
 				},
 			},
 			),
 			Entry("by using specific resource by label selector", &opts{
-				ams: []*v1beta1vm.VMAlertmanager{
+				ams: []*vmv1beta1.VMAlertmanager{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "selector-1",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertmanagerSpec{
+						Spec: vmv1beta1.VMAlertmanagerSpec{
 							SelectAllByDefault: false,
 							ConfigSelector: metav1.SetAsLabelSelector(map[string]string{
 								"exact-match-label": "value-1",
@@ -131,7 +131,7 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 						},
 					},
 				},
-				amCfgs: []*v1beta1vm.VMAlertmanagerConfig{
+				amCfgs: []*vmv1beta1.VMAlertmanagerConfig{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "selector-1",
@@ -140,9 +140,9 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 								"exact-match-label": "value-1",
 							},
 						},
-						Spec: v1beta1vm.VMAlertmanagerConfigSpec{
-							Route:     &v1beta1vm.Route{Receiver: "blackhole"},
-							Receivers: []v1beta1vm.Receiver{{Name: "blackhole"}},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route:     &vmv1beta1.Route{Receiver: "blackhole"},
+							Receivers: []vmv1beta1.Receiver{{Name: "blackhole"}},
 						},
 					},
 					{
@@ -153,9 +153,9 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 								"exact-match-label": "value-2",
 							},
 						},
-						Spec: v1beta1vm.VMAlertmanagerConfigSpec{
-							Route:     &v1beta1vm.Route{Receiver: "blackhole"},
-							Receivers: []v1beta1vm.Receiver{{Name: "blackhole"}},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route:     &vmv1beta1.Route{Receiver: "blackhole"},
+							Receivers: []vmv1beta1.Receiver{{Name: "blackhole"}},
 						},
 					},
 				},
@@ -165,9 +165,9 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "selector-1", Namespace: namespace},
 						} {
-							var amcfg v1beta1vm.VMAlertmanagerConfig
+							var amcfg vmv1beta1.VMAlertmanagerConfig
 							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
-							Expect(amcfg.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusOperational))
+							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 							var matched bool
 							for _, stCond := range amcfg.Status.Conditions {
 								if strings.Contains(stCond.Type, "selector-1") {
@@ -182,7 +182,7 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 						for _, nsn := range []types.NamespacedName{
 							{Name: "selector-miss-1", Namespace: namespace},
 						} {
-							var vmrule v1beta1vm.VMAlertmanagerConfig
+							var vmrule vmv1beta1.VMAlertmanagerConfig
 							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
 							var matched bool
 							for _, stCond := range vmrule.Status.Conditions {
@@ -195,13 +195,13 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 			},
 			),
 			Entry("by checking status of bad configs", &opts{
-				ams: []*v1beta1vm.VMAlertmanager{
+				ams: []*vmv1beta1.VMAlertmanager{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "parsing-test",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertmanagerSpec{
+						Spec: vmv1beta1.VMAlertmanagerSpec{
 							SelectAllByDefault: true,
 						},
 					},
@@ -210,7 +210,7 @@ var _ = Describe("test vmalertmanagerconfig Controller", func() {
 							Name:      "parsing-test-with-global-option",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertmanagerSpec{
+						Spec: vmv1beta1.VMAlertmanagerSpec{
 							SelectAllByDefault: true,
 							ConfigRawYaml: `
 global:
@@ -223,15 +223,15 @@ route:
 						},
 					},
 				},
-				amCfgs: []*v1beta1vm.VMAlertmanagerConfig{
+				amCfgs: []*vmv1beta1.VMAlertmanagerConfig{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "bad-route",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertmanagerConfigSpec{
-							Route: &v1beta1vm.Route{Receiver: "blackhole", ActiveTimeIntervals: []string{"not-exist"}},
-							Receivers: []v1beta1vm.Receiver{
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route: &vmv1beta1.Route{Receiver: "blackhole", ActiveTimeIntervals: []string{"not-exist"}},
+							Receivers: []vmv1beta1.Receiver{
 								{Name: "blackhole"},
 							},
 						},
@@ -241,12 +241,12 @@ route:
 							Name:      "partiallly-ok",
 							Namespace: namespace,
 						},
-						Spec: v1beta1vm.VMAlertmanagerConfigSpec{
-							Route: &v1beta1vm.Route{Receiver: "slack"},
-							Receivers: []v1beta1vm.Receiver{
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route: &vmv1beta1.Route{Receiver: "slack"},
+							Receivers: []vmv1beta1.Receiver{
 								{
 									Name: "slack",
-									SlackConfigs: []v1beta1vm.SlackConfig{
+									SlackConfigs: []vmv1beta1.SlackConfig{
 										{
 											Channel:   "some-test",
 											Text:      "some-text",
@@ -268,11 +268,11 @@ route:
 						for _, nsn := range []types.NamespacedName{
 							{Name: "bad-route", Namespace: namespace},
 						} {
-							var amcfg v1beta1vm.VMAlertmanagerConfig
+							var amcfg vmv1beta1.VMAlertmanagerConfig
 							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
-							Expect(amcfg.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusFailed))
+							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
 							for _, cond := range amcfg.Status.Conditions {
-								if strings.HasSuffix(cond.Type, v1beta1vm.ConditionDomainTypeAppliedSuffix) {
+								if strings.HasSuffix(cond.Type, vmv1beta1.ConditionDomainTypeAppliedSuffix) {
 									Expect(cond.Status).To(Equal(metav1.ConditionFalse), "reason=%q,type=%q,rule=%q", cond.Reason, cond.Type, amcfg.Name)
 								}
 							}
@@ -280,15 +280,15 @@ route:
 						for _, nsn := range []types.NamespacedName{
 							{Name: "partiallly-ok", Namespace: namespace},
 						} {
-							var amcfg v1beta1vm.VMAlertmanagerConfig
+							var amcfg vmv1beta1.VMAlertmanagerConfig
 							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
-							Expect(amcfg.Status.UpdateStatus).To(Equal(v1beta1vm.UpdateStatusFailed))
+							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
 							for _, cond := range amcfg.Status.Conditions {
 								if strings.HasPrefix(cond.Type, "parsing-test-with-global-option") {
 									Expect(cond.Status).To(Equal(metav1.ConditionTrue), "reason=%q,type=%q,rule=%q", cond.Reason, cond.Type, amcfg.Name)
 									continue
 								}
-								if strings.HasSuffix(cond.Type, v1beta1vm.ConditionDomainTypeAppliedSuffix) {
+								if strings.HasSuffix(cond.Type, vmv1beta1.ConditionDomainTypeAppliedSuffix) {
 									Expect(cond.Status).To(Equal(metav1.ConditionFalse), "reason=%q,type=%q,rule=%q", cond.Reason, cond.Type, amcfg.Name)
 								}
 							}
@@ -299,7 +299,7 @@ route:
 				// add global option to the all alertmanagers
 				{
 					modify: func() {
-						var toUpdate v1beta1vm.VMAlertmanager
+						var toUpdate vmv1beta1.VMAlertmanager
 						nsn := types.NamespacedName{
 							Namespace: namespace,
 							Name:      "parsing-test",
@@ -321,12 +321,12 @@ route:
 							{Name: "partiallly-ok", Namespace: namespace},
 						} {
 							Eventually(func() error {
-								var amcfg v1beta1vm.VMAlertmanagerConfig
+								var amcfg vmv1beta1.VMAlertmanagerConfig
 								Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
 								return expectConditionOkFor(amcfg.Status.Conditions, "parsing-test.")
 							}, eventualReadyTimeout).Should(Succeed())
 							Eventually(func() error {
-								var amcfg v1beta1vm.VMAlertmanagerConfig
+								var amcfg vmv1beta1.VMAlertmanagerConfig
 								Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
 								return expectConditionOkFor(amcfg.Status.Conditions, "parsing-test-with-global-option.")
 							}, eventualReadyTimeout).Should(Succeed())

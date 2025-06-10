@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/VictoriaMetrics/operator/internal/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 type listing[L any] interface {

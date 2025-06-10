@@ -3,9 +3,10 @@ package k8stools_test
 import (
 	"testing"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestRenderPlaceholders(t *testing.T) {

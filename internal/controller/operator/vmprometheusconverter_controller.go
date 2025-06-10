@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -23,8 +25,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/converter"
 	converterv1alpha1 "github.com/VictoriaMetrics/operator/internal/controller/operator/converter/v1alpha1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 var converterLogger = logf.Log.WithName("controller.PrometheusConverter")

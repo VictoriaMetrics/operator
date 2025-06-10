@@ -15,8 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	vmv1beta "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 )
 
@@ -64,10 +63,10 @@ var _ = Describe("test vlsingle Controller", func() {
 							Namespace: namespace,
 						},
 						Spec: vmv1.VLSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							CommonDefaultableParams: vmv1beta.CommonDefaultableParams{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseStrictSecurity: ptr.To(true),
 							},
 							RetentionPeriod: "1",
@@ -96,10 +95,10 @@ var _ = Describe("test vlsingle Controller", func() {
 							Namespace: namespace,
 						},
 						Spec: vmv1.VLSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							CommonDefaultableParams: vmv1beta.CommonDefaultableParams{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod: "1",
@@ -120,7 +119,7 @@ var _ = Describe("test vlsingle Controller", func() {
 							Namespace: namespace,
 						},
 						Spec: vmv1.VLSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 								Volumes: []corev1.Volume{
 									{
@@ -143,7 +142,7 @@ var _ = Describe("test vlsingle Controller", func() {
 									},
 								},
 							},
-							CommonDefaultableParams: vmv1beta.CommonDefaultableParams{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod: "1",
@@ -171,7 +170,7 @@ var _ = Describe("test vlsingle Controller", func() {
 				},
 				Spec: vmv1.VLSingleSpec{
 					RetentionPeriod: "10",
-					CommonApplicationDeploymentParams: vmv1beta.CommonApplicationDeploymentParams{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 				},
@@ -219,7 +218,7 @@ var _ = Describe("test vlsingle Controller", func() {
 					baseVLSingle.DeepCopy(),
 					testStep{
 						modify: func(cr *vmv1.VLSingle) {
-							cr.Spec.ManagedMetadata = &vmv1beta.ManagedObjectsMetadata{
+							cr.Spec.ManagedMetadata = &vmv1beta1.ManagedObjectsMetadata{
 								Annotations: map[string]string{
 									"added-annotation": "some-value",
 								},

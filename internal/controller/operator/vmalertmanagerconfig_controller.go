@@ -28,10 +28,10 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/alertmanager"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmalertmanager"
 )
 
 var vmaConfigRateLimiter = limiter.NewRateLimiter("vmalertmanager", 5)
@@ -112,7 +112,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 				continue
 			}
 		}
-		if err := alertmanager.CreateOrUpdateConfig(ctx, r.Client, item, &instance); err != nil {
+		if err := vmalertmanager.CreateOrUpdateConfig(ctx, r.Client, item, &instance); err != nil {
 			continue
 		}
 	}

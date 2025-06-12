@@ -19,7 +19,7 @@ import (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test  vmsingle Controller", func() {
+var _ = Describe("test  vmsingle Controller", Label("vm", "single"), func() {
 
 	Context("e2e vmsingle", func() {
 		var ctx context.Context

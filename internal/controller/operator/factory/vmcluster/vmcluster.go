@@ -29,14 +29,14 @@ const (
 	vmauthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
 )
 
-// CreateOrUpdateVMCluster reconciled cluster object with order
+// CreateOrUpdate reconciled cluster object with order
 // first we check status of vmStorage and waiting for its readiness
 // then vmSelect and wait for it readiness as well
 // and last one is vmInsert
 // we manually handle statefulsets rolling updates
 // needed in update checked by revesion status
 // its controlled by k8s controller-manager
-func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
 	var prevCR *vmv1beta1.VMCluster
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()

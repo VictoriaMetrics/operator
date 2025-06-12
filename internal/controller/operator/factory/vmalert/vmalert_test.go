@@ -138,7 +138,7 @@ func Test_loadTLSAssetsForVMAlert(t *testing.T) {
 	}
 }
 
-func TestCreateOrUpdateVMAlert(t *testing.T) {
+func TestCreateOrUpdate(t *testing.T) {
 	type args struct {
 		cr      *vmv1beta1.VMAlert
 		c       *config.BaseOperatorConf
@@ -565,9 +565,9 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdateVMAlert(context.TODO(), tt.args.cr, fclient, tt.args.cmNames)
+			err := CreateOrUpdate(context.TODO(), tt.args.cr, fclient, tt.args.cmNames)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVMAlert() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
@@ -676,7 +676,7 @@ func TestBuildNotifiers(t *testing.T) {
 	}
 }
 
-func TestCreateOrUpdateVMAlertService(t *testing.T) {
+func TestCreateOrUpdateService(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		cr  *vmv1beta1.VMAlert
@@ -712,13 +712,13 @@ func TestCreateOrUpdateVMAlertService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := createOrUpdateVMAlertService(tt.args.ctx, cl, tt.args.cr, nil)
+			got, err := createOrUpdateService(tt.args.ctx, cl, tt.args.cr, nil)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVMAlertService() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("createOrUpdateService() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err := tt.want(got); err != nil {
-				t.Errorf("CreateOrUpdateVMAlertService() unexpected error: %v", err)
+				t.Errorf("createOrUpdateService() unexpected error: %v", err)
 			}
 		})
 	}

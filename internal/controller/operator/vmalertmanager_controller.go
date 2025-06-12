@@ -28,9 +28,9 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/alertmanager"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmalertmanager"
 )
 
 // VMAlertmanagerReconciler reconciles a VMAlertmanager object
@@ -90,11 +90,11 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	r.Client.Scheme().Default(instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := alertmanager.CreateOrUpdateConfig(ctx, r.Client, instance, nil); err != nil {
+		if err := vmalertmanager.CreateOrUpdateConfig(ctx, r.Client, instance, nil); err != nil {
 			return result, err
 		}
 
-		if err := alertmanager.CreateOrUpdateAlertManager(ctx, instance, r); err != nil {
+		if err := vmalertmanager.CreateOrUpdateAlertManager(ctx, instance, r); err != nil {
 			return result, err
 		}
 

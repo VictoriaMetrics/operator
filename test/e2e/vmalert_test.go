@@ -18,7 +18,7 @@ import (
 )
 
 //nolint:dupl
-var _ = Describe("test  vmalert Controller", func() {
+var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 	ctx := context.Background()
 
 	Context("e2e vmalert", func() {

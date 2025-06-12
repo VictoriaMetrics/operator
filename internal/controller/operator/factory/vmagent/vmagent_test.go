@@ -50,7 +50,7 @@ func TestShardNumIter(t *testing.T) {
 	f(false, 5)
 }
 
-func TestCreateOrUpdateVMAgent(t *testing.T) {
+func TestCreateOrUpdate(t *testing.T) {
 	type args struct {
 		cr              *vmv1beta1.VMAgent
 		mustAddPrevSpec bool
@@ -712,7 +712,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 			build.AddDefaults(fclient.Scheme())
 			fclient.Scheme().Default(tt.args.cr)
 			go func() {
-				err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient)
+				err := CreateOrUpdate(context.TODO(), tt.args.cr, fclient)
 				errC <- err
 			}()
 
@@ -765,13 +765,13 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 
 			err := <-errC
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if tt.statefulsetMode && tt.args.cr.Spec.ShardCount == nil {
 				var got appsv1.StatefulSet
 				if err := fclient.Get(context.Background(), types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
-					t.Fatalf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)
+					t.Fatalf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				if err := tt.validate(&got); err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -1562,7 +1562,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 	}
 }
 
-func TestCreateOrUpdateVMAgentService(t *testing.T) {
+func TestCreateOrUpdateService(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		cr  *vmv1beta1.VMAgent
@@ -1717,13 +1717,13 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := createOrUpdateVMAgentService(tt.args.ctx, cl, tt.args.cr, nil)
+			got, err := createOrUpdateService(tt.args.ctx, cl, tt.args.cr, nil)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVMAgentService() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdateService() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err := tt.want(got); err != nil {
-				t.Errorf("CreateOrUpdateVMAgentService() unexpected error: %v", err)
+				t.Errorf("CreateOrUpdateService() unexpected error: %v", err)
 			}
 			if tt.wantAdditionalService != nil {
 				var additionalSvc corev1.Service
@@ -1731,7 +1731,7 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 					t.Fatalf("unexpected error: %s", err)
 				}
 				if err := tt.wantAdditionalService(&additionalSvc); err != nil {
-					t.Fatalf("CreateOrUpdateVMAgentService validation failed for additional service: %s", err)
+					t.Fatalf("CreateOrUpdateService validation failed for additional service: %s", err)
 				}
 			}
 		})
@@ -2039,7 +2039,7 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			if err := createOrUpdateStreamAggrConfig(tt.args.ctx, cl, tt.args.cr, nil); (err != nil) != tt.wantErr {
-				t.Fatalf("CreateOrUpdateVMAgentStreamAggrConfig() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("CreateOrUpdateStreamAggrConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdCM corev1.ConfigMap
 			if err := cl.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.StreamAggrConfigName()}, &createdCM); err != nil {

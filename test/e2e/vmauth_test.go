@@ -20,7 +20,7 @@ import (
 )
 
 //nolint:dupl
-var _ = Describe("test vmauth Controller", func() {
+var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 	Context("e2e ", func() {
 		var ctx context.Context
 		namespace := "default"

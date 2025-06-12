@@ -45,8 +45,8 @@ func buildRemoteSecretKey(source, suffix string) string {
 	return fmt.Sprintf("%s_%s", strings.ToUpper(source), strings.ToUpper(suffix))
 }
 
-// createOrUpdateVMAlertService creates service for vmalert
-func createOrUpdateVMAlertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) (*corev1.Service, error) {
+// createOrUpdateService creates service for vmalert
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) (*corev1.Service, error) {
 
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
@@ -75,7 +75,7 @@ func createOrUpdateVMAlertService(ctx context.Context, rclient client.Client, cr
 	return newService, nil
 }
 
-func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ssCache map[string]*authSecret) error {
+func createOrUpdateSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ssCache map[string]*authSecret) error {
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -128,8 +128,8 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr,
 	return reconcile.Secret(ctx, rclient, s, prevSecretMeta)
 }
 
-// CreateOrUpdateVMAlert creates vmalert deployment for given CRD
-func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
+// CreateOrUpdate creates vmalert deployment for given CRD
+func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
 	var prevCR *vmv1beta1.VMAlert
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -156,11 +156,11 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient c
 		return err
 	}
 	// create secret for remoteSecrets
-	if err := createOrUpdateVMAlertSecret(ctx, rclient, cr, prevCR, remoteSecrets); err != nil {
+	if err := createOrUpdateSecret(ctx, rclient, cr, prevCR, remoteSecrets); err != nil {
 		return err
 	}
 
-	svc, err := createOrUpdateVMAlertService(ctx, rclient, cr, prevCR)
+	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}

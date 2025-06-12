@@ -104,8 +104,8 @@ func VMBackupManager(
 		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, cr.CredentialsSecret.Key))
 	}
 
-	_, mounts = license.MaybeAddToVolumes(nil, mounts, vmv1beta1.SecretsDir)
-	args = license.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	_, mounts = LicenseVolumeTo(nil, mounts, license, vmv1beta1.SecretsDir)
+	args = LicenseArgsTo(args, license, vmv1beta1.SecretsDir)
 
 	extraEnvs := cr.ExtraEnvs
 	if len(cr.ExtraEnvs) > 0 || len(cr.ExtraEnvsFrom) > 0 {

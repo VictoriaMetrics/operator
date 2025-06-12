@@ -764,47 +764,6 @@ func (l *License) IsProvided() bool {
 	return l.Key != nil || l.KeyRef != nil
 }
 
-// MaybeAddToArgs conditionally adds license commandline args into given args
-func (l *License) MaybeAddToArgs(args []string, secretMountDir string) []string {
-	if l == nil || !l.IsProvided() {
-		return args
-	}
-	if l.Key != nil {
-		args = append(args, fmt.Sprintf("-license=%s", *l.Key))
-	}
-	if l.KeyRef != nil {
-		args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(secretMountDir, l.KeyRef.Name, l.KeyRef.Key)))
-	}
-	if l.ForceOffline != nil {
-		args = append(args, fmt.Sprintf("-license.forceOffline=%v", *l.ForceOffline))
-	}
-	if l.ReloadInterval != nil {
-		args = append(args, fmt.Sprintf("-licenseFile.reloadInterval=%s", *l.ReloadInterval))
-	}
-	return args
-}
-
-// MaybeAddToVolumes conditionally mounts secret with license key into given volumes and mounts
-func (l *License) MaybeAddToVolumes(volumes []corev1.Volume, mounts []corev1.VolumeMount, secretMountDir string) ([]corev1.Volume, []corev1.VolumeMount) {
-	if l == nil || l.KeyRef == nil {
-		return volumes, mounts
-	}
-	volumes = append(volumes, corev1.Volume{
-		Name: "license",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: l.KeyRef.Name,
-			},
-		},
-	})
-	mounts = append(mounts, corev1.VolumeMount{
-		Name:      "license",
-		ReadOnly:  true,
-		MountPath: path.Join(secretMountDir, l.KeyRef.Name),
-	})
-	return volumes, mounts
-}
-
 func (l *License) validate() error {
 	if !l.IsProvided() {
 		return nil

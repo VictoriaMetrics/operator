@@ -679,8 +679,8 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 		configReloaderWatchMounts = append(configReloaderWatchMounts, cvm)
 	}
 
-	volumes, agentVolumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, agentVolumeMounts, vmv1beta1.SecretsDir)
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	volumes, agentVolumeMounts = build.LicenseVolumeTo(volumes, agentVolumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
+	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
 		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmv1beta1.RelabelingConfigDir, globalRelabelingName))

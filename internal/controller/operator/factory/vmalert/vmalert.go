@@ -283,7 +283,7 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 		},
 	)
 
-	volumes, volumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, volumeMounts, vmv1beta1.SecretsDir)
+	volumes, volumeMounts = build.LicenseVolumeTo(volumes, volumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	if cr.Spec.NotifierConfigRef != nil {
 		volumes = append(volumes, corev1.Volume{
@@ -548,7 +548,7 @@ func buildVMAlertArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remote
 		args = append(args, "-envflag.enable=true")
 	}
 
-	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
+	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)

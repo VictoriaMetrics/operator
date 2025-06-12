@@ -39,8 +39,8 @@ const (
 	internalPortName      = "internal"
 )
 
-// CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
-func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
+// CreateOrUpdate - handles VMAuth deployment reconciliation.
+func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
 
 	var prevCR *vmv1beta1.VMAuth
 	if cr.ParsedLastAppliedSpec != nil {
@@ -61,11 +61,11 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 			}
 		}
 	}
-	svc, err := createOrUpdateVMAuthService(ctx, rclient, cr, prevCR)
+	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return fmt.Errorf("cannot create or update vmauth service :%w", err)
 	}
-	if err := createOrUpdateVMAuthIngress(ctx, rclient, cr); err != nil {
+	if err := createOrUpdateIngress(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
@@ -77,7 +77,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 		}
 	}
 
-	if err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr, nil); err != nil {
+	if err := CreateOrUpdateConfig(ctx, rclient, cr, nil); err != nil {
 		return err
 	}
 
@@ -341,8 +341,8 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	return vmAuthSpec, nil
 }
 
-// CreateOrUpdateVMAuthConfig configuration secret for vmauth.
-func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth, childObject *vmv1beta1.VMUser) error {
+// CreateOrUpdateConfig configuration secret for vmauth.
+func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth, childObject *vmv1beta1.VMUser) error {
 	// fast path
 	if cr.Spec.SecretRef != nil || cr.Spec.LocalPath != "" {
 		return nil
@@ -425,8 +425,8 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {
 	}
 }
 
-// createOrUpdateVMAuthIngress handles ingress for vmauth.
-func createOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
+// createOrUpdateIngress handles ingress for vmauth.
+func createOrUpdateIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	if cr.Spec.Ingress == nil {
 		return nil
 	}
@@ -646,8 +646,8 @@ func setInternalSvcPort(cr *vmv1beta1.VMAuth) func(svc *corev1.Service) {
 	}
 }
 
-// createOrUpdateVMAuthService creates service for VMAuth
-func createOrUpdateVMAuthService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) (*corev1.Service, error) {
+// createOrUpdateService creates service for VMAuth
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) (*corev1.Service, error) {
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, setInternalSvcPort(prevCR))

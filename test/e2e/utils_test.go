@@ -121,8 +121,16 @@ fi
 		},
 	}
 	Expect(k8sClient.Create(ctx, job)).To(Succeed())
-	defer Expect(k8sClient.Delete(ctx, job, &client.DeleteOptions{PropagationPolicy: ptr.To(metav1.DeletePropagationForeground)})).To(Succeed())
 	nss := types.NamespacedName{Name: job.Name, Namespace: job.Namespace}
+	defer func() {
+		Expect(k8sClient.Delete(ctx, job, &client.DeleteOptions{
+			PropagationPolicy: ptr.To(metav1.DeletePropagationForeground),
+		})).To(Succeed())
+		Eventually(func() error {
+			var jb batchv1.Job
+			return k8sClient.Get(ctx, nss, &jb)
+		}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+	}()
 	Eventually(func() error {
 		var jb batchv1.Job
 		if err := k8sClient.Get(ctx, nss, &jb); err != nil {
@@ -148,12 +156,6 @@ fi
 		}
 		return fmt.Errorf("unexpected job status, want Succeeded pod > 0 , pod status: %s", firstStatus)
 	}, 60).Should(Succeed())
-	Expect(k8sClient.Delete(ctx, job, &client.DeleteOptions{PropagationPolicy: ptr.To(metav1.DeletePropagationForeground)})).To(Succeed())
-	Eventually(func() error {
-		var jb batchv1.Job
-		return k8sClient.Get(ctx, nss, &jb)
-	}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
-
 }
 
 //nolint:dupl,lll

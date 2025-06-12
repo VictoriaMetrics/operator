@@ -59,8 +59,8 @@ func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 	return pvcObject
 }
 
-// CreateOrUpdateVMSingle performs an update for single node resource
-func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
+// CreateOrUpdate performs an update for single node resource
+func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
 
 	var prevCR *vmv1beta1.VMSingle
 	if cr.ParsedLastAppliedSpec != nil {
@@ -70,7 +70,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient
 	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot delete objects from prev state: %w", err)
 	}
-	if err := createOrUpdateVMSingleStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
 	}
 	if cr.IsOwnsServiceAccount() {
@@ -88,7 +88,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient
 			return fmt.Errorf("cannot create storage: %w", err)
 		}
 	}
-	svc, err := createOrUpdateVMSingleService(ctx, rclient, cr, prevCR)
+	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}
@@ -350,7 +350,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 	return vmSingleSpec, nil
 }
 
-func createOrUpdateVMSingleService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) (*corev1.Service, error) {
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) (*corev1.Service, error) {
 
 	addExtraPorts := func(svc *corev1.Service, vmb *vmv1beta1.VMBackup) {
 		if cr.Spec.Port != "8428" {
@@ -444,8 +444,8 @@ func buildStreamAggrConfigMeta(cr *vmv1beta1.VMSingle) metav1.ObjectMeta {
 	}
 }
 
-// createOrUpdateVMSingleStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
-func createOrUpdateVMSingleStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
+// createOrUpdateStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
+func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}

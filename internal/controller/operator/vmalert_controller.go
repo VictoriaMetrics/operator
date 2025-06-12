@@ -97,7 +97,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		if err != nil {
 			return result, err
 		}
-		if err := vmalert.CreateOrUpdateVMAlert(ctx, instance, r, maps); err != nil {
+		if err := vmalert.CreateOrUpdate(ctx, instance, r, maps); err != nil {
 			return result, err
 		}
 

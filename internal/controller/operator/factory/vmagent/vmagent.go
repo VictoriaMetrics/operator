@@ -51,7 +51,7 @@ const (
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
 var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
 
-func createOrUpdateVMAgentService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
 
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
@@ -89,9 +89,9 @@ func createOrUpdateVMAgentService(ctx context.Context, rclient client.Client, cr
 	return newService, nil
 }
 
-// CreateOrUpdateVMAgent creates deployment for vmagent and configures it
+// CreateOrUpdate creates deployment for vmagent and configures it
 // waits for healthy state
-func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
 	var prevCR *vmv1beta1.VMAgent
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -115,7 +115,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		}
 	}
 
-	svc, err := createOrUpdateVMAgentService(ctx, rclient, cr, prevCR)
+	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
 	}

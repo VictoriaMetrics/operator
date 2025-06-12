@@ -32,7 +32,7 @@ receivers:
 )
 
 //nolint:dupl
-var _ = Describe("test  vmalertmanager Controller", func() {
+var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), func() {
 
 	Context("e2e vmalertmanager", func() {
 		ctx := context.Background()

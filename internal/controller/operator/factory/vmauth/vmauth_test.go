@@ -17,7 +17,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func TestCreateOrUpdateVMAuth(t *testing.T) {
+func TestCreateOrUpdate(t *testing.T) {
 	mutateConf := func(cb func(c *config.BaseOperatorConf)) *config.BaseOperatorConf {
 		c := config.MustGetBaseConfig()
 		cb(c)
@@ -159,8 +159,8 @@ func TestCreateOrUpdateVMAuth(t *testing.T) {
 			ctx := context.Background()
 			tc := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			// TODO fix
-			if err := CreateOrUpdateVMAuth(ctx, tt.args.cr, tc); (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVMAuth() error = %v, wantErr %v", err, tt.wantErr)
+			if err := CreateOrUpdate(ctx, tt.args.cr, tc); (err != nil) != tt.wantErr {
+				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

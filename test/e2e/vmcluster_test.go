@@ -20,7 +20,7 @@ import (
 )
 
 //nolint:dupl,lll
-var _ = Describe("e2e vmcluster", func() {
+var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 	namespace := "default"
 	var ctx context.Context
 	namespacedName := types.NamespacedName{

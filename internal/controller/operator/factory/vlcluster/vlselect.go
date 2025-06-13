@@ -71,7 +71,7 @@ func createOrUpdateVLSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       cr.GetVLSelectName(),
-		Kind:       "StatefulSet",
+		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	}
 	b := newOptsBuilder(cr, cr.GetVLSelectName(), cr.VLSelectSelectorLabels())

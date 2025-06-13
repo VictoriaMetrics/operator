@@ -200,7 +200,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 
 	statics, err := selectStaticScrapes(ctx, cr, rclient)
 	if err != nil {
-		return nil, fmt.Errorf("selecting PodScrapes failed: %w", err)
+		return nil, fmt.Errorf("selecting VMStaticScrapes failed: %w", err)
 	}
 
 	scrapeConfigs, err := selectScrapeConfig(ctx, cr, rclient)

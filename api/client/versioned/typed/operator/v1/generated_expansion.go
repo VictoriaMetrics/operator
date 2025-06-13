@@ -20,3 +20,5 @@ package v1
 type VLClusterExpansion interface{}
 
 type VLSingleExpansion interface{}
+
+type VMAnomalyExpansion interface{}

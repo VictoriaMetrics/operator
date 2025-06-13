@@ -2,9 +2,10 @@
 | --- |
 | VM_METRICS_VERSION: `v1.119.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
 | VM_LOGS_VERSION: `v1.23.3` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
+| VM_ANOMALY_VERSION: `v1.23.2` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a> |
 | VM_USECUSTOMCONFIGRELOADER: `false` <a href="#variables-vm-usecustomconfigreloader" id="variables-vm-usecustomconfigreloader">#</a><br>enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |
-| VM_CUSTOMCONFIGRELOADERIMAGE: `victoriametrics/operator:config-reloader-v0.57.0` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a> |
+| VM_CUSTOMCONFIGRELOADERIMAGE: `victoriametrics/operator:config-reloader-v0.59.1` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a> |
 | VM_PSPAUTOCREATEENABLED: `false` <a href="#variables-vm-pspautocreateenabled" id="variables-vm-pspautocreateenabled">#</a> |
 | VM_CONFIG_RELOADER_LIMIT_CPU: `unlimited` <a href="#variables-vm-config-reloader-limit-cpu" id="variables-vm-config-reloader-limit-cpu">#</a><br>defines global resource.limits.cpu for all config-reloader containers |
 | VM_CONFIG_RELOADER_LIMIT_MEMORY: `unlimited` <a href="#variables-vm-config-reloader-limit-memory" id="variables-vm-config-reloader-limit-memory">#</a><br>defines global resource.limits.memory for all config-reloader containers |
@@ -49,6 +50,17 @@
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmagentdefault-resource-request-cpu" id="variables-vm-vmagentdefault-resource-request-cpu">#</a> |
 | VM_VMAGENTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmagentdefault-configreloadercpu" id="variables-vm-vmagentdefault-configreloadercpu">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
 | VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmagentdefault-configreloadermemory" id="variables-vm-vmagentdefault-configreloadermemory">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
+| VM_VMANOMALYDEFAULT_IMAGE: `victoriametrics/vmanomaly` <a href="#variables-vm-vmanomalydefault-image" id="variables-vm-vmanomalydefault-image">#</a> |
+| VM_VMANOMALYDEFAULT_VERSION: `${VM_ANOMALY_VERSION}` <a href="#variables-vm-vmanomalydefault-version" id="variables-vm-vmanomalydefault-version">#</a> |
+| VM_VMANOMALYDEFAULT_CONFIGRELOADIMAGE: `quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1` <a href="#variables-vm-vmanomalydefault-configreloadimage" id="variables-vm-vmanomalydefault-configreloadimage">#</a> |
+| VM_VMANOMALYDEFAULT_PORT: `8490` <a href="#variables-vm-vmanomalydefault-port" id="variables-vm-vmanomalydefault-port">#</a> |
+| VM_VMANOMALYDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmanomalydefault-usedefaultresources" id="variables-vm-vmanomalydefault-usedefaultresources">#</a> |
+| VM_VMANOMALYDEFAULT_RESOURCE_LIMIT_MEM: `500Mi` <a href="#variables-vm-vmanomalydefault-resource-limit-mem" id="variables-vm-vmanomalydefault-resource-limit-mem">#</a> |
+| VM_VMANOMALYDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmanomalydefault-resource-limit-cpu" id="variables-vm-vmanomalydefault-resource-limit-cpu">#</a> |
+| VM_VMANOMALYDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmanomalydefault-resource-request-mem" id="variables-vm-vmanomalydefault-resource-request-mem">#</a> |
+| VM_VMANOMALYDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmanomalydefault-resource-request-cpu" id="variables-vm-vmanomalydefault-resource-request-cpu">#</a> |
+| VM_VMANOMALYDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmanomalydefault-configreloadercpu" id="variables-vm-vmanomalydefault-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMANOMALYDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmanomalydefault-configreloadermemory" id="variables-vm-vmanomalydefault-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMSINGLEDEFAULT_IMAGE: `victoriametrics/victoria-metrics` <a href="#variables-vm-vmsingledefault-image" id="variables-vm-vmsingledefault-image">#</a> |
 | VM_VMSINGLEDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmsingledefault-version" id="variables-vm-vmsingledefault-version">#</a> |
 | VM_VMSINGLEDEFAULT_PORT: `8429` <a href="#variables-vm-vmsingledefault-port" id="variables-vm-vmsingledefault-port">#</a> |

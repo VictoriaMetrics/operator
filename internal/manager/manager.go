@@ -355,6 +355,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 	return f([]func(ctrl.Manager) error{
 		webhookv1beta1.SetupVMAgentWebhookWithManager,
 		webhookv1beta1.SetupVMAlertWebhookWithManager,
+		webhookv1.SetupVMAnomalyWebhookWithManager,
 		webhookv1beta1.SetupVMSingleWebhookWithManager,
 		webhookv1beta1.SetupVMClusterWebhookWithManager,
 		webhookv1beta1.SetupVLogsWebhookWithManager,
@@ -444,6 +445,7 @@ type crdController interface {
 var controllersByName = map[string]crdController{
 	"VMCluster":            &vmcontroller.VMClusterReconciler{},
 	"VMAgent":              &vmcontroller.VMAgentReconciler{},
+	"VMAnomaly":            &vmcontroller.VMAnomalyReconciler{},
 	"VMAuth":               &vmcontroller.VMAuthReconciler{},
 	"VMSingle":             &vmcontroller.VMSingleReconciler{},
 	"VLogs":                &vmcontroller.VLogsReconciler{},

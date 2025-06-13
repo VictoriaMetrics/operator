@@ -45,6 +45,11 @@ func LicenseArgsTo(args []string, l *vmv1beta1.License, secretMountDir string) [
 	return licenseArgsTo(args, l, secretMountDir, "-")
 }
 
+// LicenseDoubleDashArgsTo conditionally adds double-dash license commandline args into given args
+func LicenseDoubleDashArgsTo(args []string, l *vmv1beta1.License, secretMountDir string) []string {
+	return licenseArgsTo(args, l, secretMountDir, "--")
+}
+
 func licenseArgsTo(args []string, l *vmv1beta1.License, secretMountDir string, dashes string) []string {
 	if l == nil || !l.IsProvided() {
 		return args

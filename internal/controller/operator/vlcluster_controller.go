@@ -55,8 +55,8 @@ func (r *VLClusterReconciler) Init(rclient client.Client, l logr.Logger, sc *run
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlclusters/finalizers,verbs=update
 func (r *VLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vlcluster", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vlcluster", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1.VLCluster{}
 
 	defer func() {

@@ -11,7 +11,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func Test_generateStaticScrapeConfig(t *testing.T) {
@@ -116,7 +116,7 @@ relabel_configs:
 			name: "complete cfg with overrides",
 			args: args{
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*build.BasicAuthCreds{
 						"staticScrapeProxy/default/static-1/0": {
 							Password: "proxy-password",
 							Username: "proxy-user",
@@ -127,7 +127,7 @@ relabel_configs:
 						},
 					},
 					bearerTokens: map[string]string{},
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{
+					oauth2Secrets: map[string]*build.OAuth2Creds{
 						"staticScrape/default/static-1/0": {
 							ClientID:     "some-id",
 							ClientSecret: "some-secret",

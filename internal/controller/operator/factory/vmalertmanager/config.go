@@ -15,7 +15,6 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 type parsedConfig struct {
@@ -1514,7 +1513,7 @@ func (cb *configBuilder) buildOpsGenie(og vmv1beta1.OpsGenieConfig) error {
 
 func (cb *configBuilder) fetchSecretValue(selector *corev1.SecretKeySelector) (string, error) {
 	tcb := cb.TLSConfigBuilder
-	return k8stools.GetCredFromSecret(tcb.Ctx, tcb.Client, tcb.CurrentCRNamespace, selector, selector.Name, tcb.SecretCache)
+	return build.GetCredFromSecret(tcb.Ctx, tcb.Client, tcb.CurrentCRNamespace, selector, selector.Name, tcb.SecretCache)
 }
 
 func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.MapSlice, error) {

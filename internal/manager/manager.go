@@ -308,7 +308,7 @@ func RunManager(ctx context.Context) error {
 		return fmt.Errorf("cannot create k8s-go-client instance: %w", err)
 	}
 
-	k8stools.SetSpaceTrim(*disableSecretKeySpaceTrim)
+	build.SetSpaceTrim(*disableSecretKeySpaceTrim)
 	k8sServerVersion, err := baseClient.ServerVersion()
 	if err != nil {
 		return fmt.Errorf("cannot get kubernetes server version: %w", err)
@@ -355,6 +355,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 	return f([]func(ctrl.Manager) error{
 		webhookv1beta1.SetupVMAgentWebhookWithManager,
 		webhookv1beta1.SetupVMAlertWebhookWithManager,
+		webhookv1.SetupVMAnomalyWebhookWithManager,
 		webhookv1beta1.SetupVMSingleWebhookWithManager,
 		webhookv1beta1.SetupVMClusterWebhookWithManager,
 		webhookv1beta1.SetupVLogsWebhookWithManager,
@@ -444,6 +445,7 @@ type crdController interface {
 var controllersByName = map[string]crdController{
 	"VMCluster":            &vmcontroller.VMClusterReconciler{},
 	"VMAgent":              &vmcontroller.VMAgentReconciler{},
+	"VMAnomaly":            &vmcontroller.VMAnomalyReconciler{},
 	"VMAuth":               &vmcontroller.VMAuthReconciler{},
 	"VMSingle":             &vmcontroller.VMSingleReconciler{},
 	"VLogs":                &vmcontroller.VLogsReconciler{},

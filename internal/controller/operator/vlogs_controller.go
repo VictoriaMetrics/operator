@@ -63,8 +63,8 @@ func (r *VLogsReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=*
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=*
 func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vlogs", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vlogs", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1beta1.VLogs{}
 
 	defer func() {

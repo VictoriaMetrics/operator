@@ -20,6 +20,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -67,18 +68,18 @@ func Test_loadVMAlertRemoteSecrets(t *testing.T) {
 				},
 			},
 			want: map[string]*authSecret{
-				"remoteWrite": {BasicAuthCredentials: &k8stools.BasicAuthCredentials{Password: "pass", Username: "user"}},
+				"remoteWrite": {BasicAuthCreds: &build.BasicAuthCreds{Password: "pass", Username: "user"}},
 				"datasource":  {},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var predefinedObjets []runtime.Object
+			var predefinedObjects []runtime.Object
 			for i := range tt.args.SecretsInNS.Items {
-				predefinedObjets = append(predefinedObjets, &tt.args.SecretsInNS.Items[i])
+				predefinedObjects = append(predefinedObjects, &tt.args.SecretsInNS.Items[i])
 			}
-			testClient := k8stools.GetTestClientWithObjects(predefinedObjets)
+			testClient := k8stools.GetTestClientWithObjects(predefinedObjects)
 			got, err := loadVMAlertRemoteSecrets(context.TODO(), testClient, tt.args.cr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadVMAlertRemoteSecrets() error = %v, wantErr %v", err, tt.wantErr)
@@ -662,7 +663,7 @@ func TestBuildNotifiers(t *testing.T) {
 						},
 					},
 				},
-				ntBasicAuth: map[string]*authSecret{"notifier-0": {OAuthCreds: &k8stools.OAuthCreds{ClientSecret: "some-secret", ClientID: "some-id"}}, "notifier-1": {bearerValue: "some-v"}},
+				ntBasicAuth: map[string]*authSecret{"notifier-0": {OAuth2Creds: &build.OAuth2Creds{ClientSecret: "some-secret", ClientID: "some-id"}}, "notifier-1": {bearerValue: "some-v"}},
 			},
 			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerTokenFile=,/etc/vmalert/remote_secrets/NOTIFIER-1_BEARERTOKEN", "-notifier.oauth2.clientSecretFile=/etc/vmalert/remote_secrets/NOTIFIER-0_OAUTH2SECRETKEY,", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.tokenUrl=http://some-url,"},
 		},

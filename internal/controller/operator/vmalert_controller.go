@@ -62,8 +62,8 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
 func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, resultErr error) {
-	reqLogger := r.Log.WithValues("vmalert", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vmalert", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1beta1.VMAlert{}
 
 	defer func() {

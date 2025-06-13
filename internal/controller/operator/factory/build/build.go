@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 	"path"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,6 +46,11 @@ func LicenseArgsTo(args []string, l *vmv1beta1.License, secretMountDir string) [
 	return licenseArgsTo(args, l, secretMountDir, "-")
 }
 
+// LicenseDoubleDashArgsTo conditionally adds double-dash license commandline args into given args
+func LicenseDoubleDashArgsTo(args []string, l *vmv1beta1.License, secretMountDir string) []string {
+	return licenseArgsTo(args, l, secretMountDir, "--")
+}
+
 func licenseArgsTo(args []string, l *vmv1beta1.License, secretMountDir string, dashes string) []string {
 	if l == nil || !l.IsProvided() {
 		return args
@@ -83,4 +89,35 @@ func LicenseVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, l *vm
 		MountPath: path.Join(secretMountDir, l.KeyRef.Name),
 	})
 	return volumes, mounts
+}
+
+type ResourceKind string
+
+const (
+	TLSResourceKind     ResourceKind = "tls"
+	ConfigResourceKind  ResourceKind = "config"
+	DefaultResourceKind ResourceKind = "default"
+)
+
+func ResourceName(kind ResourceKind, cr builderOpts) string {
+	var parts []string
+	switch kind {
+	case TLSResourceKind:
+		parts = append(parts, "tls-asset")
+	case ConfigResourceKind:
+		parts = append(parts, "config-asset")
+	}
+	parts = append(parts, cr.PrefixedName())
+	return strings.Join(parts, "-")
+}
+
+func ResourceMeta(kind ResourceKind, cr builderOpts) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:            ResourceName(kind, cr),
+		Namespace:       cr.GetNamespace(),
+		Labels:          cr.AllLabels(),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: cr.AsOwner(),
+		Finalizers:      []string{vmv1beta1.FinalizerName},
+	}
 }

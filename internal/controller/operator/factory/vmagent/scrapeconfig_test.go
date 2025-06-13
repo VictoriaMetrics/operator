@@ -11,7 +11,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func TestGenerateScrapeConfig(t *testing.T) {
@@ -60,7 +60,7 @@ func TestGenerateScrapeConfig(t *testing.T) {
 					},
 				},
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*build.BasicAuthCreds{
 						"scrapeConfig/default/static-1//0": {
 							Password: "dangerous",
 							Username: "admin",
@@ -116,7 +116,7 @@ static_configs:
 					},
 				},
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*build.BasicAuthCreds{
 						"scrapeConfig/default/file-1//0": {
 							Username: "user",
 						},
@@ -173,7 +173,7 @@ file_sd_configs:
 					},
 				},
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*build.BasicAuthCreds{
 						"scrapeConfig/default/file-1//0": {
 							Username: "user",
 						},
@@ -347,7 +347,7 @@ kubernetes_sd_configs:
 					},
 				},
 				ssCache: &scrapesSecretsCache{
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{
+					oauth2Secrets: map[string]*build.OAuth2Creds{
 						"scrapeConfig/default/mixconfigs-1/digitaloceansd/0": {ClientSecret: "some-secret", ClientID: "some-id"},
 					},
 				},

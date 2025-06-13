@@ -39,7 +39,7 @@ func OnVMAlertManagerDelete(ctx context.Context, rclient client.Client, crd *vmv
 
 	// check PDB
 	if crd.Spec.PodDisruptionBudget != nil {
-		if err := finalizePBD(ctx, rclient, crd); err != nil {
+		if err := finalizePDB(ctx, rclient, crd); err != nil {
 			return err
 		}
 	}

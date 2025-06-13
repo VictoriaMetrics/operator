@@ -11,7 +11,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func Test_generateNodeScrapeConfig(t *testing.T) {
@@ -73,9 +73,9 @@ relabel_configs:
 			args: args{
 				apiserverConfig: nil,
 				ssCache: &scrapesSecretsCache{
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{},
+					oauth2Secrets: map[string]*build.OAuth2Creds{},
 					bearerTokens:  map[string]string{},
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*build.BasicAuthCreds{
 						"nodeScrape/default/nodes-basic": {
 							Username: "username",
 						},

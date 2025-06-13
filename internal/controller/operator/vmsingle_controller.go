@@ -63,8 +63,8 @@ func (r *VMSingleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=*
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmsingles/status,verbs=get;update;patch
 func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vmsingle", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vmsingle", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1beta1.VMSingle{}
 
 	defer func() {

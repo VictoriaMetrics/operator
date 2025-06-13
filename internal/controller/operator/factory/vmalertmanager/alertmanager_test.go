@@ -27,11 +27,11 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 		cr  *vmv1beta1.VMAlertmanager
 	}
 	tests := []struct {
-		name             string
-		args             args
-		validate         func(set *appsv1.StatefulSet) error
-		wantErr          bool
-		predefinedObjets []runtime.Object
+		name              string
+		args              args
+		validate          func(set *appsv1.StatefulSet) error
+		wantErr           bool
+		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "simple alertmanager",
@@ -127,7 +127,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 		},
 		{
 			name: "alertmanager with templates",
-			predefinedObjets: []runtime.Object{
+			predefinedObjects: []runtime.Object{
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-am",
@@ -207,7 +207,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjets)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			build.AddDefaults(fclient.Scheme())
 			fclient.Scheme().Default(tt.args.cr)
 			ctx, cancel := context.WithTimeout(tt.args.ctx, time.Second*20)

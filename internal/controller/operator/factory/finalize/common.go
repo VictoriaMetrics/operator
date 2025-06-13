@@ -183,7 +183,7 @@ func deleteSA(ctx context.Context, rclient client.Client, crd crdObject) error {
 	return SafeDelete(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: crd.GetNamespace(), Name: crd.GetServiceAccountName()}})
 }
 
-func finalizePBD(ctx context.Context, rclient client.Client, crd crdObject) error {
+func finalizePDB(ctx context.Context, rclient client.Client, crd crdObject) error {
 	return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, crd.PrefixedName(), crd.GetNamespace())
 }
 

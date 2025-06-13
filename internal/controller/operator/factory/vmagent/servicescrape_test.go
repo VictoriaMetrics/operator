@@ -12,7 +12,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func Test_generateServiceScrapeConfig(t *testing.T) {
@@ -772,7 +772,7 @@ bearer_token_file: /var/run/token
 				i:               0,
 				apiserverConfig: nil,
 				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
+					baSecrets: map[string]*build.BasicAuthCreds{
 						"serviceScrape/default/test-scrape/0": {
 							Username: "user",
 							Password: "pass",
@@ -780,7 +780,7 @@ bearer_token_file: /var/run/token
 					},
 					tlsAssets:    map[string]string{},
 					bearerTokens: map[string]string{},
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{
+					oauth2Secrets: map[string]*build.OAuth2Creds{
 						"serviceScrape/default/test-scrape/0": {ClientSecret: "some-secret", ClientID: "some-id"},
 					},
 				},

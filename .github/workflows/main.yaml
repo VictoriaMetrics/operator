@@ -78,6 +78,7 @@ jobs:
           GO111MODULE: on
           DOCKER_BUILD_ARGS: --cache-from=type=gha --cache-to=type=gha,mode=max
           TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
+          LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
         run: |
           make lint
           make manifests

@@ -1032,7 +1032,7 @@ func addAssetsToCache(
 		cacheKey := objectNS + "/" + src.PrefixedName()
 		switch {
 		case src.Secret != nil:
-			asset, err = k8stools.GetCredFromSecret(
+			asset, err = build.GetCredFromSecret(
 				ctx,
 				rclient,
 				objectNS,
@@ -1048,7 +1048,7 @@ func addAssetsToCache(
 			}
 
 		case src.ConfigMap != nil:
-			asset, err = k8stools.GetCredFromConfigMap(
+			asset, err = build.GetCredFromConfigMap(
 				ctx,
 				rclient,
 				objectNS,
@@ -1078,7 +1078,7 @@ func addAssetsToCache(
 	}
 
 	if tlsConfig.KeySecret != nil {
-		asset, err := k8stools.GetCredFromSecret(
+		asset, err := build.GetCredFromSecret(
 			ctx,
 			rclient,
 			objectNS,

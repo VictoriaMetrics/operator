@@ -1,4 +1,4 @@
-package k8stools
+package build
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_getCredFromSecret(t *testing.T) {
@@ -100,7 +102,7 @@ func Test_getCredFromSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fclient := GetTestClientWithObjects(tt.predefinedObjects)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
 			got, err := GetCredFromSecret(context.TODO(), fclient, tt.args.ns, &tt.args.sel, tt.args.cacheKey, tt.args.cache)
 			if (err != nil) != tt.wantErr {
@@ -147,7 +149,7 @@ func Test_getCredFromConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fclient := GetTestClientWithObjects(tt.predefinedObjects)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
 			got, err := GetCredFromConfigMap(context.TODO(), fclient, tt.args.ns, tt.args.sel, tt.args.cacheKey, tt.args.cache)
 			if (err != nil) != tt.wantErr {

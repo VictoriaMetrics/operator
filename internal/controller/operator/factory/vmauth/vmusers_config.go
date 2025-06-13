@@ -193,7 +193,7 @@ func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, 
 	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
 		switch {
 		case user.Spec.PasswordRef != nil:
-			v, err := k8stools.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.PasswordRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.PasswordRef.Name), dst)
+			v, err := build.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.PasswordRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.PasswordRef.Name), dst)
 			if err != nil {
 				if !errors.IsNotFound(err) {
 					resultErr = fmt.Errorf("cannot get cred from secret=%w", err)
@@ -205,7 +205,7 @@ func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, 
 			}
 			user.Spec.Password = ptr.To(v)
 		case user.Spec.TokenRef != nil:
-			v, err := k8stools.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.TokenRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.TokenRef.Name), dst)
+			v, err := build.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.TokenRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.TokenRef.Name), dst)
 			if err != nil {
 				user.Status.CurrentSyncError = fmt.Sprintf("cannot get cred from secret for tokenRef: %q", err)
 				return false
@@ -253,7 +253,7 @@ func injectBackendAuthHeader(ctx context.Context, rclient client.Client, user *v
 	for j := range user.Spec.TargetRefs {
 		ref := &user.Spec.TargetRefs[j]
 		if ref.TargetRefBasicAuth != nil {
-			bac, err := k8stools.LoadBasicAuthSecret(ctx, rclient,
+			bac, err := build.LoadBasicAuthSecret(ctx, rclient,
 				user.Namespace,
 				&vmv1beta1.BasicAuth{
 					Username: ref.TargetRefBasicAuth.Username,

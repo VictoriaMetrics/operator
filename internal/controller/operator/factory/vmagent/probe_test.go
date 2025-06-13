@@ -11,7 +11,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func Test_generateProbeConfig(t *testing.T) {
@@ -156,8 +156,8 @@ relabel_configs:
 			args: args{
 				ssCache: &scrapesSecretsCache{
 					bearerTokens:  map[string]string{},
-					baSecrets:     map[string]*k8stools.BasicAuthCredentials{},
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{},
+					baSecrets:     map[string]*build.BasicAuthCreds{},
+					oauth2Secrets: map[string]*build.OAuth2Creds{},
 				},
 				cr: &vmv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{

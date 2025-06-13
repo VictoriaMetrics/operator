@@ -29,6 +29,7 @@ type OperatorV1Interface interface {
 	RESTClient() rest.Interface
 	VLClustersGetter
 	VLSinglesGetter
+	VMAnomaliesGetter
 }
 
 // OperatorV1Client is used to interact with features provided by the operator group.
@@ -42,6 +43,10 @@ func (c *OperatorV1Client) VLClusters(namespace string) VLClusterInterface {
 
 func (c *OperatorV1Client) VLSingles(namespace string) VLSingleInterface {
 	return newVLSingles(c, namespace)
+}
+
+func (c *OperatorV1Client) VMAnomalies(namespace string) VMAnomalyInterface {
+	return newVMAnomalies(c, namespace)
 }
 
 // NewForConfig creates a new OperatorV1Client for the given config.

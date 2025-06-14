@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,108 +22,19 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func Test_addTLStoYaml(t *testing.T) {
-	type args struct {
-		cfg       yaml.MapSlice
-		namespace string
-		tls       *vmv1beta1.TLSConfig
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "check ca only added to config",
-			args: args{
-				namespace: "default",
-				cfg:       yaml.MapSlice{},
-				tls: &vmv1beta1.TLSConfig{
-					CA: vmv1beta1.SecretOrConfigMap{
-						Secret: &corev1.SecretKeySelector{
-							Key: "ca",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "tls-secret",
-							},
-						},
-					},
-					Cert: vmv1beta1.SecretOrConfigMap{},
-				},
-			},
-			want: `tls_config:
-  insecure_skip_verify: false
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-`,
-		},
-		{
-			name: "check ca,cert and key added to config",
-			args: args{
-				namespace: "default",
-				cfg:       yaml.MapSlice{},
-				tls: &vmv1beta1.TLSConfig{
-					CA: vmv1beta1.SecretOrConfigMap{
-						Secret: &corev1.SecretKeySelector{
-							Key: "ca",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "tls-secret",
-							},
-						},
-					},
-					Cert: vmv1beta1.SecretOrConfigMap{
-						Secret: &corev1.SecretKeySelector{
-							Key: "cert",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "tls-secret",
-							},
-						},
-					},
-					KeySecret: &corev1.SecretKeySelector{
-						Key: "key",
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "tls-secret",
-						},
-					},
-				},
-			},
-			want: `tls_config:
-  insecure_skip_verify: false
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-  cert_file: /etc/vmagent-tls/certs/default_tls-secret_cert
-  key_file: /etc/vmagent-tls/certs/default_tls-secret_key
-`,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := addTLStoYaml(tt.args.cfg, tt.args.namespace, tt.args.tls, false)
-			gotBytes, err := yaml.Marshal(got)
-			if err != nil {
-				t.Errorf("cannot marshal tlsConfig to yaml format: %e", err)
-				return
-			}
-			if !reflect.DeepEqual(string(gotBytes), tt.want) {
-				t.Errorf("addTLStoYaml() \ngot: \n%v \nwant \n%v", string(gotBytes), tt.want)
-			}
-		})
-	}
-}
-
 func Test_generateRelabelConfig(t *testing.T) {
-	type args struct {
-		rc *vmv1beta1.RelabelConfig
-	}
 	tests := []struct {
 		name string
-		args args
+		rc   *vmv1beta1.RelabelConfig
 		want string
 	}{
 		{
 			name: "ok base cfg",
-			args: args{rc: &vmv1beta1.RelabelConfig{
+			rc: &vmv1beta1.RelabelConfig{
 				TargetLabel:  "address",
 				SourceLabels: []string{"__address__"},
 				Action:       "replace",
-			}},
+			},
 			want: `source_labels:
 - __address__
 target_label: address
@@ -133,11 +43,11 @@ action: replace
 		},
 		{
 			name: "ok base with underscore",
-			args: args{rc: &vmv1beta1.RelabelConfig{
+			rc: &vmv1beta1.RelabelConfig{
 				UnderScoreTargetLabel:  "address",
 				UnderScoreSourceLabels: []string{"__address__"},
 				Action:                 "replace",
-			}},
+			},
 			want: `source_labels:
 - __address__
 target_label: address
@@ -146,13 +56,13 @@ action: replace
 		},
 		{
 			name: "ok base with graphite match labels",
-			args: args{rc: &vmv1beta1.RelabelConfig{
+			rc: &vmv1beta1.RelabelConfig{
 				UnderScoreTargetLabel:  "address",
 				UnderScoreSourceLabels: []string{"__address__"},
 				Action:                 "graphite",
 				Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
 				Match:                  `foo.*.*.bar`,
-			}},
+			},
 			want: `source_labels:
 - __address__
 target_label: address
@@ -165,7 +75,7 @@ labels:
 		},
 		{
 			name: "with empty replacement and separator",
-			args: args{rc: &vmv1beta1.RelabelConfig{
+			rc: &vmv1beta1.RelabelConfig{
 				UnderScoreTargetLabel:  "address",
 				UnderScoreSourceLabels: []string{"__address__"},
 				Action:                 "graphite",
@@ -173,7 +83,7 @@ labels:
 				Match:                  `foo.*.*.bar`,
 				Separator:              ptr.To(""),
 				Replacement:            ptr.To(""),
-			}},
+			},
 			want: `source_labels:
 - __address__
 separator: ""
@@ -190,7 +100,7 @@ labels:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// related fields only filled during json unmarshal
-			j, err := json.Marshal(tt.args.rc)
+			j, err := json.Marshal(tt.rc)
 			if err != nil {
 				t.Fatalf("cannto serialize relabelConfig : %s", err)
 			}
@@ -210,40 +120,35 @@ labels:
 }
 
 func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VMAgent
-		c  *config.BaseOperatorConf
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAgent
+		c                 *config.BaseOperatorConf
 		predefinedObjects []runtime.Object
 		wantConfig        string
 		wantErr           bool
 	}{
 		{
 			name: "complete test",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-						ServiceScrapeSelector:          &metav1.LabelSelector{},
-						PodScrapeSelector:              &metav1.LabelSelector{},
-						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-						NodeScrapeSelector:             &metav1.LabelSelector{},
-						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-						StaticScrapeSelector:           &metav1.LabelSelector{},
-						ProbeNamespaceSelector:         &metav1.LabelSelector{},
-						ProbeSelector:                  &metav1.LabelSelector{},
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
 				},
-				c: config.MustGetBaseConfig(),
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+					ServiceScrapeSelector:          &metav1.LabelSelector{},
+					PodScrapeSelector:              &metav1.LabelSelector{},
+					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+					NodeScrapeSelector:             &metav1.LabelSelector{},
+					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+					StaticScrapeSelector:           &metav1.LabelSelector{},
+					ProbeNamespaceSelector:         &metav1.LabelSelector{},
+					ProbeSelector:                  &metav1.LabelSelector{},
+				},
 			},
+			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -708,28 +613,25 @@ scrape_configs:
 		},
 		{
 			name: "with missing secret references",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-						ServiceScrapeSelector:          &metav1.LabelSelector{},
-						PodScrapeSelector:              &metav1.LabelSelector{},
-						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-						NodeScrapeSelector:             &metav1.LabelSelector{},
-						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-						StaticScrapeSelector:           &metav1.LabelSelector{},
-						ProbeNamespaceSelector:         &metav1.LabelSelector{},
-						ProbeSelector:                  &metav1.LabelSelector{},
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
 				},
-				c: config.MustGetBaseConfig(),
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+					ServiceScrapeSelector:          &metav1.LabelSelector{},
+					PodScrapeSelector:              &metav1.LabelSelector{},
+					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+					NodeScrapeSelector:             &metav1.LabelSelector{},
+					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+					StaticScrapeSelector:           &metav1.LabelSelector{},
+					ProbeNamespaceSelector:         &metav1.LabelSelector{},
+					ProbeSelector:                  &metav1.LabelSelector{},
+				},
 			},
-
+			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -748,13 +650,13 @@ scrape_configs:
 								Username: corev1.SecretKeySelector{
 									Key: "username",
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "access-creds",
+										Name: "access-credentials",
 									},
 								},
 								Password: corev1.SecretKeySelector{
 									Key: "password",
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "access-creds",
+										Name: "access-credentials",
 									},
 								},
 							},
@@ -780,7 +682,7 @@ scrape_configs:
 							BearerTokenSecret: &corev1.SecretKeySelector{
 								Key: "username",
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-creds",
+									Name: "access-credentials",
 								},
 							},
 						},
@@ -815,7 +717,7 @@ scrape_configs:
 											BearerToken: &corev1.SecretKeySelector{
 												Key: "username",
 												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "access-creds",
+													Name: "access-credentials",
 												},
 											},
 										},
@@ -832,13 +734,13 @@ scrape_configs:
 										Username: corev1.SecretKeySelector{
 											Key: "username",
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "access-creds",
+												Name: "access-credentials",
 											},
 										},
 										Password: corev1.SecretKeySelector{
 											Key: "password",
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "access-creds",
+												Name: "access-credentials",
 											},
 										},
 									},
@@ -899,14 +801,14 @@ scrape_configs:
 										ClientSecret: &corev1.SecretKeySelector{
 											Key: "cs",
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "access-creds",
+												Name: "access-credentials",
 											},
 										},
 										ClientID: vmv1beta1.SecretOrConfigMap{
 											Secret: &corev1.SecretKeySelector{
 												Key: "cid",
 												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "access-creds",
+													Name: "access-credentials",
 												},
 											},
 										},
@@ -935,7 +837,7 @@ scrape_configs:
 											Secret: &corev1.SecretKeySelector{
 												Key: "cert",
 												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-creds",
+													Name: "tls-credentials",
 												},
 											},
 										},
@@ -1004,31 +906,29 @@ scrape_configs:
 		},
 		{
 			name: "with changed default config value",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-						ServiceScrapeSelector:          &metav1.LabelSelector{},
-						PodScrapeSelector:              &metav1.LabelSelector{},
-						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-						NodeScrapeSelector:             &metav1.LabelSelector{},
-						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-						StaticScrapeSelector:           &metav1.LabelSelector{},
-						ProbeNamespaceSelector:         &metav1.LabelSelector{},
-						ProbeSelector:                  &metav1.LabelSelector{},
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
 				},
-				c: func() *config.BaseOperatorConf {
-					cfg := *config.MustGetBaseConfig()
-					cfg.VMServiceScrapeDefault.EnforceEndpointSlices = true
-					return &cfg
-				}(),
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+					ServiceScrapeSelector:          &metav1.LabelSelector{},
+					PodScrapeSelector:              &metav1.LabelSelector{},
+					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+					NodeScrapeSelector:             &metav1.LabelSelector{},
+					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+					StaticScrapeSelector:           &metav1.LabelSelector{},
+					ProbeNamespaceSelector:         &metav1.LabelSelector{},
+					ProbeSelector:                  &metav1.LabelSelector{},
+				},
 			},
+			c: func() *config.BaseOperatorConf {
+				cfg := *config.MustGetBaseConfig()
+				cfg.VMServiceScrapeDefault.EnforceEndpointSlices = true
+				return &cfg
+			}(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1195,24 +1095,22 @@ scrape_configs:
 		},
 		{
 			name: "with oauth2 tls config",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-						ServiceScrapeSelector:          &metav1.LabelSelector{},
-						PodScrapeSelector:              &metav1.LabelSelector{},
-						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-						NodeScrapeSelector:             &metav1.LabelSelector{},
-						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-						StaticScrapeSelector:           &metav1.LabelSelector{},
-						ProbeNamespaceSelector:         &metav1.LabelSelector{},
-						ProbeSelector:                  &metav1.LabelSelector{},
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+					ServiceScrapeSelector:          &metav1.LabelSelector{},
+					PodScrapeSelector:              &metav1.LabelSelector{},
+					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+					NodeScrapeSelector:             &metav1.LabelSelector{},
+					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+					StaticScrapeSelector:           &metav1.LabelSelector{},
+					ProbeNamespaceSelector:         &metav1.LabelSelector{},
+					ProbeSelector:                  &metav1.LabelSelector{},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -1507,7 +1405,6 @@ scrape_configs:
     client_secret: data
     token_url: http://some-url
     tls_config:
-      insecure_skip_verify: false
       ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
       cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
       key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
@@ -1545,7 +1442,6 @@ scrape_configs:
     client_secret: data
     token_url: http://some-url
     tls_config:
-      insecure_skip_verify: false
       ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
       cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
       key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
@@ -1569,7 +1465,6 @@ scrape_configs:
     client_secret: data
     token_url: http://some-url
     tls_config:
-      insecure_skip_verify: false
       ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
       cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
       key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
@@ -1577,16 +1472,14 @@ scrape_configs:
 		},
 		{
 			name: "daemonset mode",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "per-node",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						DaemonSetMode:      true,
-						SelectAllByDefault: true,
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "per-node",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					DaemonSetMode:      true,
+					SelectAllByDefault: true,
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -1707,20 +1600,21 @@ scrape_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			cfgO := *config.MustGetBaseConfig()
-			if tt.args.c != nil {
-				*config.MustGetBaseConfig() = *tt.args.c
+			if tt.c != nil {
+				*config.MustGetBaseConfig() = *tt.c
 				defer func() {
 					*config.MustGetBaseConfig() = cfgO
 				}()
 			}
 			build.AddDefaults(testClient.Scheme())
-			if _, err := createOrUpdateConfigurationSecret(context.TODO(), testClient, tt.args.cr, nil, nil); (err != nil) != tt.wantErr {
+			if _, err := createOrUpdateConfigurationSecret(ctx, testClient, tt.cr, nil, nil); (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateConfigurationSecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var expectSecret corev1.Secret
-			if err := testClient.Get(context.TODO(), types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &expectSecret); err != nil {
+			if err := testClient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.PrefixedName()}, &expectSecret); err != nil {
 				t.Fatalf("cannot get vmagent config secret: %s", err)
 			}
 			gotCfg := expectSecret.Data[vmagentGzippedFilename]

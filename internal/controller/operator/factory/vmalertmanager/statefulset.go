@@ -453,9 +453,13 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 
-	// name of tls object and it's value
-	// e.g. namespace_secret_name_secret_key
-	tlsAssets := make(map[string]string)
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSResourceKind, cr),
+		},
+	}
+	ac := build.NewAssetsCache(ctx, rclient, cfg)
 
 	var configSourceName string
 	var alertmananagerConfig []byte
@@ -480,7 +484,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
 		configSourceName = "inline configuration at configRawYaml"
 	}
-	mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, tlsAssets)
+	mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 	}
@@ -491,12 +495,12 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		configSourceName = "default config"
 	}
 
-	webCfg, err := buildWebServerConfigYAML(ctx, rclient, cr, tlsAssets)
+	webCfg, err := buildWebServerConfigYAML(cr, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build webserver config: %w", err)
 	}
 
-	gossipCfg, err := buildGossipConfigYAML(ctx, rclient, cr, tlsAssets)
+	gossipCfg, err := buildGossipConfigYAML(cr, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build gossip config: %w", err)
 	}
@@ -522,16 +526,19 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		ObjectMeta: *buildConfgSecretMeta(cr),
 		Data: map[string][]byte{
 			alertmanagerSecretConfigKey: alertmananagerConfig,
-		}}
+		},
+	}
+	creds := ac.GetOutput()
+	if secret, ok := creds[build.TLSResourceKind]; ok {
+		for name, value := range secret.Data {
+			newAMSecretConfig.Data[name] = value
+		}
+	}
 	if cr.Spec.WebConfig != nil {
 		newAMSecretConfig.Data[webserverConfigKey] = webCfg
 	}
 	if cr.Spec.GossipConfig != nil {
 		newAMSecretConfig.Data[gossipConfigKey] = gossipCfg
-	}
-
-	for assetKey, assetValue := range tlsAssets {
-		newAMSecretConfig.Data[assetKey] = []byte(assetValue)
 	}
 
 	var prevSecretMeta *metav1.ObjectMeta
@@ -684,7 +691,7 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	return nil, fmt.Errorf("cannot find alertmanager config key: %q at secret: %q", alertmanagerSecretConfigKey, secretName)
 }
 
-func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, tlsAssets map[string]string) (*parsedConfig, error) {
+func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, ac *build.AssetsCache) (*parsedConfig, error) {
 	var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 	var badCfgs []*vmv1beta1.VMAlertmanagerConfig
 	var namespacedNames []string
@@ -721,7 +728,7 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
 
-	parsedCfg, err := buildConfig(ctx, rclient, cr, originConfig, amCfgs, tlsAssets)
+	parsedCfg, err := buildConfig(cr, originConfig, amCfgs, ac)
 	if err != nil {
 		return nil, err
 	}

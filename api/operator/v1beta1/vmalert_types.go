@@ -423,10 +423,6 @@ func (cr *VMAlert) PrefixedName() string {
 	return fmt.Sprintf("vmalert-%s", cr.Name)
 }
 
-func (cr *VMAlert) TLSAssetName() string {
-	return fmt.Sprintf("tls-assets-vmalert-%s", cr.Name)
-}
-
 // GetMetricPath returns prefixed path for metric requests
 func (cr *VMAlert) GetMetricPath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)

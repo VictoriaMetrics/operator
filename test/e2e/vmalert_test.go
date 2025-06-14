@@ -1,8 +1,6 @@
 package e2e
 
 import (
-	"path"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
@@ -106,9 +104,28 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 								URL: "http://alert-manager-url:9093",
 								HTTPAuth: vmv1beta1.HTTPAuth{
 									TLSConfig: &vmv1beta1.TLSConfig{
-										CertFile: path.Join(vmv1beta1.SecretsDir, tlsSecretName, "remote-cert"),
-										KeyFile:  path.Join(vmv1beta1.SecretsDir, tlsSecretName, "remote-key"),
-										CAFile:   path.Join(vmv1beta1.SecretsDir, tlsSecretName, "remote-ca"),
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: tlsSecretName,
+												},
+												Key: "remote-ca",
+											},
+										},
+										Cert: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: tlsSecretName,
+												},
+												Key: "remote-cert",
+											},
+										},
+										KeySecret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: tlsSecretName,
+											},
+											Key: "remote-key",
+										},
 									},
 								},
 							},
@@ -117,9 +134,28 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 							URL: "http://some-datasource-url:8428",
 							HTTPAuth: vmv1beta1.HTTPAuth{
 								TLSConfig: &vmv1beta1.TLSConfig{
-									CertFile: path.Join(vmv1beta1.SecretsDir, tlsSecretName, "remote-cert"),
-									KeyFile:  path.Join(vmv1beta1.SecretsDir, tlsSecretName, "remote-key"),
-									CAFile:   path.Join(vmv1beta1.SecretsDir, tlsSecretName, "remote-ca"),
+									CA: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: tlsSecretName,
+											},
+											Key: "remote-ca",
+										},
+									},
+									Cert: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: tlsSecretName,
+											},
+											Key: "remote-cert",
+										},
+									},
+									KeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: tlsSecretName,
+										},
+										Key: "remote-key",
+									},
 								},
 							},
 						},

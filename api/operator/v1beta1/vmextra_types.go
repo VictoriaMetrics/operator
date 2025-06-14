@@ -835,31 +835,6 @@ func (c *TLSConfig) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
-	if c.CAFile != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.CAFile))
-	} else if c.CA.PrefixedName() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.CA.PrefixedName(), c.CA.Key())))
-	}
-	if c.CertFile != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.CertFile))
-	} else if c.Cert.PrefixedName() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.Cert.PrefixedName(), c.Cert.Key())))
-	}
-	if c.KeyFile != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.KeyFile))
-	} else if c.KeySecret != nil {
-		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.KeySecret.Name, c.KeySecret.Key)))
-	}
-	if c.ServerName != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsServerName=%s", prefix, c.ServerName))
-	}
-	if c.InsecureSkipVerify {
-		args = append(args, fmt.Sprintf("-%s.tlsInsecureSkipVerify=%v", prefix, c.InsecureSkipVerify))
-	}
-	return args
-}
-
 // TLSConfigValidationError is returned by TLSConfig.validate() on semantically
 // invalid tls configurations.
 // +k8s:openapi-gen=false

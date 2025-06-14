@@ -8,30 +8,37 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_generateProbeConfig(t *testing.T) {
 	type args struct {
-		cr              vmv1beta1.VMAgent
+		cr              *vmv1beta1.VMAgent
 		sc              *vmv1beta1.VMProbe
 		i               int
 		apiserverConfig *vmv1beta1.APIServerConfig
-		ssCache         *scrapesSecretsCache
 		se              vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name              string
+		args              args
+		want              string
+		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "generate static config",
 			args: args{
-				ssCache: &scrapesSecretsCache{},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
@@ -81,7 +88,12 @@ relabel_configs:
 		{
 			name: "with ingress discover",
 			args: args{
-				ssCache: &scrapesSecretsCache{},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "probe-ingress",
@@ -154,10 +166,11 @@ relabel_configs:
 		{
 			name: "generate with vm params",
 			args: args{
-				ssCache: &scrapesSecretsCache{
-					bearerTokens:  map[string]string{},
-					baSecrets:     map[string]*k8stools.BasicAuthCredentials{},
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 				},
 				sc: &vmv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
@@ -178,14 +191,21 @@ relabel_configs:
 								StreamParse: ptr.To(false),
 								ProxyClientConfig: &vmv1beta1.ProxyAuth{
 									TLSConfig: &vmv1beta1.TLSConfig{
-										CA: vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
-											Key: "ca",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+										CA: vmv1beta1.SecretOrConfigMap{
+											ConfigMap: &corev1.ConfigMapKeySelector{
+												Key: "ca",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
 											},
-										}},
+										},
 										Cert: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{Key: "cert", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret"}},
+											Secret: &corev1.SecretKeySelector{
+												Key: "cert",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+											},
 										},
 										KeyFile: "/tmp/key-1",
 									},
@@ -237,7 +257,6 @@ relabel_configs:
   replacement: blackbox-monitor:9115
 stream_parse: false
 proxy_tls_config:
-  insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_configmap_tls-secret_ca
   cert_file: /etc/vmagent-tls/certs/default_tls-secret_cert
   key_file: /tmp/key-1
@@ -245,12 +264,36 @@ bearer_token_file: /tmp/some_path
 basic_auth:
   password_file: /tmp/some-file-ba
 `,
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"key":  []byte("key-value"),
+						"cert": []byte("cert-value"),
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string]string{
+						"ca": "ca-value",
+					},
+				},
+			},
 		},
 		{
 			name: "with ingress selectors",
 			args: args{
-				ssCache: &scrapesSecretsCache{},
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						EnableKubernetesAPISelectors: true,
 					},
@@ -332,7 +375,24 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateProbeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
+			ctx := context.Background()
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.ConfigResourceKind: {
+					MountDir:   vmAgentConfDir,
+					SecretName: build.ResourceName(build.ConfigResourceKind, tt.args.cr),
+				},
+				build.TLSResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSResourceKind, tt.args.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			got, err := generateProbeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.i, tt.args.apiserverConfig, ac, tt.args.se)
+			if err != nil {
+				t.Errorf("cannot generate ProbeConfig, err: %e", err)
+				return
+			}
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot decode probe config, it must be in yaml format :%e", err)

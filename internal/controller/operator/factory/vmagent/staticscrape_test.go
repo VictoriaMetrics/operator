@@ -8,30 +8,37 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_generateStaticScrapeConfig(t *testing.T) {
 	type args struct {
-		cr      vmv1beta1.VMAgent
-		sc      *vmv1beta1.VMStaticScrape
-		ep      *vmv1beta1.TargetEndpoint
-		i       int
-		ssCache *scrapesSecretsCache
-		se      vmv1beta1.VMAgentSecurityEnforcements
+		cr *vmv1beta1.VMAgent
+		sc *vmv1beta1.VMStaticScrape
+		ep *vmv1beta1.TargetEndpoint
+		i  int
+		se vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name              string
+		args              args
+		predefinedObjects []runtime.Object
+		want              string
 	}{
 		{
 			name: "basic cfg",
 			args: args{
-				ssCache: &scrapesSecretsCache{},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMStaticScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "static-1",
@@ -63,7 +70,12 @@ relabel_configs:
 		{
 			name: "basic cfg with overrides",
 			args: args{
-				ssCache: &scrapesSecretsCache{},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMStaticScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "static-1",
@@ -115,23 +127,10 @@ relabel_configs:
 		{
 			name: "complete cfg with overrides",
 			args: args{
-				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
-						"staticScrapeProxy/default/static-1/0": {
-							Password: "proxy-password",
-							Username: "proxy-user",
-						},
-						"staticScrape/default/static-1/0": {
-							Password: "pass",
-							Username: "admin",
-						},
-					},
-					bearerTokens: map[string]string{},
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{
-						"staticScrape/default/static-1/0": {
-							ClientID:     "some-id",
-							ClientSecret: "some-secret",
-						},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
 					},
 				},
 				sc: &vmv1beta1.VMStaticScrape{
@@ -168,7 +167,7 @@ relabel_configs:
 							ProxyClientConfig: &vmv1beta1.ProxyAuth{
 								BasicAuth: &vmv1beta1.BasicAuth{
 									Username: corev1.SecretKeySelector{
-										Key:                  "user",
+										Key:                  "username",
 										LocalObjectReference: corev1.LocalObjectReference{Name: "ba-proxy-secret"},
 									},
 									Password: corev1.SecretKeySelector{
@@ -194,7 +193,7 @@ relabel_configs:
 						},
 						BasicAuth: &vmv1beta1.BasicAuth{
 							Username: corev1.SecretKeySelector{
-								Key:                  "user",
+								Key:                  "username",
 								LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
 							},
 							Password: corev1.SecretKeySelector{
@@ -243,6 +242,57 @@ relabel_configs:
 					OverrideHonorTimestamps: false,
 					OverrideHonorLabels:     true,
 					EnforcedNamespaceLabel:  "namespace",
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "token-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"token": []byte("token-value"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "oauth-2s",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"client-s":  []byte("some-secret"),
+						"client-id": []byte("some-id"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ba-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"username": []byte("admin"),
+						"password": []byte("pass"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ba-proxy-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"username": []byte("proxy-user"),
+						"password": []byte("proxy-password"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-cfg",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ca":  []byte("ca-value"),
+						"key": []byte("key-value"),
+					},
 				},
 			},
 			want: `job_name: staticScrape/default/static-1/0
@@ -298,6 +348,7 @@ tls_config:
   ca_file: /etc/vmagent-tls/certs/default_tls-cfg_ca
   cert_file: /tmp/cert-part
   key_file: /etc/vmagent-tls/certs/default_tls-cfg_key
+bearer_token: token-value
 basic_auth:
   username: admin
   password: pass
@@ -309,7 +360,23 @@ oauth2:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateStaticScrapeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, tt.args.ssCache, tt.args.se)
+			ctx := context.Background()
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.ConfigResourceKind: {
+					MountDir:   vmAgentConfDir,
+					SecretName: build.ResourceName(build.ConfigResourceKind, tt.args.cr),
+				},
+				build.TLSResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSResourceKind, tt.args.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			got, err := generateStaticScrapeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, ac, tt.args.se)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

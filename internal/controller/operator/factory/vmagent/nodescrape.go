@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func generateNodeScrapeConfig(
@@ -14,9 +15,9 @@ func generateNodeScrapeConfig(
 	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMNodeScrape,
 	apiserverConfig *vmv1beta1.APIServerConfig,
-	ssCache *scrapesSecretsCache,
+	ac *build.AssetsCache,
 	se vmv1beta1.VMAgentSecurityEnforcements,
-) yaml.MapSlice {
+) (yaml.MapSlice, error) {
 	nodeSpec := &sc.Spec
 	cfg := yaml.MapSlice{
 		{
@@ -32,8 +33,13 @@ func generateNodeScrapeConfig(
 		selectors:          sc.Spec.Selector,
 		apiServerConfig:    apiserverConfig,
 		role:               kubernetesSDRoleNode,
+		namespace:          sc.Namespace,
 	}
-	cfg = append(cfg, generateK8SSDConfig(ssCache, k8sSDOpts))
+	if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
+		return nil, err
+	} else {
+		cfg = append(cfg, c...)
+	}
 
 	cfg = addCommonScrapeParamsTo(cfg, nodeSpec.EndpointScrapeParams, se)
 
@@ -100,9 +106,10 @@ func generateNodeScrapeConfig(
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 	cfg = addMetricRelabelingsTo(cfg, nodeSpec.MetricRelabelConfigs, se)
-	cfg = append(cfg, buildVMScrapeParams(sc.Namespace, sc.AsProxyKey(), sc.Spec.VMScrapeParams, ssCache)...)
-	cfg = addTLStoYaml(cfg, sc.Namespace, nodeSpec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, nodeSpec.EndpointAuth, sc.Namespace, sc.AsMapKey(), ssCache)
-
-	return cfg
+	if c, err := buildVMScrapeParams(sc.Namespace, sc.Spec.VMScrapeParams, ac); err != nil {
+		return nil, err
+	} else {
+		cfg = append(cfg, c...)
+	}
+	return addEndpointAuthTo(cfg, &nodeSpec.EndpointAuth, sc.Namespace, ac)
 }

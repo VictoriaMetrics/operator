@@ -1,4 +1,4 @@
-package k8stools
+package build
 
 import (
 	"context"
@@ -7,14 +7,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func Test_getCredFromSecret(t *testing.T) {
+func Test_LoadKeyFromSecret(t *testing.T) {
 	type args struct {
-		ns       string
-		sel      corev1.SecretKeySelector
-		cacheKey string
-		cache    map[string]*corev1.Secret
+		ns string
+		ss *corev1.SecretKeySelector
 	}
 	tests := []struct {
 		name              string
@@ -27,14 +27,12 @@ func Test_getCredFromSecret(t *testing.T) {
 			name: "extract tls key data from secret",
 			args: args{
 				ns: "default",
-				sel: corev1.SecretKeySelector{
+				ss: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "tls-secret",
 					},
 					Key: "key.pem",
 				},
-				cacheKey: "tls-secret",
-				cache:    map[string]*corev1.Secret{},
 			},
 			want:    "tls-key-data",
 			wantErr: false,
@@ -52,14 +50,12 @@ func Test_getCredFromSecret(t *testing.T) {
 			name: "extract basic auth password with leading space and new line",
 			args: args{
 				ns: "default",
-				sel: corev1.SecretKeySelector{
+				ss: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "basic-auth",
 					},
 					Key: "password",
 				},
-				cacheKey: "tls-secret",
-				cache:    map[string]*corev1.Secret{},
 			},
 			want: " password-value",
 			predefinedObjects: []runtime.Object{
@@ -76,14 +72,12 @@ func Test_getCredFromSecret(t *testing.T) {
 			name: "fail extract missing tls cert data from secret",
 			args: args{
 				ns: "default",
-				sel: corev1.SecretKeySelector{
+				ss: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "tls-secret",
 					},
 					Key: "cert.pem",
 				},
-				cacheKey: "tls-secret",
-				cache:    map[string]*corev1.Secret{},
 			},
 			want:    "",
 			wantErr: true,
@@ -100,26 +94,30 @@ func Test_getCredFromSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fclient := GetTestClientWithObjects(tt.predefinedObjects)
-
-			got, err := GetCredFromSecret(context.TODO(), fclient, tt.args.ns, &tt.args.sel, tt.args.cacheKey, tt.args.cache)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cfg := map[ResourceKind]*ResourceCfg{
+				TLSResourceKind: {
+					MountDir:   "/test",
+					SecretName: "tls-volume",
+				},
+			}
+			cache := NewAssetsCache(context.TODO(), fclient, cfg)
+			got, err := cache.LoadKeyFromSecret(tt.args.ns, tt.args.ss)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getCredFromSecret() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("LoadKeyFromSecret() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("getCredFromSecret() got = %q, want %q", got, tt.want)
+				t.Errorf("LoadKeyFromSecret() got = %q, want %q", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_getCredFromConfigMap(t *testing.T) {
+func Test_LoadKeyFromConfigMap(t *testing.T) {
 	type args struct {
-		ns       string
-		sel      corev1.ConfigMapKeySelector
-		cacheKey string
-		cache    map[string]*corev1.ConfigMap
+		ns string
+		cs *corev1.ConfigMapKeySelector
 	}
 	tests := []struct {
 		name              string
@@ -131,9 +129,8 @@ func Test_getCredFromConfigMap(t *testing.T) {
 		{
 			name: "extract key from cm",
 			args: args{
-				ns:    "default",
-				sel:   corev1.ConfigMapKeySelector{Key: "tls-conf", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cm"}},
-				cache: map[string]*corev1.ConfigMap{},
+				ns: "default",
+				cs: &corev1.ConfigMapKeySelector{Key: "tls-conf", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cm"}},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.ConfigMap{
@@ -147,15 +144,21 @@ func Test_getCredFromConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fclient := GetTestClientWithObjects(tt.predefinedObjects)
-
-			got, err := GetCredFromConfigMap(context.TODO(), fclient, tt.args.ns, tt.args.sel, tt.args.cacheKey, tt.args.cache)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cfg := map[ResourceKind]*ResourceCfg{
+				TLSResourceKind: {
+					MountDir:   "/test",
+					SecretName: "tls-volume",
+				},
+			}
+			cache := NewAssetsCache(context.TODO(), fclient, cfg)
+			got, err := cache.LoadKeyFromConfigMap(tt.args.ns, tt.args.cs)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getCredFromConfigMap() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("LoadKeyFromConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("getCredFromConfigMap() got = %v, want %v", got, tt.want)
+				t.Errorf("LoadKeyFromConfigMap() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

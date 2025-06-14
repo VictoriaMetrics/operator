@@ -24,8 +24,7 @@ import (
 //nolint:gofmt
 func TestBuildConfig(t *testing.T) {
 	type args struct {
-		ctx     context.Context
-		amCR    *vmv1beta1.VMAlertmanager
+		cr      *vmv1beta1.VMAlertmanager
 		baseCfg []byte
 		amcfgs  []*vmv1beta1.VMAlertmanagerConfig
 	}
@@ -40,8 +39,7 @@ func TestBuildConfig(t *testing.T) {
 		{
 			name: "with complex routing and enforced matchers",
 			args: args{
-				ctx: context.Background(),
-				amCR: &vmv1beta1.VMAlertmanager{
+				cr: &vmv1beta1.VMAlertmanager{
 					Spec: vmv1beta1.VMAlertmanagerSpec{
 						EnforcedTopRouteMatchers: []string{
 							`env=~{"dev|prod"}`,
@@ -166,7 +164,6 @@ templates: []
 		{
 			name: "email section",
 			args: args{
-				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
@@ -282,7 +279,6 @@ templates: []
 		{
 			name: "complex with providers",
 			args: args{
-				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
  opsgenie_api_key: some-key
@@ -433,7 +429,6 @@ templates: []
 		{
 			name: "webhook ok",
 			args: args{
-				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
@@ -501,7 +496,6 @@ templates: []
 		{
 			name: "slack ok",
 			args: args{
-				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
@@ -605,7 +599,6 @@ templates: []
 		{
 			name: "pagerduty ok",
 			args: args{
-				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
@@ -724,7 +717,6 @@ templates: []
 				},
 			},
 			args: args{
-				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
@@ -785,7 +777,6 @@ templates: []
 		{
 			name: "slack bad, with invalid api_url",
 			args: args{
-				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
@@ -844,7 +835,6 @@ templates: []
 		{
 			name: "telegram bad, not strict parse",
 			args: args{
-				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
@@ -905,7 +895,7 @@ templates: []
 					},
 				},
 			},
-			parseError: `unable to fetch key from secret: "tg-secret" for object: "tg-secret" : secrets "tg-secret" not found`,
+			parseError: `unable to fetch secret="tg-secret", ns="default": secrets "tg-secret" not found`,
 			want: `global:
   time_out: 1min
 route:
@@ -942,7 +932,6 @@ templates: []
 				},
 			},
 			args: args{
-				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
@@ -1050,6 +1039,7 @@ receivers:
   - http_config:
       authorization:
         credentials: somekey
+        type: Bearer
     send_resolved: true
     project: main
     issue_type: BUG
@@ -1253,6 +1243,7 @@ receivers:
   - http_config:
       authorization:
         credentials: token value
+        type: Bearer
     webhook_url: http://example.com/msteams
     text: some alert text
     title: some
@@ -1266,10 +1257,18 @@ templates: []
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if tt.args.amCR == nil {
-				tt.args.amCR = &vmv1beta1.VMAlertmanager{}
+			if tt.args.cr == nil {
+				tt.args.cr = &vmv1beta1.VMAlertmanager{}
 			}
-			got, err := buildConfig(tt.args.ctx, testClient, tt.args.amCR, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.TLSResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSResourceKind, tt.args.cr),
+				},
+			}
+			ctx := context.TODO()
+			ac := build.NewAssetsCache(ctx, testClient, cfg)
+			got, err := buildConfig(tt.args.cr, tt.args.baseCfg, tt.args.amcfgs, ac)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1479,20 +1478,12 @@ templates:
 }
 
 func Test_configBuilder_buildHTTPConfig(t *testing.T) {
-	type fields struct {
-		secretCache    map[string]*corev1.Secret
-		configmapCache map[string]*corev1.ConfigMap
-	}
-	type args struct {
+	tests := []struct {
+		name              string
 		httpCfg           *vmv1beta1.HTTPConfig
 		predefinedObjects []runtime.Object
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    string
-		wantErr bool
+		want              string
+		wantErr           bool
 	}{
 		{
 			name: "build empty config",
@@ -1500,26 +1491,28 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 		},
 		{
 			name: "with basic auth",
-			args: args{
-				httpCfg: &vmv1beta1.HTTPConfig{
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "secret-store",
-							},
-							Key: "username",
+			httpCfg: &vmv1beta1.HTTPConfig{
+				BasicAuth: &vmv1beta1.BasicAuth{
+					Username: corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "secret-store",
 						},
-						PasswordFile: "/etc/vm/secrets/password_file",
+						Key: "username",
 					},
+					PasswordFile: "/etc/vm/secrets/password_file",
 				},
 			},
-			fields: fields{secretCache: map[string]*corev1.Secret{
-				"secret-store": {
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-store",
+						Namespace: "default",
+					},
 					Data: map[string][]byte{
 						"username": []byte("user-1"),
 					},
 				},
-			}},
+			},
 			want: `basic_auth:
   username: user-1
   password_file: /etc/vm/secrets/password_file
@@ -1527,43 +1520,45 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 		},
 		{
 			name: "with tls and bearer",
-			args: args{
-				httpCfg: &vmv1beta1.HTTPConfig{
-					BearerTokenFile: "/etc/mounted_dir/bearer_file",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						InsecureSkipVerify: true,
-						Cert: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "secret-store",
-								},
-								Key: "cert",
+			httpCfg: &vmv1beta1.HTTPConfig{
+				BearerTokenFile: "/etc/mounted_dir/bearer_file",
+				TLSConfig: &vmv1beta1.TLSConfig{
+					InsecureSkipVerify: true,
+					Cert: vmv1beta1.SecretOrConfigMap{
+						Secret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "secret-store",
 							},
+							Key: "cert",
 						},
-						CA: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "secret-store",
-								},
-								Key: "ca",
-							},
-						},
-						KeyFile: "/etc/mounted_dir/key.pem",
 					},
+					CA: vmv1beta1.SecretOrConfigMap{
+						Secret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "secret-store",
+							},
+							Key: "ca",
+						},
+					},
+					KeyFile: "/etc/mounted_dir/key.pem",
 				},
 			},
-			fields: fields{secretCache: map[string]*corev1.Secret{
-				"secret-store": {
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-store",
+						Namespace: "default",
+					},
 					Data: map[string][]byte{
 						"cert": []byte("---PEM---"),
 						"ca":   []byte("---PEM-CA"),
 					},
 				},
-			}},
+			},
 			want: `tls_config:
+  insecure_skip_verify: true
   ca_file: /etc/alertmanager/tls_assets/default_secret-store_ca
   cert_file: /etc/alertmanager/tls_assets/default_secret-store_cert
-  insecure_skip_verify: true
   key_file: /etc/mounted_dir/key.pem
 authorization:
   credentials_file: /etc/mounted_dir/bearer_file
@@ -1571,67 +1566,73 @@ authorization:
 		},
 		{
 			name: "with tls (configmap) and bearer",
-			args: args{
-				httpCfg: &vmv1beta1.HTTPConfig{
-					BearerTokenSecret: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "secret-bearer",
-						},
-						Key: "token",
+			httpCfg: &vmv1beta1.HTTPConfig{
+				BearerTokenSecret: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "secret-bearer",
 					},
-					TLSConfig: &vmv1beta1.TLSConfig{
-						InsecureSkipVerify: true,
-						Cert: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "secret-store",
-								},
-								Key: "cert",
-							},
-						},
-						CA: vmv1beta1.SecretOrConfigMap{
-							ConfigMap: &corev1.ConfigMapKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "cm-store",
-								},
-								Key: "ca",
-							},
-						},
-						KeySecret: &corev1.SecretKeySelector{
+					Key: "token",
+				},
+				TLSConfig: &vmv1beta1.TLSConfig{
+					InsecureSkipVerify: true,
+					Cert: vmv1beta1.SecretOrConfigMap{
+						Secret: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "secret-store",
 							},
-							Key: "key",
+							Key: "cert",
 						},
+					},
+					CA: vmv1beta1.SecretOrConfigMap{
+						ConfigMap: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "cm-store",
+							},
+							Key: "ca",
+						},
+					},
+					KeySecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "secret-store",
+						},
+						Key: "key",
 					},
 				},
 			},
-			fields: fields{
-				secretCache: map[string]*corev1.Secret{
-					"secret-store": {
-						Data: map[string][]byte{
-							"cert": []byte("---PEM---"),
-							"key":  []byte("--KEY-PEM--"),
-						},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-store",
+						Namespace: "default",
 					},
-					"secret-bearer": {
-						Data: map[string][]byte{
-							"token": []byte("secret-token"),
-						},
+					Data: map[string][]byte{
+						"cert": []byte("---PEM---"),
+						"key":  []byte("--KEY-PEM--"),
 					},
 				},
-				configmapCache: map[string]*corev1.ConfigMap{
-					"cm-store": {
-						Data: map[string]string{
-							"ca": "--CA-PEM--",
-						},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-bearer",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"token": []byte("secret-token"),
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cm-store",
+						Namespace: "default",
+					},
+					Data: map[string]string{
+						"ca": "--CA-PEM--",
 					},
 				},
 			},
 			want: `tls_config:
+  insecure_skip_verify: true
   ca_file: /etc/alertmanager/tls_assets/default_configmap_cm-store_ca
   cert_file: /etc/alertmanager/tls_assets/default_secret-store_cert
-  insecure_skip_verify: true
   key_file: /etc/alertmanager/tls_assets/default_secret-store_key
 authorization:
   credentials: secret-token
@@ -1639,129 +1640,133 @@ authorization:
 		},
 		{
 			name: "with oauth2 (configmap)",
-			args: args{
-				predefinedObjects: []runtime.Object{
-					&corev1.ConfigMap{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "default",
-							Name:      "oauth-store",
-						},
-						Data: map[string]string{
-							"client_id": "client-value",
-						},
+			predefinedObjects: []runtime.Object{
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "oauth-store",
+					},
+					Data: map[string]string{
+						"client_id": "client-value",
 					},
 				},
-				httpCfg: &vmv1beta1.HTTPConfig{
-					OAuth2: &vmv1beta1.OAuth2{
-						TokenURL: "https://some-oauth2-proxy",
-						EndpointParams: map[string]string{
-							"param-1": "value1",
-							"param-2": "value2",
-						},
-						Scopes: []string{"org", "team"},
-						ClientID: vmv1beta1.SecretOrConfigMap{
-							ConfigMap: &corev1.ConfigMapKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "oauth-store",
-								},
-								Key: "client_id",
-							},
-						},
-						ClientSecret: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "secret-store",
-							},
-							Key: "client-secret",
-						},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-store",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"client-secret": []byte("value"),
 					},
 				},
 			},
-			fields: fields{
-				secretCache: map[string]*corev1.Secret{
-					"secret-store": {
-						Data: map[string][]byte{
-							"client-secret": []byte("value"),
+			httpCfg: &vmv1beta1.HTTPConfig{
+				OAuth2: &vmv1beta1.OAuth2{
+					TokenURL: "https://some-oauth2-proxy",
+					EndpointParams: map[string]string{
+						"param-1": "value1",
+						"param-2": "value2",
+					},
+					Scopes: []string{"org", "team"},
+					ClientID: vmv1beta1.SecretOrConfigMap{
+						ConfigMap: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "oauth-store",
+							},
+							Key: "client_id",
 						},
+					},
+					ClientSecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "secret-store",
+						},
+						Key: "client-secret",
 					},
 				},
 			},
 			want: `oauth2:
-  client_secret: value
   client_id: client-value
-  endpoint_params:
-    param-1: value1
-    param-2: value2
+  client_secret: value
   scopes:
   - org
   - team
+  endpoint_params:
+    param-1: value1
+    param-2: value2
   token_url: https://some-oauth2-proxy
 `,
 		},
 		{
 			name: "with oauth2 (secret)",
-			args: args{
-				httpCfg: &vmv1beta1.HTTPConfig{
-					OAuth2: &vmv1beta1.OAuth2{
-						TokenURL: "https://some-oauth2-proxy",
-						EndpointParams: map[string]string{
-							"param-1": "value1",
-							"param-2": "value2",
-						},
-						Scopes: []string{"org", "team"},
-						ClientID: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "secret-store",
-								},
-								Key: "client-id",
-							},
-						},
-						ClientSecret: &corev1.SecretKeySelector{
+			httpCfg: &vmv1beta1.HTTPConfig{
+				OAuth2: &vmv1beta1.OAuth2{
+					TokenURL: "https://some-oauth2-proxy",
+					EndpointParams: map[string]string{
+						"param-1": "value1",
+						"param-2": "value2",
+					},
+					Scopes: []string{"org", "team"},
+					ClientID: vmv1beta1.SecretOrConfigMap{
+						Secret: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "secret-store",
 							},
-							Key: "client-secret",
+							Key: "client-id",
 						},
+					},
+					ClientSecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "secret-store",
+						},
+						Key: "client-secret",
 					},
 				},
 			},
-			fields: fields{
-				secretCache: map[string]*corev1.Secret{
-					"secret-store": {
-						Data: map[string][]byte{
-							"client-secret": []byte("value"),
-							"client-id":     []byte("client-value"),
-						},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-store",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"client-secret": []byte("value"),
+						"client-id":     []byte("client-value"),
 					},
 				},
 			},
 			want: `oauth2:
-  client_secret: value
   client_id: client-value
-  endpoint_params:
-    param-1: value1
-    param-2: value2
+  client_secret: value
   scopes:
   - org
   - team
+  endpoint_params:
+    param-1: value1
+    param-2: value2
   token_url: https://some-oauth2-proxy
 `,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cb := &configBuilder{
-				TLSConfigBuilder: build.TLSConfigBuilder{
-					Ctx:                context.Background(),
-					Client:             k8stools.GetTestClientWithObjects(tt.args.predefinedObjects),
-					SecretCache:        tt.fields.secretCache,
-					ConfigmapCache:     tt.fields.configmapCache,
-					TLSAssets:          map[string]string{},
-					CurrentCRName:      "test-am",
-					CurrentCRNamespace: "default",
+			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cr := &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-am",
+					Namespace: "default",
 				},
 			}
-			gotYAML, err := cb.buildHTTPConfig(tt.args.httpCfg)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.TLSResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSResourceKind, cr),
+				},
+			}
+			cb := &configBuilder{
+				cache:     build.NewAssetsCache(context.Background(), testClient, cfg),
+				namespace: cr.Namespace,
+			}
+			gotYAML, err := cb.buildHTTPConfig(tt.httpCfg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildHTTPConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1771,7 +1776,7 @@ authorization:
 				t.Errorf("buildHTTPConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.Equalf(t, tt.want, string(got), "buildHTTPConfig(%v)", tt.args.httpCfg)
+			assert.Equalf(t, tt.want, string(got), "buildHTTPConfig(%v)", tt.httpCfg)
 		})
 	}
 }
@@ -1786,31 +1791,24 @@ func mustRouteToJSON(t *testing.T, r vmv1beta1.SubRoute) apiextensionsv1.JSON {
 }
 
 func Test_UpdateDefaultAMConfig(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		cr  *vmv1beta1.VMAlertmanager
-	}
 	tests := []struct {
 		name                string
-		args                args
+		cr                  *vmv1beta1.VMAlertmanager
 		wantErr             bool
 		predefinedObjects   []runtime.Object
 		secretMustBeMissing bool
 	}{
 		{
 			name: "with alertmanager config support",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-am",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						ConfigSecret:       "vmalertmanager-test-am-config",
-						ConfigRawYaml:      "global: {}",
-						SelectAllByDefault: true,
-					},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-am",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					ConfigSecret:       "vmalertmanager-test-am-config",
+					ConfigRawYaml:      "global: {}",
+					SelectAllByDefault: true,
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -1869,19 +1867,20 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			ctx := context.TODO()
 
 			// Create secret with alert manager config
-			if err := CreateOrUpdateConfig(tt.args.ctx, fclient, tt.args.cr, nil); (err != nil) != tt.wantErr {
+			if err := CreateOrUpdateConfig(ctx, fclient, tt.cr, nil); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 			opts := &k8stools.SelectorOpts{
-				SelectAll:         tt.args.cr.Spec.SelectAllByDefault,
-				ObjectSelector:    tt.args.cr.Spec.ConfigSelector,
-				NamespaceSelector: tt.args.cr.Spec.ConfigNamespaceSelector,
-				DefaultNamespace:  tt.args.cr.Namespace,
+				SelectAll:         tt.cr.Spec.SelectAllByDefault,
+				ObjectSelector:    tt.cr.Spec.ConfigSelector,
+				NamespaceSelector: tt.cr.Spec.ConfigNamespaceSelector,
+				DefaultNamespace:  tt.cr.Namespace,
 			}
-			if err := k8stools.VisitSelected(tt.args.ctx, fclient, opts, func(ams *vmv1beta1.VMAlertmanagerConfigList) {
+			if err := k8stools.VisitSelected(ctx, fclient, opts, func(ams *vmv1beta1.VMAlertmanagerConfigList) {
 				for i := range ams.Items {
 					item := ams.Items[i]
 
@@ -1897,8 +1896,8 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			}
 
 			var createdSecret corev1.Secret
-			secretName := tt.args.cr.ConfigSecretName()
-			err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
+			secretName := tt.cr.ConfigSecretName()
+			err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: secretName}, &createdSecret)
 			if err != nil {
 				if errors.IsNotFound(err) && tt.secretMustBeMissing {
 					return
@@ -1917,7 +1916,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 				t.Fatalf("could not unmarshall secret config data into structure, err: %v", err)
 			}
 			var amc vmv1beta1.VMAlertmanagerConfig
-			err = fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: "test-amc"}, &amc)
+			err = fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: "test-amc"}, &amc)
 			if err != nil {
 				t.Fatalf("could not get alert manager config. Error: %v", err)
 			}
@@ -1939,11 +1938,11 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			}
 
 			// Update secret with alert manager config
-			if err = CreateOrUpdateConfig(tt.args.ctx, fclient, tt.args.cr, nil); (err != nil) != tt.wantErr {
+			if err = CreateOrUpdateConfig(ctx, fclient, tt.cr, nil); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			err = fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
+			err = fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: secretName}, &createdSecret)
 			if err != nil {
 				if errors.IsNotFound(err) && tt.secretMustBeMissing {
 					return
@@ -1980,31 +1979,24 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 }
 
 func TestBuildWebConfig(t *testing.T) {
-	type args struct {
-		ctx   context.Context
-		vmaCR vmv1beta1.VMAlertmanager
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAlertmanager
 		predefinedObjects []runtime.Object
 		want              string
 		wantErr           bool
 	}{
 		{
 			name: "simple test",
-			args: args{
-				ctx: context.Background(),
-				vmaCR: vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "test",
-						Name:      "web-cfg",
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						WebConfig: &vmv1beta1.AlertmanagerWebConfig{
-							HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
-								Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
-							},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "web-cfg",
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					WebConfig: &vmv1beta1.AlertmanagerWebConfig{
+						HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
+							Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
 						},
 					},
 				},
@@ -2017,42 +2009,39 @@ func TestBuildWebConfig(t *testing.T) {
 		},
 		{
 			name: "with http2 and tls files",
-			args: args{
-				ctx: context.Background(),
-				vmaCR: vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "test",
-						Name:      "web-cfg",
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						GossipConfig: &vmv1beta1.AlertmanagerGossipConfig{
-							TLSClientConfig: &vmv1beta1.TLSClientConfig{
-								CAFile: "/etc/client/client_ca",
-								Certs: vmv1beta1.Certs{
-									CertFile: "/etc/client/cert.pem",
-									KeyFile:  "/etc/client/cert.key",
-								},
-							},
-							TLSServerConfig: &vmv1beta1.TLSServerConfig{
-								ClientCAFile: "/etc/server/client_ca",
-								Certs: vmv1beta1.Certs{
-									CertFile: "/etc/server/cert.pem",
-									KeyFile:  "/etc/server/cert.key",
-								},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "web-cfg",
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					GossipConfig: &vmv1beta1.AlertmanagerGossipConfig{
+						TLSClientConfig: &vmv1beta1.TLSClientConfig{
+							CAFile: "/etc/client/client_ca",
+							Certs: vmv1beta1.Certs{
+								CertFile: "/etc/client/cert.pem",
+								KeyFile:  "/etc/client/cert.key",
 							},
 						},
-						WebConfig: &vmv1beta1.AlertmanagerWebConfig{
-							TLSServerConfig: &vmv1beta1.TLSServerConfig{
-								ClientCAFile: "/etc/server/client_ca",
-								Certs: vmv1beta1.Certs{
-									CertFile: "/etc/server/cert.pem",
-									KeyFile:  "/etc/server/cert.key",
-								},
+						TLSServerConfig: &vmv1beta1.TLSServerConfig{
+							ClientCAFile: "/etc/server/client_ca",
+							Certs: vmv1beta1.Certs{
+								CertFile: "/etc/server/cert.pem",
+								KeyFile:  "/etc/server/cert.key",
 							},
-							HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
-								HTTP2:   true,
-								Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
+						},
+					},
+					WebConfig: &vmv1beta1.AlertmanagerWebConfig{
+						TLSServerConfig: &vmv1beta1.TLSServerConfig{
+							ClientCAFile: "/etc/server/client_ca",
+							Certs: vmv1beta1.Certs{
+								CertFile: "/etc/server/cert.pem",
+								KeyFile:  "/etc/server/cert.key",
 							},
+						},
+						HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
+							HTTP2:   true,
+							Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
 						},
 					},
 				},
@@ -2070,35 +2059,32 @@ tls_server_config:
 		},
 		{
 			name: "http2 and tls secrets",
-			args: args{
-				ctx: context.Background(),
-				vmaCR: vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "test",
-						Name:      "web-cfg",
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						WebConfig: &vmv1beta1.AlertmanagerWebConfig{
-							TLSServerConfig: &vmv1beta1.TLSServerConfig{
-								ClientCASecretRef: &corev1.SecretKeySelector{
-									Key:                  "client_ca",
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "web-cfg",
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					WebConfig: &vmv1beta1.AlertmanagerWebConfig{
+						TLSServerConfig: &vmv1beta1.TLSServerConfig{
+							ClientCASecretRef: &corev1.SecretKeySelector{
+								Key:                  "client_ca",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret"},
+							},
+							Certs: vmv1beta1.Certs{
+								CertSecretRef: &corev1.SecretKeySelector{
+									Key:                  "cert",
 									LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret"},
 								},
-								Certs: vmv1beta1.Certs{
-									CertSecretRef: &corev1.SecretKeySelector{
-										Key:                  "cert",
-										LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret"},
-									},
-									KeySecretRef: &corev1.SecretKeySelector{
-										Key:                  "key",
-										LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret-key"},
-									},
+								KeySecretRef: &corev1.SecretKeySelector{
+									Key:                  "key",
+									LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret-key"},
 								},
 							},
-							HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
-								HTTP2:   true,
-								Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
-							},
+						},
+						HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
+							HTTP2:   true,
+							Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
 						},
 					},
 				},
@@ -2130,61 +2116,61 @@ tls_server_config:
     h-1: v-1
     h-2: v-2
 tls_server_config:
-  client_ca_file: /etc/alertmanager/tls_assets/tls-secret_client_ca
-  cert_file: /etc/alertmanager/tls_assets/tls-secret_cert
-  key_file: /etc/alertmanager/tls_assets/tls-secret-key_key
+  client_ca_file: /etc/alertmanager/tls_assets/test_tls-secret_client_ca
+  cert_file: /etc/alertmanager/tls_assets/test_tls-secret_cert
+  key_file: /etc/alertmanager/tls_assets/test_tls-secret-key_key
 `,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			tlsAssets := make(map[string]string)
-			cfg, err := buildWebServerConfigYAML(tt.args.ctx, fclient, &tt.args.vmaCR, tlsAssets)
+			ctx := context.TODO()
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.TLSResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSResourceKind, tt.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			c, err := buildWebServerConfigYAML(tt.cr, ac)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error: %q", err)
 			}
-			assert.Equal(t, tt.want, string(cfg))
+			assert.Equal(t, tt.want, string(c))
 		})
 	}
 }
 
 func TestBuildGossipConfig(t *testing.T) {
-	type args struct {
-		ctx   context.Context
-		vmaCR vmv1beta1.VMAlertmanager
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAlertmanager
 		predefinedObjects []runtime.Object
 		want              string
 		wantErr           bool
 	}{
 		{
 			name: "tls secrets",
-			args: args{
-				ctx: context.Background(),
-				vmaCR: vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "test",
-						Name:      "web-cfg",
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						GossipConfig: &vmv1beta1.AlertmanagerGossipConfig{
-							TLSClientConfig: &vmv1beta1.TLSClientConfig{
-								CAFile: "/etc/client/client_ca",
-								Certs: vmv1beta1.Certs{
-									CertFile: "/etc/client/cert.pem",
-									KeyFile:  "/etc/client/cert.key",
-								},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "web-cfg",
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					GossipConfig: &vmv1beta1.AlertmanagerGossipConfig{
+						TLSClientConfig: &vmv1beta1.TLSClientConfig{
+							CAFile: "/etc/client/client_ca",
+							Certs: vmv1beta1.Certs{
+								CertFile: "/etc/client/cert.pem",
+								KeyFile:  "/etc/client/cert.key",
 							},
-							TLSServerConfig: &vmv1beta1.TLSServerConfig{
-								ClientCAFile: "/etc/server/client_ca",
-								Certs: vmv1beta1.Certs{
-									CertFile: "/etc/server/cert.pem",
-									KeyFile:  "/etc/server/cert.key",
-								},
+						},
+						TLSServerConfig: &vmv1beta1.TLSServerConfig{
+							ClientCAFile: "/etc/server/client_ca",
+							Certs: vmv1beta1.Certs{
+								CertFile: "/etc/server/cert.pem",
+								KeyFile:  "/etc/server/cert.key",
 							},
 						},
 					},
@@ -2204,12 +2190,19 @@ tls_client_config:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			tlsAssets := make(map[string]string)
-			cfg, err := buildGossipConfigYAML(tt.args.ctx, fclient, &tt.args.vmaCR, tlsAssets)
+			ctx := context.TODO()
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.TLSResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSResourceKind, tt.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			c, err := buildGossipConfigYAML(tt.cr, ac)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error: %q", err)
 			}
-			assert.Equal(t, tt.want, string(cfg))
+			assert.Equal(t, tt.want, string(c))
 		})
 	}
 }

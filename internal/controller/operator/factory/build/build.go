@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 	"path"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -83,4 +84,32 @@ func LicenseVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, l *vm
 		MountPath: path.Join(secretMountDir, l.KeyRef.Name),
 	})
 	return volumes, mounts
+}
+
+type ResourceKind string
+
+const (
+	TLSResourceKind     ResourceKind = "tls-assets"
+	ConfigResourceKind  ResourceKind = "config"
+	DefaultResourceKind ResourceKind = "default"
+)
+
+func ResourceName(kind ResourceKind, cr builderOpts) string {
+	var parts []string
+	if kind == TLSResourceKind {
+		parts = append(parts, "tls-assets")
+	}
+	parts = append(parts, cr.PrefixedName())
+	return strings.Join(parts, "-")
+}
+
+func ResourceMeta(kind ResourceKind, cr builderOpts) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:            ResourceName(kind, cr),
+		Namespace:       cr.GetNamespace(),
+		Labels:          cr.AllLabels(),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: cr.AsOwner(),
+		Finalizers:      []string{vmv1beta1.FinalizerName},
+	}
 }

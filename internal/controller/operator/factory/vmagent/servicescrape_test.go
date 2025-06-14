@@ -8,31 +8,39 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_generateServiceScrapeConfig(t *testing.T) {
 	type args struct {
-		cr              vmv1beta1.VMAgent
+		cr              *vmv1beta1.VMAgent
 		sc              *vmv1beta1.VMServiceScrape
 		ep              vmv1beta1.Endpoint
 		i               int
 		apiserverConfig *vmv1beta1.APIServerConfig
-		ssCache         *scrapesSecretsCache
 		se              vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name              string
+		args              args
+		predefinedObjects []runtime.Object
+		want              string
 	}{
 		{
 			name: "generate simple config",
 			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
@@ -66,7 +74,6 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 					Port: "8080",
 					EndpointAuth: vmv1beta1.EndpointAuth{
 						TLSConfig: &vmv1beta1.TLSConfig{
-							Cert: vmv1beta1.SecretOrConfigMap{},
 							CA: vmv1beta1.SecretOrConfigMap{
 								Secret: &corev1.SecretKeySelector{
 									LocalObjectReference: corev1.LocalObjectReference{
@@ -81,12 +88,22 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 				},
 				i:               0,
 				apiserverConfig: nil,
-				ssCache:         &scrapesSecretsCache{},
 				se: vmv1beta1.VMAgentSecurityEnforcements{
 					OverrideHonorLabels:      false,
 					OverrideHonorTimestamps:  false,
 					IgnoreNamespaceSelectors: false,
 					EnforcedNamespaceLabel:   "",
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ca": []byte("ca-value"),
+					},
 				},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
@@ -136,7 +153,6 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
@@ -145,7 +161,11 @@ bearer_token_file: /var/run/token
 		{
 			name: "generate config with scrape interval limit",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						MaxScrapeInterval: ptr.To("40m"),
 					},
@@ -198,7 +218,17 @@ bearer_token_file: /var/run/token
 				},
 				i:               0,
 				apiserverConfig: nil,
-				ssCache:         &scrapesSecretsCache{},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ca": []byte("ca-value"),
+					},
+				},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
 kubernetes_sd_configs:
@@ -246,7 +276,6 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
@@ -254,7 +283,11 @@ bearer_token_file: /var/run/token
 		{
 			name: "generate config with scrape interval limit - reach min",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						MinScrapeInterval: ptr.To("1m"),
 					},
@@ -308,7 +341,17 @@ bearer_token_file: /var/run/token
 				},
 				i:               0,
 				apiserverConfig: nil,
-				ssCache:         &scrapesSecretsCache{},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ca": []byte("ca-value"),
+					},
+				},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
 kubernetes_sd_configs:
@@ -356,7 +399,6 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
@@ -364,6 +406,12 @@ bearer_token_file: /var/run/token
 		{
 			name: "config with discovery role endpointslices",
 			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
@@ -410,7 +458,17 @@ bearer_token_file: /var/run/token
 				},
 				i:               0,
 				apiserverConfig: nil,
-				ssCache:         &scrapesSecretsCache{},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ca": []byte("ca-value"),
+					},
+				},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
 kubernetes_sd_configs:
@@ -457,7 +515,6 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
@@ -465,6 +522,12 @@ bearer_token_file: /var/run/token
 		{
 			name: "config with discovery role services",
 			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
@@ -514,7 +577,17 @@ bearer_token_file: /var/run/token
 				},
 				i:               0,
 				apiserverConfig: nil,
-				ssCache:         &scrapesSecretsCache{},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ca": []byte("ca-value"),
+					},
+				},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
 kubernetes_sd_configs:
@@ -541,7 +614,6 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
@@ -549,6 +621,12 @@ bearer_token_file: /var/run/token
 		{
 			name: "bad discovery role service without port name",
 			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
@@ -574,7 +652,6 @@ bearer_token_file: /var/run/token
 				},
 				i:               0,
 				apiserverConfig: nil,
-				ssCache:         &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
 kubernetes_sd_configs:
@@ -599,6 +676,12 @@ relabel_configs:
 		{
 			name: "config with tls insecure",
 			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
@@ -629,7 +712,6 @@ relabel_configs:
 				},
 				i:               0,
 				apiserverConfig: nil,
-				ssCache:         &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
 kubernetes_sd_configs:
@@ -663,6 +745,12 @@ bearer_token_file: /var/run/token
 		{
 			name: "complete config",
 			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
@@ -713,12 +801,12 @@ bearer_token_file: /var/run/token
 							EndpointParams: map[string]string{"timeout": "5s"},
 							ClientID: vmv1beta1.SecretOrConfigMap{
 								Secret: &corev1.SecretKeySelector{
-									Key:                  "bearer",
+									Key:                  "id",
 									LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
 								},
 							},
 							ClientSecret: &corev1.SecretKeySelector{
-								Key:                  "bearer",
+								Key:                  "secret",
 								LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
 							},
 							ProxyURL: "http://oauth2-access-proxy",
@@ -750,12 +838,12 @@ bearer_token_file: /var/run/token
 						},
 						BasicAuth: &vmv1beta1.BasicAuth{
 							Username: corev1.SecretKeySelector{
-								Key:                  "bearer",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
+								Key:                  "username",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
 							},
 							Password: corev1.SecretKeySelector{
-								Key:                  "bearer",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
+								Key:                  "password",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
 							},
 						},
 						TLSConfig: &vmv1beta1.TLSConfig{
@@ -771,17 +859,46 @@ bearer_token_file: /var/run/token
 				},
 				i:               0,
 				apiserverConfig: nil,
-				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
-						"serviceScrape/default/test-scrape/0": {
-							Username: "user",
-							Password: "pass",
-						},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ba-secret",
+						Namespace: "default",
 					},
-					tlsAssets:    map[string]string{},
-					bearerTokens: map[string]string{},
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{
-						"serviceScrape/default/test-scrape/0": {ClientSecret: "some-secret", ClientID: "some-id"},
+					Data: map[string][]byte{
+						"username": []byte("user"),
+						"password": []byte("pass"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "access-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"bearer": []byte("token"),
+						"id":     []byte("some-id"),
+						"secret": []byte("some-secret"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"key":  []byte("key-value"),
+						"cert": []byte("cert-value"),
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-cm",
+						Namespace: "default",
+					},
+					Data: map[string]string{
+						"ca": "ca-value",
 					},
 				},
 			},
@@ -848,7 +965,11 @@ oauth2:
 		{
 			name: "with templateRelabel",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						ServiceScrapeRelabelTemplate: []*vmv1beta1.RelabelConfig{
 							{
@@ -904,7 +1025,17 @@ oauth2:
 				},
 				i:               0,
 				apiserverConfig: nil,
-				ssCache:         &scrapesSecretsCache{},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ca": []byte("ca-value"),
+					},
+				},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
 kubernetes_sd_configs:
@@ -955,7 +1086,6 @@ relabel_configs:
   target_label: node
   regex: .+
 tls_config:
-  insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
@@ -963,7 +1093,11 @@ bearer_token_file: /var/run/token
 		{
 			name: "with selectors endpoints",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						EnableKubernetesAPISelectors: true,
 					},
@@ -996,7 +1130,6 @@ bearer_token_file: /var/run/token
 				apiserverConfig: &vmv1beta1.APIServerConfig{
 					Host: "default-k8s-host",
 				},
-				ssCache: &scrapesSecretsCache{},
 				se: vmv1beta1.VMAgentSecurityEnforcements{
 					OverrideHonorLabels:      false,
 					OverrideHonorTimestamps:  false,
@@ -1063,7 +1196,11 @@ relabel_configs:
 		{
 			name: "with selectors services",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						EnableKubernetesAPISelectors: true,
 					},
@@ -1095,7 +1232,6 @@ relabel_configs:
 				apiserverConfig: &vmv1beta1.APIServerConfig{
 					Host: "default-k8s-host",
 				},
-				ssCache: &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
 kubernetes_sd_configs:
@@ -1130,7 +1266,24 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateServiceScrapeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
+			ctx := context.Background()
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.ConfigResourceKind: {
+					MountDir:   vmAgentConfDir,
+					SecretName: build.ResourceName(build.ConfigResourceKind, tt.args.cr),
+				},
+				build.TLSResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSResourceKind, tt.args.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			got, err := generateServiceScrapeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, tt.args.apiserverConfig, ac, tt.args.se)
+			if err != nil {
+				t.Errorf("cannot generate ServiceScrapeConfig, err: %e", err)
+				return
+			}
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal ServiceScrapeConfig to yaml,err :%e", err)

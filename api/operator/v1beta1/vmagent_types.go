@@ -659,10 +659,6 @@ func (cr *VMAgent) PrefixedName() string {
 	return fmt.Sprintf("vmagent-%s", cr.Name)
 }
 
-func (cr *VMAgent) TLSAssetName() string {
-	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name)
-}
-
 func (cr *VMAgent) RelabelingAssetName() string {
 	return fmt.Sprintf("relabelings-assets-vmagent-%s", cr.Name)
 }

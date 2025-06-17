@@ -18,7 +18,6 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 	type args struct {
 		cr              vmv1beta1.VMAgent
 		m               *vmv1beta1.VMNodeScrape
-		i               int
 		apiserverConfig *vmv1beta1.APIServerConfig
 		ssCache         *scrapesSecretsCache
 		se              vmv1beta1.VMAgentSecurityEnforcements
@@ -33,7 +32,6 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 			args: args{
 				apiserverConfig: nil,
 				ssCache:         &scrapesSecretsCache{},
-				i:               1,
 				m: &vmv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
@@ -49,7 +47,7 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 					},
 				},
 			},
-			want: `job_name: nodeScrape/default/nodes-basic/1
+			want: `job_name: nodeScrape/default/nodes-basic
 kubernetes_sd_configs:
 - role: node
 honor_labels: false
@@ -81,7 +79,6 @@ relabel_configs:
 						},
 					},
 				},
-				i: 1,
 				m: &vmv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
@@ -138,7 +135,7 @@ relabel_configs:
 					},
 				},
 			},
-			want: `job_name: nodeScrape/default/nodes-basic/1
+			want: `job_name: nodeScrape/default/nodes-basic
 kubernetes_sd_configs:
 - role: node
 honor_labels: true
@@ -208,7 +205,6 @@ basic_auth:
 					},
 				},
 				ssCache: &scrapesSecretsCache{},
-				i:       1,
 				m: &vmv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
@@ -226,7 +222,7 @@ basic_auth:
 					},
 				},
 			},
-			want: `job_name: nodeScrape/default/nodes-basic/1
+			want: `job_name: nodeScrape/default/nodes-basic
 kubernetes_sd_configs:
 - role: node
   selectors:
@@ -251,7 +247,7 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateNodeScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
+			got := generateNodeScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal NodeScrapeConfig to yaml,err :%e", err)

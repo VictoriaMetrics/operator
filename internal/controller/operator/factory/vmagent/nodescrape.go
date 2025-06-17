@@ -13,7 +13,6 @@ func generateNodeScrapeConfig(
 	ctx context.Context,
 	vmagentCR *vmv1beta1.VMAgent,
 	cr *vmv1beta1.VMNodeScrape,
-	i int,
 	apiserverConfig *vmv1beta1.APIServerConfig,
 	ssCache *scrapesSecretsCache,
 	se vmv1beta1.VMAgentSecurityEnforcements,
@@ -22,7 +21,7 @@ func generateNodeScrapeConfig(
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("nodeScrape/%s/%s/%d", cr.Namespace, cr.Name, i),
+			Value: fmt.Sprintf("nodeScrape/%s/%s", cr.Namespace, cr.Name),
 		},
 	}
 

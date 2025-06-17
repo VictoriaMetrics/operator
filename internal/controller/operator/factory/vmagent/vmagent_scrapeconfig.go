@@ -1113,13 +1113,12 @@ func generateConfig(
 				cr.Spec.VMAgentSecurityEnforcements,
 			))
 	}
-	for i, identifier := range sos.nss {
+	for _, identifier := range sos.nss {
 		scrapeConfigs = append(scrapeConfigs,
 			generateNodeScrapeConfig(
 				ctx,
 				cr,
 				identifier,
-				i,
 				apiserverConfig,
 				secretsCache,
 				cr.Spec.VMAgentSecurityEnforcements,

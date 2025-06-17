@@ -679,7 +679,7 @@ scrape_configs:
     target_label: instance
   - target_label: __address__
     replacement: http://blackbox
-- job_name: nodeScrape/default/test-vms/0
+- job_name: nodeScrape/default/test-vms
   kubernetes_sd_configs:
   - role: node
   honor_labels: false
@@ -990,7 +990,7 @@ scrape_configs:
     replacement: ${1}
   - target_label: endpoint
     replacement: "8011"
-- job_name: nodeScrape/default/test-good/0
+- job_name: nodeScrape/default/test-good
   kubernetes_sd_configs:
   - role: node
   honor_labels: false
@@ -1549,7 +1549,7 @@ scrape_configs:
       ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
       cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
       key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
-- job_name: nodeScrape/default/k8s-nodes/0
+- job_name: nodeScrape/default/k8s-nodes
   kubernetes_sd_configs:
   - role: node
   honor_labels: false

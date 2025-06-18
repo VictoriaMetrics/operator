@@ -1572,14 +1572,14 @@ func buildGossipConfigYAML(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCache) 
 	if gossipCfg.TLSServerConfig != nil {
 		var tlsCfg yaml.MapSlice
 		if gossipCfg.TLSServerConfig.ClientCASecretRef != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, cr.Namespace, gossipCfg.TLSServerConfig.ClientCASecretRef)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSServerConfig.ClientCASecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret CA value: %w", err)
 			}
 			gossipCfg.TLSServerConfig.ClientCAFile = file
 		}
 		if gossipCfg.TLSServerConfig.CertSecretRef != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, cr.Namespace, gossipCfg.TLSServerConfig.CertSecretRef)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSServerConfig.CertSecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret CA value: %w", err)
 			}
@@ -1587,7 +1587,7 @@ func buildGossipConfigYAML(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCache) 
 		}
 
 		if gossipCfg.TLSServerConfig.KeySecretRef != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, cr.Namespace, gossipCfg.TLSServerConfig.KeySecretRef)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSServerConfig.KeySecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
@@ -1628,14 +1628,14 @@ func buildGossipConfigYAML(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCache) 
 	if gossipCfg.TLSClientConfig != nil {
 		var tlsCfg yaml.MapSlice
 		if gossipCfg.TLSClientConfig.CASecretRef != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, cr.Namespace, gossipCfg.TLSClientConfig.CASecretRef)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSClientConfig.CASecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
 			gossipCfg.TLSClientConfig.CAFile = file
 		}
 		if gossipCfg.TLSClientConfig.CertSecretRef != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, cr.Namespace, gossipCfg.TLSClientConfig.CertSecretRef)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSClientConfig.CertSecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
@@ -1643,7 +1643,7 @@ func buildGossipConfigYAML(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCache) 
 		}
 
 		if gossipCfg.TLSClientConfig.KeySecretRef != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, cr.Namespace, gossipCfg.TLSClientConfig.KeySecretRef)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSClientConfig.KeySecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
@@ -1698,14 +1698,14 @@ func buildWebServerConfigYAML(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCach
 	if webCfg.TLSServerConfig != nil {
 		var tlsCfg yaml.MapSlice
 		if webCfg.TLSServerConfig.ClientCASecretRef != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, cr.Namespace, webCfg.TLSServerConfig.ClientCASecretRef)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, webCfg.TLSServerConfig.ClientCASecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
 			webCfg.TLSServerConfig.ClientCAFile = file
 		}
 		if webCfg.TLSServerConfig.CertSecretRef != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, cr.Namespace, webCfg.TLSServerConfig.CertSecretRef)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, webCfg.TLSServerConfig.CertSecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch certSecret value: %w", err)
 			}
@@ -1713,7 +1713,7 @@ func buildWebServerConfigYAML(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCach
 		}
 
 		if webCfg.TLSServerConfig.KeySecretRef != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, cr.Namespace, webCfg.TLSServerConfig.KeySecretRef)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, webCfg.TLSServerConfig.KeySecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch keySecret value: %w", err)
 			}

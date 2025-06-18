@@ -454,9 +454,9 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	}
 
 	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.TLSResourceKind: {
+		build.TLSAssetsResourceKind: {
 			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSResourceKind, cr),
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
 		},
 	}
 	ac := build.NewAssetsCache(ctx, rclient, cfg)
@@ -529,7 +529,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		},
 	}
 	creds := ac.GetOutput()
-	if secret, ok := creds[build.TLSResourceKind]; ok {
+	if secret, ok := creds[build.TLSAssetsResourceKind]; ok {
 		for name, value := range secret.Data {
 			newAMSecretConfig.Data[name] = value
 		}

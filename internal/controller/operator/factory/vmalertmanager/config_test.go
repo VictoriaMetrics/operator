@@ -1261,9 +1261,9 @@ templates: []
 				tt.args.cr = &vmv1beta1.VMAlertmanager{}
 			}
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSResourceKind, tt.args.cr),
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.args.cr),
 				},
 			}
 			ctx := context.TODO()
@@ -1757,9 +1757,9 @@ authorization:
 				},
 			}
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSResourceKind, cr),
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
 				},
 			}
 			cb := &configBuilder{
@@ -2127,9 +2127,9 @@ tls_server_config:
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			ctx := context.TODO()
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSResourceKind, tt.cr),
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
 				},
 			}
 			ac := build.NewAssetsCache(ctx, fclient, cfg)
@@ -2192,9 +2192,9 @@ tls_client_config:
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			ctx := context.TODO()
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSResourceKind, tt.cr),
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
 				},
 			}
 			ac := build.NewAssetsCache(ctx, fclient, cfg)

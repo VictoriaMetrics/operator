@@ -636,13 +636,13 @@ kubernetes_sd_configs:
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.ConfigResourceKind: {
+				build.SecretConfigResourceKind: {
 					MountDir:   vmAgentConfDir,
-					SecretName: build.ResourceName(build.ConfigResourceKind, tt.args.cr),
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.args.cr),
 				},
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSResourceKind, tt.args.cr),
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.args.cr),
 				},
 			}
 			ac := build.NewAssetsCache(ctx, fclient, cfg)

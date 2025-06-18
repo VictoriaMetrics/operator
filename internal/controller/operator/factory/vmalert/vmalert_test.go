@@ -613,13 +613,13 @@ func TestBuildNotifiers(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.ConfigResourceKind: {
+				build.SecretConfigResourceKind: {
 					MountDir:   vmalertConfigSecretsDir,
-					SecretName: build.ResourceName(build.ConfigResourceKind, tt.cr),
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.cr),
 				},
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSResourceKind, tt.cr),
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
 				},
 			}
 			ac := build.NewAssetsCache(ctx, fclient, cfg)
@@ -727,13 +727,13 @@ func Test_buildVMAlertArgs(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(nil)
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.ConfigResourceKind: {
+				build.SecretConfigResourceKind: {
 					MountDir:   vmalertConfigSecretsDir,
-					SecretName: build.ResourceName(build.ConfigResourceKind, tt.cr),
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.cr),
 				},
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSResourceKind, tt.cr),
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
 				},
 			}
 			ac := build.NewAssetsCache(ctx, fclient, cfg)

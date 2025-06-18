@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -91,13 +92,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 	}
 
 	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.ConfigResourceKind: {
+		build.SecretConfigResourceKind: {
 			MountDir:   vmalertConfigSecretsDir,
-			SecretName: build.ResourceName(build.ConfigResourceKind, cr),
+			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
 		},
-		build.TLSResourceKind: {
+		build.TLSAssetsResourceKind: {
 			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSResourceKind, cr),
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
 		},
 	}
 	ac := build.NewAssetsCache(ctx, rclient, cfg)
@@ -361,7 +362,7 @@ func buildAuthArgs(args []string, namespace, flagPrefix string, cfg vmv1beta1.HT
 		if len(cfg.BasicAuth.PasswordFile) > 0 {
 			args = append(args, fmt.Sprintf("-%s.basicAuth.passwordFile=%s", flagPrefix, cfg.BasicAuth.PasswordFile))
 		} else {
-			file, err := ac.LoadPathFromSecret(build.ConfigResourceKind, namespace, &cfg.BasicAuth.Password)
+			file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, namespace, &cfg.BasicAuth.Password)
 			if err != nil {
 				return nil, err
 			}
@@ -377,7 +378,7 @@ func buildAuthArgs(args []string, namespace, flagPrefix string, cfg vmv1beta1.HT
 		if len(cfg.TLSConfig.CAFile) > 0 {
 			args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", flagPrefix, cfg.TLSConfig.CAFile))
 		} else if len(cfg.TLSConfig.CA.PrefixedName()) > 0 {
-			file, err := ac.LoadPathFromSecretOrConfigMap(build.TLSResourceKind, namespace, &cfg.TLSConfig.CA)
+			file, err := ac.LoadPathFromSecretOrConfigMap(build.TLSAssetsResourceKind, namespace, &cfg.TLSConfig.CA)
 			if err != nil {
 				return nil, err
 			}
@@ -386,7 +387,7 @@ func buildAuthArgs(args []string, namespace, flagPrefix string, cfg vmv1beta1.HT
 		if len(cfg.TLSConfig.CertFile) > 0 {
 			args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", flagPrefix, cfg.TLSConfig.CertFile))
 		} else if len(cfg.TLSConfig.Cert.PrefixedName()) > 0 {
-			file, err := ac.LoadPathFromSecretOrConfigMap(build.TLSResourceKind, namespace, &cfg.TLSConfig.Cert)
+			file, err := ac.LoadPathFromSecretOrConfigMap(build.TLSAssetsResourceKind, namespace, &cfg.TLSConfig.Cert)
 			if err != nil {
 				return nil, err
 			}
@@ -395,7 +396,7 @@ func buildAuthArgs(args []string, namespace, flagPrefix string, cfg vmv1beta1.HT
 		if len(cfg.TLSConfig.KeyFile) > 0 {
 			args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", flagPrefix, cfg.TLSConfig.KeyFile))
 		} else if cfg.TLSConfig.KeySecret != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSResourceKind, namespace, cfg.TLSConfig.KeySecret)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, namespace, cfg.TLSConfig.KeySecret)
 			if err != nil {
 				return nil, err
 			}
@@ -410,7 +411,7 @@ func buildAuthArgs(args []string, namespace, flagPrefix string, cfg vmv1beta1.HT
 	}
 	if cfg.BearerAuth != nil {
 		if cfg.TokenSecret != nil {
-			file, err := ac.LoadPathFromSecret(build.ConfigResourceKind, namespace, cfg.TokenSecret)
+			file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, namespace, cfg.TokenSecret)
 			if err != nil {
 				return nil, err
 			}
@@ -421,7 +422,7 @@ func buildAuthArgs(args []string, namespace, flagPrefix string, cfg vmv1beta1.HT
 	}
 	if cfg.OAuth2 != nil {
 		if cfg.OAuth2.ClientSecret != nil {
-			file, err := ac.LoadPathFromSecret(build.ConfigResourceKind, namespace, cfg.OAuth2.ClientSecret)
+			file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, namespace, cfg.OAuth2.ClientSecret)
 			if err != nil {
 				return nil, err
 			}
@@ -635,7 +636,7 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 				passFile = nt.BasicAuth.PasswordFile
 				authPasswordFile.isNotNull = true
 			} else {
-				file, err := ac.LoadPathFromSecret(build.ConfigResourceKind, cr.Namespace, &nt.BasicAuth.Password)
+				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &nt.BasicAuth.Password)
 				if err != nil {
 					return nil, err
 				}
@@ -655,7 +656,7 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 		var tokenPath string
 		if nt.BearerAuth != nil {
 			if nt.TokenSecret != nil {
-				file, err := ac.LoadPathFromSecret(build.ConfigResourceKind, cr.Namespace, nt.TokenSecret)
+				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, nt.TokenSecret)
 				if err != nil {
 					return nil, err
 				}
@@ -671,7 +672,7 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 		var scopes, tokenURL, secretFile, clientID string
 		if nt.OAuth2 != nil {
 			if nt.OAuth2.ClientSecret != nil {
-				file, err := ac.LoadPathFromSecret(build.ConfigResourceKind, cr.Namespace, nt.OAuth2.ClientSecret)
+				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, nt.OAuth2.ClientSecret)
 				if err != nil {
 					return nil, err
 				}

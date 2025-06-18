@@ -1211,7 +1211,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 				oaSecretKeyFile = rws.OAuth2.ClientSecretFile
 			}
 
-			if file, err := ac.LoadPathFromSecret(build.ConfigResourceKind, cr.Namespace, rws.OAuth2.ClientSecret); err != nil {
+			if file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.OAuth2.ClientSecret); err != nil {
 				return nil, err
 			} else if len(file) > 0 {
 				oauth2ClientSecretFile.isNotNull = true

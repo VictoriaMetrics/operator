@@ -501,9 +501,9 @@ password: pass
 			}
 			ctx := context.TODO()
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   vmAuthConfigRawFolder,
-					SecretName: build.ResourceName(build.TLSResourceKind, cr),
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
 				},
 			}
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
@@ -701,7 +701,7 @@ func Test_selectVMUserSecrets(t *testing.T) {
 			ctx := context.TODO()
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   vmAuthConfigRawFolder,
 					SecretName: "test-secret",
 				},
@@ -2260,9 +2260,9 @@ unauthorized_user:
 				sus.users[i], sus.users[j] = sus.users[j], sus.users[i]
 			})
 			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSResourceKind: {
+				build.TLSAssetsResourceKind: {
 					MountDir:   vmAuthConfigRawFolder,
-					SecretName: build.ResourceName(build.TLSResourceKind, tt.cr),
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
 				},
 			}
 			ac := build.NewAssetsCache(ctx, testClient, cfg)

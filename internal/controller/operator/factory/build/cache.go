@@ -12,22 +12,56 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+// ResourceKind defines a type of resource to perform build operations on
+type ResourceKind string
+
+const (
+	// TLSAssetsResourceKind defines build type for tls configuration assets
+	TLSAssetsResourceKind ResourceKind = "tls-assets"
+	// SecretConfigResourceKind defines build for configuration secret object
+	SecretConfigResourceKind ResourceKind = "config"
+)
+
+// ResourceName returns a name for prodived resource and corresponding cr object
+func ResourceName(kind ResourceKind, cr builderOpts) string {
+	var parts []string
+	if kind == TLSAssetsResourceKind {
+		parts = append(parts, "tls-assets")
+	}
+	parts = append(parts, cr.PrefixedName())
+	return strings.Join(parts, "-")
+}
+
+// ResourceMeta return kubernetes metadata object for given kind and cr
+func ResourceMeta(kind ResourceKind, cr builderOpts) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:            ResourceName(kind, cr),
+		Namespace:       cr.GetNamespace(),
+		Labels:          cr.AllLabels(),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: cr.AsOwner(),
+		Finalizers:      []string{vmv1beta1.FinalizerName},
+	}
+}
+
+// BasicAuthCreds defines basic auth credentials object
 type BasicAuthCreds struct {
 	Username string
 	Password string
 }
 
+// TLSCreds defines TLS configuration object file paths
 type TLSCreds struct {
 	CAFile   string
 	CertFile string
 	KeyFile  string
-	Key      string
 }
 
 func buildAssetKey(prefix string, name string, key string) string {
@@ -37,18 +71,17 @@ func buildAssetKey(prefix string, name string, key string) string {
 	return fmt.Sprintf("%s_%s_%s", prefix, name, key)
 }
 
-type OAuth2Creds struct {
+type oauth2Creds struct {
 	ClientSecret string
 	ClientID     string
 }
 
-type HTTPClientCreds struct {
-	BasicAuth   *BasicAuthCreds
-	BearerToken string
-	OAuth2      *OAuth2Creds
-}
-
 // AssetsCache is a shared cache for all CR assets
+// that stores configmaps and secrets during reconcile loop
+//
+// It's mostly needed to reduce presssure on Kubernertes API server
+// because by default, operator disables client.Cache for those objects.
+// Since it greatly increases memory usage.
 type AssetsCache struct {
 	ctx        context.Context
 	client     client.Client
@@ -64,6 +97,7 @@ type ResourceCfg struct {
 	SecretName string
 }
 
+// NewAssetsCache returns a  new cache instance
 func NewAssetsCache(ctx context.Context, client client.Client, cfg map[ResourceKind]*ResourceCfg) *AssetsCache {
 	ac := &AssetsCache{
 		cfg:        cfg,
@@ -90,6 +124,7 @@ func NewAssetsCache(ctx context.Context, client client.Client, cfg map[ResourceK
 	return ac
 }
 
+// VolumeTo adds volumes and volume Mounts to the provided destinations
 func (ac *AssetsCache) VolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount) ([]corev1.Volume, []corev1.VolumeMount) {
 	for _, kind := range ac.kinds {
 		cfg := ac.cfg[kind]
@@ -110,6 +145,8 @@ func (ac *AssetsCache) VolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeM
 	return volumes, mounts
 }
 
+// GetOutput returns Secret objects with cached content of fetched secrets
+// grouped by ResourceKind
 func (ac *AssetsCache) GetOutput() map[ResourceKind]corev1.Secret {
 	output := make(map[ResourceKind]corev1.Secret)
 	for _, kind := range ac.kinds {
@@ -128,32 +165,8 @@ func (ac *AssetsCache) addToOutput(kind ResourceKind, key, secret string) string
 	return path.Join(cfg.MountDir, key)
 }
 
-// BuildHTTPClientCreds build HTTPClientCreds from vmv1beta1.HTTPAuth
-func (ac *AssetsCache) BuildHTTPClientCreds(ns string, cfg *vmv1beta1.HTTPAuth) (*HTTPClientCreds, error) {
-	if cfg == nil {
-		return nil, nil
-	}
-	creds := &HTTPClientCreds{}
-	if basicAuth, err := ac.BuildBasicAuthCreds(ns, cfg.BasicAuth); err != nil {
-		return nil, err
-	} else if basicAuth != nil && basicAuth.Password != "" {
-		creds.BasicAuth = basicAuth
-	}
-	if cfg.BearerAuth != nil {
-		if bearerToken, err := ac.LoadKeyFromSecret(ns, cfg.TokenSecret); err != nil {
-			return nil, err
-		} else if len(bearerToken) > 0 {
-			creds.BearerToken = bearerToken
-		}
-	}
-	if oauth2, err := ac.BuildOAuth2Creds(ns, cfg.OAuth2); err != nil {
-		return nil, err
-	} else if oauth2 != nil && oauth2.ClientSecret != "" {
-		creds.OAuth2 = oauth2
-	}
-	return creds, nil
-}
-
+// TLSToYAML returns yaml representation of provided TLSConfig config
+// Please note all secret values will be aded as a plain text to it.
 func (ac *AssetsCache) TLSToYAML(ns, prefix string, cfg *vmv1beta1.TLSConfig) (yaml.MapSlice, error) {
 	if cfg == nil {
 		return nil, nil
@@ -181,6 +194,8 @@ func (ac *AssetsCache) TLSToYAML(ns, prefix string, cfg *vmv1beta1.TLSConfig) (y
 	return r, nil
 }
 
+// ProxyAuthToYAML returns yaml representation of provided ProxyAuth config
+// Please note all secret values will be aded as a plain text to it.
 func (ac *AssetsCache) ProxyAuthToYAML(ns string, cfg *vmv1beta1.ProxyAuth) (yaml.MapSlice, error) {
 	if cfg == nil {
 		return nil, nil
@@ -216,6 +231,8 @@ func (ac *AssetsCache) ProxyAuthToYAML(ns string, cfg *vmv1beta1.ProxyAuth) (yam
 	return r, nil
 }
 
+// AuthorizationToYAML returns yaml representation of provided Authorization config
+// Please note all secret values will be aded as a plain text to it.
 func (ac *AssetsCache) AuthorizationToYAML(ns string, cfg *vmv1beta1.Authorization) (yaml.MapSlice, error) {
 	if cfg == nil || (cfg.Credentials == nil && len(cfg.CredentialsFile) == 0) {
 		return nil, nil
@@ -240,6 +257,8 @@ func (ac *AssetsCache) AuthorizationToYAML(ns string, cfg *vmv1beta1.Authorizati
 	}, nil
 }
 
+// BasicAuthToYAML returns ymal representation of provided BasicAuth configuration
+// Please note all secret values will be aded as a plain text to it.
 func (ac *AssetsCache) BasicAuthToYAML(ns string, cfg *vmv1beta1.BasicAuth) (yaml.MapSlice, error) {
 	if cfg == nil {
 		return nil, nil
@@ -261,11 +280,13 @@ func (ac *AssetsCache) BasicAuthToYAML(ns string, cfg *vmv1beta1.BasicAuth) (yam
 	return r, nil
 }
 
+// OAuth2ToYAML returns yaml representation of provided oauth2 configuration
+// Please note all secret values will be aded as a plain text to it.
 func (ac *AssetsCache) OAuth2ToYAML(ns string, cfg *vmv1beta1.OAuth2) (yaml.MapSlice, error) {
 	if cfg == nil {
 		return nil, nil
 	}
-	c, err := ac.BuildOAuth2Creds(ns, cfg)
+	c, err := ac.fetchOAuth2Creds(ns, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -309,12 +330,12 @@ func (ac *AssetsCache) OAuth2ToYAML(ns string, cfg *vmv1beta1.OAuth2) (yaml.MapS
 	}, nil
 }
 
-// BuildOAuth2Creds fetches content of OAuth2 secret and returns it plain text value
-func (ac *AssetsCache) BuildOAuth2Creds(ns string, cfg *vmv1beta1.OAuth2) (*OAuth2Creds, error) {
+// fetchOAuth2Creds fetches content of given OAuth2 configuration secret and returns it plain text value
+func (ac *AssetsCache) fetchOAuth2Creds(ns string, cfg *vmv1beta1.OAuth2) (*oauth2Creds, error) {
 	if cfg == nil {
 		return nil, nil
 	}
-	creds := &OAuth2Creds{}
+	creds := &oauth2Creds{}
 	if cfg.ClientSecret != nil {
 		s, err := ac.LoadKeyFromSecret(ns, cfg.ClientSecret)
 		if err != nil {
@@ -330,7 +351,8 @@ func (ac *AssetsCache) BuildOAuth2Creds(ns string, cfg *vmv1beta1.OAuth2) (*OAut
 	return creds, nil
 }
 
-// BuildTLSCreds fetches content of TLS secret and returns struct with plain text fields
+// BuildTLSCreds fetches content of provided TLSConfig
+// Returns an object with paths to the fetched secret values mounted on disk
 func (ac *AssetsCache) BuildTLSCreds(ns string, cfg *vmv1beta1.TLSConfig) (*TLSCreds, error) {
 	if cfg == nil {
 		return nil, nil
@@ -342,7 +364,7 @@ func (ac *AssetsCache) BuildTLSCreds(ns string, cfg *vmv1beta1.TLSConfig) (*TLSC
 	if len(cfg.CAFile) > 0 {
 		creds.CAFile = cfg.CAFile
 	} else if len(cfg.CA.PrefixedName()) > 0 {
-		file, err := ac.LoadPathFromSecretOrConfigMap(TLSResourceKind, ns, &cfg.CA)
+		file, err := ac.LoadPathFromSecretOrConfigMap(TLSAssetsResourceKind, ns, &cfg.CA)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch ca: %w", err)
 		}
@@ -352,7 +374,7 @@ func (ac *AssetsCache) BuildTLSCreds(ns string, cfg *vmv1beta1.TLSConfig) (*TLSC
 	if len(cfg.CertFile) > 0 {
 		creds.CertFile = cfg.CertFile
 	} else if len(cfg.Cert.PrefixedName()) > 0 {
-		file, err := ac.LoadPathFromSecretOrConfigMap(TLSResourceKind, ns, &cfg.Cert)
+		file, err := ac.LoadPathFromSecretOrConfigMap(TLSAssetsResourceKind, ns, &cfg.Cert)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cert: %w", err)
 		}
@@ -362,7 +384,7 @@ func (ac *AssetsCache) BuildTLSCreds(ns string, cfg *vmv1beta1.TLSConfig) (*TLSC
 	if len(cfg.KeyFile) > 0 {
 		creds.KeyFile = cfg.KeyFile
 	} else if cfg.KeySecret != nil {
-		file, err := ac.LoadPathFromSecret(TLSResourceKind, ns, cfg.KeySecret)
+		file, err := ac.LoadPathFromSecret(TLSAssetsResourceKind, ns, cfg.KeySecret)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch keySecret: %w", err)
 		}
@@ -371,7 +393,7 @@ func (ac *AssetsCache) BuildTLSCreds(ns string, cfg *vmv1beta1.TLSConfig) (*TLSC
 	return creds, nil
 }
 
-// BuildBasicAuthCreds fetch content of kubernetes secrets and returns it within plain text
+// BuildBasicAuthCreds fetches basic auth credentials object by given secret selectors
 func (ac *AssetsCache) BuildBasicAuthCreds(ns string, cfg *vmv1beta1.BasicAuth) (*BasicAuthCreds, error) {
 	if cfg == nil {
 		return nil, nil
@@ -397,16 +419,7 @@ func (ac *AssetsCache) BuildBasicAuthCreds(ns string, cfg *vmv1beta1.BasicAuth) 
 	return creds, nil
 }
 
-func (ac *AssetsCache) AddSecret(secret *corev1.Secret) {
-	key := buildCacheKey(secret.Namespace, secret.Name)
-	ac.secrets[key] = secret
-}
-
-func (ac *AssetsCache) AddConfigMap(cm *corev1.ConfigMap) {
-	key := buildCacheKey(cm.Namespace, cm.Name)
-	ac.configMaps[key] = cm
-}
-
+// LoadSecret returns secret object by given namespace and name
 func (ac *AssetsCache) LoadSecret(ns, name string) (*corev1.Secret, error) {
 	key := buildCacheKey(ns, name)
 	s, ok := ac.secrets[key]
@@ -426,6 +439,8 @@ func (ac *AssetsCache) LoadSecret(ns, name string) (*corev1.Secret, error) {
 	return s, nil
 }
 
+// LoadPathFromSecretOrConfigMap fetches content of the configmap by given selector and namespace
+// returns path to the configmap content file mounted on pod volume
 func (ac *AssetsCache) LoadPathFromSecretOrConfigMap(kind ResourceKind, ns string, soc *vmv1beta1.SecretOrConfigMap) (string, error) {
 	secret, err := ac.LoadKeyFromSecretOrConfigMap(ns, soc)
 	if err != nil {
@@ -435,6 +450,8 @@ func (ac *AssetsCache) LoadPathFromSecretOrConfigMap(kind ResourceKind, ns strin
 	return ac.addToOutput(kind, key, secret), nil
 }
 
+// LoadKeyFromSecretOrConfigMap fetches content of secret or configmap by given selector and namespace
+// returns plain text value
 func (ac *AssetsCache) LoadKeyFromSecretOrConfigMap(ns string, soc *vmv1beta1.SecretOrConfigMap) (string, error) {
 	var value string
 	if soc.Secret != nil {
@@ -449,7 +466,7 @@ func (ac *AssetsCache) LoadKeyFromSecretOrConfigMap(ns string, soc *vmv1beta1.Se
 	return value, nil
 }
 
-// LoadKeyFromConfigMap fetches content of configmap by given key
+// LoadKeyFromConfigMap fetches content of configmap by given selector and namespace
 func (ac *AssetsCache) LoadKeyFromConfigMap(ns string, cs *corev1.ConfigMapKeySelector) (string, error) {
 	if cs == nil {
 		return "", fmt.Errorf("BUG, configmap key selector must be non nil in ns=%q", ns)
@@ -476,7 +493,8 @@ func (ac *AssetsCache) LoadKeyFromConfigMap(ns string, cs *corev1.ConfigMapKeySe
 	}
 }
 
-// LoadKeyFromSecret fetch content of secret by given key
+// LoadKeyFromSecret fetch content of secret by given selector and namespace
+// returns plain text secret value
 func (ac *AssetsCache) LoadKeyFromSecret(ns string, ss *corev1.SecretKeySelector) (string, error) {
 	if ss == nil {
 		return "", fmt.Errorf("BUG, secret key selector must be non nil in ns=%q", ns)
@@ -503,6 +521,8 @@ func (ac *AssetsCache) LoadKeyFromSecret(ns string, ss *corev1.SecretKeySelector
 	}
 }
 
+// LoadPathFromSecret loads content of the secret by given selector and namespace
+// returns path to the secret content file mounted on pod volume
 func (ac *AssetsCache) LoadPathFromSecret(kind ResourceKind, ns string, ss *corev1.SecretKeySelector) (string, error) {
 	secret, err := ac.LoadKeyFromSecret(ns, ss)
 	if err != nil {
@@ -516,6 +536,8 @@ var disabledSpaceTrim bool
 
 // SetSpaceTrim configures option to trim space
 // at Secret/ConfigMap keys
+//
+// Must called before any method from cache.go file could be used
 func SetSpaceTrim(disabled bool) {
 	disabledSpaceTrim = disabled
 }
@@ -535,12 +557,13 @@ type KeyNotFoundError struct {
 	context  string
 }
 
+// IsNotFound performs a check if provided error is KeyNotFoundError
 func IsNotFound(err error) bool {
 	var e *KeyNotFoundError
 	return k8serrors.IsNotFound(err) || errors.As(err, &e)
 }
 
-// Error implements interface
+// Error implements errors.Error interface
 func (ke *KeyNotFoundError) Error() string {
 	return fmt.Sprintf("expected key=%q was not found at=%q cache_key=%q", ke.key, ke.context, ke.cacheKey)
 }

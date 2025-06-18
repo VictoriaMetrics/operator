@@ -165,13 +165,13 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 
 func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object) (*build.AssetsCache, error) {
 	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.ConfigResourceKind: {
+		build.SecretConfigResourceKind: {
 			MountDir:   vmAgentConfDir,
-			SecretName: build.ResourceName(build.ConfigResourceKind, cr),
+			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
 		},
-		build.TLSResourceKind: {
+		build.TLSAssetsResourceKind: {
 			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSResourceKind, cr),
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
 		},
 	}
 	ac := build.NewAssetsCache(ctx, rclient, cfg)
@@ -244,7 +244,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		if prevCR != nil {
 			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
 		}
-		if kind == build.ConfigResourceKind {
+		if kind == build.SecretConfigResourceKind {
 			// Compress config to avoid 1mb secret limit for a while
 			var buf bytes.Buffer
 			if err = gzipConfig(&buf, generatedConfig); err != nil {

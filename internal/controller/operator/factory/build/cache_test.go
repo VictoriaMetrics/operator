@@ -96,7 +96,7 @@ func Test_LoadKeyFromSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			cfg := map[ResourceKind]*ResourceCfg{
-				TLSResourceKind: {
+				TLSAssetsResourceKind: {
 					MountDir:   "/test",
 					SecretName: "tls-volume",
 				},
@@ -146,7 +146,7 @@ func Test_LoadKeyFromConfigMap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			cfg := map[ResourceKind]*ResourceCfg{
-				TLSResourceKind: {
+				TLSAssetsResourceKind: {
 					MountDir:   "/test",
 					SecretName: "tls-volume",
 				},

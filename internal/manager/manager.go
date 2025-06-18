@@ -308,7 +308,7 @@ func RunManager(ctx context.Context) error {
 		return fmt.Errorf("cannot create k8s-go-client instance: %w", err)
 	}
 
-	k8stools.SetSpaceTrim(*disableSecretKeySpaceTrim)
+	build.SetSpaceTrim(*disableSecretKeySpaceTrim)
 	k8sServerVersion, err := baseClient.ServerVersion()
 	if err != nil {
 		return fmt.Errorf("cannot get kubernetes server version: %w", err)

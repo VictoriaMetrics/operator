@@ -8,30 +8,37 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_generateNodeScrapeConfig(t *testing.T) {
 	type args struct {
-		cr              vmv1beta1.VMAgent
+		cr              *vmv1beta1.VMAgent
 		sc              *vmv1beta1.VMNodeScrape
 		apiserverConfig *vmv1beta1.APIServerConfig
-		ssCache         *scrapesSecretsCache
 		se              vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name              string
+		args              args
+		want              string
+		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "ok build node",
 			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				apiserverConfig: nil,
-				ssCache:         &scrapesSecretsCache{},
 				sc: &vmv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
@@ -69,16 +76,13 @@ relabel_configs:
 		{
 			name: "complete ok build node",
 			args: args{
-				apiserverConfig: nil,
-				ssCache: &scrapesSecretsCache{
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{},
-					bearerTokens:  map[string]string{},
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
-						"nodeScrape/default/nodes-basic": {
-							Username: "username",
-						},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
 					},
 				},
+				apiserverConfig: nil,
 				sc: &vmv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
@@ -119,12 +123,16 @@ relabel_configs:
 						EndpointAuth: vmv1beta1.EndpointAuth{
 							BearerTokenFile: "/tmp/bearer",
 							BasicAuth: &vmv1beta1.BasicAuth{
-								Username: corev1.SecretKeySelector{Key: "username", LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"}},
+								Username: corev1.SecretKeySelector{
+									Key: "username",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "ba-secret",
+									},
+								},
 							},
 							TLSConfig: &vmv1beta1.TLSConfig{
 								InsecureSkipVerify: true,
 							},
-							OAuth2: &vmv1beta1.OAuth2{},
 						},
 						JobLabel:     "env",
 						TargetLabels: []string{"app", "env"},
@@ -132,6 +140,17 @@ relabel_configs:
 							RelabelConfigs:       []*vmv1beta1.RelabelConfig{},
 							MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{},
 						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ba-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"username": []byte("username"),
 					},
 				},
 			},
@@ -199,12 +218,15 @@ basic_auth:
 		{
 			name: "with selector",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						EnableKubernetesAPISelectors: true,
 					},
 				},
-				ssCache: &scrapesSecretsCache{},
 				sc: &vmv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
@@ -247,10 +269,27 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateNodeScrapeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
+			ctx := context.Background()
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.SecretConfigResourceKind: {
+					MountDir:   vmAgentConfDir,
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.args.cr),
+				},
+				build.TLSAssetsResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.args.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			got, err := generateNodeScrapeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.apiserverConfig, ac, tt.args.se)
+			if err != nil {
+				t.Errorf("cannot generate NodeScrapeConfig, err: %e", err)
+				return
+			}
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
-				t.Errorf("cannot marshal NodeScrapeConfig to yaml,err :%e", err)
+				t.Errorf("cannot marshal NodeScrapeConfig to yaml, err: %e", err)
 				return
 			}
 			assert.Equal(t, tt.want, string(gotBytes))

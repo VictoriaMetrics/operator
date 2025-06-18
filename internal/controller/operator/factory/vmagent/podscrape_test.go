@@ -7,29 +7,38 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_generatePodScrapeConfig(t *testing.T) {
 	type args struct {
-		cr              vmv1beta1.VMAgent
+		cr              *vmv1beta1.VMAgent
 		sc              *vmv1beta1.VMPodScrape
 		ep              vmv1beta1.PodMetricsEndpoint
 		i               int
 		apiserverConfig *vmv1beta1.APIServerConfig
-		ssCache         *scrapesSecretsCache
 		se              vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name              string
+		args              args
+		predefinedObjects []runtime.Object
+		want              string
 	}{
 		{
 			name: "simple test",
 			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-1",
@@ -45,7 +54,6 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 						Node: ptr.To(true),
 					},
 				},
-				ssCache: &scrapesSecretsCache{},
 			},
 			want: `job_name: podScrape/default/test-1/0
 kubernetes_sd_configs:
@@ -84,6 +92,12 @@ relabel_configs:
 		{
 			name: "disabled running filter",
 			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-1",
@@ -100,7 +114,6 @@ relabel_configs:
 					},
 					FilterRunning: ptr.To(false),
 				},
-				ssCache: &scrapesSecretsCache{},
 			},
 			want: `job_name: podScrape/default/test-1/0
 kubernetes_sd_configs:
@@ -135,7 +148,11 @@ relabel_configs:
 		{
 			name: "test with selector",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						EnableKubernetesAPISelectors: true,
 					},
@@ -170,7 +187,6 @@ relabel_configs:
 					},
 					Port: ptr.To("web"),
 				},
-				ssCache: &scrapesSecretsCache{},
 			},
 			want: `job_name: podScrape/default/test-1/0
 kubernetes_sd_configs:
@@ -207,7 +223,11 @@ relabel_configs:
 		{
 			name: "with portNumber",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						EnableKubernetesAPISelectors: true,
 					},
@@ -249,7 +269,6 @@ relabel_configs:
 					},
 					PortNumber: ptr.To[int32](8081),
 				},
-				ssCache: &scrapesSecretsCache{},
 			},
 			want: `job_name: podScrape/default/test-1/0
 kubernetes_sd_configs:
@@ -284,7 +303,24 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generatePodScrapeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
+			ctx := context.Background()
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.SecretConfigResourceKind: {
+					MountDir:   vmAgentConfDir,
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.args.cr),
+				},
+				build.TLSAssetsResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.args.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			got, err := generatePodScrapeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, tt.args.apiserverConfig, ac, tt.args.se)
+			if err != nil {
+				t.Errorf("cannot generate PodScrapeConfig, err: %e", err)
+				return
+			}
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal PodScrapeConfig to yaml,err :%e", err)

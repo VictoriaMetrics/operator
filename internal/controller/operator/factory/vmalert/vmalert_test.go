@@ -20,133 +20,16 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func Test_loadVMAlertRemoteSecrets(t *testing.T) {
-	type args struct {
-		cr          *vmv1beta1.VMAlert
-		SecretsInNS *corev1.SecretList
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    map[string]*authSecret
-		wantErr bool
-	}{
-		{
-			name: "test ok, secret found",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					Spec: vmv1beta1.VMAlertSpec{RemoteWrite: &vmv1beta1.VMAlertRemoteWriteSpec{
-						HTTPAuth: vmv1beta1.HTTPAuth{
-							BasicAuth: &vmv1beta1.BasicAuth{
-								Password: corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "secret-1",
-									},
-									Key: "password",
-								},
-								Username: corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "secret-1",
-									},
-									Key: "username",
-								},
-							},
-						},
-					}},
-				},
-				SecretsInNS: &corev1.SecretList{
-					Items: []corev1.Secret{
-						{
-							ObjectMeta: metav1.ObjectMeta{Name: "secret-1"},
-							Data:       map[string][]byte{"password": []byte("pass"), "username": []byte("user")},
-						},
-					},
-				},
-			},
-			want: map[string]*authSecret{
-				"remoteWrite": {BasicAuthCredentials: &k8stools.BasicAuthCredentials{Password: "pass", Username: "user"}},
-				"datasource":  {},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var predefinedObjets []runtime.Object
-			for i := range tt.args.SecretsInNS.Items {
-				predefinedObjets = append(predefinedObjets, &tt.args.SecretsInNS.Items[i])
-			}
-			testClient := k8stools.GetTestClientWithObjects(predefinedObjets)
-			got, err := loadVMAlertRemoteSecrets(context.TODO(), testClient, tt.args.cr)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("loadVMAlertRemoteSecrets() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("loadVMAlertRemoteSecrets() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_loadTLSAssetsForVMAlert(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VMAlert
-	}
-	tests := []struct {
-		name              string
-		args              args
-		want              map[string]string
-		wantErr           bool
-		predefinedObjects []runtime.Object
-	}{
-		{
-			name: "base vmalert gen",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "basic-vmalert",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAlertSpec{
-						Notifier: &vmv1beta1.VMAlertNotifierSpec{
-							URL: "http://some-alertmanager",
-						},
-						Datasource: vmv1beta1.VMAlertDatasourceSpec{
-							URL: "http://some-vm-datasource",
-						},
-					},
-				},
-			},
-			want: map[string]string{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := loadTLSAssetsForVMAlert(context.TODO(), fclient, tt.args.cr)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("loadTLSAssetsForVMAlert() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("loadTLSAssetsForVMAlert() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestCreateOrUpdate(t *testing.T) {
-	type args struct {
-		cr      *vmv1beta1.VMAlert
-		c       *config.BaseOperatorConf
-		cmNames []string
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAlert
+		c                 *config.BaseOperatorConf
+		cmNames           []string
 		want              reconcile.Result
 		wantErr           bool
 		predefinedObjects []runtime.Object
@@ -154,23 +37,21 @@ func TestCreateOrUpdate(t *testing.T) {
 	}{
 		{
 			name: "base-spec-gen",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "basic-vmalert",
-						Namespace: "default",
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-vmalert",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					Notifier: &vmv1beta1.VMAlertNotifierSpec{
+						URL: "http://some-alertmanager",
 					},
-					Spec: vmv1beta1.VMAlertSpec{
-						Notifier: &vmv1beta1.VMAlertNotifierSpec{
-							URL: "http://some-alertmanager",
-						},
-						Datasource: vmv1beta1.VMAlertDatasourceSpec{
-							URL: "http://some-vm-datasource",
-						},
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://some-vm-datasource",
 					},
 				},
-				c: config.MustGetBaseConfig(),
 			},
+			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -191,34 +72,32 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "base-spec-gen with externalLabels",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "basic-vmalert",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAlertSpec{
-						Notifier: &vmv1beta1.VMAlertNotifierSpec{
-							URL: "http://some-alertmanager",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-								},
-							},
-						},
-						Datasource: vmv1beta1.VMAlertDatasourceSpec{
-							URL: "http://some-vm-datasource",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-								},
-							},
-						},
-						ExternalLabels: map[string]string{"label1": "value1", "label2": "value-2"},
-					},
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-vmalert",
+					Namespace: "default",
 				},
-				c: config.MustGetBaseConfig(),
+				Spec: vmv1beta1.VMAlertSpec{
+					Notifier: &vmv1beta1.VMAlertNotifierSpec{
+						URL: "http://some-alertmanager",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+							},
+						},
+					},
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://some-vm-datasource",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+							},
+						},
+					},
+					ExternalLabels: map[string]string{"label1": "value1", "label2": "value-2"},
+				},
 			},
+			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -261,60 +140,73 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "with-remote-tls",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "basic-vmalert",
-						Namespace: "default",
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-vmalert",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					Notifier: &vmv1beta1.VMAlertNotifierSpec{
+						URL: "http://some-alertmanager",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CAFile:   "/tmp/ca",
+								CertFile: "/tmp/cert",
+								KeyFile:  "/tmp/key",
+							},
+						},
 					},
-					Spec: vmv1beta1.VMAlertSpec{
-						Notifier: &vmv1beta1.VMAlertNotifierSpec{
-							URL: "http://some-alertmanager",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CAFile:   "/tmp/ca",
-									CertFile: "/tmp/cert",
-									KeyFile:  "/tmp/key",
+					Notifiers: []vmv1beta1.VMAlertNotifierSpec{
+						{
+							URL: "http://another-alertmanager",
+						},
+					},
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://some-vm-datasource",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "datasource-tls",
+										},
+										Key: "ca",
+									},
+								},
+								Cert: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "datasource-tls",
+										},
+										Key: "ca",
+									},
+								},
+								KeySecret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "datasource-tls",
+									},
+									Key: "key",
 								},
 							},
 						},
-						Notifiers: []vmv1beta1.VMAlertNotifierSpec{
-							{
-								URL: "http://another-alertmanager",
-							},
-						},
-						Datasource: vmv1beta1.VMAlertDatasourceSpec{
-							URL: "http://some-vm-datasource",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-									},
-									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
+					},
+					RemoteWrite: &vmv1beta1.VMAlertRemoteWriteSpec{
+						URL: "http://vm-insert-url",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
 								},
-							},
-						},
-						RemoteWrite: &vmv1beta1.VMAlertRemoteWriteSpec{
-							URL: "http://vm-insert-url",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-									},
-									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
+								Cert: vmv1beta1.SecretOrConfigMap{
+									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
 								},
+								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 							},
 						},
 					},
 				},
-				c: config.MustGetBaseConfig(),
 			},
+			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&corev1.Secret{
@@ -350,57 +242,55 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "with-notifiers-tls",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "basic-vmalert",
-						Namespace: "default",
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-vmalert",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					Notifiers: []vmv1beta1.VMAlertNotifierSpec{
+						{
+							URL: "http://another-alertmanager",
+							HTTPAuth: vmv1beta1.HTTPAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CAFile:   "/tmp/ca",
+									CertFile: "/tmp/cert",
+									KeyFile:  "/tmp/key",
+								},
+							},
+						},
 					},
-					Spec: vmv1beta1.VMAlertSpec{
-						Notifiers: []vmv1beta1.VMAlertNotifierSpec{
-							{
-								URL: "http://another-alertmanager",
-								HTTPAuth: vmv1beta1.HTTPAuth{
-									TLSConfig: &vmv1beta1.TLSConfig{
-										CAFile:   "/tmp/ca",
-										CertFile: "/tmp/cert",
-										KeyFile:  "/tmp/key",
-									},
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://some-vm-datasource",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
 								},
+								Cert: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+								},
+								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 							},
 						},
-						Datasource: vmv1beta1.VMAlertDatasourceSpec{
-							URL: "http://some-vm-datasource",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-									},
-									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
+					},
+					RemoteWrite: &vmv1beta1.VMAlertRemoteWriteSpec{
+						URL: "http://vm-insert-url",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
 								},
-							},
-						},
-						RemoteWrite: &vmv1beta1.VMAlertRemoteWriteSpec{
-							URL: "http://vm-insert-url",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-									},
-									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
+								Cert: vmv1beta1.SecretOrConfigMap{
+									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
 								},
+								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 							},
 						},
 					},
 				},
-				c: config.MustGetBaseConfig(),
 			},
+			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&corev1.Secret{
@@ -436,51 +326,49 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "with tlsconfig insecure true",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "basic-vmalert",
-						Namespace: "default",
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-vmalert",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					Notifiers: []vmv1beta1.VMAlertNotifierSpec{
+						{
+							URL: "http://another-alertmanager",
+							HTTPAuth: vmv1beta1.HTTPAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+							},
+						},
 					},
-					Spec: vmv1beta1.VMAlertSpec{
-						Notifiers: []vmv1beta1.VMAlertNotifierSpec{
-							{
-								URL: "http://another-alertmanager",
-								HTTPAuth: vmv1beta1.HTTPAuth{
-									TLSConfig: &vmv1beta1.TLSConfig{
-										InsecureSkipVerify: true,
-									},
-								},
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://some-vm-datasource",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
 							},
 						},
-						Datasource: vmv1beta1.VMAlertDatasourceSpec{
-							URL: "http://some-vm-datasource",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-								},
+					},
+					RemoteWrite: &vmv1beta1.VMAlertRemoteWriteSpec{
+						URL: "http://vm-insert-url",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
 							},
 						},
-						RemoteWrite: &vmv1beta1.VMAlertRemoteWriteSpec{
-							URL: "http://vm-insert-url",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-								},
-							},
-						},
-						RemoteRead: &vmv1beta1.VMAlertRemoteReadSpec{
-							URL: "http://vm-insert-url",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-								},
+					},
+					RemoteRead: &vmv1beta1.VMAlertRemoteReadSpec{
+						URL: "http://vm-insert-url",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
 							},
 						},
 					},
 				},
-				c: config.MustGetBaseConfig(),
 			},
+			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&corev1.Secret{
@@ -516,26 +404,24 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "with notifier config",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "basic-vmalert",
-						Namespace: "default",
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-vmalert",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					NotifierConfigRef: &corev1.SecretKeySelector{
+						Key: "cfg.yaml",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "notifier-cfg",
+						},
 					},
-					Spec: vmv1beta1.VMAlertSpec{
-						NotifierConfigRef: &corev1.SecretKeySelector{
-							Key: "cfg.yaml",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "notifier-cfg",
-							},
-						},
-						Datasource: vmv1beta1.VMAlertDatasourceSpec{
-							URL: "http://some-vm-datasource",
-						},
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://some-vm-datasource",
 					},
 				},
-				c: config.MustGetBaseConfig(),
 			},
+			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -564,8 +450,9 @@ func TestCreateOrUpdate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdate(context.TODO(), tt.args.cr, fclient, tt.args.cmNames)
+			err := CreateOrUpdate(ctx, tt.cr, fclient, tt.cmNames)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -573,8 +460,8 @@ func TestCreateOrUpdate(t *testing.T) {
 
 			if tt.validator != nil {
 				var generatedDeploment appsv1.Deployment
-				if err := fclient.Get(context.TODO(), types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &generatedDeploment); err != nil {
-					t.Fatalf("cannot find generated deployment: %v, err: %v", tt.args.cr.PrefixedName(), err)
+				if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.PrefixedName()}, &generatedDeploment); err != nil {
+					t.Fatalf("cannot find generated deployment: %v, err: %v", tt.cr.PrefixedName(), err)
 				}
 				if err := tt.validator(&generatedDeploment); err != nil {
 					t.Fatalf("unexpected error at deployment validation: %v", err)
@@ -585,20 +472,21 @@ func TestCreateOrUpdate(t *testing.T) {
 }
 
 func TestBuildNotifiers(t *testing.T) {
-	type args struct {
-		cr          *vmv1beta1.VMAlert
-		ntBasicAuth map[string]*authSecret
-	}
 	tests := []struct {
-		name string
-		args args
-		want []string
+		name              string
+		cr                *vmv1beta1.VMAlert
+		predefinedObjects []runtime.Object
+		want              []string
 	}{
 		{
 			name: "ok build args",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					Spec: vmv1beta1.VMAlertSpec{Notifiers: []vmv1beta1.VMAlertNotifierSpec{
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-vmalert",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					Notifiers: []vmv1beta1.VMAlertNotifierSpec{
 						{
 							URL: "http://am-1",
 						},
@@ -616,60 +504,128 @@ func TestBuildNotifiers(t *testing.T) {
 						{
 							URL: "http://am-3",
 						},
-					}},
+					},
 				},
 			},
-			want: []string{"-notifier.url=http://am-1,http://am-2,http://am-3", "-notifier.tlsKeyFile=,/tmp/key.pem,", "-notifier.tlsCertFile=,/tmp/cert.pem,", "-notifier.tlsCAFile=,/tmp/ca.cert,", "-notifier.tlsInsecureSkipVerify=false,true,false"},
+			want: []string{
+				"-notifier.url=http://am-1,http://am-2,http://am-3",
+				"-notifier.tlsKeyFile=,/tmp/key.pem,",
+				"-notifier.tlsCertFile=,/tmp/cert.pem,",
+				"-notifier.tlsCAFile=,/tmp/ca.cert,",
+				"-notifier.tlsInsecureSkipVerify=false,true,false",
+			},
 		},
 		{
 			name: "ok build args with config",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					Spec: vmv1beta1.VMAlertSpec{
-						NotifierConfigRef: &corev1.SecretKeySelector{
-							Key: "cfg.yaml",
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-vmalert",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					NotifierConfigRef: &corev1.SecretKeySelector{
+						Key: "cfg.yaml",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "datasource-tls",
 						},
 					},
 				},
 			},
-			want: []string{"-notifier.config=" + notifierConfigMountPath + "/cfg.yaml"},
+			want:              []string{"-notifier.config=" + notifierConfigMountPath + "/cfg.yaml"},
+			predefinedObjects: []runtime.Object{},
 		},
 		{
 			name: "with headers and oauth2",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					Spec: vmv1beta1.VMAlertSpec{
-						Notifiers: []vmv1beta1.VMAlertNotifierSpec{
-							{
-								URL: "http://1",
-								HTTPAuth: vmv1beta1.HTTPAuth{
-									Headers: []string{"key=value", "key2=value2"},
-									OAuth2: &vmv1beta1.OAuth2{
-										Scopes:       []string{"1", "2"},
-										TokenURL:     "http://some-url",
-										ClientSecret: &corev1.SecretKeySelector{},
-										ClientID:     vmv1beta1.SecretOrConfigMap{},
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-vmalert",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					Notifiers: []vmv1beta1.VMAlertNotifierSpec{
+						{
+							URL: "http://1",
+							HTTPAuth: vmv1beta1.HTTPAuth{
+								Headers: []string{"key=value", "key2=value2"},
+								OAuth2: &vmv1beta1.OAuth2{
+									Scopes:   []string{"1", "2"},
+									TokenURL: "http://some-url",
+									ClientSecret: &corev1.SecretKeySelector{
+										Key: "client-secret",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "oauth2",
+										},
+									},
+									ClientID: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key: "client-id",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "oauth2",
+											},
+										},
 									},
 								},
 							},
-							{
-								URL: "http://2",
-								HTTPAuth: vmv1beta1.HTTPAuth{
-									Headers:    []string{"key3=value3", "key4=value4"},
-									BearerAuth: &vmv1beta1.BearerAuth{},
+						},
+						{
+							URL: "http://2",
+							HTTPAuth: vmv1beta1.HTTPAuth{
+								Headers: []string{"key3=value3", "key4=value4"},
+								BearerAuth: &vmv1beta1.BearerAuth{
+									TokenSecret: &corev1.SecretKeySelector{
+										Key: "bearer",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "bearer",
+										},
+									},
 								},
 							},
 						},
 					},
 				},
-				ntBasicAuth: map[string]*authSecret{"notifier-0": {OAuthCreds: &k8stools.OAuthCreds{ClientSecret: "some-secret", ClientID: "some-id"}}, "notifier-1": {bearerValue: "some-v"}},
 			},
-			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerTokenFile=,/etc/vmalert/remote_secrets/NOTIFIER-1_BEARERTOKEN", "-notifier.oauth2.clientSecretFile=/etc/vmalert/remote_secrets/NOTIFIER-0_OAUTH2SECRETKEY,", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.tokenUrl=http://some-url,"},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "oauth2",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"client-id":     []byte("some-id"),
+						"client-secret": []byte("some-secret"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "bearer",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"bearer": []byte("some-v"),
+					},
+				},
+			},
+			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerTokenFile=,/etc/vmalert/remote_secrets/default_bearer_bearer", "-notifier.oauth2.clientSecretFile=/etc/vmalert/remote_secrets/default_oauth2_client-secret,", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.tokenUrl=http://some-url,"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := buildNotifiersArgs(tt.args.cr, tt.args.ntBasicAuth); !reflect.DeepEqual(got, tt.want) {
+			ctx := context.Background()
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.SecretConfigResourceKind: {
+					MountDir:   vmalertConfigSecretsDir,
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.cr),
+				},
+				build.TLSAssetsResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			if got, err := buildNotifiersArgs(tt.cr, ac); err != nil {
+				t.Errorf("buildNotifiersArgs(), unexpected error: %s", err)
+			} else if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("BuildNotifiersArgs() = \ngot \n%v, \nwant \n%v", got, tt.want)
 			}
 		})
@@ -677,28 +633,21 @@ func TestBuildNotifiers(t *testing.T) {
 }
 
 func TestCreateOrUpdateService(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		cr  *vmv1beta1.VMAlert
-		c   *config.BaseOperatorConf
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAlert
+		c                 *config.BaseOperatorConf
 		want              func(svc *corev1.Service) error
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "base test",
-			args: args{
-				ctx: context.TODO(),
-				c:   config.MustGetBaseConfig(),
-				cr: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "base",
-					},
+			c:    config.MustGetBaseConfig(),
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "base",
 				},
 			},
 			want: func(svc *corev1.Service) error {
@@ -711,8 +660,9 @@ func TestCreateOrUpdateService(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := createOrUpdateService(tt.args.ctx, cl, tt.args.cr, nil)
+			got, err := createOrUpdateService(ctx, cl, tt.cr, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createOrUpdateService() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -725,58 +675,71 @@ func TestCreateOrUpdateService(t *testing.T) {
 }
 
 func Test_buildVMAlertArgs(t *testing.T) {
-	type args struct {
+	tests := []struct {
+		name               string
 		cr                 *vmv1beta1.VMAlert
 		ruleConfigMapNames []string
-		remoteSecrets      map[string]*authSecret
-	}
-	tests := []struct {
-		name string
-		args args
-		want []string
+		want               []string
 	}{
 		{
 			name: "basic args",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					Spec: vmv1beta1.VMAlertSpec{
-						Datasource: vmv1beta1.VMAlertDatasourceSpec{
-							URL: "http://vmsingle-url",
-						},
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "base",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://vmsingle-url",
 					},
 				},
-				ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-				remoteSecrets:      map[string]*authSecret{},
 			},
-			want: []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+			ruleConfigMapNames: []string{"first-rule-cm.yaml"},
+			want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
 		},
 		{
 			name: "with tls args",
-			args: args{
-				cr: &vmv1beta1.VMAlert{
-					Spec: vmv1beta1.VMAlertSpec{
-						Datasource: vmv1beta1.VMAlertDatasourceSpec{
-							URL: "http://vmsingle-url",
-							HTTPAuth: vmv1beta1.HTTPAuth{
-								Headers: []string{"x-org-id:one", "x-org-tenant:5"},
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-									KeyFile:            "/path/to/key",
-									CAFile:             "/path/to/sa",
-								},
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "base",
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://vmsingle-url",
+						HTTPAuth: vmv1beta1.HTTPAuth{
+							Headers: []string{"x-org-id:one", "x-org-tenant:5"},
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+								KeyFile:            "/path/to/key",
+								CAFile:             "/path/to/sa",
 							},
 						},
 					},
 				},
-				ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-				remoteSecrets:      map[string]*authSecret{},
 			},
-			want: []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+			ruleConfigMapNames: []string{"first-rule-cm.yaml"},
+			want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := buildVMAlertArgs(tt.args.cr, tt.args.ruleConfigMapNames, tt.args.remoteSecrets); !reflect.DeepEqual(got, tt.want) {
+			ctx := context.Background()
+			fclient := k8stools.GetTestClientWithObjects(nil)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.SecretConfigResourceKind: {
+					MountDir:   vmalertConfigSecretsDir,
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.cr),
+				},
+				build.TLSAssetsResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			if got, err := buildArgs(tt.cr, tt.ruleConfigMapNames, ac); err != nil {
+				t.Errorf("buildArgs(), unexpected error: %s", err)
+			} else if !reflect.DeepEqual(got, tt.want) {
 				assert.Equal(t, tt.want, got)
 				t.Errorf("buildVMAlertArgs() got = \n%v\n, want \n%v\n", got, tt.want)
 			}
@@ -800,7 +763,12 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 	}
 
 	// base case
-	cr := &vmv1beta1.VMAlert{}
+	cr := &vmv1beta1.VMAlert{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "base",
+		},
+	}
 	cmNames := []string{"cm-0", "cm-1"}
 	expected := corev1.Container{
 		Name: "config-reloader",
@@ -825,6 +793,10 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 
 	// vm config-reloader
 	cr = &vmv1beta1.VMAlert{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "base",
+		},
 		Spec: vmv1beta1.VMAlertSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 				UseVMConfigReloader: ptr.To(true),
@@ -884,6 +856,10 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 
 	// extra volumes
 	cr = &vmv1beta1.VMAlert{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "base",
+		},
 		Spec: vmv1beta1.VMAlertSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 				UseVMConfigReloader: ptr.To(true),

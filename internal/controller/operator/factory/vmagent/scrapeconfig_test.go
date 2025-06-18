@@ -8,28 +8,34 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestGenerateScrapeConfig(t *testing.T) {
 	type args struct {
-		cr      vmv1beta1.VMAgent
-		sc      *vmv1beta1.VMScrapeConfig
-		ssCache *scrapesSecretsCache
-		se      vmv1beta1.VMAgentSecurityEnforcements
+		cr *vmv1beta1.VMAgent
+		sc *vmv1beta1.VMScrapeConfig
+		se vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name              string
+		args              args
+		predefinedObjects []runtime.Object
+		want              string
 	}{
 		{
 			name: "basic static cfg with basic auth",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						MinScrapeInterval: ptr.To("30s"),
 						MaxScrapeInterval: ptr.To("5m"),
@@ -53,18 +59,32 @@ func TestGenerateScrapeConfig(t *testing.T) {
 						},
 						EndpointAuth: vmv1beta1.EndpointAuth{
 							BasicAuth: &vmv1beta1.BasicAuth{
-								Username: corev1.SecretKeySelector{Key: "username"},
-								Password: corev1.SecretKeySelector{Key: "password"},
+								Username: corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "ba-secret",
+									},
+									Key: "username",
+								},
+								Password: corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "ba-secret",
+									},
+									Key: "password",
+								},
 							},
 						},
 					},
 				},
-				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
-						"scrapeConfig/default/static-1//0": {
-							Password: "dangerous",
-							Username: "admin",
-						},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ba-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"username": []byte("admin"),
+						"password": []byte("dangerous"),
 					},
 				},
 			},
@@ -87,7 +107,11 @@ static_configs:
 		{
 			name: "basic fileSDConfig",
 			args: args{
-				cr: vmv1beta1.VMAgent{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
 					Spec: vmv1beta1.VMAgentSpec{
 						MinScrapeInterval: ptr.To("30s"),
 						MaxScrapeInterval: ptr.To("5m"),
@@ -101,7 +125,12 @@ static_configs:
 					Spec: vmv1beta1.VMScrapeConfigSpec{
 						EndpointAuth: vmv1beta1.EndpointAuth{
 							BasicAuth: &vmv1beta1.BasicAuth{
-								Username:     corev1.SecretKeySelector{Key: "username"},
+								Username: corev1.SecretKeySelector{
+									Key: "username",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "ba-secret",
+									},
+								},
 								PasswordFile: "/var/run/secrets/password",
 							},
 						},
@@ -115,11 +144,15 @@ static_configs:
 						},
 					},
 				},
-				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
-						"scrapeConfig/default/file-1//0": {
-							Username: "user",
-						},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ba-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"username": []byte("user"),
 					},
 				},
 			},
@@ -139,7 +172,12 @@ file_sd_configs:
 		{
 			name: "basic httpSDConfig",
 			args: args{
-				cr: vmv1beta1.VMAgent{},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "httpsd-1",
@@ -154,8 +192,13 @@ file_sd_configs:
 							{
 								URL: "http://www.test2.com",
 								Authorization: &vmv1beta1.Authorization{
-									Type:        "Bearer",
-									Credentials: &corev1.SecretKeySelector{Key: "cred"},
+									Type: "Bearer",
+									Credentials: &corev1.SecretKeySelector{
+										Key: "cred",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "auth-secret",
+										},
+									},
 								},
 								TLSConfig: &vmv1beta1.TLSConfig{
 									CA: vmv1beta1.SecretOrConfigMap{
@@ -166,20 +209,38 @@ file_sd_configs:
 											},
 										},
 									},
-									Cert: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "cert"}},
+									Cert: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key: "cert",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+										},
+									},
 								},
 							},
 						},
 					},
 				},
-				ssCache: &scrapesSecretsCache{
-					baSecrets: map[string]*k8stools.BasicAuthCredentials{
-						"scrapeConfig/default/file-1//0": {
-							Username: "user",
-						},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
 					},
-					authorizationSecrets: map[string]string{
-						"scrapeConfig/default/httpsd-1/httpsd/1": "auth-secret",
+					Data: map[string][]byte{
+						"ca":   []byte("ca-value"),
+						"cert": []byte("cert-value"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "auth-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"cred": []byte("auth-secret"),
 					},
 				},
 			},
@@ -191,17 +252,22 @@ http_sd_configs:
   proxy_url: http://www.proxy.com
 - url: http://www.test2.com
   authorization:
-    type: Bearer
     credentials: auth-secret
+    type: Bearer
   tls_config:
-    insecure_skip_verify: false
     ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+    cert_file: /etc/vmagent-tls/certs/default_tls-secret_cert
 `,
 		},
 		{
 			name: "basic kubernetesSDConfig",
 			args: args{
-				cr: vmv1beta1.VMAgent{},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "kubernetesSDConfig-1",
@@ -238,7 +304,6 @@ http_sd_configs:
 						},
 					},
 				},
-				ssCache: &scrapesSecretsCache{},
 			},
 			want: `job_name: scrapeConfig/default/kubernetesSDConfig-1
 honor_labels: false
@@ -264,7 +329,12 @@ kubernetes_sd_configs:
 		{
 			name: "mixed",
 			args: args{
-				cr: vmv1beta1.VMAgent{},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "mixconfigs-1",
@@ -323,10 +393,13 @@ kubernetes_sd_configs:
 								IdentityEndpoint: ptr.To("http://localhost:5000/v3"),
 								Username:         ptr.To("user1"),
 								UserID:           ptr.To("1"),
-								Password:         &corev1.SecretKeySelector{Key: "pass"},
-								ProjectName:      ptr.To("poc"),
-								AllTenants:       ptr.To(true),
-								DomainName:       ptr.To("default"),
+								Password: &corev1.SecretKeySelector{
+									Key:                  "pass",
+									LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
+								},
+								ProjectName: ptr.To("poc"),
+								AllTenants:  ptr.To(true),
+								DomainName:  ptr.To("default"),
 							},
 						},
 						DigitalOceanSDConfigs: []vmv1beta1.DigitalOceanSDConfig{
@@ -337,8 +410,8 @@ kubernetes_sd_configs:
 									EndpointParams: map[string]string{"timeout": "5s"},
 									ClientID: vmv1beta1.SecretOrConfigMap{
 										Secret: &corev1.SecretKeySelector{
-											Key:                  "bearer",
-											LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
+											Key:                  "client-id",
+											LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-secret"},
 										},
 									},
 								},
@@ -346,9 +419,33 @@ kubernetes_sd_configs:
 						},
 					},
 				},
-				ssCache: &scrapesSecretsCache{
-					oauth2Secrets: map[string]*k8stools.OAuthCreds{
-						"scrapeConfig/default/mixconfigs-1/digitaloceansd/0": {ClientSecret: "some-secret", ClientID: "some-id"},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "access-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"bearer": []byte("bearer-value"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "oauth-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"client-id": []byte("some-id"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ba-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"pass": []byte("bearer-value"),
 					},
 				},
 			},
@@ -394,6 +491,7 @@ openstack_sd_configs:
   identity_endpoint: http://localhost:5000/v3
   username: user1
   userid: "1"
+  password: bearer-value
   domain_name: default
   project_name: poc
   all_tenants: true
@@ -410,7 +508,12 @@ digitalocean_sd_configs:
 		{
 			name: "configs with auth and empty type",
 			args: args{
-				cr: vmv1beta1.VMAgent{},
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+				},
 				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "sc-auth",
@@ -422,12 +525,19 @@ digitalocean_sd_configs:
 								URL: "http://www.test1.com",
 								Authorization: &vmv1beta1.Authorization{
 									Type: "Bearer",
+									Credentials: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+										Key:                  "cred",
+									},
 								},
 							},
 							{
 								URL: "http://www.test2.com",
 								Authorization: &vmv1beta1.Authorization{
-									Credentials: &corev1.SecretKeySelector{Key: "cred"},
+									Credentials: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+										Key:                  "cred",
+									},
 								},
 							},
 							{
@@ -443,12 +553,19 @@ digitalocean_sd_configs:
 								Role: "endpoints",
 								Authorization: &vmv1beta1.Authorization{
 									Type: "Bearer",
+									Credentials: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "auth"},
+										Key:                  "cred",
+									},
 								},
 							},
 							{
 								Role: "endpoints",
 								Authorization: &vmv1beta1.Authorization{
-									Credentials: &corev1.SecretKeySelector{Key: "cred"},
+									Credentials: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+										Key:                  "cred",
+									},
 								},
 							},
 							{
@@ -461,10 +578,24 @@ digitalocean_sd_configs:
 						},
 					},
 				},
-				ssCache: &scrapesSecretsCache{
-					authorizationSecrets: map[string]string{
-						"scrapeConfig/default/sc-auth/httpsd/1": "auth-secret",
-						"scrapeConfig/default/sc-auth/kubesd/1": "auth-secret",
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "auth-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"cred": []byte("auth-secret"),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "auth",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"cred": []byte("auth-secret"),
 					},
 				},
 			},
@@ -473,30 +604,53 @@ honor_labels: false
 relabel_configs: []
 http_sd_configs:
 - url: http://www.test1.com
+  authorization:
+    credentials: auth-secret
+    type: Bearer
 - url: http://www.test2.com
   authorization:
-    type: Bearer
     credentials: auth-secret
+    type: Bearer
 - url: http://www.test3.com
   authorization:
-    type: Bearer
     credentials_file: file
+    type: Bearer
 kubernetes_sd_configs:
 - role: endpoints
-- role: endpoints
   authorization:
-    type: Bearer
     credentials: auth-secret
+    type: Bearer
 - role: endpoints
   authorization:
+    credentials: auth-secret
     type: Bearer
+- role: endpoints
+  authorization:
     credentials_file: file
+    type: Bearer
 `,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateScrapeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.ssCache, tt.args.se)
+			ctx := context.Background()
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.SecretConfigResourceKind: {
+					MountDir:   vmAgentConfDir,
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.args.cr),
+				},
+				build.TLSAssetsResourceKind: {
+					MountDir:   tlsAssetsDir,
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.args.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			got, err := generateScrapeConfig(ctx, tt.args.cr, tt.args.sc, ac, tt.args.se)
+			if err != nil {
+				t.Errorf("cannot execute generateScrapeConfig, err: %e", err)
+				return
+			}
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func generateProbeConfig(
@@ -15,9 +16,9 @@ func generateProbeConfig(
 	sc *vmv1beta1.VMProbe,
 	i int,
 	apiserverConfig *vmv1beta1.APIServerConfig,
-	ssCache *scrapesSecretsCache,
+	ac *build.AssetsCache,
 	se vmv1beta1.VMAgentSecurityEnforcements,
-) yaml.MapSlice {
+) (yaml.MapSlice, error) {
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -84,8 +85,13 @@ func generateProbeConfig(
 			selectors:          sc.Spec.Targets.Ingress.Selector,
 			apiServerConfig:    apiserverConfig,
 			role:               kubernetesSDRoleIngress,
+			namespace:          sc.Namespace,
 		}
-		cfg = append(cfg, generateK8SSDConfig(ssCache, k8sSDOpts))
+		if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
+			return nil, err
+		} else {
+			cfg = append(cfg, c...)
+		}
 
 		// Relabelings for ingress SD.
 		relabelings = append(relabelings, []yaml.MapSlice{
@@ -150,9 +156,10 @@ func generateProbeConfig(
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 	cfg = addMetricRelabelingsTo(cfg, sc.Spec.MetricRelabelConfigs, se)
-	cfg = append(cfg, buildVMScrapeParams(sc.Namespace, sc.AsProxyKey(), sc.Spec.VMScrapeParams, ssCache)...)
-	cfg = addTLStoYaml(cfg, sc.Namespace, sc.Spec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, sc.Spec.EndpointAuth, sc.Namespace, sc.AsMapKey(), ssCache)
-
-	return cfg
+	if c, err := buildVMScrapeParams(sc.Namespace, sc.Spec.VMScrapeParams, ac); err != nil {
+		return nil, err
+	} else {
+		cfg = append(cfg, c...)
+	}
+	return addEndpointAuthTo(cfg, &sc.Spec.EndpointAuth, sc.Namespace, ac)
 }

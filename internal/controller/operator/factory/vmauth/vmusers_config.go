@@ -91,7 +91,7 @@ func (sus *skipableVMUsers) sort() {
 }
 
 // builds vmauth config.
-func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, sus *skipableVMUsers, tlsAssets map[string]string) ([]byte, error) {
+func buildConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, sus *skipableVMUsers, ac *build.AssetsCache) ([]byte, error) {
 
 	// apply sort before making any changes to users
 	sus.sort()
@@ -102,7 +102,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 		return nil, err
 	}
 
-	toCreateSecrets, toUpdate, err := addAuthCredentialsBuildSecrets(ctx, rclient, sus)
+	toCreateSecrets, toUpdate, err := addAuthCredentialsBuildSecrets(sus, ac)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 	filterNonUniqUsers(sus)
 
 	// generate yaml config for vmauth.
-	cfg, err := generateVMAuthConfig(vmauth, sus, crdCache, tlsAssets, rclient)
+	cfg, err := generateVMAuthConfig(vmauth, sus, crdCache, ac)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithU
 		obj = uw.origin()
 	}
 	if err := rclient.Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, obj); err != nil {
-		if errors.IsNotFound(err) {
+		if build.IsNotFound(err) {
 			return "", fmt.Errorf("cannot find object by the given ref,namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
 		return "", fmt.Errorf("cannot get object by given ref namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
@@ -187,15 +187,13 @@ func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithU
 	return objT.AsURL(), nil
 }
 
-func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, sus *skipableVMUsers) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
-	dst := make(map[string]*corev1.Secret)
-
+func addAuthCredentialsBuildSecrets(sus *skipableVMUsers, ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
 	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
 		switch {
 		case user.Spec.PasswordRef != nil:
-			v, err := k8stools.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.PasswordRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.PasswordRef.Name), dst)
+			secret, err := ac.LoadKeyFromSecret(user.Namespace, user.Spec.PasswordRef)
 			if err != nil {
-				if !errors.IsNotFound(err) {
+				if !build.IsNotFound(err) {
 					resultErr = fmt.Errorf("cannot get cred from secret=%w", err)
 					sus.stopIter = true
 					return true
@@ -203,20 +201,20 @@ func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, 
 				user.Status.CurrentSyncError = fmt.Sprintf("cannot get cred from secret for passwordRef: %q", err)
 				return false
 			}
-			user.Spec.Password = ptr.To(v)
+			user.Spec.Password = ptr.To(secret)
 		case user.Spec.TokenRef != nil:
-			v, err := k8stools.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.TokenRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.TokenRef.Name), dst)
+			secret, err := ac.LoadKeyFromSecret(user.Namespace, user.Spec.TokenRef)
 			if err != nil {
 				user.Status.CurrentSyncError = fmt.Sprintf("cannot get cred from secret for tokenRef: %q", err)
 				return false
 			}
-			user.Spec.BearerToken = ptr.To(v)
+			user.Spec.BearerToken = ptr.To(secret)
 		}
 
 		if !user.Spec.DisableSecretCreation {
-			var vmus corev1.Secret
-			if err := rclient.Get(ctx, types.NamespacedName{Namespace: user.Namespace, Name: user.SecretName()}, &vmus); err != nil {
-				if !errors.IsNotFound(err) {
+			secret, err := ac.LoadSecret(user.Namespace, user.SecretName())
+			if err != nil {
+				if !build.IsNotFound(err) {
 					resultErr = fmt.Errorf("cannot get secret from API=%w", err)
 					sus.stopIter = true
 					return true
@@ -228,13 +226,13 @@ func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, 
 				}
 				needToCreateSecrets = append(needToCreateSecrets, userSecret)
 
-			} else if injectAuthSettings(&vmus, user) {
+			} else if injectAuthSettings(secret, user) {
 				// secret exists, check it's state
-				needToUpdateSecrets = append(needToUpdateSecrets, &vmus)
+				needToUpdateSecrets = append(needToUpdateSecrets, secret)
 			}
 		}
-		if err := injectBackendAuthHeader(ctx, rclient, user, dst); err != nil {
-			if !errors.IsNotFound(err) {
+		if err := injectBackendAuthHeader(user, ac); err != nil {
+			if !build.IsNotFound(err) {
 				resultErr = fmt.Errorf("cannot inject backend auth header=%w", err)
 				sus.stopIter = true
 				return true
@@ -249,21 +247,18 @@ func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, 
 	return
 }
 
-func injectBackendAuthHeader(ctx context.Context, rclient client.Client, user *vmv1beta1.VMUser, nsCache map[string]*corev1.Secret) error {
+func injectBackendAuthHeader(user *vmv1beta1.VMUser, ac *build.AssetsCache) error {
 	for j := range user.Spec.TargetRefs {
 		ref := &user.Spec.TargetRefs[j]
 		if ref.TargetRefBasicAuth != nil {
-			bac, err := k8stools.LoadBasicAuthSecret(ctx, rclient,
-				user.Namespace,
-				&vmv1beta1.BasicAuth{
-					Username: ref.TargetRefBasicAuth.Username,
-					Password: ref.TargetRefBasicAuth.Password,
-				}, nsCache,
-			)
+			creds, err := ac.BuildBasicAuthCreds(user.Namespace, &vmv1beta1.BasicAuth{
+				Username: ref.TargetRefBasicAuth.Username,
+				Password: ref.TargetRefBasicAuth.Password,
+			})
 			if err != nil {
-				return fmt.Errorf("could not load basicAuth config. %w", err)
+				return fmt.Errorf("could not load basicAuth config: %w", err)
 			}
-			token := bac.Username + ":" + bac.Password
+			token := creds.Username + ":" + creds.Password
 			token64 := base64.StdEncoding.EncodeToString([]byte(token))
 			Header := "Authorization: Basic " + token64
 			ref.RequestHeaders = append(ref.RequestHeaders, Header)
@@ -384,7 +379,7 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVM
 			ref.CRD.AddRefToObj(crdObj.(client.Object))
 			url, err := getAsURLObject(ctx, rclient, crdObj)
 			if err != nil {
-				if !errors.IsNotFound(err) {
+				if !build.IsNotFound(err) {
 					resultErr = fmt.Errorf("cannot get object as url: %w", err)
 					sus.stopIter = true
 					return true
@@ -400,24 +395,13 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVM
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache map[string]string, tlsAssets map[string]string, rclient client.Client) ([]byte, error) {
+func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache map[string]string, ac *build.AssetsCache) ([]byte, error) {
 	var cfg yaml.MapSlice
 
-	secretCache := make(map[string]*corev1.Secret)
-	configmapCache := make(map[string]*corev1.ConfigMap)
-	cb := &build.TLSConfigBuilder{
-		Ctx:                context.Background(),
-		Client:             rclient,
-		CurrentCRName:      cr.Name,
-		CurrentCRNamespace: cr.Namespace,
-		SecretCache:        secretCache,
-		ConfigmapCache:     configmapCache,
-		TLSAssets:          tlsAssets,
-	}
 	var cfgUsers []yaml.MapSlice
 
 	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
-		userCfg, err := genUserCfg(user, crdCache, cb)
+		userCfg, err := genUserCfg(user, crdCache, cr, ac)
 		if err != nil {
 			user.Status.CurrentSyncError = err.Error()
 			return false
@@ -435,7 +419,7 @@ func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache m
 		}
 	}
 
-	unAuthorizedAccessValue, err := buildUnauthorizedConfig(cr, cb)
+	unAuthorizedAccessValue, err := buildUnauthorizedConfig(cr, ac)
 	if err != nil {
 		return nil, fmt.Errorf("cannot build unauthorized_user config section: %w", err)
 	}
@@ -443,11 +427,11 @@ func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache m
 	if len(unAuthorizedAccessValue) > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: unAuthorizedAccessValue})
 	}
-	ac, err := yaml.Marshal(cfg)
+	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize configuration to yaml: %w", err)
 	}
-	return ac, nil
+	return data, nil
 }
 
 func appendIfNotEmpty(src []string, key string, origin yaml.MapSlice) yaml.MapSlice {
@@ -460,7 +444,7 @@ func appendIfNotEmpty(src []string, key string, origin yaml.MapSlice) yaml.MapSl
 	return origin
 }
 
-func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, cb *build.TLSConfigBuilder) ([]yaml.MapItem, error) {
+func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]yaml.MapItem, error) {
 	var result []yaml.MapItem
 
 	switch {
@@ -490,7 +474,7 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, cb *build.TLSConfigBuilder) (
 			})
 		}
 		var err error
-		result, err = addUserConfigOptionToYaml(result, uua.VMUserConfigOptions, cb)
+		result, err = addUserConfigOptionToYaml(result, uua.VMUserConfigOptions, cr, ac)
 		if err != nil {
 			return nil, err
 		}
@@ -509,7 +493,7 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, cb *build.TLSConfigBuilder) (
 		result = append(result, yaml.MapItem{Key: "url_map", Value: urlMapYAML})
 
 		var err error
-		result, err = addUserConfigOptionToYaml(result, cr.Spec.VMUserConfigOptions, cb)
+		result, err = addUserConfigOptionToYaml(result, cr.Spec.VMUserConfigOptions, cr, ac)
 		if err != nil {
 			return nil, err
 		}
@@ -558,28 +542,16 @@ func addURLMapCommonToYaml(dst yaml.MapSlice, opt vmv1beta1.URLMapCommon, isDefa
 	return dst
 }
 
-func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOptions, cb *build.TLSConfigBuilder) (yaml.MapSlice, error) {
+func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOptions, cr *vmv1beta1.VMAuth, ac *build.AssetsCache) (yaml.MapSlice, error) {
 	if len(opt.DefaultURLs) > 0 {
 		dst = append(dst, yaml.MapItem{Key: "default_url", Value: opt.DefaultURLs})
 	}
-	res, err := cb.BuildTLSConfig(opt.TLSConfig, vmAuthConfigRawFolder)
+	cfg, err := ac.TLSToYAML(cr.Namespace, "tls_", opt.TLSConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build tls config for vmauth %s under %s, err: %v", cb.CurrentCRName, cb.CurrentCRNamespace, err)
+		return nil, fmt.Errorf("failed to build tls config for vmauth %s under %s, err: %v", cr.Name, cr.Namespace, err)
 	}
-	if v, ok := res["ca_file"]; ok {
-		dst = append(dst, yaml.MapItem{Key: "tls_ca_file", Value: v})
-	}
-	if v, ok := res["cert_file"]; ok {
-		dst = append(dst, yaml.MapItem{Key: "tls_cert_file", Value: v})
-	}
-	if v, ok := res["key_file"]; ok {
-		dst = append(dst, yaml.MapItem{Key: "tls_key_file", Value: v})
-	}
-	if v, ok := res["server_name"]; ok {
-		dst = append(dst, yaml.MapItem{Key: "tls_server_name", Value: v})
-	}
-	if v, ok := res["insecure_skip_verify"]; ok {
-		dst = append(dst, yaml.MapItem{Key: "tls_insecure_skip_verify", Value: v})
+	if len(cfg) > 0 {
+		dst = append(dst, cfg...)
 	}
 	dst = addIPFiltersToYaml(dst, opt.IPFilters)
 	dst = appendIfNotEmpty(opt.Headers, "headers", dst)
@@ -808,7 +780,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 
 // this function mutates user and fills missing fields,
 // such password or username.
-func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cb *build.TLSConfigBuilder) (yaml.MapSlice, error) {
+func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1beta1.VMAuth, ac *build.AssetsCache) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 
 	r, err := genURLMaps(user.Name, user.Spec.TargetRefs, r, crdURLCache)
@@ -838,7 +810,7 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cb *build
 	if user.Spec.BearerToken != nil {
 		token = *user.Spec.BearerToken
 	}
-	r, err = addUserConfigOptionToYaml(r, user.Spec.VMUserConfigOptions, cb)
+	r, err = addUserConfigOptionToYaml(r, user.Spec.VMUserConfigOptions, cr, ac)
 	if err != nil {
 		return nil, err
 	}

@@ -37,14 +37,6 @@ const (
 	tlsAssetsDir            = "/etc/vmalert-tls/certs"
 )
 
-func buildNotifierKey(idx int) string {
-	return fmt.Sprintf("notifier-%d", idx)
-}
-
-func buildRemoteSecretKey(source, suffix string) string {
-	return fmt.Sprintf("%s_%s", strings.ToUpper(source), strings.ToUpper(suffix))
-}
-
 // createOrUpdateService creates service for vmalert
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) (*corev1.Service, error) {
 
@@ -75,59 +67,6 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	return newService, nil
 }
 
-func createOrUpdateSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ssCache map[string]*authSecret) error {
-	s := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(),
-			Annotations:     cr.AnnotationsFiltered(),
-			Labels:          cr.AllLabels(),
-			Namespace:       cr.Namespace,
-			OwnerReferences: cr.AsOwner(),
-		},
-		Data: map[string][]byte{},
-	}
-	addSecretKeys := func(sourcePrefix string, ha vmv1beta1.HTTPAuth) {
-		ba := ssCache[sourcePrefix]
-		if ba == nil {
-			return
-		}
-		if ha.BasicAuth != nil && ba.BasicAuthCredentials != nil {
-			if len(ba.Password) > 0 {
-				s.Data[buildRemoteSecretKey(sourcePrefix, basicAuthPasswordKey)] = []byte(ba.Password)
-			}
-		}
-		if ha.BearerAuth != nil && len(ba.bearerValue) > 0 {
-			s.Data[buildRemoteSecretKey(sourcePrefix, bearerTokenKey)] = []byte(ba.bearerValue)
-		}
-		if ha.OAuth2 != nil && ba.OAuthCreds != nil {
-			if len(ba.ClientSecret) > 0 {
-				s.Data[buildRemoteSecretKey(sourcePrefix, oauth2SecretKey)] = []byte(ba.ClientSecret)
-			}
-		}
-	}
-	if cr.Spec.RemoteRead != nil {
-		addSecretKeys(remoteReadKey, cr.Spec.RemoteRead.HTTPAuth)
-	}
-	if cr.Spec.RemoteWrite != nil {
-		addSecretKeys(remoteWriteKey, cr.Spec.RemoteWrite.HTTPAuth)
-	}
-	addSecretKeys(datasourceKey, cr.Spec.Datasource.HTTPAuth)
-	for idx, nf := range cr.Spec.Notifiers {
-		addSecretKeys(buildNotifierKey(idx), nf.HTTPAuth)
-	}
-	var prevSecretMeta *metav1.ObjectMeta
-	if cr.ParsedLastAppliedSpec != nil {
-		prevSecretMeta = &metav1.ObjectMeta{
-			Name:        prevCR.PrefixedName(),
-			Annotations: prevCR.AnnotationsFiltered(),
-			Labels:      prevCR.AllLabels(),
-			Namespace:   prevCR.Namespace,
-		}
-	}
-
-	return reconcile.Secret(ctx, rclient, s, prevSecretMeta)
-}
-
 // CreateOrUpdate creates vmalert deployment for given CRD
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
 	var prevCR *vmv1beta1.VMAlert
@@ -151,14 +90,17 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return fmt.Errorf("cannot discover additional notifiers: %w", err)
 	}
 
-	remoteSecrets, err := loadVMAlertRemoteSecrets(ctx, rclient, cr)
-	if err != nil {
-		return err
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.SecretConfigResourceKind: {
+			MountDir:   vmalertConfigSecretsDir,
+			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
+		},
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
 	}
-	// create secret for remoteSecrets
-	if err := createOrUpdateSecret(ctx, rclient, cr, prevCR, remoteSecrets); err != nil {
-		return err
-	}
+	ac := build.NewAssetsCache(ctx, rclient, cfg)
 
 	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
@@ -182,30 +124,31 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		}
 	}
 
-	err = createOrUpdateTLSAssetsForVMAlert(ctx, rclient, cr, prevCR)
-	if err != nil {
-		return err
-	}
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
-		prevDeploy, err = newDeployForVMAlert(prevCR, cmNames, remoteSecrets)
+		prevDeploy, err = newDeploy(prevCR, cmNames, ac)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
 
-	newDeploy, err := newDeployForVMAlert(cr, cmNames, remoteSecrets)
+	newDeploy, err := newDeploy(cr, cmNames, ac)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
+	}
+
+	err = createOrUpdateAssets(ctx, rclient, cr, prevCR, ac)
+	if err != nil {
+		return err
 	}
 
 	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
 }
 
-// newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVMAlert(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.Deployment, error) {
+// newDeploy returns a busybox pod with the same name/namespace as the cr
+func newDeploy(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.AssetsCache) (*appsv1.Deployment, error) {
 
-	generatedSpec, err := vmAlertSpecGen(cr, ruleConfigMapNames, remoteSecrets)
+	generatedSpec, err := newPodSpec(cr, ruleConfigMapNames, ac)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate new spec for vmalert: %w", err)
 	}
@@ -225,9 +168,11 @@ func newDeployForVMAlert(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, rem
 	return deploy, nil
 }
 
-func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.DeploymentSpec, error) {
-
-	args := buildVMAlertArgs(cr, ruleConfigMapNames, remoteSecrets)
+func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.AssetsCache) (*appsv1.DeploymentSpec, error) {
+	args, err := buildArgs(cr, ruleConfigMapNames, ac)
+	if err != nil {
+		return nil, err
+	}
 
 	var envs []corev1.EnvVar
 
@@ -235,24 +180,6 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 
 	var volumes []corev1.Volume
 	volumes = append(volumes, cr.Spec.Volumes...)
-
-	volumes = append(volumes, corev1.Volume{
-		Name: "tls-assets",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: cr.TLSAssetName(),
-			},
-		},
-	},
-		corev1.Volume{
-			Name: "remote-secrets",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.PrefixedName(),
-				},
-			},
-		},
-	)
 
 	for _, name := range ruleConfigMapNames {
 		volumes = append(volumes, corev1.Volume{
@@ -271,19 +198,9 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSe
 	var configReloaderWatchMounts []corev1.VolumeMount
 
 	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
-	volumeMounts = append(volumeMounts, corev1.VolumeMount{
-		Name:      "tls-assets",
-		ReadOnly:  true,
-		MountPath: tlsAssetsDir,
-	},
-		corev1.VolumeMount{
-			Name:      "remote-secrets",
-			ReadOnly:  true,
-			MountPath: vmalertConfigSecretsDir,
-		},
-	)
 
 	volumes, volumeMounts = build.LicenseVolumeTo(volumes, volumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
+	volumes, volumeMounts = ac.VolumeTo(volumes, volumeMounts)
 
 	if cr.Spec.NotifierConfigRef != nil {
 		volumes = append(volumes, corev1.Volume{
@@ -438,58 +355,114 @@ func buildHeadersArg(flagName string, src []string, headers []string) []string {
 	return src
 }
 
-func buildVMAlertAuthArgs(args []string, flagPrefix string, ha vmv1beta1.HTTPAuth, remoteSecrets map[string]*authSecret) []string {
-	if s, ok := remoteSecrets[flagPrefix]; ok {
-		// safety checks must be performed by previous code
-		if ha.BasicAuth != nil {
-			args = append(args, fmt.Sprintf("-%s.basicAuth.username=%s", flagPrefix, s.Username))
-			if len(s.Password) > 0 {
-				args = append(args, fmt.Sprintf("-%s.basicAuth.passwordFile=%s", flagPrefix, path.Join(vmalertConfigSecretsDir, buildRemoteSecretKey(flagPrefix, basicAuthPasswordKey))))
+func buildAuthArgs(args []string, namespace, flagPrefix string, cfg vmv1beta1.HTTPAuth, ac *build.AssetsCache) ([]string, error) {
+	// safety checks must be performed by previous code
+	if cfg.BasicAuth != nil {
+		if len(cfg.BasicAuth.PasswordFile) > 0 {
+			args = append(args, fmt.Sprintf("-%s.basicAuth.passwordFile=%s", flagPrefix, cfg.BasicAuth.PasswordFile))
+		} else {
+			file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, namespace, &cfg.BasicAuth.Password)
+			if err != nil {
+				return nil, err
 			}
-			if len(ha.BasicAuth.PasswordFile) > 0 {
-				args = append(args, fmt.Sprintf("-%s.basicAuth.passwordFile=%s", flagPrefix, ha.BasicAuth.PasswordFile))
-			}
+			args = append(args, fmt.Sprintf("-%s.basicAuth.passwordFile=%s", flagPrefix, file))
 		}
-		if ha.BearerAuth != nil {
-			if len(s.bearerValue) > 0 {
-				args = append(args, fmt.Sprintf("-%s.bearerTokenFile=%s", flagPrefix, path.Join(vmalertConfigSecretsDir, buildRemoteSecretKey(flagPrefix, bearerTokenKey))))
-			} else if len(ha.TokenFilePath) > 0 {
-				args = append(args, fmt.Sprintf("-%s.bearerTokenFile=%s", flagPrefix, ha.TokenFilePath))
-			}
+		secret, err := ac.LoadKeyFromSecret(namespace, &cfg.BasicAuth.Username)
+		if err != nil {
+			return nil, err
 		}
-		if ha.OAuth2 != nil {
-			if len(ha.OAuth2.ClientSecretFile) > 0 {
-				args = append(args, fmt.Sprintf("-%s.oauth2.clientSecretFile=%s", flagPrefix, ha.OAuth2.ClientSecretFile))
-			} else {
-				args = append(args, fmt.Sprintf("-%s.oauth2.clientSecretFile=%s", flagPrefix, path.Join(vmalertConfigSecretsDir, buildRemoteSecretKey(flagPrefix, oauth2SecretKey))))
+		args = append(args, fmt.Sprintf("-%s.basicAuth.username=%s", flagPrefix, secret))
+	}
+	if cfg.TLSConfig != nil {
+		if len(cfg.TLSConfig.CAFile) > 0 {
+			args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", flagPrefix, cfg.TLSConfig.CAFile))
+		} else if len(cfg.TLSConfig.CA.PrefixedName()) > 0 {
+			file, err := ac.LoadPathFromSecretOrConfigMap(build.TLSAssetsResourceKind, namespace, &cfg.TLSConfig.CA)
+			if err != nil {
+				return nil, err
 			}
-			args = append(args, fmt.Sprintf("-%s.oauth2.clientID=%s", flagPrefix, s.ClientID))
-			args = append(args, fmt.Sprintf("-%s.oauth2.tokenUrl=%s", flagPrefix, ha.OAuth2.TokenURL))
-			args = append(args, fmt.Sprintf("-%s.oauth2.scopes=%s", flagPrefix, strings.Join(ha.OAuth2.Scopes, ",")))
+			args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", flagPrefix, file))
+		}
+		if len(cfg.TLSConfig.CertFile) > 0 {
+			args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", flagPrefix, cfg.TLSConfig.CertFile))
+		} else if len(cfg.TLSConfig.Cert.PrefixedName()) > 0 {
+			file, err := ac.LoadPathFromSecretOrConfigMap(build.TLSAssetsResourceKind, namespace, &cfg.TLSConfig.Cert)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", flagPrefix, file))
+		}
+		if len(cfg.TLSConfig.KeyFile) > 0 {
+			args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", flagPrefix, cfg.TLSConfig.KeyFile))
+		} else if cfg.TLSConfig.KeySecret != nil {
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, namespace, cfg.TLSConfig.KeySecret)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", flagPrefix, file))
+		}
+		if cfg.TLSConfig.ServerName != "" {
+			args = append(args, fmt.Sprintf("-%s.tlsServerName=%s", flagPrefix, cfg.TLSConfig.ServerName))
+		}
+		if cfg.TLSConfig.InsecureSkipVerify {
+			args = append(args, fmt.Sprintf("-%s.tlsInsecureSkipVerify=%v", flagPrefix, cfg.TLSConfig.InsecureSkipVerify))
 		}
 	}
-
-	return args
+	if cfg.BearerAuth != nil {
+		if cfg.TokenSecret != nil {
+			file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, namespace, cfg.TokenSecret)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, fmt.Sprintf("-%s.bearerTokenFile=%s", flagPrefix, file))
+		} else if len(cfg.TokenFilePath) > 0 {
+			args = append(args, fmt.Sprintf("-%s.bearerTokenFile=%s", flagPrefix, cfg.TokenFilePath))
+		}
+	}
+	if cfg.OAuth2 != nil {
+		if cfg.OAuth2.ClientSecret != nil {
+			file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, namespace, cfg.OAuth2.ClientSecret)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, fmt.Sprintf("-%s.oauth2.clientSecretFile=%s", flagPrefix, file))
+		}
+		if len(cfg.OAuth2.ClientSecretFile) > 0 {
+			args = append(args, fmt.Sprintf("-%s.oauth2.clientSecretFile=%s", flagPrefix, cfg.OAuth2.ClientSecretFile))
+		}
+		secret, err := ac.LoadKeyFromSecretOrConfigMap(namespace, &cfg.OAuth2.ClientID)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, fmt.Sprintf("-%s.oauth2.clientID=%s", flagPrefix, secret))
+		args = append(args, fmt.Sprintf("-%s.oauth2.tokenUrl=%s", flagPrefix, cfg.OAuth2.TokenURL))
+		args = append(args, fmt.Sprintf("-%s.oauth2.scopes=%s", flagPrefix, strings.Join(cfg.OAuth2.Scopes, ",")))
+	}
+	return args, nil
 }
 
-func buildVMAlertArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) []string {
-	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
+func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.AssetsCache) ([]string, error) {
 	args := []string{
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
 
 	args = buildHeadersArg("datasource.headers", args, cr.Spec.Datasource.Headers)
-	args = append(args, buildNotifiersArgs(cr, remoteSecrets)...)
-	args = buildVMAlertAuthArgs(args, datasourceKey, cr.Spec.Datasource.HTTPAuth, remoteSecrets)
-
-	if cr.Spec.Datasource.TLSConfig != nil {
-		tlsConf := cr.Spec.Datasource.TLSConfig
-		args = tlsConf.AsArgs(args, datasourceKey, pathPrefix)
+	notifierArgs, err := buildNotifiersArgs(cr, ac)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, notifierArgs...)
+	args, err = buildAuthArgs(args, cr.Namespace, datasourceKey, cr.Spec.Datasource.HTTPAuth, ac)
+	if err != nil {
+		return nil, err
 	}
 
 	if cr.Spec.RemoteWrite != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
-		args = buildVMAlertAuthArgs(args, remoteWriteKey, cr.Spec.RemoteWrite.HTTPAuth, remoteSecrets)
+		args, err = buildAuthArgs(args, cr.Namespace, remoteWriteKey, cr.Spec.RemoteWrite.HTTPAuth, ac)
+		if err != nil {
+			return nil, err
+		}
 		args = buildHeadersArg("remoteWrite.headers", args, cr.Spec.RemoteWrite.Headers)
 		if cr.Spec.RemoteWrite.Concurrency != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.concurrency=%d", *cr.Spec.RemoteWrite.Concurrency))
@@ -503,10 +476,6 @@ func buildVMAlertArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remote
 		if cr.Spec.RemoteWrite.MaxQueueSize != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.maxQueueSize=%d", *cr.Spec.RemoteWrite.MaxQueueSize))
 		}
-		if cr.Spec.RemoteWrite.TLSConfig != nil {
-			tlsConf := cr.Spec.RemoteWrite.TLSConfig
-			args = tlsConf.AsArgs(args, remoteWriteKey, pathPrefix)
-		}
 	}
 	for k, v := range cr.Spec.ExternalLabels {
 		args = append(args, fmt.Sprintf("-external.label=%s=%s", k, v))
@@ -514,14 +483,13 @@ func buildVMAlertArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remote
 
 	if cr.Spec.RemoteRead != nil {
 		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
-		args = buildVMAlertAuthArgs(args, remoteReadKey, cr.Spec.RemoteRead.HTTPAuth, remoteSecrets)
+		args, err = buildAuthArgs(args, cr.Namespace, remoteReadKey, cr.Spec.RemoteRead.HTTPAuth, ac)
+		if err != nil {
+			return nil, err
+		}
 		args = buildHeadersArg("remoteRead.headers", args, cr.Spec.RemoteRead.Headers)
 		if cr.Spec.RemoteRead.Lookback != nil {
 			args = append(args, fmt.Sprintf("-remoteRead.lookback=%s", *cr.Spec.RemoteRead.Lookback))
-		}
-		if cr.Spec.RemoteRead.TLSConfig != nil {
-			tlsConf := cr.Spec.RemoteRead.TLSConfig
-			args = tlsConf.AsArgs(args, remoteReadKey, pathPrefix)
 		}
 
 	}
@@ -552,215 +520,22 @@ func buildVMAlertArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remote
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
-	return args
+	return args, nil
 }
 
-type authSecret struct {
-	bearerValue string
-	*k8stools.BasicAuthCredentials
-	*k8stools.OAuthCreds
-}
-
-func loadVMAlertRemoteSecrets(
-	ctx context.Context,
-	rclient client.Client,
-	cr *vmv1beta1.VMAlert,
-) (map[string]*authSecret, error) {
-	datasource := cr.Spec.Datasource
-	remoteWrite := cr.Spec.RemoteWrite
-	remoteRead := cr.Spec.RemoteRead
-	ns := cr.Namespace
-
-	nsSecretCache := make(map[string]*corev1.Secret)
-	nsCMCache := make(map[string]*corev1.ConfigMap)
-	authSecretsBySource := make(map[string]*authSecret)
-	loadHTTPAuthSecrets := func(ctx context.Context, rclient client.Client, ns string, httpAuth vmv1beta1.HTTPAuth) (*authSecret, error) {
-		var as authSecret
-		if httpAuth.BasicAuth != nil {
-			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, cr.Namespace, httpAuth.BasicAuth, nsSecretCache)
-			if err != nil {
-				return nil, fmt.Errorf("could not load basicAuth config. %w", err)
-			}
-			as.BasicAuthCredentials = &credentials
+func createOrUpdateAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ac *build.AssetsCache) error {
+	for kind, secret := range ac.GetOutput() {
+		secret.ObjectMeta = build.ResourceMeta(kind, cr)
+		var prevSecretMeta *metav1.ObjectMeta
+		if prevCR != nil {
+			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
 		}
-		if httpAuth.BearerAuth != nil && httpAuth.TokenSecret != nil {
-			token, err := k8stools.GetCredFromSecret(ctx, rclient, cr.Namespace, httpAuth.TokenSecret, buildCacheKey(ns, httpAuth.TokenSecret.Name), nsSecretCache)
-			if err != nil {
-				return nil, fmt.Errorf("cannot load bearer auth token: %w", err)
-			}
-			as.bearerValue = token
-		}
-		if httpAuth.OAuth2 != nil {
-			oauth2, err := k8stools.LoadOAuthSecrets(ctx, rclient, httpAuth.OAuth2, cr.Namespace, nsSecretCache, nsCMCache)
-			if err != nil {
-				return nil, fmt.Errorf("cannot load oauth2 creds err: %w", err)
-			}
-			as.OAuthCreds = oauth2
-		}
-		return &as, nil
-	}
-	for i, notifier := range cr.Spec.Notifiers {
-		as, err := loadHTTPAuthSecrets(ctx, rclient, ns, notifier.HTTPAuth)
+		err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta)
 		if err != nil {
-			return nil, err
-		}
-		authSecretsBySource[buildNotifierKey(i)] = as
-	}
-	// load basic auth for datasource configuration
-	as, err := loadHTTPAuthSecrets(ctx, rclient, ns, datasource.HTTPAuth)
-	if err != nil {
-		return nil, fmt.Errorf("could not generate basicAuth for datasource config. %w", err)
-	}
-	authSecretsBySource[datasourceKey] = as
-
-	// load basic auth for remote write configuration
-	if remoteWrite != nil {
-		as, err := loadHTTPAuthSecrets(ctx, rclient, ns, remoteWrite.HTTPAuth)
-		if err != nil {
-			return nil, fmt.Errorf("could not generate basicAuth for datasource config. %w", err)
-		}
-		authSecretsBySource[remoteWriteKey] = as
-	}
-	// load basic auth for remote write configuration
-	if remoteRead != nil {
-		as, err := loadHTTPAuthSecrets(ctx, rclient, ns, remoteRead.HTTPAuth)
-		if err != nil {
-			return nil, fmt.Errorf("could not generate basicAuth for datasource config. %w", err)
-		}
-		authSecretsBySource[remoteReadKey] = as
-	}
-	return authSecretsBySource, nil
-}
-
-func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) error {
-	assets, err := loadTLSAssetsForVMAlert(ctx, rclient, cr)
-	if err != nil {
-		return fmt.Errorf("cannot load tls assets: %w", err)
-	}
-
-	tlsAssetsSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.TLSAssetName(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-			Namespace:       cr.Namespace,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-		},
-		Data: map[string][]byte{},
-	}
-
-	for key, asset := range assets {
-		tlsAssetsSecret.Data[key] = []byte(asset)
-	}
-	var prevSecretMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevSecretMeta = &metav1.ObjectMeta{
-			Name:        prevCR.TLSAssetName(),
-			Labels:      prevCR.AllLabels(),
-			Annotations: prevCR.AnnotationsFiltered(),
-			Namespace:   prevCR.Namespace,
+			return err
 		}
 	}
-	return reconcile.Secret(ctx, rclient, tlsAssetsSecret, prevSecretMeta)
-}
-
-func FetchTLSAssets(ctx context.Context, rclient client.Client, namespace string, tc *vmv1beta1.TLSConfig, assetPathDst map[string]string) error {
 	return nil
-}
-
-func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (map[string]string, error) {
-	assets := map[string]string{}
-	nsSecretCache := make(map[string]*corev1.Secret)
-	nsConfigMapCache := make(map[string]*corev1.ConfigMap)
-	tlsConfigs := []*vmv1beta1.TLSConfig{}
-
-	for _, notifier := range cr.Spec.Notifiers {
-		if notifier.TLSConfig != nil {
-			tlsConfigs = append(tlsConfigs, notifier.TLSConfig)
-		}
-	}
-	if cr.Spec.RemoteRead != nil && cr.Spec.RemoteRead.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteRead.TLSConfig)
-	}
-	if cr.Spec.RemoteWrite != nil && cr.Spec.RemoteWrite.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteWrite.TLSConfig)
-	}
-	if cr.Spec.Datasource.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.Datasource.TLSConfig)
-	}
-
-	fetchAssetFor := func(assetPath string, src vmv1beta1.SecretOrConfigMap) error {
-		var asset string
-		var err error
-		cacheKey := cr.Namespace + "/" + src.PrefixedName()
-		switch {
-		case src.Secret != nil:
-			asset, err = k8stools.GetCredFromSecret(
-				ctx,
-				rclient,
-				cr.Namespace,
-				src.Secret,
-				cacheKey,
-				nsSecretCache,
-			)
-			if err != nil {
-				return fmt.Errorf(
-					"failed to extract endpoint tls asset from secret %s and key %s in namespace %s",
-					src.PrefixedName(), src.Key(), cr.Namespace,
-				)
-			}
-
-		case src.ConfigMap != nil:
-			asset, err = k8stools.GetCredFromConfigMap(
-				ctx,
-				rclient,
-				cr.Namespace,
-				*src.ConfigMap,
-				cacheKey,
-				nsConfigMapCache,
-			)
-			if err != nil {
-				return fmt.Errorf(
-					"failed to extract endpoint tls asset for  configmap %v and key %v in namespace %v: %w",
-					src.PrefixedName(), src.Key(), cr.Namespace, err,
-				)
-			}
-		}
-		if len(asset) > 0 {
-			assets[assetPath] = asset
-		}
-		return nil
-	}
-
-	for _, rw := range tlsConfigs {
-		if err := fetchAssetFor(rw.BuildAssetPath(cr.Namespace, rw.CA.PrefixedName(), rw.CA.Key()), rw.CA); err != nil {
-			return nil, fmt.Errorf("cannot fetch tls asset for CA: %w", err)
-		}
-		if err := fetchAssetFor(rw.BuildAssetPath(cr.Namespace, rw.Cert.PrefixedName(), rw.Cert.Key()), rw.Cert); err != nil {
-			return nil, fmt.Errorf("cannot fetch tls asset for Cert: %w", err)
-		}
-
-		if rw.KeySecret != nil {
-			asset, err := k8stools.GetCredFromSecret(
-				ctx,
-				rclient,
-				cr.Namespace,
-				rw.KeySecret,
-				cr.Namespace+"/"+rw.KeySecret.Name,
-				nsSecretCache,
-			)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to extract endpoint tls asset for vmservicescrape %s from secret %s and key %s in namespace %s",
-					cr.Name, rw.CA.PrefixedName(), rw.CA.Key(), cr.Namespace,
-				)
-			}
-			assets[rw.BuildAssetPath(cr.Namespace, rw.KeySecret.Name, rw.KeySecret.Key)] = asset
-		}
-	}
-
-	return assets, nil
 }
 
 type remoteFlag struct {
@@ -768,7 +543,7 @@ type remoteFlag struct {
 	flagSetting string
 }
 
-func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecret) []string {
+func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string, error) {
 	var finalArgs []string
 	var notifierArgs []remoteFlag
 	notifierTargets := cr.Spec.Notifiers
@@ -776,11 +551,11 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 	if _, ok := cr.Spec.ExtraArgs["notifier.blackhole"]; ok {
 		// notifier.blackhole disables sending notifications completely, so we don't need to add any notifier args
 		// also no need to add notifier.blackhole to args as it will be added with ExtraArgs
-		return finalArgs
+		return finalArgs, nil
 	}
 
 	if len(notifierTargets) == 0 && cr.Spec.NotifierConfigRef != nil {
-		return append(finalArgs, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key))
+		return append(finalArgs, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key)), nil
 	}
 
 	url := remoteFlag{flagSetting: "-notifier.url=", isNotNull: true}
@@ -800,7 +575,7 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
-	for i, nt := range notifierTargets {
+	for _, nt := range notifierTargets {
 		url.flagSetting += fmt.Sprintf("%s,", nt.URL)
 
 		var caPath, certPath, keyPath, ServerName string
@@ -855,40 +630,56 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 		headerFlagValue = strings.TrimSuffix(headerFlagValue, "^^")
 		headers.flagSetting += fmt.Sprintf("%s,", headerFlagValue)
 		var user, passFile string
-		s := ntBasicAuth[buildNotifierKey(i)]
 		if nt.BasicAuth != nil {
-			if s == nil {
-				panic("secret for basic notifier cannot be nil")
-			}
-			authUser.isNotNull = true
-			user = s.Username
-			if len(s.Password) > 0 {
-				passFile = path.Join(vmalertConfigSecretsDir, buildRemoteSecretKey(buildNotifierKey(i), basicAuthPasswordKey))
-				authPasswordFile.isNotNull = true
-			}
 			if len(nt.BasicAuth.PasswordFile) > 0 {
 				passFile = nt.BasicAuth.PasswordFile
 				authPasswordFile.isNotNull = true
+			} else {
+				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &nt.BasicAuth.Password)
+				if err != nil {
+					return nil, err
+				}
+				passFile = file
+				authPasswordFile.isNotNull = true
 			}
+			authUser.isNotNull = true
+			secret, err := ac.LoadKeyFromSecret(cr.Namespace, &nt.BasicAuth.Username)
+			if err != nil {
+				return nil, err
+			}
+			user = secret
 		}
 		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
 		authPasswordFile.flagSetting += fmt.Sprintf("%s,", passFile)
 
 		var tokenPath string
 		if nt.BearerAuth != nil {
+			if nt.TokenSecret != nil {
+				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, nt.TokenSecret)
+				if err != nil {
+					return nil, err
+				}
+				bearerTokenPath.isNotNull = true
+				tokenPath = file
+			}
 			if len(nt.TokenFilePath) > 0 {
 				bearerTokenPath.isNotNull = true
 				tokenPath = nt.TokenFilePath
-			} else if len(s.bearerValue) > 0 {
-				bearerTokenPath.isNotNull = true
-				tokenPath = path.Join(vmalertConfigSecretsDir, buildRemoteSecretKey(buildNotifierKey(i), bearerTokenKey))
 			}
 		}
 		bearerTokenPath.flagSetting += fmt.Sprintf("%s,", tokenPath)
 		var scopes, tokenURL, secretFile, clientID string
 		if nt.OAuth2 != nil {
-			if s == nil {
-				panic("secret for oauth2 notifier cannot be nil")
+			if nt.OAuth2.ClientSecret != nil {
+				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, nt.OAuth2.ClientSecret)
+				if err != nil {
+					return nil, err
+				}
+				oauth2SecretFile.isNotNull = true
+				secretFile = file
+			} else {
+				oauth2SecretFile.isNotNull = true
+				secretFile = nt.OAuth2.ClientSecretFile
 			}
 			if len(nt.OAuth2.Scopes) > 0 {
 				oauth2Scopes.isNotNull = true
@@ -898,15 +689,12 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 				oauth2TokenURL.isNotNull = true
 				tokenURL = nt.OAuth2.TokenURL
 			}
-			clientID = s.ClientID
-			oauth2ClientID.isNotNull = true
-			if len(s.ClientSecret) > 0 {
-				oauth2SecretFile.isNotNull = true
-				secretFile = path.Join(vmalertConfigSecretsDir, buildRemoteSecretKey(buildNotifierKey(i), oauth2SecretKey))
-			} else {
-				oauth2SecretFile.isNotNull = true
-				secretFile = nt.OAuth2.ClientSecretFile
+			secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &nt.OAuth2.ClientID)
+			if err != nil {
+				return nil, err
 			}
+			clientID = secret
+			oauth2ClientID.isNotNull = true
 		}
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", scopes)
 		oauth2TokenURL.flagSetting += fmt.Sprintf("%s,", tokenURL)
@@ -923,11 +711,7 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 		}
 	}
 
-	return finalArgs
-}
-
-func buildCacheKey(ns, keyName string) string {
-	return fmt.Sprintf("%s/%s", ns, keyName)
+	return finalArgs, nil
 }
 
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, extraWatchVolumeMounts []corev1.VolumeMount) corev1.Container {

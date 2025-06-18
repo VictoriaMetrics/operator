@@ -283,7 +283,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 			MountPath: vmAuthConfigFolder,
 		})
 
-		configReloader := buildVMAuthConfigReloaderContainer(cr)
+		configReloader := buildConfigReloaderContainer(cr)
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
 			buildInitConfigContainer(useVMConfigReloader, cr, configReloader.Args)...)
@@ -363,13 +363,22 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	if err != nil {
 		return err
 	}
-	tlsAssets := make(map[string]string)
-	generatedConfig, err := buildVMAuthConfig(ctx, rclient, cr, sus, tlsAssets)
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   vmAuthConfigRawFolder,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	ac := build.NewAssetsCache(ctx, rclient, cfg)
+	generatedConfig, err := buildConfig(ctx, rclient, cr, sus, ac)
 	if err != nil {
 		return err
 	}
-	for assetKey, assetValue := range tlsAssets {
-		s.Data[assetKey] = []byte(assetValue)
+	creds := ac.GetOutput()
+	if secret, ok := creds[build.TLSAssetsResourceKind]; ok {
+		for name, value := range secret.Data {
+			s.Data[name] = value
+		}
 	}
 
 	var buf bytes.Buffer
@@ -505,7 +514,7 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 	}
 }
 
-func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
+func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	port := cr.Spec.Port
 	if len(cr.Spec.InternalListenPort) > 0 {
 		port = cr.Spec.InternalListenPort

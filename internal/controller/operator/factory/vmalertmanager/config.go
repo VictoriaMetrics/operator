@@ -1,7 +1,6 @@
 package vmalertmanager
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"path"
@@ -9,13 +8,9 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v2"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 type parsedConfig struct {
@@ -24,7 +19,7 @@ type parsedConfig struct {
 	brokenAMCfgs []*vmv1beta1.VMAlertmanagerConfig
 }
 
-func buildConfig(ctx context.Context, rclient client.Client, alertmanagerCR *vmv1beta1.VMAlertmanager, baseCfg []byte, amcfgs []*vmv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*parsedConfig, error) {
+func buildConfig(alertmanagerCR *vmv1beta1.VMAlertmanager, baseCfg []byte, amcfgs []*vmv1beta1.VMAlertmanagerConfig, ac *build.AssetsCache) (*parsedConfig, error) {
 	// fast path.
 	if len(amcfgs) == 0 {
 		return &parsedConfig{data: baseCfg}, nil
@@ -76,8 +71,6 @@ func buildConfig(ctx context.Context, rclient client.Client, alertmanagerCR *vmv
 	})
 	var subRoutes []yaml.MapSlice
 	var timeIntervals []yaml.MapSlice
-	secretCache := make(map[string]*corev1.Secret)
-	configmapCache := make(map[string]*corev1.ConfigMap)
 	var result parsedConfig
 
 	var cnt int
@@ -90,7 +83,7 @@ OUTER:
 		}
 		var receiverCfgs []yaml.MapSlice
 		for _, receiver := range amcKey.Spec.Receivers {
-			receiverCfg, err := buildReceiver(ctx, rclient, amcKey, receiver, &globalConfigOpts, secretCache, configmapCache, tlsAssets)
+			receiverCfg, err := buildReceiver(amcKey, receiver, &globalConfigOpts, ac)
 			if err != nil {
 				// skip broken configs
 				result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
@@ -363,16 +356,12 @@ type route struct {
 }
 
 func buildReceiver(
-	ctx context.Context,
-	rclient client.Client,
 	cr *vmv1beta1.VMAlertmanagerConfig,
 	receiver vmv1beta1.Receiver,
 	globalCfg *globalAlertmanagerConfig,
-	cache map[string]*corev1.Secret,
-	configmapCache map[string]*corev1.ConfigMap,
-	tlsAssets map[string]string,
+	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
-	cb := initConfigBuilder(ctx, rclient, cr, receiver.Name, globalCfg, cache, configmapCache, tlsAssets)
+	cb := initConfigBuilder(cr, receiver.Name, globalCfg, ac)
 	cb.result = yaml.MapSlice{
 		{
 			Key:   "name",
@@ -386,32 +375,22 @@ func buildReceiver(
 }
 
 type configBuilder struct {
-	build.TLSConfigBuilder
+	cache        *build.AssetsCache
+	namespace    string
 	globalConfig *globalAlertmanagerConfig
 	currentYaml  []yaml.MapSlice
 	result       yaml.MapSlice
 }
 
 func initConfigBuilder(
-	ctx context.Context,
-	rclient client.Client,
 	cr *vmv1beta1.VMAlertmanagerConfig,
 	receiver string,
 	globalCfg *globalAlertmanagerConfig,
-	cache map[string]*corev1.Secret,
-	configmapCache map[string]*corev1.ConfigMap,
-	tlsAssets map[string]string,
+	ac *build.AssetsCache,
 ) *configBuilder {
 	cb := configBuilder{
-		TLSConfigBuilder: build.TLSConfigBuilder{
-			Ctx:                ctx,
-			Client:             rclient,
-			CurrentCRName:      cr.Name,
-			CurrentCRNamespace: cr.Namespace,
-			SecretCache:        cache,
-			ConfigmapCache:     configmapCache,
-			TLSAssets:          tlsAssets,
-		},
+		cache:        ac,
+		namespace:    cr.Namespace,
 		globalConfig: globalCfg,
 		result: yaml.MapSlice{
 			{
@@ -564,14 +543,14 @@ func (cb *configBuilder) buildTeams(ms vmv1beta1.MSTeamsConfig) error {
 	}
 
 	if ms.URLSecret != nil {
-		s, err := cb.fetchSecretValue(ms.URLSecret)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, ms.URLSecret)
 		if err != nil {
 			return err
 		}
-		if err := parseURL(s); err != nil {
-			return fmt.Errorf("invalid URL %s in key %s from secret %s: %w", s, ms.URLSecret.Key, ms.URLSecret.Name, err)
+		if err := parseURL(secret); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %w", secret, ms.URLSecret.Key, ms.URLSecret.Name, err)
 		}
-		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: s})
+		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: secret})
 	} else if ms.URL != nil {
 		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: ms.URL})
 	}
@@ -601,14 +580,14 @@ func (cb *configBuilder) buildDiscord(dc vmv1beta1.DiscordConfig) error {
 	}
 
 	if dc.URLSecret != nil {
-		s, err := cb.fetchSecretValue(dc.URLSecret)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, dc.URLSecret)
 		if err != nil {
 			return err
 		}
-		if err := parseURL(s); err != nil {
-			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", s, dc.URLSecret.Key, dc.URLSecret.Name, err)
+		if err := parseURL(secret); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", secret, dc.URLSecret.Key, dc.URLSecret.Name, err)
 		}
-		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: s})
+		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: secret})
 	} else if dc.URL != nil {
 		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: dc.URL})
 	}
@@ -670,18 +649,18 @@ func (cb *configBuilder) buildSNS(sns vmv1beta1.SnsConfig) error {
 		if sns.Sigv4.AccessKey != "" {
 			toYamlSig("access_key", sns.Sigv4.AccessKey)
 		} else if sns.Sigv4.AccessKeySelector != nil {
-			s, err := cb.fetchSecretValue(sns.Sigv4.AccessKeySelector)
+			secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, sns.Sigv4.AccessKeySelector)
 			if err != nil {
 				return err
 			}
-			toYamlSig("access_key", s)
+			toYamlSig("access_key", secret)
 		}
 		if sns.Sigv4.SecretKey != nil {
-			s, err := cb.fetchSecretValue(sns.Sigv4.SecretKey)
+			secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, sns.Sigv4.SecretKey)
 			if err != nil {
 				return err
 			}
-			toYamlSig("secret_key", s)
+			toYamlSig("secret_key", secret)
 		}
 		temp = append(temp, yaml.MapItem{Key: "sigv4", Value: sigv4})
 	}
@@ -810,18 +789,18 @@ func (cb *configBuilder) buildRocketchat(rc vmv1beta1.RocketchatConfig) error {
 		toYaml("api_url", *rc.APIURL)
 	}
 	if rc.TokenID != nil {
-		sv, err := cb.fetchSecretValue(rc.TokenID)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, rc.TokenID)
 		if err != nil {
 			return err
 		}
-		toYaml("token_id", sv)
+		toYaml("token_id", secret)
 	}
 	if rc.Token != nil {
-		sv, err := cb.fetchSecretValue(rc.Token)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, rc.Token)
 		if err != nil {
 			return err
 		}
-		toYaml("token", sv)
+		toYaml("token", secret)
 	}
 	toYaml("channel", rc.Channel)
 	toYaml("color", rc.Color)
@@ -905,11 +884,11 @@ func (cb *configBuilder) buildTelegram(tg vmv1beta1.TelegramConfig) error {
 		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
 	}
 	if tg.BotToken != nil {
-		s, err := cb.fetchSecretValue(tg.BotToken)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, tg.BotToken)
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "bot_token", Value: s})
+		temp = append(temp, yaml.MapItem{Key: "bot_token", Value: secret})
 	}
 	if tg.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *tg.SendResolved})
@@ -947,14 +926,14 @@ func (cb *configBuilder) buildSlack(slack vmv1beta1.SlackConfig) error {
 		return fmt.Errorf("api_url secret is not defined and no global Slack API URL set either inline or in a file")
 	}
 	if slack.APIURL != nil {
-		s, err := cb.fetchSecretValue(slack.APIURL)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, slack.APIURL)
 		if err != nil {
 			return err
 		}
-		if err := parseURL(s); err != nil {
-			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", s, slack.APIURL.Key, slack.APIURL.Name, err)
+		if err := parseURL(secret); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", secret, slack.APIURL.Key, slack.APIURL.Name, err)
 		}
-		temp = append(temp, yaml.MapItem{Key: "api_url", Value: s})
+		temp = append(temp, yaml.MapItem{Key: "api_url", Value: secret})
 	}
 	if slack.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *slack.SendResolved})
@@ -1066,11 +1045,11 @@ func (cb *configBuilder) buildTeamsV2(mstCfg vmv1beta1.MSTeamsV2Config) error {
 	var whURL string
 	switch {
 	case mstCfg.URLSecret != nil:
-		sv, err := cb.fetchSecretValue(mstCfg.URLSecret)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, mstCfg.URLSecret)
 		if err != nil {
 			return err
 		}
-		whURL = sv
+		whURL = secret
 	case mstCfg.URL != nil:
 		whURL = *mstCfg.URL
 	default:
@@ -1105,11 +1084,11 @@ func (cb *configBuilder) buildWebhook(wh vmv1beta1.WebhookConfig) error {
 	if wh.URL != nil {
 		url = *wh.URL
 	} else if wh.URLSecret != nil {
-		s, err := cb.fetchSecretValue(wh.URLSecret)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, wh.URLSecret)
 		if err != nil {
 			return err
 		}
-		url = s
+		url = secret
 	}
 
 	// no point to add config without url
@@ -1147,11 +1126,11 @@ func (cb *configBuilder) buildWeeChat(wc vmv1beta1.WeChatConfig) error {
 		temp = append(temp, yaml.MapItem{Key: "http_config", Value: h})
 	}
 	if wc.APISecret != nil {
-		s, err := cb.fetchSecretValue(wc.APISecret)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, wc.APISecret)
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "api_secret", Value: s})
+		temp = append(temp, yaml.MapItem{Key: "api_secret", Value: secret})
 	}
 	toYaml := func(key string, src string) {
 		if len(src) > 0 {
@@ -1192,11 +1171,11 @@ func (cb *configBuilder) buildVictorOps(vo vmv1beta1.VictorOpsConfig) error {
 		temp = append(temp, yaml.MapItem{Key: "http_config", Value: h})
 	}
 	if vo.APIKey != nil {
-		s, err := cb.fetchSecretValue(vo.APIKey)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, vo.APIKey)
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "api_key", Value: s})
+		temp = append(temp, yaml.MapItem{Key: "api_key", Value: secret})
 	}
 	toYaml := func(key string, src string) {
 		if len(src) > 0 {
@@ -1251,18 +1230,18 @@ func (cb *configBuilder) buildPushOver(po vmv1beta1.PushoverConfig) error {
 		temp = append(temp, yaml.MapItem{Key: "http_config", Value: h})
 	}
 	if po.UserKey != nil {
-		s, err := cb.fetchSecretValue(po.UserKey)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, po.UserKey)
 		if err != nil {
 			return err
 		}
-		toYaml("user_key", s)
+		toYaml("user_key", secret)
 	}
 	if po.Token != nil {
-		s, err := cb.fetchSecretValue(po.Token)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, po.Token)
 		if err != nil {
 			return err
 		}
-		toYaml("token", s)
+		toYaml("token", secret)
 	}
 
 	toYaml("url", po.URL)
@@ -1296,18 +1275,18 @@ func (cb *configBuilder) buildPagerDuty(pd vmv1beta1.PagerDutyConfig) error {
 		temp = append(temp, yaml.MapItem{Key: "http_config", Value: h})
 	}
 	if pd.RoutingKey != nil {
-		s, err := cb.fetchSecretValue(pd.RoutingKey)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, pd.RoutingKey)
 		if err != nil {
 			return err
 		}
-		toYaml("routing_key", s)
+		toYaml("routing_key", secret)
 	}
 	if pd.ServiceKey != nil {
-		s, err := cb.fetchSecretValue(pd.ServiceKey)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, pd.ServiceKey)
 		if err != nil {
 			return err
 		}
-		toYaml("service_key", s)
+		toYaml("service_key", secret)
 	}
 	toYaml("url", pd.URL)
 	if pd.URL != "" {
@@ -1391,29 +1370,28 @@ func (cb *configBuilder) buildEmail(email vmv1beta1.EmailConfig) error {
 	// add tls config in any case
 	// require_tls is true by default and it could be managed via global configuration
 	if email.TLSConfig != nil {
-		tcb := cb.TLSConfigBuilder
-		s, err := tcb.BuildTLSConfig(email.TLSConfig, tlsAssetsDir)
+		cfg, err := cb.cache.TLSToYAML(cb.namespace, "", email.TLSConfig)
 		if err != nil {
 			return err
 		}
-		if len(s) > 0 {
-			temp = append(temp, yaml.MapItem{Key: "tls_config", Value: s})
+		if len(cfg) > 0 {
+			temp = append(temp, yaml.MapItem{Key: "tls_config", Value: cfg})
 		}
 	}
 
 	if email.AuthPassword != nil {
-		p, err := cb.fetchSecretValue(email.AuthPassword)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, email.AuthPassword)
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "auth_password", Value: p})
+		temp = append(temp, yaml.MapItem{Key: "auth_password", Value: secret})
 	}
 	if email.AuthSecret != nil {
-		s, err := cb.fetchSecretValue(email.AuthSecret)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, email.AuthSecret)
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "auth_secret", Value: s})
+		temp = append(temp, yaml.MapItem{Key: "auth_secret", Value: secret})
 	}
 	if len(email.Headers) > 0 {
 		temp = append(temp, yaml.MapItem{Key: "headers", Value: email.Headers})
@@ -1445,11 +1423,11 @@ func (cb *configBuilder) buildOpsGenie(og vmv1beta1.OpsGenieConfig) error {
 	}
 	var temp yaml.MapSlice
 	if og.APIKey != nil {
-		s, err := cb.fetchSecretValue(og.APIKey)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, og.APIKey)
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "api_key", Value: s})
+		temp = append(temp, yaml.MapItem{Key: "api_key", Value: secret})
 	}
 	toYamlString := func(key string, value string) {
 		if len(value) > 0 {
@@ -1512,11 +1490,6 @@ func (cb *configBuilder) buildOpsGenie(og vmv1beta1.OpsGenieConfig) error {
 	return nil
 }
 
-func (cb *configBuilder) fetchSecretValue(selector *corev1.SecretKeySelector) (string, error) {
-	tcb := cb.TLSConfigBuilder
-	return k8stools.GetCredFromSecret(tcb.Ctx, tcb.Client, tcb.CurrentCRNamespace, selector, selector.Name, tcb.SecretCache)
-}
-
 func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 
@@ -1524,36 +1497,35 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 		return nil, nil
 	}
 	if httpCfg.TLSConfig != nil {
-		tcb := cb.TLSConfigBuilder
-		tls, err := tcb.BuildTLSConfig(httpCfg.TLSConfig, tlsAssetsDir)
+		cfg, err := cb.cache.TLSToYAML(cb.namespace, "", httpCfg.TLSConfig)
 		if err != nil {
 			return nil, err
 		}
-		if len(tls) > 0 {
-			r = append(r, yaml.MapItem{Key: "tls_config", Value: tls})
+		if len(cfg) > 0 {
+			r = append(r, yaml.MapItem{Key: "tls_config", Value: cfg})
 		}
 	}
 	if httpCfg.Authorization != nil {
-		au, err := cb.buildAuthorization(httpCfg.Authorization)
+		cfg, err := cb.cache.AuthorizationToYAML(cb.namespace, httpCfg.Authorization)
 		if err != nil {
 			return nil, err
 		}
-		r = append(r, yaml.MapItem{Key: "authorization", Value: au})
+		r = append(r, cfg...)
 	}
 	if httpCfg.BasicAuth != nil {
-		ba, err := cb.buildBasicAuth(httpCfg.BasicAuth)
+		cfg, err := cb.cache.BasicAuthToYAML(cb.namespace, httpCfg.BasicAuth)
 		if err != nil {
 			return nil, err
 		}
-		r = append(r, yaml.MapItem{Key: "basic_auth", Value: ba})
+		r = append(r, yaml.MapItem{Key: "basic_auth", Value: cfg})
 	}
 	var tokenAuth yaml.MapSlice
 	if httpCfg.BearerTokenSecret != nil {
-		bearer, err := cb.fetchSecretValue(httpCfg.BearerTokenSecret)
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, httpCfg.BearerTokenSecret)
 		if err != nil {
 			return nil, fmt.Errorf("cannot find secret for bearerToken: %w", err)
 		}
-		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials", Value: bearer})
+		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials", Value: secret})
 	}
 	if len(httpCfg.BearerTokenFile) > 0 {
 		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials_file", Value: httpCfg.BearerTokenFile})
@@ -1563,133 +1535,16 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 	}
 
 	if httpCfg.OAuth2 != nil {
-		oauth2, err := cb.buildOAuth2(httpCfg.OAuth2)
+		cfg, err := cb.cache.OAuth2ToYAML(cb.namespace, httpCfg.OAuth2)
 		if err != nil {
 			return nil, fmt.Errorf("cannot build oauth2 configuration: %w", err)
 		}
-		r = append(r, yaml.MapItem{Key: "oauth2", Value: oauth2})
+		r = append(r, cfg...)
 	}
 
 	if len(httpCfg.ProxyURL) > 0 {
 		r = append(r, yaml.MapItem{Key: "proxy_url", Value: httpCfg.ProxyURL})
 	}
-	return r, nil
-}
-
-func (cb *configBuilder) buildOAuth2(oauth2 *vmv1beta1.OAuth2) (yaml.MapSlice, error) {
-	var r yaml.MapSlice
-
-	if oauth2.ClientSecret != nil {
-		p, err := cb.fetchSecretValue(oauth2.ClientSecret)
-		if err != nil {
-			return nil, err
-		}
-		r = append(r, yaml.MapItem{
-			Key:   "client_secret",
-			Value: p,
-		})
-	}
-
-	switch {
-	case oauth2.ClientID.ConfigMap != nil:
-		var cm corev1.ConfigMap
-		tcb := cb.TLSConfigBuilder
-		if err := tcb.Get(tcb.Ctx, types.NamespacedName{Namespace: tcb.CurrentCRNamespace, Name: oauth2.ClientID.ConfigMap.Name}, &cm); err != nil {
-			return nil, fmt.Errorf("cannot fetch configmap for oauth2.client_id: %w", err)
-		}
-		p, ok := cm.Data[oauth2.ClientID.ConfigMap.Key]
-		if !ok {
-			return nil, fmt.Errorf("cannot find expected key=%s at oauth2.client_id configmap=%s", oauth2.ClientID.ConfigMap.Key, oauth2.ClientID.ConfigMap.Name)
-		}
-		r = append(r, yaml.MapItem{Key: "client_id", Value: p})
-
-	case oauth2.ClientID.Secret != nil:
-		p, err := cb.fetchSecretValue(oauth2.ClientID.Secret)
-		if err != nil {
-			return nil, fmt.Errorf("cannot fetch secret value for oauth2.client_id: %w", err)
-		}
-		r = append(r, yaml.MapItem{Key: "client_id", Value: p})
-	}
-	if len(oauth2.EndpointParams) > 0 {
-		r = append(r, yaml.MapItem{Key: "endpoint_params", Value: orderedYAMLMAp(oauth2.EndpointParams)})
-	}
-	if len(oauth2.Scopes) > 0 {
-		r = append(r, yaml.MapItem{Key: "scopes", Value: oauth2.Scopes})
-	}
-	if len(oauth2.ClientSecretFile) > 0 {
-		r = append(r, yaml.MapItem{
-			Key:   "client_secret_file",
-			Value: oauth2.ClientSecretFile,
-		})
-	}
-	if len(oauth2.TokenURL) > 0 {
-		r = append(r, yaml.MapItem{Key: "token_url", Value: oauth2.TokenURL})
-	}
-
-	return r, nil
-}
-
-func (cb *configBuilder) buildBasicAuth(basicAuth *vmv1beta1.BasicAuth) (yaml.MapSlice, error) {
-	var r yaml.MapSlice
-
-	if len(basicAuth.Username.Name) > 0 {
-		u, err := cb.fetchSecretValue(&basicAuth.Username)
-		if err != nil {
-			return nil, err
-		}
-		r = append(r, yaml.MapItem{
-			Key:   "username",
-			Value: u,
-		})
-	}
-
-	if len(basicAuth.Password.Name) > 0 {
-		p, err := cb.fetchSecretValue(&basicAuth.Password)
-		if err != nil {
-			return nil, err
-		}
-		r = append(r, yaml.MapItem{
-			Key:   "password",
-			Value: p,
-		})
-	}
-
-	if len(basicAuth.PasswordFile) > 0 {
-		r = append(r, yaml.MapItem{
-			Key:   "password_file",
-			Value: basicAuth.PasswordFile,
-		})
-	}
-
-	return r, nil
-}
-
-func (cb *configBuilder) buildAuthorization(authCfg *vmv1beta1.Authorization) (yaml.MapSlice, error) {
-	var r yaml.MapSlice
-
-	if len(authCfg.Type) > 0 {
-		r = append(r, yaml.MapItem{
-			Key:   "type",
-			Value: authCfg.Type,
-		})
-	}
-	if authCfg.Credentials != nil {
-		hv, err := cb.fetchSecretValue(authCfg.Credentials)
-		if err != nil {
-			return nil, fmt.Errorf("cannot fetch credentials secret value: %w", err)
-		}
-		r = append(r, yaml.MapItem{
-			Key:   "credentials",
-			Value: hv,
-		})
-	}
-	if len(authCfg.CredentialsFile) > 0 {
-		r = append(r, yaml.MapItem{
-			Key:   "credentials_file",
-			Value: authCfg.CredentialsFile,
-		})
-	}
-
 	return r, nil
 }
 
@@ -1707,60 +1562,36 @@ func parseURL(s string) error {
 	return nil
 }
 
-func fetchSecretValue(ctx context.Context, rclient client.Client, ns string, selector *corev1.SecretKeySelector, sm map[string]*corev1.Secret) ([]byte, error) {
-	var s corev1.Secret
-	if existSecret, ok := sm[selector.Name]; ok {
-		s = *existSecret
-	} else if err := rclient.Get(ctx, types.NamespacedName{Name: selector.Name, Namespace: ns}, &s); err != nil {
-		return nil, fmt.Errorf("cannot find secret=%q to fetch content at ns=%q, err: %w", selector.Name, ns, err)
-	}
-	if v, ok := s.Data[selector.Key]; ok {
-		return v, nil
-	}
-	return nil, fmt.Errorf("secret key=%q not exists at secret=%q", selector.Key, selector.Name)
-}
-
-func secretSelectorToAssetKey(selector *corev1.SecretKeySelector) string {
-	return fmt.Sprintf("%s_%s", selector.Name, selector.Key)
-}
-
 // builds configuration according to https://prometheus.io/docs/alerting/latest/https/#gossip-traffic
-func buildGossipConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vmv1beta1.VMAlertmanager, tlsAssets map[string]string) ([]byte, error) {
-	if vmaCR.Spec.GossipConfig == nil {
+func buildGossipConfigYAML(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCache) ([]byte, error) {
+	if cr.Spec.GossipConfig == nil {
 		return nil, nil
 	}
 	var cfg yaml.MapSlice
-	gossipCfg := vmaCR.Spec.GossipConfig
+	gossipCfg := cr.Spec.GossipConfig
 	if gossipCfg.TLSServerConfig != nil {
 		var tlsCfg yaml.MapSlice
-		secretMap := make(map[string]*corev1.Secret)
 		if gossipCfg.TLSServerConfig.ClientCASecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSServerConfig.ClientCASecretRef, secretMap)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSServerConfig.ClientCASecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret CA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSServerConfig.ClientCASecretRef)
-			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSServerConfig.ClientCAFile = path.Join(tlsAssetsDir, assetKey)
+			gossipCfg.TLSServerConfig.ClientCAFile = file
 		}
 		if gossipCfg.TLSServerConfig.CertSecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSServerConfig.CertSecretRef, secretMap)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSServerConfig.CertSecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret CA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSServerConfig.CertSecretRef)
-			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSServerConfig.CertFile = path.Join(tlsAssetsDir, assetKey)
+			gossipCfg.TLSServerConfig.CertFile = file
 		}
 
 		if gossipCfg.TLSServerConfig.KeySecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSServerConfig.KeySecretRef, secretMap)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSServerConfig.KeySecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSServerConfig.KeySecretRef)
-			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSServerConfig.KeyFile = path.Join(tlsAssetsDir, assetKey)
+			gossipCfg.TLSServerConfig.KeyFile = file
 		}
 
 		if len(gossipCfg.TLSServerConfig.ClientCAFile) > 0 {
@@ -1796,34 +1627,27 @@ func buildGossipConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vm
 
 	if gossipCfg.TLSClientConfig != nil {
 		var tlsCfg yaml.MapSlice
-		secretMap := make(map[string]*corev1.Secret)
 		if gossipCfg.TLSClientConfig.CASecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSClientConfig.CASecretRef, secretMap)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSClientConfig.CASecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSClientConfig.CASecretRef)
-			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSClientConfig.CAFile = path.Join(tlsAssetsDir, assetKey)
+			gossipCfg.TLSClientConfig.CAFile = file
 		}
 		if gossipCfg.TLSClientConfig.CertSecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSClientConfig.CertSecretRef, secretMap)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSClientConfig.CertSecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSClientConfig.CertSecretRef)
-			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSClientConfig.CertFile = path.Join(tlsAssetsDir, assetKey)
+			gossipCfg.TLSClientConfig.CertFile = file
 		}
 
 		if gossipCfg.TLSClientConfig.KeySecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSClientConfig.KeySecretRef, secretMap)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, gossipCfg.TLSClientConfig.KeySecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSClientConfig.KeySecretRef)
-			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSClientConfig.KeyFile = path.Join(tlsAssetsDir, assetKey)
+			gossipCfg.TLSClientConfig.KeyFile = file
 		}
 
 		if len(gossipCfg.TLSClientConfig.CAFile) > 0 {
@@ -1852,12 +1676,12 @@ func buildGossipConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vm
 }
 
 // builds configuration according to https://prometheus.io/docs/alerting/latest/https/#http-traffic
-func buildWebServerConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vmv1beta1.VMAlertmanager, tlsAssets map[string]string) ([]byte, error) {
-	if vmaCR.Spec.WebConfig == nil {
+func buildWebServerConfigYAML(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCache) ([]byte, error) {
+	if cr.Spec.WebConfig == nil {
 		return nil, nil
 	}
 	var cfg yaml.MapSlice
-	webCfg := vmaCR.Spec.WebConfig
+	webCfg := cr.Spec.WebConfig
 	if webCfg.HTTPServerConfig != nil {
 		var wCfg yaml.MapSlice
 		if webCfg.HTTPServerConfig.HTTP2 {
@@ -1873,34 +1697,27 @@ func buildWebServerConfigYAML(ctx context.Context, rclient client.Client, vmaCR 
 	}
 	if webCfg.TLSServerConfig != nil {
 		var tlsCfg yaml.MapSlice
-		secretMap := make(map[string]*corev1.Secret)
 		if webCfg.TLSServerConfig.ClientCASecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.ClientCASecretRef, secretMap)
-			if err != nil {
-				return nil, fmt.Errorf("cannot fetch secret CA value: %w", err)
-			}
-			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.ClientCASecretRef)
-			tlsAssets[assetKey] = string(data)
-			webCfg.TLSServerConfig.ClientCAFile = path.Join(tlsAssetsDir, assetKey)
-		}
-		if webCfg.TLSServerConfig.CertSecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.CertSecretRef, secretMap)
-			if err != nil {
-				return nil, fmt.Errorf("cannot fetch secret CA value: %w", err)
-			}
-			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.CertSecretRef)
-			tlsAssets[assetKey] = string(data)
-			webCfg.TLSServerConfig.CertFile = path.Join(tlsAssetsDir, assetKey)
-		}
-
-		if webCfg.TLSServerConfig.KeySecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.KeySecretRef, secretMap)
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, webCfg.TLSServerConfig.ClientCASecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.KeySecretRef)
-			tlsAssets[assetKey] = string(data)
-			webCfg.TLSServerConfig.KeyFile = path.Join(tlsAssetsDir, assetKey)
+			webCfg.TLSServerConfig.ClientCAFile = file
+		}
+		if webCfg.TLSServerConfig.CertSecretRef != nil {
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, webCfg.TLSServerConfig.CertSecretRef)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch certSecret value: %w", err)
+			}
+			webCfg.TLSServerConfig.CertFile = file
+		}
+
+		if webCfg.TLSServerConfig.KeySecretRef != nil {
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, webCfg.TLSServerConfig.KeySecretRef)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch keySecret value: %w", err)
+			}
+			webCfg.TLSServerConfig.KeyFile = file
 		}
 
 		if len(webCfg.TLSServerConfig.ClientCAFile) > 0 {

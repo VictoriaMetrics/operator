@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func generatePodScrapeConfig(
@@ -16,9 +17,9 @@ func generatePodScrapeConfig(
 	ep vmv1beta1.PodMetricsEndpoint,
 	i int,
 	apiserverConfig *vmv1beta1.APIServerConfig,
-	ssCache *scrapesSecretsCache,
+	ac *build.AssetsCache,
 	se vmv1beta1.VMAgentSecurityEnforcements,
-) yaml.MapSlice {
+) (yaml.MapSlice, error) {
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -37,11 +38,16 @@ func generatePodScrapeConfig(
 		apiServerConfig:    apiserverConfig,
 		role:               kubernetesSDRolePod,
 		attachMetadata:     &ep.AttachMetadata,
+		namespace:          sc.Namespace,
 	}
 	if cr.Spec.DaemonSetMode {
 		k8sSDOpts.mustUseNodeSelector = true
 	}
-	cfg = append(cfg, generateK8SSDConfig(ssCache, k8sSDOpts))
+	if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
+		return nil, err
+	} else {
+		cfg = append(cfg, c...)
+	}
 
 	// set defaults
 	if ep.SampleLimit == 0 {
@@ -168,9 +174,10 @@ func generatePodScrapeConfig(
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 	cfg = addMetricRelabelingsTo(cfg, ep.MetricRelabelConfigs, se)
-	cfg = append(cfg, buildVMScrapeParams(sc.Namespace, sc.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
-	cfg = addTLStoYaml(cfg, sc.Namespace, ep.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, ep.EndpointAuth, sc.Namespace, sc.AsMapKey(i), ssCache)
-
-	return cfg
+	if c, err := buildVMScrapeParams(sc.Namespace, ep.VMScrapeParams, ac); err != nil {
+		return nil, err
+	} else {
+		cfg = append(cfg, c...)
+	}
+	return addEndpointAuthTo(cfg, &ep.EndpointAuth, sc.Namespace, ac)
 }

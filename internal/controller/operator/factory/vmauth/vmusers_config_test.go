@@ -25,10 +25,11 @@ func Test_genUserCfg(t *testing.T) {
 		crdURLCache map[string]string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
+		name              string
+		args              args
+		want              string
+		predefinedObjects []runtime.Object
+		wantErr           bool
 	}{
 		{
 			name: "basic user cfg",
@@ -492,7 +493,22 @@ password: pass
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache, &build.TLSConfigBuilder{})
+			cr := &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-auth",
+					Namespace: "default",
+				},
+			}
+			ctx := context.TODO()
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.TLSAssetsResourceKind: {
+					MountDir:   vmAuthConfigRawFolder,
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+				},
+			}
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache, cr, ac)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("genUserCfg() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -535,12 +551,9 @@ func Test_genPassword(t *testing.T) {
 }
 
 func Test_selectVMUserSecrets(t *testing.T) {
-	type args struct {
-		vmUsers *skipableVMUsers
-	}
 	tests := []struct {
 		name                string
-		args                args
+		vmUsers             *skipableVMUsers
 		wantToCreateSecrets []string
 		wantToUpdateSecrets []string
 		wantErr             bool
@@ -548,23 +561,21 @@ func Test_selectVMUserSecrets(t *testing.T) {
 	}{
 		{
 			name: "want 1 updateSecret",
-			args: args{
-				vmUsers: &skipableVMUsers{
-					users: []*vmv1beta1.VMUser{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "exist",
-								Namespace: "default",
-							},
-							Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+			vmUsers: &skipableVMUsers{
+				users: []*vmv1beta1.VMUser{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "exist",
+							Namespace: "default",
 						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "not-exist",
-								Namespace: "default",
-							},
-							Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+						Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "not-exist",
+							Namespace: "default",
 						},
+						Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
 					},
 				},
 			},
@@ -578,33 +589,31 @@ func Test_selectVMUserSecrets(t *testing.T) {
 		},
 		{
 			name: "want 1 updateSecret",
-			args: args{
-				vmUsers: &skipableVMUsers{
-					users: []*vmv1beta1.VMUser{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "must-not-exist",
-								Namespace: "default",
-							},
-							Spec: vmv1beta1.VMUserSpec{
-								BearerToken:           ptr.To("some-bearer"),
-								DisableSecretCreation: true,
-							},
+			vmUsers: &skipableVMUsers{
+				users: []*vmv1beta1.VMUser{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "must-not-exist",
+							Namespace: "default",
 						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "not-exists-must-create",
-								Namespace: "default",
-							},
-							Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+						Spec: vmv1beta1.VMUserSpec{
+							BearerToken:           ptr.To("some-bearer"),
+							DisableSecretCreation: true,
 						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "exists",
-								Namespace: "default",
-							},
-							Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "not-exists-must-create",
+							Namespace: "default",
 						},
+						Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "exists",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
 					},
 				},
 			},
@@ -618,25 +627,23 @@ func Test_selectVMUserSecrets(t *testing.T) {
 		},
 		{
 			name: "want nothing",
-			args: args{
-				vmUsers: &skipableVMUsers{
-					users: []*vmv1beta1.VMUser{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "exist-with-generated",
-								Namespace: "default",
-							},
-							Spec: vmv1beta1.VMUserSpec{
-								GeneratePassword: true,
-							},
+			vmUsers: &skipableVMUsers{
+				users: []*vmv1beta1.VMUser{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "exist-with-generated",
+							Namespace: "default",
 						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "exist-hardcoded",
-								Namespace: "default",
-							},
-							Spec: vmv1beta1.VMUserSpec{},
+						Spec: vmv1beta1.VMUserSpec{
+							GeneratePassword: true,
 						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "exist-hardcoded",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMUserSpec{},
 					},
 				},
 			},
@@ -655,25 +662,23 @@ func Test_selectVMUserSecrets(t *testing.T) {
 		},
 		{
 			name: "update secret value",
-			args: args{
-				vmUsers: &skipableVMUsers{
-					users: []*vmv1beta1.VMUser{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "exist-with-generated",
-								Namespace: "default",
-							},
-							Spec: vmv1beta1.VMUserSpec{
-								GeneratePassword: true,
-							},
+			vmUsers: &skipableVMUsers{
+				users: []*vmv1beta1.VMUser{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "exist-with-generated",
+							Namespace: "default",
 						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "exist-to-update",
-								Namespace: "default",
-							},
-							Spec: vmv1beta1.VMUserSpec{Password: ptr.To("some-new-password"), UserName: ptr.To("some-user")},
+						Spec: vmv1beta1.VMUserSpec{
+							GeneratePassword: true,
 						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "exist-to-update",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMUserSpec{Password: ptr.To("some-new-password"), UserName: ptr.To("some-user")},
 					},
 				},
 			},
@@ -693,8 +698,16 @@ func Test_selectVMUserSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, got1, err := addAuthCredentialsBuildSecrets(context.TODO(), testClient, tt.args.vmUsers)
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.TLSAssetsResourceKind: {
+					MountDir:   vmAuthConfigRawFolder,
+					SecretName: "test-secret",
+				},
+			}
+			ac := build.NewAssetsCache(ctx, testClient, cfg)
+			got, got1, err := addAuthCredentialsBuildSecrets(tt.vmUsers, ac)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("selectVMUserSecrets() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -736,28 +749,23 @@ func Test_selectVMUserSecrets(t *testing.T) {
 	}
 }
 
-func Test_buildVMAuthConfig(t *testing.T) {
-	type args struct {
-		vmauth *vmv1beta1.VMAuth
-	}
+func Test_buildConfig(t *testing.T) {
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAuth
 		want              string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "simple cfg",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -815,15 +823,13 @@ func Test_buildVMAuthConfig(t *testing.T) {
 		},
 		{
 			name: "simple cfg with duplicated users",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -900,14 +906,12 @@ func Test_buildVMAuthConfig(t *testing.T) {
 
 		{
 			name: "with targetRef basicauth secret refs and headers",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{SelectAllByDefault: true},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
 				},
+				Spec: vmv1beta1.VMAuthSpec{SelectAllByDefault: true},
 			},
 			predefinedObjects: []runtime.Object{
 				&vmv1beta1.VMUser{
@@ -1008,14 +1012,12 @@ func Test_buildVMAuthConfig(t *testing.T) {
 		},
 		{
 			name: "with secret refs",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{SelectAllByDefault: true},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
 				},
+				Spec: vmv1beta1.VMAuthSpec{SelectAllByDefault: true},
 			},
 			predefinedObjects: []runtime.Object{
 				&vmv1beta1.VMUser{
@@ -1141,12 +1143,10 @@ func Test_buildVMAuthConfig(t *testing.T) {
 		},
 		{
 			name: "default cfg with empty selectors",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -1198,14 +1198,12 @@ func Test_buildVMAuthConfig(t *testing.T) {
 		},
 		{
 			name: "vmauth ns selector",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{SelectAllByDefault: false, UserNamespaceSelector: &metav1.LabelSelector{}},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
 				},
+				Spec: vmv1beta1.VMAuthSpec{SelectAllByDefault: false, UserNamespaceSelector: &metav1.LabelSelector{}},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{
@@ -1329,11 +1327,11 @@ func Test_buildVMAuthConfig(t *testing.T) {
   default_url:
   - https://default1:8888/unsupported_url_handler
   - https://default2:8888/unsupported_url_handler
+  tls_insecure_skip_verify: true
   tls_ca_file: /opt/vmauth/config/default_secret-store_ca
   tls_cert_file: /opt/vmauth/config/default_secret-store_cert
   tls_key_file: /path/to/tls/key
   tls_server_name: foo.bar.com
-  tls_insecure_skip_verify: true
   ip_filters:
     allow_list:
     - 10.0.0.0/24
@@ -1346,58 +1344,56 @@ func Test_buildVMAuthConfig(t *testing.T) {
 		},
 		{
 			name: "with full unauthorized access and ip_filter",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
+					UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
+						{
+							SrcPaths:  []string{"/api/v1/query", "/api/v1/query_range", "/api/v1/label/[^/]+/values"},
+							SrcHosts:  []string{"app1.my-host.com"},
+							URLPrefix: []string{"http://vmselect1:8481/select/42/prometheus", "http://vmselect2:8481/select/42/prometheus"},
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								SrcQueryArgs:        []string{"db=foo"},
+								SrcHeaders:          []string{"TenantID: 123:456"},
+								DiscoverBackendIPs:  ptr.To(true),
+								RequestHeaders:      []string{"X-Scope-OrgID: abc"},
+								ResponseHeaders:     []string{"X-Server-Hostname: a"},
+								RetryStatusCodes:    []int{500, 502},
+								LoadBalancingPolicy: ptr.To("first_available"),
+							},
+						},
+						{
+							SrcPaths:  []string{"/app1/.*"},
+							URLPrefix: []string{"http://app1-backend/"},
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								DropSrcPathPrefixParts: ptr.To(1),
+							},
+						},
 					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-						UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-							{
-								SrcPaths:  []string{"/api/v1/query", "/api/v1/query_range", "/api/v1/label/[^/]+/values"},
-								SrcHosts:  []string{"app1.my-host.com"},
-								URLPrefix: []string{"http://vmselect1:8481/select/42/prometheus", "http://vmselect2:8481/select/42/prometheus"},
-								URLMapCommon: vmv1beta1.URLMapCommon{
-									SrcQueryArgs:        []string{"db=foo"},
-									SrcHeaders:          []string{"TenantID: 123:456"},
-									DiscoverBackendIPs:  ptr.To(true),
-									RequestHeaders:      []string{"X-Scope-OrgID: abc"},
-									ResponseHeaders:     []string{"X-Server-Hostname: a"},
-									RetryStatusCodes:    []int{500, 502},
-									LoadBalancingPolicy: ptr.To("first_available"),
-								},
-							},
-							{
-								SrcPaths:  []string{"/app1/.*"},
-								URLPrefix: []string{"http://app1-backend/"},
-								URLMapCommon: vmv1beta1.URLMapCommon{
-									DropSrcPathPrefixParts: ptr.To(1),
-								},
-							},
+					VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+						DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
+						TLSConfig: &vmv1beta1.TLSConfig{
+							CAFile:             "/path/to/tls/root/ca",
+							CertFile:           "/path/to/tls/cert",
+							KeyFile:            "/path/to/tls/key",
+							ServerName:         "foo.bar.com",
+							InsecureSkipVerify: true,
 						},
-						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
-							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
-							TLSConfig: &vmv1beta1.TLSConfig{
-								CAFile:             "/path/to/tls/root/ca",
-								CertFile:           "/path/to/tls/cert",
-								KeyFile:            "/path/to/tls/key",
-								ServerName:         "foo.bar.com",
-								InsecureSkipVerify: true,
-							},
-							IPFilters: vmv1beta1.VMUserIPFilters{
-								AllowList: []string{"192.168.0.1/24"},
-								DenyList:  []string{"10.0.0.43"},
-							},
-							DiscoverBackendIPs:     ptr.To(false),
-							Headers:                []string{"X-Scope-OrgID: cba"},
-							ResponseHeaders:        []string{"X-Server-Hostname: b"},
-							RetryStatusCodes:       []int{503},
-							LoadBalancingPolicy:    ptr.To("least_loaded"),
-							MaxConcurrentRequests:  ptr.To(150),
-							DropSrcPathPrefixParts: ptr.To(2),
+						IPFilters: vmv1beta1.VMUserIPFilters{
+							AllowList: []string{"192.168.0.1/24"},
+							DenyList:  []string{"10.0.0.43"},
 						},
+						DiscoverBackendIPs:     ptr.To(false),
+						Headers:                []string{"X-Scope-OrgID: cba"},
+						ResponseHeaders:        []string{"X-Server-Hostname: b"},
+						RetryStatusCodes:       []int{503},
+						LoadBalancingPolicy:    ptr.To("least_loaded"),
+						MaxConcurrentRequests:  ptr.To(150),
+						DropSrcPathPrefixParts: ptr.To(2),
 					},
 				},
 			},
@@ -1484,11 +1480,11 @@ unauthorized_user:
   default_url:
   - https://default1:8888/unsupported_url_handler
   - https://default2:8888/unsupported_url_handler
+  tls_insecure_skip_verify: true
   tls_ca_file: /path/to/tls/root/ca
   tls_cert_file: /path/to/tls/cert
   tls_key_file: /path/to/tls/key
   tls_server_name: foo.bar.com
-  tls_insecure_skip_verify: true
   ip_filters:
     allow_list:
     - 192.168.0.1/24
@@ -1508,19 +1504,17 @@ unauthorized_user:
 		},
 		{
 			name: "with disabled headers, max concurrent and response headers ",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-						UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-							{
-								SrcPaths:  []string{"/", "/default"},
-								URLPrefix: []string{"http://route-1", "http://route-2"},
-							},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
+					UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
+						{
+							SrcPaths:  []string{"/", "/default"},
+							URLPrefix: []string{"http://route-1", "http://route-2"},
 						},
 					},
 				},
@@ -1600,19 +1594,17 @@ unauthorized_user:
 		},
 		{
 			name: "with cluster discovery and auth",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-						UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-							{
-								SrcPaths:  []string{"/", "/default"},
-								URLPrefix: []string{"http://route-1", "http://route-2"},
-							},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
+					UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
+						{
+							SrcPaths:  []string{"/", "/default"},
+							URLPrefix: []string{"http://route-1", "http://route-2"},
 						},
 					},
 				},
@@ -1825,11 +1817,11 @@ unauthorized_user:
   default_url:
   - https://default1:8888/unsupported_url_handler
   - https://default2:8888/unsupported_url_handler
+  tls_insecure_skip_verify: true
   tls_ca_file: /path/to/tls/root/ca
   tls_cert_file: /path/to/tls/cert
   tls_key_file: /path/to/tls/key
   tls_server_name: foo.bar.com
-  tls_insecure_skip_verify: true
   ip_filters:
     allow_list:
     - 192.168.0.1/24
@@ -1858,15 +1850,13 @@ unauthorized_user:
 		},
 		{
 			name: "with duplicated users and broken links",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -2004,62 +1994,60 @@ unauthorized_user:
 		},
 		{
 			name: "with full unauthorizedUserAccessSpec",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-						UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
-							URLMap: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-								{
-									SrcPaths:  []string{"/api/v1/query", "/api/v1/query_range", "/api/v1/label/[^/]+/values"},
-									SrcHosts:  []string{"app1.my-host.com"},
-									URLPrefix: []string{"http://vmselect1:8481/select/42/prometheus", "http://vmselect2:8481/select/42/prometheus"},
-									URLMapCommon: vmv1beta1.URLMapCommon{
-										SrcQueryArgs:        []string{"db=foo"},
-										SrcHeaders:          []string{"TenantID: 123:456"},
-										DiscoverBackendIPs:  ptr.To(true),
-										RequestHeaders:      []string{"X-Scope-OrgID: abc"},
-										ResponseHeaders:     []string{"X-Server-Hostname: a"},
-										RetryStatusCodes:    []int{500, 502},
-										LoadBalancingPolicy: ptr.To("first_available"),
-									},
-								},
-								{
-									SrcPaths:  []string{"/app1/.*"},
-									URLPrefix: []string{"http://app1-backend/"},
-									URLMapCommon: vmv1beta1.URLMapCommon{
-										DropSrcPathPrefixParts: ptr.To(1),
-									},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
+					UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+						URLMap: []vmv1beta1.UnauthorizedAccessConfigURLMap{
+							{
+								SrcPaths:  []string{"/api/v1/query", "/api/v1/query_range", "/api/v1/label/[^/]+/values"},
+								SrcHosts:  []string{"app1.my-host.com"},
+								URLPrefix: []string{"http://vmselect1:8481/select/42/prometheus", "http://vmselect2:8481/select/42/prometheus"},
+								URLMapCommon: vmv1beta1.URLMapCommon{
+									SrcQueryArgs:        []string{"db=foo"},
+									SrcHeaders:          []string{"TenantID: 123:456"},
+									DiscoverBackendIPs:  ptr.To(true),
+									RequestHeaders:      []string{"X-Scope-OrgID: abc"},
+									ResponseHeaders:     []string{"X-Server-Hostname: a"},
+									RetryStatusCodes:    []int{500, 502},
+									LoadBalancingPolicy: ptr.To("first_available"),
 								},
 							},
-							MetricLabels: map[string]string{"label": "value"},
-							URLPrefix:    []string{"http://some-url"},
-							VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
-								DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CAFile:             "/path/to/tls/root/ca",
-									CertFile:           "/path/to/tls/cert",
-									KeyFile:            "/path/to/tls/key",
-									ServerName:         "foo.bar.com",
-									InsecureSkipVerify: true,
+							{
+								SrcPaths:  []string{"/app1/.*"},
+								URLPrefix: []string{"http://app1-backend/"},
+								URLMapCommon: vmv1beta1.URLMapCommon{
+									DropSrcPathPrefixParts: ptr.To(1),
 								},
-								IPFilters: vmv1beta1.VMUserIPFilters{
-									AllowList: []string{"192.168.0.1/24"},
-									DenyList:  []string{"10.0.0.43"},
-								},
-								DiscoverBackendIPs:     ptr.To(false),
-								Headers:                []string{"X-Scope-OrgID: cba"},
-								ResponseHeaders:        []string{"X-Server-Hostname: b"},
-								RetryStatusCodes:       []int{503},
-								LoadBalancingPolicy:    ptr.To("least_loaded"),
-								MaxConcurrentRequests:  ptr.To(150),
-								DropSrcPathPrefixParts: ptr.To(2),
-								DumpRequestOnErrors:    ptr.To(true),
 							},
+						},
+						MetricLabels: map[string]string{"label": "value"},
+						URLPrefix:    []string{"http://some-url"},
+						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CAFile:             "/path/to/tls/root/ca",
+								CertFile:           "/path/to/tls/cert",
+								KeyFile:            "/path/to/tls/key",
+								ServerName:         "foo.bar.com",
+								InsecureSkipVerify: true,
+							},
+							IPFilters: vmv1beta1.VMUserIPFilters{
+								AllowList: []string{"192.168.0.1/24"},
+								DenyList:  []string{"10.0.0.43"},
+							},
+							DiscoverBackendIPs:     ptr.To(false),
+							Headers:                []string{"X-Scope-OrgID: cba"},
+							ResponseHeaders:        []string{"X-Server-Hostname: b"},
+							RetryStatusCodes:       []int{503},
+							LoadBalancingPolicy:    ptr.To("least_loaded"),
+							MaxConcurrentRequests:  ptr.To(150),
+							DropSrcPathPrefixParts: ptr.To(2),
+							DumpRequestOnErrors:    ptr.To(true),
 						},
 					},
 				},
@@ -2150,11 +2138,11 @@ unauthorized_user:
   default_url:
   - https://default1:8888/unsupported_url_handler
   - https://default2:8888/unsupported_url_handler
+  tls_insecure_skip_verify: true
   tls_ca_file: /path/to/tls/root/ca
   tls_cert_file: /path/to/tls/cert
   tls_key_file: /path/to/tls/key
   tls_server_name: foo.bar.com
-  tls_insecure_skip_verify: true
   ip_filters:
     allow_list:
     - 192.168.0.1/24
@@ -2175,15 +2163,13 @@ unauthorized_user:
 		},
 		{
 			name: "with unsorted duplicates",
-			args: args{
-				vmauth: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-vmauth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -2263,33 +2249,40 @@ unauthorized_user:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := context.TODO()
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			// fetch exist users for vmauth.
-			sus, err := selectVMUsers(ctx, testClient, tt.args.vmauth)
+			sus, err := selectVMUsers(ctx, testClient, tt.cr)
 			if err != nil {
 				t.Fatalf("unexpected error at selectVMUsers: %s", err)
 			}
 			rand.Shuffle(len(sus.users), func(i, j int) {
 				sus.users[i], sus.users[j] = sus.users[j], sus.users[i]
 			})
+			cfg := map[build.ResourceKind]*build.ResourceCfg{
+				build.TLSAssetsResourceKind: {
+					MountDir:   vmAuthConfigRawFolder,
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
+				},
+			}
+			ac := build.NewAssetsCache(ctx, testClient, cfg)
 
-			got, err := buildVMAuthConfig(ctx, testClient, tt.args.vmauth, sus, map[string]string{})
+			got, err := buildConfig(ctx, testClient, tt.cr, sus, ac)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("buildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !assert.Equal(t, tt.want, string(got)) {
 				return
 			}
 			// fetch exist users for vmauth.
-			sus, err = selectVMUsers(ctx, testClient, tt.args.vmauth)
+			sus, err = selectVMUsers(ctx, testClient, tt.cr)
 			if err != nil {
 				t.Fatalf("unexpected error at selectVMUsers: %s", err)
 			}
-			got2, err := buildVMAuthConfig(ctx, testClient, tt.args.vmauth, sus, map[string]string{})
+			got2, err := buildConfig(ctx, testClient, tt.cr, sus, ac)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("buildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !assert.Equal(t, tt.want, string(got2)) {

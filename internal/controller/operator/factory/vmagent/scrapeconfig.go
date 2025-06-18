@@ -8,15 +8,16 @@ import (
 	"gopkg.in/yaml.v2"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func generateScrapeConfig(
 	ctx context.Context,
 	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMScrapeConfig,
-	ssCache *scrapesSecretsCache,
+	ac *build.AssetsCache,
 	se vmv1beta1.VMAgentSecurityEnforcements,
-) yaml.MapSlice {
+) (yaml.MapSlice, error) {
 	jobName := fmt.Sprintf("scrapeConfig/%s/%s", sc.Namespace, sc.Name)
 	cfg := yaml.MapSlice{
 		{
@@ -42,9 +43,15 @@ func generateScrapeConfig(
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 	cfg = addMetricRelabelingsTo(cfg, sc.Spec.MetricRelabelConfigs, se)
-	cfg = append(cfg, buildVMScrapeParams(sc.Namespace, sc.AsProxyKey("", 0), sc.Spec.VMScrapeParams, ssCache)...)
-	cfg = addTLStoYaml(cfg, sc.Namespace, sc.Spec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, sc.Spec.EndpointAuth, sc.Namespace, sc.AsMapKey("", 0), ssCache)
+	if c, err := buildVMScrapeParams(sc.Namespace, sc.Spec.VMScrapeParams, ac); err != nil {
+		return nil, err
+	} else {
+		cfg = append(cfg, c...)
+	}
+	cfg, err := addEndpointAuthTo(cfg, &sc.Spec.EndpointAuth, sc.Namespace, ac)
+	if err != nil {
+		return nil, err
+	}
 
 	// build staticConfig
 	if len(sc.Spec.StaticConfigs) > 0 {
@@ -96,29 +103,35 @@ func generateScrapeConfig(
 			}
 
 			if config.BasicAuth != nil {
-				var bac yaml.MapSlice
-				if s, ok := ssCache.baSecrets[sc.AsMapKey("httpsd", i)]; ok {
-					bac = append(bac,
-						yaml.MapItem{Key: "username", Value: s.Username},
-						yaml.MapItem{Key: "password", Value: s.Password},
-					)
-				}
-				if len(config.BasicAuth.PasswordFile) > 0 {
-					bac = append(bac, yaml.MapItem{Key: "password_file", Value: config.BasicAuth.PasswordFile})
-				}
-				if len(bac) > 0 {
-					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: bac})
+				if c, err := ac.BasicAuthToYAML(sc.Namespace, config.BasicAuth); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: c})
 				}
 			}
-			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("httpsd", i), config.Authorization, ssCache.authorizationSecrets)
+			if config.Authorization != nil {
+				if c, err := ac.AuthorizationToYAML(sc.Namespace, config.Authorization); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
 			if config.TLSConfig != nil {
-				configs[i] = addTLStoYaml(configs[i], sc.Namespace, config.TLSConfig, false)
+				if c, err := ac.TLSToYAML(sc.Namespace, "", config.TLSConfig); err != nil {
+					return nil, err
+				} else if len(c) > 0 {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "tls_config", Value: c})
+				}
 			}
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}
 			if config.ProxyClientConfig != nil {
-				configs[i] = append(configs[i], buildProxyAuthConfig(sc.Namespace, sc.AsMapKey("httpsd", i), config.ProxyClientConfig, ssCache)...)
+				if c, err := ac.ProxyAuthToYAML(sc.Namespace, config.ProxyClientConfig); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
 			}
 		}
 		cfg = append(cfg, yaml.MapItem{
@@ -145,30 +158,42 @@ func generateScrapeConfig(
 			})
 
 			if config.BasicAuth != nil {
-				var bac yaml.MapSlice
-				if s, ok := ssCache.baSecrets[sc.AsMapKey("kubesd", i)]; ok {
-					bac = append(bac,
-						yaml.MapItem{Key: "username", Value: s.Username},
-						yaml.MapItem{Key: "password", Value: s.Password},
-					)
-				}
-				if len(config.BasicAuth.PasswordFile) > 0 {
-					bac = append(bac, yaml.MapItem{Key: "password_file", Value: config.BasicAuth.PasswordFile})
-				}
-				if len(bac) > 0 {
-					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: bac})
+				if c, err := ac.BasicAuthToYAML(sc.Namespace, config.BasicAuth); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: c})
 				}
 			}
-			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("kubesd", i), config.Authorization, ssCache.authorizationSecrets)
+			if config.Authorization != nil {
+				if c, err := ac.AuthorizationToYAML(sc.Namespace, config.Authorization); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
 			if config.TLSConfig != nil {
-				configs[i] = addTLStoYaml(configs[i], sc.Namespace, config.TLSConfig, false)
+				if c, err := ac.TLSToYAML(sc.Namespace, "", config.TLSConfig); err != nil {
+					return nil, err
+				} else if len(c) > 0 {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "tls_config", Value: c})
+				}
 			}
-			configs[i] = addOAuth2ConfigTo(configs[i], sc.Namespace, sc.AsMapKey("kubesd", i), config.OAuth2, ssCache.oauth2Secrets)
+			if config.OAuth2 != nil {
+				if c, err := ac.OAuth2ToYAML(sc.Namespace, config.OAuth2); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}
 			if config.ProxyClientConfig != nil {
-				configs[i] = append(configs[i], buildProxyAuthConfig(sc.Namespace, sc.AsMapKey("kubesd", i), config.ProxyClientConfig, ssCache)...)
+				if c, err := ac.ProxyAuthToYAML(sc.Namespace, config.ProxyClientConfig); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
 			}
 
 			if config.FollowRedirects != nil {
@@ -244,10 +269,11 @@ func generateScrapeConfig(
 				Key:   "server",
 				Value: config.Server,
 			})
-
 			if config.TokenRef != nil && config.TokenRef.Name != "" {
-				if s, ok := ssCache.bearerTokens[sc.AsMapKey("consulsd", i)]; ok {
-					configs[i] = append(configs[i], yaml.MapItem{Key: "bearer_token", Value: s})
+				if secret, err := ac.LoadKeyFromSecret(sc.Namespace, config.TokenRef); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "bearer_token", Value: secret})
 				}
 			}
 
@@ -321,27 +347,35 @@ func generateScrapeConfig(
 			}
 
 			if config.BasicAuth != nil {
-				var bac yaml.MapSlice
-				if s, ok := ssCache.baSecrets[sc.AsMapKey("consulsd", i)]; ok {
-					bac = append(bac,
-						yaml.MapItem{Key: "username", Value: s.Username},
-						yaml.MapItem{Key: "password", Value: s.Password},
-					)
-				}
-				if len(config.BasicAuth.PasswordFile) > 0 {
-					bac = append(bac, yaml.MapItem{Key: "password_file", Value: config.BasicAuth.PasswordFile})
-				}
-				if len(bac) > 0 {
-					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: bac})
+				if c, err := ac.BasicAuthToYAML(sc.Namespace, config.BasicAuth); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: c})
 				}
 			}
-			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("consulsd", i), config.Authorization, ssCache.authorizationSecrets)
-			configs[i] = addOAuth2ConfigTo(configs[i], sc.Namespace, sc.AsMapKey("consulsd", i), config.OAuth2, ssCache.oauth2Secrets)
+			if config.Authorization != nil {
+				if c, err := ac.AuthorizationToYAML(sc.Namespace, config.Authorization); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
+			if config.OAuth2 != nil {
+				if c, err := ac.OAuth2ToYAML(sc.Namespace, config.OAuth2); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}
 			if config.ProxyClientConfig != nil {
-				configs[i] = append(configs[i], buildProxyAuthConfig(sc.Namespace, sc.AsMapKey("consulsd", i), config.ProxyClientConfig, ssCache)...)
+				if c, err := ac.ProxyAuthToYAML(sc.Namespace, config.ProxyClientConfig); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
 			}
 
 			if config.FollowRedirects != nil {
@@ -349,7 +383,11 @@ func generateScrapeConfig(
 			}
 
 			if config.TLSConfig != nil {
-				configs[i] = addTLStoYaml(configs[i], sc.Namespace, config.TLSConfig, false)
+				if c, err := ac.TLSToYAML(sc.Namespace, "", config.TLSConfig); err != nil {
+					return nil, err
+				} else if len(c) > 0 {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "tls_config", Value: c})
+				}
 			}
 		}
 
@@ -404,13 +442,17 @@ func generateScrapeConfig(
 			}
 
 			if config.AccessKey != nil {
-				if s, ok := ssCache.authorizationSecrets[sc.AsMapKey("ec2sdAccess", i)]; ok {
-					configs[i] = append(configs[i], yaml.MapItem{Key: "access_key", Value: s})
+				if secret, err := ac.LoadKeyFromSecret(sc.Namespace, config.AccessKey); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "access_key", Value: secret})
 				}
 			}
 			if config.SecretKey != nil {
-				if s, ok := ssCache.authorizationSecrets[sc.AsMapKey("ec2sdSecret", i)]; ok {
-					configs[i] = append(configs[i], yaml.MapItem{Key: "secret_key", Value: s})
+				if secret, err := ac.LoadKeyFromSecret(sc.Namespace, config.SecretKey); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "secret_key", Value: secret})
 				}
 			}
 
@@ -482,8 +524,10 @@ func generateScrapeConfig(
 			}
 
 			if config.ClientSecret != nil {
-				if s, ok := ssCache.oauth2Secrets[sc.AsMapKey("azuresd", i)]; ok {
-					configs[i] = append(configs[i], yaml.MapItem{Key: "client_secret", Value: s.ClientSecret})
+				if secret, err := ac.LoadKeyFromSecret(sc.Namespace, config.ClientSecret); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "client_secret", Value: secret})
 				}
 			}
 
@@ -586,8 +630,10 @@ func generateScrapeConfig(
 			}
 
 			if config.Password != nil {
-				if s, ok := ssCache.authorizationSecrets[sc.AsMapKey("openstacksd_password", i)]; ok {
-					configs[i] = append(configs[i], yaml.MapItem{Key: "password", Value: s})
+				if secret, err := ac.LoadKeyFromSecret(sc.Namespace, config.Password); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "password", Value: secret})
 				}
 			}
 
@@ -634,8 +680,10 @@ func generateScrapeConfig(
 			}
 
 			if config.ApplicationCredentialSecret != nil {
-				if s, ok := ssCache.authorizationSecrets[sc.AsMapKey("openstacksd_app", i)]; ok {
-					configs[i] = append(configs[i], yaml.MapItem{Key: "application_credential_secret", Value: s})
+				if secret, err := ac.LoadKeyFromSecret(sc.Namespace, config.ApplicationCredentialSecret); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "application_credential_secret", Value: secret})
 				}
 			}
 
@@ -661,7 +709,11 @@ func generateScrapeConfig(
 			}
 
 			if config.TLSConfig != nil {
-				configs[i] = addTLStoYaml(configs[i], sc.Namespace, config.TLSConfig, false)
+				if c, err := ac.TLSToYAML(sc.Namespace, "", config.TLSConfig); err != nil {
+					return nil, err
+				} else if len(c) > 0 {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "tls_config", Value: c})
+				}
 			}
 		}
 		cfg = append(cfg, yaml.MapItem{
@@ -674,13 +726,29 @@ func generateScrapeConfig(
 	if len(sc.Spec.DigitalOceanSDConfigs) > 0 {
 		configs := make([][]yaml.MapItem, len(sc.Spec.DigitalOceanSDConfigs))
 		for i, config := range sc.Spec.DigitalOceanSDConfigs {
-			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("digitaloceansd", i), config.Authorization, ssCache.authorizationSecrets)
-			configs[i] = addOAuth2ConfigTo(configs[i], sc.Namespace, sc.AsMapKey("digitaloceansd", i), config.OAuth2, ssCache.oauth2Secrets)
+			if config.Authorization != nil {
+				if c, err := ac.AuthorizationToYAML(sc.Namespace, config.Authorization); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
+			if config.OAuth2 != nil {
+				if c, err := ac.OAuth2ToYAML(sc.Namespace, config.OAuth2); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}
 			if config.ProxyClientConfig != nil {
-				configs[i] = append(configs[i], buildProxyAuthConfig(sc.Namespace, sc.AsMapKey("digitaloceansd", i), config.ProxyClientConfig, ssCache)...)
+				if c, err := ac.ProxyAuthToYAML(sc.Namespace, config.ProxyClientConfig); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
 			}
 
 			if config.FollowRedirects != nil {
@@ -688,7 +756,11 @@ func generateScrapeConfig(
 			}
 
 			if config.TLSConfig != nil {
-				configs[i] = addTLStoYaml(configs[i], sc.Namespace, config.TLSConfig, false)
+				if c, err := ac.TLSToYAML(sc.Namespace, "", config.TLSConfig); err != nil {
+					return nil, err
+				} else if len(c) > 0 {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "tls_config", Value: c})
+				}
 			}
 
 			if config.Port != nil {
@@ -703,5 +775,5 @@ func generateScrapeConfig(
 			Value: configs,
 		})
 	}
-	return cfg
+	return cfg, nil
 }

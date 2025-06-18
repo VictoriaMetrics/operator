@@ -132,7 +132,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		}
 	}
 
-	ssCache, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, nil)
+	ac, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, nil)
 	if err != nil {
 		return err
 	}
@@ -159,12 +159,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	var prevDeploy runtime.Object
 
 	if prevCR != nil {
-		prevDeploy, err = newDeployForVMAgent(prevCR, ssCache)
+		prevDeploy, err = newDeploy(prevCR, ac)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 		}
 	}
-	newDeploy, err := newDeployForVMAgent(cr, ssCache)
+	newDeploy, err := newDeploy(cr, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
@@ -360,10 +360,10 @@ func shardNumIter(backward bool, shardCount int) iter.Seq[int] {
 	}
 }
 
-// newDeployForVMAgent builds vmagent deployment spec.
-func newDeployForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (runtime.Object, error) {
+// newDeploy builds vmagent deployment spec.
+func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, error) {
 
-	podSpec, err := makeSpecForVMAgent(cr, ssCache)
+	podSpec, err := makeSpec(cr, ac)
 	if err != nil {
 		return nil, err
 	}
@@ -484,11 +484,15 @@ func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
 	return ""
 }
 
-func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
+func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, error) {
 	var args []string
 
 	if len(cr.Spec.RemoteWrite) > 0 {
-		args = append(args, buildRemoteWrites(cr, ssCache)...)
+		rwArgs, err := buildRemoteWrites(cr, ac)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, rwArgs...)
 	}
 	args = append(args, buildRemoteWriteSettings(cr)...)
 
@@ -557,14 +561,6 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 
 		volumes = append(volumes,
 			corev1.Volume{
-				Name: "tls-assets",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: cr.TLSAssetName(),
-					},
-				},
-			},
-			corev1.Volume{
 				Name: "config-out",
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -578,45 +574,29 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 				ReadOnly:  true,
 				MountPath: vmAgentConOfOutDir,
 			},
-			corev1.VolumeMount{
-				Name:      "tls-assets",
-				ReadOnly:  true,
-				MountPath: tlsAssetsDir,
-			},
 		)
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "config",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: cr.PrefixedName(),
-					},
-				},
-			})
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "config",
-				ReadOnly:  true,
-				MountPath: vmAgentConfDir,
-			})
+
+		volumes, agentVolumeMounts = ac.VolumeTo(volumes, agentVolumeMounts)
 	}
 	if cr.HasAnyStreamAggrRule() {
-		volumes = append(volumes, corev1.Volume{
-			Name: "stream-aggr-conf",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cr.StreamAggrConfigName(),
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "stream-aggr-conf",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: cr.StreamAggrConfigName(),
+						},
 					},
 				},
 			},
-		},
 		)
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      "stream-aggr-conf",
-			ReadOnly:  true,
-			MountPath: vmv1beta1.StreamAggrConfigDir,
-		},
+		agentVolumeMounts = append(agentVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "stream-aggr-conf",
+				ReadOnly:  true,
+				MountPath: vmv1beta1.StreamAggrConfigDir,
+			},
 		)
 	}
 
@@ -986,118 +966,6 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
 }
 
-func createOrUpdateTLSAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, assets map[string]string) error {
-	tlsAssetsSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.TLSAssetName(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-			Namespace:       cr.Namespace,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-		},
-		Data: map[string][]byte{},
-	}
-
-	for key, asset := range assets {
-		tlsAssetsSecret.Data[key] = []byte(asset)
-	}
-	var prevSecretMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevSecretMeta = &metav1.ObjectMeta{
-			Name:        prevCR.TLSAssetName(),
-			Labels:      prevCR.AllLabels(),
-			Annotations: prevCR.AnnotationsFiltered(),
-			Namespace:   prevCR.Namespace,
-		}
-	}
-	return reconcile.Secret(ctx, rclient, tlsAssetsSecret, prevSecretMeta)
-}
-
-func addAssetsToCache(
-	ctx context.Context,
-	rclient client.Client,
-	objectNS string,
-	tlsConfig *vmv1beta1.TLSConfig,
-	ssCache *scrapesSecretsCache,
-) error {
-	if tlsConfig == nil {
-		return nil
-	}
-	assets, nsSecretCache, nsConfigMapCache := ssCache.tlsAssets, ssCache.nsSecretCache, ssCache.nsCMCache
-
-	fetchAssetFor := func(assetPath string, src vmv1beta1.SecretOrConfigMap) error {
-		var asset string
-		var err error
-		cacheKey := objectNS + "/" + src.PrefixedName()
-		switch {
-		case src.Secret != nil:
-			asset, err = k8stools.GetCredFromSecret(
-				ctx,
-				rclient,
-				objectNS,
-				src.Secret,
-				cacheKey,
-				nsSecretCache,
-			)
-			if err != nil {
-				return fmt.Errorf(
-					"failed to extract endpoint tls asset from secret %s and key %s in namespace %s: %w",
-					src.PrefixedName(), src.Key(), objectNS, err,
-				)
-			}
-
-		case src.ConfigMap != nil:
-			asset, err = k8stools.GetCredFromConfigMap(
-				ctx,
-				rclient,
-				objectNS,
-				*src.ConfigMap,
-				cacheKey,
-				nsConfigMapCache,
-			)
-			if err != nil {
-				return fmt.Errorf(
-					"failed to extract endpoint tls asset for  configmap %v and key %v in namespace %v",
-					src.PrefixedName(), src.Key(), objectNS,
-				)
-			}
-		}
-		if len(asset) > 0 {
-			assets[assetPath] = asset
-		}
-		return nil
-	}
-
-	if err := fetchAssetFor(tlsConfig.BuildAssetPath(objectNS, tlsConfig.CA.PrefixedName(), tlsConfig.CA.Key()), tlsConfig.CA); err != nil {
-		return fmt.Errorf("cannot fetch CA tls asset: %w", err)
-	}
-
-	if err := fetchAssetFor(tlsConfig.BuildAssetPath(objectNS, tlsConfig.Cert.PrefixedName(), tlsConfig.Cert.Key()), tlsConfig.Cert); err != nil {
-		return fmt.Errorf("cannot fetch Cert tls asset: %w", err)
-	}
-
-	if tlsConfig.KeySecret != nil {
-		asset, err := k8stools.GetCredFromSecret(
-			ctx,
-			rclient,
-			objectNS,
-			tlsConfig.KeySecret,
-			objectNS+"/"+tlsConfig.KeySecret.Name,
-			nsSecretCache,
-		)
-		if err != nil {
-			return fmt.Errorf(
-				"failed to extract endpoint tls asset from secret %s and key %s in namespace %s",
-				tlsConfig.KeySecret.Name, tlsConfig.KeySecret.Key, objectNS,
-			)
-		}
-		assets[tlsConfig.BuildAssetPath(objectNS, tlsConfig.KeySecret.Name, tlsConfig.KeySecret.Key)] = asset
-	}
-
-	return nil
-}
-
 type remoteFlag struct {
 	isNotNull   bool
 	flagSetting string
@@ -1194,7 +1062,7 @@ func sortMap(m map[string]string) []item {
 	return kv
 }
 
-func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []string {
+func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, error) {
 	var finalArgs []string
 	var remoteArgs []remoteFlag
 	remoteTargets := cr.Spec.RemoteWrite
@@ -1228,8 +1096,6 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	forceVMProto := remoteFlag{flagSetting: "-remoteWrite.forceVMProto="}
 	proxyURL := remoteFlag{flagSetting: "-remoteWrite.proxyURL="}
 
-	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
-
 	maxDiskUsage := defaultMaxDiskUsage
 	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
 		maxDiskUsage = cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL.String()
@@ -1239,39 +1105,30 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		rws := remoteTargets[i]
 		url.flagSetting += fmt.Sprintf("%s,", rws.URL)
 
-		var caPath, certPath, keyPath, ServerName string
+		var caPath, certPath, keyPath, serverName string
 		var insecure bool
 		if rws.TLSConfig != nil {
-			if rws.TLSConfig.CAFile != "" {
-				caPath = rws.TLSConfig.CAFile
-			} else if rws.TLSConfig.CA.PrefixedName() != "" {
-				caPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.CA.PrefixedName(), rws.TLSConfig.CA.Key())
+			creds, err := ac.BuildTLSCreds(cr.Namespace, rws.TLSConfig)
+			if err != nil {
+				return nil, err
 			}
-			if caPath != "" {
+			if creds.CAFile != "" {
 				tlsCAs.isNotNull = true
+				caPath = creds.CAFile
 			}
-			if rws.TLSConfig.CertFile != "" {
-				certPath = rws.TLSConfig.CertFile
-			} else if rws.TLSConfig.Cert.PrefixedName() != "" {
-				certPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.Cert.PrefixedName(), rws.TLSConfig.Cert.Key())
-			}
-			if certPath != "" {
+			if creds.CertFile != "" {
 				tlsCerts.isNotNull = true
+				certPath = creds.CertFile
 			}
-			switch {
-			case rws.TLSConfig.KeyFile != "":
-				keyPath = rws.TLSConfig.KeyFile
-			case rws.TLSConfig.KeySecret != nil:
-				keyPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.KeySecret.Name, rws.TLSConfig.KeySecret.Key)
-			}
-			if keyPath != "" {
+			if creds.KeyFile != "" {
 				tlsKeys.isNotNull = true
+				keyPath = creds.KeyFile
 			}
 			if rws.TLSConfig.InsecureSkipVerify {
 				tlsInsecure.isNotNull = true
 			}
 			if rws.TLSConfig.ServerName != "" {
-				ServerName = rws.TLSConfig.ServerName
+				serverName = rws.TLSConfig.ServerName
 				tlsServerName.isNotNull = true
 			}
 			insecure = rws.TLSConfig.InsecureSkipVerify
@@ -1279,24 +1136,25 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		tlsCAs.flagSetting += fmt.Sprintf("%s,", caPath)
 		tlsCerts.flagSetting += fmt.Sprintf("%s,", certPath)
 		tlsKeys.flagSetting += fmt.Sprintf("%s,", keyPath)
-		tlsServerName.flagSetting += fmt.Sprintf("%s,", ServerName)
+		tlsServerName.flagSetting += fmt.Sprintf("%s,", serverName)
 		tlsInsecure.flagSetting += fmt.Sprintf("%v,", insecure)
 
 		var user string
 		var passFile string
 		if rws.BasicAuth != nil {
-			if s, ok := ssCache.baSecrets[rws.AsMapKey()]; ok {
-				authUser.isNotNull = true
-
-				user = s.Username
-				if len(s.Password) > 0 {
-					authPasswordFile.isNotNull = true
-					passFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "basicAuthPassword"))
-				}
-				if len(rws.BasicAuth.PasswordFile) > 0 {
-					passFile = rws.BasicAuth.PasswordFile
-					authPasswordFile.isNotNull = true
-				}
+			creds, err := ac.BuildBasicAuthCreds(cr.Namespace, rws.BasicAuth)
+			if err != nil {
+				return nil, err
+			}
+			authUser.isNotNull = true
+			user = creds.Username
+			if len(creds.Password) > 0 {
+				authPasswordFile.isNotNull = true
+				passFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "basicAuthPassword"))
+			}
+			if len(rws.BasicAuth.PasswordFile) > 0 {
+				passFile = rws.BasicAuth.PasswordFile
+				authPasswordFile.isNotNull = true
 			}
 		}
 		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
@@ -1353,14 +1211,16 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 				oaSecretKeyFile = rws.OAuth2.ClientSecretFile
 			}
 
-			sv := ssCache.oauth2Secrets[rws.AsMapKey()]
-			if rws.OAuth2.ClientSecret != nil && sv != nil {
+			if file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.OAuth2.ClientSecret); err != nil {
+				return nil, err
+			} else if len(file) > 0 {
 				oauth2ClientSecretFile.isNotNull = true
-				oaSecretKeyFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "oauth2Secret"))
+				oaSecretKeyFile = file
 			}
-
-			if len(rws.OAuth2.ClientID.PrefixedName()) > 0 && sv != nil {
-				oaclientID = sv.ClientID
+			if secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rws.OAuth2.ClientID); err != nil {
+				return nil, err
+			} else if len(secret) > 0 {
+				oaclientID = secret
 				oauth2ClientID.isNotNull = true
 			}
 
@@ -1449,7 +1309,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))
 		}
 	}
-	return finalArgs
+	return finalArgs, nil
 }
 
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, extraWatchsMounts []corev1.VolumeMount) corev1.Container {

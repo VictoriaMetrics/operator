@@ -11,25 +11,25 @@ import (
 
 func generateNodeScrapeConfig(
 	ctx context.Context,
-	vmagentCR *vmv1beta1.VMAgent,
-	cr *vmv1beta1.VMNodeScrape,
+	cr *vmv1beta1.VMAgent,
+	sc *vmv1beta1.VMNodeScrape,
 	apiserverConfig *vmv1beta1.APIServerConfig,
 	ssCache *scrapesSecretsCache,
 	se vmv1beta1.VMAgentSecurityEnforcements,
 ) yaml.MapSlice {
-	nodeSpec := &cr.Spec
+	nodeSpec := &sc.Spec
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("nodeScrape/%s/%s", cr.Namespace, cr.Name),
+			Value: fmt.Sprintf("nodeScrape/%s/%s", sc.Namespace, sc.Name),
 		},
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &nodeSpec.EndpointScrapeParams, vmagentCR)
+	setScrapeIntervalToWithLimit(ctx, &nodeSpec.EndpointScrapeParams, cr)
 
 	k8sSDOpts := generateK8SSDConfigOptions{
-		shouldAddSelectors: vmagentCR.Spec.EnableKubernetesAPISelectors,
-		selectors:          cr.Spec.Selector,
+		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+		selectors:          sc.Spec.Selector,
 		apiServerConfig:    apiserverConfig,
 		role:               kubernetesSDRoleNode,
 	}
@@ -39,7 +39,7 @@ func generateNodeScrapeConfig(
 
 	var relabelings []yaml.MapSlice
 
-	skipRelabelSelectors := vmagentCR.Spec.EnableKubernetesAPISelectors
+	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "node", nodeSpec.Selector, skipRelabelSelectors)
 	// Add __address__ as internalIP  and pod and service labels into proper labels.
 	relabelings = append(relabelings, []yaml.MapSlice{
@@ -50,7 +50,7 @@ func generateNodeScrapeConfig(
 	}...)
 
 	// Relabel targetLabels from Node onto target.
-	for _, l := range cr.Spec.TargetLabels {
+	for _, l := range sc.Spec.TargetLabels {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_label_" + sanitizeLabelName(l)}},
 			{Key: "target_label", Value: sanitizeLabelName(l)},
@@ -67,11 +67,11 @@ func generateNodeScrapeConfig(
 
 	relabelings = append(relabelings, yaml.MapSlice{
 		{Key: "target_label", Value: "job"},
-		{Key: "replacement", Value: fmt.Sprintf("%s/%s", cr.GetNamespace(), cr.GetName())},
+		{Key: "replacement", Value: fmt.Sprintf("%s/%s", sc.GetNamespace(), sc.GetName())},
 	})
-	if cr.Spec.JobLabel != "" {
+	if sc.Spec.JobLabel != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
-			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_label_" + sanitizeLabelName(cr.Spec.JobLabel)}},
+			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_label_" + sanitizeLabelName(sc.Spec.JobLabel)}},
 			{Key: "target_label", Value: "job"},
 			{Key: "regex", Value: "(.+)"},
 			{Key: "replacement", Value: "${1}"},
@@ -90,19 +90,19 @@ func generateNodeScrapeConfig(
 	for _, c := range nodeSpec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range vmagentCR.Spec.NodeScrapeRelabelTemplate {
+	for _, trc := range cr.Spec.NodeScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
-	relabelings = enforceNamespaceLabel(relabelings, cr.Namespace, se.EnforcedNamespaceLabel)
+	relabelings = enforceNamespaceLabel(relabelings, sc.Namespace, se.EnforcedNamespaceLabel)
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 	cfg = addMetricRelabelingsTo(cfg, nodeSpec.MetricRelabelConfigs, se)
-	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
-	cfg = addTLStoYaml(cfg, cr.Namespace, nodeSpec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, nodeSpec.EndpointAuth, cr.Namespace, cr.AsMapKey(), ssCache)
+	cfg = append(cfg, buildVMScrapeParams(sc.Namespace, sc.AsProxyKey(), sc.Spec.VMScrapeParams, ssCache)...)
+	cfg = addTLStoYaml(cfg, sc.Namespace, nodeSpec.TLSConfig, false)
+	cfg = addEndpointAuthTo(cfg, nodeSpec.EndpointAuth, sc.Namespace, sc.AsMapKey(), ssCache)
 
 	return cfg
 }

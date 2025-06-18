@@ -16,7 +16,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-type crdObject interface {
+type crObject interface {
 	AnnotationsFiltered() map[string]string
 	GetLabels() map[string]string
 	PrefixedName() string
@@ -173,32 +173,32 @@ func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r clien
 	return nil
 }
 
-func deleteSA(ctx context.Context, rclient client.Client, crd crdObject) error {
-	if !crd.IsOwnsServiceAccount() {
+func deleteSA(ctx context.Context, rclient client.Client, cr crObject) error {
+	if !cr.IsOwnsServiceAccount() {
 		return nil
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ServiceAccount{}, crd.GetServiceAccountName(), crd.GetNamespace()); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ServiceAccount{}, cr.GetServiceAccountName(), cr.GetNamespace()); err != nil {
 		return err
 	}
-	return SafeDelete(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: crd.GetNamespace(), Name: crd.GetServiceAccountName()}})
+	return SafeDelete(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: cr.GetNamespace(), Name: cr.GetServiceAccountName()}})
 }
 
-func finalizePBD(ctx context.Context, rclient client.Client, crd crdObject) error {
-	return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, crd.PrefixedName(), crd.GetNamespace())
+func finalizePBD(ctx context.Context, rclient client.Client, cr crObject) error {
+	return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, cr.PrefixedName(), cr.GetNamespace())
 }
 
-func removeConfigReloaderRole(ctx context.Context, rclient client.Client, crd crdObject) error {
-	if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.RoleBinding{}, crd.PrefixedName(), crd.GetNamespace()); err != nil {
+func removeConfigReloaderRole(ctx context.Context, rclient client.Client, cr crObject) error {
+	if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.RoleBinding{}, cr.PrefixedName(), cr.GetNamespace()); err != nil {
 		return err
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, crd.PrefixedName(), crd.GetNamespace()); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, cr.PrefixedName(), cr.GetNamespace()); err != nil {
 		return err
 	}
-	if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.PrefixedName(), Namespace: crd.GetNamespace()}}); err != nil {
+	if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.GetNamespace()}}); err != nil {
 		return err
 	}
 
-	if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: crd.PrefixedName(), Namespace: crd.GetNamespace()}}); err != nil {
+	if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.GetNamespace()}}); err != nil {
 		return err
 	}
 	return nil

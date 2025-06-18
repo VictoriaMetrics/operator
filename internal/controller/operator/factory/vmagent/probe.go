@@ -11,8 +11,8 @@ import (
 
 func generateProbeConfig(
 	ctx context.Context,
-	vmagentCR *vmv1beta1.VMAgent,
-	cr *vmv1beta1.VMProbe,
+	cr *vmv1beta1.VMAgent,
+	sc *vmv1beta1.VMProbe,
 	i int,
 	apiserverConfig *vmv1beta1.APIServerConfig,
 	ssCache *scrapesSecretsCache,
@@ -21,40 +21,40 @@ func generateProbeConfig(
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("probe/%s/%s/%d", cr.Namespace, cr.Name, i),
+			Value: fmt.Sprintf("probe/%s/%s/%d", sc.Namespace, sc.Name, i),
 		},
 	}
 
 	// add defaults
-	if cr.Spec.VMProberSpec.Path == "" {
-		cr.Spec.VMProberSpec.Path = "/probe"
+	if sc.Spec.VMProberSpec.Path == "" {
+		sc.Spec.VMProberSpec.Path = "/probe"
 	}
-	cr.Spec.Path = cr.Spec.VMProberSpec.Path
+	sc.Spec.Path = sc.Spec.VMProberSpec.Path
 
-	if len(cr.Spec.Module) > 0 {
-		if cr.Spec.Params == nil {
-			cr.Spec.Params = make(map[string][]string)
+	if len(sc.Spec.Module) > 0 {
+		if sc.Spec.Params == nil {
+			sc.Spec.Params = make(map[string][]string)
 		}
-		cr.Spec.Params["module"] = []string{cr.Spec.Module}
+		sc.Spec.Params["module"] = []string{sc.Spec.Module}
 	}
-	if len(cr.Spec.VMProberSpec.Scheme) > 0 {
-		cr.Spec.Scheme = cr.Spec.VMProberSpec.Scheme
+	if len(sc.Spec.VMProberSpec.Scheme) > 0 {
+		sc.Spec.Scheme = sc.Spec.VMProberSpec.Scheme
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &cr.Spec.EndpointScrapeParams, vmagentCR)
+	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, cr)
 
-	cfg = addCommonScrapeParamsTo(cfg, cr.Spec.EndpointScrapeParams, se)
+	cfg = addCommonScrapeParamsTo(cfg, sc.Spec.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
 
-	if cr.Spec.Targets.StaticConfig != nil {
+	if sc.Spec.Targets.StaticConfig != nil {
 		staticConfig := yaml.MapSlice{
-			{Key: "targets", Value: cr.Spec.Targets.StaticConfig.Targets},
+			{Key: "targets", Value: sc.Spec.Targets.StaticConfig.Targets},
 		}
-		if cr.Spec.Targets.StaticConfig.Labels != nil {
+		if sc.Spec.Targets.StaticConfig.Labels != nil {
 			staticConfig = append(staticConfig,
 				yaml.MapSlice{
-					{Key: "labels", Value: cr.Spec.Targets.StaticConfig.Labels},
+					{Key: "labels", Value: sc.Spec.Targets.StaticConfig.Labels},
 				}...)
 		}
 
@@ -68,20 +68,20 @@ func generateProbeConfig(
 			{Key: "target_label", Value: "__param_target"},
 		})
 		// Add configured relabelings.
-		for _, r := range cr.Spec.Targets.StaticConfig.RelabelConfigs {
+		for _, r := range sc.Spec.Targets.StaticConfig.RelabelConfigs {
 			relabelings = append(relabelings, generateRelabelConfig(r))
 		}
 	}
-	if cr.Spec.Targets.Ingress != nil {
+	if sc.Spec.Targets.Ingress != nil {
 
-		skipRelabelSelectors := vmagentCR.Spec.EnableKubernetesAPISelectors
-		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", cr.Spec.Targets.Ingress.Selector, skipRelabelSelectors)
-		selectedNamespaces := getNamespacesFromNamespaceSelector(&cr.Spec.Targets.Ingress.NamespaceSelector, cr.Namespace, se.IgnoreNamespaceSelectors)
+		skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", sc.Spec.Targets.Ingress.Selector, skipRelabelSelectors)
+		selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.Targets.Ingress.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
 
 		k8sSDOpts := generateK8SSDConfigOptions{
 			namespaces:         selectedNamespaces,
-			shouldAddSelectors: vmagentCR.Spec.EnableKubernetesAPISelectors,
-			selectors:          cr.Spec.Targets.Ingress.Selector,
+			shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+			selectors:          sc.Spec.Targets.Ingress.Selector,
 			apiServerConfig:    apiserverConfig,
 			role:               kubernetesSDRoleIngress,
 		}
@@ -116,16 +116,16 @@ func generateProbeConfig(
 		}...)
 
 		// Add configured relabelings.
-		for _, r := range cr.Spec.Targets.Ingress.RelabelConfigs {
+		for _, r := range sc.Spec.Targets.Ingress.RelabelConfigs {
 			relabelings = append(relabelings, generateRelabelConfig(r))
 		}
 
 	}
 
-	if cr.Spec.JobName != "" {
+	if sc.Spec.JobName != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "target_label", Value: "job"},
-			{Key: "replacement", Value: cr.Spec.JobName},
+			{Key: "replacement", Value: sc.Spec.JobName},
 		})
 	}
 
@@ -137,22 +137,22 @@ func generateProbeConfig(
 		},
 		{
 			{Key: "target_label", Value: "__address__"},
-			{Key: "replacement", Value: cr.Spec.VMProberSpec.URL},
+			{Key: "replacement", Value: sc.Spec.VMProberSpec.URL},
 		},
 	}...)
 
-	for _, trc := range vmagentCR.Spec.ProbeScrapeRelabelTemplate {
+	for _, trc := range cr.Spec.ProbeScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
-	relabelings = enforceNamespaceLabel(relabelings, cr.Namespace, se.EnforcedNamespaceLabel)
+	relabelings = enforceNamespaceLabel(relabelings, sc.Namespace, se.EnforcedNamespaceLabel)
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
-	cfg = addMetricRelabelingsTo(cfg, cr.Spec.MetricRelabelConfigs, se)
-	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
-	cfg = addTLStoYaml(cfg, cr.Namespace, cr.Spec.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, cr.Spec.EndpointAuth, cr.Namespace, cr.AsMapKey(), ssCache)
+	cfg = addMetricRelabelingsTo(cfg, sc.Spec.MetricRelabelConfigs, se)
+	cfg = append(cfg, buildVMScrapeParams(sc.Namespace, sc.AsProxyKey(), sc.Spec.VMScrapeParams, ssCache)...)
+	cfg = addTLStoYaml(cfg, sc.Namespace, sc.Spec.TLSConfig, false)
+	cfg = addEndpointAuthTo(cfg, sc.Spec.EndpointAuth, sc.Namespace, sc.AsMapKey(), ssCache)
 
 	return cfg
 }

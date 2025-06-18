@@ -18,7 +18,7 @@ import (
 func Test_generateServiceScrapeConfig(t *testing.T) {
 	type args struct {
 		cr              vmv1beta1.VMAgent
-		m               *vmv1beta1.VMServiceScrape
+		sc              *vmv1beta1.VMServiceScrape
 		ep              vmv1beta1.Endpoint
 		i               int
 		apiserverConfig *vmv1beta1.APIServerConfig
@@ -33,7 +33,7 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 		{
 			name: "generate simple config",
 			args: args{
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -150,7 +150,7 @@ bearer_token_file: /var/run/token
 						MaxScrapeInterval: ptr.To("40m"),
 					},
 				},
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -259,7 +259,7 @@ bearer_token_file: /var/run/token
 						MinScrapeInterval: ptr.To("1m"),
 					},
 				},
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -364,7 +364,7 @@ bearer_token_file: /var/run/token
 		{
 			name: "config with discovery role endpointslices",
 			args: args{
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -465,7 +465,7 @@ bearer_token_file: /var/run/token
 		{
 			name: "config with discovery role services",
 			args: args{
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -549,7 +549,7 @@ bearer_token_file: /var/run/token
 		{
 			name: "bad discovery role service without port name",
 			args: args{
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -599,7 +599,7 @@ relabel_configs:
 		{
 			name: "config with tls insecure",
 			args: args{
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -663,7 +663,7 @@ bearer_token_file: /var/run/token
 		{
 			name: "complete config",
 			args: args{
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -859,7 +859,7 @@ oauth2:
 						},
 					},
 				},
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -968,7 +968,7 @@ bearer_token_file: /var/run/token
 						EnableKubernetesAPISelectors: true,
 					},
 				},
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -1068,7 +1068,7 @@ relabel_configs:
 						EnableKubernetesAPISelectors: true,
 					},
 				},
-				m: &vmv1beta1.VMServiceScrape{
+				sc: &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
 						Namespace: "default",
@@ -1130,7 +1130,7 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateServiceScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
+			got := generateServiceScrapeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal ServiceScrapeConfig to yaml,err :%e", err)

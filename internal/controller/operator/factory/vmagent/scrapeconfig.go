@@ -12,7 +12,7 @@ import (
 
 func generateScrapeConfig(
 	ctx context.Context,
-	vmagentCR *vmv1beta1.VMAgent,
+	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMScrapeConfig,
 	ssCache *scrapesSecretsCache,
 	se vmv1beta1.VMAgentSecurityEnforcements,
@@ -25,7 +25,7 @@ func generateScrapeConfig(
 		},
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, vmagentCR)
+	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, cr)
 
 	cfg = addCommonScrapeParamsTo(cfg, sc.Spec.EndpointScrapeParams, se)
 
@@ -33,7 +33,7 @@ func generateScrapeConfig(
 	for _, c := range sc.Spec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range vmagentCR.Spec.ScrapeConfigRelabelTemplate {
+	for _, trc := range cr.Spec.ScrapeConfigRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

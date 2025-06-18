@@ -11,28 +11,28 @@ import (
 )
 
 // OnVLSingleDelete deletes all vlogs related resources
-func OnVLSingleDelete(ctx context.Context, rclient client.Client, crd *vmv1.VLSingle) error {
+func OnVLSingleDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) error {
 	// check deployment
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
 	// check service
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
-	if crd.Spec.Storage != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.PersistentVolumeClaim{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if cr.Spec.Storage != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &corev1.PersistentVolumeClaim{}, cr.PrefixedName(), cr.Namespace); err != nil {
 			return err
 		}
 	}
-	if crd.Spec.ServiceSpec != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.Spec.ServiceSpec.NameOrDefault(crd.PrefixedName()), crd.Namespace); err != nil {
+	if cr.Spec.ServiceSpec != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()), cr.Namespace); err != nil {
 			return err
 		}
 	}
-	if err := deleteSA(ctx, rclient, crd); err != nil {
+	if err := deleteSA(ctx, rclient, cr); err != nil {
 		return err
 	}
 
-	return removeFinalizeObjByName(ctx, rclient, crd, crd.Name, crd.Namespace)
+	return removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace)
 }

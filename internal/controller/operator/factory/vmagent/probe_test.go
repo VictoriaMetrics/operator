@@ -16,8 +16,8 @@ import (
 
 func Test_generateProbeConfig(t *testing.T) {
 	type args struct {
-		crAgent         vmv1beta1.VMAgent
-		cr              *vmv1beta1.VMProbe
+		cr              vmv1beta1.VMAgent
+		sc              *vmv1beta1.VMProbe
 		i               int
 		apiserverConfig *vmv1beta1.APIServerConfig
 		ssCache         *scrapesSecretsCache
@@ -32,7 +32,7 @@ func Test_generateProbeConfig(t *testing.T) {
 			name: "generate static config",
 			args: args{
 				ssCache: &scrapesSecretsCache{},
-				cr: &vmv1beta1.VMProbe{
+				sc: &vmv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "static-probe",
@@ -82,7 +82,7 @@ relabel_configs:
 			name: "with ingress discover",
 			args: args{
 				ssCache: &scrapesSecretsCache{},
-				cr: &vmv1beta1.VMProbe{
+				sc: &vmv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "probe-ingress",
 						Namespace: "monitor",
@@ -159,7 +159,7 @@ relabel_configs:
 					baSecrets:     map[string]*k8stools.BasicAuthCredentials{},
 					oauth2Secrets: map[string]*k8stools.OAuthCreds{},
 				},
-				cr: &vmv1beta1.VMProbe{
+				sc: &vmv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "static-probe",
@@ -250,12 +250,12 @@ basic_auth:
 			name: "with ingress selectors",
 			args: args{
 				ssCache: &scrapesSecretsCache{},
-				crAgent: vmv1beta1.VMAgent{
+				cr: vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
 						EnableKubernetesAPISelectors: true,
 					},
 				},
-				cr: &vmv1beta1.VMProbe{
+				sc: &vmv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "probe-ingress",
 						Namespace: "monitor",
@@ -332,7 +332,7 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateProbeConfig(context.Background(), &tt.args.crAgent, tt.args.cr, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
+			got := generateProbeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot decode probe config, it must be in yaml format :%e", err)

@@ -11,45 +11,45 @@ import (
 )
 
 // OnVMAlertManagerDelete deletes all alertmanager related resources
-func OnVMAlertManagerDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.VMAlertmanager) error {
+func OnVMAlertManagerDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) error {
 	// check deployment
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
 	// check service
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
-	if crd.Spec.ServiceSpec != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.Spec.ServiceSpec.NameOrDefault(crd.PrefixedName()), crd.Namespace); err != nil {
+	if cr.Spec.ServiceSpec != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()), cr.Namespace); err != nil {
 			return err
 		}
 	}
 
 	// check config secret finalizer.
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, crd.ConfigSecretName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.ConfigSecretName(), cr.Namespace); err != nil {
 		return err
 	}
-	if len(crd.Spec.ConfigSecret) > 0 {
+	if len(cr.Spec.ConfigSecret) > 0 {
 		// execute it for backward-compatibility
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, crd.Spec.ConfigSecret, crd.Namespace); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.Spec.ConfigSecret, cr.Namespace); err != nil {
 			return err
 		}
 	}
 
 	// check PDB
-	if crd.Spec.PodDisruptionBudget != nil {
-		if err := finalizePBD(ctx, rclient, crd); err != nil {
+	if cr.Spec.PodDisruptionBudget != nil {
+		if err := finalizePBD(ctx, rclient, cr); err != nil {
 			return err
 		}
 	}
 
-	if err := deleteSA(ctx, rclient, crd); err != nil {
+	if err := deleteSA(ctx, rclient, cr); err != nil {
 		return err
 	}
-	if err := removeConfigReloaderRole(ctx, rclient, crd); err != nil {
+	if err := removeConfigReloaderRole(ctx, rclient, cr); err != nil {
 		return err
 	}
 
-	return removeFinalizeObjByName(ctx, rclient, crd, crd.Name, crd.Namespace)
+	return removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace)
 }

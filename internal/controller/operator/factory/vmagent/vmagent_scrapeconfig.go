@@ -70,10 +70,10 @@ var skipNon = func(_ error) bool {
 	return false
 }
 
-func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
+func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 	var err error
 	so.sss, so.sssBroken, err = forEachCollectSkipOn(so.sss, so.sssBroken, func(ss *vmv1beta1.VMServiceScrape) error {
-		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range ss.Spec.Endpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
@@ -90,7 +90,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 	}
 
 	so.pss, so.pssBroken, err = forEachCollectSkipOn(so.pss, so.pssBroken, func(ps *vmv1beta1.VMPodScrape) error {
-		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range ps.Spec.PodMetricsEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
@@ -107,7 +107,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 	}
 
 	so.stss, so.stssBroken, err = forEachCollectSkipOn(so.stss, so.stssBroken, func(sts *vmv1beta1.VMStaticScrape) error {
-		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sts.Spec.TargetEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
@@ -121,7 +121,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 	}
 
 	so.nss, so.nssBroken, err = forEachCollectSkipOn(so.nss, so.nssBroken, func(ns *vmv1beta1.VMNodeScrape) error {
-		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(ns.Spec.EndpointAuth); err != nil {
 				return err
 			}
@@ -133,7 +133,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 	}
 
 	so.prss, so.prssBroken, err = forEachCollectSkipOn(so.prss, so.prssBroken, func(prs *vmv1beta1.VMProbe) error {
-		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(prs.Spec.EndpointAuth); err != nil {
 				return err
 			}
@@ -152,7 +152,7 @@ func (so *scrapeObjects) mustValidateObjects(vmagentCR *vmv1beta1.VMAgent) {
 
 	so.scss, so.scssBroken, err = forEachCollectSkipOn(so.scss, so.scssBroken, func(scss *vmv1beta1.VMScrapeConfig) error {
 		// TODO: @f41gh7 validate per configuration FS access
-		if vmagentCR.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(scss.Spec.EndpointAuth); err != nil {
 				return err
 			}
@@ -473,7 +473,7 @@ func loadScrapeSecrets(
 	ctx context.Context,
 	rclient client.Client,
 	sos *scrapeObjects,
-	vmagentCRNamespace string,
+	crNamespace string,
 	apiserverConfig *vmv1beta1.APIServerConfig,
 	remoteWriteSpecs []vmv1beta1.VMAgentRemoteWriteSpec,
 ) (*scrapesSecretsCache, error) {
@@ -831,20 +831,20 @@ func loadScrapeSecrets(
 	// it's VMAgent owner responsibility
 	if apiserverConfig != nil {
 		if apiserverConfig.BasicAuth != nil {
-			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, vmagentCRNamespace, apiserverConfig.BasicAuth, ssCache.nsSecretCache)
+			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, crNamespace, apiserverConfig.BasicAuth, ssCache.nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("could not generate basicAuth for apiserver config. %w", err)
 			}
 			ssCache.baSecrets["apiserver"] = &credentials
 		}
 		if apiserverConfig.Authorization != nil {
-			secretValue, err := k8stools.GetCredFromSecret(ctx, rclient, vmagentCRNamespace, apiserverConfig.Authorization.Credentials, buildCacheKey(vmagentCRNamespace, "apiserver"), ssCache.nsSecretCache)
+			secretValue, err := k8stools.GetCredFromSecret(ctx, rclient, crNamespace, apiserverConfig.Authorization.Credentials, buildCacheKey(crNamespace, "apiserver"), ssCache.nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch authorization secret for apiserver config: %w", err)
 			}
 			ssCache.authorizationSecrets["apiserver"] = secretValue
 		}
-		if err := addAssetsToCache(ctx, rclient, vmagentCRNamespace, apiserverConfig.TLSConfig, ssCache); err != nil {
+		if err := addAssetsToCache(ctx, rclient, crNamespace, apiserverConfig.TLSConfig, ssCache); err != nil {
 			return nil, fmt.Errorf("cannot add tls asset for apiServerConfig %w", err)
 		}
 	}
@@ -854,27 +854,27 @@ func loadScrapeSecrets(
 	// it's VMAgent owner responsibility
 	for _, rws := range remoteWriteSpecs {
 		if rws.BasicAuth != nil {
-			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, vmagentCRNamespace, rws.BasicAuth, ssCache.nsSecretCache)
+			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, crNamespace, rws.BasicAuth, ssCache.nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
 			}
 			ssCache.baSecrets[rws.AsMapKey()] = &credentials
 		}
 		if rws.OAuth2 != nil {
-			oauth2, err := k8stools.LoadOAuthSecrets(ctx, rclient, rws.OAuth2, vmagentCRNamespace, ssCache.nsSecretCache, ssCache.nsCMCache)
+			oauth2, err := k8stools.LoadOAuthSecrets(ctx, rclient, rws.OAuth2, crNamespace, ssCache.nsSecretCache, ssCache.nsCMCache)
 			if err != nil {
-				return nil, fmt.Errorf("cannot load oauth2 creds for :%s, ns: %s, err: %w", "remoteWrite", vmagentCRNamespace, err)
+				return nil, fmt.Errorf("cannot load oauth2 creds for :%s, ns: %s, err: %w", "remoteWrite", crNamespace, err)
 			}
 			ssCache.oauth2Secrets[rws.AsMapKey()] = oauth2
 		}
 		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
-			token, err := k8stools.GetCredFromSecret(ctx, rclient, vmagentCRNamespace, rws.BearerTokenSecret, buildCacheKey(vmagentCRNamespace, rws.BearerTokenSecret.Name), ssCache.nsSecretCache)
+			token, err := k8stools.GetCredFromSecret(ctx, rclient, crNamespace, rws.BearerTokenSecret, buildCacheKey(crNamespace, rws.BearerTokenSecret.Name), ssCache.nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get bearer token for remoteWrite: %w", err)
 			}
 			ssCache.bearerTokens[rws.AsMapKey()] = token
 		}
-		if err := addAssetsToCache(ctx, rclient, vmagentCRNamespace, rws.TLSConfig, ssCache); err != nil {
+		if err := addAssetsToCache(ctx, rclient, crNamespace, rws.TLSConfig, ssCache); err != nil {
 			return nil, fmt.Errorf("cannot add asset for remote write target: %w", err)
 		}
 
@@ -986,12 +986,12 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	return nil
 }
 
-func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointScrapeParams, vmagentCR *vmv1beta1.VMAgent) {
+func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointScrapeParams, cr *vmv1beta1.VMAgent) {
 	if dst.ScrapeInterval == "" {
 		dst.ScrapeInterval = dst.Interval
 	}
 
-	originInterval, minIntervalStr, maxIntervalStr := dst.ScrapeInterval, vmagentCR.Spec.MinScrapeInterval, vmagentCR.Spec.MaxScrapeInterval
+	originInterval, minIntervalStr, maxIntervalStr := dst.ScrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval
 	if originInterval == "" || (minIntervalStr == nil && maxIntervalStr == nil) {
 		// fast path
 		return

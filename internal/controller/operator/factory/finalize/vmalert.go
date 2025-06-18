@@ -12,17 +12,17 @@ import (
 )
 
 // OnVMAlertDelete deletes all vmalert related resources
-func OnVMAlertDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.VMAlert) error {
+func OnVMAlertDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
 	// check deployment
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
 	// check service
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
 	var cmList corev1.ConfigMapList
-	if err := rclient.List(ctx, &cmList, crd.RulesConfigMapSelector()); err != nil {
+	if err := rclient.List(ctx, &cmList, cr.RulesConfigMapSelector()); err != nil {
 		return err
 	}
 	for _, cm := range cmList.Items {
@@ -33,26 +33,26 @@ func OnVMAlertDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.
 		}
 	}
 	// check secret
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, crd.TLSAssetName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.TLSAssetName(), cr.Namespace); err != nil {
 		return err
 	}
 
 	// check PDB
-	if crd.Spec.PodDisruptionBudget != nil {
-		if err := finalizePBD(ctx, rclient, crd); err != nil {
+	if cr.Spec.PodDisruptionBudget != nil {
+		if err := finalizePBD(ctx, rclient, cr); err != nil {
 			return err
 		}
 	}
-	if err := deleteSA(ctx, rclient, crd); err != nil {
+	if err := deleteSA(ctx, rclient, cr); err != nil {
 		return err
 	}
 
-	if crd.Spec.ServiceSpec != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.Spec.ServiceSpec.NameOrDefault(crd.PrefixedName()), crd.Namespace); err != nil {
+	if cr.Spec.ServiceSpec != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()), cr.Namespace); err != nil {
 			return err
 		}
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, crd, crd.Name, crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace); err != nil {
 		return err
 	}
 	return nil

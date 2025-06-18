@@ -14,105 +14,105 @@ import (
 )
 
 // OnVMAgentDelete deletes all vmagent related resources
-func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.VMAgent) error {
+func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
 	// check deployment
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.DaemonSet{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.DaemonSet{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
 
-	if err := RemoveOrphanedDeployments(ctx, rclient, crd, nil); err != nil {
+	if err := RemoveOrphanedDeployments(ctx, rclient, cr, nil); err != nil {
 		return err
 	}
-	if err := RemoveOrphanedSTSs(ctx, rclient, crd, nil); err != nil {
+	if err := RemoveOrphanedSTSs(ctx, rclient, cr, nil); err != nil {
 		return err
 	}
 	// check service
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
-	if crd.Spec.ServiceSpec != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.Spec.ServiceSpec.NameOrDefault(crd.PrefixedName()), crd.Namespace); err != nil {
+	if cr.Spec.ServiceSpec != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()), cr.Namespace); err != nil {
 			return err
 		}
 	}
 	// config secret
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
 
 	// check secret for tls assests
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, crd.TLSAssetName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.TLSAssetName(), cr.Namespace); err != nil {
 		return err
 	}
 
 	// check relabelAsset
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, crd.RelabelingAssetName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, cr.RelabelingAssetName(), cr.Namespace); err != nil {
 		return err
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, crd.StreamAggrConfigName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, cr.StreamAggrConfigName(), cr.Namespace); err != nil {
 		return err
 	}
 
 	// check PDB
-	if crd.Spec.PodDisruptionBudget != nil {
-		if err := finalizePBD(ctx, rclient, crd); err != nil {
+	if cr.Spec.PodDisruptionBudget != nil {
+		if err := finalizePBD(ctx, rclient, cr); err != nil {
 			return err
 		}
 	}
 	// remove vmagents service discovery rbac.
 	if config.IsClusterWideAccessAllowed() {
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRoleBinding{}, crd.GetClusterRoleName(), crd.GetNamespace()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRoleBinding{}, cr.GetClusterRoleName(), cr.GetNamespace()); err != nil {
 			return err
 		}
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRole{}, crd.GetClusterRoleName(), crd.GetNamespace()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRole{}, cr.GetClusterRoleName(), cr.GetNamespace()); err != nil {
 			return err
 		}
-		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNamespace()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.GetNamespace()}}); err != nil {
 			return err
 		}
 
-		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNamespace()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.GetNamespace()}}); err != nil {
 			return err
 		}
 	} else {
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.RoleBinding{}, crd.GetClusterRoleName(), crd.GetNamespace()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.RoleBinding{}, cr.GetClusterRoleName(), cr.GetNamespace()); err != nil {
 			return err
 		}
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, crd.GetClusterRoleName(), crd.GetNamespace()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, cr.GetClusterRoleName(), cr.GetNamespace()); err != nil {
 			return err
 		}
-		if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNamespace()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.GetNamespace()}}); err != nil {
 			return err
 		}
 
-		if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNamespace()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.GetNamespace()}}); err != nil {
 			return err
 		}
 	}
 
-	if crd.Spec.AdditionalScrapeConfigs != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, crd.Spec.AdditionalScrapeConfigs.Name, crd.Namespace); err != nil {
+	if cr.Spec.AdditionalScrapeConfigs != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.Spec.AdditionalScrapeConfigs.Name, cr.Namespace); err != nil {
 			return err
 		}
 	}
-	for _, rw := range crd.Spec.RemoteWrite {
+	for _, rw := range cr.Spec.RemoteWrite {
 		if rw.UrlRelabelConfig != nil {
-			if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, rw.UrlRelabelConfig.Name, crd.Namespace); err != nil {
+			if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, rw.UrlRelabelConfig.Name, cr.Namespace); err != nil {
 				return err
 			}
 		}
 	}
 	// remove from self.
-	if err := removeFinalizeObjByName(ctx, rclient, crd, crd.Name, crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace); err != nil {
 		return err
 	}
-	if err := deleteSA(ctx, rclient, crd); err != nil {
+	if err := deleteSA(ctx, rclient, cr); err != nil {
 		return err
 	}
 	return nil

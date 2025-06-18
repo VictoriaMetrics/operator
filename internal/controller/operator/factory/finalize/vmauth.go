@@ -13,41 +13,41 @@ import (
 )
 
 // OnVMAuthDelete deletes all vmauth related resources
-func OnVMAuthDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.VMAuth) error {
+func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	// check deployment
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
 
 	// check service
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
-	if crd.Spec.ServiceSpec != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, crd.Spec.ServiceSpec.NameOrDefault(crd.PrefixedName()), crd.Namespace); err != nil {
+	if cr.Spec.ServiceSpec != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()), cr.Namespace); err != nil {
 			return err
 		}
 	}
 
 	// check secret
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, crd.ConfigSecretName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.ConfigSecretName(), cr.Namespace); err != nil {
 		return err
 	}
 
 	// check PDB
-	if crd.Spec.PodDisruptionBudget != nil {
-		if err := finalizePBD(ctx, rclient, crd); err != nil {
+	if cr.Spec.PodDisruptionBudget != nil {
+		if err := finalizePBD(ctx, rclient, cr); err != nil {
 			return err
 		}
 	}
-	if crd.Spec.Ingress != nil {
+	if cr.Spec.Ingress != nil {
 		vmauthIngress := &networkingv1.Ingress{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      crd.PrefixedName(),
-				Namespace: crd.Namespace,
+				Name:      cr.PrefixedName(),
+				Namespace: cr.Namespace,
 			},
 		}
-		if err := removeFinalizeObjByName(ctx, rclient, vmauthIngress, crd.PrefixedName(), crd.Namespace); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, vmauthIngress, cr.PrefixedName(), cr.Namespace); err != nil {
 			return err
 		}
 		if err := SafeDelete(ctx, rclient, vmauthIngress); err != nil {
@@ -56,18 +56,18 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.V
 	}
 
 	// check ingress
-	if err := removeFinalizeObjByName(ctx, rclient, &networkingv1.Ingress{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &networkingv1.Ingress{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
 
-	if err := deleteSA(ctx, rclient, crd); err != nil {
+	if err := deleteSA(ctx, rclient, cr); err != nil {
 		return err
 	}
-	if err := removeConfigReloaderRole(ctx, rclient, crd); err != nil {
+	if err := removeConfigReloaderRole(ctx, rclient, cr); err != nil {
 		return err
 	}
 	// remove from self.
-	if err := removeFinalizeObjByName(ctx, rclient, crd, crd.Name, crd.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace); err != nil {
 		return err
 	}
 

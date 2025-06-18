@@ -17,7 +17,7 @@ import (
 func Test_generateNodeScrapeConfig(t *testing.T) {
 	type args struct {
 		cr              vmv1beta1.VMAgent
-		m               *vmv1beta1.VMNodeScrape
+		sc              *vmv1beta1.VMNodeScrape
 		apiserverConfig *vmv1beta1.APIServerConfig
 		ssCache         *scrapesSecretsCache
 		se              vmv1beta1.VMAgentSecurityEnforcements
@@ -32,7 +32,7 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 			args: args{
 				apiserverConfig: nil,
 				ssCache:         &scrapesSecretsCache{},
-				m: &vmv1beta1.VMNodeScrape{
+				sc: &vmv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
 						Namespace: "default",
@@ -79,7 +79,7 @@ relabel_configs:
 						},
 					},
 				},
-				m: &vmv1beta1.VMNodeScrape{
+				sc: &vmv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
 						Namespace: "default",
@@ -205,7 +205,7 @@ basic_auth:
 					},
 				},
 				ssCache: &scrapesSecretsCache{},
-				m: &vmv1beta1.VMNodeScrape{
+				sc: &vmv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
 						Namespace: "default",
@@ -247,7 +247,7 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateNodeScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
+			got := generateNodeScrapeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal NodeScrapeConfig to yaml,err :%e", err)

@@ -17,7 +17,7 @@ import (
 func TestGenerateScrapeConfig(t *testing.T) {
 	type args struct {
 		cr      vmv1beta1.VMAgent
-		m       *vmv1beta1.VMScrapeConfig
+		sc      *vmv1beta1.VMScrapeConfig
 		ssCache *scrapesSecretsCache
 		se      vmv1beta1.VMAgentSecurityEnforcements
 	}
@@ -35,7 +35,7 @@ func TestGenerateScrapeConfig(t *testing.T) {
 						MaxScrapeInterval: ptr.To("5m"),
 					},
 				},
-				m: &vmv1beta1.VMScrapeConfig{
+				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "static-1",
 						Namespace: "default",
@@ -93,7 +93,7 @@ static_configs:
 						MaxScrapeInterval: ptr.To("5m"),
 					},
 				},
-				m: &vmv1beta1.VMScrapeConfig{
+				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "file-1",
 						Namespace: "default",
@@ -140,7 +140,7 @@ file_sd_configs:
 			name: "basic httpSDConfig",
 			args: args{
 				cr: vmv1beta1.VMAgent{},
-				m: &vmv1beta1.VMScrapeConfig{
+				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "httpsd-1",
 						Namespace: "default",
@@ -202,7 +202,7 @@ http_sd_configs:
 			name: "basic kubernetesSDConfig",
 			args: args{
 				cr: vmv1beta1.VMAgent{},
-				m: &vmv1beta1.VMScrapeConfig{
+				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "kubernetesSDConfig-1",
 						Namespace: "default",
@@ -265,7 +265,7 @@ kubernetes_sd_configs:
 			name: "mixed",
 			args: args{
 				cr: vmv1beta1.VMAgent{},
-				m: &vmv1beta1.VMScrapeConfig{
+				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "mixconfigs-1",
 						Namespace: "default",
@@ -411,7 +411,7 @@ digitalocean_sd_configs:
 			name: "configs with auth and empty type",
 			args: args{
 				cr: vmv1beta1.VMAgent{},
-				m: &vmv1beta1.VMScrapeConfig{
+				sc: &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "sc-auth",
 						Namespace: "default",
@@ -496,7 +496,7 @@ kubernetes_sd_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ssCache, tt.args.se)
+			got := generateScrapeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

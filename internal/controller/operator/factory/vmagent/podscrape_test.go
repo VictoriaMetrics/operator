@@ -15,7 +15,7 @@ import (
 func Test_generatePodScrapeConfig(t *testing.T) {
 	type args struct {
 		cr              vmv1beta1.VMAgent
-		m               *vmv1beta1.VMPodScrape
+		sc              *vmv1beta1.VMPodScrape
 		ep              vmv1beta1.PodMetricsEndpoint
 		i               int
 		apiserverConfig *vmv1beta1.APIServerConfig
@@ -30,7 +30,7 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 		{
 			name: "simple test",
 			args: args{
-				m: &vmv1beta1.VMPodScrape{
+				sc: &vmv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-1",
 						Namespace: "default",
@@ -84,7 +84,7 @@ relabel_configs:
 		{
 			name: "disabled running filter",
 			args: args{
-				m: &vmv1beta1.VMPodScrape{
+				sc: &vmv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-1",
 						Namespace: "default",
@@ -140,7 +140,7 @@ relabel_configs:
 						EnableKubernetesAPISelectors: true,
 					},
 				},
-				m: &vmv1beta1.VMPodScrape{
+				sc: &vmv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-1",
 						Namespace: "default",
@@ -212,7 +212,7 @@ relabel_configs:
 						EnableKubernetesAPISelectors: true,
 					},
 				},
-				m: &vmv1beta1.VMPodScrape{
+				sc: &vmv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-1",
 						Namespace: "default",
@@ -284,7 +284,7 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generatePodScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
+			got := generatePodScrapeConfig(context.Background(), &tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal PodScrapeConfig to yaml,err :%e", err)

@@ -11,8 +11,8 @@ import (
 
 func generateStaticScrapeConfig(
 	ctx context.Context,
-	vmagentCR *vmv1beta1.VMAgent,
-	m *vmv1beta1.VMStaticScrape,
+	cr *vmv1beta1.VMAgent,
+	sc *vmv1beta1.VMStaticScrape,
 	ep *vmv1beta1.TargetEndpoint,
 	i int,
 	ssCache *scrapesSecretsCache,
@@ -21,7 +21,7 @@ func generateStaticScrapeConfig(
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("staticScrape/%s/%s/%d", m.Namespace, m.Name, i),
+			Value: fmt.Sprintf("staticScrape/%s/%s/%d", sc.Namespace, sc.Name, i),
 		},
 	}
 
@@ -34,42 +34,42 @@ func generateStaticScrapeConfig(
 
 	// set defaults
 	if ep.SampleLimit == 0 {
-		ep.SampleLimit = m.Spec.SampleLimit
+		ep.SampleLimit = sc.Spec.SampleLimit
 	}
 	if ep.SeriesLimit == 0 {
-		ep.SeriesLimit = m.Spec.SeriesLimit
+		ep.SeriesLimit = sc.Spec.SeriesLimit
 	}
 	if ep.ScrapeTimeout == "" {
-		ep.ScrapeTimeout = vmagentCR.Spec.ScrapeTimeout
+		ep.ScrapeTimeout = cr.Spec.ScrapeTimeout
 	}
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, vmagentCR)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, cr)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
 
-	if m.Spec.JobName != "" {
+	if sc.Spec.JobName != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "target_label", Value: "job"},
-			{Key: "replacement", Value: m.Spec.JobName},
+			{Key: "replacement", Value: sc.Spec.JobName},
 		})
 	}
 
 	for _, c := range ep.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range vmagentCR.Spec.StaticScrapeRelabelTemplate {
+	for _, trc := range cr.Spec.StaticScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
-	relabelings = enforceNamespaceLabel(relabelings, m.Namespace, se.EnforcedNamespaceLabel)
+	relabelings = enforceNamespaceLabel(relabelings, sc.Namespace, se.EnforcedNamespaceLabel)
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 	cfg = addMetricRelabelingsTo(cfg, ep.MetricRelabelConfigs, se)
-	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
-	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
-	cfg = addEndpointAuthTo(cfg, ep.EndpointAuth, m.Namespace, m.AsMapKey(i), ssCache)
+	cfg = append(cfg, buildVMScrapeParams(sc.Namespace, sc.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
+	cfg = addTLStoYaml(cfg, sc.Namespace, ep.TLSConfig, false)
+	cfg = addEndpointAuthTo(cfg, ep.EndpointAuth, sc.Namespace, sc.AsMapKey(i), ssCache)
 
 	return cfg
 }

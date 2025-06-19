@@ -2200,6 +2200,10 @@ volumes:
     - name: persistent-queue-data
       volumesource:
         emptydir: {}
+    - name: tls-assets
+      volumesource:
+        secret:
+            secretname: tls-assets-vmagent-agent
     - name: config-out
       volumesource:
         emptydir:
@@ -2209,10 +2213,6 @@ volumes:
       volumesource:
         secret:
             secretname: vmagent-agent
-    - name: tls-assets
-      volumesource:
-        secret:
-            secretname: tls-assets-vmagent-agent
 initcontainers:
     - name: config-init
       image: vmcustomer:v1
@@ -2304,15 +2304,15 @@ containers:
           subpath: ""
           mountpropagation: null
           subpathexpr: ""
-        - name: config
-          readonly: true
-          mountpath: /etc/vmagent/config
-          subpath: ""
-          mountpropagation: null
-          subpathexpr: ""
         - name: tls-assets
           readonly: true
           mountpath: /etc/vmagent-tls/certs
+          subpath: ""
+          mountpropagation: null
+          subpathexpr: ""
+        - name: config
+          readonly: true
+          mountpath: /etc/vmagent/config
           subpath: ""
           mountpropagation: null
           subpathexpr: ""

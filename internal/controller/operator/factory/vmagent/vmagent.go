@@ -558,6 +558,17 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 		args = append(args,
 			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
 
+		// preserve order of volumes and volumeMounts
+		// it must prevent vmagent restarts during operator version change
+		volumes = append(volumes, corev1.Volume{
+			Name: string(build.TLSAssetsResourceKind),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+				},
+			},
+		})
+
 		volumes = append(volumes,
 			corev1.Volume{
 				Name: "config-out",
@@ -566,7 +577,14 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 				},
 			},
 		)
-
+		volumes = append(volumes, corev1.Volume{
+			Name: string(build.SecretConfigResourceKind),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
+				},
+			},
+		})
 		agentVolumeMounts = append(agentVolumeMounts,
 			corev1.VolumeMount{
 				Name:      "config-out",
@@ -574,8 +592,17 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 				MountPath: vmAgentConOfOutDir,
 			},
 		)
+		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+			Name:      string(build.TLSAssetsResourceKind),
+			MountPath: tlsAssetsDir,
+			ReadOnly:  true,
+		})
+		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+			Name:      string(build.SecretConfigResourceKind),
+			MountPath: vmAgentConfDir,
+			ReadOnly:  true,
+		})
 
-		volumes, agentVolumeMounts = ac.VolumeTo(volumes, agentVolumeMounts)
 	}
 	if cr.HasAnyStreamAggrRule() {
 		volumes = append(volumes,

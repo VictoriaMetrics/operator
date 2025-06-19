@@ -40,32 +40,31 @@ func generatePodScrapeConfig(
 	sc *vmv1beta1.VMPodScrape,
 	ep vmv1beta1.PodMetricsEndpoint,
 	i int,
-	apiserverConfig *vmv1beta1.APIServerConfig,
+	cr scraping,
 	ac *build.AssetsCache,
-	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
+	sp := cr.GetScrapeParams()
+	apiserverConfig := cr.GetAPIServerConfig()
 	se := sp.CommonScrapeSecurityEnforcements
-	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
-	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
-		ep.AttachMetadata = sc.Spec.AttachMetadata
-	}
-	k8sOpts := k8sSDOpts{
-		namespaces:         selectedNamespaces,
-		shouldAddSelectors: sp.EnableKubernetesAPISelectors,
-		selectors:          sc.Spec.Selector,
-		apiServerConfig:    apiserverConfig,
-		role:               kubernetesSDRolePod,
-		attachMetadata:     &ep.AttachMetadata,
-		namespace:          sc.Namespace,
-	}
-	if cr.Spec.DaemonSetMode {
-		k8sOpts.mustUseNodeSelector = true
-	}
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
 			Value: fmt.Sprintf("podScrape/%s/%s/%d", sc.Namespace, sc.Name, i),
 		},
+	}
+	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
+	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
+		ep.AttachMetadata = sc.Spec.AttachMetadata
+	}
+	k8sOpts := k8sSDOpts{
+		namespaces:          selectedNamespaces,
+		shouldAddSelectors:  sp.EnableKubernetesAPISelectors,
+		selectors:           sc.Spec.Selector,
+		apiServerConfig:     apiserverConfig,
+		role:                kubernetesSDRolePod,
+		attachMetadata:      &ep.AttachMetadata,
+		namespace:           sc.Namespace,
+		mustUseNodeSelector: cr.MustUseNodeSelector(),
 	}
 
 	if c, err := generateK8SSDConfig(ac, k8sOpts); err != nil {
@@ -82,7 +81,7 @@ func generatePodScrapeConfig(
 		ep.SeriesLimit = sc.Spec.SeriesLimit
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, &sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 

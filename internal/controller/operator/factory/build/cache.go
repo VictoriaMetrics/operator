@@ -9,14 +9,12 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
@@ -34,6 +32,14 @@ func init() {
 	metrics.Registry.MustRegister(secretFetchErrsTotal)
 }
 
+type crObject interface {
+	client.Object
+	AllLabels() map[string]string
+	AnnotationsFiltered() map[string]string
+	AsOwner() []metav1.OwnerReference
+	PrefixedName() string
+}
+
 // ResourceKind defines a type of resource to perform build operations on
 type ResourceKind string
 
@@ -45,7 +51,7 @@ const (
 )
 
 // ResourceName returns a name for provided resource and corresponding cr object
-func ResourceName(kind ResourceKind, cr builderOpts) string {
+func ResourceName(kind ResourceKind, cr crObject) string {
 	var parts []string
 	if kind == TLSAssetsResourceKind {
 		parts = append(parts, "tls-assets")
@@ -55,7 +61,7 @@ func ResourceName(kind ResourceKind, cr builderOpts) string {
 }
 
 // ResourceMeta return kubernetes metadata object for given kind and cr
-func ResourceMeta(kind ResourceKind, cr builderOpts) metav1.ObjectMeta {
+func ResourceMeta(kind ResourceKind, cr crObject) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:            ResourceName(kind, cr),
 		Namespace:       cr.GetNamespace(),

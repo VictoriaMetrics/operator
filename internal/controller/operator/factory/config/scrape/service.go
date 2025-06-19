@@ -41,11 +41,22 @@ func generateServiceScrapeConfig(
 	sc *vmv1beta1.VMServiceScrape,
 	ep vmv1beta1.Endpoint,
 	i int,
-	apiserverConfig *vmv1beta1.APIServerConfig,
+	cr scraping,
 	ac *build.AssetsCache,
-	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
+	sp := cr.GetScrapeParams()
+	apiserverConfig := cr.GetAPIServerConfig()
 	se := sp.CommonScrapeSecurityEnforcements
+	cfg := yaml.MapSlice{
+		{
+			Key:   "job_name",
+			Value: fmt.Sprintf("serviceScrape/%s/%s/%d", sc.Namespace, sc.Name, i),
+		},
+	}
+	// service role.
+	if sc.Spec.DiscoveryRole == "" {
+		sc.Spec.DiscoveryRole = kubernetesSDRoleEndpoint
+	}
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
 	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
 		ep.AttachMetadata = sc.Spec.AttachMetadata
@@ -58,16 +69,6 @@ func generateServiceScrapeConfig(
 		role:               sc.Spec.DiscoveryRole,
 		attachMetadata:     &ep.AttachMetadata,
 		namespace:          sc.Namespace,
-	}
-	cfg := yaml.MapSlice{
-		{
-			Key:   "job_name",
-			Value: fmt.Sprintf("serviceScrape/%s/%s/%d", sc.Namespace, sc.Name, i),
-		},
-	}
-	// service role.
-	if sc.Spec.DiscoveryRole == "" {
-		sc.Spec.DiscoveryRole = kubernetesSDRoleEndpoint
 	}
 
 	if c, err := generateK8SSDConfig(ac, k8sOpts); err != nil {
@@ -83,7 +84,7 @@ func generateServiceScrapeConfig(
 		ep.SeriesLimit = sc.Spec.SeriesLimit
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, &sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 

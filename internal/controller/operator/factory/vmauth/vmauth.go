@@ -30,13 +30,13 @@ import (
 )
 
 const (
-	configMountGz    = "/opt/vmauth-config-gz"
-	configFolder     = "/opt/vmauth"
-	configRawFolder  = "/opt/vmauth/config"
-	configName       = "config.yaml"
-	configNameGz     = "config.yaml.gz"
-	volumeName       = "config"
-	internalPortName = "internal"
+	vmAuthConfigMountGz   = "/opt/vmauth-config-gz"
+	vmAuthConfigFolder    = "/opt/vmauth"
+	vmAuthConfigRawFolder = "/opt/vmauth/config"
+	vmAuthConfigName      = "config.yaml"
+	vmAuthConfigNameGz    = "config.yaml.gz"
+	vmAuthVolumeName      = "config"
+	internalPortName      = "internal"
 )
 
 // CreateOrUpdate - handles VMAuth deployment reconciliation.
@@ -143,7 +143,7 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 
 func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	var args []string
-	configPath := path.Join(configFolder, configName)
+	configPath := path.Join(vmAuthConfigFolder, vmAuthConfigName)
 	if cr.Spec.LocalPath != "" {
 		configPath = cr.Spec.LocalPath
 	}
@@ -236,7 +236,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		if cr.Spec.SecretRef.Key != "" {
 			keyToPath = append(keyToPath, corev1.KeyToPath{
 				Key:  cr.Spec.SecretRef.Key,
-				Path: configName,
+				Path: vmAuthConfigName,
 			})
 		}
 		volumes = append(volumes, corev1.Volume{
@@ -246,11 +246,11 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 					Items:      keyToPath,
 				},
 			},
-			Name: volumeName,
+			Name: vmAuthVolumeName,
 		})
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      volumeName,
-			MountPath: configFolder,
+			Name:      vmAuthVolumeName,
+			MountPath: vmAuthConfigFolder,
 		})
 
 	case cr.Spec.LocalPath != "":
@@ -266,7 +266,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		})
 		if !useVMConfigReloader {
 			volumes = append(volumes, corev1.Volume{
-				Name: volumeName,
+				Name: vmAuthVolumeName,
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
 						SecretName: cr.ConfigSecretName(),
@@ -274,13 +274,13 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 				},
 			})
 			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      volumeName,
-				MountPath: configRawFolder,
+				Name:      vmAuthVolumeName,
+				MountPath: vmAuthConfigRawFolder,
 			})
 		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "config-out",
-			MountPath: configFolder,
+			MountPath: vmAuthConfigFolder,
 		})
 
 		configReloader := buildConfigReloaderContainer(cr)
@@ -364,7 +364,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	s := &corev1.Secret{
 		ObjectMeta: buildConfigSecretMeta(cr),
 		Data: map[string][]byte{
-			configNameGz: {},
+			vmAuthConfigNameGz: {},
 		},
 	}
 	// fetch exist users for vmauth.
@@ -388,7 +388,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	if err := gzipConfig(&buf, generatedConfig); err != nil {
 		return fmt.Errorf("cannot gzip config for vmagent: %w", err)
 	}
-	s.Data[configNameGz] = buf.Bytes()
+	s.Data[vmAuthConfigNameGz] = buf.Bytes()
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildConfigSecretMeta(prevCR))
@@ -524,7 +524,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	}
 	configReloaderArgs := []string{
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)),
-		fmt.Sprintf("--config-envsubst-file=%s", path.Join(configFolder, configName)),
+		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if useVMConfigReloader {
@@ -533,19 +533,19 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 			configReloaderArgs = append(configReloaderArgs, "--reload-use-proxy-protocol")
 		}
 	} else {
-		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-file=%s", path.Join(configMountGz, configNameGz)))
+		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))
 	}
 
 	reloaderMounts := []corev1.VolumeMount{
 		{
 			Name:      "config-out",
-			MountPath: configFolder,
+			MountPath: vmAuthConfigFolder,
 		},
 	}
 	if !useVMConfigReloader {
 		reloaderMounts = append(reloaderMounts, corev1.VolumeMount{
-			Name:      volumeName,
-			MountPath: configMountGz,
+			Name:      vmAuthVolumeName,
+			MountPath: vmAuthConfigMountGz,
 		})
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
@@ -602,7 +602,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, co
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "config-out",
-					MountPath: configFolder,
+					MountPath: vmAuthConfigFolder,
 				},
 			},
 			Resources: resources,
@@ -619,16 +619,16 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, co
 		},
 		Args: []string{
 			"-c",
-			fmt.Sprintf("gunzip -c %s > %s", path.Join(configMountGz, configNameGz), path.Join(configFolder, configName)),
+			fmt.Sprintf("gunzip -c %s > %s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz), path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "config",
-				MountPath: configMountGz,
+				MountPath: vmAuthConfigMountGz,
 			},
 			{
 				Name:      "config-out",
-				MountPath: configFolder,
+				MountPath: vmAuthConfigFolder,
 			},
 		},
 		Resources: resources,

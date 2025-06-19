@@ -38,9 +38,10 @@ func selectScrapeConfig(ctx context.Context, rclient client.Client, opts *k8stoo
 func generateScrapeConfig(
 	ctx context.Context,
 	sc *vmv1beta1.VMScrapeConfig,
+	cr scraping,
 	ac *build.AssetsCache,
-	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
+	sp := cr.GetScrapeParams()
 	jobName := fmt.Sprintf("scrapeConfig/%s/%s", sc.Namespace, sc.Name)
 	se := sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
@@ -50,7 +51,7 @@ func generateScrapeConfig(
 		},
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, sp)
+	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, &sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, sc.Spec.EndpointScrapeParams, se)
 

@@ -38,10 +38,11 @@ func generateProbeConfig(
 	ctx context.Context,
 	sc *vmv1beta1.VMProbe,
 	i int,
-	apiserverConfig *vmv1beta1.APIServerConfig,
+	cr scraping,
 	ac *build.AssetsCache,
-	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
+	sp := cr.GetScrapeParams()
+	apiserverConfig := cr.GetAPIServerConfig()
 	se := sp.CommonScrapeSecurityEnforcements
 
 	cfg := yaml.MapSlice{
@@ -67,7 +68,7 @@ func generateProbeConfig(
 		sc.Spec.Scheme = sc.Spec.VMProberSpec.Scheme
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, sp)
+	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, &sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, sc.Spec.EndpointScrapeParams, se)
 

@@ -392,6 +392,26 @@ func (cr *VMAgent) GetStatus() *VMAgentStatus {
 	return &cr.Status
 }
 
+// GetAPIServerConfig implements scrape.scraping interface
+func (cr *VMAgent) GetAPIServerConfig() *APIServerConfig {
+	return cr.Spec.APIServerConfig
+}
+
+// GetParentKey implements scrape.scraping interface
+func (cr *VMAgent) GetParentKey() string {
+	return fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+}
+
+// MustUseNodeSelector implements scrape.scraping interface
+func (cr *VMAgent) MustUseNodeSelector() bool {
+	return cr.Spec.DaemonSetMode
+}
+
+// GetScrapeParams implements scrape.scraping interface
+func (cr *VMAgent) GetScrapeParams() CommonScrapeParams {
+	return cr.Spec.CommonScrapeParams
+}
+
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAgent) DefaultStatusFields(vs *VMAgentStatus) {
 	replicaCount := int32(0)

@@ -11,10 +11,12 @@ import (
 	"strings"
 
 	"github.com/VictoriaMetrics/metricsql"
+	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -24,21 +26,47 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-const gzippedFilename = "scrape.yaml.gz"
+var vmagentSecretFetchErrsTotal prometheus.Counter
+
+func init() {
+	vmagentSecretFetchErrsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "operator_vmagent_config_fetch_secret_errors_total",
+		Help: "Indicates if user defined objects contain missing link for secret",
+	})
+	metrics.Registry.MustRegister(vmagentSecretFetchErrsTotal)
+}
+
+type scraping interface {
+	client.Object
+	GetNamespace() string
+	GetName() string
+	GetAPIServerConfig() *vmv1beta1.APIServerConfig
+	GetScrapeParams() vmv1beta1.CommonScrapeParams
+	MustUseNodeSelector() bool
+	IsOwnsServiceAccount() bool
+	GetParentKey() string
+	AllLabels() map[string]string
+	AnnotationsFiltered() map[string]string
+	AsOwner() []metav1.OwnerReference
+	PrefixedName() string
+}
+
+const GzippedFilename = "scrape.yaml.gz"
 
 type scrapeObjects struct {
-	sss        []*vmv1beta1.VMServiceScrape
-	pss        []*vmv1beta1.VMPodScrape
-	stss       []*vmv1beta1.VMStaticScrape
-	nss        []*vmv1beta1.VMNodeScrape
-	prss       []*vmv1beta1.VMProbe
-	scss       []*vmv1beta1.VMScrapeConfig
-	sssBroken  []*vmv1beta1.VMServiceScrape
-	pssBroken  []*vmv1beta1.VMPodScrape
-	stssBroken []*vmv1beta1.VMStaticScrape
-	nssBroken  []*vmv1beta1.VMNodeScrape
-	prssBroken []*vmv1beta1.VMProbe
-	scssBroken []*vmv1beta1.VMScrapeConfig
+	sss              []*vmv1beta1.VMServiceScrape
+	pss              []*vmv1beta1.VMPodScrape
+	stss             []*vmv1beta1.VMStaticScrape
+	nss              []*vmv1beta1.VMNodeScrape
+	prss             []*vmv1beta1.VMProbe
+	scss             []*vmv1beta1.VMScrapeConfig
+	sssBroken        []*vmv1beta1.VMServiceScrape
+	pssBroken        []*vmv1beta1.VMPodScrape
+	stssBroken       []*vmv1beta1.VMStaticScrape
+	nssBroken        []*vmv1beta1.VMNodeScrape
+	prssBroken       []*vmv1beta1.VMProbe
+	scssBroken       []*vmv1beta1.VMScrapeConfig
+	totalBrokenCount int
 }
 
 var skipNon = func(_ error) bool {
@@ -140,14 +168,14 @@ func (so *scrapeObjects) mustValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	}
 }
 
-func CreateOrUpdate(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
-	sp := &cr.Spec.CommonScrapeParams
+func CreateOrUpdate(ctx context.Context, rclient client.Client, cr, prevCR scraping, childObject client.Object, ac *build.AssetsCache) error {
+	sp := cr.GetScrapeParams()
 	if cr.Spec.IngestOnlyMode {
 		return nil
 	}
 	opts := &k8stools.SelectorOpts{
-		SelectAll:        cr.Spec.SelectAllByDefault,
-		DefaultNamespace: cr.Namespace,
+		SelectAll:        sp.SelectAllByDefault,
+		DefaultNamespace: cr.GetNamespace(),
 	}
 	var sos scrapeObjects
 	if !cr.Spec.DaemonSetMode {
@@ -192,26 +220,31 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 	}
 	sos.pss = pScrapes
 
-	opts.NamespaceSelector = sp.NodeScrapeNamespaceSelector
-	opts.ObjectSelector = sp.NodeScrapeSelector
-	nodes, err := selectVMNodeScrapes(ctx, rclient, opts)
-	if err != nil {
-		return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
+	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
+		logger.WithContext(ctx).Info("cannot use VMNodeScrape at operator in single namespace mode with default permissions." +
+			" Create ServiceAccount for scraping agent manually if needed. Skipping config generation for it")
+	} else {
+		opts.NamespaceSelector = sp.NodeScrapeNamespaceSelector
+		opts.ObjectSelector = sp.NodeScrapeSelector
+		nodes, err := selectVMNodeScrapes(ctx, rclient, opts)
+		if err != nil {
+			return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
+		}
+		sos.nss = nodes
 	}
-	sos.nss = nodes
 
-	sos.mustValidateObjects(sp)
+	sos.mustValidateObjects(&sp)
 
 	// Update secret based on the most recent configuration.
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
 		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +
 			"Since operator launched with set WATCH_NAMESPACE param. " +
-			"Set custom ServiceAccountName property for VMAgent if needed.")
+			"Set custom ServiceAccountName property for scraping agent if needed.")
 		sp.IgnoreNamespaceSelectors = true
 	}
 	generatedConfig, err := generateConfig(
 		ctx,
-		sp,
+		cr,
 		&sos,
 		ac,
 	)
@@ -230,7 +263,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 			if err = gzipConfig(&buf, generatedConfig); err != nil {
 				return fmt.Errorf("cannot gzip config for vmagent: %w", err)
 			}
-			secret.Data[gzippedFilename] = buf.Bytes()
+			secret.Data[GzippedFilename] = buf.Bytes()
 		}
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
 		secret.Annotations = map[string]string{
@@ -244,8 +277,11 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 	return updateStatusesForScrapeObjects(ctx, rclient, cr, &sos, childObject)
 }
 
-func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, sos *scrapeObjects, childObject client.Object) error {
-	parentObject := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr scraping, sos *scrapeObjects, childObject client.Object) error {
+
+	vmagentSecretFetchErrsTotal.Add(float64(sos.totalBrokenCount))
+
+	parentObject := cr.GetParentKey()
 	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
 		// fast path
 		switch t := childObject.(type) {
@@ -386,14 +422,14 @@ func forEachCollectSkipOn[T scrapeObjectWithStatus](src, srcBroken []T, apply fu
 // TODO: @f41gh7 validate VMScrapeParams
 func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
 	if e.BearerTokenFile != "" {
-		return fmt.Errorf("it accesses file system via bearer token file which VMAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via bearer token file which scraping agent specification prohibits")
 	}
 	if e.BasicAuth != nil && e.BasicAuth.PasswordFile != "" {
-		return fmt.Errorf("it accesses file system via basicAuth password file which VMAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via basicAuth password file which scraping agent specification prohibits")
 	}
 
 	if e.OAuth2 != nil && e.OAuth2.ClientSecretFile != "" {
-		return fmt.Errorf("it accesses file system via oauth2 client secret file which VMAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via oauth2 client secret file which scraping agent specification prohibits")
 	}
 
 	tlsConf := e.TLSConfig
@@ -406,7 +442,7 @@ func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
 	}
 
 	if tlsConf.CAFile != "" || tlsConf.CertFile != "" || tlsConf.KeyFile != "" {
-		return fmt.Errorf("it accesses file system via tls config which VMAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via tls config which scraping agent specification prohibits")
 	}
 
 	return nil
@@ -475,19 +511,20 @@ var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
 func generateConfig(
 	ctx context.Context,
-	sp *vmv1beta1.CommonScrapeParams,
+	cr scraping,
 	sos *scrapeObjects,
 	ac *build.AssetsCache,
 ) ([]byte, error) {
 	cfg := yaml.MapSlice{}
-
+	sp := cr.GetScrapeParams()
 	if sp.ScrapeInterval == "" {
 		sp.ScrapeInterval = defaultScrapeInterval
 	}
+	key := fmt.Sprintf("%s/%s", cr.GetNamespace(), cr.GetName())
 
 	globalItems := yaml.MapSlice{
 		{Key: "scrape_interval", Value: sp.ScrapeInterval},
-		{Key: "external_labels", Value: buildExternalLabels(sp)},
+		{Key: "external_labels", Value: buildExternalLabels(&sp, key)},
 	}
 	if sp.ScrapeTimeout != "" {
 		globalItems = append(globalItems, yaml.MapItem{
@@ -498,8 +535,6 @@ func generateConfig(
 
 	cfg = append(cfg, yaml.MapItem{Key: "global", Value: globalItems})
 
-	apiserverConfig := cr.Spec.APIServerConfig
-
 	var scrapeConfigs []yaml.MapSlice
 	for _, ss := range sos.sss {
 		configLen := len(scrapeConfigs)
@@ -508,9 +543,8 @@ func generateConfig(
 				ctx,
 				ss,
 				ep, i,
-				apiserverConfig,
+				cr,
 				ac,
-				sp,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:configLen]
@@ -528,9 +562,8 @@ func generateConfig(
 			s, err := generatePodScrapeConfig(
 				ctx,
 				identifier, ep, i,
-				apiserverConfig,
+				cr,
 				ac,
-				sp,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:configLen]
@@ -548,9 +581,8 @@ func generateConfig(
 			ctx,
 			identifier,
 			i,
-			apiserverConfig,
+			cr,
 			ac,
-			sp,
 		)
 		if err != nil {
 			if build.IsNotFound(err) {
@@ -564,9 +596,8 @@ func generateConfig(
 		s, err := generateNodeScrapeConfig(
 			ctx,
 			identifier,
-			apiserverConfig,
+			cr,
 			ac,
-			sp,
 		)
 		if err != nil {
 			if build.IsNotFound(err) {
@@ -584,8 +615,8 @@ func generateConfig(
 				ctx,
 				identifier,
 				ep, i,
+				cr,
 				ac,
-				sp,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:configLen]
@@ -602,8 +633,8 @@ func generateConfig(
 		s, err := generateScrapeConfig(
 			ctx,
 			identifier,
+			cr,
 			ac,
-			sp,
 		)
 		if err != nil {
 			if build.IsNotFound(err) {
@@ -617,7 +648,7 @@ func generateConfig(
 	var additionalScrapeConfigs []byte
 
 	if sp.AdditionalScrapeConfigs != nil {
-		sc, err := ac.LoadKeyFromSecret(cr.Namespace, sp.AdditionalScrapeConfigs)
+		sc, err := ac.LoadKeyFromSecret(cr.GetNamespace(), sp.AdditionalScrapeConfigs)
 		if err != nil {
 			return nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
 		}
@@ -948,7 +979,7 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 	})
 }
 
-func buildExternalLabels(sp *vmv1beta1.CommonScrapeParams) yaml.MapSlice {
+func buildExternalLabels(sp *vmv1beta1.CommonScrapeParams, key string) yaml.MapSlice {
 	m := map[string]string{}
 
 	// Use "prometheus" external label name by default if field is missing.
@@ -963,7 +994,7 @@ func buildExternalLabels(sp *vmv1beta1.CommonScrapeParams) yaml.MapSlice {
 		}
 	}
 	if externalLabelName != "" {
-		m[externalLabelName] = fmt.Sprintf("%s/%s", p.Namespace, p.Name)
+		m[externalLabelName] = key
 	}
 	for n, v := range sp.ExternalLabels {
 		m[n] = v
@@ -1160,18 +1191,4 @@ func addEndpointAuthTo(cfg yaml.MapSlice, ea *vmv1beta1.EndpointAuth, namespace 
 		cfg = append(cfg, c...)
 	}
 	return cfg, nil
-}
-
-func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.SecretConfigResourceKind: {
-			MountDir:   confDir,
-			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
-		},
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	return build.NewAssetsCache(ctx, rclient, cfg)
 }

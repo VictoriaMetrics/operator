@@ -173,7 +173,9 @@ func TestCreateOrUpdate(t *testing.T) {
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://remote-write"},
 					},
-					ServiceScrapeSelector: &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeSelector: &metav1.LabelSelector{},
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -221,7 +223,9 @@ func TestCreateOrUpdate(t *testing.T) {
 							BearerTokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bearer-secret"}, Key: "token"},
 						},
 					},
-					ServiceScrapeSelector: &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeSelector: &metav1.LabelSelector{},
+					},
 				},
 			},
 			wantErr: true,
@@ -295,7 +299,9 @@ func TestCreateOrUpdate(t *testing.T) {
 							TLSConfig: &vmv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"},
 						},
 					},
-					ServiceScrapeSelector: &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeSelector: &metav1.LabelSelector{},
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -361,11 +367,13 @@ func TestCreateOrUpdate(t *testing.T) {
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://remote-write"},
 					},
-					InlineScrapeConfig: strings.TrimSpace(`
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						InlineScrapeConfig: strings.TrimSpace(`
 - job_name: "prometheus"
   static_configs:
   - targets: ["localhost:9090"]
 `),
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -383,15 +391,17 @@ func TestCreateOrUpdate(t *testing.T) {
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://remote-write"},
 					},
-					AdditionalScrapeConfigs: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "add-cfg"},
-						Key:                  "agent.yaml",
-					},
-					InlineScrapeConfig: strings.TrimSpace(`
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						AdditionalScrapeConfigs: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "add-cfg"},
+							Key:                  "agent.yaml",
+						},
+						InlineScrapeConfig: strings.TrimSpace(`
 - job_name: "prometheus"
   static_configs:
   - targets: ["localhost:9090"]
 `),
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{

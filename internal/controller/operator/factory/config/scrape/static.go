@@ -39,9 +39,10 @@ func generateStaticScrapeConfig(
 	sc *vmv1beta1.VMStaticScrape,
 	ep *vmv1beta1.TargetEndpoint,
 	i int,
+	cr scraping,
 	ac *build.AssetsCache,
-	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
+	sp := cr.GetScrapeParams()
 	se := sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
@@ -67,7 +68,7 @@ func generateStaticScrapeConfig(
 	if ep.ScrapeTimeout == "" {
 		ep.ScrapeTimeout = sp.ScrapeTimeout
 	}
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, &sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 

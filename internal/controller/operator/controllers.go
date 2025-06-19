@@ -102,7 +102,7 @@ type getError struct {
 	requestObject ctrl.Request
 }
 
-// Unwrap implemnets errors.Unwrap interface
+// Unwrap implements errors.Unwrap interface
 func (ge *getError) Unwrap() error {
 	return ge.origin
 }
@@ -160,7 +160,7 @@ func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], S
 				Namespace: object.GetNamespace(),
 			},
 			Type:    corev1.EventTypeWarning,
-			Reason:  "ReconcilationError",
+			Reason:  "ReconciliationError",
 			Message: err.Error(),
 			Source: corev1.EventSource{
 				Component: "victoria-metrics-operator",
@@ -222,7 +222,7 @@ func handleReconcileErrWithoutStatus(
 				Namespace: object.GetNamespace(),
 			},
 			Type:    corev1.EventTypeWarning,
-			Reason:  "ReconcilationError",
+			Reason:  "ReconciliationError",
 			Message: err.Error(),
 			Source: corev1.EventSource{
 				Component: "victoria-metrics-operator",

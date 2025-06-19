@@ -154,7 +154,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 
 	// if customStorageDataPath is not empty, do not add volumes
 	// and volumeMounts
-	// it's user responsobility to provide correct values
+	// it's user responsibility to provide correct values
 	mustAddVolumeMounts := cr.Spec.StorageDataPath == ""
 
 	storagePath := vmSingleDataDir

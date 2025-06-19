@@ -450,7 +450,7 @@ func keepOnlyStsPods(podList *corev1.PodList) {
 }
 
 // validateStatefulSet performs validation Statefulset spec
-// Kubernenetes doesn't perform some checks and produces runtime error
+// Kubernetes doesn't perform some checks and produces runtime error
 // during Pod creation.
 // VolumeMounts validation is missing:
 // https://github.com/kubernetes/kubernetes/blob/b15dfce6cbd0d5bbbcd6172cf7e2082f4d31055e/pkg/apis/apps/validation/validation.go#L66

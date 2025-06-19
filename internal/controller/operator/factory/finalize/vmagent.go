@@ -47,7 +47,7 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 		return err
 	}
 
-	// check secret for tls assests
+	// check secret for tls assets
 	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, build.ResourceName(build.TLSAssetsResourceKind, cr), cr.Namespace); err != nil {
 		return err
 	}

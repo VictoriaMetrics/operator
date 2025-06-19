@@ -356,7 +356,7 @@ type AdditionalServiceSpec struct {
 	Spec corev1.ServiceSpec `json:"spec"`
 }
 
-// IsSomeAndThen applies callback to the addtionalServiceSpec if it's not nil or do not used as default service
+// IsSomeAndThen applies callback to the additionalServiceSpec if it's not nil or do not used as default service
 func (asc *AdditionalServiceSpec) IsSomeAndThen(cb func(s *AdditionalServiceSpec) error) error {
 	if asc == nil || asc.UseAsDefault {
 		return nil

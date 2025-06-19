@@ -401,7 +401,7 @@ var cacheClientObjectsByName = map[string]client.Object{
 	"statefulset": &appsv1.StatefulSet{},
 }
 
-// runtime-contoller doesn't expose this metric
+// runtime-controller doesn't expose this metric
 // due to high cardinality
 var restClientLatency = prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "rest_client_request_duration_seconds"}, []string{"method", "api"})
 

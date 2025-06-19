@@ -48,7 +48,7 @@ groups:
          host: "{{ $labels.instance }}"
        annotations:
          summary: " error writing to remote writer from vmaler{{ $value|humanize }}"
-         description: "error writing to remote writer from vmaler {{$labels}}"
+         description: "error writing to remote writer from vmalert {{$labels}}"
          back: "error rate is ok at vmalert "
 `,
 			},
@@ -220,7 +220,7 @@ groups:
          host: "{{ $labels.instance }}"
        annotations:
          summary: " error writing to remote writer from vmaler{{ $value|humanize }}"
-         description: "error writing to remote writer from vmaler {{$labels}}"
+         description: "error writing to remote writer from vmalert {{$labels}}"
          back: "error rate is ok at vmalert "
 `},
 		},

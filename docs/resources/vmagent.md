@@ -818,8 +818,8 @@ spec:
 
  daemonSetMode has the following restrictions and limitations:
 * sharding not supported.
-* podDisruptionPudget not supported.
-* horizontalPodAutoScraler not supported.
+* podDisruptionBudget not supported.
+* horizontalPodAutoScaler not supported.
 * Volume for the persistent-queue could be mounted with `volumes` and must have either hostPath or emptyDir.
 * Only VMPodScrape supported.
 * vmagent restarts will lead to the small metric collection gaps. Only a single pod from DaemonSet deployed per node.

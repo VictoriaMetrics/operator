@@ -204,11 +204,6 @@ type VMAlertNotifierSpec struct {
 	HTTPAuth `json:",inline,omitempty"`
 }
 
-// NotifierAsMapKey - returns cr name with suffix for notifier token/auth maps.
-func (cr *VMAlert) NotifierAsMapKey(i int) string {
-	return fmt.Sprintf("vmalert/%s/%s/%d", cr.Namespace, cr.Name, i)
-}
-
 // VMAlertRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
 // +k8s:openapi-gen=true
 type VMAlertRemoteReadSpec struct {

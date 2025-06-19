@@ -145,11 +145,6 @@ type Endpoint struct {
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
 }
 
-// AsProxyKey builds key for proxy cache maps
-func (cr *VMServiceScrape) AsProxyKey(i int) string {
-	return fmt.Sprintf("serviceScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
-}
-
 // Validate returns error if CR is invalid
 func (cr *VMServiceScrape) Validate() error {
 	if MustSkipCRValidation(cr) {
@@ -161,11 +156,6 @@ func (cr *VMServiceScrape) Validate() error {
 		}
 	}
 	return nil
-}
-
-// AsMapKey - returns cr name with suffix for token/auth maps.
-func (cr *VMServiceScrape) AsMapKey(i int) string {
-	return fmt.Sprintf("serviceScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 // GetStatusMetadata implements reconcile.objectWithStatus interface

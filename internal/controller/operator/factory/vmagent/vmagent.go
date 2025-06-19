@@ -30,7 +30,7 @@ import (
 
 const (
 	vmAgentConfDir                  = "/etc/vmagent/config"
-	vmAgentConOfOutDir              = "/etc/vmagent/config_out"
+	vmAgentConfOutDir               = "/etc/vmagent/config_out"
 	vmAgentPersistentQueueDir       = "/tmp/vmagent-remotewrite-data"
 	vmAgentPersistentQueueSTSDir    = "/vmagent_pq/vmagent-remotewrite-data"
 	vmAgentPersistentQueueMountName = "persistent-queue-data"
@@ -131,10 +131,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 			return fmt.Errorf("cannot create or update scrape object: %w", err)
 		}
 	}
+
 	ac := getAssetsCache(ctx, rclient, cr)
-	if err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, nil, ac); err != nil {
-		return err
-	}
 
 	if err := createOrUpdateRelabelConfigsAssets(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
@@ -142,6 +140,16 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 
 	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
+	}
+
+	podSpec, err := makeSpec(cr, ac)
+	if err != nil {
+		return err
+	}
+
+	err = createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, nil, ac)
+	if err != nil {
+		return err
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil && !cr.Spec.DaemonSetMode {
@@ -158,15 +166,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	var prevDeploy runtime.Object
 
 	if prevCR != nil {
-		prevDeploy, err = newDeploy(prevCR, ac)
-		if err != nil {
-			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
-		}
+		prevDeploy = newDeploy(prevCR, podSpec)
 	}
-	newDeploy, err := newDeploy(cr, ac)
-	if err != nil {
-		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
-	}
+	newDeploy := newDeploy(cr, podSpec)
 
 	if !cr.Spec.DaemonSetMode && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
 		return createOrUpdateShardedDeploy(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
@@ -360,12 +362,7 @@ func shardNumIter(backward bool, shardCount int) iter.Seq[int] {
 }
 
 // newDeploy builds vmagent deployment spec.
-func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, error) {
-
-	podSpec, err := makeSpec(cr, ac)
-	if err != nil {
-		return nil, err
-	}
+func newDeploy(cr *vmv1beta1.VMAgent, podSpec *corev1.PodSpec) runtime.Object {
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	if cr.Spec.DaemonSetMode {
@@ -395,7 +392,7 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 		build.DaemonSetAddCommonParams(dsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
 
-		return dsSpec, nil
+		return dsSpec
 	}
 	// fast path, use sts
 	if cr.Spec.StatefulMode {
@@ -430,7 +427,7 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
 		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
-		return stsSpec, nil
+		return stsSpec
 	}
 
 	strategyType := appsv1.RollingUpdateDeploymentStrategyType
@@ -466,7 +463,7 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 	build.DeploymentAddCommonParams(depSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 	depSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(depSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
 
-	return depSpec, nil
+	return depSpec
 }
 
 func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
@@ -556,7 +553,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 
 	if !cr.Spec.IngestOnlyMode {
 		args = append(args,
-			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
+			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConfOutDir, configEnvsubstFilename)))
 
 		// preserve order of volumes and volumeMounts
 		// it must prevent vmagent restarts during operator version change
@@ -589,7 +586,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 			corev1.VolumeMount{
 				Name:      "config-out",
 				ReadOnly:  true,
-				MountPath: vmAgentConOfOutDir,
+				MountPath: vmAgentConfOutDir,
 			},
 		)
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
@@ -1355,7 +1352,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, extraWatchsMounts []cor
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
 				Name:      "config-out",
-				MountPath: vmAgentConOfOutDir,
+				MountPath: vmAgentConfOutDir,
 			},
 		)
 		if !useVMConfigReloader {
@@ -1423,7 +1420,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, extraWatchVolumes []corev1.V
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
 	if !cr.Spec.IngestOnlyMode {
-		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
+		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConfOutDir, configEnvsubstFilename)))
 		if useVMConfigReloader {
 			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
 			args = append(args, "--config-secret-key=vmagent.yaml.gz")
@@ -1469,7 +1466,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, c
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "config-out",
-					MountPath: vmAgentConOfOutDir,
+					MountPath: vmAgentConfOutDir,
 				},
 			},
 			Resources: resources,
@@ -1485,7 +1482,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, c
 		},
 		Args: []string{
 			"-c",
-			fmt.Sprintf("gunzip -c %s > %s", path.Join(vmAgentConfDir, vmagentGzippedFilename), path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
+			fmt.Sprintf("gunzip -c %s > %s", path.Join(vmAgentConfDir, vmagentGzippedFilename), path.Join(vmAgentConfOutDir, configEnvsubstFilename)),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -1494,7 +1491,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, c
 			},
 			{
 				Name:      "config-out",
-				MountPath: vmAgentConOfOutDir,
+				MountPath: vmAgentConfOutDir,
 			},
 		},
 		Resources: resources,

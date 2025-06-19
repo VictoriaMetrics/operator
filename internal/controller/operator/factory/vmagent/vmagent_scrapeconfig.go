@@ -642,7 +642,7 @@ func generateConfig(
 	var inlineScrapeConfigsYaml []yaml.MapSlice
 	if len(cr.Spec.InlineScrapeConfig) > 0 {
 		if err := yaml.Unmarshal([]byte(cr.Spec.InlineScrapeConfig), &inlineScrapeConfigsYaml); err != nil {
-			return nil, fmt.Errorf("unmarshalling  inline additional scrape configs failed: %w", err)
+			return nil, fmt.Errorf("unmarshalling inline additional scrape configs failed: %w", err)
 		}
 	}
 	additionalScrapeConfigsYaml = append(additionalScrapeConfigsYaml, inlineScrapeConfigsYaml...)

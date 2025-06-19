@@ -435,58 +435,63 @@ VMAnomaly is the Schema for the vmanomalies API.
 
 VMAnomalyHTTPClientSpec defines the desired state of VMAnomalyHTTPClient
 
-Appears in: [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyVMReaderSpec](#vmanomalyvmreaderspec), [VMAnomalyVMWriterSpec](#vmanomalyvmwriterspec)
+Appears in: [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec)
 
 | Field | Description |
 | --- | --- |
-| basicAuth<a href="#vmanomalyhttpclientspec-basicauth" id="vmanomalyhttpclientspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/> |
-| bearer<a href="#vmanomalyhttpclientspec-bearer" id="vmanomalyhttpclientspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/> |
-| healthPath<a href="#vmanomalyhttpclientspec-healthpath" id="vmanomalyhttpclientspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>Absolute or relative URL address where to check availability of the datasource. |
-| tenantID<a href="#vmanomalyhttpclientspec-tenantid" id="vmanomalyhttpclientspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>For VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
+| basicAuth<a href="#vmanomalyhttpclientspec-basicauth" id="vmanomalyhttpclientspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic autorization configuration |
+| bearer<a href="#vmanomalyhttpclientspec-bearer" id="vmanomalyhttpclientspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
+| healthPath<a href="#vmanomalyhttpclientspec-healthpath" id="vmanomalyhttpclientspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
+| tenantID<a href="#vmanomalyhttpclientspec-tenantid" id="vmanomalyhttpclientspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
 | timeout<a href="#vmanomalyhttpclientspec-timeout" id="vmanomalyhttpclientspec-timeout">#</a><br/>_string_ | _(Required)_<br/>Timeout for the requests, passed as a string |
-| tlsConfig<a href="#vmanomalyhttpclientspec-tlsconfig" id="vmanomalyhttpclientspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/> |
+| tlsConfig<a href="#vmanomalyhttpclientspec-tlsconfig" id="vmanomalyhttpclientspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/>TLSConfig defines tls connection configuration |
 
 
 #### VMAnomalyMonitoringPullSpec
 
 
 
-
+VMAnomalyMonitoringPullSpec defines pull monitoring configuration
+which is enabled by default and served at POD_IP:8490/metrics
 
 Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
 
 | Field | Description |
 | --- | --- |
-| addr<a href="#vmanomalymonitoringpullspec-addr" id="vmanomalymonitoringpullspec-addr">#</a><br/>_string_ | _(Required)_<br/> |
-| port<a href="#vmanomalymonitoringpullspec-port" id="vmanomalymonitoringpullspec-port">#</a><br/>_string_ | _(Required)_<br/> |
+| addr<a href="#vmanomalymonitoringpullspec-addr" id="vmanomalymonitoringpullspec-addr">#</a><br/>_string_ | _(Required)_<br/>Addr changes listen addr, default is 0.0.0.0 |
+| port<a href="#vmanomalymonitoringpullspec-port" id="vmanomalymonitoringpullspec-port">#</a><br/>_string_ | _(Required)_<br/>Port defines a port for metrics scrape |
 
 
 #### VMAnomalyMonitoringPushSpec
 
 
 
+VMAnomalyMonitoringPushSpec defines metrics push configuration
 
+
+VMAnomaly uses prometheus text exposition format
 
 Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
 
 | Field | Description |
 | --- | --- |
-| basicAuth<a href="#vmanomalymonitoringpushspec-basicauth" id="vmanomalymonitoringpushspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/> |
-| bearer<a href="#vmanomalymonitoringpushspec-bearer" id="vmanomalymonitoringpushspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/> |
-| extraLabels<a href="#vmanomalymonitoringpushspec-extralabels" id="vmanomalymonitoringpushspec-extralabels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/> |
-| healthPath<a href="#vmanomalymonitoringpushspec-healthpath" id="vmanomalymonitoringpushspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>Absolute or relative URL address where to check availability of the datasource. |
-| pushFrequency<a href="#vmanomalymonitoringpushspec-pushfrequency" id="vmanomalymonitoringpushspec-pushfrequency">#</a><br/>_string_ | _(Required)_<br/> |
-| tenantID<a href="#vmanomalymonitoringpushspec-tenantid" id="vmanomalymonitoringpushspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>For VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
+| basicAuth<a href="#vmanomalymonitoringpushspec-basicauth" id="vmanomalymonitoringpushspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic autorization configuration |
+| bearer<a href="#vmanomalymonitoringpushspec-bearer" id="vmanomalymonitoringpushspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
+| extraLabels<a href="#vmanomalymonitoringpushspec-extralabels" id="vmanomalymonitoringpushspec-extralabels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>ExtraLabels defines a set of labels to attach to the pushed metrics |
+| healthPath<a href="#vmanomalymonitoringpushspec-healthpath" id="vmanomalymonitoringpushspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
+| pushFrequency<a href="#vmanomalymonitoringpushspec-pushfrequency" id="vmanomalymonitoringpushspec-pushfrequency">#</a><br/>_string_ | _(Required)_<br/>PushFrequency defines push internval |
+| tenantID<a href="#vmanomalymonitoringpushspec-tenantid" id="vmanomalymonitoringpushspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
 | timeout<a href="#vmanomalymonitoringpushspec-timeout" id="vmanomalymonitoringpushspec-timeout">#</a><br/>_string_ | _(Required)_<br/>Timeout for the requests, passed as a string |
-| tlsConfig<a href="#vmanomalymonitoringpushspec-tlsconfig" id="vmanomalymonitoringpushspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/> |
-| url<a href="#vmanomalymonitoringpushspec-url" id="vmanomalymonitoringpushspec-url">#</a><br/>_string_ | _(Required)_<br/> |
+| tlsConfig<a href="#vmanomalymonitoringpushspec-tlsconfig" id="vmanomalymonitoringpushspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/>TLSConfig defines tls connection configuration |
+| url<a href="#vmanomalymonitoringpushspec-url" id="vmanomalymonitoringpushspec-url">#</a><br/>_string_ | _(Required)_<br/>defines target url for push requests |
 
 
 #### VMAnomalyMonitoringSpec
 
 
 
-
+VMAnomalyMonitoringSpec defines configuration for VMAnomlay monitoring
+See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/
 
 Appears in: [VMAnomalySpec](#vmanomalyspec)
 
@@ -500,13 +505,27 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 
 
 
-
+VMAnomalyReadersSpec defines reader configuration for VMAnomaly
 
 Appears in: [VMAnomalySpec](#vmanomalyspec)
 
 | Field | Description |
 | --- | --- |
-| vm<a href="#vmanomalyreadersspec-vm" id="vmanomalyreadersspec-vm">#</a><br/>_[VMAnomalyVMReaderSpec](#vmanomalyvmreaderspec) array_ | _(Required)_<br/> |
+| basicAuth<a href="#vmanomalyreadersspec-basicauth" id="vmanomalyreadersspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic autorization configuration |
+| bearer<a href="#vmanomalyreadersspec-bearer" id="vmanomalyreadersspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
+| dataRange<a href="#vmanomalyreadersspec-datarange" id="vmanomalyreadersspec-datarange">#</a><br/>_string array_ | _(Required)_<br/>Optional argumentallows defining valid data ranges for input of all the queries in queries |
+| datasourceURL<a href="#vmanomalyreadersspec-datasourceurl" id="vmanomalyreadersspec-datasourceurl">#</a><br/>_string_ | _(Required)_<br/>DatasourceURL address<br />datatasource must serve /api/v1/query and /api/v1/query_range APIs |
+| extraFilters<a href="#vmanomalyreadersspec-extrafilters" id="vmanomalyreadersspec-extrafilters">#</a><br/>_string array_ | _(Required)_<br/>List of strings with series selector. |
+| healthPath<a href="#vmanomalyreadersspec-healthpath" id="vmanomalyreadersspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
+| latencyOffset<a href="#vmanomalyreadersspec-latencyoffset" id="vmanomalyreadersspec-latencyoffset">#</a><br/>_string_ | _(Required)_<br/>It allows overriding the default -search.latencyOffsetflag of VictoriaMetrics |
+| maxPointsPerQuery<a href="#vmanomalyreadersspec-maxpointsperquery" id="vmanomalyreadersspec-maxpointsperquery">#</a><br/>_integer_ | _(Required)_<br/>Optional argoverrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals |
+| queryFromLastSeenTimestamp<a href="#vmanomalyreadersspec-queryfromlastseentimestamp" id="vmanomalyreadersspec-queryfromlastseentimestamp">#</a><br/>_boolean_ | _(Required)_<br/>If True, then query will be performed from the last seen timestamp for a given series. |
+| queryRangePath<a href="#vmanomalyreadersspec-queryrangepath" id="vmanomalyreadersspec-queryrangepath">#</a><br/>_string_ | _(Required)_<br/>Performs PromQL/MetricsQL range query |
+| samplingPeriod<a href="#vmanomalyreadersspec-samplingperiod" id="vmanomalyreadersspec-samplingperiod">#</a><br/>_string_ | _(Required)_<br/>Frequency of the points returned |
+| tenantID<a href="#vmanomalyreadersspec-tenantid" id="vmanomalyreadersspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
+| timeout<a href="#vmanomalyreadersspec-timeout" id="vmanomalyreadersspec-timeout">#</a><br/>_string_ | _(Required)_<br/>Timeout for the requests, passed as a string |
+| tlsConfig<a href="#vmanomalyreadersspec-tlsconfig" id="vmanomalyreadersspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/>TLSConfig defines tls connection configuration |
+| tz<a href="#vmanomalyreadersspec-tz" id="vmanomalyreadersspec-tz">#</a><br/>_string_ | _(Required)_<br/>Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns |
 
 
 #### VMAnomalySpec
@@ -520,7 +539,7 @@ Appears in: [VMAnomaly](#vmanomaly)
 | Field | Description |
 | --- | --- |
 | affinity<a href="#vmanomalyspec-affinity" id="vmanomalyspec-affinity">#</a><br/>_[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#affinity-v1-core)_ | _(Optional)_<br/>Affinity If specified, the pod's scheduling constraints. |
-| claimTemplates<a href="#vmanomalyspec-claimtemplates" id="vmanomalyspec-claimtemplates">#</a><br/>_[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#persistentvolumeclaim-v1-core) array_ | _(Required)_<br/>ClaimTemplates allows adding additional VolumeClaimTemplates for VMAnomaly in StatefulMode |
+| claimTemplates<a href="#vmanomalyspec-claimtemplates" id="vmanomalyspec-claimtemplates">#</a><br/>_[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#persistentvolumeclaim-v1-core) array_ | _(Required)_<br/>ClaimTemplates allows adding additional VolumeClaimTemplates for VMAnomaly |
 | configMaps<a href="#vmanomalyspec-configmaps" id="vmanomalyspec-configmaps">#</a><br/>_string array_ | _(Optional)_<br/>ConfigMaps is a list of ConfigMaps in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/configs/CONFIGMAP_NAME folder |
 | configRawYaml<a href="#vmanomalyspec-configrawyaml" id="vmanomalyspec-configrawyaml">#</a><br/>_string_ | _(Optional)_<br/>ConfigRawYaml - raw configuration for anomaly,<br />it helps it to start without secret.<br />priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret. |
 | configSecret<a href="#vmanomalyspec-configsecret" id="vmanomalyspec-configsecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>ConfigSecret is the name of a Kubernetes Secret in the same namespace as the<br />VMAnomaly object, which contains configuration for this VMAnomaly,<br />configuration must be inside secret key: anomaly.yaml.<br />It must be created by user.<br />instance. Defaults to 'vmanomaly-<anomaly-name>'<br />The secret is mounted into /etc/anomaly/config. |
@@ -549,11 +568,12 @@ Appears in: [VMAnomaly](#vmanomaly)
 | podMetadata<a href="#vmanomalyspec-podmetadata" id="vmanomalyspec-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Optional)_<br/>PodMetadata configures Labels and Annotations which are propagated to the vmanomaly pods. |
 | port<a href="#vmanomalyspec-port" id="vmanomalyspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
 | priorityClassName<a href="#vmanomalyspec-priorityclassname" id="vmanomalyspec-priorityclassname">#</a><br/>_string_ | _(Optional)_<br/>PriorityClassName class assigned to the Pods |
-| readers<a href="#vmanomalyspec-readers" id="vmanomalyspec-readers">#</a><br/>_[VMAnomalyReadersSpec](#vmanomalyreadersspec)_ | _(Required)_<br/>Metrics source for VMAnomaly<br />See https://docs.victoriametrics.com/anomaly-detection/components/reader/ |
+| reader<a href="#vmanomalyspec-reader" id="vmanomalyspec-reader">#</a><br/>_[VMAnomalyReadersSpec](#vmanomalyreadersspec)_ | _(Required)_<br/>Metrics source for VMAnomaly<br />See https://docs.victoriametrics.com/anomaly-detection/components/reader/ |
 | readinessGates<a href="#vmanomalyspec-readinessgates" id="vmanomalyspec-readinessgates">#</a><br/>_[PodReadinessGate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#podreadinessgate-v1-core) array_ | _(Required)_<br/>ReadinessGates defines pod readiness gates |
 | replicaCount<a href="#vmanomalyspec-replicacount" id="vmanomalyspec-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
 | resources<a href="#vmanomalyspec-resources" id="vmanomalyspec-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
 | revisionHistoryLimitCount<a href="#vmanomalyspec-revisionhistorylimitcount" id="vmanomalyspec-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
+| rollingUpdateStrategy<a href="#vmanomalyspec-rollingupdatestrategy" id="vmanomalyspec-rollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>RollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
 | runtimeClassName<a href="#vmanomalyspec-runtimeclassname" id="vmanomalyspec-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
 | schedulerName<a href="#vmanomalyspec-schedulername" id="vmanomalyspec-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
 | secrets<a href="#vmanomalyspec-secrets" id="vmanomalyspec-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
@@ -561,8 +581,7 @@ Appears in: [VMAnomaly](#vmanomaly)
 | serviceAccountName<a href="#vmanomalyspec-serviceaccountname" id="vmanomalyspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | serviceScrapeSpec<a href="#vmanomalyspec-servicescrapespec" id="vmanomalyspec-servicescrapespec">#</a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vmanomaly VMPodScrape spec |
 | shardCount<a href="#vmanomalyspec-shardcount" id="vmanomalyspec-shardcount">#</a><br/>_integer_ | _(Optional)_<br/>ShardCount - numbers of shards of VMAnomaly<br />in this case operator will use 1 sts per shard with<br />replicas count according to spec.replicas. |
-| statefulRollingUpdateStrategy<a href="#vmanomalyspec-statefulrollingupdatestrategy" id="vmanomalyspec-statefulrollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>StatefulRollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
-| statefulStorage<a href="#vmanomalyspec-statefulstorage" id="vmanomalyspec-statefulstorage">#</a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>StatefulStorage configures storage for StatefulSet |
+| storage<a href="#vmanomalyspec-storage" id="vmanomalyspec-storage">#</a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>Storage configures storage for StatefulSet |
 | terminationGracePeriodSeconds<a href="#vmanomalyspec-terminationgraceperiodseconds" id="vmanomalyspec-terminationgraceperiodseconds">#</a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
 | tolerations<a href="#vmanomalyspec-tolerations" id="vmanomalyspec-tolerations">#</a><br/>_[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#toleration-v1-core) array_ | _(Optional)_<br/>Tolerations If specified, the pod's tolerations. |
 | topologySpreadConstraints<a href="#vmanomalyspec-topologyspreadconstraints" id="vmanomalyspec-topologyspreadconstraints">#</a><br/>_[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#topologyspreadconstraint-v1-core) array_ | _(Optional)_<br/>TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ |
@@ -570,56 +589,9 @@ Appears in: [VMAnomaly](#vmanomaly)
 | useStrictSecurity<a href="#vmanomalyspec-usestrictsecurity" id="vmanomalyspec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vmanomalyspec-volumemounts" id="vmanomalyspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vmanomalyspec-volumes" id="vmanomalyspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
-| writers<a href="#vmanomalyspec-writers" id="vmanomalyspec-writers">#</a><br/>_[VMAnomalyWritersSpec](#vmanomalywritersspec)_ | _(Required)_<br/>Metrics destination for VMAnomaly<br />See https://docs.victoriametrics.com/anomaly-detection/components/writer/ |
+| writer<a href="#vmanomalyspec-writer" id="vmanomalyspec-writer">#</a><br/>_[VMAnomalyWritersSpec](#vmanomalywritersspec)_ | _(Required)_<br/>Metrics destination for VMAnomaly<br />See https://docs.victoriametrics.com/anomaly-detection/components/writer/ |
 
 
-
-
-#### VMAnomalyVMReaderQuerySpec
-
-
-
-
-
-Appears in: [VMAnomalyVMReaderSpec](#vmanomalyvmreaderspec)
-
-| Field | Description |
-| --- | --- |
-| dataRange<a href="#vmanomalyvmreaderqueryspec-datarange" id="vmanomalyvmreaderqueryspec-datarange">#</a><br/>_string array_ | _(Required)_<br/>It allows defining valid data ranges for input per individual query in queries |
-| expr<a href="#vmanomalyvmreaderqueryspec-expr" id="vmanomalyvmreaderqueryspec-expr">#</a><br/>_string_ | _(Required)_<br/>MetricsQL/PromQL expression that defines an input for VmReader |
-| maxPointsPerInterval<a href="#vmanomalyvmreaderqueryspec-maxpointsperinterval" id="vmanomalyvmreaderqueryspec-maxpointsperinterval">#</a><br/>_integer_ | _(Required)_<br/>Optional arg, overrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals |
-| step<a href="#vmanomalyvmreaderqueryspec-step" id="vmanomalyvmreaderqueryspec-step">#</a><br/>_string_ | _(Required)_<br/>Query-level frequency of the points returned, i.e. 30s |
-| tenantID<a href="#vmanomalyvmreaderqueryspec-tenantid" id="vmanomalyvmreaderqueryspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>This optional argument enables tenant-level separation for queries |
-| tz<a href="#vmanomalyvmreaderqueryspec-tz" id="vmanomalyvmreaderqueryspec-tz">#</a><br/>_string_ | _(Required)_<br/>This optional argument enables timezone specification per query, overriding the reader’s default tz |
-
-
-#### VMAnomalyVMReaderSpec
-
-
-
-VMAnomalyVMReaderSpec defines the desired state of VMAnomalyVMReader.
-
-Appears in: [VMAnomalyReadersSpec](#vmanomalyreadersspec)
-
-| Field | Description |
-| --- | --- |
-| alias<a href="#vmanomalyvmreaderspec-alias" id="vmanomalyvmreaderspec-alias">#</a><br/>_string_ | _(Required)_<br/>Alias is a name of VM reader |
-| basicAuth<a href="#vmanomalyvmreaderspec-basicauth" id="vmanomalyvmreaderspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/> |
-| bearer<a href="#vmanomalyvmreaderspec-bearer" id="vmanomalyvmreaderspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/> |
-| dataRange<a href="#vmanomalyvmreaderspec-datarange" id="vmanomalyvmreaderspec-datarange">#</a><br/>_string array_ | _(Required)_<br/>Optional argumentallows defining valid data ranges for input of all the queries in queries |
-| datasourceURL<a href="#vmanomalyvmreaderspec-datasourceurl" id="vmanomalyvmreaderspec-datasourceurl">#</a><br/>_string_ | _(Required)_<br/>Datasource URL address |
-| extraFilters<a href="#vmanomalyvmreaderspec-extrafilters" id="vmanomalyvmreaderspec-extrafilters">#</a><br/>_string array_ | _(Required)_<br/>List of strings with series selector. |
-| healthPath<a href="#vmanomalyvmreaderspec-healthpath" id="vmanomalyvmreaderspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>Absolute or relative URL address where to check availability of the datasource. |
-| latencyOffset<a href="#vmanomalyvmreaderspec-latencyoffset" id="vmanomalyvmreaderspec-latencyoffset">#</a><br/>_string_ | _(Required)_<br/>It allows overriding the default -search.latencyOffsetflag of VictoriaMetrics |
-| maxPointsPerQuery<a href="#vmanomalyvmreaderspec-maxpointsperquery" id="vmanomalyvmreaderspec-maxpointsperquery">#</a><br/>_integer_ | _(Required)_<br/>Optional argoverrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals |
-| queries<a href="#vmanomalyvmreaderspec-queries" id="vmanomalyvmreaderspec-queries">#</a><br/>_object (keys:string, values:[VMAnomalyVMReaderQuerySpec](#vmanomalyvmreaderqueryspec))_ | _(Required)_<br/> |
-| queryFromLastSeenTimestamp<a href="#vmanomalyvmreaderspec-queryfromlastseentimestamp" id="vmanomalyvmreaderspec-queryfromlastseentimestamp">#</a><br/>_boolean_ | _(Required)_<br/>If True, then query will be performed from the last seen timestamp for a given series. |
-| queryRangePath<a href="#vmanomalyvmreaderspec-queryrangepath" id="vmanomalyvmreaderspec-queryrangepath">#</a><br/>_string_ | _(Required)_<br/>Performs PromQL/MetricsQL range query |
-| samplingPeriod<a href="#vmanomalyvmreaderspec-samplingperiod" id="vmanomalyvmreaderspec-samplingperiod">#</a><br/>_string_ | _(Required)_<br/>Frequency of the points returned |
-| tenantID<a href="#vmanomalyvmreaderspec-tenantid" id="vmanomalyvmreaderspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>For VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
-| timeout<a href="#vmanomalyvmreaderspec-timeout" id="vmanomalyvmreaderspec-timeout">#</a><br/>_string_ | _(Required)_<br/>Timeout for the requests, passed as a string |
-| tlsConfig<a href="#vmanomalyvmreaderspec-tlsconfig" id="vmanomalyvmreaderspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/> |
-| tz<a href="#vmanomalyvmreaderspec-tz" id="vmanomalyvmreaderspec-tz">#</a><br/>_string_ | _(Required)_<br/>Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns |
 
 
 #### VMAnomalyVMWriterMetricFormatSpec
@@ -628,46 +600,32 @@ Appears in: [VMAnomalyReadersSpec](#vmanomalyreadersspec)
 
 VMAnomalyVMWriterMetricFormatSpec defines the desired state of VMAnomalyVMWriterMetricFormat
 
-Appears in: [VMAnomalyVMWriterSpec](#vmanomalyvmwriterspec)
-
-| Field | Description |
-| --- | --- |
-| __name__<a href="#vmanomalyvmwritermetricformatspec-__name__" id="vmanomalyvmwritermetricformatspec-__name__">#</a><br/>_string_ | _(Required)_<br/> |
-| for<a href="#vmanomalyvmwritermetricformatspec-for" id="vmanomalyvmwritermetricformatspec-for">#</a><br/>_string_ | _(Required)_<br/> |
-
-
-#### VMAnomalyVMWriterSpec
-
-
-
-VMAnomalyVMWriterSpec defines the desired state of VMAnomalyWriter.
-
 Appears in: [VMAnomalyWritersSpec](#vmanomalywritersspec)
 
 | Field | Description |
 | --- | --- |
-| alias<a href="#vmanomalyvmwriterspec-alias" id="vmanomalyvmwriterspec-alias">#</a><br/>_string_ | _(Required)_<br/>Alias is a name of VM writer |
-| basicAuth<a href="#vmanomalyvmwriterspec-basicauth" id="vmanomalyvmwriterspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/> |
-| bearer<a href="#vmanomalyvmwriterspec-bearer" id="vmanomalyvmwriterspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/> |
-| datasourceURL<a href="#vmanomalyvmwriterspec-datasourceurl" id="vmanomalyvmwriterspec-datasourceurl">#</a><br/>_string_ | _(Required)_<br/>Datasource URL address |
-| healthPath<a href="#vmanomalyvmwriterspec-healthpath" id="vmanomalyvmwriterspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>Absolute or relative URL address where to check availability of the datasource. |
-| metricFormat<a href="#vmanomalyvmwriterspec-metricformat" id="vmanomalyvmwriterspec-metricformat">#</a><br/>_[VMAnomalyVMWriterMetricFormatSpec](#vmanomalyvmwritermetricformatspec)_ | _(Required)_<br/>Metrics to save the output (in metric names or labels). Must have __name__ key.<br />Must have a value with $VAR placeholder in it to distinguish between resulting metrics |
-| tenantID<a href="#vmanomalyvmwriterspec-tenantid" id="vmanomalyvmwriterspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>For VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
-| timeout<a href="#vmanomalyvmwriterspec-timeout" id="vmanomalyvmwriterspec-timeout">#</a><br/>_string_ | _(Required)_<br/>Timeout for the requests, passed as a string |
-| tlsConfig<a href="#vmanomalyvmwriterspec-tlsconfig" id="vmanomalyvmwriterspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/> |
+| __name__<a href="#vmanomalyvmwritermetricformatspec-__name__" id="vmanomalyvmwritermetricformatspec-__name__">#</a><br/>_string_ | _(Required)_<br/>Name of result metric<br />Must have a value with $VAR placeholder in it to distinguish between resulting metrics |
+| for<a href="#vmanomalyvmwritermetricformatspec-for" id="vmanomalyvmwritermetricformatspec-for">#</a><br/>_string_ | _(Required)_<br/>For is a special label with $QUERY_KEY placeholder |
 
 
 #### VMAnomalyWritersSpec
 
 
 
-
+VMAnomalyWritersSpec defines writer configuration for VMAnomaly
 
 Appears in: [VMAnomalySpec](#vmanomalyspec)
 
 | Field | Description |
 | --- | --- |
-| vm<a href="#vmanomalywritersspec-vm" id="vmanomalywritersspec-vm">#</a><br/>_[VMAnomalyVMWriterSpec](#vmanomalyvmwriterspec) array_ | _(Required)_<br/> |
+| basicAuth<a href="#vmanomalywritersspec-basicauth" id="vmanomalywritersspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic autorization configuration |
+| bearer<a href="#vmanomalywritersspec-bearer" id="vmanomalywritersspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
+| datasourceURL<a href="#vmanomalywritersspec-datasourceurl" id="vmanomalywritersspec-datasourceurl">#</a><br/>_string_ | _(Required)_<br/>DatasourceURL defines remote write url for write requests<br />provided endpoint must serve /api/v1/import path<br />vmanomaly joins datasourceURL + "/api/v1/import" |
+| healthPath<a href="#vmanomalywritersspec-healthpath" id="vmanomalywritersspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
+| metricFormat<a href="#vmanomalywritersspec-metricformat" id="vmanomalywritersspec-metricformat">#</a><br/>_[VMAnomalyVMWriterMetricFormatSpec](#vmanomalyvmwritermetricformatspec)_ | _(Optional)_<br/>Metrics to save the output (in metric names or labels) |
+| tenantID<a href="#vmanomalywritersspec-tenantid" id="vmanomalywritersspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
+| timeout<a href="#vmanomalywritersspec-timeout" id="vmanomalywritersspec-timeout">#</a><br/>_string_ | _(Required)_<br/>Timeout for the requests, passed as a string |
+| tlsConfig<a href="#vmanomalywritersspec-tlsconfig" id="vmanomalywritersspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/>TLSConfig defines tls connection configuration |
 
 
 
@@ -850,7 +808,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyVMReaderSpec](#vmanomalyvmreaderspec), [VMAnomalyVMWriterSpec](#vmanomalyvmwriterspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -865,7 +823,7 @@ Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfi
 
 BearerAuth defines auth with bearer token
 
-Appears in: [HTTPAuth](#httpauth), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyVMReaderSpec](#vmanomalyvmreaderspec), [VMAnomalyVMWriterSpec](#vmanomalyvmwriterspec)
+Appears in: [HTTPAuth](#httpauth), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec)
 
 | Field | Description |
 | --- | --- |
@@ -2489,7 +2447,7 @@ Appears in: [AlertmanagerGossipConfig](#alertmanagergossipconfig)
 
 TLSConfig specifies TLSConfig configuration parameters.
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyVMReaderSpec](#vmanomalyvmreaderspec), [VMAnomalyVMWriterSpec](#vmanomalyvmwriterspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |

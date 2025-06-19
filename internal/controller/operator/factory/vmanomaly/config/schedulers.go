@@ -3,12 +3,20 @@ package config
 import (
 	"fmt"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 type scheduler struct {
 	validatable
 }
 
+var (
+	_ yaml.Marshaler   = (*scheduler)(nil)
+	_ yaml.Unmarshaler = (*scheduler)(nil)
+)
+
+// UnmarshalYAML implements yaml.Unmarshaller interface
 func (s *scheduler) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var h header
 	if err := unmarshal(&h); err != nil {
@@ -32,6 +40,7 @@ func (s *scheduler) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+// MarshalYAML implements yaml.Marshaler interface
 func (s *scheduler) MarshalYAML() (any, error) {
 	return s.validatable, nil
 }

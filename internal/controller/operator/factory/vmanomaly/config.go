@@ -16,6 +16,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmanomaly/config"
 )
 
+// createOrUpdateConfig reconcile configuration for vmanomaly and returns configuration consistent hash
 func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, ac *build.AssetsCache) (string, error) {
 	data, err := config.Load(cr, ac)
 	if err != nil {
@@ -52,22 +53,4 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 	hash.Write(data)
 	hashBytes := hash.Sum(nil)
 	return hex.EncodeToString(hashBytes), nil
-}
-
-func Validate(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
-	if !cr.DeletionTimestamp.IsZero() {
-		return nil
-	}
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, cfg)
-	_, err := config.Load(cr, ac)
-	if err != nil {
-		return err
-	}
-	return nil
 }

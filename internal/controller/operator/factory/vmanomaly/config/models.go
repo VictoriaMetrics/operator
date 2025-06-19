@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 type modelDetectionDirection string
@@ -44,10 +46,17 @@ type model struct {
 	anomalyModel
 }
 
+var (
+	_ yaml.Marshaler   = (*model)(nil)
+	_ yaml.Unmarshaler = (*model)(nil)
+)
+
+// MarshalYAML implements yaml.Marshaller interface
 func (m *model) MarshalYAML() (any, error) {
 	return m.anomalyModel, nil
 }
 
+// UnmarshalYAML implements yaml.Unmarshaler interface
 func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
 	var h header
 	if err := unmarshal(&h); err != nil {

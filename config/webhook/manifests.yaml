@@ -372,7 +372,7 @@ webhooks:
       namespace: system
       path: /validate-operator-victoriametrics-com-v1-vmanomaly
   failurePolicy: Fail
-  name: vvmprobe.kb.io
+  name: vvmanomaly.kb.io
   rules:
   - apiGroups:
     - operator.victoriametrics.com
@@ -382,5 +382,5 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - vmprobes
+    - vmanomalies
   sideEffects: None

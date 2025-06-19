@@ -246,6 +246,22 @@ func addVLogsDefaults(objI any) {
 
 func addVMAnomalyDefaults(objI any) {
 	cr := objI.(*vmv1.VMAnomaly)
+
+	// vmanomaly takes up to 2 minutes to start
+	if cr.Spec.EmbeddedProbes == nil {
+		cr.Spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{
+			LivenessProbe: &corev1.Probe{
+				InitialDelaySeconds: 10,
+				FailureThreshold:    16,
+				PeriodSeconds:       10,
+			},
+			ReadinessProbe: &corev1.Probe{
+				InitialDelaySeconds: 10,
+				FailureThreshold:    16,
+				PeriodSeconds:       10,
+			},
+		}
+	}
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VMAnomalyDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)

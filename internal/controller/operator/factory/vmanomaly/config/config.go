@@ -38,14 +38,14 @@ type settings struct {
 }
 
 func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
-	if cr.Spec.Readers == nil || cr.Spec.Readers.VM == nil {
+	if cr.Spec.Reader == nil {
 		return fmt.Errorf("reader is required for anomaly name=%s/%s", cr.Namespace, cr.Name)
 	}
-	if cr.Spec.Writers == nil || cr.Spec.Writers.VM == nil {
+	if cr.Spec.Writer == nil {
 		return fmt.Errorf("writer is required for anomaly name=%s/%s", cr.Namespace, cr.Name)
 	}
 	// override reader
-	data, err := yaml.Marshal(cr.Spec.Readers.VM)
+	data, err := yaml.Marshal(cr.Spec.Reader)
 	if err != nil {
 		return fmt.Errorf("failed to marshal anomaly CR reader config, name=%q: %w", cr.Name, err)
 	}
@@ -53,7 +53,7 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 	if err := yaml.UnmarshalStrict(data, &r); err != nil {
 		return fmt.Errorf("failed to unmarshal anomaly CR reader config, name=%q: %w", cr.Name, err)
 	}
-	if err = r.ClientConfig.override(cr, &cr.Spec.Readers.VM.VMAnomalyHTTPClientSpec, ac); err != nil {
+	if err = r.ClientConfig.override(cr, &cr.Spec.Reader.VMAnomalyHTTPClientSpec, ac); err != nil {
 		return fmt.Errorf("failed to update HTTP client for anomaly reader, name=%q: %w", cr.Name, err)
 	}
 	r.Class = "vm"
@@ -61,7 +61,7 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 	c.Reader = &r
 
 	// override writer
-	data, err = yaml.Marshal(cr.Spec.Writers.VM)
+	data, err = yaml.Marshal(cr.Spec.Writer)
 	if err != nil {
 		return fmt.Errorf("failed to marshal anomaly CR writer config, name=%q: %w", cr.Name, err)
 	}
@@ -69,7 +69,7 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 	if err = yaml.UnmarshalStrict(data, &w); err != nil {
 		return fmt.Errorf("failed to unmarshal anomaly CR writer config, name=%q: %w", cr.Name, err)
 	}
-	if err = w.ClientConfig.override(cr, &cr.Spec.Writers.VM.VMAnomalyHTTPClientSpec, ac); err != nil {
+	if err = w.ClientConfig.override(cr, &cr.Spec.Writer.VMAnomalyHTTPClientSpec, ac); err != nil {
 		return fmt.Errorf("failed to update HTTP client for anomaly writer, name=%q: %w", cr.Name, err)
 	}
 	w.Class = "vm"
@@ -92,8 +92,6 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 			}
 		}
 		c.Monitoring = &m
-	} else {
-		c.Monitoring = nil
 	}
 	return nil
 }
@@ -142,7 +140,7 @@ func (c *config) validate() error {
 	return nil
 }
 
-func marshalValues[T validatable](vs map[string]T) yaml.MapSlice {
+func marshalValues[T any](vs map[string]T) yaml.MapSlice {
 	var keys []string
 	var output yaml.MapSlice
 	for name, v := range vs {
@@ -172,6 +170,9 @@ func (c *config) marshal() yaml.MapSlice {
 
 type duration string
 
+var _ yaml.Unmarshaler = (*duration)(nil)
+
+// UnmarshalYAML implements yaml.Unmarshaler interface
 func (d *duration) UnmarshalYAML(unmarshal func(any) error) (err error) {
 	var input any
 	if err = unmarshal(&input); err != nil {
@@ -233,6 +234,7 @@ func (c *clientConfig) override(cr *vmv1.VMAnomaly, cfg *vmv1.VMAnomalyHTTPClien
 	return nil
 }
 
+// Load returns vmanomaly config merged with provided secrets
 func Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byte, error) {
 	var data []byte
 	switch {

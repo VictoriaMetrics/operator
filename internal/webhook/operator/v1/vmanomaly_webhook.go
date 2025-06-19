@@ -23,21 +23,14 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmanomaly"
-)
-
-var (
-	k8sClient client.Client
 )
 
 // SetupVMAnomalyWebhookWithManager registers the webhook for VMAnomaly in the manager.
 func SetupVMAnomalyWebhookWithManager(mgr ctrl.Manager) error {
-	k8sClient = mgr.GetClient()
 	return ctrl.NewWebhookManagedBy(mgr).For(&vmv1.VMAnomaly{}).
 		WithValidator(&VMAnomalyCustomValidator{}).
 		Complete()
@@ -60,9 +53,6 @@ func (v *VMAnomalyCustomValidator) ValidateCreate(ctx context.Context, obj runti
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}
-	if err := vmanomaly.Validate(ctx, k8sClient, r); err != nil {
-		return nil, err
-	}
 	return nil, nil
 }
 
@@ -76,9 +66,6 @@ func (v *VMAnomalyCustomValidator) ValidateUpdate(ctx context.Context, oldObj, n
 		return nil, errors.New(r.Spec.ParsingError)
 	}
 	if err := r.Validate(); err != nil {
-		return nil, err
-	}
-	if err := vmanomaly.Validate(ctx, k8sClient, r); err != nil {
 		return nil, err
 	}
 	return nil, nil

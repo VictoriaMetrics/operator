@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -56,6 +57,13 @@ schedulers:
 var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise"), Ordered, func() {
 	ctx := context.Background()
 	namespace := "default"
+	anomalyDatasourceURL := fmt.Sprintf("http://vmsingle-anomaly.%s.svc:8428", namespace)
+	anomalySingle := vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "anomaly",
+			Namespace: namespace,
+		},
+	}
 	licenseKey := os.Getenv("LICENSE_KEY")
 	BeforeAll(func() {
 		if licenseKey == "" {
@@ -72,6 +80,13 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				},
 			},
 		)).To(Succeed())
+
+		Expect(k8sClient.Create(ctx, &anomalySingle)).To(Succeed())
+		Eventually(func() error {
+			return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace})
+		}, eventualDeploymentAppReadyTimeout,
+		).Should(Succeed())
+
 	})
 	AfterAll(func() {
 		Expect(k8sClient.Delete(ctx,
@@ -82,6 +97,11 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				},
 			},
 		)).To(Succeed())
+		Expect(k8sClient.Delete(ctx, &anomalySingle)).To(Succeed())
+		Eventually(func() error {
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
+		}, eventualDeletionTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+
 	})
 	Context("e2e vmanomaly", func() {
 		namespace := "default"
@@ -115,7 +135,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, namespacedName)
-				}, eventualDeploymentAppReadyTimeout,
+				}, 180*time.Second,
 				).Should(Succeed())
 
 				var created vmv1.VMAnomaly
@@ -141,23 +161,13 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							},
 						},
 						ConfigRawYaml: anomalyConfig,
-						Readers: &vmv1.VMAnomalyReadersSpec{
-							VM: &vmv1.VMAnomalyVMReaderSpec{
-								DatasourceURL:  "http://play.victoriametrics.com",
-								QueryRangePath: "/api/v1/query_range",
-								SamplingPeriod: "10s",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Reader: &vmv1.VMAnomalyReadersSpec{
+							DatasourceURL:  anomalyDatasourceURL,
+							QueryRangePath: "/api/v1/query_range",
+							SamplingPeriod: "10s",
 						},
-						Writers: &vmv1.VMAnomalyWritersSpec{
-							VM: &vmv1.VMAnomalyVMWriterSpec{
-								DatasourceURL: "http://play.victoriametrics.com",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Writer: &vmv1.VMAnomalyWritersSpec{
+							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
 				}, nil, func(cr *vmv1.VMAnomaly) {
@@ -192,23 +202,13 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 								Key: "key",
 							},
 						},
-						Readers: &vmv1.VMAnomalyReadersSpec{
-							VM: &vmv1.VMAnomalyVMReaderSpec{
-								DatasourceURL:  "http://play.victoriametrics.com",
-								QueryRangePath: "/api/v1/query_range",
-								SamplingPeriod: "10s",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Reader: &vmv1.VMAnomalyReadersSpec{
+							DatasourceURL:  anomalyDatasourceURL,
+							QueryRangePath: "/api/v1/query_range",
+							SamplingPeriod: "10s",
 						},
-						Writers: &vmv1.VMAnomalyWritersSpec{
-							VM: &vmv1.VMAnomalyVMWriterSpec{
-								DatasourceURL: "http://play.victoriametrics.com",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Writer: &vmv1.VMAnomalyWritersSpec{
+							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
 				}, nil, func(cr *vmv1.VMAnomaly) {
@@ -237,47 +237,39 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							},
 						},
 						ConfigRawYaml: anomalyConfig,
-						Readers: &vmv1.VMAnomalyReadersSpec{
-							VM: &vmv1.VMAnomalyVMReaderSpec{
-								DatasourceURL:  "http://play.victoriametrics.com",
-								QueryRangePath: "/api/v1/query_range",
-								SamplingPeriod: "10s",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-									TLSConfig: &vmv1beta1.TLSConfig{
-										CA: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: tlsSecretName,
-												},
-												Key: "remote-ca",
-											},
-										},
-										Cert: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: tlsSecretName,
-												},
-												Key: "remote-cert",
-											},
-										},
-										KeySecret: &corev1.SecretKeySelector{
+						Reader: &vmv1.VMAnomalyReadersSpec{
+							DatasourceURL:  anomalyDatasourceURL,
+							QueryRangePath: "/api/v1/query_range",
+							SamplingPeriod: "10s",
+							VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CA: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: tlsSecretName,
 											},
-											Key: "remote-key",
+											Key: "remote-ca",
 										},
+									},
+									Cert: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: tlsSecretName,
+											},
+											Key: "remote-cert",
+										},
+									},
+									KeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: tlsSecretName,
+										},
+										Key: "remote-key",
 									},
 								},
 							},
 						},
-						Writers: &vmv1.VMAnomalyWritersSpec{
-							VM: &vmv1.VMAnomalyVMWriterSpec{
-								DatasourceURL: "http://play.victoriametrics.com",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Writer: &vmv1.VMAnomalyWritersSpec{
+							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
 				}, func() {
@@ -338,23 +330,13 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							},
 						},
 						ConfigRawYaml: anomalyConfig,
-						Readers: &vmv1.VMAnomalyReadersSpec{
-							VM: &vmv1.VMAnomalyVMReaderSpec{
-								DatasourceURL:  "http://play.victoriametrics.com",
-								QueryRangePath: "/api/v1/query_range",
-								SamplingPeriod: "10s",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Reader: &vmv1.VMAnomalyReadersSpec{
+							DatasourceURL:  anomalyDatasourceURL,
+							QueryRangePath: "/api/v1/query_range",
+							SamplingPeriod: "10s",
 						},
-						Writers: &vmv1.VMAnomalyWritersSpec{
-							VM: &vmv1.VMAnomalyVMWriterSpec{
-								DatasourceURL: "http://play.victoriametrics.com",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Writer: &vmv1.VMAnomalyWritersSpec{
+							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
 				}, nil, func(cr *vmv1.VMAnomaly) {
@@ -433,23 +415,13 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							},
 						},
 						ConfigRawYaml: anomalyConfig,
-						Readers: &vmv1.VMAnomalyReadersSpec{
-							VM: &vmv1.VMAnomalyVMReaderSpec{
-								DatasourceURL:  "http://play.victoriametrics.com",
-								QueryRangePath: "/api/v1/query_range",
-								SamplingPeriod: "10s",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Reader: &vmv1.VMAnomalyReadersSpec{
+							DatasourceURL:  anomalyDatasourceURL,
+							QueryRangePath: "/api/v1/query_range",
+							SamplingPeriod: "10s",
 						},
-						Writers: &vmv1.VMAnomalyWritersSpec{
-							VM: &vmv1.VMAnomalyVMWriterSpec{
-								DatasourceURL: "http://play.victoriametrics.com",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Writer: &vmv1.VMAnomalyWritersSpec{
+							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
 				},
@@ -477,23 +449,13 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							},
 						},
 						ConfigRawYaml: anomalyConfig,
-						Readers: &vmv1.VMAnomalyReadersSpec{
-							VM: &vmv1.VMAnomalyVMReaderSpec{
-								DatasourceURL:  "http://play.victoriametrics.com",
-								QueryRangePath: "/api/v1/query_range",
-								SamplingPeriod: "10s",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Reader: &vmv1.VMAnomalyReadersSpec{
+							DatasourceURL:  anomalyDatasourceURL,
+							QueryRangePath: "/api/v1/query_range",
+							SamplingPeriod: "10s",
 						},
-						Writers: &vmv1.VMAnomalyWritersSpec{
-							VM: &vmv1.VMAnomalyVMWriterSpec{
-								DatasourceURL: "http://play.victoriametrics.com",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Writer: &vmv1.VMAnomalyWritersSpec{
+							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
 				},
@@ -534,23 +496,13 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						},
 						PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: &intstr.IntOrString{IntVal: 1}},
 						ConfigRawYaml:       anomalyConfig,
-						Readers: &vmv1.VMAnomalyReadersSpec{
-							VM: &vmv1.VMAnomalyVMReaderSpec{
-								DatasourceURL:  "http://play.victoriametrics.com",
-								QueryRangePath: "/api/v1/query_range",
-								SamplingPeriod: "10s",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Reader: &vmv1.VMAnomalyReadersSpec{
+							DatasourceURL:  anomalyDatasourceURL,
+							QueryRangePath: "/api/v1/query_range",
+							SamplingPeriod: "10s",
 						},
-						Writers: &vmv1.VMAnomalyWritersSpec{
-							VM: &vmv1.VMAnomalyVMWriterSpec{
-								DatasourceURL: "http://play.victoriametrics.com",
-								VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-									TenantID: "0",
-								},
-							},
+						Writer: &vmv1.VMAnomalyWritersSpec{
+							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
 				},

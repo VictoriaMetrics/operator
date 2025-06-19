@@ -75,18 +75,18 @@ type VMAnomalySpec struct {
 	ConfigSecret *corev1.SecretKeySelector `json:"configSecret,omitempty"`
 	// Metrics source for VMAnomaly
 	// See https://docs.victoriametrics.com/anomaly-detection/components/reader/
-	Readers *VMAnomalyReadersSpec `json:"readers"`
+	Reader *VMAnomalyReadersSpec `json:"reader"`
 	// Metrics destination for VMAnomaly
 	// See https://docs.victoriametrics.com/anomaly-detection/components/writer/
-	Writers *VMAnomalyWritersSpec `json:"writers"`
-	// StatefulStorage configures storage for StatefulSet
+	Writer *VMAnomalyWritersSpec `json:"writer"`
+	// Storage configures storage for StatefulSet
 	// +optional
-	StatefulStorage *vmv1beta1.StorageSpec `json:"statefulStorage,omitempty"`
-	// StatefulRollingUpdateStrategy allows configuration for strategyType
+	Storage *vmv1beta1.StorageSpec `json:"storage,omitempty"`
+	// RollingUpdateStrategy allows configuration for strategyType
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional
-	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
-	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAnomaly in StatefulMode
+	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
+	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAnomaly
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 	// Monitoring configures how expose anomaly metrics
 	// See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/
@@ -103,46 +103,48 @@ type VMAnomalySpec struct {
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
+// VMAnomalyWritersSpec defines writer configuration for VMAnomaly
 type VMAnomalyWritersSpec struct {
-	VM *VMAnomalyVMWriterSpec `json:"vm"`
-}
-
-// VMAnomalyVMWriterSpec defines the desired state of VMAnomalyWriter.
-type VMAnomalyVMWriterSpec struct {
-	// Datasource URL address
+	// DatasourceURL defines remote write url for write requests
+	// provided endpoint must serve /api/v1/import path
+	// vmanomaly joins datasourceURL + "/api/v1/import"
 	DatasourceURL string `json:"datasourceURL" yaml:"datasource_url,omitempty"`
-	// Metrics to save the output (in metric names or labels). Must have __name__ key.
-	// Must have a value with $VAR placeholder in it to distinguish between resulting metrics
+	// Metrics to save the output (in metric names or labels)
+	// +optional
 	VMAnomalyVMWriterMetricFormatSpec `json:"metricFormat,omitempty" yaml:"metric_format,omitempty"`
-	VMAnomalyHTTPClientSpec           `json:",inline,omitempty" yaml:",inline,omitempty"`
+	// +optional
+	VMAnomalyHTTPClientSpec `json:",inline,omitempty" yaml:",inline,omitempty"`
 }
 
 // VMAnomalyVMWriterMetricFormatSpec defines the desired state of VMAnomalyVMWriterMetricFormat
 type VMAnomalyVMWriterMetricFormatSpec struct {
+	// Name of result metric
+	// Must have a value with $VAR placeholder in it to distinguish between resulting metrics
 	Name string `json:"__name__"`
-	For  string `json:"for"`
+	// For is a special label with $QUERY_KEY placeholder
+	For string `json:"for"`
 }
 
 // VMAnomalyHTTPClientSpec defines the desired state of VMAnomalyHTTPClient
 type VMAnomalyHTTPClientSpec struct {
-	// Absolute or relative URL address where to check availability of the datasource.
+	// HealthPath defines absolute or relative URL address where to check availability of the remote webserver
 	HealthPath string `json:"healthPath,omitempty" yaml:"health_path,omitempty"`
 	// Timeout for the requests, passed as a string
 	Timeout string `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	// For VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant.
-	TenantID   string                `json:"tenantID,omitempty" yaml:"tenant_id,omitempty"`
-	BasicAuth  *vmv1beta1.BasicAuth  `json:"basicAuth,omitempty" yaml:"-"`
-	TLSConfig  *vmv1beta1.TLSConfig  `json:"tlsConfig,omitempty" yaml:"-"`
+	// TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant.
+	TenantID string `json:"tenantID,omitempty" yaml:"tenant_id,omitempty"`
+	// Basic auth defines basic autorization configuration
+	BasicAuth *vmv1beta1.BasicAuth `json:"basicAuth,omitempty" yaml:"-"`
+	// TLSConfig defines tls connection configuration
+	TLSConfig *vmv1beta1.TLSConfig `json:"tlsConfig,omitempty" yaml:"-"`
+	// BearerAuth defines authorization with Authorization: Bearer header
 	BearerAuth *vmv1beta1.BearerAuth `json:"bearer,omitempty" yaml:"-"`
 }
 
+// VMAnomalyReadersSpec defines reader configuration for VMAnomaly
 type VMAnomalyReadersSpec struct {
-	VM *VMAnomalyVMReaderSpec `json:"vm"`
-}
-
-// VMAnomalyVMReaderSpec defines the desired state of VMAnomalyVMReader.
-type VMAnomalyVMReaderSpec struct {
-	// Datasource URL address
+	// DatasourceURL address
+	// datatasource must serve /api/v1/query and /api/v1/query_range APIs
 	DatasourceURL string `json:"datasourceURL" yaml:"datasource_url,omitempty"`
 	// Frequency of the points returned
 	SamplingPeriod string `json:"samplingPeriod" yaml:"sampling_period,omitempty"`
@@ -201,19 +203,31 @@ type VMAnomaly struct {
 	Status VMAnomalyStatus `json:"status,omitempty"`
 }
 
+// VMAnomalyMonitoringSpec defines configuration for VMAnomlay monitoring
+// See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/
 type VMAnomalyMonitoringSpec struct {
 	Pull *VMAnomalyMonitoringPullSpec `json:"pull,omitempty" yaml:"pull,omitempty"`
 	Push *VMAnomalyMonitoringPushSpec `json:"push,omitempty" yaml:"push,omitempty"`
 }
 
+// VMAnomalyMonitoringPullSpec defines pull monitoring configuration
+// which is enabled by default and served at POD_IP:8490/metrics
 type VMAnomalyMonitoringPullSpec struct {
+	// Addr changes listen addr, default is 0.0.0.0
 	Addr string `json:"addr,omitempty" yaml:"addr,omitempty"`
+	// Port defines a port for metrics scrape
 	Port string `json:"port"`
 }
 
+// VMAnomalyMonitoringPushSpec defines metrics push configuration
+//
+// VMAnomaly uses prometheus text exposition format
 type VMAnomalyMonitoringPushSpec struct {
-	URL                     string            `json:"url" yaml:"url"`
-	PushFrequency           string            `json:"pushFrequency,omitempty" yaml:"push_frequency,omitempty"`
+	// defines target url for push requests
+	URL string `json:"url" yaml:"url"`
+	// PushFrequency defines push internval
+	PushFrequency string `json:"pushFrequency,omitempty" yaml:"push_frequency,omitempty"`
+	// ExtraLabels defines a set of labels to attach to the pushed metrics
 	ExtraLabels             map[string]string `json:"extraLabels,omitempty" yaml:"extra_labels,omitempty"`
 	VMAnomalyHTTPClientSpec `json:",inline" yaml:",inline"`
 }
@@ -237,6 +251,7 @@ func (cr *VMAnomaly) AsOwner() []metav1.OwnerReference {
 	}
 }
 
+// AnnotationsFiltered returns global annotations to be applied for created objects
 func (cr *VMAnomaly) AnnotationsFiltered() map[string]string {
 	if cr.Spec.ManagedMetadata == nil {
 		return nil
@@ -248,6 +263,7 @@ func (cr *VMAnomaly) AnnotationsFiltered() map[string]string {
 	return dst
 }
 
+// PodAnnotations returns annotations to be applied to Pod
 func (cr *VMAnomaly) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
@@ -272,6 +288,7 @@ func (cr *VMAnomaly) DefaultStatusFields(vs *VMAnomalyStatus) {
 	vs.Shards = shardCnt
 }
 
+// SelectorLabels returns selector labels for vmanomaly
 func (cr *VMAnomaly) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmanomaly",
@@ -281,6 +298,7 @@ func (cr *VMAnomaly) SelectorLabels() map[string]string {
 	}
 }
 
+// PodLabels returns labels to applied to Pod
 func (cr *VMAnomaly) PodLabels() map[string]string {
 	lbls := cr.SelectorLabels()
 	if cr.Spec.PodMetadata == nil {
@@ -290,6 +308,7 @@ func (cr *VMAnomaly) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
+// AllLabels returns global labels to be applied for created objects
 func (cr *VMAnomaly) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
@@ -303,10 +322,12 @@ func (cr *VMAnomaly) AllLabels() map[string]string {
 	return labels.Merge(result, selectorLabels)
 }
 
+// PrefixedName format name of the component with hard-coded prefix
 func (cr *VMAnomaly) PrefixedName() string {
 	return fmt.Sprintf("vmanomaly-%s", cr.Name)
 }
 
+// GetServiceAccountName returns service account name for components
 func (cr *VMAnomaly) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
@@ -314,10 +335,12 @@ func (cr *VMAnomaly) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// IsOwnsServiceAccount checks if ServiceAccountName is set explicitly
 func (cr *VMAnomaly) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
+// HealthPath returns path for health requests
 func (cr *VMAnomaly) HealthPath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
@@ -342,9 +365,10 @@ func (cr *VMAnomaly) Port() string {
 	return cr.Spec.Port
 }
 
+// GetVolumeName returns volume name for persistent storage
 func (cr *VMAnomaly) GetVolumeName() string {
-	if cr.Spec.StatefulStorage != nil && cr.Spec.StatefulStorage.VolumeClaimTemplate.Name != "" {
-		return cr.Spec.StatefulStorage.VolumeClaimTemplate.Name
+	if cr.Spec.Storage != nil && cr.Spec.Storage.VolumeClaimTemplate.Name != "" {
+		return cr.Spec.Storage.VolumeClaimTemplate.Name
 	}
 	return "vmanomaly-storage"
 }
@@ -354,26 +378,32 @@ func (cr *VMAnomaly) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return nil
 }
 
+// Probe implements build.probeCRD interface
 func (cr *VMAnomaly) Probe() *vmv1beta1.EmbeddedProbes {
 	return cr.Spec.EmbeddedProbes
 }
 
+// ProbePath implements build.probeCRD interface
 func (cr *VMAnomaly) ProbePath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
+// ProbeScheme implements build.probeCRD interface
 func (cr *VMAnomaly) ProbeScheme() string {
 	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
 }
 
+// ProbePort implements build.probeCRD interface
 func (cr *VMAnomaly) ProbePort() string {
 	return cr.Port()
 }
 
+// ProbeNeedLiveness implements build.probeCRD interface
 func (*VMAnomaly) ProbeNeedLiveness() bool {
 	return true
 }
 
+// Validate performs semantic validation for component
 func (cr *VMAnomaly) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
@@ -384,6 +414,7 @@ func (cr *VMAnomaly) Validate() error {
 	return nil
 }
 
+// GetShardCount returns shard count for vmanomaly
 func (cr *VMAnomaly) GetShardCount() int {
 	if cr == nil || cr.Spec.ShardCount == nil {
 		return 0
@@ -401,6 +432,7 @@ func (cr *VMAnomaly) HasSpecChanges() (bool, error) {
 	return vmv1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
+// Paused checks if given component reconcile loop should be stopped
 func (cr *VMAnomaly) Paused() bool {
 	return cr.Spec.Paused
 }

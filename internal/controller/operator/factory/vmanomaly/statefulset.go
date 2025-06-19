@@ -57,6 +57,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		},
 	}
 	ac := build.NewAssetsCache(ctx, rclient, cfg)
+
 	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, ac)
 	if err != nil {
 		return err
@@ -86,7 +87,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		return fmt.Errorf("cannot build new statefulSet for vmanomaly: %w", err)
 	}
 
-	if cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
+	if cr.GetShardCount() > 1 {
 		return createOrUpdateShardedStatefulSet(ctx, rclient, cr, prevCR, newStatefulSet, prevStatefulSet)
 	}
 	return createOrUpdateStatefulSet(ctx, rclient, cr, newStatefulSet, prevStatefulSet)
@@ -106,13 +107,14 @@ func shardMutator(cr *vmv1.VMAnomaly, app *appsv1.StatefulSet, shardNum int) {
 		if container.Name != "vmanomaly" {
 			continue
 		}
+		// filter any env with the shard configuration name
 		envs := container.Env[:0]
 		for _, env := range container.Env {
 			if env.Name != "VMANOMALY_MEMBERS_COUNT" && env.Name != "VMANOMALY_MEMBER_NUM" {
 				envs = append(envs, env)
 			}
 		}
-		container.Env = append(envs, []corev1.EnvVar{
+		envs = append(envs, []corev1.EnvVar{
 			{
 				Name:  "VMANOMALY_MEMBERS_COUNT",
 				Value: strconv.Itoa(shardCount),
@@ -122,6 +124,7 @@ func shardMutator(cr *vmv1.VMAnomaly, app *appsv1.StatefulSet, shardNum int) {
 				Value: strconv.Itoa(shardNum),
 			},
 		}...)
+		container.Env = envs
 	}
 }
 
@@ -153,7 +156,7 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 				MatchLabels: cr.SelectorLabels(),
 			},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: cr.Spec.StatefulRollingUpdateStrategy,
+				Type: cr.Spec.RollingUpdateStrategy,
 			},
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			Template: corev1.PodTemplateSpec{
@@ -169,7 +172,7 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 	build.StatefulSetAddCommonParams(app, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 	app.Spec.Template.Spec.Volumes = append(app.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 	app.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(app.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
-	cr.Spec.StatefulStorage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec)
+	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec)
 	app.Spec.VolumeClaimTemplates = append(app.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 	return app, nil
 }

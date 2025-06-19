@@ -140,68 +140,64 @@ schedulers:
 							},
 						},
 					},
-					Writers: &vmv1.VMAnomalyWritersSpec{
-						VM: &vmv1.VMAnomalyVMWriterSpec{
-							DatasourceURL: "http://write.endpoint",
-							VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-								TenantID: "0:2",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls",
-											},
-											Key: "remote-ca",
-										},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls",
-											},
-											Key: "remote-cert",
-										},
-									},
-									KeySecret: &corev1.SecretKeySelector{
+					Writer: &vmv1.VMAnomalyWritersSpec{
+						DatasourceURL: "http://write.endpoint",
+						VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+							TenantID: "0:2",
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
 										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "tls",
 										},
-										Key: "remote-key",
+										Key: "remote-ca",
 									},
+								},
+								Cert: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls",
+										},
+										Key: "remote-cert",
+									},
+								},
+								KeySecret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls",
+									},
+									Key: "remote-key",
 								},
 							},
 						},
 					},
-					Readers: &vmv1.VMAnomalyReadersSpec{
-						VM: &vmv1.VMAnomalyVMReaderSpec{
-							DatasourceURL:  "http://custom.ds",
-							QueryRangePath: "/api/v1/query_range",
-							SamplingPeriod: "10s",
-							VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-								TenantID: "0:1",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls",
-											},
-											Key: "remote-ca",
-										},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls",
-											},
-											Key: "remote-cert",
-										},
-									},
-									KeySecret: &corev1.SecretKeySelector{
+					Reader: &vmv1.VMAnomalyReadersSpec{
+						DatasourceURL:  "http://custom.ds",
+						QueryRangePath: "/api/v1/query_range",
+						SamplingPeriod: "10s",
+						VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+							TenantID: "0:1",
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
 										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "tls",
 										},
-										Key: "remote-key",
+										Key: "remote-ca",
 									},
+								},
+								Cert: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls",
+										},
+										Key: "remote-cert",
+									},
+								},
+								KeySecret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls",
+									},
+									Key: "remote-key",
 								},
 							},
 						},

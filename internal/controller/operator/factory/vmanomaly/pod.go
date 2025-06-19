@@ -146,6 +146,17 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 	volumes, volumeMounts = build.LicenseVolumeTo(volumes, volumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	volumes, volumeMounts = ac.VolumeTo(volumes, volumeMounts)
 	args = build.LicenseDoubleDashArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
+	// HACK: vmanomaly doesn't support boolean equal true
+	// and false value doesn't make any sense
+	if cr.Spec.License != nil && ptr.Deref(cr.Spec.License.ForceOffline, false) {
+		for idx, arg := range args {
+			if strings.HasPrefix(arg, "--license.forceOffline=") {
+				args[idx] = "--license.forceOffline"
+			}
+		}
+	}
+
+	// vmanomaly accepts configuration file as a last element of args
 	args = append(args, confFile)
 
 	container := corev1.Container{

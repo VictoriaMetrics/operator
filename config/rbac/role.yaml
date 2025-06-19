@@ -1,3 +1,4 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -184,5 +185,8 @@ rules:
   - vmusers
   - vmusers/finalizers
   - vmusers/status
+  - vmanomalies
+  - vmanomalies/finalizers
+  - vmanomalies/status
   verbs:
   - '*'

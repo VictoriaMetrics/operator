@@ -364,3 +364,23 @@ webhooks:
     resources:
     - vmprobes
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1-vmanomaly
+  failurePolicy: Fail
+  name: vvmanomaly.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmanomalies
+  sideEffects: None

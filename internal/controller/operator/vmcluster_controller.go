@@ -44,8 +44,8 @@ func (r *VMClusterReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters/finalizers,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vmcluster", request.Name, "namespace", request.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vmcluster", request.Name, "namespace", request.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1beta1.VMCluster{}
 
 	defer func() {

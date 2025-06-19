@@ -42,11 +42,11 @@ func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]
 }
 
 func getRevisionHistoryLimit(rclient client.Client, name types.NamespacedName) int32 {
-	deployment := &appsv1.Deployment{}
-	if err := rclient.Get(context.TODO(), name, deployment); err != nil {
+	app := &appsv1.Deployment{}
+	if err := rclient.Get(context.TODO(), name, app); err != nil {
 		return 0
 	}
-	return *deployment.Spec.RevisionHistoryLimit
+	return *app.Spec.RevisionHistoryLimit
 }
 
 func expectObjectStatusExpanding(ctx context.Context,

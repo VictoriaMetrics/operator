@@ -523,7 +523,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	}
 
 	newAMSecretConfig := &corev1.Secret{
-		ObjectMeta: *buildConfgSecretMeta(cr),
+		ObjectMeta: *buildConfigSecretMeta(cr),
 		Data: map[string][]byte{
 			alertmanagerSecretConfigKey: alertmananagerConfig,
 		},
@@ -543,7 +543,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
-		prevSecretMeta = buildConfgSecretMeta(prevCR)
+		prevSecretMeta = buildConfigSecretMeta(prevCR)
 	}
 
 	if err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta); err != nil {
@@ -574,7 +574,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	return nil
 }
 
-func buildConfgSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
+func buildConfigSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
 	return &metav1.ObjectMeta{
 		Name:            cr.ConfigSecretName(),
 		Namespace:       cr.Namespace,

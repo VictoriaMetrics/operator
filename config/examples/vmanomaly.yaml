@@ -1,0 +1,49 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VMAnomaly
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: sample
+spec:
+  license:
+    forceOffline: true
+    keyRef:
+      name: vm-license
+      key: license.txt
+  configRawYaml: |
+    reader:
+      queries:
+        test1:
+          expr: node_arp_entries
+    models:
+      model1:
+        class: 'zscore'
+        z_threshold: 2.5
+    settings:
+      restore_state: true
+    schedulers:
+      scheduler1:
+        class: "scheduler.periodic.PeriodicScheduler"
+        infer_every: "1m"
+        fit_every: "2m"
+        fit_window: "1h"
+  reader:
+    datasourceURL: http://vmsingle-vms-victoria-metrics-k8s-stack.default.svc:8428
+    samplingPeriod: 1m
+  writer:
+    datasourceURL: http://vmsingle-vms-victoria-metrics-k8s-stack.default.svc:8428
+  storage:
+    volumeClaimTemplate:
+      spec:
+        resources:
+          requests:
+            storage: 50Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vm-license
+stringData:
+  license.txt: |
+    PASTE LICENSE CONTENT

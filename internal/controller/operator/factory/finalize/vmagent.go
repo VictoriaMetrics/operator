@@ -62,7 +62,7 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 
 	// check PDB
 	if cr.Spec.PodDisruptionBudget != nil {
-		if err := finalizePBD(ctx, rclient, cr); err != nil {
+		if err := finalizePDB(ctx, rclient, cr); err != nil {
 			return err
 		}
 	}

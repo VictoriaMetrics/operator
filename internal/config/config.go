@@ -32,6 +32,7 @@ var (
 	defaultEnvs = map[string]string{
 		"VM_METRICS_VERSION": "v1.119.0",
 		"VM_LOGS_VERSION":    "v1.23.3",
+		"VM_ANOMALY_VERSION": "v1.23.2",
 	}
 )
 
@@ -99,13 +100,14 @@ type BaseOperatorConf struct {
 
 	MetricsVersion string `default:"v1.119.0" env:"METRICS_VERSION"`
 	LogsVersion    string `default:"v1.23.3" env:"LOGS_VERSION"`
+	AnomalyVersion string `default:"v1.24.0" env:"ANOMALY_VERSION"`
 
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
 	UseCustomConfigReloader bool `default:"false" env:"USECUSTOMCONFIGRELOADER"`
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry                string `default:"" env:"CONTAINERREGISTRY"`
-	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.57.0" env:"CUSTOMCONFIGRELOADERIMAGE"`
+	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.59.1" env:"CUSTOMCONFIGRELOADERIMAGE"`
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false" env:"PSPAUTOCREATEENABLED"`
 
@@ -207,6 +209,28 @@ type BaseOperatorConf struct {
 		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VMAGENTDEFAULT_"`
+
+	VMAnomalyDefault struct {
+		Image               string `default:"victoriametrics/vmanomaly"`
+		Version             string `env:",expand" default:"${VM_ANOMALY_VERSION}"`
+		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
+		Port                string `default:"8490"`
+		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
+		Resource            struct {
+			Limit struct {
+				Mem string `default:"500Mi"`
+				Cpu string `default:"200m"`
+			} `prefix:"LIMIT_"`
+			Request struct {
+				Mem string `default:"200Mi"`
+				Cpu string `default:"50m"`
+			} `prefix:"REQUEST_"`
+		} `prefix:"RESOURCE_"`
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+	} `prefix:"VMANOMALYDEFAULT_"`
 
 	VMSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-metrics"`
@@ -560,6 +584,9 @@ func (boc BaseOperatorConf) Validate() error {
 		return err
 	}
 	if err := validateResource("vlogs", Resource(boc.VLogsDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmanomaly", Resource(boc.VMAnomalyDefault.Resource)); err != nil {
 		return err
 	}
 

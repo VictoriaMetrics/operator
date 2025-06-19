@@ -27,9 +27,10 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMSingle{}, addVMSingleDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAlertmanager{}, addVMAlertmanagerDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMCluster{}, addVMClusterDefaults)
-	scheme.AddTypeDefaultingFunc(&vmv1beta1.VLogs{}, addVlogsDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1beta1.VLogs{}, addVLogsDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VLSingle{}, addVLSingleDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VLCluster{}, addVLClusterDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 }
 
@@ -184,7 +185,7 @@ func addVMAuthDefaults(objI any) {
 	}
 	cv := config.ApplicationDefaults(c.VMAuthDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
-	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
 
 func addVMAlertDefaults(objI any) {
@@ -193,7 +194,7 @@ func addVMAlertDefaults(objI any) {
 
 	cv := config.ApplicationDefaults(c.VMAlertDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
-	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 	if cr.Spec.ConfigReloaderImageTag == "" {
 		panic("cannot be empty")
 	}
@@ -205,7 +206,7 @@ func addVMAgentDefaults(objI any) {
 
 	cv := config.ApplicationDefaults(c.VMAgentDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
-	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
 
 func addVMSingleDefaults(objI any) {
@@ -236,12 +237,41 @@ func addVMSingleDefaults(objI any) {
 	addDefaultsToVMBackup(cr.Spec.VMBackup, useBackupDefaultResources, backupDefaults)
 }
 
-func addVlogsDefaults(objI any) {
+func addVLogsDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VLogs)
 	c := getCfg()
-
 	cv := config.ApplicationDefaults(c.VLogsDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+}
+
+func addVMAnomalyDefaults(objI any) {
+	cr := objI.(*vmv1.VMAnomaly)
+
+	// vmanomaly takes up to 2 minutes to start
+	if cr.Spec.EmbeddedProbes == nil {
+		cr.Spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{
+			LivenessProbe: &corev1.Probe{
+				InitialDelaySeconds: 10,
+				FailureThreshold:    16,
+				PeriodSeconds:       10,
+			},
+			ReadinessProbe: &corev1.Probe{
+				InitialDelaySeconds: 10,
+				FailureThreshold:    16,
+				PeriodSeconds:       10,
+			},
+		}
+	}
+	c := getCfg()
+	cv := config.ApplicationDefaults(c.VMAnomalyDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	if cr.Spec.Monitoring == nil {
+		cr.Spec.Monitoring = &vmv1.VMAnomalyMonitoringSpec{
+			Pull: &vmv1.VMAnomalyMonitoringPullSpec{
+				Port: cr.Port(),
+			},
+		}
+	}
 }
 
 func addVLSingleDefaults(objI any) {
@@ -291,7 +321,7 @@ func addVMAlertmanagerDefaults(objI any) {
 		cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](120)
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
-	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
 
 const (
@@ -528,7 +558,7 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, appDef
 	common.Resources = Resources(common.Resources, config.Resource(appDefaults.Resource), ptr.Deref(common.UseDefaultResources, false))
 }
 
-func addDefaluesToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, useDefaultResources bool, appDefaults *config.ApplicationDefaults) {
+func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, useDefaultResources bool, appDefaults *config.ApplicationDefaults) {
 	c := getCfg()
 	if common.UseVMConfigReloader == nil && c.UseCustomConfigReloader {
 		common.UseVMConfigReloader = &c.UseCustomConfigReloader

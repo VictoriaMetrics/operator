@@ -56,8 +56,8 @@ func (r *VLSingleReconciler) Init(rclient client.Client, l logr.Logger, sc *runt
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlsingles/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlsingles/finalizers,verbs=update
 func (r *VLSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vlsingle", req.Name, "namespace", req.Namespace)
-	ctx = logger.AddToContext(ctx, reqLogger)
+	l := r.Log.WithValues("vlsingle", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1.VLSingle{}
 
 	defer func() {

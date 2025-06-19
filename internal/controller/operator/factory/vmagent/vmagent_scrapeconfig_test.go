@@ -1609,8 +1609,10 @@ scrape_configs:
 					*config.MustGetBaseConfig() = cfgO
 				}()
 			}
+
 			build.AddDefaults(testClient.Scheme())
-			if _, err := createOrUpdateConfigurationSecret(ctx, testClient, tt.cr, nil, nil); (err != nil) != tt.wantErr {
+			ac := getAssetsCache(ctx, testClient, tt.cr)
+			if err := createOrUpdateConfigurationSecret(ctx, testClient, tt.cr, nil, nil, ac); (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateConfigurationSecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var expectSecret corev1.Secret

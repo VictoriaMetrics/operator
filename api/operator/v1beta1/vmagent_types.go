@@ -491,16 +491,6 @@ type VMAgentRemoteWriteSpec struct {
 	ProxyURL *string `json:"proxyURL,omitempty"`
 }
 
-// AsMapKey key for internal cache map
-func (rw *VMAgentRemoteWriteSpec) AsMapKey() string {
-	return fmt.Sprintf("remoteWrite-%s", rw.URL)
-}
-
-// AsSecretKey key for kubernetes secret data
-func (*VMAgentRemoteWriteSpec) AsSecretKey(idx int, suffix string) string {
-	return fmt.Sprintf("RWS_%d-SECRET-%s", idx, strings.ToUpper(suffix))
-}
-
 // AsConfigMapKey key for kubernetes configmap
 func (*VMAgentRemoteWriteSpec) AsConfigMapKey(idx int, suffix string) string {
 	return fmt.Sprintf("RWS_%d-CM-%s", idx, strings.ToUpper(suffix))

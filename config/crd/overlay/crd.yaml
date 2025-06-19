@@ -9346,7 +9346,7 @@ spec:
                             x-kubernetes-map-type: atomic
                           auth_secret:
                             description: |-
-                              AuthSecret defines secrent name and key at CRD namespace.
+                              AuthSecret defines secret name and key at CRD namespace.
                               It must contain the CRAM-MD5 secret.
                             properties:
                               key:

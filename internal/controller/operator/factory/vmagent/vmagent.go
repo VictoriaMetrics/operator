@@ -131,9 +131,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 			return fmt.Errorf("cannot create or update scrape object: %w", err)
 		}
 	}
-
-	ac, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, nil)
-	if err != nil {
+	ac := getAssetsCache(ctx, rclient, cr)
+	if err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, nil, ac); err != nil {
 		return err
 	}
 
@@ -1142,15 +1141,19 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 		var user string
 		var passFile string
 		if rws.BasicAuth != nil {
-			creds, err := ac.BuildBasicAuthCreds(cr.Namespace, rws.BasicAuth)
-			if err != nil {
-				return nil, err
-			}
 			authUser.isNotNull = true
-			user = creds.Username
-			if len(creds.Password) > 0 {
+			var err error
+			user, err = ac.LoadKeyFromSecret(cr.Namespace, &rws.BasicAuth.Username)
+			if err != nil {
+				return nil, fmt.Errorf("cannot load BasicAuth username: %w", err)
+			}
+			if len(rws.BasicAuth.Password.Name) > 0 {
 				authPasswordFile.isNotNull = true
-				passFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "basicAuthPassword"))
+				var err error
+				passFile, err = ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &rws.BasicAuth.Password)
+				if err != nil {
+					return nil, fmt.Errorf("cannot load BasicAuth password: %w", err)
+				}
 			}
 			if len(rws.BasicAuth.PasswordFile) > 0 {
 				passFile = rws.BasicAuth.PasswordFile
@@ -1163,7 +1166,11 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 		var value string
 		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
 			bearerTokenFile.isNotNull = true
-			value = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "bearerToken"))
+			var err error
+			value, err = ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.BearerTokenSecret)
+			if err != nil {
+				return nil, fmt.Errorf("cannot load BearerTokenSecret: %w", err)
+			}
 		}
 		bearerTokenFile.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(value, `"`, `\"`))
 
@@ -1211,11 +1218,13 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 				oaSecretKeyFile = rws.OAuth2.ClientSecretFile
 			}
 
-			if file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.OAuth2.ClientSecret); err != nil {
-				return nil, err
-			} else if len(file) > 0 {
+			if rws.OAuth2.ClientSecret != nil {
 				oauth2ClientSecretFile.isNotNull = true
-				oaSecretKeyFile = file
+				var err error
+				oaSecretKeyFile, err = ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.OAuth2.ClientSecret)
+				if err != nil {
+					return nil, fmt.Errorf("cannot load OAuth2 ClientSecret: %w", err)
+				}
 			}
 			if secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rws.OAuth2.ClientID); err != nil {
 				return nil, err

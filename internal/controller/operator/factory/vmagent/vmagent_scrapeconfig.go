@@ -157,55 +157,51 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
-	if _, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, childObject); err != nil {
+	ac := getAssetsCache(ctx, rclient, cr)
+	if err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object) (*build.AssetsCache, error) {
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.SecretConfigResourceKind: {
-			MountDir:   vmAgentConfDir,
-			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
-		},
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, cfg)
+func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
 	if cr.Spec.IngestOnlyMode {
-		return ac, nil
+		return nil
 	}
+	// HACK: makeSpec could load content into ac and it must be called
+	// before secret config reconcile
+	if _, err := makeSpec(cr, ac); err != nil {
+		return err
+	}
+
 	sss, err := selectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
-		return nil, fmt.Errorf("selecting ServiceScrapes failed: %w", err)
+		return fmt.Errorf("selecting ServiceScrapes failed: %w", err)
 	}
 
 	pScrapes, err := selectPodScrapes(ctx, cr, rclient)
 	if err != nil {
-		return nil, fmt.Errorf("selecting PodScrapes failed: %w", err)
+		return fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
 
 	probes, err := selectVMProbes(ctx, cr, rclient)
 	if err != nil {
-		return nil, fmt.Errorf("selecting VMProbes failed: %w", err)
+		return fmt.Errorf("selecting VMProbes failed: %w", err)
 	}
 
 	nodes, err := selectVMNodeScrapes(ctx, cr, rclient)
 	if err != nil {
-		return nil, fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
+		return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
 	}
 
 	statics, err := selectStaticScrapes(ctx, cr, rclient)
 	if err != nil {
-		return nil, fmt.Errorf("selecting VMStaticScrapes failed: %w", err)
+		return fmt.Errorf("selecting VMStaticScrapes failed: %w", err)
 	}
 
 	scrapeConfigs, err := selectScrapeConfig(ctx, cr, rclient)
 	if err != nil {
-		return nil, fmt.Errorf("selecting ScrapeConfigs failed: %w", err)
+		return fmt.Errorf("selecting ScrapeConfigs failed: %w", err)
 	}
 	sos := &scrapeObjects{
 		sss:  sss,
@@ -222,7 +218,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 	if cr.Spec.AdditionalScrapeConfigs != nil {
 		sc, err := ac.LoadKeyFromSecret(cr.Namespace, cr.Spec.AdditionalScrapeConfigs)
 		if err != nil {
-			return nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
+			return fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
 		}
 		additionalScrapeConfigs = []byte(sc)
 	}
@@ -236,7 +232,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		additionalScrapeConfigs,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("generating config for vmagent failed: %w", err)
+		return fmt.Errorf("generating config for vmagent failed: %w", err)
 	}
 
 	for kind, secret := range ac.GetOutput() {
@@ -248,7 +244,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 			// Compress config to avoid 1mb secret limit for a while
 			var buf bytes.Buffer
 			if err = gzipConfig(&buf, generatedConfig); err != nil {
-				return nil, fmt.Errorf("cannot gzip config for vmagent: %w", err)
+				return fmt.Errorf("cannot gzip config for vmagent: %w", err)
 			}
 			secret.Data[vmagentGzippedFilename] = buf.Bytes()
 		}
@@ -257,15 +253,15 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 			"generated": "true",
 		}
 		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	if err := updateStatusesForScrapeObjects(ctx, rclient, cr, sos, childObject); err != nil {
-		return nil, err
+		return err
 	}
 
-	return ac, nil
+	return nil
 }
 
 func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, sos *scrapeObjects, childObject client.Object) error {
@@ -1192,4 +1188,18 @@ func addEndpointAuthTo(cfg yaml.MapSlice, ea *vmv1beta1.EndpointAuth, namespace 
 		cfg = append(cfg, c...)
 	}
 	return cfg, nil
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.SecretConfigResourceKind: {
+			MountDir:   vmAgentConfDir,
+			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
+		},
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }

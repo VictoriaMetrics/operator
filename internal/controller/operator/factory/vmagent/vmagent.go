@@ -40,7 +40,7 @@ const (
 
 	shardNumPlaceholder    = "%SHARD_NUM%"
 	tlsAssetsDir           = "/etc/vmagent-tls/certs"
-	vmagentGzippedFilename = "vmagent.yaml.gz"
+	gzippedFilename        = "vmagent.yaml.gz"
 	configEnvsubstFilename = "vmagent.env.yaml"
 	defaultMaxDiskUsage    = "1073741824"
 
@@ -425,7 +425,7 @@ func newDeploy(cr *vmv1beta1.VMAgent, podSpec *corev1.PodSpec) runtime.Object {
 		}
 		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
-		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
+		cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec
 	}
@@ -526,13 +526,13 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 	var configReloaderWatchMounts []corev1.VolumeMount
 	// mount data path any way, even if user changes its value
 	// we cannot rely on value of remoteWriteSettings.
-	pqMountPath := vmAgentPersistentQueueDir
+	pqMountPath := persistentQueueDir
 	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
+		pqMountPath = persistentQueueSTSDir
 	}
 	agentVolumeMounts = append(agentVolumeMounts,
 		corev1.VolumeMount{
-			Name:      vmAgentPersistentQueueMountName,
+			Name:      persistentQueueMountName,
 			MountPath: pqMountPath,
 		},
 	)
@@ -542,7 +542,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 	// in case for sts, we have to use persistentVolumeClaimTemplate instead
 	if !cr.Spec.StatefulMode {
 		volumes = append(volumes, corev1.Volume{
-			Name: vmAgentPersistentQueueMountName,
+			Name: persistentQueueMountName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -1010,9 +1010,9 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 	var args []string
 	if cr.Spec.RemoteWriteSettings == nil {
 		// fast path
-		pqMountPath := vmAgentPersistentQueueDir
+		pqMountPath := persistentQueueDir
 		if cr.Spec.StatefulMode {
-			pqMountPath = vmAgentPersistentQueueSTSDir
+			pqMountPath = persistentQueueSTSDir
 		}
 		args = append(args,
 			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
@@ -1037,9 +1037,9 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 	if rws.ShowURL != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.showURL=%t", *rws.ShowURL))
 	}
-	pqMountPath := vmAgentPersistentQueueDir
+	pqMountPath := persistentQueueDir
 	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
+		pqMountPath = persistentQueueSTSDir
 	}
 	if rws.TmpDataPath != nil {
 		pqMountPath = *rws.TmpDataPath
@@ -1171,25 +1171,22 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 			if err != nil {
 				return nil, fmt.Errorf("cannot load BasicAuth username: %w", err)
 			}
-			if len(rws.BasicAuth.Password.Name) > 0 {
-				authPasswordFile.isNotNull = true
-				var err error
-				passFile, err = ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &rws.BasicAuth.Password)
-				if err != nil {
-					return nil, fmt.Errorf("cannot load BasicAuth password: %w", err)
-				}
-			}
 			if len(rws.BasicAuth.PasswordFile) > 0 {
 				passFile = rws.BasicAuth.PasswordFile
 				authPasswordFile.isNotNull = true
+			} else if len(rws.BasicAuth.Password.Name) > 0 {
+				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &rws.BasicAuth.Password)
+				if err != nil {
+					return nil, err
+				}
+				passFile = file
 			}
 		}
 		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
 		authPasswordFile.flagSetting += fmt.Sprintf("%s,", passFile)
 
 		var value string
-		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
-			bearerTokenFile.isNotNull = true
+		if rws.BearerTokenSecret != nil {
 			var err error
 			value, err = ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.BearerTokenSecret)
 			if err != nil {
@@ -1359,7 +1356,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, extraWatchsMounts []cor
 			configReloadVolumeMounts = append(configReloadVolumeMounts,
 				corev1.VolumeMount{
 					Name:      "config",
-					MountPath: vmAgentConfDir,
+					MountPath: confDir,
 				})
 		}
 	}
@@ -1425,7 +1422,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, extraWatchVolumes []corev1.V
 			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
 			args = append(args, "--config-secret-key=vmagent.yaml.gz")
 		} else {
-			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, vmagentGzippedFilename)))
+			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(confDir, gzippedFilename)))
 		}
 	}
 	if cr.HasAnyStreamAggrRule() {
@@ -1487,7 +1484,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, c
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "config",
-				MountPath: vmAgentConfDir,
+				MountPath: confDir,
 			},
 			{
 				Name:      "config-out",

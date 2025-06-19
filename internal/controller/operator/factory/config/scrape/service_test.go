@@ -1,4 +1,4 @@
-package vmagent
+package scrape
 
 import (
 	"context"
@@ -15,6 +15,254 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+func Test_selectServiceScrapes(t *testing.T) {
+	predefinedObjects := []runtime.Object{
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "ss1", Labels: map[string]string{"name": "ss1"}},
+			Spec:       vmv1beta1.VMServiceScrapeSpec{},
+		},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "ss2", Labels: map[string]string{"name": "ss2"}},
+			Spec:       vmv1beta1.VMServiceScrapeSpec{},
+		},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other1", Labels: map[string]string{"name": "other1"}}},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "other1", Name: "ss1", Labels: map[string]string{"name": "ss1"}},
+			Spec:       vmv1beta1.VMServiceScrapeSpec{},
+		},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "other1", Name: "ss2", Labels: map[string]string{"name": "ss2"}},
+			Spec:       vmv1beta1.VMServiceScrapeSpec{},
+		},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other2", Labels: map[string]string{"name": "other2"}}},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "other2", Name: "ss1", Labels: map[string]string{"name": "ss1"}},
+			Spec:       vmv1beta1.VMServiceScrapeSpec{},
+		},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "other2", Name: "ss2", Labels: map[string]string{"name": "ss2"}},
+			Spec:       vmv1beta1.VMServiceScrapeSpec{},
+		},
+	}
+
+	tests := []struct {
+		name              string
+		cr                *vmv1beta1.VMAgent
+		want              []string
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "select service scrape inside vmagent namespace",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "default-monitor",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{},
+				},
+			},
+			want:    []string{"default/default-monitor"},
+			wantErr: false,
+		},
+		{
+			name: "select service scrape from namespace with filter",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "stage"}},
+					ServiceScrapeSelector:          &metav1.LabelSelector{},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "default-monitor"},
+					Spec:       vmv1beta1.VMServiceScrapeSpec{},
+				},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "stg", Labels: map[string]string{"name": "stage"}}},
+				&vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "stg", Name: "default-monitor"},
+					Spec:       vmv1beta1.VMServiceScrapeSpec{},
+				},
+			},
+			want:    []string{"stg/default-monitor"},
+			wantErr: false,
+		},
+		{
+			name: "If NamespaceSelector and Selector both undefined, selectAllByDefault=false and empty watchNS",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: nil,
+					ServiceScrapeSelector:          nil,
+					SelectAllByDefault:             false,
+				},
+			},
+			predefinedObjects: predefinedObjects,
+			want:              []string{},
+			wantErr:           false,
+		},
+		{
+			name: "If NamespaceSelector and Selector both undefined, selectAllByDefault=true and empty watchNS",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: nil,
+					ServiceScrapeSelector:          nil,
+					SelectAllByDefault:             true,
+				},
+			},
+			predefinedObjects: predefinedObjects,
+			want:              []string{"default/ss1", "default/ss2", "other1/ss1", "other1/ss2", "other2/ss1", "other2/ss2"},
+			wantErr:           false,
+		},
+		{
+			name: "If NamespaceSelector defined, Selector undefined, selectAllByDefault=false and empty watchNS",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
+					ServiceScrapeSelector:          nil,
+					SelectAllByDefault:             false,
+				},
+			},
+			predefinedObjects: predefinedObjects,
+			want:              []string{"other1/ss1", "other1/ss2"},
+			wantErr:           false,
+		},
+		{
+			name: "If NamespaceSelector defined, Selector undefined, selectAllByDefault=true and empty watchNS",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
+					ServiceScrapeSelector:          nil,
+					SelectAllByDefault:             true,
+				},
+			},
+			predefinedObjects: predefinedObjects,
+			want:              []string{"other1/ss1", "other1/ss2"},
+			wantErr:           false,
+		},
+		{
+			name: "If NamespaceSelector undefined, Selector defined, selectAllByDefault=false and empty watchNS",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: nil,
+					ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
+					SelectAllByDefault:             false,
+				},
+			},
+			predefinedObjects: predefinedObjects,
+			want:              []string{"default/ss1"},
+			wantErr:           false,
+		},
+		{
+			name: "If NamespaceSelector undefined, Selector defined, selectAllByDefault=true and empty watchNS",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: nil,
+					ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
+					SelectAllByDefault:             true,
+				},
+			},
+			predefinedObjects: predefinedObjects,
+			want:              []string{"default/ss1"},
+			wantErr:           false,
+		},
+		{
+			name: "If NamespaceSelector and Selector both defined, selectAllByDefault=false and empty watchNS",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
+					ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
+					SelectAllByDefault:             false,
+				},
+			},
+			predefinedObjects: predefinedObjects,
+			want:              []string{"other1/ss1"},
+			wantErr:           false,
+		},
+		{
+			name: "If NamespaceSelector and Selector both defined, selectAllByDefault=true and empty watchNS",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other2"}},
+					ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss2"}},
+					SelectAllByDefault:             true,
+				},
+			},
+			predefinedObjects: predefinedObjects,
+			want:              []string{"other2/ss2"},
+			wantErr:           false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+
+			got, err := selectServiceScrapes(context.TODO(), fclient, tt.cr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SelectServiceScrapes() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			gotNames := []string{}
+			for _, monitorName := range got {
+				gotNames = append(gotNames, fmt.Sprintf("%s/%s", monitorName.Namespace, monitorName.Name))
+			}
+			sort.Strings(gotNames)
+			if !reflect.DeepEqual(gotNames, tt.want) {
+				t.Errorf("selectServiceScrapes() got = %v, want %v", gotNames, tt.want)
+			}
+		})
+	}
+}
 
 func Test_generateServiceScrapeConfig(t *testing.T) {
 	type args struct {

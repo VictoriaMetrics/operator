@@ -1,4 +1,4 @@
-package vmagent
+package scrape
 
 import (
 	"bytes"
@@ -119,7 +119,7 @@ labels:
 	}
 }
 
-func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
+func TestCreateOrUpdate(t *testing.T) {
 	tests := []struct {
 		name              string
 		cr                *vmv1beta1.VMAgent
@@ -1612,8 +1612,8 @@ scrape_configs:
 
 			build.AddDefaults(testClient.Scheme())
 			ac := getAssetsCache(ctx, testClient, tt.cr)
-			if err := createOrUpdateConfigurationSecret(ctx, testClient, tt.cr, nil, nil, ac); (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateConfigurationSecret() error = %v, wantErr %v", err, tt.wantErr)
+			if err := CreateOrUpdate(ctx, testClient, tt.cr, nil, nil, ac); (err != nil) != tt.wantErr {
+				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var expectSecret corev1.Secret
 			if err := testClient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.PrefixedName()}, &expectSecret); err != nil {

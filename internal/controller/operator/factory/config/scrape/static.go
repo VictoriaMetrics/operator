@@ -1,24 +1,48 @@
-package vmagent
+package scrape
 
 import (
 	"context"
 	"fmt"
 
 	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
+
+func selectStaticScrapes(ctx context.Context, rclient client.Client, opts *k8stools.SelectorOpts) ([]*vmv1beta1.VMStaticScrape, error) {
+	var selectedConfigs []*vmv1beta1.VMStaticScrape
+	var namespacedNames []string
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMStaticScrapeList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			selectedConfigs = append(selectedConfigs, item)
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+		}
+	}); err != nil {
+		return nil, err
+	}
+	build.OrderByKeys(selectedConfigs, namespacedNames)
+	logger.SelectedObjects(ctx, "VMStaticScrape", len(namespacedNames), 0, namespacedNames)
+
+	return selectedConfigs, nil
+}
 
 func generateStaticScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMStaticScrape,
 	ep *vmv1beta1.TargetEndpoint,
 	i int,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
+	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
+	se := sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -41,9 +65,9 @@ func generateStaticScrapeConfig(
 		ep.SeriesLimit = sc.Spec.SeriesLimit
 	}
 	if ep.ScrapeTimeout == "" {
-		ep.ScrapeTimeout = cr.Spec.ScrapeTimeout
+		ep.ScrapeTimeout = sp.ScrapeTimeout
 	}
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 
@@ -59,7 +83,7 @@ func generateStaticScrapeConfig(
 	for _, c := range ep.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.StaticScrapeRelabelTemplate {
+	for _, trc := range sp.StaticScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

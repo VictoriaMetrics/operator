@@ -22,6 +22,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/config/scrape"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -40,12 +41,8 @@ const (
 
 	shardNumPlaceholder    = "%SHARD_NUM%"
 	tlsAssetsDir           = "/etc/vmagent-tls/certs"
-	gzippedFilename        = "vmagent.yaml.gz"
 	configEnvsubstFilename = "vmagent.env.yaml"
 	defaultMaxDiskUsage    = "1073741824"
-
-	kubeNodeEnvName     = "KUBE_NODE_NAME"
-	kubeNodeEnvTemplate = "%{" + kubeNodeEnvName + "}"
 )
 
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
@@ -87,6 +84,42 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		return nil, fmt.Errorf("cannot reconcile service for vmagent: %w", err)
 	}
 	return newService, nil
+}
+
+// CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
+func CreateOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
+	var prevCR *vmv1beta1.VMAgent
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+
+	if _, err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, childObject); err != nil {
+		return err
+	}
+	return nil
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.SecretConfigResourceKind: {
+			MountDir:   confDir,
+			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
+		},
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
+}
+
+func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) (*build.AssetsCache, error) {
+	ac := getAssetsCache(ctx, rclient, cr)
+	if _, err := scrape.CreateOrUpdate(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
+		return nil, err
+	}
+	return ac, nil
 }
 
 // CreateOrUpdate creates deployment for vmagent and configures it
@@ -509,7 +542,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 
 	if cr.Spec.DaemonSetMode {
 		envs = append(envs, corev1.EnvVar{
-			Name: kubeNodeEnvName,
+			Name: build.KubeNodeEnvName,
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "spec.nodeName",
@@ -837,7 +870,7 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, rclient client.Client, c
 	}
 	// global section
 	if len(cr.Spec.InlineRelabelConfig) > 0 {
-		rcs := addRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
+		rcs := scrape.AddRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
 		data, err := yaml.Marshal(rcs)
 		if err != nil {
 			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
@@ -862,7 +895,7 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, rclient client.Client, c
 	for i := range cr.Spec.RemoteWrite {
 		rw := cr.Spec.RemoteWrite[i]
 		if len(rw.InlineUrlRelabelConfig) > 0 {
-			rcs := addRelabelConfigs(nil, rw.InlineUrlRelabelConfig)
+			rcs := scrape.AddRelabelConfigs(nil, rw.InlineUrlRelabelConfig)
 			data, err := yaml.Marshal(rcs)
 			if err != nil {
 				return nil, fmt.Errorf("cannot serialize urlRelabelConfig as yaml: %w", err)
@@ -1422,7 +1455,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, extraWatchVolumes []corev1.V
 			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
 			args = append(args, "--config-secret-key=vmagent.yaml.gz")
 		} else {
-			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(confDir, gzippedFilename)))
+			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(confDir, scrape.GzippedFilename)))
 		}
 	}
 	if cr.HasAnyStreamAggrRule() {

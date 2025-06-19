@@ -4,6 +4,11 @@ import (
 	"sort"
 )
 
+const (
+	KubeNodeEnvName     = "KUBE_NODE_NAME"
+	KubeNodeEnvTemplate = "%{" + KubeNodeEnvName + "}"
+)
+
 type keysSorter[T any] struct {
 	target []T
 	sorter []string

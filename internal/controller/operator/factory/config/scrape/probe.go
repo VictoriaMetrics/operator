@@ -1,24 +1,49 @@
-package vmagent
+package scrape
 
 import (
 	"context"
 	"fmt"
 
 	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
+
+func selectVMProbes(ctx context.Context, rclient client.Client, opts *k8stools.SelectorOpts) ([]*vmv1beta1.VMProbe, error) {
+	var selectedConfigs []*vmv1beta1.VMProbe
+	var namespacedNames []string
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMProbeList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			selectedConfigs = append(selectedConfigs, item)
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+		}
+	}); err != nil {
+		return nil, err
+	}
+
+	build.OrderByKeys(selectedConfigs, namespacedNames)
+	logger.SelectedObjects(ctx, "VMProbes", len(namespacedNames), 0, namespacedNames)
+	return selectedConfigs, nil
+}
 
 func generateProbeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMProbe,
 	i int,
 	apiserverConfig *vmv1beta1.APIServerConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
+	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
+	se := sp.CommonScrapeSecurityEnforcements
+
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -42,7 +67,7 @@ func generateProbeConfig(
 		sc.Spec.Scheme = sc.Spec.VMProberSpec.Scheme
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, sc.Spec.EndpointScrapeParams, se)
 
@@ -74,20 +99,19 @@ func generateProbeConfig(
 		}
 	}
 	if sc.Spec.Targets.Ingress != nil {
-
-		skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+		skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", sc.Spec.Targets.Ingress.Selector, skipRelabelSelectors)
 		selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.Targets.Ingress.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
 
-		k8sSDOpts := generateK8SSDConfigOptions{
+		k8sOpts := k8sSDOpts{
 			namespaces:         selectedNamespaces,
-			shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+			shouldAddSelectors: sp.EnableKubernetesAPISelectors,
 			selectors:          sc.Spec.Targets.Ingress.Selector,
 			apiServerConfig:    apiserverConfig,
 			role:               kubernetesSDRoleIngress,
 			namespace:          sc.Namespace,
 		}
-		if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
+		if c, err := generateK8SSDConfig(ac, k8sOpts); err != nil {
 			return nil, err
 		} else {
 			cfg = append(cfg, c...)
@@ -147,7 +171,7 @@ func generateProbeConfig(
 		},
 	}...)
 
-	for _, trc := range cr.Spec.ProbeScrapeRelabelTemplate {
+	for _, trc := range sp.ProbeScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

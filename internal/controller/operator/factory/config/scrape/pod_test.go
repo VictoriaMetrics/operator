@@ -1,4 +1,4 @@
-package vmagent
+package scrape
 
 import (
 	"context"
@@ -13,6 +13,93 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+func Test_selectPodScrapes(t *testing.T) {
+	tests := []struct {
+		name              string
+		cr                *vmv1beta1.VMAgent
+		want              []string
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "selector pod scrape at vmagent ns",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					PodScrapeSelector: &metav1.LabelSelector{},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{},
+				},
+			},
+			wantErr: false,
+			want:    []string{"default/pod1"},
+		},
+		{
+			name: "selector pod scrape at different ns with ns selector",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					PodScrapeNamespaceSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"name": "monitoring"},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitor", Labels: map[string]string{"name": "monitoring"}}},
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod2",
+						Namespace: "monitor",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{},
+				},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{},
+				},
+			},
+			wantErr: false,
+			want:    []string{"monitor/pod2"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			got, err := selectPodScrapes(context.TODO(), fclient, tt.cr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SelectPodScrapes() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			var gotNames []string
+
+			for _, k := range got {
+				gotNames = append(gotNames, fmt.Sprintf("%s/%s", k.Namespace, k.Name))
+			}
+			sort.Strings(gotNames)
+			if !reflect.DeepEqual(gotNames, tt.want) {
+				t.Errorf("SelectPodScrapes() got = %v, want %v", gotNames, tt.want)
+			}
+		})
+	}
+}
 
 func Test_generatePodScrapeConfig(t *testing.T) {
 	type args struct {

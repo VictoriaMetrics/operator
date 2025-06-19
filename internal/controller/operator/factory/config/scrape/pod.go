@@ -1,39 +1,57 @@
-package vmagent
+package scrape
 
 import (
 	"context"
 	"fmt"
 
 	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
+
+func selectPodScrapes(ctx context.Context, rclient client.Client, opts *k8stools.SelectorOpts) ([]*vmv1beta1.VMPodScrape, error) {
+	var selectedConfigs []*vmv1beta1.VMPodScrape
+	var namespacedNames []string
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMPodScrapeList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			selectedConfigs = append(selectedConfigs, item)
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+		}
+	}); err != nil {
+		return nil, err
+	}
+
+	build.OrderByKeys(selectedConfigs, namespacedNames)
+	logger.SelectedObjects(ctx, "VMPodScrapes", len(namespacedNames), 0, namespacedNames)
+
+	return selectedConfigs, nil
+}
 
 func generatePodScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMPodScrape,
 	ep vmv1beta1.PodMetricsEndpoint,
 	i int,
 	apiserverConfig *vmv1beta1.APIServerConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
+	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
-	cfg := yaml.MapSlice{
-		{
-			Key:   "job_name",
-			Value: fmt.Sprintf("podScrape/%s/%s/%d", sc.Namespace, sc.Name, i),
-		},
-	}
-
+	se := sp.CommonScrapeSecurityEnforcements
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
 	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
 		ep.AttachMetadata = sc.Spec.AttachMetadata
 	}
-	k8sSDOpts := generateK8SSDConfigOptions{
+	k8sOpts := k8sSDOpts{
 		namespaces:         selectedNamespaces,
-		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+		shouldAddSelectors: sp.EnableKubernetesAPISelectors,
 		selectors:          sc.Spec.Selector,
 		apiServerConfig:    apiserverConfig,
 		role:               kubernetesSDRolePod,
@@ -41,9 +59,16 @@ func generatePodScrapeConfig(
 		namespace:          sc.Namespace,
 	}
 	if cr.Spec.DaemonSetMode {
-		k8sSDOpts.mustUseNodeSelector = true
+		k8sOpts.mustUseNodeSelector = true
 	}
-	if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
+	cfg := yaml.MapSlice{
+		{
+			Key:   "job_name",
+			Value: fmt.Sprintf("podScrape/%s/%s/%d", sc.Namespace, sc.Name, i),
+		},
+	}
+
+	if c, err := generateK8SSDConfig(ac, k8sOpts); err != nil {
 		return nil, err
 	} else {
 		cfg = append(cfg, c...)
@@ -57,7 +82,7 @@ func generatePodScrapeConfig(
 		ep.SeriesLimit = sc.Spec.SeriesLimit
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 
@@ -71,7 +96,7 @@ func generatePodScrapeConfig(
 		})
 	}
 
-	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+	skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "pod", sc.Spec.Selector, skipRelabelSelectors)
 
 	// Filter targets based on correct port for the endpoint.
@@ -165,7 +190,7 @@ func generatePodScrapeConfig(
 	for _, c := range ep.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.PodScrapeRelabelTemplate {
+	for _, trc := range sp.PodScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

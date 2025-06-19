@@ -1,4 +1,4 @@
-package vmagent
+package scrape
 
 import (
 	"context"
@@ -14,6 +14,57 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+func Test_selectVMProbes(t *testing.T) {
+	tests := []struct {
+		name              string
+		cr                *vmv1beta1.VMAgent
+		want              []string
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "select vmProbe with static conf",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					ProbeSelector: &metav1.LabelSelector{},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMProbe{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "static-probe",
+					},
+					Spec: vmv1beta1.VMProbeSpec{Targets: vmv1beta1.VMProbeTargets{StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{Targets: []string{"host-1"}}}},
+				},
+			},
+			want: []string{"default/static-probe"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			got, err := selectVMProbes(context.TODO(), fclient, tt.cr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SelectVMProbes() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			var result []string
+			for _, k := range got {
+				result = append(result, fmt.Sprintf("%s/%s", k.Namespace, k.Name))
+			}
+			sort.Strings(result)
+			if !reflect.DeepEqual(result, tt.want) {
+				t.Errorf("selectVMProbes() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func Test_generateProbeConfig(t *testing.T) {
 	type args struct {

@@ -84,6 +84,7 @@ type VMSingleSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	CommonScrapeParams                `json:",inline,omitempty"`
 	CommonDefaultableParams           `json:",inline"`
 	CommonApplicationDeploymentParams `json:",inline"`
 }
@@ -373,6 +374,41 @@ func (cr *VMSingleStatus) GetStatusMetadata() *StatusMetadata {
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMSingle) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
+}
+
+// IsUnmanaged checks if object should managed any config objects
+func (cr *VMSingle) IsUnmanaged() bool {
+	return cr.Spec.CommonScrapeParams.isUnmanaged()
+}
+
+// IsNodeScrapeUnmanaged checks if vmsingle should managed any VMNodeScrape objects
+func (cr *VMSingle) IsNodeScrapeUnmanaged() bool {
+	return cr.Spec.CommonScrapeParams.isNodeScrapeUnmanaged()
+}
+
+// IsServiceScrapeUnmanaged checks if vmsingle should managed any VMServiceScrape objects
+func (cr *VMSingle) IsServiceScrapeUnmanaged() bool {
+	return cr.Spec.CommonScrapeParams.isServiceScrapeUnmanaged()
+}
+
+// IsUnmanaged checks if vmsingle should managed any VMPodScrape objects
+func (cr *VMSingle) IsPodScrapeUnmanaged() bool {
+	return cr.Spec.CommonScrapeParams.isPodScrapeUnmanaged()
+}
+
+// IsProbeUnmanaged checks if vmsingle should managed any VMProbe objects
+func (cr *VMSingle) IsProbeUnmanaged() bool {
+	return cr.Spec.CommonScrapeParams.isProbeUnmanaged()
+}
+
+// IsStaticScrapeUnmanaged checks if vmsingle should managed any VMStaticScrape objects
+func (cr *VMSingle) IsStaticScrapeUnmanaged() bool {
+	return cr.Spec.CommonScrapeParams.isStaticScrapeUnmanaged()
+}
+
+// IsScrapeConfigUnmanaged checks if vmsingle should managed any VMScrapeConfig objects
+func (cr *VMSingle) IsScrapeConfigUnmanaged() bool {
+	return cr.Spec.CommonScrapeParams.isScrapeConfigUnmanaged()
 }
 
 func init() {

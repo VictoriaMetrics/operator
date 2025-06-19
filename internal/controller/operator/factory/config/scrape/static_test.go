@@ -1,4 +1,4 @@
-package vmagent
+package scrape
 
 import (
 	"context"

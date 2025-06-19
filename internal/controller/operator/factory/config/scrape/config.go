@@ -1,4 +1,4 @@
-package vmagent
+package scrape
 
 import (
 	"bytes"
@@ -19,9 +19,12 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+const gzippedFilename = "scrape.yaml.gz"
 
 type scrapeObjects struct {
 	sss        []*vmv1beta1.VMServiceScrape
@@ -42,10 +45,10 @@ var skipNon = func(_ error) bool {
 	return false
 }
 
-func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
+func (so *scrapeObjects) mustValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	var err error
 	so.sss, so.sssBroken, err = forEachCollectSkipOn(so.sss, so.sssBroken, func(ss *vmv1beta1.VMServiceScrape) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range ss.Spec.Endpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
@@ -62,7 +65,7 @@ func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 	}
 
 	so.pss, so.pssBroken, err = forEachCollectSkipOn(so.pss, so.pssBroken, func(ps *vmv1beta1.VMPodScrape) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range ps.Spec.PodMetricsEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
@@ -79,7 +82,7 @@ func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 	}
 
 	so.stss, so.stssBroken, err = forEachCollectSkipOn(so.stss, so.stssBroken, func(sts *vmv1beta1.VMStaticScrape) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sts.Spec.TargetEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
@@ -93,7 +96,7 @@ func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 	}
 
 	so.nss, so.nssBroken, err = forEachCollectSkipOn(so.nss, so.nssBroken, func(ns *vmv1beta1.VMNodeScrape) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(ns.Spec.EndpointAuth); err != nil {
 				return err
 			}
@@ -105,7 +108,7 @@ func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 	}
 
 	so.prss, so.prssBroken, err = forEachCollectSkipOn(so.prss, so.prssBroken, func(prs *vmv1beta1.VMProbe) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(prs.Spec.EndpointAuth); err != nil {
 				return err
 			}
@@ -124,7 +127,7 @@ func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 
 	so.scss, so.scssBroken, err = forEachCollectSkipOn(so.scss, so.scssBroken, func(scss *vmv1beta1.VMScrapeConfig) error {
 		// TODO: @f41gh7 validate per configuration FS access
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(scss.Spec.EndpointAuth); err != nil {
 				return err
 			}
@@ -137,86 +140,80 @@ func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 	}
 }
 
-// CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
-func CreateOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
-	var prevCR *vmv1beta1.VMAgent
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
-	ac := getAssetsCache(ctx, rclient, cr)
-	if err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
-		return err
-	}
-	return nil
-}
-
-func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
+func CreateOrUpdate(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
+	sp := &cr.Spec.CommonScrapeParams
 	if cr.Spec.IngestOnlyMode {
 		return nil
 	}
-	// HACK: makeSpec could load content into ac and it must be called
-	// before secret config reconcile
-	if _, err := makeSpec(cr, ac); err != nil {
-		return err
+	opts := &k8stools.SelectorOpts{
+		SelectAll:        cr.Spec.SelectAllByDefault,
+		DefaultNamespace: cr.Namespace,
+	}
+	var sos scrapeObjects
+	if !cr.Spec.DaemonSetMode {
+		opts.NamespaceSelector = sp.ServiceScrapeNamespaceSelector
+		opts.ObjectSelector = sp.ServiceScrapeSelector
+		sss, err := selectServiceScrapes(ctx, rclient, opts)
+		if err != nil {
+			return fmt.Errorf("selecting ServiceScrapes failed: %w", err)
+		}
+		sos.sss = sss
+
+		opts.NamespaceSelector = sp.ProbeNamespaceSelector
+		opts.ObjectSelector = sp.ProbeSelector
+		probes, err := selectVMProbes(ctx, rclient, opts)
+		if err != nil {
+			return fmt.Errorf("selecting VMProbes failed: %w", err)
+		}
+		sos.prss = probes
+
+		opts.NamespaceSelector = sp.StaticScrapeNamespaceSelector
+		opts.ObjectSelector = sp.StaticScrapeSelector
+		statics, err := selectStaticScrapes(ctx, rclient, opts)
+		if err != nil {
+			return fmt.Errorf("selecting PodScrapes failed: %w", err)
+		}
+		sos.stss = statics
+
+		opts.NamespaceSelector = sp.ScrapeConfigNamespaceSelector
+		opts.ObjectSelector = sp.ScrapeConfigSelector
+		scrapeConfigs, err := selectScrapeConfig(ctx, rclient, opts)
+		if err != nil {
+			return fmt.Errorf("selecting ScrapeConfigs failed: %w", err)
+		}
+		sos.scss = scrapeConfigs
 	}
 
-	sss, err := selectServiceScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting ServiceScrapes failed: %w", err)
-	}
-
-	pScrapes, err := selectPodScrapes(ctx, cr, rclient)
+	opts.NamespaceSelector = sp.PodScrapeNamespaceSelector
+	opts.ObjectSelector = sp.PodScrapeSelector
+	pScrapes, err := selectPodScrapes(ctx, rclient, opts)
 	if err != nil {
 		return fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
+	sos.pss = pScrapes
 
-	probes, err := selectVMProbes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting VMProbes failed: %w", err)
-	}
-
-	nodes, err := selectVMNodeScrapes(ctx, cr, rclient)
+	opts.NamespaceSelector = sp.NodeScrapeNamespaceSelector
+	opts.ObjectSelector = sp.NodeScrapeSelector
+	nodes, err := selectVMNodeScrapes(ctx, rclient, opts)
 	if err != nil {
 		return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
 	}
+	sos.nss = nodes
 
-	statics, err := selectStaticScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting VMStaticScrapes failed: %w", err)
-	}
-
-	scrapeConfigs, err := selectScrapeConfig(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting ScrapeConfigs failed: %w", err)
-	}
-	sos := &scrapeObjects{
-		sss:  sss,
-		pss:  pScrapes,
-		prss: probes,
-		nss:  nodes,
-		stss: statics,
-		scss: scrapeConfigs,
-	}
-	sos.mustValidateObjects(cr)
-
-	var additionalScrapeConfigs []byte
-
-	if cr.Spec.AdditionalScrapeConfigs != nil {
-		sc, err := ac.LoadKeyFromSecret(cr.Namespace, cr.Spec.AdditionalScrapeConfigs)
-		if err != nil {
-			return fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
-		}
-		additionalScrapeConfigs = []byte(sc)
-	}
+	sos.mustValidateObjects(sp)
 
 	// Update secret based on the most recent configuration.
+	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
+		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +
+			"Since operator launched with set WATCH_NAMESPACE param. " +
+			"Set custom ServiceAccountName property for VMAgent if needed.")
+		sp.IgnoreNamespaceSelectors = true
+	}
 	generatedConfig, err := generateConfig(
 		ctx,
-		cr,
-		sos,
+		sp,
+		&sos,
 		ac,
-		additionalScrapeConfigs,
 	)
 	if err != nil {
 		return fmt.Errorf("generating config for vmagent failed: %w", err)
@@ -244,11 +241,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		}
 	}
 
-	if err := updateStatusesForScrapeObjects(ctx, rclient, cr, sos, childObject); err != nil {
-		return err
-	}
-
-	return nil
+	return updateStatusesForScrapeObjects(ctx, rclient, cr, &sos, childObject)
 }
 
 func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, sos *scrapeObjects, childObject client.Object) error {
@@ -428,12 +421,12 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	return nil
 }
 
-func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointScrapeParams, cr *vmv1beta1.VMAgent) {
+func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointScrapeParams, sp *vmv1beta1.CommonScrapeParams) {
 	if dst.ScrapeInterval == "" {
 		dst.ScrapeInterval = dst.Interval
 	}
 
-	originInterval, minIntervalStr, maxIntervalStr := dst.ScrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval
+	originInterval, minIntervalStr, maxIntervalStr := dst.ScrapeInterval, sp.MinScrapeInterval, sp.MaxScrapeInterval
 	if originInterval == "" || (minIntervalStr == nil && maxIntervalStr == nil) {
 		// fast path
 		return
@@ -482,31 +475,24 @@ var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
 func generateConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	sp *vmv1beta1.CommonScrapeParams,
 	sos *scrapeObjects,
 	ac *build.AssetsCache,
-	additionalScrapeConfigs []byte,
 ) ([]byte, error) {
 	cfg := yaml.MapSlice{}
-	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
-		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +
-			"Since operator launched with set WATCH_NAMESPACE param. " +
-			"Set custom ServiceAccountName property for VMAgent if needed.")
-		cr.Spec.IgnoreNamespaceSelectors = true
-	}
 
-	if cr.Spec.ScrapeInterval == "" {
-		cr.Spec.ScrapeInterval = defaultScrapeInterval
+	if sp.ScrapeInterval == "" {
+		sp.ScrapeInterval = defaultScrapeInterval
 	}
 
 	globalItems := yaml.MapSlice{
-		{Key: "scrape_interval", Value: cr.Spec.ScrapeInterval},
-		{Key: "external_labels", Value: buildExternalLabels(cr)},
+		{Key: "scrape_interval", Value: sp.ScrapeInterval},
+		{Key: "external_labels", Value: buildExternalLabels(sp)},
 	}
-	if cr.Spec.ScrapeTimeout != "" {
+	if sp.ScrapeTimeout != "" {
 		globalItems = append(globalItems, yaml.MapItem{
 			Key:   "scrape_timeout",
-			Value: cr.Spec.ScrapeTimeout,
+			Value: sp.ScrapeTimeout,
 		})
 	}
 
@@ -520,12 +506,11 @@ func generateConfig(
 		for i, ep := range ss.Spec.Endpoints {
 			s, err := generateServiceScrapeConfig(
 				ctx,
-				cr,
 				ss,
 				ep, i,
 				apiserverConfig,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
+				sp,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:configLen]
@@ -542,11 +527,10 @@ func generateConfig(
 		for i, ep := range identifier.Spec.PodMetricsEndpoints {
 			s, err := generatePodScrapeConfig(
 				ctx,
-				cr,
 				identifier, ep, i,
 				apiserverConfig,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
+				sp,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:configLen]
@@ -562,12 +546,11 @@ func generateConfig(
 	for i, identifier := range sos.prss {
 		s, err := generateProbeConfig(
 			ctx,
-			cr,
 			identifier,
 			i,
 			apiserverConfig,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
+			sp,
 		)
 		if err != nil {
 			if build.IsNotFound(err) {
@@ -580,11 +563,10 @@ func generateConfig(
 	for _, identifier := range sos.nss {
 		s, err := generateNodeScrapeConfig(
 			ctx,
-			cr,
 			identifier,
 			apiserverConfig,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
+			sp,
 		)
 		if err != nil {
 			if build.IsNotFound(err) {
@@ -600,11 +582,10 @@ func generateConfig(
 		for i, ep := range identifier.Spec.TargetEndpoints {
 			s, err := generateStaticScrapeConfig(
 				ctx,
-				cr,
 				identifier,
 				ep, i,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
+				sp,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:configLen]
@@ -620,10 +601,9 @@ func generateConfig(
 	for _, identifier := range sos.scss {
 		s, err := generateScrapeConfig(
 			ctx,
-			cr,
 			identifier,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
+			sp,
 		)
 		if err != nil {
 			if build.IsNotFound(err) {
@@ -634,14 +614,24 @@ func generateConfig(
 		scrapeConfigs = append(scrapeConfigs, s)
 	}
 
+	var additionalScrapeConfigs []byte
+
+	if sp.AdditionalScrapeConfigs != nil {
+		sc, err := ac.LoadKeyFromSecret(cr.Namespace, sp.AdditionalScrapeConfigs)
+		if err != nil {
+			return nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
+		}
+		additionalScrapeConfigs = []byte(sc)
+	}
+
 	var additionalScrapeConfigsYaml []yaml.MapSlice
 	if err := yaml.Unmarshal(additionalScrapeConfigs, &additionalScrapeConfigsYaml); err != nil {
 		return nil, fmt.Errorf("unmarshalling additional scrape configs failed: %w", err)
 	}
 
 	var inlineScrapeConfigsYaml []yaml.MapSlice
-	if len(cr.Spec.InlineScrapeConfig) > 0 {
-		if err := yaml.Unmarshal([]byte(cr.Spec.InlineScrapeConfig), &inlineScrapeConfigsYaml); err != nil {
+	if len(sp.InlineScrapeConfig) > 0 {
+		if err := yaml.Unmarshal([]byte(sp.InlineScrapeConfig), &inlineScrapeConfigsYaml); err != nil {
 			return nil, fmt.Errorf("unmarshalling inline additional scrape configs failed: %w", err)
 		}
 	}
@@ -720,7 +710,7 @@ func addAttachMetadata(dst yaml.MapSlice, am *vmv1beta1.AttachMetadata) yaml.Map
 	return dst
 }
 
-func addRelabelConfigs(dst []yaml.MapSlice, rcs []*vmv1beta1.RelabelConfig) []yaml.MapSlice {
+func AddRelabelConfigs(dst []yaml.MapSlice, rcs []*vmv1beta1.RelabelConfig) []yaml.MapSlice {
 	for i := range rcs {
 		rc := rcs[i]
 		if rc.IsEmpty() {
@@ -804,7 +794,7 @@ func getNamespacesFromNamespaceSelector(nsSelector *vmv1beta1.NamespaceSelector,
 	}
 }
 
-type generateK8SSDConfigOptions struct {
+type k8sSDOpts struct {
 	namespaces          []string
 	apiServerConfig     *vmv1beta1.APIServerConfig
 	role                string
@@ -815,7 +805,7 @@ type generateK8SSDConfigOptions struct {
 	namespace           string
 }
 
-func generateK8SSDConfig(ac *build.AssetsCache, opts generateK8SSDConfigOptions) (yaml.MapSlice, error) {
+func generateK8SSDConfig(ac *build.AssetsCache, opts k8sSDOpts) (yaml.MapSlice, error) {
 	k8sSDConfig := yaml.MapSlice{
 		{
 			Key:   "role",
@@ -894,7 +884,7 @@ func generateK8SSDConfig(ac *build.AssetsCache, opts generateK8SSDConfigOptions)
 		})
 		selector = append(selector, yaml.MapItem{
 			Key:   "field",
-			Value: "spec.nodeName=" + kubeNodeEnvTemplate,
+			Value: "spec.nodeName=" + build.KubeNodeEnvTemplate,
 		})
 		selectors = append(selectors, selector)
 
@@ -958,26 +948,24 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 	})
 }
 
-func buildExternalLabels(p *vmv1beta1.VMAgent) yaml.MapSlice {
+func buildExternalLabels(sp *vmv1beta1.CommonScrapeParams) yaml.MapSlice {
 	m := map[string]string{}
 
 	// Use "prometheus" external label name by default if field is missing.
 	// in case of migration from prometheus to vmagent, it helps to have same labels
 	// Do not add external label if field is set to empty string.
-	prometheusExternalLabelName := "prometheus"
-	if p.Spec.VMAgentExternalLabelName != nil {
-		if *p.Spec.VMAgentExternalLabelName != "" {
-			prometheusExternalLabelName = *p.Spec.VMAgentExternalLabelName
+	externalLabelName := "prometheus"
+	if sp.ExternalLabelName != nil {
+		if *sp.ExternalLabelName != "" {
+			externalLabelName = *sp.ExternalLabelName
 		} else {
-			prometheusExternalLabelName = ""
+			externalLabelName = ""
 		}
 	}
-
-	if prometheusExternalLabelName != "" {
-		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", p.Namespace, p.Name)
+	if externalLabelName != "" {
+		m[externalLabelName] = fmt.Sprintf("%s/%s", p.Namespace, p.Name)
 	}
-
-	for n, v := range p.Spec.ExternalLabels {
+	for n, v := range sp.ExternalLabels {
 		m[n] = v
 	}
 	return stringMapToMapSlice(m)
@@ -1064,7 +1052,7 @@ func addSelectorToRelabelingFor(relabelings []yaml.MapSlice, typeName string, se
 	return relabelings
 }
 
-func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParams, se vmv1beta1.VMAgentSecurityEnforcements) yaml.MapSlice {
+func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParams, se vmv1beta1.CommonScrapeSecurityEnforcements) yaml.MapSlice {
 	hl := honorLabels(cs.HonorLabels, se.OverrideHonorLabels)
 	cfg = append(cfg, yaml.MapItem{
 		Key:   "honor_labels",
@@ -1119,7 +1107,7 @@ func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParam
 	return cfg
 }
 
-func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, se vmv1beta1.VMAgentSecurityEnforcements) yaml.MapSlice {
+func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, se vmv1beta1.CommonScrapeSecurityEnforcements) yaml.MapSlice {
 	if len(src) == 0 {
 		return cfg
 	}

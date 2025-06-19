@@ -1,25 +1,64 @@
-package vmagent
+package scrape
 
 import (
 	"context"
 	"fmt"
 
 	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
+
+func selectServiceScrapes(ctx context.Context, rclient client.Client, opts *k8stools.SelectorOpts) ([]*vmv1beta1.VMServiceScrape, error) {
+	var selectedConfigs []*vmv1beta1.VMServiceScrape
+	var namespacedNames []string
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMServiceScrapeList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			rclient.Scheme().Default(item)
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			selectedConfigs = append(selectedConfigs, item)
+		}
+	}); err != nil {
+		return nil, err
+	}
+
+	build.OrderByKeys(selectedConfigs, namespacedNames)
+	logger.SelectedObjects(ctx, "VMServiceScrape", len(namespacedNames), 0, namespacedNames)
+
+	return selectedConfigs, nil
+}
 
 func generateServiceScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMServiceScrape,
 	ep vmv1beta1.Endpoint,
 	i int,
 	apiserverConfig *vmv1beta1.APIServerConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
+	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
+	se := sp.CommonScrapeSecurityEnforcements
+	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
+	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
+		ep.AttachMetadata = sc.Spec.AttachMetadata
+	}
+	k8sOpts := k8sSDOpts{
+		namespaces:         selectedNamespaces,
+		shouldAddSelectors: sp.EnableKubernetesAPISelectors,
+		selectors:          sc.Spec.Selector,
+		apiServerConfig:    apiserverConfig,
+		role:               sc.Spec.DiscoveryRole,
+		attachMetadata:     &ep.AttachMetadata,
+		namespace:          sc.Namespace,
+	}
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -31,20 +70,7 @@ func generateServiceScrapeConfig(
 		sc.Spec.DiscoveryRole = kubernetesSDRoleEndpoint
 	}
 
-	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
-	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
-		ep.AttachMetadata = sc.Spec.AttachMetadata
-	}
-	k8sSDOpts := generateK8SSDConfigOptions{
-		namespaces:         selectedNamespaces,
-		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
-		selectors:          sc.Spec.Selector,
-		apiServerConfig:    apiserverConfig,
-		role:               sc.Spec.DiscoveryRole,
-		attachMetadata:     &ep.AttachMetadata,
-		namespace:          sc.Namespace,
-	}
-	if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
+	if c, err := generateK8SSDConfig(ac, k8sOpts); err != nil {
 		return nil, err
 	} else {
 		cfg = append(cfg, c...)
@@ -57,14 +83,14 @@ func generateServiceScrapeConfig(
 		ep.SeriesLimit = sc.Spec.SeriesLimit
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
 
 	// Exact label matches.
-	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+	skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "service", sc.Spec.Selector, skipRelabelSelectors)
 
 	// Filter targets based on correct port for the endpoint.
@@ -232,7 +258,7 @@ func generateServiceScrapeConfig(
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
 
-	for _, trc := range cr.Spec.ServiceScrapeRelabelTemplate {
+	for _, trc := range sp.ServiceScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 

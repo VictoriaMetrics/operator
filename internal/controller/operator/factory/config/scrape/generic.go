@@ -1,4 +1,4 @@
-package vmagent
+package scrape
 
 import (
 	"context"
@@ -6,19 +6,43 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
+
+func selectScrapeConfig(ctx context.Context, rclient client.Client, opts *k8stools.SelectorOpts) ([]*vmv1beta1.VMScrapeConfig, error) {
+	var selectedConfigs []*vmv1beta1.VMScrapeConfig
+	var namespacedNames []string
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMScrapeConfigList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			selectedConfigs = append(selectedConfigs, item)
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+		}
+	}); err != nil {
+		return nil, err
+	}
+	build.OrderByKeys(selectedConfigs, namespacedNames)
+	logger.SelectedObjects(ctx, "VMScrapeConfigs", len(namespacedNames), 0, namespacedNames)
+
+	return selectedConfigs, nil
+}
 
 func generateScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMScrapeConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
+	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
 	jobName := fmt.Sprintf("scrapeConfig/%s/%s", sc.Namespace, sc.Name)
+	se := sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -26,7 +50,7 @@ func generateScrapeConfig(
 		},
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, sc.Spec.EndpointScrapeParams, se)
 
@@ -34,7 +58,7 @@ func generateScrapeConfig(
 	for _, c := range sc.Spec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.ScrapeConfigRelabelTemplate {
+	for _, trc := range sp.ScrapeConfigRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

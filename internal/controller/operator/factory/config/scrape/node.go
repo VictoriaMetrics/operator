@@ -1,24 +1,64 @@
-package vmagent
+package scrape
 
 import (
 	"context"
 	"fmt"
 
 	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
+
+func selectVMNodeScrapes(ctx context.Context, rclient client.Client, opts *k8stools.SelectorOpts) ([]*vmv1beta1.VMNodeScrape, error) {
+	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
+		logger.WithContext(ctx).Info("cannot use VMNodeScrape at operator in single namespace mode with default permissions." +
+			" Create ServiceAccount for VMAgent manually if needed. Skipping config generation for it")
+		return nil, nil
+	}
+
+	var selectedConfigs []*vmv1beta1.VMNodeScrape
+	var namespacedNames []string
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMNodeScrapeList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			selectedConfigs = append(selectedConfigs, item)
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+
+		}
+	}); err != nil {
+		return nil, err
+	}
+
+	build.OrderByKeys(selectedConfigs, namespacedNames)
+	logger.SelectedObjects(ctx, "VMNodeScrapes", len(namespacedNames), 0, namespacedNames)
+
+	return selectedConfigs, nil
+}
 
 func generateNodeScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMNodeScrape,
 	apiserverConfig *vmv1beta1.APIServerConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
+	sp *vmv1beta1.CommonScrapeParams,
 ) (yaml.MapSlice, error) {
 	nodeSpec := &sc.Spec
+	se := sp.CommonScrapeSecurityEnforcements
+	k8sOpts := k8sSDOpts{
+		shouldAddSelectors: sp.EnableKubernetesAPISelectors,
+		selectors:          sc.Spec.Selector,
+		apiServerConfig:    apiserverConfig,
+		role:               kubernetesSDRoleNode,
+		namespace:          sc.Namespace,
+	}
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -26,16 +66,8 @@ func generateNodeScrapeConfig(
 		},
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &nodeSpec.EndpointScrapeParams, cr)
-
-	k8sSDOpts := generateK8SSDConfigOptions{
-		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
-		selectors:          sc.Spec.Selector,
-		apiServerConfig:    apiserverConfig,
-		role:               kubernetesSDRoleNode,
-		namespace:          sc.Namespace,
-	}
-	if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
+	setScrapeIntervalToWithLimit(ctx, &nodeSpec.EndpointScrapeParams, sp)
+	if c, err := generateK8SSDConfig(ac, k8sOpts); err != nil {
 		return nil, err
 	} else {
 		cfg = append(cfg, c...)
@@ -45,7 +77,7 @@ func generateNodeScrapeConfig(
 
 	var relabelings []yaml.MapSlice
 
-	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+	skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "node", nodeSpec.Selector, skipRelabelSelectors)
 	// Add __address__ as internalIP  and pod and service labels into proper labels.
 	relabelings = append(relabelings, []yaml.MapSlice{
@@ -96,7 +128,7 @@ func generateNodeScrapeConfig(
 	for _, c := range nodeSpec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.NodeScrapeRelabelTemplate {
+	for _, trc := range sp.NodeScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 

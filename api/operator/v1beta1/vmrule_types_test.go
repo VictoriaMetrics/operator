@@ -32,7 +32,7 @@ var _ = Describe("VMRule Webhook", func() {
               job: "{{ $labels.job }}"
             annotations:
               value: "{{ $value }}"
-              description: 'kafka coorinator is down'
+              description: 'kafka coordinator is down'
 
         `, `at idx=0 bad tenant="bad-value": cannot parse account_id: "bad-value" as int32, err: strconv.ParseInt: parsing "bad-value": invalid syntax`),
 			Entry("bad expression", `
@@ -52,7 +52,7 @@ var _ = Describe("VMRule Webhook", func() {
               job: "{{ $labels.job }}"
             annotations:
               value: "{{ $value }}"
-              description: 'kafka coorinator is down'
+              description: 'kafka coordinator is down'
 
         `, `validation failed for VMRule: / group: kafka err: invalid expression for rule  "coordinator down": bad prometheus expr: "non_exist_func(ml_app_gauge{exec_context=\"consumer_group_state\"}) == 0", err: unsupported function "non_exist_func"`),
 			Entry("bad template", `
@@ -73,7 +73,7 @@ var _ = Describe("VMRule Webhook", func() {
               job: "{{ $labls.job }}"
             annotations:
               value: "{{ $value }}"
-              description: 'kafka coorinator is down'
+              description: 'kafka coordinator is down'
 
         `, `validation failed for VMRule: / group: kafka err: invalid labels for rule  "coordinator down": errors(1): key "job", template "{{ $labls.job }}": error parsing annotation template: template: :1: undefined variable "$labls"`),
 			Entry("duplicate rules", `
@@ -117,7 +117,7 @@ var _ = Describe("VMRule Webhook", func() {
               job: "{{ $labels.job }}"
             annotations:
               value: "{{ $value }}"
-              description: 'kafka coorinator is down'
+              description: 'kafka coordinator is down'
 
         `),
 			Entry("with template functions", `
@@ -138,7 +138,7 @@ var _ = Describe("VMRule Webhook", func() {
               job: "{{ $labels.job }}"
             annotations:
               value: "{{ $value }}"
-              description: 'kafka coorinator is down'
+              description: 'kafka coordinator is down'
               first: |
                     {{ with query "some_metric{instance='someinstance'}" }}
                       {{ . | first | value | humanize }}

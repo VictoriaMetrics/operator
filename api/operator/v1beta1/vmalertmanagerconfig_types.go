@@ -480,7 +480,7 @@ type EmailConfig struct {
 	// AuthPassword defines secret name and key at CRD namespace.
 	// +optional
 	AuthPassword *corev1.SecretKeySelector `json:"auth_password,omitempty" yaml:"auth_password,omitempty"`
-	// AuthSecret defines secrent name and key at CRD namespace.
+	// AuthSecret defines secret name and key at CRD namespace.
 	// It must contain the CRAM-MD5 secret.
 	// +optional
 	AuthSecret *corev1.SecretKeySelector `json:"auth_secret,omitempty" yaml:"auth_secret,omitempty"`

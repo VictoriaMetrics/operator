@@ -65,7 +65,7 @@ var (
 	tlsKeyFile = flag.String("reload.tlsKeyFile", "",
 		"Optional path to client-side TLS key file to use when connecting to -reload-url")
 	tlsServerName = flag.String("reload.tlsServerName", "",
-		"Optional TLS server name to use for connections to -realod-url.")
+		"Optional TLS server name to use for connections to -reload-url.")
 	tlsInsecureSkipVerify = flag.Bool("reload.tlsInsecureSkipVerify", true,
 		"Whether to skip tls verification when connecting to -reload-url")
 )

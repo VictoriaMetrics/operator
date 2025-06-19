@@ -154,7 +154,7 @@ func Resources(crdResources corev1.ResourceRequirements, defaultResources config
 // AddExtraArgsOverrideDefaults adds extraArgs for given source args
 // it trims in-place args if it was set via extraArgs
 // no need to check for extraEnvs, it has priority over args at VictoriaMetrics apps
-// dashes is either "-" or "--", depending on the process. altermanager needs two dashes.
+// dashes is either "-" or "--", depending on the process. alertmanager needs two dashes.
 func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, dashes string) []string {
 	if len(extraArgs) == 0 {
 		// fast path

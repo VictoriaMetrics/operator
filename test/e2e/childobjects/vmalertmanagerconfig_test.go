@@ -238,7 +238,7 @@ route:
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "partiallly-ok",
+							Name:      "partially-ok",
 							Namespace: namespace,
 						},
 						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
@@ -278,7 +278,7 @@ route:
 							}
 						}
 						for _, nsn := range []types.NamespacedName{
-							{Name: "partiallly-ok", Namespace: namespace},
+							{Name: "partially-ok", Namespace: namespace},
 						} {
 							var amcfg vmv1beta1.VMAlertmanagerConfig
 							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
@@ -318,7 +318,7 @@ route:
 					},
 					verify: func() {
 						for _, nsn := range []types.NamespacedName{
-							{Name: "partiallly-ok", Namespace: namespace},
+							{Name: "partially-ok", Namespace: namespace},
 						} {
 							Eventually(func() error {
 								var amcfg vmv1beta1.VMAlertmanagerConfig

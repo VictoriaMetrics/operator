@@ -57,7 +57,7 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme
 }
 
-// Reconcile general reconile method for controller
+// Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*

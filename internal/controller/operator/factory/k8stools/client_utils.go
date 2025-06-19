@@ -142,7 +142,7 @@ var (
 
 // ObjectWatcherForNamespaces performs a watch operation for multiple namespaces
 // without using cluster wide permissions
-// with empty namaspaces uses cluster wide mode
+// with empty namespaces uses cluster wide mode
 type ObjectWatcherForNamespaces struct {
 	result         chan watch.Event
 	objectWatchers []watch.Interface

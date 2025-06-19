@@ -14,4 +14,4 @@ spec:
         job: "{{ $labels.job }}"
       annotations:
         value: "{{ $value }}"
-        description: 'kafka coorinator is down'
+        description: 'kafka coordinator is down'

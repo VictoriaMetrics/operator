@@ -102,7 +102,7 @@ labels:
 			// related fields only filled during json unmarshal
 			j, err := json.Marshal(tt.rc)
 			if err != nil {
-				t.Fatalf("cannto serialize relabelConfig : %s", err)
+				t.Fatalf("cannot serialize relabelConfig : %s", err)
 			}
 			var rlbCfg vmv1beta1.RelabelConfig
 			if err := json.Unmarshal(j, &rlbCfg); err != nil {

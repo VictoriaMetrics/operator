@@ -296,7 +296,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				),
-				Entry("by removing podDistruptionBudget and keeping exist ingress", "vm-keep-ingress-change-pdb",
+				Entry("by removing podDisruptionBudget and keeping exist ingress", "vm-keep-ingress-change-pdb",
 					&vmv1beta1.VMAuth{
 						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,

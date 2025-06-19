@@ -96,7 +96,7 @@ jobs:
             echo "there is no docker secret, just build"
             make build
           fi
-      - name: Prapare binary cache
+      - name: Prepare binary cache
         uses: actions/cache@v4
         with:
           path: ./bin

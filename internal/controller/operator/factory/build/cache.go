@@ -29,7 +29,7 @@ const (
 	SecretConfigResourceKind ResourceKind = "config"
 )
 
-// ResourceName returns a name for prodived resource and corresponding cr object
+// ResourceName returns a name for provided resource and corresponding cr object
 func ResourceName(kind ResourceKind, cr builderOpts) string {
 	var parts []string
 	if kind == TLSAssetsResourceKind {
@@ -79,7 +79,7 @@ type oauth2Creds struct {
 // AssetsCache is a shared cache for all CR assets
 // that stores configmaps and secrets during reconcile loop
 //
-// It's mostly needed to reduce presssure on Kubernertes API server
+// It's mostly needed to reduce pressure on Kubernetes API server
 // because by default, operator disables client.Cache for those objects.
 // Since it greatly increases memory usage.
 type AssetsCache struct {
@@ -166,7 +166,7 @@ func (ac *AssetsCache) addToOutput(kind ResourceKind, key, secret string) string
 }
 
 // TLSToYAML returns yaml representation of provided TLSConfig config
-// Please note all secret values will be aded as a plain text to it.
+// Please note all secret values will be added as a plain text to it.
 func (ac *AssetsCache) TLSToYAML(ns, prefix string, cfg *vmv1beta1.TLSConfig) (yaml.MapSlice, error) {
 	if cfg == nil {
 		return nil, nil
@@ -195,7 +195,7 @@ func (ac *AssetsCache) TLSToYAML(ns, prefix string, cfg *vmv1beta1.TLSConfig) (y
 }
 
 // ProxyAuthToYAML returns yaml representation of provided ProxyAuth config
-// Please note all secret values will be aded as a plain text to it.
+// Please note all secret values will be added as a plain text to it.
 func (ac *AssetsCache) ProxyAuthToYAML(ns string, cfg *vmv1beta1.ProxyAuth) (yaml.MapSlice, error) {
 	if cfg == nil {
 		return nil, nil
@@ -232,7 +232,7 @@ func (ac *AssetsCache) ProxyAuthToYAML(ns string, cfg *vmv1beta1.ProxyAuth) (yam
 }
 
 // AuthorizationToYAML returns yaml representation of provided Authorization config
-// Please note all secret values will be aded as a plain text to it.
+// Please note all secret values will be added as a plain text to it.
 func (ac *AssetsCache) AuthorizationToYAML(ns string, cfg *vmv1beta1.Authorization) (yaml.MapSlice, error) {
 	if cfg == nil || (cfg.Credentials == nil && len(cfg.CredentialsFile) == 0) {
 		return nil, nil
@@ -257,8 +257,8 @@ func (ac *AssetsCache) AuthorizationToYAML(ns string, cfg *vmv1beta1.Authorizati
 	}, nil
 }
 
-// BasicAuthToYAML returns ymal representation of provided BasicAuth configuration
-// Please note all secret values will be aded as a plain text to it.
+// BasicAuthToYAML returns yaml representation of provided BasicAuth configuration
+// Please note all secret values will be added as a plain text to it.
 func (ac *AssetsCache) BasicAuthToYAML(ns string, cfg *vmv1beta1.BasicAuth) (yaml.MapSlice, error) {
 	if cfg == nil {
 		return nil, nil
@@ -281,7 +281,7 @@ func (ac *AssetsCache) BasicAuthToYAML(ns string, cfg *vmv1beta1.BasicAuth) (yam
 }
 
 // OAuth2ToYAML returns yaml representation of provided oauth2 configuration
-// Please note all secret values will be aded as a plain text to it.
+// Please note all secret values will be added as a plain text to it.
 func (ac *AssetsCache) OAuth2ToYAML(ns string, cfg *vmv1beta1.OAuth2) (yaml.MapSlice, error) {
 	if cfg == nil {
 		return nil, nil

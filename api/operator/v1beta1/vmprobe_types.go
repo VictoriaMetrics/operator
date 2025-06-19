@@ -158,11 +158,11 @@ func (cr *VMProbe) Validate() error {
 	switch {
 	case cr.Spec.Targets.Ingress != nil:
 		if err := checkRelabelConfigs(cr.Spec.Targets.Ingress.RelabelConfigs); err != nil {
-			return fmt.Errorf("invliad ingress.relabelingConfigs: %w", err)
+			return fmt.Errorf("invalid ingress.relabelingConfigs: %w", err)
 		}
 	case cr.Spec.Targets.StaticConfig != nil:
 		if err := checkRelabelConfigs(cr.Spec.Targets.StaticConfig.RelabelConfigs); err != nil {
-			return fmt.Errorf("invliad staticConfig.relabelingConfigs: %w", err)
+			return fmt.Errorf("invalid staticConfig.relabelingConfigs: %w", err)
 		}
 	}
 	return nil

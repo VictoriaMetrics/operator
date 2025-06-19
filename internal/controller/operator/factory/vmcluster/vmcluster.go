@@ -34,7 +34,7 @@ const (
 // then vmSelect and wait for it readiness as well
 // and last one is vmInsert
 // we manually handle statefulsets rolling updates
-// needed in update checked by revesion status
+// needed in update checked by revision status
 // its controlled by k8s controller-manager
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
 	var prevCR *vmv1beta1.VMCluster

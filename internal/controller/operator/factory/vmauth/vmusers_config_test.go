@@ -2286,7 +2286,7 @@ unauthorized_user:
 				return
 			}
 			if !assert.Equal(t, tt.want, string(got2)) {
-				t.Fatal("idempodent check failed")
+				t.Fatal("idempotent check failed")
 			}
 		})
 	}

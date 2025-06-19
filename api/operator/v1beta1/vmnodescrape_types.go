@@ -71,22 +71,12 @@ type VMNodeScrapeList struct {
 	Items           []VMNodeScrape `json:"items"`
 }
 
-// AsProxyKey builds key for proxy cache maps
-func (cr *VMNodeScrape) AsProxyKey() string {
-	return fmt.Sprintf("nodeScrapeProxy/%s/%s", cr.Namespace, cr.Name)
-}
-
 // Validate returns error if CR is invalid
 func (cr *VMNodeScrape) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
 	return cr.Spec.validate()
-}
-
-// AsMapKey - returns cr name with suffix for token/auth maps.
-func (cr *VMNodeScrape) AsMapKey() string {
-	return fmt.Sprintf("nodeScrape/%s/%s", cr.Namespace, cr.Name)
 }
 
 // GetStatusMetadata implements reconcile.objectWithStatus interface

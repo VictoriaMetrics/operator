@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
+
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/api): introduce new resource `VMAnomaly`. See [1136](https://github.com/VictoriaMetrics/operator/issues/1136) issue for details.
 
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): properly set `HPA` target for `vlselect` component. See [PR-1406](https://github.com/VictoriaMetrics/operator/pull/1406) for details. Thanks to the @bmiguel-teixeira.

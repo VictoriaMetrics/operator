@@ -11,12 +11,10 @@ import (
 	"strings"
 
 	"github.com/VictoriaMetrics/metricsql"
-	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -25,30 +23,19 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-var vmagentSecretFetchErrsTotal prometheus.Counter
-
-func init() {
-	vmagentSecretFetchErrsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "operator_vmagent_config_fetch_secret_errors_total",
-		Help: "Indicates if user defined objects contain missing link for secret",
-	})
-	metrics.Registry.MustRegister(vmagentSecretFetchErrsTotal)
-}
-
 type scrapeObjects struct {
-	sss              []*vmv1beta1.VMServiceScrape
-	pss              []*vmv1beta1.VMPodScrape
-	stss             []*vmv1beta1.VMStaticScrape
-	nss              []*vmv1beta1.VMNodeScrape
-	prss             []*vmv1beta1.VMProbe
-	scss             []*vmv1beta1.VMScrapeConfig
-	sssBroken        []*vmv1beta1.VMServiceScrape
-	pssBroken        []*vmv1beta1.VMPodScrape
-	stssBroken       []*vmv1beta1.VMStaticScrape
-	nssBroken        []*vmv1beta1.VMNodeScrape
-	prssBroken       []*vmv1beta1.VMProbe
-	scssBroken       []*vmv1beta1.VMScrapeConfig
-	totalBrokenCount int
+	sss        []*vmv1beta1.VMServiceScrape
+	pss        []*vmv1beta1.VMPodScrape
+	stss       []*vmv1beta1.VMStaticScrape
+	nss        []*vmv1beta1.VMNodeScrape
+	prss       []*vmv1beta1.VMProbe
+	scss       []*vmv1beta1.VMScrapeConfig
+	sssBroken  []*vmv1beta1.VMServiceScrape
+	pssBroken  []*vmv1beta1.VMPodScrape
+	stssBroken []*vmv1beta1.VMStaticScrape
+	nssBroken  []*vmv1beta1.VMNodeScrape
+	prssBroken []*vmv1beta1.VMProbe
+	scssBroken []*vmv1beta1.VMScrapeConfig
 }
 
 var skipNon = func(_ error) bool {
@@ -265,9 +252,6 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 }
 
 func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, sos *scrapeObjects, childObject client.Object) error {
-
-	vmagentSecretFetchErrsTotal.Add(float64(sos.totalBrokenCount))
-
 	parentObject := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
 	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
 		// fast path

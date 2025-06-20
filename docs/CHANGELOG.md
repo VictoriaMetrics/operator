@@ -16,6 +16,7 @@ aliases:
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/api): introduce new resource `VMAnomaly`. See [1136](https://github.com/VictoriaMetrics/operator/issues/1136) issue for details.
 
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): properly set `HPA` target for `vlselect` component. See [PR-1406](https://github.com/VictoriaMetrics/operator/pull/1406) for details. Thanks to the @bmiguel-teixeira.
+* BUGFIX: Renamed metric `operator_vmagent_config_fetch_secret_errors_total` to `operator_fetch_errors_total`. Now it's incremented during each unsuccessful attempt to retrieve data from K8s secret or configmap, not only for VMAgent scrape objects.
 
 ## [v0.59.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.59.2)
 

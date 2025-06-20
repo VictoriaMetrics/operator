@@ -9,15 +9,30 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
+
+var secretFetchErrsTotal *prometheus.CounterVec
+
+func init() {
+	secretFetchErrsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "operator_fetch_errors_total",
+			Help: "Indicates if user defined objects contain missing link for secret/configmap",
+		},
+		[]string{"object", "key"},
+	)
+	metrics.Registry.MustRegister(secretFetchErrsTotal)
+}
 
 // ResourceKind defines a type of resource to perform build operations on
 type ResourceKind string
@@ -421,11 +436,12 @@ func (ac *AssetsCache) BuildBasicAuthCreds(ns string, cfg *vmv1beta1.BasicAuth) 
 
 // LoadSecret returns secret object by given namespace and name
 func (ac *AssetsCache) LoadSecret(ns, name string) (*corev1.Secret, error) {
-	key := buildCacheKey(ns, name)
+	key := path.Join(ns, name)
 	s, ok := ac.secrets[key]
 	if !ok {
 		s = &corev1.Secret{}
 		if err := ac.client.Get(ac.ctx, types.NamespacedName{Namespace: ns, Name: name}, s); err != nil {
+			secretFetchErrsTotal.WithLabelValues(path.Join("secret", key), "").Inc()
 			if k8serrors.IsNotFound(err) {
 				ac.secrets[key] = nil
 			}
@@ -433,7 +449,7 @@ func (ac *AssetsCache) LoadSecret(ns, name string) (*corev1.Secret, error) {
 		}
 	}
 	if s == nil {
-		return nil, &KeyNotFoundError{"", path.Join(ns, name), "secret"}
+		return nil, newKeyNotFoundError(path.Join("secret", key), "")
 	}
 	ac.secrets[key] = s
 	return s, nil
@@ -471,11 +487,12 @@ func (ac *AssetsCache) LoadKeyFromConfigMap(ns string, cs *corev1.ConfigMapKeySe
 	if cs == nil {
 		return "", fmt.Errorf("BUG, configmap key selector must be non nil in ns=%q", ns)
 	}
-	key := buildCacheKey(ns, cs.Name)
+	key := path.Join(ns, cs.Name)
 	cm, ok := ac.configMaps[key]
 	if !ok {
 		cm = &corev1.ConfigMap{}
 		if err := ac.client.Get(ac.ctx, types.NamespacedName{Namespace: ns, Name: cs.Name}, cm); err != nil {
+			secretFetchErrsTotal.WithLabelValues(path.Join("configmap", key), "").Inc()
 			if k8serrors.IsNotFound(err) {
 				ac.configMaps[key] = nil
 			}
@@ -483,10 +500,10 @@ func (ac *AssetsCache) LoadKeyFromConfigMap(ns string, cs *corev1.ConfigMapKeySe
 		}
 	}
 	if cm == nil {
-		return "", &KeyNotFoundError{cs.Key, path.Join(ns, cs.Name, cs.Key), "configmap"}
+		return "", newKeyNotFoundError(path.Join("configmap", key), cs.Key)
 	}
 	if v, ok := cm.Data[cs.Key]; !ok {
-		return "", &KeyNotFoundError{cs.Key, path.Join(ns, cs.Name, cs.Key), "configmap"}
+		return "", newKeyNotFoundError(path.Join("configmap", key), cs.Key)
 	} else {
 		ac.configMaps[key] = cm
 		return maybeTrimSpace(v), nil
@@ -499,11 +516,12 @@ func (ac *AssetsCache) LoadKeyFromSecret(ns string, ss *corev1.SecretKeySelector
 	if ss == nil {
 		return "", fmt.Errorf("BUG, secret key selector must be non nil in ns=%q", ns)
 	}
-	key := buildCacheKey(ns, ss.Name)
+	key := path.Join(ns, ss.Name)
 	s, ok := ac.secrets[key]
 	if !ok {
 		s = &corev1.Secret{}
 		if err := ac.client.Get(ac.ctx, types.NamespacedName{Namespace: ns, Name: ss.Name}, s); err != nil {
+			secretFetchErrsTotal.WithLabelValues(path.Join("secret", key), "").Inc()
 			if k8serrors.IsNotFound(err) {
 				ac.secrets[key] = nil
 			}
@@ -511,10 +529,10 @@ func (ac *AssetsCache) LoadKeyFromSecret(ns string, ss *corev1.SecretKeySelector
 		}
 	}
 	if s == nil {
-		return "", &KeyNotFoundError{ss.Key, path.Join(ns, ss.Name, ss.Key), "secret"}
+		return "", newKeyNotFoundError(path.Join("secret", key), ss.Key)
 	}
 	if v, ok := s.Data[ss.Key]; !ok {
-		return "", &KeyNotFoundError{ss.Key, path.Join(ns, ss.Name, ss.Key), "secret"}
+		return "", newKeyNotFoundError(path.Join("secret", key), ss.Key)
 	} else {
 		ac.secrets[key] = s
 		return maybeTrimSpace(string(v)), nil
@@ -549,12 +567,19 @@ func maybeTrimSpace(s string) string {
 	return strings.TrimRightFunc(s, unicode.IsSpace)
 }
 
+func newKeyNotFoundError(object, key string) *KeyNotFoundError {
+	secretFetchErrsTotal.WithLabelValues(object, key).Inc()
+	return &KeyNotFoundError{
+		object: object,
+		key:    key,
+	}
+}
+
 // KeyNotFoundError represents an error if expected key
 // was not found at secret or configmap data
 type KeyNotFoundError struct {
-	key      string
-	cacheKey string
-	context  string
+	object string
+	key    string
 }
 
 // IsNotFound performs a check if provided error is KeyNotFoundError
@@ -565,9 +590,8 @@ func IsNotFound(err error) bool {
 
 // Error implements errors.Error interface
 func (ke *KeyNotFoundError) Error() string {
-	return fmt.Sprintf("expected key=%q was not found at=%q cache_key=%q", ke.key, ke.context, ke.cacheKey)
-}
-
-func buildCacheKey(ns, keyName string) string {
-	return fmt.Sprintf("%s/%s", ns, keyName)
+	if len(ke.key) == 0 {
+		return fmt.Sprintf("expected object=%q was not found", ke.object)
+	}
+	return fmt.Sprintf("expected key=%q was not found at object=%q", ke.key, ke.object)
 }

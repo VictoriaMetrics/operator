@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use scrape namespace instead of VMAgent one for VMStaticScrape secrets lookup.
+
 ## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
 
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/api): introduce new resource `VMAnomaly`. See [1136](https://github.com/VictoriaMetrics/operator/issues/1136) issue for details.

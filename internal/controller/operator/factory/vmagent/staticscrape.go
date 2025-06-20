@@ -73,5 +73,5 @@ func generateStaticScrapeConfig(
 	} else {
 		cfg = append(cfg, c...)
 	}
-	return addEndpointAuthTo(cfg, &ep.EndpointAuth, cr.Namespace, ac)
+	return addEndpointAuthTo(cfg, &ep.EndpointAuth, sc.Namespace, ac)
 }

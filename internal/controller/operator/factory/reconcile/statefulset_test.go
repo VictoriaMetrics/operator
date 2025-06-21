@@ -19,23 +19,18 @@ import (
 )
 
 func Test_waitForPodReady(t *testing.T) {
-	type args struct {
-		ns             string
-		podName        string
-		desiredVersion string
-	}
 	tests := []struct {
 		name              string
-		args              args
+		ns                string
+		podName           string
+		desiredVersion    string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
-			name: "testing pod with unready status",
-			args: args{
-				ns:      "default",
-				podName: "vmselect-example-0",
-			},
+			name:    "testing pod with unready status",
+			ns:      "default",
+			podName: "vmselect-example-0",
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
@@ -61,11 +56,9 @@ func Test_waitForPodReady(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "testing pod with ready status",
-			args: args{
-				ns:      "default",
-				podName: "vmselect-example-0",
-			},
+			name:    "testing pod with ready status",
+			ns:      "default",
+			podName: "vmselect-example-0",
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
@@ -93,12 +86,10 @@ func Test_waitForPodReady(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "with desiredVersion",
-			args: args{
-				ns:             "default",
-				podName:        "vmselect-example-0",
-				desiredVersion: "some-version",
-			},
+			name:           "with desiredVersion",
+			ns:             "default",
+			podName:        "vmselect-example-0",
+			desiredVersion: "some-version",
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
@@ -129,12 +120,10 @@ func Test_waitForPodReady(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "with missing desiredVersion",
-			args: args{
-				ns:             "default",
-				podName:        "vmselect-example-0",
-				desiredVersion: "some-version",
-			},
+			name:           "with missing desiredVersion",
+			ns:             "default",
+			podName:        "vmselect-example-0",
+			desiredVersion: "some-version",
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
@@ -166,8 +155,8 @@ func Test_waitForPodReady(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			nsn := types.NamespacedName{Namespace: tt.args.ns, Name: tt.args.podName}
-			if err := waitForPodReady(context.Background(), fclient, nsn, tt.args.desiredVersion, 0); (err != nil) != tt.wantErr {
+			nsn := types.NamespacedName{Namespace: tt.ns, Name: tt.podName}
+			if err := waitForPodReady(context.Background(), fclient, nsn, tt.desiredVersion, 0); (err != nil) != tt.wantErr {
 				t.Errorf("waitForPodReady() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -175,111 +164,100 @@ func Test_waitForPodReady(t *testing.T) {
 }
 
 func Test_podIsReady(t *testing.T) {
-	type args struct {
+	tests := []struct {
+		name            string
 		pod             corev1.Pod
 		minReadySeconds int32
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
+		want            bool
 	}{
 		{
 			name: "pod is ready",
-			args: args{
-				pod: corev1.Pod{
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodInitialized,
-								Status: "False",
-							},
-							{
-								Type:   corev1.PodReady,
-								Status: "True",
-							},
+			pod: corev1.Pod{
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodInitialized,
+							Status: "False",
 						},
-						Phase: corev1.PodRunning,
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
 					},
+					Phase: corev1.PodRunning,
 				},
 			},
 			want: true,
 		},
 		{
 			name: "pod is unready",
-			args: args{
-				pod: corev1.Pod{
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodInitialized,
-								Status: "False",
-							},
-							{
-								Type:   corev1.PodReady,
-								Status: "True",
-							},
+			pod: corev1.Pod{
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodInitialized,
+							Status: "False",
 						},
-						Phase: corev1.PodPending,
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
 					},
+					Phase: corev1.PodPending,
 				},
 			},
 			want: false,
 		},
 		{
 			name: "pod is deleted",
-			args: args{
-				pod: corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						DeletionTimestamp: &metav1.Time{},
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodInitialized,
-								Status: "False",
-							},
-							{
-								Type:   corev1.PodReady,
-								Status: "True",
-							},
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &metav1.Time{},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodInitialized,
+							Status: "False",
 						},
-						Phase: corev1.PodSucceeded,
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
 					},
+					Phase: corev1.PodSucceeded,
 				},
 			},
 			want: false,
 		},
 		{
 			name: "pod is not min ready",
-			args: args{
-				pod: corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						DeletionTimestamp: &metav1.Time{},
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodInitialized,
-								Status: "False",
-							},
-							{
-								Type:               corev1.PodReady,
-								Status:             "True",
-								LastTransitionTime: metav1.Time{Time: time.Now().Add(time.Hour)},
-							},
-						},
-						Phase: corev1.PodSucceeded,
-					},
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &metav1.Time{},
 				},
-				minReadySeconds: 45,
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodInitialized,
+							Status: "False",
+						},
+						{
+							Type:               corev1.PodReady,
+							Status:             "True",
+							LastTransitionTime: metav1.Time{Time: time.Now().Add(time.Hour)},
+						},
+					},
+					Phase: corev1.PodSucceeded,
+				},
 			},
-			want: false,
+			minReadySeconds: 45,
+			want:            false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := PodIsReady(&tt.args.pod, tt.args.minReadySeconds); got != tt.want {
+			if got := PodIsReady(&tt.pod, tt.minReadySeconds); got != tt.want {
 				t.Errorf("PodIsReady() = %v, want %v", got, tt.want)
 			}
 		})
@@ -287,25 +265,20 @@ func Test_podIsReady(t *testing.T) {
 }
 
 func Test_performRollingUpdateOnSts(t *testing.T) {
-	type args struct {
-		stsName   string
-		ns        string
-		podLabels map[string]string
-	}
 	tests := []struct {
 		name              string
-		args              args
+		stsName           string
+		ns                string
+		podLabels         map[string]string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 		neededPodRev      string
 	}{
 		{
-			name: "rolling update is not needed",
-			args: args{
-				stsName:   "vmselect-sts",
-				ns:        "default",
-				podLabels: map[string]string{"app": "vmselect"},
-			},
+			name:      "rolling update is not needed",
+			stsName:   "vmselect-sts",
+			ns:        "default",
+			podLabels: map[string]string{"app": "vmselect"},
 			predefinedObjects: []runtime.Object{
 				&appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
@@ -337,12 +310,10 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 			},
 		},
 		{
-			name: "rolling update is timeout",
-			args: args{
-				stsName:   "vmselect-sts",
-				ns:        "default",
-				podLabels: map[string]string{"app": "vmselect"},
-			},
+			name:      "rolling update is timeout",
+			stsName:   "vmselect-sts",
+			ns:        "default",
+			podLabels: map[string]string{"app": "vmselect"},
 			predefinedObjects: []runtime.Object{
 				&appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
@@ -380,7 +351,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			if err := performRollingUpdateOnSts(context.Background(), false, fclient, tt.args.stsName, tt.args.ns, tt.args.podLabels); (err != nil) != tt.wantErr {
+			if err := performRollingUpdateOnSts(context.Background(), false, fclient, tt.stsName, tt.ns, tt.podLabels); (err != nil) != tt.wantErr {
 				t.Errorf("performRollingUpdateOnSts() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

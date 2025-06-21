@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -16,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -23,9 +25,15 @@ import (
 )
 
 const (
-	vmSingleDataDir     = "/victoria-metrics-data"
-	vmDataVolumeName    = "data"
-	streamAggrSecretKey = "config.yaml"
+	confDir                = "/etc/vm/config"
+	confOutDir             = "/etc/vm/config_out"
+	tlsAssetsDir           = "/etc/vm-tls/certs"
+	dataDir                = "/victoria-metrics-data"
+	dataVolumeName         = "data"
+	streamAggrSecretKey    = "config.yaml"
+	relabelingName         = "relabeling.yaml"
+	scrapeGzippedFilename  = "scrape.yaml.gz"
+	scrapeEnvsubstFilename = "scrape.env.yaml"
 )
 
 func createStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
@@ -69,9 +77,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot delete objects from prev state: %w", err)
 	}
-	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
-		return fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
-	}
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
@@ -79,6 +84,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		}
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
+		}
+		if !cr.Spec.EnableScraping {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
+				return fmt.Errorf("cannot create vmsingle role and binding for it, err: %w", err)
+			}
 		}
 	}
 
@@ -98,6 +108,18 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 			return fmt.Errorf("cannot create serviceScrape for vmsingle: %w", err)
 		}
 	}
+
+	ac := getAssetsCache(ctx, rclient, cr)
+	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac); err != nil {
+		return err
+	}
+	if err := createOrUpdateRelabelConfigsAssets(ctx, rclient, cr, prevCR, ac); err != nil {
+		return fmt.Errorf("cannot update relabeling asset for vmsingle: %w", err)
+	}
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, ac); err != nil {
+		return fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
+	}
+
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
 		prevDeploy, err = newDeploy(ctx, prevCR)
@@ -156,7 +178,7 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 	// it's user responsibility to provide correct values
 	mustAddVolumeMounts := cr.Spec.StorageDataPath == ""
 
-	storagePath := vmSingleDataDir
+	storagePath := dataDir
 	if cr.Spec.StorageDataPath != "" {
 		storagePath = cr.Spec.StorageDataPath
 	}
@@ -183,6 +205,56 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 
 	var volumes []corev1.Volume
 	var vmMounts []corev1.VolumeMount
+	var configReloaderWatchMounts []corev1.VolumeMount
+
+	if cr.Spec.EnableScraping {
+		args = append(args, fmt.Sprintf("-promscrape.config=%s", path.Join(confOutDir, scrapeEnvsubstFilename)))
+
+		// preserve order of volumes and volumeMounts
+		// it must prevent vmagent restarts during operator version change
+		volumes = append(volumes, corev1.Volume{
+			Name: string(build.TLSAssetsResourceKind),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+				},
+			},
+		})
+
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "config-out",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+		)
+		volumes = append(volumes, corev1.Volume{
+			Name: string(build.SecretConfigResourceKind),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
+				},
+			},
+		})
+		vmMounts = append(vmMounts,
+			corev1.VolumeMount{
+				Name:      "config-out",
+				ReadOnly:  true,
+				MountPath: confOutDir,
+			},
+		)
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      string(build.TLSAssetsResourceKind),
+			MountPath: tlsAssetsDir,
+			ReadOnly:  true,
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      string(build.SecretConfigResourceKind),
+			MountPath: confDir,
+			ReadOnly:  true,
+		})
+	}
 
 	volumes, vmMounts = addVolumeMountsTo(volumes, vmMounts, cr, mustAddVolumeMounts, storagePath)
 
@@ -227,12 +299,19 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 				},
 			},
 		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
+		cvm := corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
-		})
+		}
+		vmMounts = append(vmMounts, cvm)
+		configReloaderWatchMounts = append(configReloaderWatchMounts, cvm)
 	}
+
+	volumes, vmMounts = build.RelabelVolumeTo(volumes, vmMounts, build.ResourceName(build.RelabelConfigResourceKind, cr), &cr.Spec.CommonRelabelParams)
+	relabelKeys := []string{"relabel.yaml"}
+	relabelConfigs := []*vmv1beta1.CommonRelabelParams{&cr.Spec.CommonRelabelParams}
+	args = build.RelabelArgsTo(args, "relabelConfig", relabelKeys, relabelConfigs...)
 
 	volumes, vmMounts = build.StreamAggrVolumeTo(volumes, vmMounts, build.ResourceName(build.StreamAggrConfigResourceKind, cr), cr.Spec.StreamAggrConfig)
 	streamAggrKeys := []string{streamAggrSecretKey}
@@ -263,12 +342,23 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 	}
 
 	vmsingleContainer = build.Probe(vmsingleContainer, cr)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
-	operatorContainers := []corev1.Container{vmsingleContainer}
+	var operatorContainers []corev1.Container
 	var initContainers []corev1.Container
 
+	if cr.Spec.EnableScraping || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
+		configReloader := buildConfigReloaderContainer(cr, configReloaderWatchMounts)
+		operatorContainers = append(operatorContainers, configReloader)
+		if cr.Spec.EnableScraping {
+			initContainers = append(initContainers,
+				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, false), cr, configReloader.Args)...)
+			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
+		}
+	}
+
 	if cr.Spec.VMBackup != nil {
-		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMBackup, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
+		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMBackup, cr.Spec.Port, storagePath, dataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +368,7 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 		if cr.Spec.VMBackup.Restore != nil &&
 			cr.Spec.VMBackup.Restore.OnStart != nil &&
 			cr.Spec.VMBackup.Restore.OnStart.Enabled {
-			vmRestore, err := build.VMRestore(cr.Spec.VMBackup, storagePath, vmDataVolumeName)
+			vmRestore, err := build.VMRestore(cr.Spec.VMBackup, storagePath, dataVolumeName)
 			if err != nil {
 				return nil, err
 			}
@@ -293,6 +383,8 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 	if err != nil {
 		return nil, fmt.Errorf("cannot apply initContainer patch: %w", err)
 	}
+
+	operatorContainers = append(operatorContainers, vmsingleContainer)
 
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.UseStrictSecurity, false))
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
@@ -371,8 +463,53 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	return newService, nil
 }
 
+// buildRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.
+func buildRelabelingsAssets(cr *vmv1beta1.VMSingle, ac *build.AssetsCache) (*corev1.ConfigMap, error) {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: build.ResourceMeta(build.RelabelConfigResourceKind, cr),
+		Data:       make(map[string]string),
+	}
+	if len(cr.Spec.InlineRelabelConfig) > 0 {
+		rcs := addRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
+		data, err := yaml.Marshal(rcs)
+		if err != nil {
+			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
+		}
+		if len(data) > 0 {
+			cm.Data[relabelingName] = string(data)
+		}
+	}
+	if cr.Spec.RelabelConfig != nil {
+		// need to fetch content from
+		data, err := ac.LoadKeyFromConfigMap(cr.Namespace, cr.Spec.RelabelConfig)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.RelabelConfig.Name, err)
+		}
+		if len(data) > 0 {
+			cm.Data[relabelingName] += data
+		}
+	}
+	return cm, nil
+}
+
+// createOrUpdateRelabelConfigsAssets builds relabeling configs for vmsingle at separate configmap, serialized as yaml
+func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ac *build.AssetsCache) error {
+	if !cr.HasAnyRelabellingConfigs() {
+		return nil
+	}
+	assestsCM, err := buildRelabelingsAssets(cr, ac)
+	if err != nil {
+		return err
+	}
+	var prevConfigMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevConfigMeta = ptr.To(build.ResourceMeta(build.RelabelConfigResourceKind, prevCR))
+	}
+	return reconcile.ConfigMap(ctx, rclient, assestsCM, prevConfigMeta)
+}
+
 // buildStreamAggrConfig build configmap with stream aggregation config for vmsingle.
-func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) (*corev1.ConfigMap, error) {
+func buildStreamAggrConfig(cr *vmv1beta1.VMSingle, ac *build.AssetsCache) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
 		ObjectMeta: build.ResourceMeta(build.StreamAggrConfigResourceKind, cr),
 		Data:       make(map[string]string),
@@ -387,9 +524,7 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient 
 		}
 	}
 	if cr.Spec.StreamAggrConfig.RuleConfigMap != nil {
-		data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
-			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.StreamAggrConfig.RuleConfigMap.Name, Namespace: cr.Namespace}},
-			cr.Spec.StreamAggrConfig.RuleConfigMap.Key)
+		data, err := ac.LoadKeyFromConfigMap(cr.Namespace, cr.Spec.StreamAggrConfig.RuleConfigMap)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.StreamAggrConfig.RuleConfigMap.Name, err)
 		}
@@ -401,11 +536,11 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient 
 }
 
 // createOrUpdateStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
-func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
+func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ac *build.AssetsCache) error {
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
-	streamAggrCM, err := buildStreamAggrConfig(ctx, cr, rclient)
+	streamAggrCM, err := buildStreamAggrConfig(cr, ac)
 	if err != nil {
 		return err
 	}
@@ -414,6 +549,161 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 		prevCMMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, prevCR))
 	}
 	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevCMMeta)
+}
+
+func buildConfigReloaderContainer(cr *vmv1beta1.VMSingle, extraWatchsMounts []corev1.VolumeMount) corev1.Container {
+	var configReloadVolumeMounts []corev1.VolumeMount
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	if cr.Spec.EnableScraping {
+		configReloadVolumeMounts = append(configReloadVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "config-out",
+				MountPath: confOutDir,
+			},
+		)
+		if !useVMConfigReloader {
+			configReloadVolumeMounts = append(configReloadVolumeMounts,
+				corev1.VolumeMount{
+					Name:      "config",
+					MountPath: confDir,
+				})
+		}
+	}
+	if cr.HasAnyRelabellingConfigs() {
+		configReloadVolumeMounts = append(configReloadVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "relabeling-assets",
+				ReadOnly:  true,
+				MountPath: vmv1beta1.RelabelingConfigDir,
+			})
+	}
+	if cr.HasAnyStreamAggrRule() {
+		configReloadVolumeMounts = append(configReloadVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "stream-aggr-conf",
+				ReadOnly:  true,
+				MountPath: vmv1beta1.StreamAggrConfigDir,
+			})
+	}
+
+	configReloadArgs := buildConfigReloaderArgs(cr, extraWatchsMounts)
+
+	configReloadVolumeMounts = append(configReloadVolumeMounts, extraWatchsMounts...)
+	cntr := corev1.Container{
+		Name:                     "config-reloader",
+		Image:                    cr.Spec.ConfigReloaderImageTag,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		Env: []corev1.EnvVar{
+			{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+		},
+		Command:      []string{"/bin/prometheus-config-reloader"},
+		Args:         configReloadArgs,
+		VolumeMounts: configReloadVolumeMounts,
+		Resources:    cr.Spec.ConfigReloaderResources,
+	}
+	if useVMConfigReloader {
+		cntr.Command = nil
+		build.AddServiceAccountTokenVolumeMount(&cntr, &cr.Spec.CommonApplicationDeploymentParams)
+	}
+	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &cntr)
+	build.AddConfigReloadAuthKeyToReloader(&cntr, &cr.Spec.CommonConfigReloaderParams)
+	return cntr
+}
+
+func buildConfigReloaderArgs(cr *vmv1beta1.VMSingle, extraWatchVolumes []corev1.VolumeMount) []string {
+	// by default use watched-dir
+	// it should simplify parsing for latest and empty version tags.
+	dirsArg := "watched-dir"
+
+	args := []string{
+		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
+	}
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+
+	if cr.Spec.EnableScraping {
+		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(confOutDir, scrapeEnvsubstFilename)))
+		if useVMConfigReloader {
+			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
+			args = append(args, "--config-secret-key=vmagent.yaml.gz")
+		} else {
+			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(confDir, scrapeGzippedFilename)))
+		}
+	}
+	if cr.HasAnyStreamAggrRule() {
+		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.StreamAggrConfigDir))
+	}
+	if cr.HasAnyRelabellingConfigs() {
+		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.RelabelingConfigDir))
+	}
+	for _, vl := range extraWatchVolumes {
+		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vl.MountPath))
+	}
+	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
+		for idx, arg := range args {
+			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
+			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
+				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
+				args[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
+			}
+		}
+		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
+			args = append(args, fmt.Sprintf(`--%s=%s`, k, v))
+		}
+		sort.Strings(args)
+	}
+
+	return args
+}
+
+func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMSingle, configReloaderArgs []string) []corev1.Container {
+	var initReloader corev1.Container
+	baseImage := cr.Spec.ConfigReloaderImageTag
+	resources := cr.Spec.ConfigReloaderResources
+	if useVMConfigReloader {
+		initReloader = corev1.Container{
+			Image: baseImage,
+			Name:  "config-init",
+			Args:  append(configReloaderArgs, "--only-init-config"),
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "config-out",
+					MountPath: confOutDir,
+				},
+			},
+			Resources: resources,
+		}
+		build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
+		return []corev1.Container{initReloader}
+	}
+	initReloader = corev1.Container{
+		Image: baseImage,
+		Name:  "config-init",
+		Command: []string{
+			"/bin/sh",
+		},
+		Args: []string{
+			"-c",
+			fmt.Sprintf("gunzip -c %s > %s", path.Join(confDir, scrapeGzippedFilename), path.Join(confOutDir, scrapeEnvsubstFilename)),
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config",
+				MountPath: confDir,
+			},
+			{
+				Name:      "config-out",
+				MountPath: confOutDir,
+			},
+		},
+		Resources: resources,
+	}
+
+	return []corev1.Container{initReloader}
 }
 
 func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
@@ -444,7 +734,7 @@ func addVolumeMountsTo(volumes []corev1.Volume, vmMounts []corev1.VolumeMount, c
 	case mustAddVolumeMounts:
 		// add volume and mount point by operator directly
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      vmDataVolumeName,
+			Name:      dataVolumeName,
 			MountPath: storagePath},
 		)
 
@@ -459,7 +749,7 @@ func addVolumeMountsTo(volumes []corev1.Volume, vmMounts []corev1.VolumeMount, c
 			}
 		}
 		volumes = append(volumes, corev1.Volume{
-			Name:         vmDataVolumeName,
+			Name:         dataVolumeName,
 			VolumeSource: vlSource})
 
 	case len(cr.Spec.Volumes) > 0:
@@ -467,7 +757,7 @@ func addVolumeMountsTo(volumes []corev1.Volume, vmMounts []corev1.VolumeMount, c
 		// it simplifies management of external PVCs
 		var volumeNamePresent bool
 		for _, volume := range cr.Spec.Volumes {
-			if volume.Name == vmDataVolumeName {
+			if volume.Name == dataVolumeName {
 				volumeNamePresent = true
 				break
 			}
@@ -475,14 +765,14 @@ func addVolumeMountsTo(volumes []corev1.Volume, vmMounts []corev1.VolumeMount, c
 		if volumeNamePresent {
 			var mustSkipVolumeAdd bool
 			for _, volumeMount := range cr.Spec.VolumeMounts {
-				if volumeMount.Name == vmDataVolumeName {
+				if volumeMount.Name == dataVolumeName {
 					mustSkipVolumeAdd = true
 					break
 				}
 			}
 			if !mustSkipVolumeAdd {
 				vmMounts = append(vmMounts, corev1.VolumeMount{
-					Name:      vmDataVolumeName,
+					Name:      dataVolumeName,
 					MountPath: storagePath,
 				})
 			}

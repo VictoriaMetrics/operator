@@ -14,30 +14,23 @@ import (
 )
 
 func Test_reconcileServiceForCRD(t *testing.T) {
-	type args struct {
-		ctx        context.Context
-		newService *corev1.Service
-	}
 	tests := []struct {
 		name              string
-		args              args
+		newService        *corev1.Service
 		predefinedObjects []runtime.Object
 		validate          func(svc *corev1.Service) error
 		wantErr           bool
 	}{
 		{
 			name: "create new svc",
-			args: args{
-				newService: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "prefixed-1",
-						Namespace: "default",
-					},
-					Spec: corev1.ServiceSpec{
-						Type: corev1.ServiceTypeNodePort,
-					},
+			newService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prefixed-1",
+					Namespace: "default",
 				},
-				ctx: context.TODO(),
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeNodePort,
+				},
 			},
 			validate: func(svc *corev1.Service) error {
 				if svc.Name != "prefixed-1" {
@@ -48,17 +41,14 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 		},
 		{
 			name: "update svc from headless to clusterIP",
-			args: args{
-				newService: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "prefixed-1",
-						Namespace: "default",
-					},
-					Spec: corev1.ServiceSpec{
-						Type: corev1.ServiceTypeClusterIP,
-					},
+			newService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prefixed-1",
+					Namespace: "default",
 				},
-				ctx: context.TODO(),
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP,
+				},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Service{
@@ -84,18 +74,15 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 		},
 		{
 			name: "update svc from clusterIP to headless",
-			args: args{
-				newService: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "prefixed-1",
-						Namespace: "default",
-					},
-					Spec: corev1.ServiceSpec{
-						Type:      corev1.ServiceTypeClusterIP,
-						ClusterIP: "None",
-					},
+			newService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prefixed-1",
+					Namespace: "default",
 				},
-				ctx: context.TODO(),
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: "None",
+				},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Service{
@@ -121,18 +108,15 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 		},
 		{
 			name: "update svc clusterIP value",
-			args: args{
-				newService: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "prefixed-1",
-						Namespace: "default",
-					},
-					Spec: corev1.ServiceSpec{
-						Type:      corev1.ServiceTypeClusterIP,
-						ClusterIP: "192.168.1.5",
-					},
+			newService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prefixed-1",
+					Namespace: "default",
 				},
-				ctx: context.TODO(),
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: "192.168.1.5",
+				},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Service{
@@ -158,18 +142,15 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 		},
 		{
 			name: "update svc from nodePort to clusterIP with value",
-			args: args{
-				newService: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "prefixed-1",
-						Namespace: "default",
-					},
-					Spec: corev1.ServiceSpec{
-						Type:      corev1.ServiceTypeClusterIP,
-						ClusterIP: "192.168.1.5",
-					},
+			newService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prefixed-1",
+					Namespace: "default",
 				},
-				ctx: context.TODO(),
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: "192.168.1.5",
+				},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Service{
@@ -198,24 +179,21 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 		},
 		{
 			name: "keep node port",
-			args: args{
-				newService: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "prefixed-1",
-						Namespace: "default",
-					},
-					Spec: corev1.ServiceSpec{
-						Type:      corev1.ServiceTypeNodePort,
-						ClusterIP: "192.168.1.5",
-						Ports: []corev1.ServicePort{
-							{
-								Name:     "web",
-								Protocol: "TCP",
-							},
+			newService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prefixed-1",
+					Namespace: "default",
+				},
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeNodePort,
+					ClusterIP: "192.168.1.5",
+					Ports: []corev1.ServicePort{
+						{
+							Name:     "web",
+							Protocol: "TCP",
 						},
 					},
 				},
-				ctx: context.TODO(),
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Service{
@@ -256,13 +234,14 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := Service(tt.args.ctx, cl, tt.args.newService, nil)
+			ctx := context.TODO()
+			err := Service(ctx, cl, tt.newService, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileServiceForCRD() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			var updatedSvc corev1.Service
-			if err := cl.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.newService.Namespace, Name: tt.args.newService.Name}, &updatedSvc); err != nil {
+			if err := cl.Get(ctx, types.NamespacedName{Namespace: tt.newService.Namespace, Name: tt.newService.Name}, &updatedSvc); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if err := tt.validate(&updatedSvc); err != nil {

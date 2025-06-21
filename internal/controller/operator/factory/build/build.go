@@ -202,3 +202,56 @@ func StreamAggrVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, na
 	}
 	return volumes, mounts
 }
+
+// RelabelArgsTo conditionally adds relabel commandline args into given args
+func RelabelArgsTo(args []string, flag string, keys []string, cs ...*vmv1beta1.CommonRelabelParams) []string {
+	if len(cs) == 0 {
+		return args
+	}
+	configFlag := NewFlag(fmt.Sprintf("-%s", flag), "")
+	for i, c := range cs {
+		if c == nil {
+			continue
+		}
+		if c.HasAnyRelabellingConfigs() {
+			configFlag.Add(path.Join(vmv1beta1.RelabelingConfigDir, keys[i]), i)
+		}
+	}
+	return AppendFlagsToArgs(args, len(cs), configFlag)
+}
+
+// RelabelVolumeTo conditionally mounts configmap with relabel config into given volumes and volume mounts
+func RelabelVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, name string, cs ...*vmv1beta1.CommonRelabelParams) ([]corev1.Volume, []corev1.VolumeMount) {
+	if len(cs) == 0 {
+		return volumes, mounts
+	}
+	hasRule := false
+	for _, c := range cs {
+		if c.HasAnyRelabellingConfigs() {
+			hasRule = true
+			break
+		}
+	}
+	if hasRule {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "relabeling-assets",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: name,
+						},
+					},
+				},
+			},
+		)
+		mounts = append(mounts,
+			corev1.VolumeMount{
+				Name:      "relabeling-assets",
+				ReadOnly:  true,
+				MountPath: vmv1beta1.RelabelingConfigDir,
+			},
+		)
+	}
+	return volumes, mounts
+}

@@ -22,14 +22,11 @@ import (
 
 //nolint:gofmt
 func TestBuildConfig(t *testing.T) {
-	type args struct {
-		cr      *vmv1beta1.VMAlertmanager
-		baseCfg []byte
-		amcfgs  []*vmv1beta1.VMAlertmanagerConfig
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAlertmanager
+		baseCfg           []byte
+		amcfgs            []*vmv1beta1.VMAlertmanagerConfig
 		predefinedObjects []runtime.Object
 		want              string
 		parseError        string
@@ -37,72 +34,70 @@ func TestBuildConfig(t *testing.T) {
 	}{
 		{
 			name: "with complex routing and enforced matchers",
-			args: args{
-				cr: &vmv1beta1.VMAlertmanager{
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						EnforcedTopRouteMatchers: []string{
-							`env=~{"dev|prod"}`,
-							`pod!=""`,
-						},
+			cr: &vmv1beta1.VMAlertmanager{
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					EnforcedTopRouteMatchers: []string{
+						`env=~{"dev|prod"}`,
+						`pod!=""`,
 					},
 				},
-				baseCfg: []byte(`global:
+			},
+			baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "email",
-									EmailConfigs: []vmv1beta1.EmailConfig{
-										{
-											SendResolved: ptr.To(true),
-											From:         "some-sender",
-											To:           "some-dst-1",
-											Text:         "some-text",
-											Smarthost:    "some:443",
-											TLSConfig: &vmv1beta1.TLSConfig{
-												CertFile: "some_cert_path",
-											},
-										},
-									},
-								},
-								{
-									Name: "email-sub-1",
-									EmailConfigs: []vmv1beta1.EmailConfig{
-										{
-											SendResolved: ptr.To(true),
-											From:         "some-sender",
-											To:           "some-dst-1",
-											Text:         "some-text",
-											Smarthost:    "some:443",
-											TLSConfig: &vmv1beta1.TLSConfig{
-												CertFile: "some_cert_path",
-											},
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "email",
+								EmailConfigs: []vmv1beta1.EmailConfig{
+									{
+										SendResolved: ptr.To(true),
+										From:         "some-sender",
+										To:           "some-dst-1",
+										Text:         "some-text",
+										Smarthost:    "some:443",
+										TLSConfig: &vmv1beta1.TLSConfig{
+											CertFile: "some_cert_path",
 										},
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "email",
-								GroupWait: "1min",
-								Routes: []*vmv1beta1.SubRoute{
+							{
+								Name: "email-sub-1",
+								EmailConfigs: []vmv1beta1.EmailConfig{
 									{
-										Receiver:  "email-sub-1",
-										GroupWait: "5min",
-										Matchers:  []string{"team=prod"},
-										Routes: []*vmv1beta1.SubRoute{
-											{
-												Receiver:  "email",
-												GroupWait: "10min",
-												Matchers:  []string{"pod=dev-env"},
-											},
+										SendResolved: ptr.To(true),
+										From:         "some-sender",
+										To:           "some-dst-1",
+										Text:         "some-text",
+										Smarthost:    "some:443",
+										TLSConfig: &vmv1beta1.TLSConfig{
+											CertFile: "some_cert_path",
+										},
+									},
+								},
+							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "email",
+							GroupWait: "1min",
+							Routes: []*vmv1beta1.SubRoute{
+								{
+									Receiver:  "email-sub-1",
+									GroupWait: "5min",
+									Matchers:  []string{"team=prod"},
+									Routes: []*vmv1beta1.SubRoute{
+										{
+											Receiver:  "email",
+											GroupWait: "10min",
+											Matchers:  []string{"pod=dev-env"},
 										},
 									},
 								},
@@ -162,69 +157,67 @@ templates: []
 
 		{
 			name: "email section",
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "email",
-									EmailConfigs: []vmv1beta1.EmailConfig{
-										{
-											SendResolved: ptr.To(true),
-											From:         "some-sender",
-											To:           "some-dst-1",
-											Text:         "some-text",
-											Smarthost:    "some:443",
-											TLSConfig: &vmv1beta1.TLSConfig{
-												CertFile: "some_cert_path",
-											},
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "email",
+								EmailConfigs: []vmv1beta1.EmailConfig{
+									{
+										SendResolved: ptr.To(true),
+										From:         "some-sender",
+										To:           "some-dst-1",
+										Text:         "some-text",
+										Smarthost:    "some:443",
+										TLSConfig: &vmv1beta1.TLSConfig{
+											CertFile: "some_cert_path",
 										},
-										{
-											SendResolved: ptr.To(true),
-											From:         "some-sender",
-											To:           "some-dst-2",
-											Text:         "some-text",
-											Smarthost:    "some:443",
-											RequireTLS:   ptr.To(false),
-											TLSConfig: &vmv1beta1.TLSConfig{
-												CertFile: "some_cert_path",
-											},
+									},
+									{
+										SendResolved: ptr.To(true),
+										From:         "some-sender",
+										To:           "some-dst-2",
+										Text:         "some-text",
+										Smarthost:    "some:443",
+										RequireTLS:   ptr.To(false),
+										TLSConfig: &vmv1beta1.TLSConfig{
+											CertFile: "some_cert_path",
 										},
-										{
-											SendResolved: ptr.To(true),
-											From:         "some-sender",
-											To:           "some-dst-3",
-											Text:         "some-text",
-											Smarthost:    "some:443",
-											RequireTLS:   ptr.To(true),
-											TLSConfig: &vmv1beta1.TLSConfig{
-												CertFile: "some_cert_path",
-											},
+									},
+									{
+										SendResolved: ptr.To(true),
+										From:         "some-sender",
+										To:           "some-dst-3",
+										Text:         "some-text",
+										Smarthost:    "some:443",
+										RequireTLS:   ptr.To(true),
+										TLSConfig: &vmv1beta1.TLSConfig{
+											CertFile: "some_cert_path",
 										},
+									},
 
-										{
-											SendResolved: ptr.To(true),
-											From:         "other-sender",
-											To:           "other-dst",
-											Text:         "other-text",
-											RequireTLS:   ptr.To(false),
-										},
+									{
+										SendResolved: ptr.To(true),
+										From:         "other-sender",
+										To:           "other-dst",
+										Text:         "other-text",
+										RequireTLS:   ptr.To(false),
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "email",
-								GroupWait: "1min",
-							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "email",
+							GroupWait: "1min",
 						},
 					},
 				},
@@ -277,92 +270,90 @@ templates: []
 		},
 		{
 			name: "complex with providers",
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
  opsgenie_api_key: some-key
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						InhibitRules: []vmv1beta1.InhibitRule{
+							{
+								Equal:          []string{`name = "db"`},
+								SourceMatchers: []string{`job != "alertmanager"`},
+							},
 						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							InhibitRules: []vmv1beta1.InhibitRule{
-								{
-									Equal:          []string{`name = "db"`},
-									SourceMatchers: []string{`job != "alertmanager"`},
-								},
-							},
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "email",
-									EmailConfigs: []vmv1beta1.EmailConfig{
-										{
-											SendResolved: ptr.To(true),
-											TLSConfig:    &vmv1beta1.TLSConfig{},
-											From:         "some-sender",
-											To:           "some-dst",
-											Text:         "some-text",
-											Smarthost:    "some:443",
-											RequireTLS:   ptr.To(true),
-										},
-									},
-								},
-								{
-									Name: "webhook",
-									WebhookConfigs: []vmv1beta1.WebhookConfig{
-										{
-											URL: ptr.To("http://some-wh"),
-										},
-									},
-								},
-							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "email",
-								GroupWait: "1min",
-								Routes: []*vmv1beta1.SubRoute{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "email",
+								EmailConfigs: []vmv1beta1.EmailConfig{
 									{
-										Receiver: "webhook",
+										SendResolved: ptr.To(true),
+										TLSConfig:    &vmv1beta1.TLSConfig{},
+										From:         "some-sender",
+										To:           "some-dst",
+										Text:         "some-text",
+										Smarthost:    "some:443",
+										RequireTLS:   ptr.To(true),
 									},
+								},
+							},
+							{
+								Name: "webhook",
+								WebhookConfigs: []vmv1beta1.WebhookConfig{
+									{
+										URL: ptr.To("http://some-wh"),
+									},
+								},
+							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "email",
+							GroupWait: "1min",
+							Routes: []*vmv1beta1.SubRoute{
+								{
+									Receiver: "webhook",
 								},
 							},
 						},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "scrape",
-							Namespace: "monitoring",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							InhibitRules: []vmv1beta1.InhibitRule{
-								{
-									Equal: []string{`name = "scrape"`},
-								},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "scrape",
+						Namespace: "monitoring",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						InhibitRules: []vmv1beta1.InhibitRule{
+							{
+								Equal: []string{`name = "scrape"`},
 							},
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "global",
-									OpsGenieConfigs: []vmv1beta1.OpsGenieConfig{
-										{
-											SendResolved: ptr.To(true),
-											APIURL:       "https://opsgen",
-											Details:      map[string]string{"msg": "critical"},
-											Responders: []vmv1beta1.OpsGenieConfigResponder{
-												{
-													Name:     "n",
-													Username: "f",
-													Type:     "some-type",
-												},
+						},
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "global",
+								OpsGenieConfigs: []vmv1beta1.OpsGenieConfig{
+									{
+										SendResolved: ptr.To(true),
+										APIURL:       "https://opsgen",
+										Details:      map[string]string{"msg": "critical"},
+										Responders: []vmv1beta1.OpsGenieConfigResponder{
+											{
+												Name:     "n",
+												Username: "f",
+												Type:     "some-type",
 											},
 										},
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver: "global",
-							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver: "global",
 						},
 					},
 				},
@@ -427,37 +418,35 @@ templates: []
 		},
 		{
 			name: "webhook ok",
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "webhook",
-									WebhookConfigs: []vmv1beta1.WebhookConfig{
-										{
-											SendResolved: ptr.To(true),
-											URLSecret: &corev1.SecretKeySelector{
-												Key: "url",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "webhook",
-												},
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "webhook",
+								WebhookConfigs: []vmv1beta1.WebhookConfig{
+									{
+										SendResolved: ptr.To(true),
+										URLSecret: &corev1.SecretKeySelector{
+											Key: "url",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "webhook",
 											},
 										},
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "webhook",
-								GroupWait: "1min",
-							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "webhook",
+							GroupWait: "1min",
 						},
 					},
 				},
@@ -494,59 +483,57 @@ templates: []
 		},
 		{
 			name: "slack ok",
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "slack",
-									SlackConfigs: []vmv1beta1.SlackConfig{
-										{
-											APIURL: &corev1.SecretKeySelector{
-												Key: "url",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "slack",
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "slack",
+								SlackConfigs: []vmv1beta1.SlackConfig{
+									{
+										APIURL: &corev1.SecretKeySelector{
+											Key: "url",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "slack",
+											},
+										},
+										SendResolved: ptr.To(true),
+										Text:         "some-text",
+										Title:        "some-title",
+										LinkNames:    false,
+										ThumbURL:     "some-url",
+										Pretext:      "text-1",
+										Username:     "some-user",
+										Actions: []vmv1beta1.SlackAction{
+											{
+												Name: "deny",
+												Text: "text-5",
+												URL:  "some-url",
+												ConfirmField: &vmv1beta1.SlackConfirmationField{
+													Text: "confirmed",
 												},
 											},
-											SendResolved: ptr.To(true),
-											Text:         "some-text",
-											Title:        "some-title",
-											LinkNames:    false,
-											ThumbURL:     "some-url",
-											Pretext:      "text-1",
-											Username:     "some-user",
-											Actions: []vmv1beta1.SlackAction{
-												{
-													Name: "deny",
-													Text: "text-5",
-													URL:  "some-url",
-													ConfirmField: &vmv1beta1.SlackConfirmationField{
-														Text: "confirmed",
-													},
-												},
-											},
-											Fields: []vmv1beta1.SlackField{
-												{
-													Short: ptr.To(true),
-													Title: "fields",
-												},
+										},
+										Fields: []vmv1beta1.SlackField{
+											{
+												Short: ptr.To(true),
+												Title: "fields",
 											},
 										},
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "slack",
-								GroupWait: "1min",
-							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "slack",
+							GroupWait: "1min",
 						},
 					},
 				},
@@ -597,63 +584,61 @@ templates: []
 		},
 		{
 			name: "pagerduty ok",
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "pagerduty",
-									PagerDutyConfigs: []vmv1beta1.PagerDutyConfig{
-										{
-											SendResolved: ptr.To(true),
-											RoutingKey: &corev1.SecretKeySelector{
-												Key: "some-key",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "some-secret",
-												},
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "pagerduty",
+								PagerDutyConfigs: []vmv1beta1.PagerDutyConfig{
+									{
+										SendResolved: ptr.To(true),
+										RoutingKey: &corev1.SecretKeySelector{
+											Key: "some-key",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "some-secret",
 											},
-											Class:    "some-class",
-											Group:    "some-group",
-											Severity: "warning",
-											Images: []vmv1beta1.ImageConfig{
-												{
-													Href:   "http://some-href",
-													Source: "http://some-source",
-													Alt:    "some-alt-text",
-												},
+										},
+										Class:    "some-class",
+										Group:    "some-group",
+										Severity: "warning",
+										Images: []vmv1beta1.ImageConfig{
+											{
+												Href:   "http://some-href",
+												Source: "http://some-source",
+												Alt:    "some-alt-text",
 											},
-											Links: []vmv1beta1.LinkConfig{
-												{
-													Href: "http://some-href",
-													Text: "some-text",
-												},
+										},
+										Links: []vmv1beta1.LinkConfig{
+											{
+												Href: "http://some-href",
+												Text: "some-text",
 											},
-											Details: map[string]string{
-												"alertname":    "alert-name",
-												"firing":       "alert-title",
-												"instance":     "alert-instance",
-												"message":      "alert-message",
-												"num_firing":   "1",
-												"num_resolved": "0",
-												"resolved":     "alert-title",
-												"summary":      "alert-summary",
-											},
+										},
+										Details: map[string]string{
+											"alertname":    "alert-name",
+											"firing":       "alert-title",
+											"instance":     "alert-instance",
+											"message":      "alert-message",
+											"num_firing":   "1",
+											"num_resolved": "0",
+											"resolved":     "alert-title",
+											"summary":      "alert-summary",
 										},
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "pagerduty",
-								GroupWait: "1min",
-							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "pagerduty",
+							GroupWait: "1min",
 						},
 					},
 				},
@@ -715,39 +700,37 @@ templates: []
 					},
 				},
 			},
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "tg",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "telegram",
-									TelegramConfigs: []vmv1beta1.TelegramConfig{
-										{
-											SendResolved: ptr.To(true),
-											ChatID:       125,
-											BotToken: &corev1.SecretKeySelector{
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tg-secret",
-												},
-												Key: "token",
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tg",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "telegram",
+								TelegramConfigs: []vmv1beta1.TelegramConfig{
+									{
+										SendResolved: ptr.To(true),
+										ChatID:       125,
+										BotToken: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tg-secret",
 											},
-											Message: "some-templated message",
+											Key: "token",
 										},
+										Message: "some-templated message",
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "telegram",
-								GroupWait: "1min",
-							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "telegram",
+							GroupWait: "1min",
 						},
 					},
 				},
@@ -775,37 +758,35 @@ templates: []
 		},
 		{
 			name: "slack bad, with invalid api_url",
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "slack",
-									SlackConfigs: []vmv1beta1.SlackConfig{
-										{
-											APIURL: &corev1.SecretKeySelector{
-												Key: "bad_url",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "slack",
-												},
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "slack",
+								SlackConfigs: []vmv1beta1.SlackConfig{
+									{
+										APIURL: &corev1.SecretKeySelector{
+											Key: "bad_url",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "slack",
 											},
-											SendResolved: ptr.To(true),
 										},
+										SendResolved: ptr.To(true),
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "slack",
-								GroupWait: "1min",
-							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "slack",
+							GroupWait: "1min",
 						},
 					},
 				},
@@ -833,63 +814,61 @@ templates: []
 		},
 		{
 			name: "telegram bad, not strict parse",
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "tg",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "telegram",
-									TelegramConfigs: []vmv1beta1.TelegramConfig{
-										{
-											SendResolved: ptr.To(true),
-											ChatID:       125,
-											BotToken: &corev1.SecretKeySelector{
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tg-secret",
-												},
-												Key: "token",
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tg",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "telegram",
+								TelegramConfigs: []vmv1beta1.TelegramConfig{
+									{
+										SendResolved: ptr.To(true),
+										ChatID:       125,
+										BotToken: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tg-secret",
 											},
-											Message: "some-templated message",
+											Key: "token",
 										},
+										Message: "some-templated message",
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "telegram",
-								GroupWait: "1min",
-							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "telegram",
+							GroupWait: "1min",
 						},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "tg",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "telegram",
-									TelegramConfigs: []vmv1beta1.TelegramConfig{
-										{
-											SendResolved: ptr.To(true),
-											ChatID:       125,
-											Message:      "some-templated message",
-										},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tg",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "telegram",
+								TelegramConfigs: []vmv1beta1.TelegramConfig{
+									{
+										SendResolved: ptr.To(true),
+										ChatID:       125,
+										Message:      "some-templated message",
 									},
 								},
 							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "telegram",
-								GroupWait: "1min",
-							},
+						},
+						Route: &vmv1beta1.Route{
+							Receiver:  "telegram",
+							GroupWait: "1min",
 						},
 					},
 				},
@@ -930,91 +909,89 @@ templates: []
 					},
 				},
 			},
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
  jira_api_url: "https://jira.cloud"
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "jira-dc",
+								JiraConfigs: []vmv1beta1.JiraConfig{
+									{
+
+										SendResolved: ptr.To(true),
+										HTTPConfig: &vmv1beta1.HTTPConfig{
+											Authorization: &vmv1beta1.Authorization{
+												Credentials: &corev1.SecretKeySelector{
+													Key: "DC_KEY",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "jira-api-access",
+													},
+												},
+											},
+										},
+										Project:   "main",
+										IssueType: "BUG",
+										Summary:   "must be fixed",
+										Labels: []string{
+											"dev",
+										},
+										Fields: map[string]apiextensionsv1.JSON{
+											"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
+											"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
+											"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
+										},
+									},
+								},
+							},
+							{
+								Name: "jira-cloud",
+								JiraConfigs: []vmv1beta1.JiraConfig{
+									{
+
+										SendResolved: ptr.To(true),
+										HTTPConfig: &vmv1beta1.HTTPConfig{
+											BasicAuth: &vmv1beta1.BasicAuth{
+												Username: corev1.SecretKeySelector{
+													Key: "CLOUD_USER",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "jira-api-access",
+													},
+												},
+												Password: corev1.SecretKeySelector{
+													Key: "CLOUD_PAT",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "jira-api-access",
+													},
+												},
+											},
+										},
+										Project:   "main",
+										IssueType: "BUG",
+										Summary:   "must be fixed",
+										Labels: []string{
+											"dev",
+										},
+										Fields: map[string]apiextensionsv1.JSON{
+											"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
+											"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
+											"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
+										},
+									},
+								},
+							},
 						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "jira-dc",
-									JiraConfigs: []vmv1beta1.JiraConfig{
-										{
-
-											SendResolved: ptr.To(true),
-											HTTPConfig: &vmv1beta1.HTTPConfig{
-												Authorization: &vmv1beta1.Authorization{
-													Credentials: &corev1.SecretKeySelector{
-														Key: "DC_KEY",
-														LocalObjectReference: corev1.LocalObjectReference{
-															Name: "jira-api-access",
-														},
-													},
-												},
-											},
-											Project:   "main",
-											IssueType: "BUG",
-											Summary:   "must be fixed",
-											Labels: []string{
-												"dev",
-											},
-											Fields: map[string]apiextensionsv1.JSON{
-												"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
-												"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
-												"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
-											},
-										},
-									},
-								},
-								{
-									Name: "jira-cloud",
-									JiraConfigs: []vmv1beta1.JiraConfig{
-										{
-
-											SendResolved: ptr.To(true),
-											HTTPConfig: &vmv1beta1.HTTPConfig{
-												BasicAuth: &vmv1beta1.BasicAuth{
-													Username: corev1.SecretKeySelector{
-														Key: "CLOUD_USER",
-														LocalObjectReference: corev1.LocalObjectReference{
-															Name: "jira-api-access",
-														},
-													},
-													Password: corev1.SecretKeySelector{
-														Key: "CLOUD_PAT",
-														LocalObjectReference: corev1.LocalObjectReference{
-															Name: "jira-api-access",
-														},
-													},
-												},
-											},
-											Project:   "main",
-											IssueType: "BUG",
-											Summary:   "must be fixed",
-											Labels: []string{
-												"dev",
-											},
-											Fields: map[string]apiextensionsv1.JSON{
-												"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
-												"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
-												"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
-											},
-										},
-									},
-								},
-							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "jira-dc",
-								GroupWait: "1min",
-							},
+						Route: &vmv1beta1.Route{
+							Receiver:  "jira-dc",
+							GroupWait: "1min",
 						},
 					},
 				},
@@ -1082,53 +1059,51 @@ templates: []
 					},
 				},
 			},
-			args: args{
-				baseCfg: []byte(`global:
+			baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
 `),
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Route: &vmv1beta1.Route{
+							Receiver: "rocketchat",
 						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Route: &vmv1beta1.Route{
-								Receiver: "rocketchat",
-							},
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "rocketchat",
-									RocketchatConfigs: []vmv1beta1.RocketchatConfig{
-										{
-											TokenID: &corev1.SecretKeySelector{
-												Key: "ID",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "rocket-access",
-												},
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "rocketchat",
+								RocketchatConfigs: []vmv1beta1.RocketchatConfig{
+									{
+										TokenID: &corev1.SecretKeySelector{
+											Key: "ID",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "rocket-access",
 											},
-											Token: &corev1.SecretKeySelector{
-												Key: "SECRET_TOKEN",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "rocket-access",
-												},
+										},
+										Token: &corev1.SecretKeySelector{
+											Key: "SECRET_TOKEN",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "rocket-access",
 											},
-											Channel: "some-channel",
-											Fields: []vmv1beta1.RocketchatAttachmentField{
-												{
-													Short: ptr.To(true),
-													Title: "alert value",
-													Value: "1",
-												},
+										},
+										Channel: "some-channel",
+										Fields: []vmv1beta1.RocketchatAttachmentField{
+											{
+												Short: ptr.To(true),
+												Title: "alert value",
+												Value: "1",
 											},
-											Actions: []vmv1beta1.RocketchatAttachmentAction{
-												{
-													Type: "action",
-													Text: "some text",
-													URL:  "https://example.com/action",
-													Msg:  "some message",
-												},
+										},
+										Actions: []vmv1beta1.RocketchatAttachmentAction{
+											{
+												Type: "action",
+												Text: "some text",
+												URL:  "https://example.com/action",
+												Msg:  "some message",
 											},
 										},
 									},
@@ -1169,46 +1144,44 @@ templates: []
 		},
 		{
 			name: "msteamsv2",
-			args: args{
-				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "msteams-dev",
-							Namespace: "default",
+			amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "msteams-dev",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Route: &vmv1beta1.Route{
+							Receiver: "mstv2",
 						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Route: &vmv1beta1.Route{
-								Receiver: "mstv2",
-							},
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "mstv2",
-									MSTeamsV2Configs: []vmv1beta1.MSTeamsV2Config{
-										{
-											URL:   ptr.To("http://example.com/msteams"),
-											Title: "some",
-											Text:  "some alert text",
-											HTTPConfig: &vmv1beta1.HTTPConfig{
-												Authorization: &vmv1beta1.Authorization{
-													Credentials: &corev1.SecretKeySelector{
-														Key: "TOKEN",
-														LocalObjectReference: corev1.LocalObjectReference{
-															Name: "ms-teams-access",
-														},
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "mstv2",
+								MSTeamsV2Configs: []vmv1beta1.MSTeamsV2Config{
+									{
+										URL:   ptr.To("http://example.com/msteams"),
+										Title: "some",
+										Text:  "some alert text",
+										HTTPConfig: &vmv1beta1.HTTPConfig{
+											Authorization: &vmv1beta1.Authorization{
+												Credentials: &corev1.SecretKeySelector{
+													Key: "TOKEN",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "ms-teams-access",
 													},
 												},
 											},
 										},
-										{
-											URLSecret: &corev1.SecretKeySelector{
-												Key: "API_URL",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "ms-teams-access",
-												},
+									},
+									{
+										URLSecret: &corev1.SecretKeySelector{
+											Key: "API_URL",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "ms-teams-access",
 											},
-											Title: "team 2",
-											Text:  "some other text",
 										},
+										Title: "team 2",
+										Text:  "some other text",
 									},
 								},
 							},
@@ -1256,12 +1229,12 @@ templates: []
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if tt.args.cr == nil {
-				tt.args.cr = &vmv1beta1.VMAlertmanager{}
+			if tt.cr == nil {
+				tt.cr = &vmv1beta1.VMAlertmanager{}
 			}
 			ctx := context.TODO()
-			ac := getAssetsCache(ctx, testClient, tt.args.cr)
-			got, err := buildConfig(tt.args.cr, tt.args.baseCfg, tt.args.amcfgs, ac)
+			ac := getAssetsCache(ctx, testClient, tt.cr)
+			got, err := buildConfig(tt.cr, tt.baseCfg, tt.amcfgs, ac)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1275,23 +1248,18 @@ templates: []
 }
 
 func TestAddConfigTemplates(t *testing.T) {
-	type args struct {
-		config    []byte
-		templates []string
-	}
 	tests := []struct {
 		name              string
-		args              args
+		config            []byte
+		templates         []string
 		predefinedObjects []runtime.Object
 		want              string
 		wantErr           bool
 	}{
 		{
-			name: "add templates to empty config",
-			args: args{
-				config:    []byte{},
-				templates: []string{"/etc/vm/templates/test/template1.tmpl"},
-			},
+			name:      "add templates to empty config",
+			config:    []byte{},
+			templates: []string{"/etc/vm/templates/test/template1.tmpl"},
 			want: `templates:
 - /etc/vm/templates/test/template1.tmpl
 `,
@@ -1299,8 +1267,7 @@ func TestAddConfigTemplates(t *testing.T) {
 		},
 		{
 			name: "add templates to config without templates",
-			args: args{
-				config: []byte(`global:
+			config: []byte(`global:
   resolve_timeout: 5m
 route:
   receiver: webhook
@@ -1312,10 +1279,9 @@ receivers:
   webhook_configs:
   - url: http://localhost:30500/
 `),
-				templates: []string{
-					"/etc/vm/templates/test/template1.tmpl",
-					"/etc/vm/templates/test/template2.tmpl",
-				},
+			templates: []string{
+				"/etc/vm/templates/test/template1.tmpl",
+				"/etc/vm/templates/test/template2.tmpl",
 			},
 			want: `global:
   resolve_timeout: 5m
@@ -1336,8 +1302,7 @@ templates:
 		},
 		{
 			name: "add templates to config with templates",
-			args: args{
-				config: []byte(`global:
+			config: []byte(`global:
   resolve_timeout: 5m
 route:
   receiver: webhook
@@ -1352,11 +1317,10 @@ templates:
 - /etc/vm/templates/test/template1.tmpl
 - /etc/vm/templates/test/template2.tmpl
 `),
-				templates: []string{
-					"/etc/vm/templates/test/template3.tmpl",
-					"/etc/vm/templates/test/template4.tmpl",
-					"/etc/vm/templates/test/template0.tmpl",
-				},
+			templates: []string{
+				"/etc/vm/templates/test/template3.tmpl",
+				"/etc/vm/templates/test/template4.tmpl",
+				"/etc/vm/templates/test/template0.tmpl",
 			},
 			want: `global:
   resolve_timeout: 5m
@@ -1379,16 +1343,14 @@ templates:
 			wantErr: false,
 		},
 		{
-			name: "add empty and duplicated templates",
-			args: args{
-				config: []byte{},
-				templates: []string{
-					"",
-					"/etc/vm/templates/test/template1.tmpl",
-					" ",
-					"/etc/vm/templates/test/template1.tmpl",
-					"\t",
-				},
+			name:   "add empty and duplicated templates",
+			config: []byte{},
+			templates: []string{
+				"",
+				"/etc/vm/templates/test/template1.tmpl",
+				" ",
+				"/etc/vm/templates/test/template1.tmpl",
+				"\t",
 			},
 			want: `templates:
 - /etc/vm/templates/test/template1.tmpl
@@ -1396,27 +1358,22 @@ templates:
 			wantErr: false,
 		},
 		{
-			name: "add empty templates list",
-			args: args{
-				config:    []byte(`test`),
-				templates: []string{},
-			},
-			want:    `test`,
-			wantErr: false,
+			name:      "add empty templates list",
+			config:    []byte(`test`),
+			templates: []string{},
+			want:      `test`,
+			wantErr:   false,
 		},
 		{
-			name: "wrong config",
-			args: args{
-				config:    []byte(`test`),
-				templates: []string{"test"},
-			},
-			want:    ``,
-			wantErr: true,
+			name:      "wrong config",
+			config:    []byte(`test`),
+			templates: []string{"test"},
+			want:      ``,
+			wantErr:   true,
 		},
 		{
 			name: "add template duplicates without path",
-			args: args{
-				config: []byte(`global:
+			config: []byte(`global:
   resolve_timeout: 5m
 route:
   receiver: webhook
@@ -1432,11 +1389,10 @@ templates:
 - template2.tmpl
 - /etc/vm/templates/test/template3.tmpl
 `),
-				templates: []string{
-					"/etc/vm/templates/test/template1.tmpl",
-					"/etc/vm/templates/test/template2.tmpl",
-					"/etc/vm/templates/test/template0.tmpl",
-				},
+			templates: []string{
+				"/etc/vm/templates/test/template1.tmpl",
+				"/etc/vm/templates/test/template2.tmpl",
+				"/etc/vm/templates/test/template0.tmpl",
 			},
 			want: `global:
   resolve_timeout: 5m
@@ -1460,7 +1416,7 @@ templates:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := addConfigTemplates(tt.args.config, tt.args.templates)
+			got, err := addConfigTemplates(tt.config, tt.templates)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AddConfigTemplates() error = %v, wantErr %v", err, tt.wantErr)
 				return

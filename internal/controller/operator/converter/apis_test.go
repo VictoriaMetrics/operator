@@ -14,22 +14,17 @@ import (
 )
 
 func TestConvertTlsConfig(t *testing.T) {
-	type args struct {
-		tlsConf *promv1.TLSConfig
-	}
 	tests := []struct {
-		name string
-		args args
-		want *vmv1beta1.TLSConfig
+		name    string
+		tlsConf *promv1.TLSConfig
+		want    *vmv1beta1.TLSConfig
 	}{
 		{
 			name: "replace prom secret path",
-			args: args{
-				tlsConf: &promv1.TLSConfig{
-					CAFile:   "/etc/prom_add/ca",
-					CertFile: "/etc/prometheus/secrets/cert.crt",
-					KeyFile:  "/etc/prometheus/configmaps/key.pem",
-				},
+			tlsConf: &promv1.TLSConfig{
+				CAFile:   "/etc/prom_add/ca",
+				CertFile: "/etc/prometheus/secrets/cert.crt",
+				KeyFile:  "/etc/prometheus/configmaps/key.pem",
 			},
 			want: &vmv1beta1.TLSConfig{
 				CAFile:   "/etc/prom_add/ca",
@@ -39,13 +34,11 @@ func TestConvertTlsConfig(t *testing.T) {
 		},
 		{
 			name: "with server name and insecure",
-			args: args{
-				tlsConf: &promv1.TLSConfig{
-					CAFile:        "/etc/prom_add/ca",
-					CertFile:      "/etc/prometheus/secrets/cert.crt",
-					KeyFile:       "/etc/prometheus/configmaps/key.pem",
-					SafeTLSConfig: promv1.SafeTLSConfig{ServerName: ptr.To("some-hostname"), InsecureSkipVerify: ptr.To(true)},
-				},
+			tlsConf: &promv1.TLSConfig{
+				CAFile:        "/etc/prom_add/ca",
+				CertFile:      "/etc/prometheus/secrets/cert.crt",
+				KeyFile:       "/etc/prometheus/configmaps/key.pem",
+				SafeTLSConfig: promv1.SafeTLSConfig{ServerName: ptr.To("some-hostname"), InsecureSkipVerify: ptr.To(true)},
 			},
 			want: &vmv1beta1.TLSConfig{
 				CAFile:             "/etc/prom_add/ca",
@@ -58,7 +51,7 @@ func TestConvertTlsConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertTLSConfig(tt.args.tlsConf)
+			got := ConvertTLSConfig(tt.tlsConf)
 			if got.KeyFile != tt.want.KeyFile || got.CertFile != tt.want.CertFile || got.CAFile != tt.want.CAFile {
 				t.Errorf("ConvertTlsConfig() = \n%v, \nwant \n%v", got, tt.want)
 			}
@@ -67,27 +60,21 @@ func TestConvertTlsConfig(t *testing.T) {
 }
 
 func TestConvertRelabelConfig(t *testing.T) {
-	type args struct {
-		promRelabelConfig []promv1.RelabelConfig
-	}
 	tests := []struct {
-		name string
-		args args
-		want []*vmv1beta1.RelabelConfig
+		name              string
+		promRelabelConfig []promv1.RelabelConfig
+		want              []*vmv1beta1.RelabelConfig
 	}{
 		{
 			name: "test empty cfg",
-			args: args{},
 			want: nil,
 		},
 		{
 			name: "1 relabel cfg rule",
-			args: args{
-				promRelabelConfig: []promv1.RelabelConfig{
-					{
-						Action:       "drop",
-						SourceLabels: []promv1.LabelName{"__address__"},
-					},
+			promRelabelConfig: []promv1.RelabelConfig{
+				{
+					Action:       "drop",
+					SourceLabels: []promv1.LabelName{"__address__"},
 				},
 			},
 			want: []*vmv1beta1.RelabelConfig{
@@ -99,15 +86,13 @@ func TestConvertRelabelConfig(t *testing.T) {
 		},
 		{
 			name: "unsupported config",
-			args: args{
-				promRelabelConfig: []promv1.RelabelConfig{
-					{
-						Action: "drop",
-					},
-					{
-						Action:       "keep",
-						SourceLabels: []promv1.LabelName{"__address__"},
-					},
+			promRelabelConfig: []promv1.RelabelConfig{
+				{
+					Action: "drop",
+				},
+				{
+					Action:       "keep",
+					SourceLabels: []promv1.LabelName{"__address__"},
 				},
 			},
 			want: []*vmv1beta1.RelabelConfig{
@@ -120,7 +105,7 @@ func TestConvertRelabelConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertRelabelConfig(tt.args.promRelabelConfig)
+			got := ConvertRelabelConfig(tt.promRelabelConfig)
 			if len(got) != len(tt.want) {
 				t.Fatalf("len of relabelConfigs mismatch, want: %d, got %d", len(tt.want), len(got))
 			}
@@ -134,29 +119,24 @@ func TestConvertRelabelConfig(t *testing.T) {
 }
 
 func TestConvertEndpoint(t *testing.T) {
-	type args struct {
-		promEndpoint []promv1.Endpoint
-	}
 	tests := []struct {
-		name string
-		args args
-		want []vmv1beta1.Endpoint
+		name         string
+		promEndpoint []promv1.Endpoint
+		want         []vmv1beta1.Endpoint
 	}{
 		{
 			name: "convert endpoint with relabel config",
-			args: args{
-				promEndpoint: []promv1.Endpoint{
-					{
-						Port: "9100",
-						Path: "/metrics",
-						RelabelConfigs: []promv1.RelabelConfig{
-							{
-								Action:       "drop",
-								SourceLabels: []promv1.LabelName{"__meta__instance"},
-							},
-							{
-								Action: "keep",
-							},
+			promEndpoint: []promv1.Endpoint{
+				{
+					Port: "9100",
+					Path: "/metrics",
+					RelabelConfigs: []promv1.RelabelConfig{
+						{
+							Action:       "drop",
+							SourceLabels: []promv1.LabelName{"__meta__instance"},
+						},
+						{
+							Action: "keep",
 						},
 					},
 				},
@@ -181,7 +161,7 @@ func TestConvertEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := convertEndpoint(tt.args.promEndpoint); !reflect.DeepEqual(got, tt.want) {
+			if got := convertEndpoint(tt.promEndpoint); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ConvertEndpoint() \ngot:  \n%v\n, \nwant: \n%v", got, tt.want)
 			}
 		})
@@ -189,26 +169,21 @@ func TestConvertEndpoint(t *testing.T) {
 }
 
 func TestConvertServiceMonitor(t *testing.T) {
-	type args struct {
-		serviceMon *promv1.ServiceMonitor
-	}
 	tests := []struct {
-		name string
-		args args
-		want vmv1beta1.VMServiceScrape
+		name       string
+		serviceMon *promv1.ServiceMonitor
+		want       vmv1beta1.VMServiceScrape
 	}{
 		{
 			name: "with metricsRelabelConfig",
-			args: args{
-				serviceMon: &promv1.ServiceMonitor{
-					Spec: promv1.ServiceMonitorSpec{
-						Endpoints: []promv1.Endpoint{
-							{
-								MetricRelabelConfigs: []promv1.RelabelConfig{
-									{
-										Action:       "drop",
-										SourceLabels: []promv1.LabelName{"__meta__instance"},
-									},
+			serviceMon: &promv1.ServiceMonitor{
+				Spec: promv1.ServiceMonitorSpec{
+					Endpoints: []promv1.Endpoint{
+						{
+							MetricRelabelConfigs: []promv1.RelabelConfig{
+								{
+									Action:       "drop",
+									SourceLabels: []promv1.LabelName{"__meta__instance"},
 								},
 							},
 						},
@@ -234,20 +209,18 @@ func TestConvertServiceMonitor(t *testing.T) {
 		},
 		{
 			name: "with label and annotations filter",
-			args: args{
-				serviceMon: &promv1.ServiceMonitor{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels:      map[string]string{"helm.sh/release": "prod", "keep-label": "value"},
-						Annotations: map[string]string{"app.kubernetes.io/": "release"},
-					},
-					Spec: promv1.ServiceMonitorSpec{
-						Endpoints: []promv1.Endpoint{
-							{
-								MetricRelabelConfigs: []promv1.RelabelConfig{
-									{
-										Action:       "drop",
-										SourceLabels: []promv1.LabelName{"__meta__instance"},
-									},
+			serviceMon: &promv1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      map[string]string{"helm.sh/release": "prod", "keep-label": "value"},
+					Annotations: map[string]string{"app.kubernetes.io/": "release"},
+				},
+				Spec: promv1.ServiceMonitorSpec{
+					Endpoints: []promv1.Endpoint{
+						{
+							MetricRelabelConfigs: []promv1.RelabelConfig{
+								{
+									Action:       "drop",
+									SourceLabels: []promv1.LabelName{"__meta__instance"},
 								},
 							},
 						},
@@ -277,7 +250,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertServiceMonitor(tt.args.serviceMon, &config.BaseOperatorConf{
+			got := ConvertServiceMonitor(tt.serviceMon, &config.BaseOperatorConf{
 				FilterPrometheusConverterLabelPrefixes:      []string{"app.kubernetes", "helm.sh"},
 				FilterPrometheusConverterAnnotationPrefixes: []string{"another-annotation-filter", "app.kubernetes"},
 			})
@@ -289,17 +262,14 @@ func TestConvertServiceMonitor(t *testing.T) {
 }
 
 func TestConvertPodEndpoints(t *testing.T) {
-	type args struct {
-		promPodEnpoints []promv1.PodMetricsEndpoint
-	}
 	tests := []struct {
-		name string
-		args args
-		want []vmv1beta1.PodMetricsEndpoint
+		name            string
+		promPodEnpoints []promv1.PodMetricsEndpoint
+		want            []vmv1beta1.PodMetricsEndpoint
 	}{
 		{
 			name: "with partial tls config",
-			args: args{promPodEnpoints: []promv1.PodMetricsEndpoint{
+			promPodEnpoints: []promv1.PodMetricsEndpoint{
 				{
 					BearerTokenSecret: corev1.SecretKeySelector{},
 					TLSConfig: &promv1.SafeTLSConfig{
@@ -308,7 +278,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 						}},
 					},
 				},
-			}},
+			},
 			want: []vmv1beta1.PodMetricsEndpoint{{
 				EndpointAuth: vmv1beta1.EndpointAuth{
 					TLSConfig: &vmv1beta1.TLSConfig{
@@ -324,7 +294,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 
 		{
 			name: "with tls config",
-			args: args{promPodEnpoints: []promv1.PodMetricsEndpoint{
+			promPodEnpoints: []promv1.PodMetricsEndpoint{
 				{
 					BearerTokenSecret: corev1.SecretKeySelector{},
 					TLSConfig: &promv1.SafeTLSConfig{
@@ -335,7 +305,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 						}},
 					},
 				},
-			}},
+			},
 			want: []vmv1beta1.PodMetricsEndpoint{{
 				EndpointAuth: vmv1beta1.EndpointAuth{
 					TLSConfig: &vmv1beta1.TLSConfig{
@@ -352,7 +322,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 		},
 		{
 			name: "with basic auth and bearer",
-			args: args{promPodEnpoints: []promv1.PodMetricsEndpoint{
+			promPodEnpoints: []promv1.PodMetricsEndpoint{
 				{
 					BearerTokenSecret: corev1.SecretKeySelector{Key: "bearer"},
 					BasicAuth: &promv1.BasicAuth{
@@ -360,7 +330,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 						Password: corev1.SecretKeySelector{Key: "password"},
 					},
 				},
-			}},
+			},
 			want: []vmv1beta1.PodMetricsEndpoint{{
 				EndpointAuth: vmv1beta1.EndpointAuth{
 					BearerTokenSecret: &corev1.SecretKeySelector{
@@ -378,7 +348,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := convertPodEndpoints(tt.args.promPodEnpoints); !reflect.DeepEqual(got, tt.want) {
+			if got := convertPodEndpoints(tt.promPodEnpoints); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ConvertPodEndpoints() = %v, want %v", got, tt.want)
 			}
 		})
@@ -386,34 +356,29 @@ func TestConvertPodEndpoints(t *testing.T) {
 }
 
 func TestConvertProbe(t *testing.T) {
-	type args struct {
-		probe *promv1.Probe
-	}
 	tests := []struct {
-		name string
-		args args
-		want vmv1beta1.VMProbe
+		name  string
+		probe *promv1.Probe
+		want  vmv1beta1.VMProbe
 	}{
 		{
 			name: "with static config",
-			args: args{
-				probe: &promv1.Probe{
-					Spec: promv1.ProbeSpec{
-						ProberSpec: promv1.ProberSpec{
-							ProxyURL: "http://proxy.com",
-						},
-						Targets: promv1.ProbeTargets{
-							StaticConfig: &promv1.ProbeTargetStaticConfig{
-								Targets: []string{"target-1", "target-2"},
-								Labels: map[string]string{
-									"l1": "v1",
-									"l2": "v2",
-								},
-								RelabelConfigs: []promv1.RelabelConfig{
-									{
-										Action:       "drop",
-										SourceLabels: []promv1.LabelName{"__address__"},
-									},
+			probe: &promv1.Probe{
+				Spec: promv1.ProbeSpec{
+					ProberSpec: promv1.ProberSpec{
+						ProxyURL: "http://proxy.com",
+					},
+					Targets: promv1.ProbeTargets{
+						StaticConfig: &promv1.ProbeTargetStaticConfig{
+							Targets: []string{"target-1", "target-2"},
+							Labels: map[string]string{
+								"l1": "v1",
+								"l2": "v2",
+							},
+							RelabelConfigs: []promv1.RelabelConfig{
+								{
+									Action:       "drop",
+									SourceLabels: []promv1.LabelName{"__address__"},
 								},
 							},
 						},
@@ -445,31 +410,29 @@ func TestConvertProbe(t *testing.T) {
 		},
 		{
 			name: "with ingress config",
-			args: args{
-				probe: &promv1.Probe{
-					Spec: promv1.ProbeSpec{
-						Targets: promv1.ProbeTargets{
-							Ingress: &promv1.ProbeTargetIngress{
-								Selector: metav1.LabelSelector{
-									MatchLabels: map[string]string{
-										"app": "test",
-									},
-									MatchExpressions: []metav1.LabelSelectorRequirement{
-										{
-											Key:      "key",
-											Operator: "op",
-											Values:   []string{"v1", "v2"},
-										},
-									},
+			probe: &promv1.Probe{
+				Spec: promv1.ProbeSpec{
+					Targets: promv1.ProbeTargets{
+						Ingress: &promv1.ProbeTargetIngress{
+							Selector: metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app": "test",
 								},
-								NamespaceSelector: promv1.NamespaceSelector{
-									MatchNames: []string{"test-ns"},
-								},
-								RelabelConfigs: []promv1.RelabelConfig{
+								MatchExpressions: []metav1.LabelSelectorRequirement{
 									{
-										Action:       "keep",
-										SourceLabels: []promv1.LabelName{"__address__"},
+										Key:      "key",
+										Operator: "op",
+										Values:   []string{"v1", "v2"},
 									},
+								},
+							},
+							NamespaceSelector: promv1.NamespaceSelector{
+								MatchNames: []string{"test-ns"},
+							},
+							RelabelConfigs: []promv1.RelabelConfig{
+								{
+									Action:       "keep",
+									SourceLabels: []promv1.LabelName{"__address__"},
 								},
 							},
 						},
@@ -509,7 +472,7 @@ func TestConvertProbe(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertProbe(tt.args.probe, &config.BaseOperatorConf{
+			got := ConvertProbe(tt.probe, &config.BaseOperatorConf{
 				FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
 				FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
 			})

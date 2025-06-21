@@ -14,11 +14,12 @@ func generateNodeScrapeConfig(
 	ctx context.Context,
 	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMNodeScrape,
-	apiserverConfig *vmv1beta1.APIServerConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
-	nodeSpec := &sc.Spec
+	spec := &sc.Spec
+	apiserverConfig := cr.Spec.APIServerConfig
+	sp := cr.Spec.CommonScrapeParams
+	se := sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -26,7 +27,7 @@ func generateNodeScrapeConfig(
 		},
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &nodeSpec.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &spec.EndpointScrapeParams, cr)
 
 	k8sSDOpts := generateK8SSDConfigOptions{
 		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
@@ -41,12 +42,12 @@ func generateNodeScrapeConfig(
 		cfg = append(cfg, c...)
 	}
 
-	cfg = addCommonScrapeParamsTo(cfg, nodeSpec.EndpointScrapeParams, se)
+	cfg = addCommonScrapeParamsTo(cfg, spec.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
 
 	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
-	relabelings = addSelectorToRelabelingFor(relabelings, "node", nodeSpec.Selector, skipRelabelSelectors)
+	relabelings = addSelectorToRelabelingFor(relabelings, "node", spec.Selector, skipRelabelSelectors)
 	// Add __address__ as internalIP  and pod and service labels into proper labels.
 	relabelings = append(relabelings, []yaml.MapSlice{
 		{
@@ -84,16 +85,16 @@ func generateNodeScrapeConfig(
 		})
 	}
 
-	if nodeSpec.Port != "" {
+	if spec.Port != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "source_labels", Value: []string{"__address__"}},
 			{Key: "target_label", Value: "__address__"},
 			{Key: "regex", Value: "^(.*):(.*)"},
-			{Key: "replacement", Value: fmt.Sprintf("${1}:%s", nodeSpec.Port)},
+			{Key: "replacement", Value: fmt.Sprintf("${1}:%s", spec.Port)},
 		})
 	}
 
-	for _, c := range nodeSpec.RelabelConfigs {
+	for _, c := range spec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
 	for _, trc := range cr.Spec.NodeScrapeRelabelTemplate {
@@ -105,11 +106,11 @@ func generateNodeScrapeConfig(
 	relabelings = enforceNamespaceLabel(relabelings, sc.Namespace, se.EnforcedNamespaceLabel)
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
-	cfg = addMetricRelabelingsTo(cfg, nodeSpec.MetricRelabelConfigs, se)
+	cfg = addMetricRelabelingsTo(cfg, spec.MetricRelabelConfigs, se)
 	if c, err := buildVMScrapeParams(sc.Namespace, sc.Spec.VMScrapeParams, ac); err != nil {
 		return nil, err
 	} else {
 		cfg = append(cfg, c...)
 	}
-	return addEndpointAuthTo(cfg, &nodeSpec.EndpointAuth, sc.Namespace, ac)
+	return addEndpointAuthTo(cfg, &spec.EndpointAuth, sc.Namespace, ac)
 }

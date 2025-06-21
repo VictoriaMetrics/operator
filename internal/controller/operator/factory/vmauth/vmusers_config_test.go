@@ -19,34 +19,29 @@ import (
 )
 
 func Test_genUserCfg(t *testing.T) {
-	type args struct {
-		user        *vmv1beta1.VMUser
-		crdURLCache map[string]string
-	}
 	tests := []struct {
 		name              string
-		args              args
+		user              *vmv1beta1.VMUser
+		crdURLCache       map[string]string
 		want              string
 		predefinedObjects []runtime.Object
 		wantErr           bool
 	}{
 		{
 			name: "basic user cfg",
-			args: args{
-				user: &vmv1beta1.VMUser{
-					Spec: vmv1beta1.VMUserSpec{
-						Name:     ptr.To("user1"),
-						UserName: ptr.To("basic"),
-						Password: ptr.To("pass"),
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								Static: &vmv1beta1.StaticRef{
-									URL: "http://vmselect",
-								},
-								Paths: []string{
-									"/select/0/prometheus",
-									"/select/0/graphite",
-								},
+			user: &vmv1beta1.VMUser{
+				Spec: vmv1beta1.VMUserSpec{
+					Name:     ptr.To("user1"),
+					UserName: ptr.To("basic"),
+					Password: ptr.To("pass"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: &vmv1beta1.StaticRef{
+								URL: "http://vmselect",
+							},
+							Paths: []string{
+								"/select/0/prometheus",
+								"/select/0/graphite",
 							},
 						},
 					},
@@ -65,38 +60,36 @@ password: pass
 		},
 		{
 			name: "with crd",
-			args: args{
-				user: &vmv1beta1.VMUser{
-					Spec: vmv1beta1.VMUserSpec{
-						Name:        ptr.To("user1"),
-						BearerToken: ptr.To("secret-token"),
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								CRD: &vmv1beta1.CRDRef{
-									Kind:      "VMAgent",
-									Name:      "base",
-									Namespace: "monitoring",
-								},
-								Paths: []string{
-									"/api/v1/write",
-									"/api/v1/targets",
-									"/targets",
-								},
+			user: &vmv1beta1.VMUser{
+				Spec: vmv1beta1.VMUserSpec{
+					Name:        ptr.To("user1"),
+					BearerToken: ptr.To("secret-token"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMAgent",
+								Name:      "base",
+								Namespace: "monitoring",
 							},
-							{
-								CRD: &vmv1beta1.CRDRef{
-									Kind:      "VMSingle",
-									Namespace: "monitoring",
-									Name:      "db",
-								},
+							Paths: []string{
+								"/api/v1/write",
+								"/api/v1/targets",
+								"/targets",
+							},
+						},
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMSingle",
+								Namespace: "monitoring",
+								Name:      "db",
 							},
 						},
 					},
 				},
-				crdURLCache: map[string]string{
-					"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
-				},
+			},
+			crdURLCache: map[string]string{
+				"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
+				"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
 			},
 			want: `url_map:
 - url_prefix:
@@ -115,58 +108,56 @@ bearer_token: secret-token
 		},
 		{
 			name: "with crd and custom suffix",
-			args: args{
-				user: &vmv1beta1.VMUser{
-					Spec: vmv1beta1.VMUserSpec{
-						BearerToken: ptr.To("secret-token"),
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								CRD: &vmv1beta1.CRDRef{
-									Kind:      "VMAgent",
-									Name:      "base",
-									Namespace: "monitoring",
-								},
-								TargetPathSuffix: "/insert/0/prometheus?extra_label=key=value",
-								Paths: []string{
-									"/api/v1/write",
-									"/api/v1/targets",
-									"/targets",
-								},
-								URLMapCommon: vmv1beta1.URLMapCommon{
-									RequestHeaders: []string{"baz: bar"},
-								},
+			user: &vmv1beta1.VMUser{
+				Spec: vmv1beta1.VMUserSpec{
+					BearerToken: ptr.To("secret-token"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMAgent",
+								Name:      "base",
+								Namespace: "monitoring",
 							},
-							{
-								Static:           &vmv1beta1.StaticRef{URL: "http://vmcluster-remote.mydomain.com:8401"},
-								TargetPathSuffix: "/insert/0/prometheus?extra_label=key=value",
-								Paths: []string{
-									"/",
-								},
+							TargetPathSuffix: "/insert/0/prometheus?extra_label=key=value",
+							Paths: []string{
+								"/api/v1/write",
+								"/api/v1/targets",
+								"/targets",
 							},
-							{
-								CRD: &vmv1beta1.CRDRef{
-									Kind:      "VLogs",
-									Namespace: "monitoring",
-									Name:      "db",
-								},
-								Paths: []string{"/logs/v1.*"},
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								RequestHeaders: []string{"baz: bar"},
 							},
+						},
+						{
+							Static:           &vmv1beta1.StaticRef{URL: "http://vmcluster-remote.mydomain.com:8401"},
+							TargetPathSuffix: "/insert/0/prometheus?extra_label=key=value",
+							Paths: []string{
+								"/",
+							},
+						},
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VLogs",
+								Namespace: "monitoring",
+								Name:      "db",
+							},
+							Paths: []string{"/logs/v1.*"},
+						},
 
-							{
-								CRD: &vmv1beta1.CRDRef{
-									Kind:      "VMSingle",
-									Namespace: "monitoring",
-									Name:      "db",
-								},
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMSingle",
+								Namespace: "monitoring",
+								Name:      "db",
 							},
 						},
 					},
 				},
-				crdURLCache: map[string]string{
-					"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
-					"VLogs/monitoring/db":     "http://vlogs-b.monitoring.svc:8482",
-				},
+			},
+			crdURLCache: map[string]string{
+				"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
+				"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+				"VLogs/monitoring/db":     "http://vlogs-b.monitoring.svc:8482",
 			},
 			want: `url_map:
 - url_prefix:
@@ -194,26 +185,24 @@ bearer_token: secret-token
 		},
 		{
 			name: "with one target",
-			args: args{
-				user: &vmv1beta1.VMUser{
-					Spec: vmv1beta1.VMUserSpec{
-						Name:        ptr.To("user1"),
-						BearerToken: ptr.To("secret-token"),
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								CRD: &vmv1beta1.CRDRef{
-									Kind:      "VMAgent",
-									Name:      "base",
-									Namespace: "monitoring",
-								},
+			user: &vmv1beta1.VMUser{
+				Spec: vmv1beta1.VMUserSpec{
+					Name:        ptr.To("user1"),
+					BearerToken: ptr.To("secret-token"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMAgent",
+								Name:      "base",
+								Namespace: "monitoring",
 							},
 						},
 					},
 				},
-				crdURLCache: map[string]string{
-					"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
-				},
+			},
+			crdURLCache: map[string]string{
+				"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
+				"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
 			},
 			want: `url_prefix:
 - http://vmagent-base.monitoring.svc:8429
@@ -223,29 +212,27 @@ bearer_token: secret-token
 		},
 		{
 			name: "with target headers",
-			args: args{
-				user: &vmv1beta1.VMUser{
-					Spec: vmv1beta1.VMUserSpec{
-						Name:        ptr.To("user2"),
-						BearerToken: ptr.To("secret-token"),
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								CRD: &vmv1beta1.CRDRef{
-									Kind:      "VMAgent",
-									Name:      "base",
-									Namespace: "monitoring",
-								},
-								URLMapCommon: vmv1beta1.URLMapCommon{
-									RequestHeaders: []string{"X-Scope-OrgID: abc", "X-Scope-Team: baz"},
-								},
+			user: &vmv1beta1.VMUser{
+				Spec: vmv1beta1.VMUserSpec{
+					Name:        ptr.To("user2"),
+					BearerToken: ptr.To("secret-token"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMAgent",
+								Name:      "base",
+								Namespace: "monitoring",
+							},
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								RequestHeaders: []string{"X-Scope-OrgID: abc", "X-Scope-Team: baz"},
 							},
 						},
 					},
 				},
-				crdURLCache: map[string]string{
-					"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
-				},
+			},
+			crdURLCache: map[string]string{
+				"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
+				"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
 			},
 			want: `url_prefix:
 - http://vmagent-base.monitoring.svc:8429
@@ -258,34 +245,32 @@ bearer_token: secret-token
 		},
 		{
 			name: "with ip filters and multiple targets",
-			args: args{
-				user: &vmv1beta1.VMUser{
-					Spec: vmv1beta1.VMUserSpec{
-						Name:     ptr.To("user1"),
-						UserName: ptr.To("basic"),
-						Password: ptr.To("pass"),
-						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
-							IPFilters: vmv1beta1.VMUserIPFilters{
-								AllowList: []string{"127.0.0.1"},
+			user: &vmv1beta1.VMUser{
+				Spec: vmv1beta1.VMUserSpec{
+					Name:     ptr.To("user1"),
+					UserName: ptr.To("basic"),
+					Password: ptr.To("pass"),
+					VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+						IPFilters: vmv1beta1.VMUserIPFilters{
+							AllowList: []string{"127.0.0.1"},
+						},
+					},
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: &vmv1beta1.StaticRef{
+								URL: "http://vmselect",
+							},
+							Paths: []string{
+								"/select/0/prometheus",
+								"/select/0/graphite",
 							},
 						},
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								Static: &vmv1beta1.StaticRef{
-									URL: "http://vmselect",
-								},
-								Paths: []string{
-									"/select/0/prometheus",
-									"/select/0/graphite",
-								},
+						{
+							Static: &vmv1beta1.StaticRef{
+								URL: "http://vminsert",
 							},
-							{
-								Static: &vmv1beta1.StaticRef{
-									URL: "http://vminsert",
-								},
-								Paths: []string{
-									"/insert/0/prometheus",
-								},
+							Paths: []string{
+								"/insert/0/prometheus",
 							},
 						},
 					},
@@ -311,39 +296,37 @@ password: pass
 		},
 		{
 			name: "with headers and max concurrent",
-			args: args{
-				user: &vmv1beta1.VMUser{
-					Spec: vmv1beta1.VMUserSpec{
-						Name:     ptr.To("user1"),
-						UserName: ptr.To("basic"),
-						Password: ptr.To("pass"),
-						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
-							Headers:               []string{"H1:V1", "H2:V2"},
-							ResponseHeaders:       []string{"RH1:V3", "RH2:V4"},
-							MaxConcurrentRequests: ptr.To(400),
-							RetryStatusCodes:      []int{502, 503},
-						},
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								Static: &vmv1beta1.StaticRef{
-									URL: "http://vmselect",
-								},
-								Paths: []string{
-									"/select/0/prometheus",
-									"/select/0/graphite",
-								},
-								URLMapCommon: vmv1beta1.URLMapCommon{
-									RequestHeaders:  []string{"H1:V2", "H2:V3"},
-									ResponseHeaders: []string{"RH1:V6", "RH2:V7"},
-								},
+			user: &vmv1beta1.VMUser{
+				Spec: vmv1beta1.VMUserSpec{
+					Name:     ptr.To("user1"),
+					UserName: ptr.To("basic"),
+					Password: ptr.To("pass"),
+					VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+						Headers:               []string{"H1:V1", "H2:V2"},
+						ResponseHeaders:       []string{"RH1:V3", "RH2:V4"},
+						MaxConcurrentRequests: ptr.To(400),
+						RetryStatusCodes:      []int{502, 503},
+					},
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: &vmv1beta1.StaticRef{
+								URL: "http://vmselect",
 							},
-							{
-								Static: &vmv1beta1.StaticRef{
-									URL: "http://vminsert",
-								},
-								Paths: []string{
-									"/insert/0/prometheus",
-								},
+							Paths: []string{
+								"/select/0/prometheus",
+								"/select/0/graphite",
+							},
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								RequestHeaders:  []string{"H1:V2", "H2:V3"},
+								ResponseHeaders: []string{"RH1:V6", "RH2:V7"},
+							},
+						},
+						{
+							Static: &vmv1beta1.StaticRef{
+								URL: "http://vminsert",
+							},
+							Paths: []string{
+								"/insert/0/prometheus",
 							},
 						},
 					},
@@ -382,46 +365,44 @@ password: pass
 		},
 		{
 			name: "with all URLMapCommon options and tls_insecure_skip_verify",
-			args: args{
-				user: &vmv1beta1.VMUser{
-					Spec: vmv1beta1.VMUserSpec{
-						Name:     ptr.To("user1"),
-						UserName: ptr.To("basic"),
-						Password: ptr.To("pass"),
-						VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
-							LoadBalancingPolicy:    ptr.To("first_available"),
-							DropSrcPathPrefixParts: ptr.To(1),
-							TLSConfig: &vmv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
+			user: &vmv1beta1.VMUser{
+				Spec: vmv1beta1.VMUserSpec{
+					Name:     ptr.To("user1"),
+					UserName: ptr.To("basic"),
+					Password: ptr.To("pass"),
+					VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+						LoadBalancingPolicy:    ptr.To("first_available"),
+						DropSrcPathPrefixParts: ptr.To(1),
+						TLSConfig: &vmv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+						},
+					},
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: &vmv1beta1.StaticRef{
+								URL: "http://vmselect",
+							},
+							Paths: []string{
+								"/select/0/prometheus",
+								"/select/0/graphite",
+							},
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								SrcQueryArgs:           []string{"foo=bar"},
+								SrcHeaders:             []string{"H1:V1"},
+								DiscoverBackendIPs:     ptr.To(true),
+								RequestHeaders:         []string{"X-Scope-OrgID: abc"},
+								ResponseHeaders:        []string{"RH1:V3"},
+								RetryStatusCodes:       []int{502, 503},
+								LoadBalancingPolicy:    ptr.To("first_available"),
+								DropSrcPathPrefixParts: ptr.To(2),
 							},
 						},
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								Static: &vmv1beta1.StaticRef{
-									URL: "http://vmselect",
-								},
-								Paths: []string{
-									"/select/0/prometheus",
-									"/select/0/graphite",
-								},
-								URLMapCommon: vmv1beta1.URLMapCommon{
-									SrcQueryArgs:           []string{"foo=bar"},
-									SrcHeaders:             []string{"H1:V1"},
-									DiscoverBackendIPs:     ptr.To(true),
-									RequestHeaders:         []string{"X-Scope-OrgID: abc"},
-									ResponseHeaders:        []string{"RH1:V3"},
-									RetryStatusCodes:       []int{502, 503},
-									LoadBalancingPolicy:    ptr.To("first_available"),
-									DropSrcPathPrefixParts: ptr.To(2),
-								},
+						{
+							Static: &vmv1beta1.StaticRef{
+								URL: "http://vminsert",
 							},
-							{
-								Static: &vmv1beta1.StaticRef{
-									URL: "http://vminsert",
-								},
-								Paths: []string{
-									"/insert/0/prometheus",
-								},
+							Paths: []string{
+								"/insert/0/prometheus",
 							},
 						},
 					},
@@ -461,20 +442,18 @@ password: pass
 		},
 		{
 			name: "with metric_labels",
-			args: args{
-				user: &vmv1beta1.VMUser{
-					Spec: vmv1beta1.VMUserSpec{
-						Name:     ptr.To("user1"),
-						UserName: ptr.To("basic"),
-						Password: ptr.To("pass"),
-						MetricLabels: map[string]string{
-							"foo": "bar",
-							"buz": "qux",
-						},
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								Static: &vmv1beta1.StaticRef{URL: "http://localhost:8435"},
-							},
+			user: &vmv1beta1.VMUser{
+				Spec: vmv1beta1.VMUserSpec{
+					Name:     ptr.To("user1"),
+					UserName: ptr.To("basic"),
+					Password: ptr.To("pass"),
+					MetricLabels: map[string]string{
+						"foo": "bar",
+						"buz": "qux",
+					},
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: &vmv1beta1.StaticRef{URL: "http://localhost:8435"},
 						},
 					},
 				},
@@ -501,7 +480,7 @@ password: pass
 			ctx := context.TODO()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			ac := getAssetsCache(ctx, fclient, cr)
-			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache, cr, ac)
+			got, err := genUserCfg(tt.user, tt.crdURLCache, cr, ac)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("genUserCfg() error = %v, wantErr %v", err, tt.wantErr)
 				return

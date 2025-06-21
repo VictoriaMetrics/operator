@@ -120,7 +120,7 @@ labels:
 	}
 }
 
-func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
+func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 	tests := []struct {
 		name              string
 		cr                *vmv1beta1.VMAgent
@@ -137,16 +137,18 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-					ServiceScrapeSelector:          &metav1.LabelSelector{},
-					PodScrapeSelector:              &metav1.LabelSelector{},
-					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-					NodeScrapeSelector:             &metav1.LabelSelector{},
-					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-					StaticScrapeSelector:           &metav1.LabelSelector{},
-					ProbeNamespaceSelector:         &metav1.LabelSelector{},
-					ProbeSelector:                  &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector:          &metav1.LabelSelector{},
+						PodScrapeSelector:              &metav1.LabelSelector{},
+						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+						NodeScrapeSelector:             &metav1.LabelSelector{},
+						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+						StaticScrapeSelector:           &metav1.LabelSelector{},
+						ProbeNamespaceSelector:         &metav1.LabelSelector{},
+						ProbeSelector:                  &metav1.LabelSelector{},
+					},
 				},
 			},
 			c: config.MustGetBaseConfig(),
@@ -620,16 +622,18 @@ scrape_configs:
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-					ServiceScrapeSelector:          &metav1.LabelSelector{},
-					PodScrapeSelector:              &metav1.LabelSelector{},
-					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-					NodeScrapeSelector:             &metav1.LabelSelector{},
-					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-					StaticScrapeSelector:           &metav1.LabelSelector{},
-					ProbeNamespaceSelector:         &metav1.LabelSelector{},
-					ProbeSelector:                  &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector:          &metav1.LabelSelector{},
+						PodScrapeSelector:              &metav1.LabelSelector{},
+						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+						NodeScrapeSelector:             &metav1.LabelSelector{},
+						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+						StaticScrapeSelector:           &metav1.LabelSelector{},
+						ProbeNamespaceSelector:         &metav1.LabelSelector{},
+						ProbeSelector:                  &metav1.LabelSelector{},
+					},
 				},
 			},
 			c: config.MustGetBaseConfig(),
@@ -913,16 +917,18 @@ scrape_configs:
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-					ServiceScrapeSelector:          &metav1.LabelSelector{},
-					PodScrapeSelector:              &metav1.LabelSelector{},
-					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-					NodeScrapeSelector:             &metav1.LabelSelector{},
-					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-					StaticScrapeSelector:           &metav1.LabelSelector{},
-					ProbeNamespaceSelector:         &metav1.LabelSelector{},
-					ProbeSelector:                  &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector:          &metav1.LabelSelector{},
+						PodScrapeSelector:              &metav1.LabelSelector{},
+						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+						NodeScrapeSelector:             &metav1.LabelSelector{},
+						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+						StaticScrapeSelector:           &metav1.LabelSelector{},
+						ProbeNamespaceSelector:         &metav1.LabelSelector{},
+						ProbeSelector:                  &metav1.LabelSelector{},
+					},
 				},
 			},
 			c: func() *config.BaseOperatorConf {
@@ -1102,16 +1108,18 @@ scrape_configs:
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-					ServiceScrapeSelector:          &metav1.LabelSelector{},
-					PodScrapeSelector:              &metav1.LabelSelector{},
-					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-					NodeScrapeSelector:             &metav1.LabelSelector{},
-					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-					StaticScrapeSelector:           &metav1.LabelSelector{},
-					ProbeNamespaceSelector:         &metav1.LabelSelector{},
-					ProbeSelector:                  &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector:          &metav1.LabelSelector{},
+						PodScrapeSelector:              &metav1.LabelSelector{},
+						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+						NodeScrapeSelector:             &metav1.LabelSelector{},
+						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+						StaticScrapeSelector:           &metav1.LabelSelector{},
+						ProbeNamespaceSelector:         &metav1.LabelSelector{},
+						ProbeSelector:                  &metav1.LabelSelector{},
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -1479,8 +1487,10 @@ scrape_configs:
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					DaemonSetMode:      true,
-					SelectAllByDefault: true,
+					DaemonSetMode: true,
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						SelectAllByDefault: true,
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -1606,10 +1616,12 @@ scrape_configs:
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					SelectAllByDefault: true,
-					VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-						ArbitraryFSAccessThroughSMs: vmv1beta1.ArbitraryFSAccessThroughSMsConfig{
-							Deny: true,
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						SelectAllByDefault: true,
+						CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+							ArbitraryFSAccessThroughSMs: vmv1beta1.ArbitraryFSAccessThroughSMsConfig{
+								Deny: true,
+							},
 						},
 					},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -1680,7 +1692,9 @@ scrape_configs: []
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					SelectAllByDefault: true,
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						SelectAllByDefault: true,
+					},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{
 							URL: "http://some-single.example.com",
@@ -1768,14 +1782,14 @@ scrape_configs: []
 
 			build.AddDefaults(testClient.Scheme())
 			ac := getAssetsCache(ctx, testClient, tt.cr)
-			if err := createOrUpdateConfigurationSecret(ctx, testClient, tt.cr, nil, nil, ac); (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateConfigurationSecret() error = %v, wantErr %v", err, tt.wantErr)
+			if err := createOrUpdateScrapeConfig(ctx, testClient, tt.cr, nil, nil, ac); (err != nil) != tt.wantErr {
+				t.Errorf("CreateOrUpdateScrapeConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var expectSecret corev1.Secret
 			if err := testClient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.PrefixedName()}, &expectSecret); err != nil {
 				t.Fatalf("cannot get vmagent config secret: %s", err)
 			}
-			gotCfg := expectSecret.Data[vmagentGzippedFilename]
+			gotCfg := expectSecret.Data[scrapeGzippedFilename]
 			cfgB := bytes.NewBuffer(gotCfg)
 			gr, err := gzip.NewReader(cfgB)
 			if err != nil {
@@ -1819,19 +1833,21 @@ scrape_configs: []
 						URL: "http://vmsingle.example.com",
 					},
 				},
-				SelectAllByDefault: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					SelectAllByDefault: true,
+				},
 			},
 		}
 		ac := getAssetsCache(ctx, testClient, cr)
-		if err := createOrUpdateConfigurationSecret(ctx, testClient, cr, nil, nil, ac); err != nil {
-			t.Errorf("CreateOrUpdateConfigurationSecret() error = %s", err)
+		if err := createOrUpdateScrapeConfig(ctx, testClient, cr, nil, nil, ac); err != nil {
+			t.Errorf("createOrUpdateScrapeConfig() error = %s", err)
 		}
 		var configSecret corev1.Secret
 		if err := testClient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &configSecret); err != nil {
 			t.Fatalf("cannot get vmagent config secret: %s", err)
 		}
 
-		gotCfg := configSecret.Data[vmagentGzippedFilename]
+		gotCfg := configSecret.Data[scrapeGzippedFilename]
 		cfgB := bytes.NewBuffer(gotCfg)
 		gr, err := gzip.NewReader(cfgB)
 		if err != nil {

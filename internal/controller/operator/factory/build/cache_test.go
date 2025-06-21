@@ -12,27 +12,22 @@ import (
 )
 
 func Test_LoadKeyFromSecret(t *testing.T) {
-	type args struct {
-		ns string
-		ss *corev1.SecretKeySelector
-	}
 	tests := []struct {
 		name              string
-		args              args
+		ns                string
+		ss                *corev1.SecretKeySelector
 		want              string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "extract tls key data from secret",
-			args: args{
-				ns: "default",
-				ss: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "tls-secret",
-					},
-					Key: "key.pem",
+			ns:   "default",
+			ss: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "tls-secret",
 				},
+				Key: "key.pem",
 			},
 			want:    "tls-key-data",
 			wantErr: false,
@@ -48,14 +43,12 @@ func Test_LoadKeyFromSecret(t *testing.T) {
 		},
 		{
 			name: "extract basic auth password with leading space and new line",
-			args: args{
-				ns: "default",
-				ss: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "basic-auth",
-					},
-					Key: "password",
+			ns:   "default",
+			ss: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "basic-auth",
 				},
+				Key: "password",
 			},
 			want: " password-value",
 			predefinedObjects: []runtime.Object{
@@ -70,14 +63,12 @@ func Test_LoadKeyFromSecret(t *testing.T) {
 		},
 		{
 			name: "fail extract missing tls cert data from secret",
-			args: args{
-				ns: "default",
-				ss: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "tls-secret",
-					},
-					Key: "cert.pem",
+			ns:   "default",
+			ss: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "tls-secret",
 				},
+				Key: "cert.pem",
 			},
 			want:    "",
 			wantErr: true,
@@ -102,7 +93,7 @@ func Test_LoadKeyFromSecret(t *testing.T) {
 				},
 			}
 			cache := NewAssetsCache(context.TODO(), fclient, cfg)
-			got, err := cache.LoadKeyFromSecret(tt.args.ns, tt.args.ss)
+			got, err := cache.LoadKeyFromSecret(tt.ns, tt.ss)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("LoadKeyFromSecret() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -115,23 +106,18 @@ func Test_LoadKeyFromSecret(t *testing.T) {
 }
 
 func Test_LoadKeyFromConfigMap(t *testing.T) {
-	type args struct {
-		ns string
-		cs *corev1.ConfigMapKeySelector
-	}
 	tests := []struct {
 		name              string
-		args              args
+		ns                string
+		cs                *corev1.ConfigMapKeySelector
 		want              string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "extract key from cm",
-			args: args{
-				ns: "default",
-				cs: &corev1.ConfigMapKeySelector{Key: "tls-conf", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cm"}},
-			},
+			ns:   "default",
+			cs:   &corev1.ConfigMapKeySelector{Key: "tls-conf", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cm"}},
 			predefinedObjects: []runtime.Object{
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{Name: "tls-cm", Namespace: "default"},
@@ -152,7 +138,7 @@ func Test_LoadKeyFromConfigMap(t *testing.T) {
 				},
 			}
 			cache := NewAssetsCache(context.TODO(), fclient, cfg)
-			got, err := cache.LoadKeyFromConfigMap(tt.args.ns, tt.args.cs)
+			got, err := cache.LoadKeyFromConfigMap(tt.ns, tt.cs)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("LoadKeyFromConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 				return

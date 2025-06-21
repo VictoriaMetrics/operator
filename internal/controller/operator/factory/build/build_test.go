@@ -12,26 +12,21 @@ import (
 )
 
 func TestLicenseAddArgsTo(t *testing.T) {
-	type args struct {
+	tests := []struct {
+		name           string
+		license        vmv1beta1.License
 		args           []string
 		secretMountDir string
-	}
-	tests := []struct {
-		name    string
-		license vmv1beta1.License
-		args    args
-		want    []string
+		want           []string
 	}{
 		{
 			name: "license key provided",
 			license: vmv1beta1.License{
 				Key: ptr.To("test-key"),
 			},
-			args: args{
-				args:           []string{},
-				secretMountDir: "/etc/secrets",
-			},
-			want: []string{"-license=test-key"},
+			args:           []string{},
+			secretMountDir: "/etc/secrets",
+			want:           []string{"-license=test-key"},
 		},
 		{
 			name: "license key provided with force offline",
@@ -39,11 +34,9 @@ func TestLicenseAddArgsTo(t *testing.T) {
 				Key:          ptr.To("test-key"),
 				ForceOffline: ptr.To(true),
 			},
-			args: args{
-				args:           []string{},
-				secretMountDir: "/etc/secrets",
-			},
-			want: []string{"-license=test-key", "-license.forceOffline=true"},
+			args:           []string{},
+			secretMountDir: "/etc/secrets",
+			want:           []string{"-license=test-key", "-license.forceOffline=true"},
 		},
 		{
 			name: "license key provided with reload interval",
@@ -54,11 +47,9 @@ func TestLicenseAddArgsTo(t *testing.T) {
 				},
 				ReloadInterval: ptr.To("30s"),
 			},
-			args: args{
-				args:           []string{},
-				secretMountDir: "/etc/secrets",
-			},
-			want: []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-licenseFile.reloadInterval=30s"},
+			args:           []string{},
+			secretMountDir: "/etc/secrets",
+			want:           []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-licenseFile.reloadInterval=30s"},
 		},
 		{
 			name: "license key provided via secret with force offline",
@@ -69,16 +60,14 @@ func TestLicenseAddArgsTo(t *testing.T) {
 				},
 				ForceOffline: ptr.To(true),
 			},
-			args: args{
-				args:           []string{},
-				secretMountDir: "/etc/secrets",
-			},
-			want: []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-license.forceOffline=true"},
+			args:           []string{},
+			secretMountDir: "/etc/secrets",
+			want:           []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-license.forceOffline=true"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := LicenseArgsTo(tt.args.args, &tt.license, tt.args.secretMountDir)
+			got := LicenseArgsTo(tt.args, &tt.license, tt.secretMountDir)
 			slices.Sort(got)
 			slices.Sort(tt.want)
 

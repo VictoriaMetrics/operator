@@ -31,6 +31,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmsingle"
 )
 
 // VMProbeReconciler reconciles a VMProbe object
@@ -72,54 +73,95 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	if instance.Spec.ParsingError != "" {
 		return result, &parsingError{instance.Spec.ParsingError, "vmprobescrape"}
 	}
-	if agentReconcileLimit.MustThrottleReconcile() {
-		// fast path, rate limited
-		return
-	}
+	if !agentReconcileLimit.MustThrottleReconcile() {
+		agentSync.Lock()
 
-	agentSync.Lock()
-	defer agentSync.Unlock()
-
-	var objects vmv1beta1.VMAgentList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAgentList) {
-		objects.Items = append(objects.Items, dst.Items...)
-	}); err != nil {
-		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
-	}
-
-	for i := range objects.Items {
-		item := &objects.Items[i]
-		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsProbeUnmanaged() {
-			continue
+		var objects vmv1beta1.VMAgentList
+		if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAgentList) {
+			objects.Items = append(objects.Items, dst.Items...)
+		}); err != nil {
+			return result, fmt.Errorf("cannot list vmagents for vmprobe: %w", err)
 		}
-		if item.Spec.DaemonSetMode {
-			continue
-		}
-		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
 
-		// only check selector when deleting object,
-		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
-		if !instance.DeletionTimestamp.IsZero() {
-			opts := &k8stools.SelectorOpts{
-				SelectAll:         item.Spec.SelectAllByDefault,
-				NamespaceSelector: item.Spec.ProbeNamespaceSelector,
-				ObjectSelector:    item.Spec.ProbeSelector,
-				DefaultNamespace:  instance.Namespace,
-			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
-			if err != nil {
-				l.Error(err, "cannot match vmagent and vmProbe")
+		for i := range objects.Items {
+			item := &objects.Items[i]
+			if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsProbeUnmanaged() {
 				continue
 			}
-			if !match {
+			if item.Spec.DaemonSetMode {
+				continue
+			}
+			l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
+			ctx := logger.AddToContext(ctx, l)
+
+			// only check selector when deleting object,
+			// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
+			if !instance.DeletionTimestamp.IsZero() {
+				opts := &k8stools.SelectorOpts{
+					SelectAll:         item.Spec.SelectAllByDefault,
+					NamespaceSelector: item.Spec.ProbeNamespaceSelector,
+					ObjectSelector:    item.Spec.ProbeSelector,
+					DefaultNamespace:  instance.Namespace,
+				}
+				match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
+				if err != nil {
+					l.Error(err, "cannot match vmagent and vmprobe")
+					continue
+				}
+				if !match {
+					continue
+				}
+			}
+
+			if err := vmagent.CreateOrUpdateScrapeConfig(ctx, r, item, instance); err != nil {
 				continue
 			}
 		}
+		agentSync.Unlock()
+	}
 
-		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, r, item, instance); err != nil {
-			continue
+	if !vmsingleReconcileLimit.MustThrottleReconcile() {
+		vmsingleSync.Lock()
+
+		var objects vmv1beta1.VMSingleList
+		if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMSingleList) {
+			objects.Items = append(objects.Items, dst.Items...)
+		}); err != nil {
+			return result, fmt.Errorf("cannot list vmsingles for vmprobe: %w", err)
 		}
+
+		for i := range objects.Items {
+			item := &objects.Items[i]
+			if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsProbeUnmanaged() {
+				continue
+			}
+			l := l.WithValues("vmsingle", item.Name, "parent_namespace", item.Namespace)
+			ctx := logger.AddToContext(ctx, l)
+
+			// only check selector when deleting object,
+			// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
+			if !instance.DeletionTimestamp.IsZero() {
+				opts := &k8stools.SelectorOpts{
+					SelectAll:         item.Spec.SelectAllByDefault,
+					NamespaceSelector: item.Spec.ProbeNamespaceSelector,
+					ObjectSelector:    item.Spec.ProbeSelector,
+					DefaultNamespace:  instance.Namespace,
+				}
+				match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
+				if err != nil {
+					l.Error(err, "cannot match vmsingle and vmprobe")
+					continue
+				}
+				if !match {
+					continue
+				}
+			}
+
+			if err := vmsingle.CreateOrUpdateScrapeConfig(ctx, r, item, instance); err != nil {
+				continue
+			}
+		}
+		vmsingleSync.Unlock()
 	}
 	return
 }

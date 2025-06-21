@@ -7,22 +7,15 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestSelectServiceMonitors(t *testing.T) {
-	type args struct {
-		p *vmv1beta1.VMAgent
-		l logr.Logger
-	}
-
 	predefinedObjects := []runtime.Object{
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 		&vmv1beta1.VMServiceScrape{
@@ -55,26 +48,25 @@ func TestSelectServiceMonitors(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAgent
 		want              []string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "select service scrape inside vmagent namespace",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{},
 						},
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
 				&vmv1beta1.VMServiceScrape{
@@ -90,18 +82,17 @@ func TestSelectServiceMonitors(t *testing.T) {
 		},
 		{
 			name: "select service scrape from namespace with filter",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "stage"}},
 						ServiceScrapeSelector:          &metav1.LabelSelector{},
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
@@ -120,19 +111,18 @@ func TestSelectServiceMonitors(t *testing.T) {
 		},
 		{
 			name: "If NamespaceSelector and Selector both undefined, selectAllByDefault=false and empty watchNS",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeNamespaceSelector: nil,
 						ServiceScrapeSelector:          nil,
 						SelectAllByDefault:             false,
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: predefinedObjects,
 			want:              []string{},
@@ -140,19 +130,18 @@ func TestSelectServiceMonitors(t *testing.T) {
 		},
 		{
 			name: "If NamespaceSelector and Selector both undefined, selectAllByDefault=true and empty watchNS",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeNamespaceSelector: nil,
 						ServiceScrapeSelector:          nil,
 						SelectAllByDefault:             true,
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: predefinedObjects,
 			want:              []string{"default/ss1", "default/ss2", "other1/ss1", "other1/ss2", "other2/ss1", "other2/ss2"},
@@ -160,19 +149,18 @@ func TestSelectServiceMonitors(t *testing.T) {
 		},
 		{
 			name: "If NamespaceSelector defined, Selector undefined, selectAllByDefault=false and empty watchNS",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
 						ServiceScrapeSelector:          nil,
 						SelectAllByDefault:             false,
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: predefinedObjects,
 			want:              []string{"other1/ss1", "other1/ss2"},
@@ -180,19 +168,18 @@ func TestSelectServiceMonitors(t *testing.T) {
 		},
 		{
 			name: "If NamespaceSelector defined, Selector undefined, selectAllByDefault=true and empty watchNS",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
 						ServiceScrapeSelector:          nil,
 						SelectAllByDefault:             true,
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: predefinedObjects,
 			want:              []string{"other1/ss1", "other1/ss2"},
@@ -200,19 +187,18 @@ func TestSelectServiceMonitors(t *testing.T) {
 		},
 		{
 			name: "If NamespaceSelector undefined, Selector defined, selectAllByDefault=false and empty watchNS",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeNamespaceSelector: nil,
 						ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
 						SelectAllByDefault:             false,
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: predefinedObjects,
 			want:              []string{"default/ss1"},
@@ -220,19 +206,18 @@ func TestSelectServiceMonitors(t *testing.T) {
 		},
 		{
 			name: "If NamespaceSelector undefined, Selector defined, selectAllByDefault=true and empty watchNS",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeNamespaceSelector: nil,
 						ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
 						SelectAllByDefault:             true,
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: predefinedObjects,
 			want:              []string{"default/ss1"},
@@ -240,19 +225,18 @@ func TestSelectServiceMonitors(t *testing.T) {
 		},
 		{
 			name: "If NamespaceSelector and Selector both defined, selectAllByDefault=false and empty watchNS",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
 						ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
 						SelectAllByDefault:             false,
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: predefinedObjects,
 			want:              []string{"other1/ss1"},
@@ -260,19 +244,18 @@ func TestSelectServiceMonitors(t *testing.T) {
 		},
 		{
 			name: "If NamespaceSelector and Selector both defined, selectAllByDefault=true and empty watchNS",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-agent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-agent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other2"}},
 						ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss2"}},
 						SelectAllByDefault:             true,
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: predefinedObjects,
 			want:              []string{"other2/ss2"},
@@ -282,7 +265,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := selectServiceScrapes(context.TODO(), tt.args.p, fclient)
+			got, err := selectServiceScrapes(context.TODO(), tt.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectServiceScrapes() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -300,30 +283,25 @@ func TestSelectServiceMonitors(t *testing.T) {
 }
 
 func TestSelectPodMonitors(t *testing.T) {
-	type args struct {
-		p *vmv1beta1.VMAgent
-		l logr.Logger
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAgent
 		want              []string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "selector pod scrape at vmagent ns",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "example-vmagent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						PodScrapeSelector: &metav1.LabelSelector{},
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
 				&vmv1beta1.VMPodScrape{
@@ -339,19 +317,18 @@ func TestSelectPodMonitors(t *testing.T) {
 		},
 		{
 			name: "selector pod scrape at different ns with ns selector",
-			args: args{
-				p: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "example-vmagent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						PodScrapeNamespaceSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{"name": "monitoring"},
 						},
 					},
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitor", Labels: map[string]string{"name": "monitoring"}}},
@@ -378,7 +355,7 @@ func TestSelectPodMonitors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := selectPodScrapes(context.TODO(), tt.args.p, fclient)
+			got, err := selectPodScrapes(context.TODO(), tt.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectPodScrapes() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -397,25 +374,22 @@ func TestSelectPodMonitors(t *testing.T) {
 }
 
 func TestSelectVMProbes(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VMAgent
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAgent
 		want              []string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "select vmProbe with static conf",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "example-vmagent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						ProbeSelector: &metav1.LabelSelector{},
 					},
 				},
@@ -435,7 +409,7 @@ func TestSelectVMProbes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := selectVMProbes(context.TODO(), tt.args.cr, fclient)
+			got, err := selectVMProbes(context.TODO(), tt.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectVMProbes() error = %v, wantErr %v", err, tt.wantErr)
 				return

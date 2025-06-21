@@ -13,35 +13,27 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestCreateOrUpdateVLogs(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VLogs
-		c  *config.BaseOperatorConf
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VLogs
 		want              *appsv1.Deployment
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "base-vlogs-gen",
-			args: args{
-				c: config.MustGetBaseConfig(),
-				cr: &vmv1beta1.VLogs{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vlogs-base",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VLogsSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To(int32(1)),
-						},
+			cr: &vmv1beta1.VLogs{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vlogs-base",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VLogsSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 			},
@@ -56,17 +48,14 @@ func TestCreateOrUpdateVLogs(t *testing.T) {
 		},
 		{
 			name: "base-vlogs-with-ports",
-			args: args{
-				c: config.MustGetBaseConfig(),
-				cr: &vmv1beta1.VLogs{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vlogs-base",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VLogsSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To(int32(1)),
-						},
+			cr: &vmv1beta1.VLogs{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vlogs-base",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VLogsSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 			},
@@ -83,7 +72,7 @@ func TestCreateOrUpdateVLogs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdateVLogs(context.Background(), fclient, tt.args.cr)
+			err := CreateOrUpdateVLogs(context.Background(), fclient, tt.cr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVLogs() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -93,14 +82,9 @@ func TestCreateOrUpdateVLogs(t *testing.T) {
 }
 
 func TestCreateOrUpdateVLogsService(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VLogs
-
-		c *config.BaseOperatorConf
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VLogs
 		want              *corev1.Service
 		wantErr           bool
 		wantPortsLen      int
@@ -108,13 +92,10 @@ func TestCreateOrUpdateVLogsService(t *testing.T) {
 	}{
 		{
 			name: "base service test",
-			args: args{
-				c: config.MustGetBaseConfig(),
-				cr: &vmv1beta1.VLogs{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "logs-1",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VLogs{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "logs-1",
+					Namespace: "default",
 				},
 			},
 			want: &corev1.Service{
@@ -127,19 +108,16 @@ func TestCreateOrUpdateVLogsService(t *testing.T) {
 		},
 		{
 			name: "with extra service nodePort",
-			args: args{
-				c: config.MustGetBaseConfig(),
-				cr: &vmv1beta1.VLogs{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "logs-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VLogsSpec{
-						ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
-							EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "additional-service"},
-							Spec: corev1.ServiceSpec{
-								Type: corev1.ServiceTypeNodePort,
-							},
+			cr: &vmv1beta1.VLogs{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "logs-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VLogsSpec{
+					ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+						EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "additional-service"},
+						Spec: corev1.ServiceSpec{
+							Type: corev1.ServiceTypeNodePort,
 						},
 					},
 				},
@@ -171,7 +149,7 @@ func TestCreateOrUpdateVLogsService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := createOrUpdateVLogsService(context.Background(), fclient, tt.args.cr, nil)
+			got, err := createOrUpdateVLogsService(context.Background(), fclient, tt.cr, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVLogsService() error = %v, wantErr %v", err, tt.wantErr)
 				return

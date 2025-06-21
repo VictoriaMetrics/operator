@@ -12,33 +12,28 @@ import (
 )
 
 func Test_mergeServiceSpec(t *testing.T) {
-	type args struct {
-		svc     *corev1.Service
-		svcSpec *vmv1beta1.AdditionalServiceSpec
-	}
 	tests := []struct {
 		name     string
-		args     args
+		svc      *corev1.Service
+		svcSpec  *vmv1beta1.AdditionalServiceSpec
 		validate func(svc *corev1.Service) error
 	}{
 		{
 			name: "override ports",
-			args: args{
-				svc: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "some-name",
-					},
-					Spec: corev1.ServiceSpec{
-						Ports: []corev1.ServicePort{
-							{Name: "web"},
-						},
+			svc: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "some-name",
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{Name: "web"},
 					},
 				},
-				svcSpec: &vmv1beta1.AdditionalServiceSpec{
-					Spec: corev1.ServiceSpec{
-						Ports: []corev1.ServicePort{
-							{Name: "metrics"},
-						},
+			},
+			svcSpec: &vmv1beta1.AdditionalServiceSpec{
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{Name: "metrics"},
 					},
 				},
 			},
@@ -54,21 +49,19 @@ func Test_mergeServiceSpec(t *testing.T) {
 		},
 		{
 			name: "change clusterIP ports",
-			args: args{
-				svc: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "some-name",
-					},
-					Spec: corev1.ServiceSpec{
-						Ports: []corev1.ServicePort{
-							{Name: "metrics"},
-						},
+			svc: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "some-name",
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{Name: "metrics"},
 					},
 				},
-				svcSpec: &vmv1beta1.AdditionalServiceSpec{
-					Spec: corev1.ServiceSpec{
-						Type: corev1.ServiceTypeNodePort,
-					},
+			},
+			svcSpec: &vmv1beta1.AdditionalServiceSpec{
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeNodePort,
 				},
 			},
 			validate: func(svc *corev1.Service) error {
@@ -83,27 +76,25 @@ func Test_mergeServiceSpec(t *testing.T) {
 		},
 		{
 			name: "change selector",
-			args: args{
-				svc: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "some-name",
+			svc: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "some-name",
+				},
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeNodePort,
+					Ports: []corev1.ServicePort{
+						{Name: "metrics"},
 					},
-					Spec: corev1.ServiceSpec{
-						Type: corev1.ServiceTypeNodePort,
-						Ports: []corev1.ServicePort{
-							{Name: "metrics"},
-						},
-						Selector: map[string]string{
-							"app": "value",
-						},
+					Selector: map[string]string{
+						"app": "value",
 					},
 				},
-				svcSpec: &vmv1beta1.AdditionalServiceSpec{
-					Spec: corev1.ServiceSpec{
-						Type: corev1.ServiceTypeNodePort,
-						Selector: map[string]string{
-							"app-2": "value-3",
-						},
+			},
+			svcSpec: &vmv1beta1.AdditionalServiceSpec{
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeNodePort,
+					Selector: map[string]string{
+						"app-2": "value-3",
 					},
 				},
 			},
@@ -123,7 +114,7 @@ func Test_mergeServiceSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			additionalSvc := AdditionalServiceFromDefault(tt.args.svc, tt.args.svcSpec)
+			additionalSvc := AdditionalServiceFromDefault(tt.svc, tt.svcSpec)
 			if err := tt.validate(additionalSvc); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

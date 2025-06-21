@@ -16,60 +16,56 @@ import (
 )
 
 func TestGenerateScrapeConfig(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VMAgent
-		sc *vmv1beta1.VMScrapeConfig
-		se vmv1beta1.VMAgentSecurityEnforcements
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAgent
+		sc                *vmv1beta1.VMScrapeConfig
 		predefinedObjects []runtime.Object
 		want              string
 	}{
 		{
 			name: "basic static cfg with basic auth",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						MinScrapeInterval: ptr.To("30s"),
 						MaxScrapeInterval: ptr.To("5m"),
 					},
 				},
-				sc: &vmv1beta1.VMScrapeConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "static-1",
-						Namespace: "default",
+			},
+			sc: &vmv1beta1.VMScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "static-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMScrapeConfigSpec{
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						MaxScrapeSize:  "60KB",
+						ScrapeInterval: "10s",
 					},
-					Spec: vmv1beta1.VMScrapeConfigSpec{
-						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-							MaxScrapeSize:  "60KB",
-							ScrapeInterval: "10s",
+					StaticConfigs: []vmv1beta1.StaticConfig{
+						{
+							Targets: []string{"http://test1.com", "http://test2.com"},
+							Labels:  map[string]string{"bar": "baz"},
 						},
-						StaticConfigs: []vmv1beta1.StaticConfig{
-							{
-								Targets: []string{"http://test1.com", "http://test2.com"},
-								Labels:  map[string]string{"bar": "baz"},
+					},
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "ba-secret",
+								},
+								Key: "username",
 							},
-						},
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							BasicAuth: &vmv1beta1.BasicAuth{
-								Username: corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "ba-secret",
-									},
-									Key: "username",
+							Password: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "ba-secret",
 								},
-								Password: corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "ba-secret",
-									},
-									Key: "password",
-								},
+								Key: "password",
 							},
 						},
 					},
@@ -105,41 +101,41 @@ static_configs:
 		},
 		{
 			name: "basic fileSDConfig",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						MinScrapeInterval: ptr.To("30s"),
 						MaxScrapeInterval: ptr.To("5m"),
 					},
 				},
-				sc: &vmv1beta1.VMScrapeConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "file-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMScrapeConfigSpec{
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							BasicAuth: &vmv1beta1.BasicAuth{
-								Username: corev1.SecretKeySelector{
-									Key: "username",
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "ba-secret",
-									},
+			},
+			sc: &vmv1beta1.VMScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "file-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMScrapeConfigSpec{
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								Key: "username",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "ba-secret",
 								},
-								PasswordFile: "/var/run/secrets/password",
 							},
+							PasswordFile: "/var/run/secrets/password",
 						},
-						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-							ScrapeInterval: "10m",
-						},
-						FileSDConfigs: []vmv1beta1.FileSDConfig{
-							{
-								Files: []string{"test1.json", "test2.json"},
-							},
+					},
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						ScrapeInterval: "10m",
+					},
+					FileSDConfigs: []vmv1beta1.FileSDConfig{
+						{
+							Files: []string{"test1.json", "test2.json"},
 						},
 					},
 				},
@@ -170,50 +166,48 @@ file_sd_configs:
 		},
 		{
 			name: "basic httpSDConfig",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
 				},
-				sc: &vmv1beta1.VMScrapeConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "httpsd-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMScrapeConfigSpec{
-						HTTPSDConfigs: []vmv1beta1.HTTPSDConfig{
-							{
-								URL:      "http://www.test1.com",
-								ProxyURL: ptr.To("http://www.proxy.com"),
+			},
+			sc: &vmv1beta1.VMScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "httpsd-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMScrapeConfigSpec{
+					HTTPSDConfigs: []vmv1beta1.HTTPSDConfig{
+						{
+							URL:      "http://www.test1.com",
+							ProxyURL: ptr.To("http://www.proxy.com"),
+						},
+						{
+							URL: "http://www.test2.com",
+							Authorization: &vmv1beta1.Authorization{
+								Type: "Bearer",
+								Credentials: &corev1.SecretKeySelector{
+									Key: "cred",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "auth-secret",
+									},
+								},
 							},
-							{
-								URL: "http://www.test2.com",
-								Authorization: &vmv1beta1.Authorization{
-									Type: "Bearer",
-									Credentials: &corev1.SecretKeySelector{
-										Key: "cred",
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "ca",
 										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "auth-secret",
+											Name: "tls-secret",
 										},
 									},
 								},
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "ca",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
-											},
-										},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "cert",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
-											},
+								Cert: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "cert",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-secret",
 										},
 									},
 								},
@@ -260,44 +254,42 @@ http_sd_configs:
 		},
 		{
 			name: "basic kubernetesSDConfig",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
 				},
-				sc: &vmv1beta1.VMScrapeConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "kubernetesSDConfig-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMScrapeConfigSpec{
-						KubernetesSDConfigs: []vmv1beta1.KubernetesSDConfig{
-							{
-								APIServer:      ptr.To("http://127.0.0.1:6443"),
-								Role:           "pod",
-								AttachMetadata: vmv1beta1.AttachMetadata{Node: ptr.To(true)},
-								Selectors: []vmv1beta1.K8SSelectorConfig{
-									{
-										Role:  "pod",
-										Label: "app/instance",
-										Field: "test",
-									},
-								},
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
+			},
+			sc: &vmv1beta1.VMScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "kubernetesSDConfig-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMScrapeConfigSpec{
+					KubernetesSDConfigs: []vmv1beta1.KubernetesSDConfig{
+						{
+							APIServer:      ptr.To("http://127.0.0.1:6443"),
+							Role:           "pod",
+							AttachMetadata: vmv1beta1.AttachMetadata{Node: ptr.To(true)},
+							Selectors: []vmv1beta1.K8SSelectorConfig{
+								{
+									Role:  "pod",
+									Label: "app/instance",
+									Field: "test",
 								},
 							},
-							{
-								APIServer: ptr.To("http://127.0.0.1:6443"),
-								Role:      "node",
-								Selectors: []vmv1beta1.K8SSelectorConfig{
-									{
-										Role:  "node",
-										Label: "kubernetes.io/os",
-										Field: "linux",
-									},
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+							},
+						},
+						{
+							APIServer: ptr.To("http://127.0.0.1:6443"),
+							Role:      "node",
+							Selectors: []vmv1beta1.K8SSelectorConfig{
+								{
+									Role:  "node",
+									Label: "kubernetes.io/os",
+									Field: "linux",
 								},
 							},
 						},
@@ -327,91 +319,89 @@ kubernetes_sd_configs:
 		},
 		{
 			name: "mixed",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
 				},
-				sc: &vmv1beta1.VMScrapeConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "mixconfigs-1",
-						Namespace: "default",
+			},
+			sc: &vmv1beta1.VMScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mixconfigs-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMScrapeConfigSpec{
+					ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{
+						{
+							Server:     "localhost:8500",
+							TokenRef:   &corev1.SecretKeySelector{Key: "consul_token"},
+							Datacenter: ptr.To("dc1"),
+							NodeMeta:   map[string]string{"worker": "1"},
+							Filter:     `filter=NodeMeta.os == "linux"`,
+						},
 					},
-					Spec: vmv1beta1.VMScrapeConfigSpec{
-						ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{
-							{
-								Server:     "localhost:8500",
-								TokenRef:   &corev1.SecretKeySelector{Key: "consul_token"},
-								Datacenter: ptr.To("dc1"),
-								NodeMeta:   map[string]string{"worker": "1"},
-								Filter:     `filter=NodeMeta.os == "linux"`,
-							},
+					DNSSDConfigs: []vmv1beta1.DNSSDConfig{
+						{
+							Names: []string{"vmagent-0.vmagent.default.svc.cluster.local"},
+							Port:  ptr.To(8429),
 						},
-						DNSSDConfigs: []vmv1beta1.DNSSDConfig{
-							{
-								Names: []string{"vmagent-0.vmagent.default.svc.cluster.local"},
-								Port:  ptr.To(8429),
-							},
+					},
+					EC2SDConfigs: []vmv1beta1.EC2SDConfig{
+						{
+							Region: ptr.To("us-west-2"),
+							Port:   ptr.To(9404),
+							Filters: []*vmv1beta1.EC2Filter{{
+								Name:   "instance-id",
+								Values: []string{"i-98765432109876543", "i-12345678901234567"},
+							}},
 						},
-						EC2SDConfigs: []vmv1beta1.EC2SDConfig{
-							{
-								Region: ptr.To("us-west-2"),
-								Port:   ptr.To(9404),
-								Filters: []*vmv1beta1.EC2Filter{{
-									Name:   "instance-id",
-									Values: []string{"i-98765432109876543", "i-12345678901234567"},
-								}},
-							},
+					},
+					AzureSDConfigs: []vmv1beta1.AzureSDConfig{
+						{
+							Environment:    ptr.To("AzurePublicCloud"),
+							SubscriptionID: "1",
+							TenantID:       ptr.To("u1"),
+							ResourceGroup:  ptr.To("rg1"),
+							Port:           ptr.To(80),
 						},
-						AzureSDConfigs: []vmv1beta1.AzureSDConfig{
-							{
-								Environment:    ptr.To("AzurePublicCloud"),
-								SubscriptionID: "1",
-								TenantID:       ptr.To("u1"),
-								ResourceGroup:  ptr.To("rg1"),
-								Port:           ptr.To(80),
-							},
+					},
+					GCESDConfigs: []vmv1beta1.GCESDConfig{
+						{
+							Project:      "eu-project",
+							Zone:         vmv1beta1.StringOrArray{"zone-a"},
+							TagSeparator: ptr.To("/"),
 						},
-						GCESDConfigs: []vmv1beta1.GCESDConfig{
-							{
-								Project:      "eu-project",
-								Zone:         vmv1beta1.StringOrArray{"zone-a"},
-								TagSeparator: ptr.To("/"),
-							},
-							{
-								Project:      "us-project",
-								Zone:         vmv1beta1.StringOrArray{"zone-b", "zone-c"},
-								TagSeparator: ptr.To("/"),
-							},
+						{
+							Project:      "us-project",
+							Zone:         vmv1beta1.StringOrArray{"zone-b", "zone-c"},
+							TagSeparator: ptr.To("/"),
 						},
-						OpenStackSDConfigs: []vmv1beta1.OpenStackSDConfig{
-							{
-								Role:             "instance",
-								IdentityEndpoint: ptr.To("http://localhost:5000/v3"),
-								Username:         ptr.To("user1"),
-								UserID:           ptr.To("1"),
-								Password: &corev1.SecretKeySelector{
-									Key:                  "pass",
-									LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
-								},
-								ProjectName: ptr.To("poc"),
-								AllTenants:  ptr.To(true),
-								DomainName:  ptr.To("default"),
+					},
+					OpenStackSDConfigs: []vmv1beta1.OpenStackSDConfig{
+						{
+							Role:             "instance",
+							IdentityEndpoint: ptr.To("http://localhost:5000/v3"),
+							Username:         ptr.To("user1"),
+							UserID:           ptr.To("1"),
+							Password: &corev1.SecretKeySelector{
+								Key:                  "pass",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
 							},
+							ProjectName: ptr.To("poc"),
+							AllTenants:  ptr.To(true),
+							DomainName:  ptr.To("default"),
 						},
-						DigitalOceanSDConfigs: []vmv1beta1.DigitalOceanSDConfig{
-							{
-								OAuth2: &vmv1beta1.OAuth2{
-									Scopes:         []string{"scope-1"},
-									TokenURL:       "http://some-token-url",
-									EndpointParams: map[string]string{"timeout": "5s"},
-									ClientID: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key:                  "client-id",
-											LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-secret"},
-										},
+					},
+					DigitalOceanSDConfigs: []vmv1beta1.DigitalOceanSDConfig{
+						{
+							OAuth2: &vmv1beta1.OAuth2{
+								Scopes:         []string{"scope-1"},
+								TokenURL:       "http://some-token-url",
+								EndpointParams: map[string]string{"timeout": "5s"},
+								ClientID: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key:                  "client-id",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-secret"},
 									},
 								},
 							},
@@ -506,73 +496,71 @@ digitalocean_sd_configs:
 		},
 		{
 			name: "configs with auth and empty type",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
 				},
-				sc: &vmv1beta1.VMScrapeConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sc-auth",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMScrapeConfigSpec{
-						HTTPSDConfigs: []vmv1beta1.HTTPSDConfig{
-							{
-								URL: "http://www.test1.com",
-								Authorization: &vmv1beta1.Authorization{
-									Type: "Bearer",
-									Credentials: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
-										Key:                  "cred",
-									},
-								},
-							},
-							{
-								URL: "http://www.test2.com",
-								Authorization: &vmv1beta1.Authorization{
-									Credentials: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
-										Key:                  "cred",
-									},
-								},
-							},
-							{
-								URL: "http://www.test3.com",
-								Authorization: &vmv1beta1.Authorization{
-									Type:            "Bearer",
-									CredentialsFile: "file",
+			},
+			sc: &vmv1beta1.VMScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "sc-auth",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMScrapeConfigSpec{
+					HTTPSDConfigs: []vmv1beta1.HTTPSDConfig{
+						{
+							URL: "http://www.test1.com",
+							Authorization: &vmv1beta1.Authorization{
+								Type: "Bearer",
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+									Key:                  "cred",
 								},
 							},
 						},
-						KubernetesSDConfigs: []vmv1beta1.KubernetesSDConfig{
-							{
-								Role: "endpoints",
-								Authorization: &vmv1beta1.Authorization{
-									Type: "Bearer",
-									Credentials: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{Name: "auth"},
-										Key:                  "cred",
-									},
+						{
+							URL: "http://www.test2.com",
+							Authorization: &vmv1beta1.Authorization{
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+									Key:                  "cred",
 								},
 							},
-							{
-								Role: "endpoints",
-								Authorization: &vmv1beta1.Authorization{
-									Credentials: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
-										Key:                  "cred",
-									},
+						},
+						{
+							URL: "http://www.test3.com",
+							Authorization: &vmv1beta1.Authorization{
+								Type:            "Bearer",
+								CredentialsFile: "file",
+							},
+						},
+					},
+					KubernetesSDConfigs: []vmv1beta1.KubernetesSDConfig{
+						{
+							Role: "endpoints",
+							Authorization: &vmv1beta1.Authorization{
+								Type: "Bearer",
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "auth"},
+									Key:                  "cred",
 								},
 							},
-							{
-								Role: "endpoints",
-								Authorization: &vmv1beta1.Authorization{
-									Type:            "Bearer",
-									CredentialsFile: "file",
+						},
+						{
+							Role: "endpoints",
+							Authorization: &vmv1beta1.Authorization{
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+									Key:                  "cred",
 								},
+							},
+						},
+						{
+							Role: "endpoints",
+							Authorization: &vmv1beta1.Authorization{
+								Type:            "Bearer",
+								CredentialsFile: "file",
 							},
 						},
 					},
@@ -634,8 +622,8 @@ kubernetes_sd_configs:
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			ac := getAssetsCache(ctx, fclient, tt.args.cr)
-			got, err := generateScrapeConfig(ctx, tt.args.cr, tt.args.sc, ac, tt.args.se)
+			ac := getAssetsCache(ctx, fclient, tt.cr)
+			got, err := generateScrapeConfig(ctx, tt.cr, tt.sc, ac)
 			if err != nil {
 				t.Errorf("cannot execute generateScrapeConfig, err: %e", err)
 				return

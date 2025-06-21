@@ -5,37 +5,28 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestSelectRules(t *testing.T) {
-	type args struct {
-		p *vmv1beta1.VMAlert
-		l logr.Logger
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAlert
 		predefinedObjects []runtime.Object
 		want              map[string]string
 		wantErr           bool
 	}{
 		{
 			name: "select default rule",
-			args: args{
-				p: &vmv1beta1.VMAlert{},
-				l: logf.Log.WithName("unit-test"),
-			},
+			cr:   &vmv1beta1.VMAlert{},
 			want: map[string]string{
 				"default-vmalert.yaml": `
 groups:
@@ -55,12 +46,9 @@ groups:
 		},
 		{
 			name: "select default rule additional rule from another namespace",
-			args: args{
-				p: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec:       vmv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}},
-				},
-				l: logf.Log.WithName("unit-test"),
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+				Spec:       vmv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}},
 			},
 			predefinedObjects: []runtime.Object{
 				// we need namespace for filter + object inside this namespace
@@ -95,12 +83,9 @@ groups:
 		},
 		{
 			name: "select default rule, and additional rule from another namespace with namespace filter",
-			args: args{
-				p: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec:       vmv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}}, RuleSelector: &metav1.LabelSelector{}},
-				},
-				l: logf.Log.WithName("unit-test"),
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+				Spec:       vmv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}}, RuleSelector: &metav1.LabelSelector{}},
 			},
 			predefinedObjects: []runtime.Object{
 				// we need namespace for filter + object inside this namespace
@@ -128,14 +113,11 @@ groups:
 		},
 		{
 			name: "select all rules with select all",
-			args: args{
-				p: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec: vmv1beta1.VMAlertSpec{
-						SelectAllByDefault: true,
-					},
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+				Spec: vmv1beta1.VMAlertSpec{
+					SelectAllByDefault: true,
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
 				// we need namespace for filter + object inside this namespace
@@ -179,14 +161,11 @@ groups:
 		},
 		{
 			name: "select none by default",
-			args: args{
-				p: &vmv1beta1.VMAlert{
-					ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitoring"},
-					Spec: vmv1beta1.VMAlertSpec{
-						SelectAllByDefault: false,
-					},
+			cr: &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitoring"},
+				Spec: vmv1beta1.VMAlertSpec{
+					SelectAllByDefault: false,
 				},
-				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
 				// we need namespace for filter + object inside this namespace
@@ -229,7 +208,7 @@ groups:
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, _, err := selectRulesContent(ctx, fclient, tt.args.p)
+			got, _, err := selectRulesContent(ctx, fclient, tt.cr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectRules() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -244,42 +223,39 @@ groups:
 }
 
 func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VMAlert
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAlert
 		want              []string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "base-rules-empty",
-			args: args{cr: &vmv1beta1.VMAlert{
+			cr: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "base-vmalert",
 				},
-			}},
+			},
 		},
 
 		{
 			name: "base-rules-gen-with-selector",
-			args: args{cr: &vmv1beta1.VMAlert{
+			cr: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "base-vmalert",
 				},
 				Spec: vmv1beta1.VMAlertSpec{SelectAllByDefault: true},
-			}},
+			},
 			want: []string{"vm-base-vmalert-rulefiles-0"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateRuleConfigMaps(context.TODO(), fclient, tt.args.cr, nil)
+			got, err := CreateOrUpdateRuleConfigMaps(context.TODO(), fclient, tt.cr, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateRuleConfigMaps() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -292,17 +268,14 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 }
 
 func Test_deduplicateRules(t *testing.T) {
-	type args struct {
-		origin []*vmv1beta1.VMRule
-	}
 	tests := []struct {
-		name string
-		args args
-		want []*vmv1beta1.VMRule
+		name   string
+		origin []*vmv1beta1.VMRule
+		want   []*vmv1beta1.VMRule
 	}{
 		{
 			name: "dedup group",
-			args: args{origin: []*vmv1beta1.VMRule{
+			origin: []*vmv1beta1.VMRule{
 				{
 					Spec: vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{
 						{
@@ -323,7 +296,7 @@ func Test_deduplicateRules(t *testing.T) {
 						},
 					}},
 				},
-			}},
+			},
 			want: []*vmv1beta1.VMRule{
 				{
 					Spec: vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{
@@ -349,7 +322,7 @@ func Test_deduplicateRules(t *testing.T) {
 		},
 		{
 			name: "dedup group rule",
-			args: args{origin: []*vmv1beta1.VMRule{
+			origin: []*vmv1beta1.VMRule{
 				{
 					Spec: vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{
 						{
@@ -378,7 +351,7 @@ func Test_deduplicateRules(t *testing.T) {
 						},
 					}},
 				},
-			}},
+			},
 			want: []*vmv1beta1.VMRule{
 				{
 					Spec: vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{
@@ -409,7 +382,7 @@ func Test_deduplicateRules(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := deduplicateRules(context.Background(), tt.args.origin)
+			got := deduplicateRules(context.Background(), tt.origin)
 			diff := deep.Equal(got, tt.want)
 			if len(diff) > 0 {
 				t.Errorf("deduplicateRules() %v = %v, want %v", diff, got, tt.want)
@@ -419,25 +392,20 @@ func Test_deduplicateRules(t *testing.T) {
 }
 
 func Test_rulesCMDiff(t *testing.T) {
-	type args struct {
+	tests := []struct {
+		name       string
 		currentCMs []corev1.ConfigMap
 		newCMs     []corev1.ConfigMap
-	}
-	tests := []struct {
-		name     string
-		args     args
-		toCreate []corev1.ConfigMap
-		toUpdate []corev1.ConfigMap
+		toCreate   []corev1.ConfigMap
+		toUpdate   []corev1.ConfigMap
 	}{
 		{
-			name: "create one new",
-			args: args{
-				currentCMs: []corev1.ConfigMap{},
-				newCMs: []corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-1",
-						},
+			name:       "create one new",
+			currentCMs: []corev1.ConfigMap{},
+			newCMs: []corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
 					},
 				},
 			},
@@ -451,34 +419,30 @@ func Test_rulesCMDiff(t *testing.T) {
 		},
 		{
 			name: "skip exist",
-			args: args{
-				currentCMs: []corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-1",
-						},
+			currentCMs: []corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
 					},
 				},
-				newCMs: []corev1.ConfigMap{},
 			},
+			newCMs: []corev1.ConfigMap{},
 		},
 		{
 			name: "update one",
-			args: args{
-				currentCMs: []corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-1",
-						},
+			currentCMs: []corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
 					},
 				},
-				newCMs: []corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-1",
-						},
-						Data: map[string]string{"rule": "content"},
+			},
+			newCMs: []corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
 					},
+					Data: map[string]string{"rule": "content"},
 				},
 			},
 			toUpdate: []corev1.ConfigMap{
@@ -494,46 +458,44 @@ func Test_rulesCMDiff(t *testing.T) {
 		},
 		{
 			name: "update two",
-			args: args{
-				currentCMs: []corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:        "rules-cm-0",
-							Annotations: map[string]string{},
-							Finalizers:  []string{vmv1beta1.FinalizerName},
-						},
-						Data: map[string]string{"rule": "outdated-content"},
+			currentCMs: []corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "rules-cm-0",
+						Annotations: map[string]string{},
+						Finalizers:  []string{vmv1beta1.FinalizerName},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:        "rules-cm-1",
-							Annotations: map[string]string{},
-							Finalizers:  []string{vmv1beta1.FinalizerName},
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-3",
-						},
+					Data: map[string]string{"rule": "outdated-content"},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "rules-cm-1",
+						Annotations: map[string]string{},
+						Finalizers:  []string{vmv1beta1.FinalizerName},
 					},
 				},
-				newCMs: []corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:        "rules-cm-0",
-							Annotations: map[string]string{},
-							Finalizers:  []string{vmv1beta1.FinalizerName},
-						},
-						Data: map[string]string{"rule": "new-content"},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-3",
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:        "rules-cm-1",
-							Annotations: map[string]string{},
-							Finalizers:  []string{vmv1beta1.FinalizerName},
-						},
-						Data: map[string]string{"rule": "new-content"},
+				},
+			},
+			newCMs: []corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "rules-cm-0",
+						Annotations: map[string]string{},
+						Finalizers:  []string{vmv1beta1.FinalizerName},
 					},
+					Data: map[string]string{"rule": "new-content"},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "rules-cm-1",
+						Annotations: map[string]string{},
+						Finalizers:  []string{vmv1beta1.FinalizerName},
+					},
+					Data: map[string]string{"rule": "new-content"},
 				},
 			},
 			toUpdate: []corev1.ConfigMap{
@@ -558,7 +520,7 @@ func Test_rulesCMDiff(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := rulesCMDiff(tt.args.currentCMs, tt.args.newCMs)
+			got, got1 := rulesCMDiff(tt.currentCMs, tt.newCMs)
 			assert.Equal(t, tt.toCreate, got)
 			assert.Equal(t, tt.toUpdate, got1)
 		})

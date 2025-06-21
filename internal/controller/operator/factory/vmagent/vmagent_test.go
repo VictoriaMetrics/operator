@@ -173,7 +173,9 @@ func TestCreateOrUpdate(t *testing.T) {
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://remote-write"},
 					},
-					ServiceScrapeSelector: &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeSelector: &metav1.LabelSelector{},
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -221,7 +223,9 @@ func TestCreateOrUpdate(t *testing.T) {
 							BearerTokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bearer-secret"}, Key: "token"},
 						},
 					},
-					ServiceScrapeSelector: &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeSelector: &metav1.LabelSelector{},
+					},
 				},
 			},
 			wantErr: true,
@@ -295,7 +299,9 @@ func TestCreateOrUpdate(t *testing.T) {
 							TLSConfig: &vmv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"},
 						},
 					},
-					ServiceScrapeSelector: &metav1.LabelSelector{},
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						ServiceScrapeSelector: &metav1.LabelSelector{},
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -361,11 +367,13 @@ func TestCreateOrUpdate(t *testing.T) {
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://remote-write"},
 					},
-					InlineScrapeConfig: strings.TrimSpace(`
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						InlineScrapeConfig: strings.TrimSpace(`
 - job_name: "prometheus"
   static_configs:
   - targets: ["localhost:9090"]
 `),
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -383,15 +391,17 @@ func TestCreateOrUpdate(t *testing.T) {
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://remote-write"},
 					},
-					AdditionalScrapeConfigs: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "add-cfg"},
-						Key:                  "agent.yaml",
-					},
-					InlineScrapeConfig: strings.TrimSpace(`
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						AdditionalScrapeConfigs: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "add-cfg"},
+							Key:                  "agent.yaml",
+						},
+						InlineScrapeConfig: strings.TrimSpace(`
 - job_name: "prometheus"
   static_configs:
   - targets: ["localhost:9090"]
 `),
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -885,8 +895,10 @@ func TestBuildRemoteWrites(t *testing.T) {
 							TLSConfig: &vmv1beta1.TLSConfig{
 								InsecureSkipVerify: true,
 							},
-							InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
-								{TargetLabel: "rw-1", Replacement: ptr.To("present")},
+							CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+								InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
+									{TargetLabel: "rw-1", Replacement: ptr.To("present")},
+								},
 							},
 						},
 						{
@@ -901,13 +913,17 @@ func TestBuildRemoteWrites(t *testing.T) {
 							TLSConfig: &vmv1beta1.TLSConfig{
 								InsecureSkipVerify: true,
 							},
-							InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
-								{TargetLabel: "rw-2", Replacement: ptr.To("present")},
+							CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+								InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
+									{TargetLabel: "rw-2", Replacement: ptr.To("present")},
+								},
 							},
 						},
 					},
-					InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
-						{TargetLabel: "dst", Replacement: ptr.To("ok")},
+					CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+						InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
+							{TargetLabel: "dst", Replacement: ptr.To("ok")},
+						},
 					},
 				},
 			},
@@ -1505,13 +1521,15 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
-						{
-							Regex:        []string{".*"},
-							Action:       "DROP",
-							SourceLabels: []string{"pod"},
+					CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+						InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
+							{
+								Regex:        []string{".*"},
+								Action:       "DROP",
+								SourceLabels: []string{"pod"},
+							},
+							{},
 						},
-						{},
 					},
 				},
 			},
@@ -1537,16 +1555,18 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
-						{
-							Regex:        []string{".*"},
-							Action:       "DROP",
-							SourceLabels: []string{"pod"},
+					CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+						InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
+							{
+								Regex:        []string{".*"},
+								Action:       "DROP",
+								SourceLabels: []string{"pod"},
+							},
 						},
-					},
-					RelabelConfig: &corev1.ConfigMapKeySelector{
-						Key:                  "global.yaml",
-						LocalObjectReference: corev1.LocalObjectReference{Name: "relabels"},
+						RelabelConfig: &corev1.ConfigMapKeySelector{
+							Key:                  "global.yaml",
+							LocalObjectReference: corev1.LocalObjectReference{Name: "relabels"},
+						},
 					},
 				},
 			},
@@ -1581,11 +1601,17 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			ctx := context.TODO()
-			if err := createOrUpdateRelabelConfigsAssets(ctx, cl, tt.cr, nil); (err != nil) != tt.wantErr {
+			ac := build.NewAssetsCache(ctx, cl, nil)
+			if err := createOrUpdateRelabelConfigsAssets(ctx, cl, tt.cr, nil, ac); (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateRelabelConfigsAssets() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdCM corev1.ConfigMap
-			if err := cl.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.RelabelingAssetName()}, &createdCM); err != nil {
+			if err := cl.Get(ctx,
+				types.NamespacedName{
+					Namespace: tt.cr.Namespace,
+					Name:      build.ResourceName(build.RelabelConfigResourceKind, tt.cr),
+				}, &createdCM,
+			); err != nil {
 				t.Fatalf("cannot fetch created cm: %v", err)
 			}
 			if err := tt.validate(&createdCM); err != nil {
@@ -1780,7 +1806,8 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			ctx := context.TODO()
-			if err := createOrUpdateStreamAggrConfig(ctx, cl, tt.cr, nil); (err != nil) != tt.wantErr {
+			ac := build.NewAssetsCache(ctx, cl, nil)
+			if err := createOrUpdateStreamAggrConfig(ctx, cl, tt.cr, nil, ac); (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateStreamAggrConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdCM corev1.ConfigMap
@@ -1848,7 +1875,9 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				Spec: vmv1beta1.VMAgentSpec{
 					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
 					IngestOnlyMode:          false,
-					InlineRelabelConfig:     []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
+					CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+						InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
+					},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{
 							URL: "http://some",
@@ -1883,8 +1912,10 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ConfigMaps: []string{"cm-0", "cm-1"},
 					},
-					IngestOnlyMode:      false,
-					InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
+					IngestOnlyMode: false,
+					CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+						InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
+					},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{
 							URL: "http://some",

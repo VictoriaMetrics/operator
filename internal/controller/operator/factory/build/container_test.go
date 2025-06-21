@@ -39,28 +39,23 @@ func (t testBuildProbeCR) ProbeNeedLiveness() bool {
 }
 
 func Test_buildProbe(t *testing.T) {
-	type args struct {
+	tests := []struct {
+		name      string
 		container corev1.Container
 		cr        testBuildProbeCR
-	}
-	tests := []struct {
-		name     string
-		args     args
-		validate func(corev1.Container) error
+		validate  func(corev1.Container) error
 	}{
 		{
 			name: "build default probe with empty ep",
-			args: args{
-				cr: testBuildProbeCR{
-					probePath: func() string {
-						return "/health"
-					},
-					port:            "8051",
-					needAddLiveness: true,
-					scheme:          "HTTP",
+			cr: testBuildProbeCR{
+				probePath: func() string {
+					return "/health"
 				},
-				container: corev1.Container{},
+				port:            "8051",
+				needAddLiveness: true,
+				scheme:          "HTTP",
 			},
+			container: corev1.Container{},
 			validate: func(container corev1.Container) error {
 				if container.LivenessProbe == nil {
 					return fmt.Errorf("want liveness to be not nil")
@@ -76,17 +71,15 @@ func Test_buildProbe(t *testing.T) {
 		},
 		{
 			name: "build default probe with empty ep using HTTPS",
-			args: args{
-				cr: testBuildProbeCR{
-					probePath: func() string {
-						return "/health"
-					},
-					port:            "8051",
-					needAddLiveness: true,
-					scheme:          "HTTPS",
+			cr: testBuildProbeCR{
+				probePath: func() string {
+					return "/health"
 				},
-				container: corev1.Container{},
+				port:            "8051",
+				needAddLiveness: true,
+				scheme:          "HTTPS",
 			},
+			container: corev1.Container{},
 			validate: func(container corev1.Container) error {
 				if container.LivenessProbe == nil {
 					return fmt.Errorf("want liveness to be not nil")
@@ -105,41 +98,39 @@ func Test_buildProbe(t *testing.T) {
 		},
 		{
 			name: "build default probe with ep",
-			args: args{
-				cr: testBuildProbeCR{
-					probePath: func() string {
-						return "/health"
+			cr: testBuildProbeCR{
+				probePath: func() string {
+					return "/health"
+				},
+				port:            "8051",
+				needAddLiveness: true,
+				ep: &vmv1beta1.EmbeddedProbes{
+					ReadinessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"echo", "1"},
+							},
+						},
 					},
-					port:            "8051",
-					needAddLiveness: true,
-					ep: &vmv1beta1.EmbeddedProbes{
-						ReadinessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								Exec: &corev1.ExecAction{
-									Command: []string{"echo", "1"},
-								},
+					StartupProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Host: "some",
 							},
 						},
-						StartupProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Host: "some",
-								},
+					},
+					LivenessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/live1",
 							},
 						},
-						LivenessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Path: "/live1",
-								},
-							},
-							TimeoutSeconds:      15,
-							InitialDelaySeconds: 20,
-						},
+						TimeoutSeconds:      15,
+						InitialDelaySeconds: 20,
 					},
 				},
-				container: corev1.Container{},
 			},
+			container: corev1.Container{},
 			validate: func(container corev1.Container) error {
 				if container.LivenessProbe == nil {
 					return fmt.Errorf("want liveness to be not nil")
@@ -171,7 +162,7 @@ func Test_buildProbe(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Probe(tt.args.container, tt.args.cr)
+			got := Probe(tt.container, tt.cr)
 			if err := tt.validate(got); err != nil {
 				t.Errorf("buildProbe() unexpected error: %v", err)
 			}
@@ -180,68 +171,53 @@ func Test_buildProbe(t *testing.T) {
 }
 
 func Test_addExtraArgsOverrideDefaults(t *testing.T) {
-	type args struct {
+	tests := []struct {
+		name      string
 		args      []string
 		extraArgs map[string]string
 		dashes    string
-	}
-	tests := []struct {
-		name string
-		args args
-		want []string
+		want      []string
 	}{
 		{
-			name: "no changes",
-			args: args{
-				args:   []string{"-http.ListenAddr=:8081"},
-				dashes: "-",
-			},
-			want: []string{"-http.ListenAddr=:8081"},
+			name:   "no changes",
+			args:   []string{"-http.ListenAddr=:8081"},
+			dashes: "-",
+			want:   []string{"-http.ListenAddr=:8081"},
 		},
 		{
-			name: "override default",
-			args: args{
-				args:      []string{"-http.ListenAddr=:8081"},
-				extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
-				dashes:    "-",
-			},
-			want: []string{"-http.ListenAddr=127.0.0.1:8085"},
+			name:      "override default",
+			args:      []string{"-http.ListenAddr=:8081"},
+			extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
+			dashes:    "-",
+			want:      []string{"-http.ListenAddr=127.0.0.1:8085"},
 		},
 		{
-			name: "override default, add to the end",
-			args: args{
-				args:      []string{"-http.ListenAddr=:8081", "-promscrape.config=/opt/vmagent.yml"},
-				extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
-				dashes:    "-",
-			},
-			want: []string{"-promscrape.config=/opt/vmagent.yml", "-http.ListenAddr=127.0.0.1:8085"},
+			name:      "override default, add to the end",
+			args:      []string{"-http.ListenAddr=:8081", "-promscrape.config=/opt/vmagent.yml"},
+			extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
+			dashes:    "-",
+			want:      []string{"-promscrape.config=/opt/vmagent.yml", "-http.ListenAddr=127.0.0.1:8085"},
 		},
 		{
-			name: "two dashes, extend",
-			args: args{
-				args:      []string{"--web.timeout=0"},
-				extraArgs: map[string]string{"log.level": "debug"},
-				dashes:    "--",
-			},
-			want: []string{"--web.timeout=0", "--log.level=debug"},
+			name:      "two dashes, extend",
+			args:      []string{"--web.timeout=0"},
+			extraArgs: map[string]string{"log.level": "debug"},
+			dashes:    "--",
+			want:      []string{"--web.timeout=0", "--log.level=debug"},
 		},
 		{
-			name: "two dashes, override default",
-			args: args{
-				args:      []string{"--log.level=info"},
-				extraArgs: map[string]string{"log.level": "debug"},
-				dashes:    "--",
-			},
-			want: []string{"--log.level=debug"},
+			name:      "two dashes, override default",
+			args:      []string{"--log.level=info"},
+			extraArgs: map[string]string{"log.level": "debug"},
+			dashes:    "--",
+			want:      []string{"--log.level=debug"},
 		},
 		{
-			name: "two dashes, alertmanager migration",
-			args: args{
-				args:      []string{"--log.level=info"},
-				extraArgs: map[string]string{"-web.externalURL": "http://domain.example"},
-				dashes:    "--",
-			},
-			want: []string{"--log.level=info", "--web.externalURL=http://domain.example"},
+			name:      "two dashes, alertmanager migration",
+			args:      []string{"--log.level=info"},
+			extraArgs: map[string]string{"-web.externalURL": "http://domain.example"},
+			dashes:    "--",
+			want:      []string{"--log.level=info", "--web.externalURL=http://domain.example"},
 		},
 	}
 	for _, tt := range tests {
@@ -249,8 +225,8 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 			assert.Equalf(
 				t,
 				tt.want,
-				AddExtraArgsOverrideDefaults(tt.args.args, tt.args.extraArgs, tt.args.dashes),
-				"addExtraArgsOverrideDefaults(%v, %v)", tt.args.args, tt.args.extraArgs)
+				AddExtraArgsOverrideDefaults(tt.args, tt.extraArgs, tt.dashes),
+				"addExtraArgsOverrideDefaults(%v, %v)", tt.args, tt.extraArgs)
 		})
 	}
 }

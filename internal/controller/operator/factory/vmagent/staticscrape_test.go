@@ -16,41 +16,35 @@ import (
 )
 
 func Test_generateStaticScrapeConfig(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VMAgent
-		sc *vmv1beta1.VMStaticScrape
-		ep *vmv1beta1.TargetEndpoint
-		i  int
-		se vmv1beta1.VMAgentSecurityEnforcements
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAgent
+		sc                *vmv1beta1.VMStaticScrape
+		ep                *vmv1beta1.TargetEndpoint
+		i                 int
 		predefinedObjects []runtime.Object
 		want              string
 	}{
 		{
 			name: "basic cfg",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
 				},
-				sc: &vmv1beta1.VMStaticScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "static-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMStaticScrapeSpec{
-						JobName: "static-job",
-					},
+			},
+			sc: &vmv1beta1.VMStaticScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "static-1",
+					Namespace: "default",
 				},
-				ep: &vmv1beta1.TargetEndpoint{
-					Targets: []string{"192.168.11.1:9100", "some-host:9100"},
-					Labels:  map[string]string{"env": "dev", "group": "prod"},
+				Spec: vmv1beta1.VMStaticScrapeSpec{
+					JobName: "static-job",
 				},
+			},
+			ep: &vmv1beta1.TargetEndpoint{
+				Targets: []string{"192.168.11.1:9100", "some-host:9100"},
+				Labels:  map[string]string{"env": "dev", "group": "prod"},
 			},
 			want: `job_name: staticScrape/default/static-1/0
 static_configs:
@@ -68,42 +62,44 @@ relabel_configs:
 		},
 		{
 			name: "basic cfg with overrides",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
 				},
-				sc: &vmv1beta1.VMStaticScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "static-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMStaticScrapeSpec{
-						JobName: "static-job",
-					},
-				},
-				ep: &vmv1beta1.TargetEndpoint{
-					Targets: []string{"192.168.11.1:9100", "some-host:9100"},
-					Labels:  map[string]string{"env": "dev", "group": "prod"},
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						HonorTimestamps: ptr.To(true),
-					},
-					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-						MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
-							{
-								TargetLabel:  "namespace",
-								SourceLabels: []string{"abuse"},
-								Action:       "replace",
-							},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+							OverrideHonorTimestamps: false,
+							OverrideHonorLabels:     true,
+							EnforcedNamespaceLabel:  "namespace",
 						},
 					},
 				},
-				se: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorTimestamps: false,
-					OverrideHonorLabels:     true,
-					EnforcedNamespaceLabel:  "namespace",
+			},
+			sc: &vmv1beta1.VMStaticScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "static-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMStaticScrapeSpec{
+					JobName: "static-job",
+				},
+			},
+			ep: &vmv1beta1.TargetEndpoint{
+				Targets: []string{"192.168.11.1:9100", "some-host:9100"},
+				Labels:  map[string]string{"env": "dev", "group": "prod"},
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					HonorTimestamps: ptr.To(true),
+				},
+				EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+					MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+						{
+							TargetLabel:  "namespace",
+							SourceLabels: []string{"abuse"},
+							Action:       "replace",
+						},
+					},
 				},
 			},
 			want: `job_name: staticScrape/default/static-1/0
@@ -125,123 +121,125 @@ relabel_configs:
 		},
 		{
 			name: "complete cfg with overrides",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+							OverrideHonorTimestamps: false,
+							OverrideHonorLabels:     true,
+							EnforcedNamespaceLabel:  "namespace",
+						},
 					},
 				},
-				sc: &vmv1beta1.VMStaticScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "static-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMStaticScrapeSpec{
-						JobName:     "static-job",
-						SampleLimit: 50,
-					},
+			},
+			sc: &vmv1beta1.VMStaticScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "static-1",
+					Namespace: "default",
 				},
-				ep: &vmv1beta1.TargetEndpoint{
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						Params:          map[string][]string{"timeout": {"50s"}, "follow": {"false"}},
-						SampleLimit:     60,
-						ScrapeTimeout:   "55s",
-						Interval:        "10s",
-						ScrapeInterval:  "50s",
-						FollowRedirects: ptr.To(true),
-						Path:            "/metrics-1",
-						Scheme:          "https",
-						ProxyURL:        ptr.To("https://some-proxy"),
-						HonorLabels:     true,
-						HonorTimestamps: ptr.To(true),
+				Spec: vmv1beta1.VMStaticScrapeSpec{
+					JobName:     "static-job",
+					SampleLimit: 50,
+				},
+			},
+			ep: &vmv1beta1.TargetEndpoint{
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					Params:          map[string][]string{"timeout": {"50s"}, "follow": {"false"}},
+					SampleLimit:     60,
+					ScrapeTimeout:   "55s",
+					Interval:        "10s",
+					ScrapeInterval:  "50s",
+					FollowRedirects: ptr.To(true),
+					Path:            "/metrics-1",
+					Scheme:          "https",
+					ProxyURL:        ptr.To("https://some-proxy"),
+					HonorLabels:     true,
+					HonorTimestamps: ptr.To(true),
 
-						VMScrapeParams: &vmv1beta1.VMScrapeParams{
-							ScrapeOffset:        ptr.To("10s"),
-							DisableKeepAlive:    ptr.To(true),
-							DisableCompression:  ptr.To(true),
-							ScrapeAlignInterval: ptr.To("5s"),
-							StreamParse:         ptr.To(true),
-							Headers:             []string{"customer-header: with-value"},
-							ProxyClientConfig: &vmv1beta1.ProxyAuth{
-								BasicAuth: &vmv1beta1.BasicAuth{
-									Username: corev1.SecretKeySelector{
-										Key:                  "username",
-										LocalObjectReference: corev1.LocalObjectReference{Name: "ba-proxy-secret"},
-									},
-									Password: corev1.SecretKeySelector{
-										Key:                  "password",
-										LocalObjectReference: corev1.LocalObjectReference{Name: "ba-proxy-secret"},
-									},
+					VMScrapeParams: &vmv1beta1.VMScrapeParams{
+						ScrapeOffset:        ptr.To("10s"),
+						DisableKeepAlive:    ptr.To(true),
+						DisableCompression:  ptr.To(true),
+						ScrapeAlignInterval: ptr.To("5s"),
+						StreamParse:         ptr.To(true),
+						Headers:             []string{"customer-header: with-value"},
+						ProxyClientConfig: &vmv1beta1.ProxyAuth{
+							BasicAuth: &vmv1beta1.BasicAuth{
+								Username: corev1.SecretKeySelector{
+									Key:                  "username",
+									LocalObjectReference: corev1.LocalObjectReference{Name: "ba-proxy-secret"},
+								},
+								Password: corev1.SecretKeySelector{
+									Key:                  "password",
+									LocalObjectReference: corev1.LocalObjectReference{Name: "ba-proxy-secret"},
 								},
 							},
 						},
 					},
-					EndpointAuth: vmv1beta1.EndpointAuth{
-						TLSConfig: &vmv1beta1.TLSConfig{
-							CA: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-								Key:                  "ca",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cfg"},
-							}},
-							CertFile: "/tmp/cert-part",
-							KeySecret: &corev1.SecretKeySelector{
-								Key:                  "key",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cfg"},
-							},
-							InsecureSkipVerify: true,
+				},
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					TLSConfig: &vmv1beta1.TLSConfig{
+						CA: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+							Key:                  "ca",
+							LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cfg"},
+						}},
+						CertFile: "/tmp/cert-part",
+						KeySecret: &corev1.SecretKeySelector{
+							Key:                  "key",
+							LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cfg"},
 						},
-						BasicAuth: &vmv1beta1.BasicAuth{
-							Username: corev1.SecretKeySelector{
-								Key:                  "username",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
-							},
-							Password: corev1.SecretKeySelector{
-								Key:                  "password",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
-							},
+						InsecureSkipVerify: true,
+					},
+					BasicAuth: &vmv1beta1.BasicAuth{
+						Username: corev1.SecretKeySelector{
+							Key:                  "username",
+							LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
 						},
-						BearerTokenSecret: &corev1.SecretKeySelector{
-							Key:                  "token",
-							LocalObjectReference: corev1.LocalObjectReference{Name: "token-secret"},
-						},
-						OAuth2: &vmv1beta1.OAuth2{
-							ClientSecret: &corev1.SecretKeySelector{Key: "client-s", LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-2s"}},
-							ClientID: vmv1beta1.SecretOrConfigMap{
-								Secret: &corev1.SecretKeySelector{Key: "client-id", LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-2s"}},
-							},
+						Password: corev1.SecretKeySelector{
+							Key:                  "password",
+							LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
 						},
 					},
-					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-						RelabelConfigs: []*vmv1beta1.RelabelConfig{
-							{
-								Action:       "drop",
-								SourceLabels: []string{"src"},
-								Regex:        []string{"vmagent", "vmalert"},
-							},
+					BearerTokenSecret: &corev1.SecretKeySelector{
+						Key:                  "token",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "token-secret"},
+					},
+					OAuth2: &vmv1beta1.OAuth2{
+						ClientSecret: &corev1.SecretKeySelector{Key: "client-s", LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-2s"}},
+						ClientID: vmv1beta1.SecretOrConfigMap{
+							Secret: &corev1.SecretKeySelector{Key: "client-id", LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-2s"}},
 						},
-
-						MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
-							{
-								TargetLabel:  "namespace",
-								SourceLabels: []string{"abuse"},
-								Action:       "replace",
-							},
-							{
-								TargetLabel:  "pod_status",
-								SourceLabels: []string{"pod"},
-								Action:       "replace",
-							},
+					},
+				},
+				EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+					RelabelConfigs: []*vmv1beta1.RelabelConfig{
+						{
+							Action:       "drop",
+							SourceLabels: []string{"src"},
+							Regex:        []string{"vmagent", "vmalert"},
 						},
 					},
 
-					Targets: []string{"192.168.11.1:9100", "some-host:9100"},
-					Labels:  map[string]string{"env": "dev", "group": "prod"},
+					MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+						{
+							TargetLabel:  "namespace",
+							SourceLabels: []string{"abuse"},
+							Action:       "replace",
+						},
+						{
+							TargetLabel:  "pod_status",
+							SourceLabels: []string{"pod"},
+							Action:       "replace",
+						},
+					},
 				},
-				se: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorTimestamps: false,
-					OverrideHonorLabels:     true,
-					EnforcedNamespaceLabel:  "namespace",
-				},
+
+				Targets: []string{"192.168.11.1:9100", "some-host:9100"},
+				Labels:  map[string]string{"env": "dev", "group": "prod"},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Secret{
@@ -361,8 +359,8 @@ oauth2:
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			ac := getAssetsCache(ctx, fclient, tt.args.cr)
-			got, err := generateStaticScrapeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, ac, tt.args.se)
+			ac := getAssetsCache(ctx, fclient, tt.cr)
+			got, err := generateStaticScrapeConfig(ctx, tt.cr, tt.sc, tt.ep, tt.i, ac)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

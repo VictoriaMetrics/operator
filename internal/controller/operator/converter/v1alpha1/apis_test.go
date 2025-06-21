@@ -95,48 +95,43 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 }
 
 func TestConvertScrapeConfig(t *testing.T) {
-	type args struct {
+	tests := []struct {
+		name         string
 		scrapeConfig *promv1alpha1.ScrapeConfig
 		ownerRef     bool
-	}
-	tests := []struct {
-		name string
-		args args
-		want vmv1beta1.VMScrapeConfig
+		want         vmv1beta1.VMScrapeConfig
 	}{
 		{
 			name: "with static config",
-			args: args{
-				scrapeConfig: &promv1alpha1.ScrapeConfig{
-					Spec: promv1alpha1.ScrapeConfigSpec{
-						StaticConfigs: []promv1alpha1.StaticConfig{
-							{
-								Targets: []promv1alpha1.Target{"target-1", "target-2"},
-							},
+			scrapeConfig: &promv1alpha1.ScrapeConfig{
+				Spec: promv1alpha1.ScrapeConfigSpec{
+					StaticConfigs: []promv1alpha1.StaticConfig{
+						{
+							Targets: []promv1alpha1.Target{"target-1", "target-2"},
 						},
-						HonorTimestamps:   ptr.To(true),
-						EnableCompression: ptr.To(true),
-						BasicAuth: &promv1.BasicAuth{
-							Username: corev1.SecretKeySelector{Key: "username"},
-							Password: corev1.SecretKeySelector{Key: "password"},
+					},
+					HonorTimestamps:   ptr.To(true),
+					EnableCompression: ptr.To(true),
+					BasicAuth: &promv1.BasicAuth{
+						Username: corev1.SecretKeySelector{Key: "username"},
+						Password: corev1.SecretKeySelector{Key: "password"},
+					},
+					MetricsPath: ptr.To("/test"),
+					ProxyConfig: promv1.ProxyConfig{
+						ProxyURL: ptr.To("http://proxy.com"),
+					},
+					RelabelConfigs: []promv1.RelabelConfig{
+						{
+							Action:      "LabelMap",
+							Regex:       "__meta_kubernetes_pod_label_(.+)",
+							Replacement: ptr.To("foo_$1"),
 						},
-						MetricsPath: ptr.To("/test"),
-						ProxyConfig: promv1.ProxyConfig{
-							ProxyURL: ptr.To("http://proxy.com"),
-						},
-						RelabelConfigs: []promv1.RelabelConfig{
-							{
-								Action:      "LabelMap",
-								Regex:       "__meta_kubernetes_pod_label_(.+)",
-								Replacement: ptr.To("foo_$1"),
-							},
-						},
-						MetricRelabelConfigs: []promv1.RelabelConfig{
-							{
-								SourceLabels: []promv1.LabelName{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
-								Separator:    ptr.To(":"),
-								TargetLabel:  "host_port",
-							},
+					},
+					MetricRelabelConfigs: []promv1.RelabelConfig{
+						{
+							SourceLabels: []promv1.LabelName{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
+							Separator:    ptr.To(":"),
+							TargetLabel:  "host_port",
 						},
 					},
 				},
@@ -181,28 +176,26 @@ func TestConvertScrapeConfig(t *testing.T) {
 		},
 		{
 			name: "with httpsd config",
-			args: args{
-				scrapeConfig: &promv1alpha1.ScrapeConfig{
-					Spec: promv1alpha1.ScrapeConfigSpec{
-						HTTPSDConfigs: []promv1alpha1.HTTPSDConfig{
-							{
-								URL: "http://test1.com",
-								Authorization: &promv1.SafeAuthorization{
-									Type: "Bearer",
-									Credentials: &corev1.SecretKeySelector{
-										Key: "token",
-									},
+			scrapeConfig: &promv1alpha1.ScrapeConfig{
+				Spec: promv1alpha1.ScrapeConfigSpec{
+					HTTPSDConfigs: []promv1alpha1.HTTPSDConfig{
+						{
+							URL: "http://test1.com",
+							Authorization: &promv1.SafeAuthorization{
+								Type: "Bearer",
+								Credentials: &corev1.SecretKeySelector{
+									Key: "token",
 								},
 							},
-							{
-								URL: "http://test2.com",
-								TLSConfig: &promv1.SafeTLSConfig{
-									CA:                 promv1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "ca.crt"}},
-									Cert:               promv1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "cert.pem"}},
-									KeySecret:          &corev1.SecretKeySelector{Key: "key"},
-									ServerName:         ptr.To("test"),
-									InsecureSkipVerify: ptr.To(true),
-								},
+						},
+						{
+							URL: "http://test2.com",
+							TLSConfig: &promv1.SafeTLSConfig{
+								CA:                 promv1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "ca.crt"}},
+								Cert:               promv1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "cert.pem"}},
+								KeySecret:          &corev1.SecretKeySelector{Key: "key"},
+								ServerName:         ptr.To("test"),
+								InsecureSkipVerify: ptr.To(true),
 							},
 						},
 					},
@@ -236,17 +229,15 @@ func TestConvertScrapeConfig(t *testing.T) {
 		},
 		{
 			name: "with k8s sd config",
-			args: args{
-				scrapeConfig: &promv1alpha1.ScrapeConfig{
-					Spec: promv1alpha1.ScrapeConfigSpec{
-						KubernetesSDConfigs: []promv1alpha1.KubernetesSDConfig{
-							{
-								APIServer: ptr.To("http://1.2.3.4"),
-								Role:      promv1alpha1.KubernetesRole("pod"),
-								Selectors: []promv1alpha1.K8SSelectorConfig{
-									{
-										Label: ptr.To("app=test"),
-									},
+			scrapeConfig: &promv1alpha1.ScrapeConfig{
+				Spec: promv1alpha1.ScrapeConfigSpec{
+					KubernetesSDConfigs: []promv1alpha1.KubernetesSDConfig{
+						{
+							APIServer: ptr.To("http://1.2.3.4"),
+							Role:      promv1alpha1.KubernetesRole("pod"),
+							Selectors: []promv1alpha1.K8SSelectorConfig{
+								{
+									Label: ptr.To("app=test"),
 								},
 							},
 						},
@@ -271,16 +262,14 @@ func TestConvertScrapeConfig(t *testing.T) {
 		},
 		{
 			name: "with consul sd config",
-			args: args{
-				scrapeConfig: &promv1alpha1.ScrapeConfig{
-					Spec: promv1alpha1.ScrapeConfigSpec{
-						ConsulSDConfigs: []promv1alpha1.ConsulSDConfig{
-							{
-								Server:     "http://1.2.3.4",
-								TokenRef:   &corev1.SecretKeySelector{Key: "token"},
-								Datacenter: ptr.To("prod"),
-								Namespace:  ptr.To("test"),
-							},
+			scrapeConfig: &promv1alpha1.ScrapeConfig{
+				Spec: promv1alpha1.ScrapeConfigSpec{
+					ConsulSDConfigs: []promv1alpha1.ConsulSDConfig{
+						{
+							Server:     "http://1.2.3.4",
+							TokenRef:   &corev1.SecretKeySelector{Key: "token"},
+							Datacenter: ptr.To("prod"),
+							Namespace:  ptr.To("test"),
 						},
 					},
 				},
@@ -300,22 +289,20 @@ func TestConvertScrapeConfig(t *testing.T) {
 		},
 		{
 			name: "with ec2 sd config",
-			args: args{
-				scrapeConfig: &promv1alpha1.ScrapeConfig{
-					Spec: promv1alpha1.ScrapeConfigSpec{
-						EC2SDConfigs: []promv1alpha1.EC2SDConfig{
-							{
-								Region:    ptr.To("us-west-1"),
-								AccessKey: &corev1.SecretKeySelector{Key: "accesskey"},
-								SecretKey: &corev1.SecretKeySelector{Key: "secret"},
-								Filters: []promv1alpha1.Filter{
-									{
-										Name:   "f1",
-										Values: []string{"1"},
-									},
+			scrapeConfig: &promv1alpha1.ScrapeConfig{
+				Spec: promv1alpha1.ScrapeConfigSpec{
+					EC2SDConfigs: []promv1alpha1.EC2SDConfig{
+						{
+							Region:    ptr.To("us-west-1"),
+							AccessKey: &corev1.SecretKeySelector{Key: "accesskey"},
+							SecretKey: &corev1.SecretKeySelector{Key: "secret"},
+							Filters: []promv1alpha1.Filter{
+								{
+									Name:   "f1",
+									Values: []string{"1"},
 								},
-								Port: ptr.To[int32](80),
 							},
+							Port: ptr.To[int32](80),
 						},
 					},
 				},
@@ -341,17 +328,15 @@ func TestConvertScrapeConfig(t *testing.T) {
 		},
 		{
 			name: "with owner",
-			args: args{
-				scrapeConfig: &promv1alpha1.ScrapeConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "test-ns",
-						UID:       "42",
-					},
-					Spec: promv1alpha1.ScrapeConfigSpec{},
+			scrapeConfig: &promv1alpha1.ScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-ns",
+					UID:       "42",
 				},
-				ownerRef: true,
+				Spec: promv1alpha1.ScrapeConfigSpec{},
 			},
+			ownerRef: true,
 			want: vmv1beta1.VMScrapeConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
@@ -372,16 +357,14 @@ func TestConvertScrapeConfig(t *testing.T) {
 		},
 		{
 			name: "with gce sd config",
-			args: args{
-				scrapeConfig: &promv1alpha1.ScrapeConfig{
-					Spec: promv1alpha1.ScrapeConfigSpec{
-						GCESDConfigs: []promv1alpha1.GCESDConfig{
-							{
-								Project:      "eu-project",
-								Zone:         "zone-1",
-								TagSeparator: ptr.To(""),
-								Port:         ptr.To[int32](80),
-							},
+			scrapeConfig: &promv1alpha1.ScrapeConfig{
+				Spec: promv1alpha1.ScrapeConfigSpec{
+					GCESDConfigs: []promv1alpha1.GCESDConfig{
+						{
+							Project:      "eu-project",
+							Zone:         "zone-1",
+							TagSeparator: ptr.To(""),
+							Port:         ptr.To[int32](80),
 						},
 					},
 				},
@@ -402,7 +385,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertScrapeConfig(tt.args.scrapeConfig, &config.BaseOperatorConf{EnabledPrometheusConverterOwnerReferences: tt.args.ownerRef})
+			got := ConvertScrapeConfig(tt.scrapeConfig, &config.BaseOperatorConf{EnabledPrometheusConverterOwnerReferences: tt.ownerRef})
 			if !cmp.Equal(*got, tt.want) {
 				diff := cmp.Diff(*got, tt.want)
 				t.Fatal("not expected output with diff: ", diff)

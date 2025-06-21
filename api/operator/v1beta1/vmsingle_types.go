@@ -79,12 +79,24 @@ type VMSingleSpec struct {
 	*EmbeddedProbes `json:",inline"`
 	// StreamAggrConfig defines stream aggregation configuration for VMSingle
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
+	// APIServerConfig allows specifying a host and auth methods to access apiserver.
+	// If left empty, VMAgent is assumed to run inside of the cluster
+	// and will discover API servers automatically and use the pod's CA certificate
+	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
+	// +optional
+	APIServerConfig *APIServerConfig `json:"apiServerConfig,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// EnableScraping enables scraping for VMSingle
+	EnableScraping bool `json:"enableScraping,omitempty"`
+
+	CommonRelabelParams               `json:",inline,omitempty"`
+	CommonScrapeParams                `json:",inline,omitempty"`
 	CommonDefaultableParams           `json:",inline"`
+	CommonConfigReloaderParams        `json:",inline,omitempty"`
 	CommonApplicationDeploymentParams `json:",inline"`
 }
 
@@ -93,9 +105,49 @@ func (cr *VMSingle) HasAnyStreamAggrRule() bool {
 	return cr.Spec.StreamAggrConfig.HasAnyRule()
 }
 
+// HasAnyRelabellingConfigs checks if vmagent has any defined relabeling rules
+func (cr *VMSingle) HasAnyRelabellingConfigs() bool {
+	return cr.Spec.HasAnyRelabellingConfigs()
+}
+
 // SetLastSpec implements objectWithLastAppliedState interface
 func (cr *VMSingle) SetLastSpec(prevSpec VMSingleSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
+}
+
+// IsUnmanaged checks if object should managed any config objects
+func (cr *VMSingle) IsUnmanaged() bool {
+	return cr.Spec.isUnmanaged()
+}
+
+// IsNodeScrapeUnmanaged checks if vmagent should managed any VMNodeScrape objects
+func (cr *VMSingle) IsNodeScrapeUnmanaged() bool {
+	return cr.Spec.isNodeScrapeUnmanaged()
+}
+
+// IsServiceScrapeUnmanaged checks if vmagent should managed any VMServiceScrape objects
+func (cr *VMSingle) IsServiceScrapeUnmanaged() bool {
+	return cr.Spec.isServiceScrapeUnmanaged()
+}
+
+// IsUnmanaged checks if vmagent should managed any VMPodScrape objects
+func (cr *VMSingle) IsPodScrapeUnmanaged() bool {
+	return cr.Spec.isPodScrapeUnmanaged()
+}
+
+// IsProbeUnmanaged checks if vmagent should managed any VMProbe objects
+func (cr *VMSingle) IsProbeUnmanaged() bool {
+	return cr.Spec.isProbeUnmanaged()
+}
+
+// IsStaticScrapeUnmanaged checks if vmagent should managed any VMStaticScrape objects
+func (cr *VMSingle) IsStaticScrapeUnmanaged() bool {
+	return cr.Spec.isStaticScrapeUnmanaged()
+}
+
+// IsScrapeConfigUnmanaged checks if vmagent should managed any VMScrapeConfig objects
+func (cr *VMSingle) IsScrapeConfigUnmanaged() bool {
+	return cr.Spec.isScrapeConfigUnmanaged()
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -151,6 +203,11 @@ type VMSingle struct {
 	ParsedLastAppliedSpec *VMSingleSpec `json:"-" yaml:"-"`
 
 	Status VMSingleStatus `json:"status,omitempty"`
+}
+
+// AsCRDOwner implements interface
+func (*VMSingle) AsCRDOwner() []metav1.OwnerReference {
+	return GetCRDAsOwner(Single)
 }
 
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
@@ -292,6 +349,10 @@ func (cr *VMSingle) GetServiceAccountName() string {
 
 func (cr *VMSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
+}
+
+func (cr *VMSingle) GetClusterRoleName() string {
+	return fmt.Sprintf("monitoring:%s:vmsingle-%s", cr.Namespace, cr.Name)
 }
 
 func (cr *VMSingle) AsURL() string {

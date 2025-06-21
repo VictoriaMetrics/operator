@@ -16,8 +16,10 @@ func generateScrapeConfig(
 	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMScrapeConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
+	spec := &sc.Spec
+	sp := cr.Spec.CommonScrapeParams
+	se := sp.CommonScrapeSecurityEnforcements
 	jobName := fmt.Sprintf("scrapeConfig/%s/%s", sc.Namespace, sc.Name)
 	cfg := yaml.MapSlice{
 		{
@@ -26,12 +28,12 @@ func generateScrapeConfig(
 		},
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &spec.EndpointScrapeParams, cr)
 
-	cfg = addCommonScrapeParamsTo(cfg, sc.Spec.EndpointScrapeParams, se)
+	cfg = addCommonScrapeParamsTo(cfg, spec.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
-	for _, c := range sc.Spec.RelabelConfigs {
+	for _, c := range spec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
 	for _, trc := range cr.Spec.ScrapeConfigRelabelTemplate {
@@ -42,21 +44,21 @@ func generateScrapeConfig(
 	relabelings = enforceNamespaceLabel(relabelings, sc.Namespace, se.EnforcedNamespaceLabel)
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
-	cfg = addMetricRelabelingsTo(cfg, sc.Spec.MetricRelabelConfigs, se)
-	if c, err := buildVMScrapeParams(sc.Namespace, sc.Spec.VMScrapeParams, ac); err != nil {
+	cfg = addMetricRelabelingsTo(cfg, spec.MetricRelabelConfigs, se)
+	if c, err := buildVMScrapeParams(sc.Namespace, spec.VMScrapeParams, ac); err != nil {
 		return nil, err
 	} else {
 		cfg = append(cfg, c...)
 	}
-	cfg, err := addEndpointAuthTo(cfg, &sc.Spec.EndpointAuth, sc.Namespace, ac)
+	cfg, err := addEndpointAuthTo(cfg, &spec.EndpointAuth, sc.Namespace, ac)
 	if err != nil {
 		return nil, err
 	}
 
 	// build staticConfig
-	if len(sc.Spec.StaticConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.StaticConfigs))
-		for i, config := range sc.Spec.StaticConfigs {
+	if len(spec.StaticConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.StaticConfigs))
+		for i, config := range spec.StaticConfigs {
 			configs[i] = []yaml.MapItem{
 				{
 					Key:   "targets",
@@ -75,9 +77,9 @@ func generateScrapeConfig(
 	}
 
 	// build fileSDConfig
-	if len(sc.Spec.FileSDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.FileSDConfigs))
-		for i, config := range sc.Spec.FileSDConfigs {
+	if len(spec.FileSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.FileSDConfigs))
+		for i, config := range spec.FileSDConfigs {
 			configs[i] = []yaml.MapItem{
 				{
 					Key:   "files",
@@ -92,9 +94,9 @@ func generateScrapeConfig(
 	}
 
 	// build httpSDConfig
-	if len(sc.Spec.HTTPSDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.HTTPSDConfigs))
-		for i, config := range sc.Spec.HTTPSDConfigs {
+	if len(spec.HTTPSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.HTTPSDConfigs))
+		for i, config := range spec.HTTPSDConfigs {
 			configs[i] = []yaml.MapItem{
 				{
 					Key:   "url",
@@ -141,9 +143,9 @@ func generateScrapeConfig(
 	}
 
 	// build kubernetesSDConfig
-	if len(sc.Spec.KubernetesSDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.KubernetesSDConfigs))
-		for i, config := range sc.Spec.KubernetesSDConfigs {
+	if len(spec.KubernetesSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.KubernetesSDConfigs))
+		for i, config := range spec.KubernetesSDConfigs {
 			if config.APIServer != nil {
 				configs[i] = []yaml.MapItem{
 					{
@@ -262,9 +264,9 @@ func generateScrapeConfig(
 	}
 
 	// build consulSDConfig
-	if len(sc.Spec.ConsulSDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.ConsulSDConfigs))
-		for i, config := range sc.Spec.ConsulSDConfigs {
+	if len(spec.ConsulSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.ConsulSDConfigs))
+		for i, config := range spec.ConsulSDConfigs {
 			configs[i] = append(configs[i], yaml.MapItem{
 				Key:   "server",
 				Value: config.Server,
@@ -398,9 +400,9 @@ func generateScrapeConfig(
 	}
 
 	// build dNSSDConfig
-	if len(sc.Spec.DNSSDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.DNSSDConfigs))
-		for i, config := range sc.Spec.DNSSDConfigs {
+	if len(spec.DNSSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.DNSSDConfigs))
+		for i, config := range spec.DNSSDConfigs {
 			configs[i] = []yaml.MapItem{
 				{
 					Key:   "names",
@@ -429,9 +431,9 @@ func generateScrapeConfig(
 	}
 
 	// build eC2SDConfig
-	if len(sc.Spec.EC2SDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.EC2SDConfigs))
-		for i, config := range sc.Spec.EC2SDConfigs {
+	if len(spec.EC2SDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.EC2SDConfigs))
+		for i, config := range spec.EC2SDConfigs {
 			if config.Region != nil {
 				configs[i] = []yaml.MapItem{
 					{
@@ -483,9 +485,9 @@ func generateScrapeConfig(
 	}
 
 	// build azureSDConfig
-	if len(sc.Spec.AzureSDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.AzureSDConfigs))
-		for i, config := range sc.Spec.AzureSDConfigs {
+	if len(spec.AzureSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.AzureSDConfigs))
+		for i, config := range spec.AzureSDConfigs {
 			if config.Environment != nil {
 				configs[i] = []yaml.MapItem{
 					{
@@ -551,9 +553,9 @@ func generateScrapeConfig(
 	}
 
 	// build gceSDConfig
-	if len(sc.Spec.GCESDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.GCESDConfigs))
-		for i, config := range sc.Spec.GCESDConfigs {
+	if len(spec.GCESDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.GCESDConfigs))
+		for i, config := range spec.GCESDConfigs {
 			configs[i] = []yaml.MapItem{
 				{
 					Key:   "project",
@@ -593,9 +595,9 @@ func generateScrapeConfig(
 	}
 
 	// build openStackSDConfig
-	if len(sc.Spec.OpenStackSDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.OpenStackSDConfigs))
-		for i, config := range sc.Spec.OpenStackSDConfigs {
+	if len(spec.OpenStackSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.OpenStackSDConfigs))
+		for i, config := range spec.OpenStackSDConfigs {
 			configs[i] = []yaml.MapItem{
 				{
 					Key:   "role",
@@ -723,9 +725,9 @@ func generateScrapeConfig(
 	}
 
 	// build digitalOceanSDConfig
-	if len(sc.Spec.DigitalOceanSDConfigs) > 0 {
-		configs := make([][]yaml.MapItem, len(sc.Spec.DigitalOceanSDConfigs))
-		for i, config := range sc.Spec.DigitalOceanSDConfigs {
+	if len(spec.DigitalOceanSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.DigitalOceanSDConfigs))
+		for i, config := range spec.DigitalOceanSDConfigs {
 			if config.Authorization != nil {
 				if c, err := ac.AuthorizationToYAML(sc.Namespace, config.Authorization); err != nil {
 					return nil, err

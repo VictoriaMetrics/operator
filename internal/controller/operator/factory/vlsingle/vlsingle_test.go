@@ -14,35 +14,27 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestCreateOrUpdateVLSingle(t *testing.T) {
-	type args struct {
-		cr *vmv1.VLSingle
-		c  *config.BaseOperatorConf
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1.VLSingle
 		want              *appsv1.Deployment
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "base gen",
-			args: args{
-				c: config.MustGetBaseConfig(),
-				cr: &vmv1.VLSingle{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "base",
-						Namespace: "default",
-					},
-					Spec: vmv1.VLSingleSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To(int32(1)),
-						},
+			cr: &vmv1.VLSingle{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "base",
+					Namespace: "default",
+				},
+				Spec: vmv1.VLSingleSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 			},
@@ -66,21 +58,18 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 		},
 		{
 			name: "base with specific port",
-			args: args{
-				c: config.MustGetBaseConfig(),
-				cr: &vmv1.VLSingle{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "base",
-						Namespace: "default",
-					},
-					Spec: vmv1.VLSingleSpec{
+			cr: &vmv1.VLSingle{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "base",
+					Namespace: "default",
+				},
+				Spec: vmv1.VLSingleSpec{
 
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To(int32(1)),
-						},
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							Port: "8435",
-						},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+						Port: "8435",
 					},
 				},
 			},
@@ -106,7 +95,7 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdate(context.TODO(), fclient, tt.args.cr)
+			err := CreateOrUpdate(context.TODO(), fclient, tt.cr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVLogs() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -116,14 +105,9 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 }
 
 func TestCreateOrUpdateVLSingleService(t *testing.T) {
-	type args struct {
-		cr *vmv1.VLSingle
-
-		c *config.BaseOperatorConf
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1.VLSingle
 		want              *corev1.Service
 		wantErr           bool
 		wantPortsLen      int
@@ -131,13 +115,10 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 	}{
 		{
 			name: "base service test",
-			args: args{
-				c: config.MustGetBaseConfig(),
-				cr: &vmv1.VLSingle{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "logs-1",
-						Namespace: "default",
-					},
+			cr: &vmv1.VLSingle{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "logs-1",
+					Namespace: "default",
 				},
 			},
 			want: &corev1.Service{
@@ -150,19 +131,16 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 		},
 		{
 			name: "with extra service nodePort",
-			args: args{
-				c: config.MustGetBaseConfig(),
-				cr: &vmv1.VLSingle{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "logs-1",
-						Namespace: "default",
-					},
-					Spec: vmv1.VLSingleSpec{
-						ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
-							EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "additional-service"},
-							Spec: corev1.ServiceSpec{
-								Type: corev1.ServiceTypeNodePort,
-							},
+			cr: &vmv1.VLSingle{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "logs-1",
+					Namespace: "default",
+				},
+				Spec: vmv1.VLSingleSpec{
+					ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+						EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "additional-service"},
+						Spec: corev1.ServiceSpec{
+							Type: corev1.ServiceTypeNodePort,
 						},
 					},
 				},
@@ -194,7 +172,7 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := createOrUpdateService(context.TODO(), fclient, tt.args.cr, nil)
+			got, err := createOrUpdateService(context.TODO(), fclient, tt.cr, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVLogsService() error = %v, wantErr %v", err, tt.wantErr)
 				return

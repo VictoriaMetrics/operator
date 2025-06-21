@@ -14,6 +14,7 @@ type CRDName int
 
 const (
 	Agent CRDName = iota
+	Single
 )
 
 func (c CRDName) String() string {

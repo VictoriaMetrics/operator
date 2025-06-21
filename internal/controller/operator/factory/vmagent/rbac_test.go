@@ -13,42 +13,32 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func TestCreateVMAgentClusterAccess(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		cr  *vmv1beta1.VMAgent
-	}
+func TestCreateClusterAccess(t *testing.T) {
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAgent
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "ok create default rbac",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "rbac-test",
-					},
-					Spec: vmv1beta1.VMAgentSpec{},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "rbac-test",
 				},
+				Spec: vmv1beta1.VMAgentSpec{},
 			},
 			wantErr: false,
 		},
 		{
 			name: "ok with exist rbac",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default-2",
-						Name:      "rbac-test",
-					},
-					Spec: vmv1beta1.VMAgentSpec{},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default-2",
+					Name:      "rbac-test",
 				},
+				Spec: vmv1beta1.VMAgentSpec{},
 			},
 			predefinedObjects: []runtime.Object{
 				&rbacv1.ClusterRole{
@@ -88,8 +78,9 @@ func TestCreateVMAgentClusterAccess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := createVMAgentK8sAPIAccess(tt.args.ctx, fclient, tt.args.cr, nil, true); (err != nil) != tt.wantErr {
-				t.Errorf("CreateVMAgentK8sAPIAccess() error = %v, wantErr %v", err, tt.wantErr)
+			ctx := context.TODO()
+			if err := createK8sAPIAccess(ctx, fclient, tt.cr, nil, true); (err != nil) != tt.wantErr {
+				t.Errorf("createK8sAPIAccess() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

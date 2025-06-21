@@ -22,32 +22,25 @@ import (
 )
 
 func TestCreateOrUpdateAlertManager(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		cr  *vmv1beta1.VMAlertmanager
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAlertmanager
 		validate          func(set *appsv1.StatefulSet) error
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "simple alertmanager",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "test-am",
-						Namespace:   "monitoring",
-						Annotations: map[string]string{"not": "touch"},
-						Labels:      map[string]string{"main": "system"},
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To(int32(1)),
-						},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test-am",
+					Namespace:   "monitoring",
+					Annotations: map[string]string{"not": "touch"},
+					Labels:      map[string]string{"main": "system"},
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 			},
@@ -82,23 +75,20 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 		},
 		{
 			name: "alertmanager with embedded probe",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "test-am",
-						Namespace:   "monitoring",
-						Annotations: map[string]string{"not": "touch"},
-						Labels:      map[string]string{"main": "system"},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test-am",
+					Namespace:   "monitoring",
+					Annotations: map[string]string{"not": "touch"},
+					Labels:      map[string]string{"main": "system"},
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
 					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To(int32(1)),
-						},
-						EmbeddedProbes: &vmv1beta1.EmbeddedProbes{
-							LivenessProbe: &corev1.Probe{
-								TimeoutSeconds: 20,
-							},
+					EmbeddedProbes: &vmv1beta1.EmbeddedProbes{
+						LivenessProbe: &corev1.Probe{
+							TimeoutSeconds: 20,
 						},
 					},
 				},
@@ -139,20 +129,17 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 					},
 				},
 			},
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "test-am",
-						Namespace:   "monitoring",
-						Annotations: map[string]string{"not": "touch"},
-						Labels:      map[string]string{"main": "system"},
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						Templates: []vmv1beta1.ConfigMapKeyReference{
-							{LocalObjectReference: corev1.LocalObjectReference{Name: "test-am"}, Key: "test_1.tmpl"},
-							{LocalObjectReference: corev1.LocalObjectReference{Name: "test-am"}, Key: "test_2.tmpl"},
-						},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test-am",
+					Namespace:   "monitoring",
+					Annotations: map[string]string{"not": "touch"},
+					Labels:      map[string]string{"main": "system"},
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					Templates: []vmv1beta1.ConfigMapKeyReference{
+						{LocalObjectReference: corev1.LocalObjectReference{Name: "test-am"}, Key: "test_1.tmpl"},
+						{LocalObjectReference: corev1.LocalObjectReference{Name: "test-am"}, Key: "test_2.tmpl"},
 					},
 				},
 			},
@@ -208,9 +195,10 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			initCtx := context.TODO()
 			build.AddDefaults(fclient.Scheme())
-			fclient.Scheme().Default(tt.args.cr)
-			ctx, cancel := context.WithTimeout(tt.args.ctx, time.Second*20)
+			fclient.Scheme().Default(tt.cr)
+			ctx, cancel := context.WithTimeout(initCtx, time.Second*20)
 			defer cancel()
 
 			go func() {
@@ -221,15 +209,15 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 						return
 					case <-tc.C:
 						var got appsv1.StatefulSet
-						if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); err != nil {
+						if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.PrefixedName()}, &got); err != nil {
 							if !errors.IsNotFound(err) {
 								t.Errorf("cannot get statefulset for alertmanager: %s", err)
 								return
 							}
 							continue
 						}
-						got.Status.ReadyReplicas = *tt.args.cr.Spec.ReplicaCount
-						got.Status.UpdatedReplicas = *tt.args.cr.Spec.ReplicaCount
+						got.Status.ReadyReplicas = *tt.cr.Spec.ReplicaCount
+						got.Status.UpdatedReplicas = *tt.cr.Spec.ReplicaCount
 
 						if err := fclient.Status().Update(ctx, &got); err != nil {
 							t.Errorf("cannot update status statefulset for alertmanager: %s", err)
@@ -238,13 +226,13 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 					}
 				}
 			}()
-			err := CreateOrUpdateAlertManager(ctx, tt.args.cr, fclient)
+			err := CreateOrUpdateAlertManager(ctx, tt.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// TODO add client.Default
 			var got appsv1.StatefulSet
-			if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
+			if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err := tt.validate(&got); err != nil {
@@ -255,41 +243,31 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 }
 
 func Test_createDefaultAMConfig(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		cr  *vmv1beta1.VMAlertmanager
-	}
 	tests := []struct {
 		name                string
-		args                args
+		cr                  *vmv1beta1.VMAlertmanager
 		wantErr             bool
 		predefinedObjects   []runtime.Object
 		secretMustBeMissing bool
 	}{
 		{
 			name: "create alertmanager config",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-am",
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-am",
 				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{},
 			},
 			predefinedObjects: []runtime.Object{},
 		},
 		{
 			name: "with exist config",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-am",
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						ConfigSecret: "some-secret-name",
-					},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-am",
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					ConfigSecret: "some-secret-name",
 				},
 			},
 			secretMustBeMissing: true,
@@ -297,15 +275,12 @@ func Test_createDefaultAMConfig(t *testing.T) {
 		},
 		{
 			name: "with raw config",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-am",
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						ConfigRawYaml: "some-bad-yaml",
-					},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-am",
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					ConfigRawYaml: "some-bad-yaml",
 				},
 			},
 			predefinedObjects: []runtime.Object{},
@@ -313,19 +288,16 @@ func Test_createDefaultAMConfig(t *testing.T) {
 		},
 		{
 			name: "with alertmanager config support",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-am",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						ConfigSecret:            "some-name",
-						ConfigRawYaml:           "global: {}",
-						ConfigSelector:          &metav1.LabelSelector{},
-						ConfigNamespaceSelector: &metav1.LabelSelector{},
-					},
+			cr: &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-am",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					ConfigSecret:            "some-name",
+					ConfigRawYaml:           "global: {}",
+					ConfigSelector:          &metav1.LabelSelector{},
+					ConfigNamespaceSelector: &metav1.LabelSelector{},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -351,17 +323,18 @@ func Test_createDefaultAMConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := CreateOrUpdateConfig(tt.args.ctx, fclient, tt.args.cr, nil); (err != nil) != tt.wantErr {
+			if err := CreateOrUpdateConfig(ctx, fclient, tt.cr, nil); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantErr {
 				return
 			}
 			var createdSecret corev1.Secret
-			secretName := tt.args.cr.ConfigSecretName()
+			secretName := tt.cr.ConfigSecretName()
 
-			err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
+			err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: secretName}, &createdSecret)
 			if err != nil {
 				if errors.IsNotFound(err) && tt.secretMustBeMissing {
 					return

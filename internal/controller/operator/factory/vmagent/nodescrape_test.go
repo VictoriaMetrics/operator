@@ -16,40 +16,32 @@ import (
 )
 
 func Test_generateNodeScrapeConfig(t *testing.T) {
-	type args struct {
-		cr              *vmv1beta1.VMAgent
-		sc              *vmv1beta1.VMNodeScrape
-		apiserverConfig *vmv1beta1.APIServerConfig
-		se              vmv1beta1.VMAgentSecurityEnforcements
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAgent
+		sc                *vmv1beta1.VMNodeScrape
 		want              string
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "ok build node",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
 				},
-				apiserverConfig: nil,
-				sc: &vmv1beta1.VMNodeScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "nodes-basic",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMNodeScrapeSpec{
-						Port: "9100",
+			},
+			sc: &vmv1beta1.VMNodeScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nodes-basic",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMNodeScrapeSpec{
+					Port: "9100",
 
-						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-							Path:     "/metrics",
-							Interval: "30s",
-						},
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path:     "/metrics",
+						Interval: "30s",
 					},
 				},
 			},
@@ -74,71 +66,68 @@ relabel_configs:
 		},
 		{
 			name: "complete ok build node",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
 				},
-				apiserverConfig: nil,
-				sc: &vmv1beta1.VMNodeScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "nodes-basic",
-						Namespace: "default",
+			},
+			sc: &vmv1beta1.VMNodeScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nodes-basic",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMNodeScrapeSpec{
+					Port: "9100",
+					Selector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"job": "prod"},
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{Key: "external", Operator: metav1.LabelSelectorOpIn, Values: []string{"world"}},
+						},
 					},
-					Spec: vmv1beta1.VMNodeScrapeSpec{
-						Port: "9100",
-						Selector: metav1.LabelSelector{
-							MatchLabels: map[string]string{"job": "prod"},
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{Key: "external", Operator: metav1.LabelSelectorOpIn, Values: []string{"world"}},
-							},
-						},
 
-						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-							Path:            "/metrics",
-							Interval:        "30s",
-							Scheme:          "https",
-							HonorLabels:     true,
-							ProxyURL:        ptr.To("https://some-url"),
-							SampleLimit:     50,
-							SeriesLimit:     1000,
-							FollowRedirects: ptr.To(true),
-							ScrapeTimeout:   "10s",
-							ScrapeInterval:  "5s",
-							Params:          map[string][]string{"module": {"client"}},
-							HonorTimestamps: ptr.To(true),
-							VMScrapeParams: &vmv1beta1.VMScrapeParams{
-								StreamParse: ptr.To(true),
-								ProxyClientConfig: &vmv1beta1.ProxyAuth{
-									TLSConfig: &vmv1beta1.TLSConfig{
-										InsecureSkipVerify: true,
-									},
-									BearerTokenFile: "/tmp/proxy-token",
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path:            "/metrics",
+						Interval:        "30s",
+						Scheme:          "https",
+						HonorLabels:     true,
+						ProxyURL:        ptr.To("https://some-url"),
+						SampleLimit:     50,
+						SeriesLimit:     1000,
+						FollowRedirects: ptr.To(true),
+						ScrapeTimeout:   "10s",
+						ScrapeInterval:  "5s",
+						Params:          map[string][]string{"module": {"client"}},
+						HonorTimestamps: ptr.To(true),
+						VMScrapeParams: &vmv1beta1.VMScrapeParams{
+							StreamParse: ptr.To(true),
+							ProxyClientConfig: &vmv1beta1.ProxyAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+								BearerTokenFile: "/tmp/proxy-token",
+							},
+						},
+					},
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						BearerTokenFile: "/tmp/bearer",
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								Key: "username",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "ba-secret",
 								},
 							},
 						},
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							BearerTokenFile: "/tmp/bearer",
-							BasicAuth: &vmv1beta1.BasicAuth{
-								Username: corev1.SecretKeySelector{
-									Key: "username",
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "ba-secret",
-									},
-								},
-							},
-							TLSConfig: &vmv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
-							},
+						TLSConfig: &vmv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
 						},
-						JobLabel:     "env",
-						TargetLabels: []string{"app", "env"},
-						EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-							RelabelConfigs:       []*vmv1beta1.RelabelConfig{},
-							MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{},
-						},
+					},
+					JobLabel:     "env",
+					TargetLabels: []string{"app", "env"},
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs:       []*vmv1beta1.RelabelConfig{},
+						MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{},
 					},
 				},
 			},
@@ -216,30 +205,30 @@ basic_auth:
 		},
 		{
 			name: "with selector",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						EnableKubernetesAPISelectors: true,
 					},
 				},
-				sc: &vmv1beta1.VMNodeScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "nodes-basic",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMNodeScrapeSpec{
-						Port: "9100",
-						Selector: *metav1.SetAsLabelSelector(map[string]string{
-							"zone": "eu-south-21",
-						}),
-						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-							Path:     "/metrics",
-							Interval: "30s",
-						},
+			},
+			sc: &vmv1beta1.VMNodeScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nodes-basic",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMNodeScrapeSpec{
+					Port: "9100",
+					Selector: *metav1.SetAsLabelSelector(map[string]string{
+						"zone": "eu-south-21",
+					}),
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path:     "/metrics",
+						Interval: "30s",
 					},
 				},
 			},
@@ -270,8 +259,8 @@ relabel_configs:
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			ac := getAssetsCache(ctx, fclient, tt.args.cr)
-			got, err := generateNodeScrapeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.apiserverConfig, ac, tt.args.se)
+			ac := getAssetsCache(ctx, fclient, tt.cr)
+			got, err := generateNodeScrapeConfig(ctx, tt.cr, tt.sc, ac)
 			if err != nil {
 				t.Errorf("cannot generate NodeScrapeConfig, err: %e", err)
 				return

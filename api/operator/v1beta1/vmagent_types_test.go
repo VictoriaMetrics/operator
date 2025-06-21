@@ -26,26 +26,32 @@ func TestVMAgent_Validate(t *testing.T) {
 		{
 			name: "bad inline cfg",
 			spec: VMAgentSpec{
-				RemoteWrite:        []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
-				InlineScrapeConfig: "some; none yaml formatted string",
+				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+				CommonScrapeParams: CommonScrapeParams{
+					InlineScrapeConfig: "some; none yaml formatted string",
+				},
 			},
 			wantErr: true,
 		},
 		{
 			name: "valid inline cfg",
 			spec: VMAgentSpec{
-				RemoteWrite:        []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
-				InlineScrapeConfig: `key: value`,
+				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+				CommonScrapeParams: CommonScrapeParams{
+					InlineScrapeConfig: `key: value`,
+				},
 			},
 		},
 		{
 			name: "valid relabeling",
 			spec: VMAgentSpec{
 				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
-				InlineRelabelConfig: []*RelabelConfig{
-					{
-						Action:       "drop",
-						SourceLabels: []string{"src_id"},
+				CommonRelabelParams: CommonRelabelParams{
+					InlineRelabelConfig: []*RelabelConfig{
+						{
+							Action:       "drop",
+							SourceLabels: []string{"src_id"},
+						},
 					},
 				},
 			},
@@ -54,12 +60,14 @@ func TestVMAgent_Validate(t *testing.T) {
 			name: "relabeling with if array",
 			spec: VMAgentSpec{
 				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
-				InlineRelabelConfig: []*RelabelConfig{
-					{
-						Action: "drop_metrics",
-						If: []string{
-							"{job=~\"aaa.*\"}",
-							"{job=~\"bbb.*\"}",
+				CommonRelabelParams: CommonRelabelParams{
+					InlineRelabelConfig: []*RelabelConfig{
+						{
+							Action: "drop_metrics",
+							If: []string{
+								"{job=~\"aaa.*\"}",
+								"{job=~\"bbb.*\"}",
+							},
 						},
 					},
 				},

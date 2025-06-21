@@ -19,7 +19,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -636,14 +635,12 @@ func TestCreateOrUpdateService(t *testing.T) {
 	tests := []struct {
 		name              string
 		cr                *vmv1beta1.VMAlert
-		c                 *config.BaseOperatorConf
 		want              func(svc *corev1.Service) error
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "base test",
-			c:    config.MustGetBaseConfig(),
 			cr: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",

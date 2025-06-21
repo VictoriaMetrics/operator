@@ -24,12 +24,9 @@ import (
 )
 
 func TestCreateOrUpdate(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VMCluster
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMCluster
 		want              string
 		wantErr           bool
 		predefinedObjects []runtime.Object
@@ -37,41 +34,39 @@ func TestCreateOrUpdate(t *testing.T) {
 	}{
 		{
 			name: "base-vmstorage-test",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
-						Labels:    map[string]string{"label": "value"},
+			cr: &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "cluster-1",
+					Labels:    map[string]string{"label": "value"},
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod:   "2",
+					ReplicationFactor: ptr.To(int32(0)),
+					VMInsert: &vmv1beta1.VMInsert{
+						PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
+							Annotations: map[string]string{"key": "value"},
+						},
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0)),
+						},
 					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(0)),
-						VMInsert: &vmv1beta1.VMInsert{
-							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
-								Annotations: map[string]string{"key": "value"},
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0)),
-							},
+					VMStorage: &vmv1beta1.VMStorage{
+						PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
+							Annotations: map[string]string{"key": "value"},
+							Labels:      map[string]string{"label": "value2"},
 						},
-						VMStorage: &vmv1beta1.VMStorage{
-							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
-								Annotations: map[string]string{"key": "value"},
-								Labels:      map[string]string{"label": "value2"},
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 
-								ReplicaCount: ptr.To(int32(2))},
+							ReplicaCount: ptr.To(int32(2))},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
+							Annotations: map[string]string{"key": "value"},
 						},
-						VMSelect: &vmv1beta1.VMSelect{
-							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
-								Annotations: map[string]string{"key": "value"},
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 
-								ReplicaCount: ptr.To(int32(2))},
-						},
+							ReplicaCount: ptr.To(int32(2))},
 					},
 				},
 			},
@@ -89,27 +84,25 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "base-vminsert-with-ports",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-							InsertPorts: &vmv1beta1.InsertPorts{
-								GraphitePort:     "8025",
-								OpenTSDBHTTPPort: "3311",
-								InfluxPort:       "5511",
-							},
-							HPA: &vmv1beta1.EmbeddedHPA{
-								MinReplicas: ptr.To(int32(0)),
-								MaxReplicas: 3,
-							},
+			cr: &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "cluster-1",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod:   "2",
+					ReplicationFactor: ptr.To(int32(2)),
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0))},
+						InsertPorts: &vmv1beta1.InsertPorts{
+							GraphitePort:     "8025",
+							OpenTSDBHTTPPort: "3311",
+							InfluxPort:       "5511",
+						},
+						HPA: &vmv1beta1.EmbeddedHPA{
+							MinReplicas: ptr.To(int32(0)),
+							MaxReplicas: 3,
 						},
 					},
 				},
@@ -118,22 +111,20 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "base-vmselect",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(2))},
-							HPA: &vmv1beta1.EmbeddedHPA{
-								MinReplicas: ptr.To(int32(1)),
-								MaxReplicas: 3,
-							},
+			cr: &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "cluster-1",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod:   "2",
+					ReplicationFactor: ptr.To(int32(2)),
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(2))},
+						HPA: &vmv1beta1.EmbeddedHPA{
+							MinReplicas: ptr.To(int32(1)),
+							MaxReplicas: 3,
 						},
 					},
 				},
@@ -152,29 +143,27 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "base-vmstorage-with-maintenance",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
+			cr: &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "cluster-1",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod:   "2",
+					ReplicationFactor: ptr.To(int32(2)),
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0))},
 					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-						},
-						VMStorage: &vmv1beta1.VMStorage{
-							MaintenanceSelectNodeIDs: []int32{1, 3},
-							MaintenanceInsertNodeIDs: []int32{0, 1, 2},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(10))},
-						},
-						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(2))},
-						},
+					VMStorage: &vmv1beta1.VMStorage{
+						MaintenanceSelectNodeIDs: []int32{1, 3},
+						MaintenanceInsertNodeIDs: []int32{0, 1, 2},
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(10))},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(2))},
 					},
 				},
 			},
@@ -224,29 +213,27 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "base-vmstorage-with-maintenance",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
+			cr: &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "cluster-1",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod:   "2",
+					ReplicationFactor: ptr.To(int32(2)),
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0))},
 					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-						},
-						VMStorage: &vmv1beta1.VMStorage{
-							MaintenanceSelectNodeIDs: []int32{1, 3},
-							MaintenanceInsertNodeIDs: []int32{0, 1, 2},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(10))},
-						},
-						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(2))},
-						},
+					VMStorage: &vmv1beta1.VMStorage{
+						MaintenanceSelectNodeIDs: []int32{1, 3},
+						MaintenanceInsertNodeIDs: []int32{0, 1, 2},
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(10))},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(2))},
 					},
 				},
 			},
@@ -296,38 +283,36 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "vmcluster with load-balancing",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
+			cr: &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "cluster-1",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod:   "2",
+					ReplicationFactor: ptr.To(int32(2)),
+					RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+						Enabled: true,
+						Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(0))},
+						},
 					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
-							Enabled: true,
-							Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To(int32(0))},
-							},
-						},
-						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-						},
-						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-						},
-						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-							InsertPorts: &vmv1beta1.InsertPorts{
-								GraphitePort:     "8025",
-								OpenTSDBHTTPPort: "3311",
-								InfluxPort:       "5511",
-							},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0))},
+					},
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0))},
+					},
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0))},
+						InsertPorts: &vmv1beta1.InsertPorts{
+							GraphitePort:     "8025",
+							OpenTSDBHTTPPort: "3311",
+							InfluxPort:       "5511",
 						},
 					},
 				},
@@ -363,10 +348,10 @@ func TestCreateOrUpdate(t *testing.T) {
 					}
 				}()
 			}
-			if tt.args.cr.Spec.RequestsLoadBalancer.Enabled {
+			if tt.cr.Spec.RequestsLoadBalancer.Enabled {
 				var vmauthLB appsv1.Deployment
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMAuthLBName(), Namespace: tt.args.cr.Namespace}, &vmauthLB); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.cr.GetVMAuthLBName(), Namespace: tt.cr.Namespace}, &vmauthLB); err != nil {
 						return err
 					}
 					vmauthLB.Status.Conditions = append(vmauthLB.Status.Conditions, appsv1.DeploymentCondition{
@@ -382,10 +367,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				})
 
 			}
-			if tt.args.cr.Spec.VMInsert != nil {
+			if tt.cr.Spec.VMInsert != nil {
 				var vminsert appsv1.Deployment
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.cr.GetVMInsertName(), Namespace: tt.cr.Namespace}, &vminsert); err != nil {
 						return err
 					}
 					vminsert.Status.Conditions = append(vminsert.Status.Conditions, appsv1.DeploymentCondition{
@@ -400,28 +385,28 @@ func TestCreateOrUpdate(t *testing.T) {
 					return nil
 				})
 			}
-			if tt.args.cr.Spec.VMSelect != nil {
+			if tt.cr.Spec.VMSelect != nil {
 				var vmselect appsv1.StatefulSet
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.cr.GetVMSelectName(), Namespace: tt.cr.Namespace}, &vmselect); err != nil {
 						return err
 					}
-					vmselect.Status.ReadyReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
-					vmselect.Status.UpdatedReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
+					vmselect.Status.ReadyReplicas = *tt.cr.Spec.VMSelect.ReplicaCount
+					vmselect.Status.UpdatedReplicas = *tt.cr.Spec.VMSelect.ReplicaCount
 					if err := fclient.Status().Update(ctx, &vmselect); err != nil {
 						return err
 					}
 					return nil
 				})
 			}
-			if tt.args.cr.Spec.VMStorage != nil {
+			if tt.cr.Spec.VMStorage != nil {
 				var vmstorage appsv1.StatefulSet
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMStorageName(), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.cr.GetVMStorageName(), Namespace: tt.cr.Namespace}, &vmstorage); err != nil {
 						return err
 					}
-					vmstorage.Status.ReadyReplicas = *tt.args.cr.Spec.VMStorage.ReplicaCount
-					vmstorage.Status.UpdatedReplicas = *tt.args.cr.Spec.VMStorage.ReplicaCount
+					vmstorage.Status.ReadyReplicas = *tt.cr.Spec.VMStorage.ReplicaCount
+					vmstorage.Status.UpdatedReplicas = *tt.cr.Spec.VMStorage.ReplicaCount
 					if err := fclient.Status().Update(ctx, &vmstorage); err != nil {
 						return err
 					}
@@ -430,7 +415,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				})
 			}
 
-			err := CreateOrUpdate(ctx, tt.args.cr, fclient)
+			err := CreateOrUpdate(ctx, tt.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -438,18 +423,18 @@ func TestCreateOrUpdate(t *testing.T) {
 			if tt.validate != nil {
 				var vmselect, vmstorage appsv1.StatefulSet
 				var vminsert appsv1.Deployment
-				if tt.args.cr.Spec.VMInsert != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+				if tt.cr.Spec.VMInsert != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.cr.GetVMInsertName(), Namespace: tt.cr.Namespace}, &vminsert); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
-				if tt.args.cr.Spec.VMSelect != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+				if tt.cr.Spec.VMSelect != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.cr.GetVMSelectName(), Namespace: tt.cr.Namespace}, &vmselect); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
-				if tt.args.cr.Spec.VMStorage != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMStorageName(), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
+				if tt.cr.Spec.VMStorage != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.cr.GetVMStorageName(), Namespace: tt.cr.Namespace}, &vmstorage); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}

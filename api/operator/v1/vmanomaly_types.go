@@ -135,7 +135,7 @@ type VMAnomalyHTTPClientSpec struct {
 	Timeout string `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	// TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant.
 	TenantID string `json:"tenantID,omitempty" yaml:"tenant_id,omitempty"`
-	// Basic auth defines basic autorization configuration
+	// Basic auth defines basic authorization configuration
 	BasicAuth *vmv1beta1.BasicAuth `json:"basicAuth,omitempty" yaml:"-"`
 	// TLSConfig defines tls connection configuration
 	TLSConfig *vmv1beta1.TLSConfig `json:"tlsConfig,omitempty" yaml:"-"`

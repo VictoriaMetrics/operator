@@ -12,37 +12,24 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestCreateOrUpdate(t *testing.T) {
-	mutateConf := func(cb func(c *config.BaseOperatorConf)) *config.BaseOperatorConf {
-		c := config.MustGetBaseConfig()
-		cb(c)
-		return c
-	}
-	type args struct {
-		cr *vmv1beta1.VMAuth
-		c  *config.BaseOperatorConf
-	}
 	tests := []struct {
 		name              string
-		args              args
+		cr                *vmv1beta1.VMAuth
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "simple-unmanaged",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
 				},
-				c: config.MustGetBaseConfig(),
 			},
 			predefinedObjects: []runtime.Object{
 				k8stools.NewReadyDeployment("vmauth-test", "default"),
@@ -50,23 +37,20 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "simple-with-external-config",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						ExternalConfig: vmv1beta1.ExternalConfig{
-							SecretRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "external-cfg",
-								},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					ExternalConfig: vmv1beta1.ExternalConfig{
+						SecretRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "external-cfg",
 							},
 						},
 					},
 				},
-				c: config.MustGetBaseConfig(),
 			},
 			predefinedObjects: []runtime.Object{
 				k8stools.NewReadyDeployment("vmauth-test", "default"),
@@ -83,17 +67,14 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "with-match-all",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
 				},
-				c: config.MustGetBaseConfig(),
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
+				},
 			},
 			predefinedObjects: []runtime.Object{
 				k8stools.NewReadyDeployment("vmauth-test", "default"),
@@ -118,19 +99,14 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		{
 			name: "with customer config reloader",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
 				},
-				c: mutateConf(func(c *config.BaseOperatorConf) {
-					c.UseCustomConfigReloader = true
-				}),
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
+				},
 			},
 			predefinedObjects: []runtime.Object{
 				k8stools.NewReadyDeployment("vmauth-test", "default"),
@@ -159,7 +135,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			ctx := context.Background()
 			tc := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			// TODO fix
-			if err := CreateOrUpdate(ctx, tt.args.cr, tc); (err != nil) != tt.wantErr {
+			if err := CreateOrUpdate(ctx, tt.cr, tc); (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

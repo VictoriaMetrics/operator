@@ -42,13 +42,18 @@ const (
 	TLSAssetsResourceKind ResourceKind = "tls-assets"
 	// SecretConfigResourceKind defines build for configuration secret object
 	SecretConfigResourceKind ResourceKind = "config"
+	// StreamAggrConfigResourceKind defines build for stream aggregation configmap object
+	StreamAggrConfigResourceKind ResourceKind = "stream-aggr"
+	// RelabelConfigResourceKind defines build for relabelling configmap object
+	RelabelConfigResourceKind ResourceKind = "relabelings-assets"
 )
 
 // ResourceName returns a name for provided resource and corresponding cr object
 func ResourceName(kind ResourceKind, cr builderOpts) string {
 	var parts []string
-	if kind == TLSAssetsResourceKind {
-		parts = append(parts, "tls-assets")
+	switch kind {
+	case TLSAssetsResourceKind, StreamAggrConfigResourceKind, RelabelConfigResourceKind:
+		parts = append(parts, string(kind))
 	}
 	parts = append(parts, cr.PrefixedName())
 	return strings.Join(parts, "-")

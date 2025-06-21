@@ -82,8 +82,9 @@ type VMSingleSpec struct {
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-
+	ServiceAccountName                string `json:"serviceAccountName,omitempty"`
+	CommonRelabelParams               `json:",inline,omitempty"`
+	CommonScrapeParams                `json:",inline,omitempty"`
 	CommonDefaultableParams           `json:",inline"`
 	CommonApplicationDeploymentParams `json:",inline"`
 }
@@ -93,9 +94,49 @@ func (cr *VMSingle) HasAnyStreamAggrRule() bool {
 	return cr.Spec.StreamAggrConfig.HasAnyRule()
 }
 
+// HasAnyRelabellingConfigs checks if vmagent has any defined relabeling rules
+func (cr *VMSingle) HasAnyRelabellingConfigs() bool {
+	return cr.Spec.HasAnyRelabellingConfigs()
+}
+
 // SetLastSpec implements objectWithLastAppliedState interface
 func (cr *VMSingle) SetLastSpec(prevSpec VMSingleSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
+}
+
+// IsUnmanaged checks if object should managed any config objects
+func (cr *VMSingle) IsUnmanaged() bool {
+	return cr.Spec.isUnmanaged()
+}
+
+// IsNodeScrapeUnmanaged checks if vmagent should managed any VMNodeScrape objects
+func (cr *VMSingle) IsNodeScrapeUnmanaged() bool {
+	return cr.Spec.isNodeScrapeUnmanaged()
+}
+
+// IsServiceScrapeUnmanaged checks if vmagent should managed any VMServiceScrape objects
+func (cr *VMSingle) IsServiceScrapeUnmanaged() bool {
+	return cr.Spec.isServiceScrapeUnmanaged()
+}
+
+// IsUnmanaged checks if vmagent should managed any VMPodScrape objects
+func (cr *VMSingle) IsPodScrapeUnmanaged() bool {
+	return cr.Spec.isPodScrapeUnmanaged()
+}
+
+// IsProbeUnmanaged checks if vmagent should managed any VMProbe objects
+func (cr *VMSingle) IsProbeUnmanaged() bool {
+	return cr.Spec.isProbeUnmanaged()
+}
+
+// IsStaticScrapeUnmanaged checks if vmagent should managed any VMStaticScrape objects
+func (cr *VMSingle) IsStaticScrapeUnmanaged() bool {
+	return cr.Spec.isStaticScrapeUnmanaged()
+}
+
+// IsScrapeConfigUnmanaged checks if vmagent should managed any VMScrapeConfig objects
+func (cr *VMSingle) IsScrapeConfigUnmanaged() bool {
+	return cr.Spec.isScrapeConfigUnmanaged()
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -266,10 +307,6 @@ func (cr *VMSingle) AllLabels() map[string]string {
 
 func (cr *VMSingle) PrefixedName() string {
 	return fmt.Sprintf("vmsingle-%s", cr.Name)
-}
-
-func (cr *VMSingle) StreamAggrConfigName() string {
-	return fmt.Sprintf("stream-aggr-vmsingle-%s", cr.Name)
 }
 
 // GetMetricPath returns prefixed path for metric requests

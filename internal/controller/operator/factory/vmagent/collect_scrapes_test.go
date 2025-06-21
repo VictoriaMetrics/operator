@@ -69,8 +69,10 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{},
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{},
+							},
 						},
 					},
 				},
@@ -97,8 +99,10 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "stage"}},
-						ServiceScrapeSelector:          &metav1.LabelSelector{},
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "stage"}},
+							ServiceScrapeSelector:          &metav1.LabelSelector{},
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -127,9 +131,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: nil,
-						ServiceScrapeSelector:          nil,
-						SelectAllByDefault:             false,
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeNamespaceSelector: nil,
+							ServiceScrapeSelector:          nil,
+							SelectAllByDefault:             false,
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -147,9 +153,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: nil,
-						ServiceScrapeSelector:          nil,
-						SelectAllByDefault:             true,
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeNamespaceSelector: nil,
+							ServiceScrapeSelector:          nil,
+							SelectAllByDefault:             true,
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -167,9 +175,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
-						ServiceScrapeSelector:          nil,
-						SelectAllByDefault:             false,
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
+							ServiceScrapeSelector:          nil,
+							SelectAllByDefault:             false,
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -187,9 +197,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
-						ServiceScrapeSelector:          nil,
-						SelectAllByDefault:             true,
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
+							ServiceScrapeSelector:          nil,
+							SelectAllByDefault:             true,
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -207,9 +219,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: nil,
-						ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
-						SelectAllByDefault:             false,
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeNamespaceSelector: nil,
+							ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
+							SelectAllByDefault:             false,
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -227,9 +241,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: nil,
-						ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
-						SelectAllByDefault:             true,
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeNamespaceSelector: nil,
+							ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
+							SelectAllByDefault:             true,
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -247,9 +263,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
-						ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
-						SelectAllByDefault:             false,
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other1"}},
+							ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss1"}},
+							SelectAllByDefault:             false,
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -267,9 +285,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other2"}},
-						ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss2"}},
-						SelectAllByDefault:             true,
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "other2"}},
+							ServiceScrapeSelector:          &metav1.LabelSelector{MatchLabels: map[string]string{"name": "ss2"}},
+							SelectAllByDefault:             true,
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -320,7 +340,9 @@ func TestSelectPodMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						PodScrapeSelector: &metav1.LabelSelector{},
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							PodScrapeSelector: &metav1.LabelSelector{},
+						},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -346,8 +368,10 @@ func TestSelectPodMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						PodScrapeNamespaceSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{"name": "monitoring"},
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							PodScrapeNamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{"name": "monitoring"},
+							},
 						},
 					},
 				},
@@ -416,7 +440,9 @@ func TestSelectVMProbes(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						ProbeSelector: &metav1.LabelSelector{},
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							ProbeSelector: &metav1.LabelSelector{},
+						},
 					},
 				},
 			},

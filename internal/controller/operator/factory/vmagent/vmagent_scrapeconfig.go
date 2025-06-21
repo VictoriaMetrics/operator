@@ -512,8 +512,6 @@ func generateConfig(
 
 	cfg = append(cfg, yaml.MapItem{Key: "global", Value: globalItems})
 
-	apiserverConfig := cr.Spec.APIServerConfig
-
 	var scrapeConfigs []yaml.MapSlice
 	for _, ss := range sos.sss {
 		configLen := len(scrapeConfigs)
@@ -523,9 +521,7 @@ func generateConfig(
 				cr,
 				ss,
 				ep, i,
-				apiserverConfig,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:configLen]
@@ -544,9 +540,7 @@ func generateConfig(
 				ctx,
 				cr,
 				identifier, ep, i,
-				apiserverConfig,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:configLen]
@@ -565,9 +559,7 @@ func generateConfig(
 			cr,
 			identifier,
 			i,
-			apiserverConfig,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		if err != nil {
 			if build.IsNotFound(err) {
@@ -582,9 +574,7 @@ func generateConfig(
 			ctx,
 			cr,
 			identifier,
-			apiserverConfig,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		if err != nil {
 			if build.IsNotFound(err) {
@@ -604,7 +594,6 @@ func generateConfig(
 				identifier,
 				ep, i,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:configLen]
@@ -623,7 +612,6 @@ func generateConfig(
 			cr,
 			identifier,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		if err != nil {
 			if build.IsNotFound(err) {
@@ -958,26 +946,27 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 	})
 }
 
-func buildExternalLabels(p *vmv1beta1.VMAgent) yaml.MapSlice {
+func buildExternalLabels(cr *vmv1beta1.VMAgent) yaml.MapSlice {
 	m := map[string]string{}
+	sp := cr.Spec.CommonScrapeParams
 
 	// Use "prometheus" external label name by default if field is missing.
 	// in case of migration from prometheus to vmagent, it helps to have same labels
 	// Do not add external label if field is set to empty string.
 	prometheusExternalLabelName := "prometheus"
-	if p.Spec.VMAgentExternalLabelName != nil {
-		if *p.Spec.VMAgentExternalLabelName != "" {
-			prometheusExternalLabelName = *p.Spec.VMAgentExternalLabelName
+	if sp.ExternalLabelName != nil {
+		if *sp.ExternalLabelName != "" {
+			prometheusExternalLabelName = *sp.ExternalLabelName
 		} else {
 			prometheusExternalLabelName = ""
 		}
 	}
 
 	if prometheusExternalLabelName != "" {
-		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", p.Namespace, p.Name)
+		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", cr.Namespace, cr.Name)
 	}
 
-	for n, v := range p.Spec.ExternalLabels {
+	for n, v := range sp.ExternalLabels {
 		m[n] = v
 	}
 	return stringMapToMapSlice(m)
@@ -1064,7 +1053,7 @@ func addSelectorToRelabelingFor(relabelings []yaml.MapSlice, typeName string, se
 	return relabelings
 }
 
-func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParams, se vmv1beta1.VMAgentSecurityEnforcements) yaml.MapSlice {
+func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParams, se vmv1beta1.CommonScrapeSecurityEnforcements) yaml.MapSlice {
 	hl := honorLabels(cs.HonorLabels, se.OverrideHonorLabels)
 	cfg = append(cfg, yaml.MapItem{
 		Key:   "honor_labels",
@@ -1119,7 +1108,7 @@ func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParam
 	return cfg
 }
 
-func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, se vmv1beta1.VMAgentSecurityEnforcements) yaml.MapSlice {
+func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, se vmv1beta1.CommonScrapeSecurityEnforcements) yaml.MapSlice {
 	if len(src) == 0 {
 		return cfg
 	}

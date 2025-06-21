@@ -136,11 +136,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		return err
 	}
 
-	if err := createOrUpdateRelabelConfigsAssets(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateRelabelConfigsAssets(ctx, rclient, cr, prevCR, ac); err != nil {
 		return fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
 	}
 
-	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, ac); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
 	}
 
@@ -604,50 +604,8 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 		})
 
 	}
-	if cr.HasAnyStreamAggrRule() {
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "stream-aggr-conf",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: cr.StreamAggrConfigName(),
-						},
-					},
-				},
-			},
-		)
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "stream-aggr-conf",
-				ReadOnly:  true,
-				MountPath: vmv1beta1.StreamAggrConfigDir,
-			},
-		)
-	}
-
-	if cr.HasAnyRelabellingConfigs() {
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "relabeling-assets",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: cr.RelabelingAssetName(),
-						},
-					},
-				},
-			},
-		)
-
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "relabeling-assets",
-				ReadOnly:  true,
-				MountPath: vmv1beta1.RelabelingConfigDir,
-			},
-		)
-	}
+	volumes, agentVolumeMounts = build.StreamAggrVolumeTo(volumes, agentVolumeMounts, cr.Spec.StreamAggrConfig, build.ResourceName(build.StreamAggrConfigResourceKind, cr))
+	volumes, agentVolumeMounts = build.RelabelVolumeTo(volumes, agentVolumeMounts, &cr.Spec.CommonRelabelParams, build.ResourceName(build.RelabelConfigResourceKind, cr))
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -688,33 +646,8 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 	volumes, agentVolumeMounts = build.LicenseVolumeTo(volumes, agentVolumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
-	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
-		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmv1beta1.RelabelingConfigDir, globalRelabelingName))
-	}
-
-	if cr.Spec.StreamAggrConfig != nil {
-		if cr.Spec.StreamAggrConfig.HasAnyRule() {
-			args = append(args, "-streamAggr.config="+path.Join(vmv1beta1.StreamAggrConfigDir, globalAggregationConfigName))
-		}
-		if cr.Spec.StreamAggrConfig.KeepInput {
-			args = append(args, "-streamAggr.keepInput=true")
-		}
-		if cr.Spec.StreamAggrConfig.DropInput {
-			args = append(args, "-streamAggr.dropInput=true")
-		}
-		if cr.Spec.StreamAggrConfig.DedupInterval != "" {
-			args = append(args, fmt.Sprintf("-streamAggr.dedupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
-		}
-		if len(cr.Spec.StreamAggrConfig.DropInputLabels) > 0 {
-			args = append(args, fmt.Sprintf("-streamAggr.dropInputLabels=%s", strings.Join(cr.Spec.StreamAggrConfig.DropInputLabels, ",")))
-		}
-		if cr.Spec.StreamAggrConfig.IgnoreOldSamples {
-			args = append(args, "-streamAggr.ignoreOldSamples=true")
-		}
-		if cr.Spec.StreamAggrConfig.EnableWindows {
-			args = append(args, "-streamAggr.enableWindows=true")
-		}
-	}
+	args = build.RelabelArgsTo(args, &cr.Spec.CommonRelabelParams, "remoteWrite.relabelConfig", globalRelabelingName)
+	args = build.StreamAggrArgsTo(args, cr.Spec.StreamAggrConfig, "streamAggr", globalAggregationConfigName)
 
 	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
 
@@ -822,20 +755,10 @@ func addShardSettingsToVMAgent(shardNum, shardsCount int, dep runtime.Object) {
 	}
 }
 
-func buildRelabelingsAssetsMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Namespace:       cr.Namespace,
-		Name:            cr.RelabelingAssetName(),
-		Labels:          cr.AllLabels(),
-		Annotations:     cr.AnnotationsFiltered(),
-		OwnerReferences: cr.AsOwner(),
-	}
-}
-
-// buildVMAgentRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.
-func buildVMAgentRelabelingsAssets(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) (*corev1.ConfigMap, error) {
+// buildRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.
+func buildRelabelingsAssets(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
-		ObjectMeta: buildRelabelingsAssetsMeta(cr),
+		ObjectMeta: build.ResourceMeta(build.RelabelConfigResourceKind, cr),
 		Data:       make(map[string]string),
 	}
 	// global section
@@ -851,9 +774,7 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, rclient client.Client, c
 	}
 	if cr.Spec.RelabelConfig != nil {
 		// need to fetch content from
-		data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
-			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.RelabelConfig.Name, Namespace: cr.Namespace}},
-			cr.Spec.RelabelConfig.Key)
+		data, err := ac.LoadKeyFromConfigMap(cr.Namespace, cr.Spec.RelabelConfig)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.RelabelConfig.Name, err)
 		}
@@ -864,8 +785,14 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, rclient client.Client, c
 	// per remoteWrite section.
 	for i := range cr.Spec.RemoteWrite {
 		rw := cr.Spec.RemoteWrite[i]
-		if len(rw.InlineUrlRelabelConfig) > 0 {
-			rcs := addRelabelConfigs(nil, rw.InlineUrlRelabelConfig)
+		var inlineConfig []*vmv1beta1.RelabelConfig
+		if len(rw.InlineRelabelConfig) > 0 {
+			inlineConfig = rw.InlineRelabelConfig
+		} else if len(rw.InlineUrlRelabelConfig) > 0 {
+			inlineConfig = rw.InlineUrlRelabelConfig
+		}
+		if len(inlineConfig) > 0 {
+			rcs := addRelabelConfigs(nil, inlineConfig)
 			data, err := yaml.Marshal(rcs)
 			if err != nil {
 				return nil, fmt.Errorf("cannot serialize urlRelabelConfig as yaml: %w", err)
@@ -874,12 +801,16 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, rclient client.Client, c
 				cfgCM.Data[fmt.Sprintf(urlRelabelingName, i)] = string(data)
 			}
 		}
-		if rw.UrlRelabelConfig != nil {
-			data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
-				&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rw.UrlRelabelConfig.Name, Namespace: cr.Namespace}},
-				rw.UrlRelabelConfig.Key)
+		var selector *corev1.ConfigMapKeySelector
+		if rw.RelabelConfig != nil {
+			selector = rw.RelabelConfig
+		} else if rw.UrlRelabelConfig != nil {
+			selector = rw.UrlRelabelConfig
+		}
+		if selector != nil {
+			data, err := ac.LoadKeyFromConfigMap(cr.Namespace, selector)
 			if err != nil {
-				return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", rw.UrlRelabelConfig.Name, err)
+				return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", selector.Name, err)
 			}
 			if len(data) > 0 {
 				cfgCM.Data[fmt.Sprintf(urlRelabelingName, i)] += data
@@ -890,35 +821,25 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, rclient client.Client, c
 }
 
 // createOrUpdateRelabelConfigsAssets builds relabeling configs for vmagent at separate configmap, serialized as yaml
-func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, ac *build.AssetsCache) error {
 	if !cr.HasAnyRelabellingConfigs() {
 		return nil
 	}
-	assestsCM, err := buildVMAgentRelabelingsAssets(ctx, rclient, cr)
+	assestsCM, err := buildRelabelingsAssets(cr, ac)
 	if err != nil {
 		return err
 	}
 	var prevConfigMeta *metav1.ObjectMeta
 	if prevCR != nil {
-		prevConfigMeta = ptr.To(buildRelabelingsAssetsMeta(prevCR))
+		prevConfigMeta = ptr.To(build.ResourceMeta(build.RelabelConfigResourceKind, prevCR))
 	}
 	return reconcile.ConfigMap(ctx, rclient, assestsCM, prevConfigMeta)
 }
 
-func buildStreamAggrConfigMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Namespace:       cr.Namespace,
-		Name:            cr.StreamAggrConfigName(),
-		Labels:          cr.AllLabels(),
-		Annotations:     cr.AnnotationsFiltered(),
-		OwnerReferences: cr.AsOwner(),
-	}
-}
-
 // buildStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
-func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
+func buildStreamAggrConfig(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
-		ObjectMeta: buildStreamAggrConfigMeta(cr),
+		ObjectMeta: build.ResourceMeta(build.StreamAggrConfigResourceKind, cr),
 		Data:       make(map[string]string),
 	}
 	// global section
@@ -933,9 +854,7 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 			}
 		}
 		if cr.Spec.StreamAggrConfig.RuleConfigMap != nil {
-			data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
-				&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.StreamAggrConfig.RuleConfigMap.Name, Namespace: cr.Namespace}},
-				cr.Spec.StreamAggrConfig.RuleConfigMap.Key)
+			data, err := ac.LoadKeyFromConfigMap(cr.Namespace, cr.Spec.StreamAggrConfig.RuleConfigMap)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.StreamAggrConfig.RuleConfigMap.Name, err)
 			}
@@ -958,9 +877,7 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 				}
 			}
 			if rw.StreamAggrConfig.RuleConfigMap != nil {
-				data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
-					&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rw.StreamAggrConfig.RuleConfigMap.Name, Namespace: cr.Namespace}},
-					rw.StreamAggrConfig.RuleConfigMap.Key)
+				data, err := ac.LoadKeyFromConfigMap(cr.Namespace, rw.StreamAggrConfig.RuleConfigMap)
 				if err != nil {
 					return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", rw.StreamAggrConfig.RuleConfigMap.Name, err)
 				}
@@ -976,18 +893,18 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 }
 
 // createOrUpdateStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
-func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, ac *build.AssetsCache) error {
 	// fast path
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
-	streamAggrCM, err := buildStreamAggrConfig(ctx, cr, rclient)
+	streamAggrCM, err := buildStreamAggrConfig(cr, ac)
 	if err != nil {
 		return err
 	}
 	var prevConfigMeta *metav1.ObjectMeta
 	if prevCR != nil {
-		prevConfigMeta = ptr.To(buildStreamAggrConfigMeta(prevCR))
+		prevConfigMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, cr))
 	}
 	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
 }
@@ -1203,7 +1120,10 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 
 		value = ""
 
-		if rws.UrlRelabelConfig != nil || len(rws.InlineUrlRelabelConfig) > 0 {
+		if rws.RelabelConfig != nil || len(rws.InlineRelabelConfig) > 0 {
+			urlRelabelConfig.isNotNull = true
+			value = path.Join(vmv1beta1.RelabelingConfigDir, fmt.Sprintf(urlRelabelingName, i))
+		} else if rws.UrlRelabelConfig != nil || len(rws.InlineUrlRelabelConfig) > 0 {
 			urlRelabelConfig.isNotNull = true
 			value = path.Join(vmv1beta1.RelabelingConfigDir, fmt.Sprintf(urlRelabelingName, i))
 		}

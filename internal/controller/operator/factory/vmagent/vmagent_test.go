@@ -1313,17 +1313,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.SecretConfigResourceKind: {
-					MountDir:   vmAgentConfDir,
-					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.cr),
-				},
-				build.TLSAssetsResourceKind: {
-					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
-				},
-			}
-			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			ac := getAssetsCache(ctx, fclient, tt.cr)
 			sort.Strings(tt.want)
 			got, err := buildRemoteWrites(tt.cr, ac)
 			if err != nil {
@@ -2053,17 +2043,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
-		cfg := map[build.ResourceKind]*build.ResourceCfg{
-			build.SecretConfigResourceKind: {
-				MountDir:   vmAgentConfDir,
-				SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
-			},
-			build.TLSAssetsResourceKind: {
-				MountDir:   tlsAssetsDir,
-				SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-			},
-		}
-		ac := build.NewAssetsCache(ctx, fclient, cfg)
+		ac := getAssetsCache(ctx, fclient, cr)
 		scheme := fclient.Scheme()
 		build.AddDefaults(scheme)
 		scheme.Default(cr)

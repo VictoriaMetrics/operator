@@ -443,6 +443,16 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 	}, nil
 }
 
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
+}
+
 // CreateOrUpdateConfig - check if secret with config exist,
 // if not create with predefined or user value.
 func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, childCR *vmv1beta1.VMAlertmanagerConfig) error {
@@ -453,14 +463,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, cfg)
-
+	ac := getAssetsCache(ctx, rclient, cr)
 	var configSourceName string
 	var alertmananagerConfig []byte
 	switch {

@@ -12,7 +12,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -362,17 +361,7 @@ oauth2:
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.SecretConfigResourceKind: {
-					MountDir:   vmAgentConfDir,
-					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.args.cr),
-				},
-				build.TLSAssetsResourceKind: {
-					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.args.cr),
-				},
-			}
-			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			ac := getAssetsCache(ctx, fclient, tt.args.cr)
 			got, err := generateStaticScrapeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, ac, tt.args.se)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

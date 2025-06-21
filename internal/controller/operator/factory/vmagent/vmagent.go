@@ -30,7 +30,7 @@ import (
 
 const (
 	vmAgentConfDir                  = "/etc/vmagent/config"
-	vmAgentConOfOutDir              = "/etc/vmagent/config_out"
+	vmAgentConfOutDir               = "/etc/vmagent/config_out"
 	vmAgentPersistentQueueDir       = "/tmp/vmagent-remotewrite-data"
 	vmAgentPersistentQueueSTSDir    = "/vmagent_pq/vmagent-remotewrite-data"
 	vmAgentPersistentQueueMountName = "persistent-queue-data"
@@ -131,8 +131,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 			return fmt.Errorf("cannot create or update scrape object: %w", err)
 		}
 	}
+
 	ac := getAssetsCache(ctx, rclient, cr)
-	if err := createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, nil, ac); err != nil {
+	if err = createOrUpdateConfigurationSecret(ctx, rclient, cr, prevCR, nil, ac); err != nil {
 		return err
 	}
 
@@ -366,6 +367,7 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 	if err != nil {
 		return nil, err
 	}
+
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	if cr.Spec.DaemonSetMode {
@@ -556,7 +558,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 
 	if !cr.Spec.IngestOnlyMode {
 		args = append(args,
-			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
+			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConfOutDir, configEnvsubstFilename)))
 
 		// preserve order of volumes and volumeMounts
 		// it must prevent vmagent restarts during operator version change
@@ -589,7 +591,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 			corev1.VolumeMount{
 				Name:      "config-out",
 				ReadOnly:  true,
-				MountPath: vmAgentConOfOutDir,
+				MountPath: vmAgentConfOutDir,
 			},
 		)
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
@@ -1355,7 +1357,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, extraWatchsMounts []cor
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
 				Name:      "config-out",
-				MountPath: vmAgentConOfOutDir,
+				MountPath: vmAgentConfOutDir,
 			},
 		)
 		if !useVMConfigReloader {
@@ -1423,7 +1425,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, extraWatchVolumes []corev1.V
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
 	if !cr.Spec.IngestOnlyMode {
-		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
+		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConfOutDir, configEnvsubstFilename)))
 		if useVMConfigReloader {
 			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
 			args = append(args, "--config-secret-key=vmagent.yaml.gz")
@@ -1469,7 +1471,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, c
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "config-out",
-					MountPath: vmAgentConOfOutDir,
+					MountPath: vmAgentConfOutDir,
 				},
 			},
 			Resources: resources,
@@ -1485,7 +1487,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, c
 		},
 		Args: []string{
 			"-c",
-			fmt.Sprintf("gunzip -c %s > %s", path.Join(vmAgentConfDir, vmagentGzippedFilename), path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
+			fmt.Sprintf("gunzip -c %s > %s", path.Join(vmAgentConfDir, vmagentGzippedFilename), path.Join(vmAgentConfOutDir, configEnvsubstFilename)),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -1494,7 +1496,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, c
 			},
 			{
 				Name:      "config-out",
-				MountPath: vmAgentConOfOutDir,
+				MountPath: vmAgentConfOutDir,
 			},
 		},
 		Resources: resources,

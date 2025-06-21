@@ -133,15 +133,6 @@ type VMProbeList struct {
 	Items           []VMProbe `json:"items"`
 }
 
-// AsProxyKey builds key for proxy cache maps
-func (cr *VMProbe) AsProxyKey() string {
-	return fmt.Sprintf("probeScrapeProxy/%s/%s", cr.Namespace, cr.Name)
-}
-
-func (cr *VMProbe) AsMapKey() string {
-	return fmt.Sprintf("probeScrape/%s/%s", cr.Namespace, cr.Name)
-}
-
 // GetStatusMetadata implements reconcile.objectWithStatus interface
 func (cr *VMProbe) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata

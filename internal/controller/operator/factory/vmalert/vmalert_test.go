@@ -20,7 +20,6 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -612,17 +611,7 @@ func TestBuildNotifiers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.SecretConfigResourceKind: {
-					MountDir:   vmalertConfigSecretsDir,
-					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.cr),
-				},
-				build.TLSAssetsResourceKind: {
-					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
-				},
-			}
-			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			ac := getAssetsCache(ctx, fclient, tt.cr)
 			if got, err := buildNotifiersArgs(tt.cr, ac); err != nil {
 				t.Errorf("buildNotifiersArgs(), unexpected error: %s", err)
 			} else if !reflect.DeepEqual(got, tt.want) {
@@ -726,17 +715,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(nil)
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.SecretConfigResourceKind: {
-					MountDir:   vmalertConfigSecretsDir,
-					SecretName: build.ResourceName(build.SecretConfigResourceKind, tt.cr),
-				},
-				build.TLSAssetsResourceKind: {
-					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
-				},
-			}
-			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			ac := getAssetsCache(ctx, fclient, tt.cr)
 			if got, err := buildArgs(tt.cr, tt.ruleConfigMapNames, ac); err != nil {
 				t.Errorf("buildArgs(), unexpected error: %s", err)
 			} else if !reflect.DeepEqual(got, tt.want) {

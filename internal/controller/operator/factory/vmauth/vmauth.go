@@ -326,7 +326,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
 
-	vmAuthSpec := &corev1.PodTemplateSpec{
+	return &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
 			Annotations: cr.PodAnnotations(),
@@ -337,8 +337,17 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
 		},
+	}, nil
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   vmAuthConfigRawFolder,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
 	}
-	return vmAuthSpec, nil
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }
 
 // CreateOrUpdateConfig configuration secret for vmauth.
@@ -363,13 +372,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	if err != nil {
 		return err
 	}
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.TLSAssetsResourceKind: {
-			MountDir:   vmAuthConfigRawFolder,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, cfg)
+	ac := getAssetsCache(ctx, rclient, cr)
 	generatedConfig, err := buildConfig(ctx, rclient, cr, sus, ac)
 	if err != nil {
 		return err

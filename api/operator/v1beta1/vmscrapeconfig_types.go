@@ -527,16 +527,6 @@ func (cr *VMScrapeConfig) Validate() error {
 	return cr.Spec.validate()
 }
 
-// AsProxyKey builds key for proxy cache maps
-func (cr *VMScrapeConfig) AsProxyKey(prefix string, i int) string {
-	return fmt.Sprintf("scrapeConfigProxy/%s/%s/%s/%d", cr.Namespace, cr.Name, prefix, i)
-}
-
-// AsMapKey - returns cr name with suffix for token/auth maps.
-func (cr *VMScrapeConfig) AsMapKey(prefix string, i int) string {
-	return fmt.Sprintf("scrapeConfig/%s/%s/%s/%d", cr.Namespace, cr.Name, prefix, i)
-}
-
 // GetStatusMetadata implements reconcile.objectWithStatus interface
 func (cr *VMScrapeConfig) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata

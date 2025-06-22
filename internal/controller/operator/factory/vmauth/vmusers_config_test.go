@@ -15,7 +15,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -500,14 +499,8 @@ password: pass
 				},
 			}
 			ctx := context.TODO()
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSAssetsResourceKind: {
-					MountDir:   vmAuthConfigRawFolder,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-				},
-			}
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			ac := getAssetsCache(ctx, fclient, cr)
 			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache, cr, ac)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("genUserCfg() error = %v, wantErr %v", err, tt.wantErr)
@@ -700,13 +693,13 @@ func Test_selectVMUserSecrets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSAssetsResourceKind: {
-					MountDir:   vmAuthConfigRawFolder,
-					SecretName: "test-secret",
+			cr := &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmauth",
+					Namespace: "default",
 				},
 			}
-			ac := build.NewAssetsCache(ctx, testClient, cfg)
+			ac := getAssetsCache(ctx, testClient, cr)
 			got, got1, err := addAuthCredentialsBuildSecrets(tt.vmUsers, ac)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("selectVMUserSecrets() error = %v, wantErr %v", err, tt.wantErr)
@@ -2259,13 +2252,7 @@ unauthorized_user:
 			rand.Shuffle(len(sus.users), func(i, j int) {
 				sus.users[i], sus.users[j] = sus.users[j], sus.users[i]
 			})
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSAssetsResourceKind: {
-					MountDir:   vmAuthConfigRawFolder,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
-				},
-			}
-			ac := build.NewAssetsCache(ctx, testClient, cfg)
+			ac := getAssetsCache(ctx, testClient, tt.cr)
 
 			got, err := buildConfig(ctx, testClient, tt.cr, sus, ac)
 			if (err != nil) != tt.wantErr {

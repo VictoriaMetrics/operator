@@ -136,16 +136,6 @@ func (cr *VMPodScrape) Validate() error {
 	return nil
 }
 
-// AsProxyKey builds key for proxy cache maps
-func (cr *VMPodScrape) AsProxyKey(i int) string {
-	return fmt.Sprintf("podScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
-}
-
-// AsMapKey builds key for cache secret map
-func (cr *VMPodScrape) AsMapKey(i int) string {
-	return fmt.Sprintf("podScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
-}
-
 // GetStatusMetadata implements reconcile.objectWithStatus interface
 func (cr *VMPodScrape) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata

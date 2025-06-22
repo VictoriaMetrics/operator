@@ -17,7 +17,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -1260,14 +1259,8 @@ templates: []
 			if tt.args.cr == nil {
 				tt.args.cr = &vmv1beta1.VMAlertmanager{}
 			}
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSAssetsResourceKind: {
-					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.args.cr),
-				},
-			}
 			ctx := context.TODO()
-			ac := build.NewAssetsCache(ctx, testClient, cfg)
+			ac := getAssetsCache(ctx, testClient, tt.args.cr)
 			got, err := buildConfig(tt.args.cr, tt.args.baseCfg, tt.args.amcfgs, ac)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
@@ -1756,14 +1749,8 @@ authorization:
 					Namespace: "default",
 				},
 			}
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSAssetsResourceKind: {
-					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-				},
-			}
 			cb := &configBuilder{
-				cache:     build.NewAssetsCache(context.Background(), testClient, cfg),
+				cache:     getAssetsCache(context.Background(), testClient, cr),
 				namespace: cr.Namespace,
 			}
 			gotYAML, err := cb.buildHTTPConfig(tt.httpCfg)
@@ -2126,13 +2113,7 @@ tls_server_config:
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			ctx := context.TODO()
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSAssetsResourceKind: {
-					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
-				},
-			}
-			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			ac := getAssetsCache(ctx, fclient, tt.cr)
 			c, err := buildWebServerConfigYAML(tt.cr, ac)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error: %q", err)
@@ -2191,13 +2172,7 @@ tls_client_config:
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			ctx := context.TODO()
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSAssetsResourceKind: {
-					MountDir:   tlsAssetsDir,
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
-				},
-			}
-			ac := build.NewAssetsCache(ctx, fclient, cfg)
+			ac := getAssetsCache(ctx, fclient, tt.cr)
 			c, err := buildGossipConfigYAML(tt.cr, ac)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error: %q", err)

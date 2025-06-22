@@ -31,9 +31,6 @@ const (
 	remoteWriteKey          = "remoteWrite"
 	notifierConfigMountPath = `/etc/vm/notifier_config`
 	vmalertConfigSecretsDir = "/etc/vmalert/remote_secrets"
-	bearerTokenKey          = "bearerToken"
-	basicAuthPasswordKey    = "basicAuthPassword"
-	oauth2SecretKey         = "oauth2SecretKey"
 	tlsAssetsDir            = "/etc/vmalert-tls/certs"
 )
 
@@ -67,6 +64,20 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	return newService, nil
 }
 
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.SecretConfigResourceKind: {
+			MountDir:   vmalertConfigSecretsDir,
+			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
+		},
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
+}
+
 // CreateOrUpdate creates vmalert deployment for given CRD
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
 	var prevCR *vmv1beta1.VMAlert
@@ -90,17 +101,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return fmt.Errorf("cannot discover additional notifiers: %w", err)
 	}
 
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.SecretConfigResourceKind: {
-			MountDir:   vmalertConfigSecretsDir,
-			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
-		},
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, cfg)
+	ac := getAssetsCache(ctx, rclient, cr)
 
 	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {

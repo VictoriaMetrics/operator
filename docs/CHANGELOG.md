@@ -13,7 +13,10 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): add support of [`decay`](https://docs.victoriametrics.com/anomaly-detection/components/models/#decay) field for [online models](https://docs.victoriametrics.com/anomaly-detection/components/models/#online-models).
+
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use scrape namespace instead of VMAgent one for VMStaticScrape secrets lookup.
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix marshalling of `.spec.reader.latencyOffset` field. Previously, it was causing an error when trying to create `VManomaly` resource with `latencyOffset`.
 
 ## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
 

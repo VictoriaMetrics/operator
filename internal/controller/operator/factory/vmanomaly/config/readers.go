@@ -12,7 +12,7 @@ type reader struct {
 	QueryRangePath             string                 `yaml:"query_range_path,omitempty"`
 	ExtraFilters               []string               `yaml:"extra_filters,omitempty"`
 	QueryFromLastSeenTimestamp bool                   `yaml:"query_from_last_seen_timestamp,omitempty"`
-	LatencyOffset              *duration              `yaml:"latency_duration,omitempty"`
+	LatencyOffset              *duration              `yaml:"latency_offset,omitempty"`
 	MaxPointsPerQuery          int                    `yaml:"max_points_per_query,omitempty"`
 	Timezone                   time.Location          `yaml:"tz,omitempty"`
 	DataRange                  []float64              `yaml:"data_range,omitempty"`

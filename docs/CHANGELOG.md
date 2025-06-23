@@ -13,6 +13,9 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.120.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.120.0) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.24.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.24.0-victorialogs) version
+
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): add support of [`decay`](https://docs.victoriametrics.com/anomaly-detection/components/models/#decay) field for [online models](https://docs.victoriametrics.com/anomaly-detection/components/models/#online-models).
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use scrape namespace instead of VMAgent one for VMStaticScrape secrets lookup.

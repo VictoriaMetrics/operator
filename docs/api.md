@@ -1154,7 +1154,7 @@ Appears in: [Receiver](#receiver)
 | --- | --- |
 | auth_identity<a href="#emailconfig-auth_identity" id="emailconfig-auth_identity">#</a><br/>_string_ | _(Optional)_<br/>The identity to use for authentication. |
 | auth_password<a href="#emailconfig-auth_password" id="emailconfig-auth_password">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>AuthPassword defines secret name and key at CRD namespace. |
-| auth_secret<a href="#emailconfig-auth_secret" id="emailconfig-auth_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>AuthSecret defines secrent name and key at CRD namespace.<br />It must contain the CRAM-MD5 secret. |
+| auth_secret<a href="#emailconfig-auth_secret" id="emailconfig-auth_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>AuthSecret defines secret name and key at CRD namespace.<br />It must contain the CRAM-MD5 secret. |
 | auth_username<a href="#emailconfig-auth_username" id="emailconfig-auth_username">#</a><br/>_string_ | _(Optional)_<br/>The username to use for authentication. |
 | from<a href="#emailconfig-from" id="emailconfig-from">#</a><br/>_string_ | _(Optional)_<br/>The sender address.<br />fallback to global setting if empty |
 | headers<a href="#emailconfig-headers" id="emailconfig-headers">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Further headers email header key/value pairs. Overrides any headers<br />previously set by the notification implementation. |

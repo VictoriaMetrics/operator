@@ -471,20 +471,6 @@ func (cr *VMAlert) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
-func (cr *VMAlert) GetNotifierSelectors() []*DiscoverySelector {
-	var selectors []*DiscoverySelector
-	for _, n := range cr.Spec.Notifiers {
-		if n.Selector == nil {
-			continue
-		}
-		selectors = append(selectors, n.Selector)
-	}
-	if cr.Spec.Notifier != nil && cr.Spec.Notifier.Selector != nil {
-		selectors = append(selectors, cr.Spec.Notifier.Selector)
-	}
-	return selectors
-}
-
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAlert) IsUnmanaged() bool {
 	return !cr.Spec.SelectAllByDefault && cr.Spec.RuleSelector == nil && cr.Spec.RuleNamespaceSelector == nil

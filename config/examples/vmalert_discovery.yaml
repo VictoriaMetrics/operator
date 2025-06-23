@@ -1,0 +1,26 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: discovery
+spec:
+  replicaCount: 1
+  datasource:
+    url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429"
+  notifiers:
+    - selector:
+        labelSelector:
+          matchLabels:
+            discovery: main
+  evaluationInterval: "30s"
+  selectAllByDefault: true
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: discovery
+  namespace: default
+  labels:
+    discovery: main
+spec:
+  replicaCount: 1
+  selectAllByDefault: false

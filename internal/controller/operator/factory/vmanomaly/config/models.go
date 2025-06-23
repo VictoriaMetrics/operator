@@ -56,6 +56,19 @@ func (m *model) MarshalYAML() (any, error) {
 	return m.anomalyModel, nil
 }
 
+type onlineModel struct {
+	Decay float64 `yaml:"decay,omitempty"`
+}
+
+func (m *onlineModel) validate() error {
+	// See https://docs.victoriametrics.com/anomaly-detection/components/models/#decay
+	// Valid values are in the range [0, 1].
+	if m.Decay < 0 || m.Decay > 1 {
+		return fmt.Errorf("decay must be in range [0, 1], got %f", m.Decay)
+	}
+	return nil
+}
+
 // UnmarshalYAML implements yaml.Unmarshaler interface
 func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
 	var h header
@@ -162,17 +175,22 @@ func (m *madModel) validate() error {
 
 type onlineMadModel struct {
 	commonModelParams `yaml:",inline"`
+	onlineModel       `yaml:",inline"`
 	Threshold         float64 `yaml:"threshold,omitempty"`
 	MinSamplesSeen    int     `yaml:"min_n_samples_seen,omitempty"`
 	Compression       int     `yaml:"compression,omitempty"`
 }
 
 func (m *onlineMadModel) validate() error {
+	if err := m.onlineModel.validate(); err != nil {
+		return err
+	}
 	return nil
 }
 
 type onlineQuantileModel struct {
 	commonModelParams `yaml:",inline"`
+	onlineModel       `yaml:",inline"`
 	Quantiles         []float64 `yaml:"quantiles,omitempty"`
 	SeasonalInterval  *duration `yaml:"seasonal_interval,omitempty"`
 	MinSubseason      string    `yaml:"min_subseason"`
@@ -185,16 +203,23 @@ type onlineQuantileModel struct {
 }
 
 func (m *onlineQuantileModel) validate() error {
+	if err := m.onlineModel.validate(); err != nil {
+		return err
+	}
 	return nil
 }
 
 type onlineZScoreModel struct {
 	commonModelParams `yaml:",inline"`
+	onlineModel       `yaml:",inline"`
 	Threshold         float64 `yaml:"threshold,omitempty"`
 	MinSamplesSeen    int     `yaml:"min_n_samples_seen,omitempty"`
 }
 
 func (m *onlineZScoreModel) validate() error {
+	if err := m.onlineModel.validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

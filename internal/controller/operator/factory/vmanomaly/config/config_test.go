@@ -66,7 +66,7 @@ writer:
 			wantErr:  true,
 		},
 		{
-			name: "with reader, writer and monitoring",
+			name: "with reader, writer, monitoring and settings",
 			cr: &vmv1.VMAnomaly{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "test-anomaly",
@@ -101,6 +101,8 @@ schedulers:
     infer_every: 1m
     fit_every: 2m
     fit_window: 3h
+settings:
+  restore_state: true
 `,
 					Monitoring: &vmv1.VMAnomalyMonitoringSpec{
 						Pull: &vmv1.VMAnomalyMonitoringPullSpec{
@@ -265,6 +267,8 @@ monitoring:
     push_frequency: 20s
     extra_labels:
       label1: value1
+settings:
+  restore_state: true
 `,
 			wantErr: false,
 		},

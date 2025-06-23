@@ -18,6 +18,7 @@ aliases:
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use scrape namespace instead of VMAgent one for VMStaticScrape secrets lookup.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix marshalling of `.spec.reader.latencyOffset` field. Previously, it was causing an error when trying to create `VManomaly` resource with `latencyOffset`.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix parsing of `Inf` value for `data_range` of `.spec.configRawYaml.reader.queries.<query>.data_range`.
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix marshaling of of `.spec.configRawYaml.settings`, previously it was skipped which caused `VManomaly` resource to be created with empty settings.
 
 ## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
 

@@ -165,6 +165,9 @@ func (c *config) marshal() yaml.MapSlice {
 	if c.Monitoring != nil {
 		output = append(output, yaml.MapItem{Key: "monitoring", Value: c.Monitoring})
 	}
+	if c.Settings != nil {
+		output = append(output, yaml.MapItem{Key: "settings", Value: c.Settings})
+	}
 	return output
 }
 

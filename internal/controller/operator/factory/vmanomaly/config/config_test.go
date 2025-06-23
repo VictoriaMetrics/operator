@@ -86,6 +86,7 @@ reader:
   queries:
     test:
       expr: vm_metric
+      data_range: [0, inf]
 writer:
   class: vm
   datasource_url: "http://test.com"
@@ -238,6 +239,9 @@ reader:
   queries:
     test:
       expr: vm_metric
+      data_range:
+      - "0"
+      - inf
   tenant_id: "0:1"
   verify_tls: true
   tls_cert_file: /test/monitoring_tls_remote-cert

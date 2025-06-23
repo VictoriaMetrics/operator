@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -15,7 +16,7 @@ type reader struct {
 	LatencyOffset              *duration              `yaml:"latency_offset,omitempty"`
 	MaxPointsPerQuery          int                    `yaml:"max_points_per_query,omitempty"`
 	Timezone                   time.Location          `yaml:"tz,omitempty"`
-	DataRange                  []float64              `yaml:"data_range,omitempty"`
+	DataRange                  []string               `yaml:"data_range,omitempty"`
 	Queries                    map[string]readerQuery `yaml:"queries,omitempty"`
 	ClientConfig               clientConfig           `yaml:",inline"`
 }
@@ -32,7 +33,15 @@ func (r *reader) validate() error {
 	}
 	if len(r.DataRange) > 0 {
 		if len(r.DataRange) == 2 {
-			if r.DataRange[0] > r.DataRange[1] {
+			v1, err := strconv.ParseFloat(r.DataRange[0], 64)
+			if err != nil {
+				return fmt.Errorf(`cannot parse first value in "data_range": %w`, err)
+			}
+			v2, err := strconv.ParseFloat(r.DataRange[1], 64)
+			if err != nil {
+				return fmt.Errorf(`cannot parse second value in "data_range": %w`, err)
+			}
+			if v1 > v2 {
 				return fmt.Errorf(`first value in "data_range" should be smaller than second`)
 			}
 		} else {
@@ -45,7 +54,7 @@ func (r *reader) validate() error {
 type readerQuery struct {
 	Expr              string        `yaml:"expr"`
 	Step              *duration     `yaml:"step,omitempty"`
-	DataRange         []float64     `yaml:"data_range,omitempty"`
+	DataRange         []string      `yaml:"data_range,omitempty"`
 	MaxPointsPerQuery int           `yaml:"max_points_per_query,omitempty"`
 	TZ                time.Location `yaml:"tz,omitempty"`
 	TenantID          string        `yaml:"tenant_id,omitempty"`

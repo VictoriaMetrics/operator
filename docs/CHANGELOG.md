@@ -13,10 +13,15 @@ aliases:
 
 ## tip
 
+## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
+
+**Release date:** 23 June 2025
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.120.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.120.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.24.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.24.0-victorialogs) version
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): add support of [`decay`](https://docs.victoriametrics.com/anomaly-detection/components/models/#decay) field for [online models](https://docs.victoriametrics.com/anomaly-detection/components/models/#online-models).
+* FEATURE: [operator](https://docs.victoriametrics.com/operator/api): introduce new resource `VMAnomaly`. See [1136](https://github.com/VictoriaMetrics/operator/issues/1136) issue for details.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use scrape namespace instead of VMAgent one for VMStaticScrape secrets lookup.
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly set ScrapeObjects failed status on missing references. See [1416](https://github.com/VictoriaMetrics/operator/issues/1416) issue for details.
@@ -25,11 +30,6 @@ aliases:
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix marshalling of `.spec.reader.latencyOffset` field. Previously, it was causing an error when trying to create `VManomaly` resource with `latencyOffset`.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix parsing of `Inf` value for `data_range` of `.spec.configRawYaml.reader.queries.<query>.data_range`.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix marshaling of of `.spec.configRawYaml.settings`, previously it was skipped which caused `VManomaly` resource to be created with empty settings.
-
-## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
-
-* FEATURE: [operator](https://docs.victoriametrics.com/operator/api): introduce new resource `VMAnomaly`. See [1136](https://github.com/VictoriaMetrics/operator/issues/1136) issue for details.
-
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): properly set `HPA` target for `vlselect` component. See [PR-1406](https://github.com/VictoriaMetrics/operator/pull/1406) for details. Thanks to the @bmiguel-teixeira.
 * BUGFIX: Renamed metric `operator_vmagent_config_fetch_secret_errors_total` to `operator_fetch_errors_total`. Now it's incremented during each unsuccessful attempt to retrieve data from K8s secret or configmap, not only for VMAgent scrape objects.
 

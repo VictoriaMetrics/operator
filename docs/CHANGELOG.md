@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use scrape namespace instead of VMAgent one for VMStaticScrape secrets lookup.
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly validate ScrapeObjects syntax. Previously operator could panic in case of `spec.selectors` incorrect values. See [1415](https://github.com/VictoriaMetrics/operator/issues/1415) issue for details.
 
 ## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
 

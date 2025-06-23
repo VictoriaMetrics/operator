@@ -148,6 +148,9 @@ func (cr *VMProbe) Validate() error {
 	}
 	switch {
 	case cr.Spec.Targets.Ingress != nil:
+		if _, err := metav1.LabelSelectorAsSelector(&cr.Spec.Targets.Ingress.Selector); err != nil {
+			return fmt.Errorf("invalid spec.targets.ingress.selector syntax: %w", err)
+		}
 		if err := checkRelabelConfigs(cr.Spec.Targets.Ingress.RelabelConfigs); err != nil {
 			return fmt.Errorf("invalid ingress.relabelingConfigs: %w", err)
 		}

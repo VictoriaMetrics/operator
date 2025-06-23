@@ -38,13 +38,8 @@ type scrapeObjects struct {
 	scssBroken []*vmv1beta1.VMScrapeConfig
 }
 
-var skipNon = func(_ error) bool {
-	return false
-}
-
-func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
-	var err error
-	so.sss, so.sssBroken, err = forEachCollectSkipOn(so.sss, so.sssBroken, func(ss *vmv1beta1.VMServiceScrape) error {
+func (so *scrapeObjects) validateObjects(cr *vmv1beta1.VMAgent) {
+	so.sss, so.sssBroken = forEachCollectSkipInvalid(so.sss, so.sssBroken, func(ss *vmv1beta1.VMServiceScrape) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range ss.Spec.Endpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
@@ -52,16 +47,13 @@ func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 				}
 			}
 		}
-		if _, err := metav1.LabelSelectorAsSelector(&ss.Spec.Selector); err != nil {
+		if err := ss.Validate(); err != nil {
 			return err
 		}
 		return nil
-	}, skipNon)
-	if err != nil {
-		panic(fmt.Errorf("BUG: validation cannot return error for ServiceScrape: %s", err))
-	}
+	})
 
-	so.pss, so.pssBroken, err = forEachCollectSkipOn(so.pss, so.pssBroken, func(ps *vmv1beta1.VMPodScrape) error {
+	so.pss, so.pssBroken = forEachCollectSkipInvalid(so.pss, so.pssBroken, func(ps *vmv1beta1.VMPodScrape) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range ps.Spec.PodMetricsEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
@@ -69,16 +61,12 @@ func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 				}
 			}
 		}
-		if _, err := metav1.LabelSelectorAsSelector(&ps.Spec.Selector); err != nil {
+		if err := ps.Validate(); err != nil {
 			return err
 		}
 		return nil
-	}, skipNon)
-	if err != nil {
-		panic(fmt.Errorf("BUG: validation cannot return error for PodScrape: %s", err))
-	}
-
-	so.stss, so.stssBroken, err = forEachCollectSkipOn(so.stss, so.stssBroken, func(sts *vmv1beta1.VMStaticScrape) error {
+	})
+	so.stss, so.stssBroken = forEachCollectSkipInvalid(so.stss, so.stssBroken, func(sts *vmv1beta1.VMStaticScrape) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sts.Spec.TargetEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
@@ -86,55 +74,45 @@ func (so *scrapeObjects) mustValidateObjects(cr *vmv1beta1.VMAgent) {
 				}
 			}
 		}
+		if err := sts.Validate(); err != nil {
+			return err
+		}
 		return nil
-	}, skipNon)
-	if err != nil {
-		panic(fmt.Errorf("BUG: validation cannot return error for StaticScrape: %s", err))
-	}
+	})
 
-	so.nss, so.nssBroken, err = forEachCollectSkipOn(so.nss, so.nssBroken, func(ns *vmv1beta1.VMNodeScrape) error {
+	so.nss, so.nssBroken = forEachCollectSkipInvalid(so.nss, so.nssBroken, func(ns *vmv1beta1.VMNodeScrape) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(ns.Spec.EndpointAuth); err != nil {
 				return err
 			}
 		}
 		return nil
-	}, skipNon)
-	if err != nil {
-		panic(fmt.Errorf("BUG: validation cannot return error for NodeScrape: %s", err))
-	}
+	})
 
-	so.prss, so.prssBroken, err = forEachCollectSkipOn(so.prss, so.prssBroken, func(prs *vmv1beta1.VMProbe) error {
+	so.prss, so.prssBroken = forEachCollectSkipInvalid(so.prss, so.prssBroken, func(prs *vmv1beta1.VMProbe) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(prs.Spec.EndpointAuth); err != nil {
 				return err
 			}
 		}
-		if prs.Spec.Targets.Ingress != nil {
-			_, err := metav1.LabelSelectorAsSelector(&prs.Spec.Targets.Ingress.Selector)
-			if err != nil {
-				return fmt.Errorf("cannot parse spec.selector: %w", err)
-			}
+		if err := prs.Validate(); err != nil {
+			return err
 		}
 		return nil
-	}, skipNon)
-	if err != nil {
-		panic(fmt.Errorf("BUG: validation cannot return error for ProbeScrape: %s", err))
-	}
+	})
 
-	so.scss, so.scssBroken, err = forEachCollectSkipOn(so.scss, so.scssBroken, func(scss *vmv1beta1.VMScrapeConfig) error {
+	so.scss, so.scssBroken = forEachCollectSkipInvalid(so.scss, so.scssBroken, func(scss *vmv1beta1.VMScrapeConfig) error {
 		// TODO: @f41gh7 validate per configuration FS access
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(scss.Spec.EndpointAuth); err != nil {
 				return err
 			}
-
+		}
+		if err := scss.Validate(); err != nil {
+			return err
 		}
 		return nil
-	}, skipNon)
-	if err != nil {
-		panic(fmt.Errorf("BUG: validation cannot return error for scrapeConfig: %s", err))
-	}
+	})
 }
 
 // CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
@@ -198,7 +176,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		stss: statics,
 		scss: scrapeConfigs,
 	}
-	sos.mustValidateObjects(cr)
+	sos.validateObjects(cr)
 
 	var additionalScrapeConfigs []byte
 
@@ -371,23 +349,20 @@ type scrapeObjectWithStatus interface {
 }
 
 // returned objects with not found links have erased type
-func forEachCollectSkipOn[T scrapeObjectWithStatus](src, srcBroken []T, apply func(s T) error, skipOn func(error) bool) ([]T, []T, error) {
+func forEachCollectSkipInvalid[T scrapeObjectWithStatus](src, srcBroken []T, apply func(s T) error) ([]T, []T) {
 	var cnt int
 	for _, o := range src {
 		if err := apply(o); err != nil {
-			if skipOn(err) {
-				st := o.GetStatusMetadata()
-				st.CurrentSyncError = err.Error()
-				srcBroken = append(srcBroken, o)
-				continue
-			}
-			return nil, nil, err
+			st := o.GetStatusMetadata()
+			st.CurrentSyncError = err.Error()
+			srcBroken = append(srcBroken, o)
+			continue
 		}
 		src[cnt] = o
 		cnt++
 	}
 	src = src[:cnt]
-	return src, srcBroken, nil
+	return src, srcBroken
 }
 
 // TODO: @f41gh7 validate VMScrapeParams

@@ -1597,6 +1597,80 @@ scrape_configs:
     replacement: default/pod-1
 `,
 		},
+		{
+			name: "with invalid objects syntax",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "select-all",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					SelectAllByDefault: true,
+					VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
+						ArbitraryFSAccessThroughSMs: vmv1beta1.ArbitraryFSAccessThroughSMsConfig{
+							Deny: true,
+						},
+					},
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "http://some-single.example.com",
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "fs-access",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CAFile: "/etc/passwd",
+									},
+								},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "bad-syntax",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{
+						Selector: *metav1.SetAsLabelSelector(map[string]string{
+							"alb.ingress.kubernetes.io/tags": "Environment=devl",
+						}),
+					},
+				},
+				&vmv1beta1.VMProbe{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "bad-syntax",
+					},
+					Spec: vmv1beta1.VMProbeSpec{
+						Targets: vmv1beta1.VMProbeTargets{
+							Ingress: &vmv1beta1.ProbeTargetIngress{
+								Selector: *metav1.SetAsLabelSelector(map[string]string{
+									"alb.ingress.kubernetes.io/tags": "Environment=devl",
+								}),
+							},
+						},
+					},
+				},
+			},
+			wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/select-all
+scrape_configs: []
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1630,7 +1704,6 @@ scrape_configs:
 				t.Fatalf("cannot read cfg: %s", err)
 			}
 			gr.Close()
-
 			assert.Equal(t, tt.wantConfig, string(data))
 		})
 	}

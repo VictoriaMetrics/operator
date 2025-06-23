@@ -84,6 +84,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		if err := discoverNotifierIfNeeded(ctx, rclient, prevCR); err != nil {
+			logger.WithContext(ctx).Error(err, "cannot discover notifiers for prev spec")
+		}
+
 	}
 	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("cannot delete objects from previous state: %w", err)
@@ -813,7 +817,6 @@ func discoverNotifierIfNeeded(ctx context.Context, rclient client.Client, cr *vm
 		sort.Slice(additionalNotifiers, func(i, j int) bool {
 			return additionalNotifiers[i].URL > additionalNotifiers[j].URL
 		})
-		logger.WithContext(ctx).Info(fmt.Sprintf("additional notifiers count=%d discovered with sd selectors", len(additionalNotifiers)))
 	}
 	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
 	return nil

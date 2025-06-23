@@ -21,6 +21,7 @@ aliases:
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use scrape namespace instead of VMAgent one for VMStaticScrape secrets lookup.
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly set ScrapeObjects failed status on missing references. See [1416](https://github.com/VictoriaMetrics/operator/issues/1416) issue for details.
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly validate ScrapeObjects syntax. Previously operator could panic in case of `spec.selectors` incorrect values. See [1415](https://github.com/VictoriaMetrics/operator/issues/1415) issue for details.
+* BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): properly calculate `Deployment` prev spec diff with `notifier.selectors`. See [1418](https://github.com/VictoriaMetrics/operator/issues/1418) issue for details.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix marshalling of `.spec.reader.latencyOffset` field. Previously, it was causing an error when trying to create `VManomaly` resource with `latencyOffset`.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix parsing of `Inf` value for `data_range` of `.spec.configRawYaml.reader.queries.<query>.data_range`.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix marshaling of of `.spec.configRawYaml.settings`, previously it was skipped which caused `VManomaly` resource to be created with empty settings.

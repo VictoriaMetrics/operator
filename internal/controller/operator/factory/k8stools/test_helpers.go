@@ -73,6 +73,11 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 	for _, o := range predefinedObjects {
 		obj = append(obj, o.(client.Object))
 	}
+	return GetTestClientWithClientObjects(obj)
+}
+
+// GetTestClientWithClientObjects returns testing client with optional predefined objects
+func GetTestClientWithClientObjects(predefinedObjects []client.Object) client.Client {
 	fclient := fake.NewClientBuilder().WithScheme(testGetScheme()).
 		WithStatusSubresource(
 			&vmv1beta1.VMRule{},
@@ -95,7 +100,7 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 			&vmv1.VLCluster{},
 			&vmv1.VMAnomaly{},
 		).
-		WithObjects(obj...).Build()
+		WithObjects(predefinedObjects...).Build()
 	withStats := TestClientWithStatsTrack{
 		origin: fclient,
 	}

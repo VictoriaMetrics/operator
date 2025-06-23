@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -1671,6 +1672,87 @@ scrape_configs:
 scrape_configs: []
 `,
 		},
+		{
+			name: "with partial missing refs",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "select-all",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					SelectAllByDefault: true,
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "http://some-single.example.com",
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "partially-correct",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "ca",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-auth",
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Port: "8081",
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "partially-correct",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{
+						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+							{
+								Port: ptr.To("8035"),
+							},
+							{
+								Port: ptr.To("8080"),
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "ca",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-auth",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/select-all
+scrape_configs: []
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1707,4 +1789,161 @@ scrape_configs: []
 			assert.Equal(t, tt.wantConfig, string(data))
 		})
 	}
+}
+
+func TestScrapeObjectFailedStatus(t *testing.T) {
+
+	type getStatusMeta interface {
+		GetStatusMetadata() *vmv1beta1.StatusMetadata
+	}
+	f := func(so client.Object) {
+		t.Helper()
+		expectedConfig := `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/vmagent
+scrape_configs: []
+`
+		ctx := context.TODO()
+		testClient := k8stools.GetTestClientWithClientObjects([]client.Object{so})
+		build.AddDefaults(testClient.Scheme())
+
+		cr := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmagent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{
+						URL: "http://vmsingle.example.com",
+					},
+				},
+				SelectAllByDefault: true,
+			},
+		}
+		ac := getAssetsCache(ctx, testClient, cr)
+		if err := createOrUpdateConfigurationSecret(ctx, testClient, cr, nil, nil, ac); err != nil {
+			t.Errorf("CreateOrUpdateConfigurationSecret() error = %s", err)
+		}
+		var configSecret corev1.Secret
+		if err := testClient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &configSecret); err != nil {
+			t.Fatalf("cannot get vmagent config secret: %s", err)
+		}
+
+		gotCfg := configSecret.Data[vmagentGzippedFilename]
+		cfgB := bytes.NewBuffer(gotCfg)
+		gr, err := gzip.NewReader(cfgB)
+		if err != nil {
+			t.Fatalf("er: %s", err)
+		}
+		data, err := io.ReadAll(gr)
+		if err != nil {
+			t.Fatalf("cannot read cfg: %s", err)
+		}
+		gr.Close()
+		assert.Equal(t, expectedConfig, string(data))
+
+		if err := testClient.Get(ctx, types.NamespacedName{Name: so.GetName(), Namespace: so.GetNamespace()}, so); err != nil {
+			t.Fatalf("cannot reload object: %s", err)
+		}
+		status := so.(getStatusMeta).GetStatusMetadata()
+		assert.Equal(t, vmv1beta1.UpdateStatusFailed, status.UpdateStatus)
+		assert.NotEmpty(t, status.Reason)
+		assert.Len(t, status.Conditions, 1)
+
+	}
+	commonMeta := metav1.ObjectMeta{
+		Name:      "invalid",
+		Namespace: "default",
+	}
+
+	// invalid selector
+	f(&vmv1beta1.VMProbe{
+		ObjectMeta: commonMeta,
+		Spec: vmv1beta1.VMProbeSpec{
+			Targets: vmv1beta1.VMProbeTargets{
+				Ingress: &vmv1beta1.ProbeTargetIngress{
+					Selector: *metav1.SetAsLabelSelector(map[string]string{"alb.ingress.kubernetes.io/tags": "Environment=devl"}),
+				},
+			},
+		},
+	},
+	)
+	// missing refs
+	f(&vmv1beta1.VMScrapeConfig{
+		ObjectMeta: commonMeta,
+		Spec: vmv1beta1.VMScrapeConfigSpec{
+			ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{
+				{
+					Server: "http://consul.example.com",
+					BasicAuth: &vmv1beta1.BasicAuth{
+						Username: corev1.SecretKeySelector{
+							Key: "username",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "auth",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	)
+	commonEndpointAuthWithMissingRef := vmv1beta1.EndpointAuth{
+		BasicAuth: &vmv1beta1.BasicAuth{
+			Username: corev1.SecretKeySelector{
+				Key: "username",
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "auth",
+				},
+			},
+		},
+	}
+	f(&vmv1beta1.VMProbe{
+		ObjectMeta: commonMeta,
+		Spec: vmv1beta1.VMProbeSpec{
+			EndpointAuth: commonEndpointAuthWithMissingRef,
+		},
+	})
+
+	f(&vmv1beta1.VMStaticScrape{
+		ObjectMeta: commonMeta,
+		Spec: vmv1beta1.VMStaticScrapeSpec{
+			TargetEndpoints: []*vmv1beta1.TargetEndpoint{
+				{
+					EndpointAuth: commonEndpointAuthWithMissingRef,
+				},
+			},
+		},
+	})
+	f(&vmv1beta1.VMNodeScrape{
+		ObjectMeta: commonMeta,
+		Spec: vmv1beta1.VMNodeScrapeSpec{
+			EndpointAuth: commonEndpointAuthWithMissingRef,
+		},
+	})
+
+	f(&vmv1beta1.VMPodScrape{
+		ObjectMeta: commonMeta,
+		Spec: vmv1beta1.VMPodScrapeSpec{
+			PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+				{
+					EndpointAuth: commonEndpointAuthWithMissingRef,
+				},
+			},
+		},
+	})
+
+	f(&vmv1beta1.VMServiceScrape{
+		ObjectMeta: commonMeta,
+		Spec: vmv1beta1.VMServiceScrapeSpec{
+			Endpoints: []vmv1beta1.Endpoint{
+				{
+					EndpointAuth: commonEndpointAuthWithMissingRef,
+				},
+			},
+		},
+	})
+
 }

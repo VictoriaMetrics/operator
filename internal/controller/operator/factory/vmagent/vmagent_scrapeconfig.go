@@ -348,11 +348,25 @@ type scrapeObjectWithStatus interface {
 	GetStatusMetadata() *vmv1beta1.StatusMetadata
 }
 
-// returned objects with not found links have erased type
 func forEachCollectSkipInvalid[T scrapeObjectWithStatus](src, srcBroken []T, apply func(s T) error) ([]T, []T) {
+	r1, r2, err := forEachCollectSkipOn(src, srcBroken, apply, func(_ error) bool { return true })
+	if err != nil {
+		panic(fmt.Sprintf("BUG: unexpected error: %s", err))
+	}
+	return r1, r2
+}
+
+func forEachCollectSkipNotFound[T scrapeObjectWithStatus](src, srcBroken []T, apply func(s T) error) ([]T, []T, error) {
+	return forEachCollectSkipOn(src, srcBroken, apply, build.IsNotFound)
+}
+
+func forEachCollectSkipOn[T scrapeObjectWithStatus](src, srcBroken []T, apply func(s T) error, shouldIgnoreError func(error) bool) ([]T, []T, error) {
 	var cnt int
 	for _, o := range src {
 		if err := apply(o); err != nil {
+			if !shouldIgnoreError(err) {
+				return src, srcBroken, err
+			}
 			st := o.GetStatusMetadata()
 			st.CurrentSyncError = err.Error()
 			srcBroken = append(srcBroken, o)
@@ -362,7 +376,7 @@ func forEachCollectSkipInvalid[T scrapeObjectWithStatus](src, srcBroken []T, app
 		cnt++
 	}
 	src = src[:cnt]
-	return src, srcBroken
+	return src, srcBroken, nil
 }
 
 // TODO: @f41gh7 validate VMScrapeParams
@@ -490,8 +504,10 @@ func generateConfig(
 	apiserverConfig := cr.Spec.APIServerConfig
 
 	var scrapeConfigs []yaml.MapSlice
-	for _, ss := range sos.sss {
-		configLen := len(scrapeConfigs)
+	var err error
+
+	sos.sss, sos.sssBroken, err = forEachCollectSkipNotFound(sos.sss, sos.sssBroken, func(ss *vmv1beta1.VMServiceScrape) error {
+		scrapeConfigsLen := len(scrapeConfigs)
 		for i, ep := range ss.Spec.Endpoints {
 			s, err := generateServiceScrapeConfig(
 				ctx,
@@ -503,17 +519,19 @@ func generateConfig(
 				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
-				scrapeConfigs = scrapeConfigs[:configLen]
-				if build.IsNotFound(err) {
-					break
-				}
-				return nil, err
+				scrapeConfigs = scrapeConfigs[:scrapeConfigsLen]
+				return err
 			}
 			scrapeConfigs = append(scrapeConfigs, s)
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	for _, identifier := range sos.pss {
-		configLen := len(scrapeConfigs)
+
+	sos.pss, sos.pssBroken, err = forEachCollectSkipNotFound(sos.pss, sos.pssBroken, func(identifier *vmv1beta1.VMPodScrape) error {
+		scrapeConfigsLen := len(scrapeConfigs)
 		for i, ep := range identifier.Spec.PodMetricsEndpoints {
 			s, err := generatePodScrapeConfig(
 				ctx,
@@ -524,35 +542,41 @@ func generateConfig(
 				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
-				scrapeConfigs = scrapeConfigs[:configLen]
-				if build.IsNotFound(err) {
-					break
-				}
-				return nil, err
+				scrapeConfigs = scrapeConfigs[:scrapeConfigsLen]
+				return err
 			}
 			scrapeConfigs = append(scrapeConfigs, s)
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	for i, identifier := range sos.prss {
+	// TODO: refactor and remove idx
+	var idx int
+	sos.prss, sos.prssBroken, err = forEachCollectSkipNotFound(sos.prss, sos.prssBroken, func(identifier *vmv1beta1.VMProbe) error {
 		s, err := generateProbeConfig(
 			ctx,
 			cr,
 			identifier,
-			i,
+			idx,
 			apiserverConfig,
 			ac,
 			cr.Spec.VMAgentSecurityEnforcements,
 		)
+		idx++
 		if err != nil {
-			if build.IsNotFound(err) {
-				continue
-			}
-			return nil, err
+			return err
 		}
 		scrapeConfigs = append(scrapeConfigs, s)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	for _, identifier := range sos.nss {
+
+	sos.nss, sos.nssBroken, err = forEachCollectSkipNotFound(sos.nss, sos.nssBroken, func(identifier *vmv1beta1.VMNodeScrape) error {
 		s, err := generateNodeScrapeConfig(
 			ctx,
 			cr,
@@ -562,16 +586,18 @@ func generateConfig(
 			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		if err != nil {
-			if build.IsNotFound(err) {
-				continue
-			}
-			return nil, err
+			return err
 		}
 		scrapeConfigs = append(scrapeConfigs, s)
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	for _, identifier := range sos.stss {
-		configLen := len(scrapeConfigs)
+	sos.stss, sos.stssBroken, err = forEachCollectSkipNotFound(sos.stss, sos.stssBroken, func(identifier *vmv1beta1.VMStaticScrape) error {
+		scrapeConfigsLen := len(scrapeConfigs)
 		for i, ep := range identifier.Spec.TargetEndpoints {
 			s, err := generateStaticScrapeConfig(
 				ctx,
@@ -582,17 +608,18 @@ func generateConfig(
 				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
-				scrapeConfigs = scrapeConfigs[:configLen]
-				if build.IsNotFound(err) {
-					break
-				}
-				return nil, err
+				scrapeConfigs = scrapeConfigs[:scrapeConfigsLen]
+				return err
 			}
 			scrapeConfigs = append(scrapeConfigs, s)
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	for _, identifier := range sos.scss {
+	sos.scss, sos.scssBroken, err = forEachCollectSkipNotFound(sos.scss, sos.scssBroken, func(identifier *vmv1beta1.VMScrapeConfig) error {
 		s, err := generateScrapeConfig(
 			ctx,
 			cr,
@@ -601,12 +628,14 @@ func generateConfig(
 			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		if err != nil {
-			if build.IsNotFound(err) {
-				continue
-			}
-			return nil, err
+			return err
 		}
 		scrapeConfigs = append(scrapeConfigs, s)
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	var additionalScrapeConfigsYaml []yaml.MapSlice

@@ -133,6 +133,9 @@ func (cr *VMPodScrape) Validate() error {
 			return err
 		}
 	}
+	if _, err := metav1.LabelSelectorAsSelector(&cr.Spec.Selector); err != nil {
+		return err
+	}
 	return nil
 }
 

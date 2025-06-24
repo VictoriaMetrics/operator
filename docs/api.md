@@ -605,6 +605,7 @@ Appears in: [VMAnomalyWritersSpec](#vmanomalywritersspec)
 | Field | Description |
 | --- | --- |
 | __name__<a href="#vmanomalyvmwritermetricformatspec-__name__" id="vmanomalyvmwritermetricformatspec-__name__">#</a><br/>_string_ | _(Required)_<br/>Name of result metric<br />Must have a value with $VAR placeholder in it to distinguish between resulting metrics |
+| extraLabels<a href="#vmanomalyvmwritermetricformatspec-extralabels" id="vmanomalyvmwritermetricformatspec-extralabels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>ExtraLabels defines additional labels to be added to the resulting metrics |
 | for<a href="#vmanomalyvmwritermetricformatspec-for" id="vmanomalyvmwritermetricformatspec-for">#</a><br/>_string_ | _(Required)_<br/>For is a special label with $QUERY_KEY placeholder |
 
 

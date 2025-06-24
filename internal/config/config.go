@@ -32,7 +32,7 @@ var (
 	defaultEnvs = map[string]string{
 		"VM_METRICS_VERSION": "v1.120.0",
 		"VM_LOGS_VERSION":    "v1.24.0",
-		"VM_ANOMALY_VERSION": "v1.24.0",
+		"VM_ANOMALY_VERSION": "v1.24.1",
 	}
 )
 
@@ -100,7 +100,7 @@ type BaseOperatorConf struct {
 
 	MetricsVersion string `default:"v1.120.0" env:"METRICS_VERSION"`
 	LogsVersion    string `default:"v1.24.0" env:"LOGS_VERSION"`
-	AnomalyVersion string `default:"v1.24.0" env:"ANOMALY_VERSION"`
+	AnomalyVersion string `default:"v1.24.1" env:"ANOMALY_VERSION"`
 
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.

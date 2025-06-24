@@ -676,10 +676,6 @@ func (cr *VMAgent) RelabelingAssetName() string {
 	return fmt.Sprintf("relabelings-assets-vmagent-%s", cr.Name)
 }
 
-func (cr *VMAgent) StreamAggrConfigName() string {
-	return fmt.Sprintf("stream-aggr-vmagent-%s", cr.Name)
-}
-
 func (cr *VMAgent) HealthPath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }

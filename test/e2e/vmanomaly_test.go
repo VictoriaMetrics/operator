@@ -53,6 +53,12 @@ schedulers:
     fit_window: "1h"
 `
 
+var (
+	anomalyReadyTimeout  = 120 * time.Second
+	anomalyDeleteTimeout = 60 * time.Second
+	anomalyExpandTimeout = 240 * time.Second
+)
+
 //nolint:dupl,lll
 var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise"), Ordered, func() {
 	ctx := context.Background()
@@ -123,7 +129,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					Name:      namespacedName.Name,
 					Namespace: namespacedName.Namespace,
 				}, &vmv1.VMAnomaly{})
-			}, eventualDeletionTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+			}, anomalyDeleteTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
 		})
 		DescribeTable("should create vmanomaly",
 			func(name string, cr *vmv1.VMAnomaly, setup func(), verify func(*vmv1.VMAnomaly)) {
@@ -135,7 +141,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, namespacedName)
-				}, 180*time.Second,
+				}, anomalyReadyTimeout,
 				).Should(Succeed())
 
 				var created vmv1.VMAnomaly
@@ -379,7 +385,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, namespacedName)
-				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				}, anomalyReadyTimeout).Should(Succeed())
 				for _, step := range steps {
 					if step.setup != nil {
 						step.setup(initCR)
@@ -390,10 +396,10 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
 						step.modify(&toUpdate)
 						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).Should(Succeed())
+					}, anomalyExpandTimeout).Should(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, namespacedName)
-					}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+					}, anomalyExpandTimeout).Should(Succeed())
 					// verify
 					var updated vmv1.VMAnomaly
 					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())

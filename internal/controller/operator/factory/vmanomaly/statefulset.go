@@ -223,7 +223,7 @@ func createOrUpdateShardedStatefulSet(ctx context.Context, rclient client.Client
 		shardMutator(cr, shardedDeploy, shardNum)
 		if prevStatefulSet != nil {
 			prevShardedObject = prevStatefulSet.DeepCopyObject().(*appsv1.StatefulSet)
-			shardMutator(cr, prevShardedObject, shardNum)
+			shardMutator(prevCR, prevShardedObject, shardNum)
 		}
 		placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
 		var prevStatefulSet *appsv1.StatefulSet

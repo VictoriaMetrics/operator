@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"strconv"
+	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -217,39 +218,72 @@ func createOrUpdateShardedStatefulSet(ctx context.Context, rclient client.Client
 			isUpscaling = true
 		}
 	}
-	for shardNum := range shardNumIter(isUpscaling, shardCount) {
-		shardedDeploy := newStatefulSet.DeepCopyObject().(*appsv1.StatefulSet)
-		var prevShardedObject *appsv1.StatefulSet
-		shardMutator(cr, shardedDeploy, shardNum)
-		if prevStatefulSet != nil {
-			prevShardedObject = prevStatefulSet.DeepCopyObject().(*appsv1.StatefulSet)
-			shardMutator(prevCR, prevShardedObject, shardNum)
-		}
-		placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
-		var prevDeploy *appsv1.StatefulSet
-		shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
+	var wg sync.WaitGroup
+	type shardResult struct {
+		name string
+		err  error
+	}
+	resultChan := make(chan *shardResult)
+	updateShard := func(num int) {
+		defer wg.Done()
+		placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(num)}
+		newShardedStatefulSet := newStatefulSet.DeepCopyObject().(*appsv1.StatefulSet)
+		shardMutator(cr, newShardedStatefulSet, num)
+		newShardedStatefulSet, err = k8stools.RenderPlaceholders(newShardedStatefulSet, placeholders)
 		if err != nil {
-			return fmt.Errorf("cannot fill placeholders for StatefulSet in sharded %T: %w", cr, err)
+			resultChan <- &shardResult{
+				err: fmt.Errorf("cannot fill placeholders for StatefulSet in sharded %T: %w", cr, err),
+			}
+			return
 		}
-		if prevShardedObject != nil {
-			prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
+		var prevShardedStatefulSet *appsv1.StatefulSet
+		if prevStatefulSet != nil {
+			prevShardedStatefulSet = prevStatefulSet.DeepCopyObject().(*appsv1.StatefulSet)
+			shardMutator(cr, prevShardedStatefulSet, num)
+			prevShardedStatefulSet, err = k8stools.RenderPlaceholders(prevShardedStatefulSet, placeholders)
 			if err != nil {
-				return fmt.Errorf("cannot fill placeholders for prev StatefulSet in sharded %T: %w", cr, err)
+				resultChan <- &shardResult{
+					err: fmt.Errorf("cannot fill placeholders for prev StatefulSet in sharded %T: %w", cr, err),
+				}
+				return
 			}
 		}
 		statefulSetOpts := reconcile.STSOptions{
-			HasClaim: len(shardedDeploy.Spec.VolumeClaimTemplates) > 0,
+			HasClaim: len(newShardedStatefulSet.Spec.VolumeClaimTemplates) > 0,
 			SelectorLabels: func() map[string]string {
 				selectorLabels := cr.SelectorLabels()
-				selectorLabels["shard-num"] = strconv.Itoa(shardNum)
+				selectorLabels["shard-num"] = strconv.Itoa(num)
 				return selectorLabels
 			},
 		}
-		if err := reconcile.HandleSTSUpdate(ctx, rclient, statefulSetOpts, shardedDeploy, prevDeploy); err != nil {
-			return err
+		if err := reconcile.HandleSTSUpdate(ctx, rclient, statefulSetOpts, newShardedStatefulSet, prevShardedStatefulSet); err != nil {
+			resultChan <- &shardResult{
+				err: err,
+			}
+			return
 		}
-		statefulSetNames[shardedDeploy.Name] = struct{}{}
+		resultChan <- &shardResult{
+			name: newShardedStatefulSet.Name,
+		}
+
 	}
+	for shardNum := range shardNumIter(isUpscaling, shardCount) {
+		wg.Add(1)
+		go updateShard(shardNum)
+	}
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+	for r := range resultChan {
+		if r.err != nil {
+			return r.err
+		}
+		if r.name != "" {
+			statefulSetNames[r.name] = struct{}{}
+		}
+	}
+	logger.WithContext(ctx).Info(fmt.Sprintf("keep statefulsets %v", statefulSetNames))
 	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, statefulSetNames); err != nil {
 		return err
 	}

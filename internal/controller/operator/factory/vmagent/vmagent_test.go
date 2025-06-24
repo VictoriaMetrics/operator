@@ -1784,7 +1784,12 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 				t.Fatalf("CreateOrUpdateStreamAggrConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdCM corev1.ConfigMap
-			if err := cl.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.StreamAggrConfigName()}, &createdCM); err != nil {
+			if err := cl.Get(ctx,
+				types.NamespacedName{
+					Namespace: tt.cr.Namespace,
+					Name:      build.ResourceName(build.StreamAggrConfigResourceKind, tt.cr),
+				}, &createdCM,
+			); err != nil {
 				t.Fatalf("cannot fetch created cm: %v", err)
 			}
 			if err := tt.validate(&createdCM); err != nil {

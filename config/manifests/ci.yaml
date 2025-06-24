@@ -12,14 +12,15 @@ fbc:
   catalog_mapping:
   - template_name: v4.12-v4.16.yaml
     catalog_names:
-     - "v4.12"
-     - "v4.13"
-     - "v4.14"
-     - "v4.15"
-     - "v4.16"
+     - v4.12
+     - v4.13
+     - v4.14
+     - v4.15
+     - v4.16
     type: olm.template.basic
-  - template_name: v4.17-v4.18.yaml
+  - template_name: latest.yaml
     catalog_names:
-     - "v4.17"
-     - "v4.18"
+     - v4.17
+     - v4.18
+     - v4.19
     type: olm.template.basic

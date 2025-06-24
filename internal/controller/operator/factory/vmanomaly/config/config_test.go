@@ -145,11 +145,13 @@ settings:
 					},
 					Writer: &vmv1.VMAnomalyWritersSpec{
 						DatasourceURL: "http://write.endpoint",
-						MetricFormat: map[string]string{
-							"name": "metrics_$VAR",
-							"for": "custom_$QUERY_KEY",
-							"label1": "value1",
-							"label2": "value2",
+						MetricFormat: vmv1.VMAnomalyVMWriterMetricFormatSpec{
+							Name: "metrics_$VAR",
+							For:  "custom_$QUERY_KEY",
+							ExtraLabels: map[string]string{
+								"label1": "value1",
+								"label2": "value2",
+							},
 						},
 						VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
 							TenantID: "0:2",

@@ -72,6 +72,10 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 	if err = w.ClientConfig.override(cr, &cr.Spec.Writer.VMAnomalyHTTPClientSpec, ac); err != nil {
 		return fmt.Errorf("failed to update HTTP client for anomaly writer, name=%q: %w", cr.Name, err)
 	}
+	if w.MetricFormat != nil && len(w.MetricFormat.ExtraLabels) > 0 {
+		w.MetricFormat.Labels = w.MetricFormat.ExtraLabels
+		w.MetricFormat.ExtraLabels = nil
+	}
 	w.Class = "vm"
 	c.Writer = &w
 

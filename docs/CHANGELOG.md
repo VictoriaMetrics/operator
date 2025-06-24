@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* SECURITY: upgrade Go builder from Go1.24.3 to Go1.24.4. See [the list of issues addressed in Go1.24.4](https://github.com/golang/go/issues?q=milestone%3AGo1.24.4+label%3ACherryPickApproved).
+
 ## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
 
 **Release date:** 23 June 2025

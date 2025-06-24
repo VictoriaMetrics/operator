@@ -20014,19 +20014,9 @@ spec:
                       where to check availability of the remote webserver
                     type: string
                   metricFormat:
+                    additionalProperties:
+                      type: string
                     description: Metrics to save the output (in metric names or labels)
-                    properties:
-                      __name__:
-                        description: |-
-                          Name of result metric
-                          Must have a value with $VAR placeholder in it to distinguish between resulting metrics
-                        type: string
-                      for:
-                        description: For is a special label with $QUERY_KEY placeholder
-                        type: string
-                    required:
-                    - __name__
-                    - for
                     type: object
                   tenantID:
                     description: TenantID defines for VictoriaMetrics Cluster version

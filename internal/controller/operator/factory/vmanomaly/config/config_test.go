@@ -145,6 +145,12 @@ settings:
 					},
 					Writer: &vmv1.VMAnomalyWritersSpec{
 						DatasourceURL: "http://write.endpoint",
+						MetricFormat: map[string]string{
+							"name": "metrics_$VAR",
+							"for": "custom_$QUERY_KEY",
+							"label1": "value1",
+							"label2": "value2",
+						},
 						VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
 							TenantID: "0:2",
 							TLSConfig: &vmv1beta1.TLSConfig{
@@ -251,6 +257,11 @@ reader:
 writer:
   class: vm
   datasource_url: http://write.endpoint
+  metric_format:
+    __name__: metrics_$VAR
+    for: custom_$QUERY_KEY
+    label1: value1
+    label2: value2
   tenant_id: "0:2"
   verify_tls: true
   tls_cert_file: /test/monitoring_tls_remote-cert

@@ -111,18 +111,9 @@ type VMAnomalyWritersSpec struct {
 	DatasourceURL string `json:"datasourceURL" yaml:"datasource_url,omitempty"`
 	// Metrics to save the output (in metric names or labels)
 	// +optional
-	VMAnomalyVMWriterMetricFormatSpec `json:"metricFormat,omitempty" yaml:"metric_format,omitempty"`
+	MetricFormat map[string]string `json:"metricFormat,omitempty" yaml:"metric_format,omitempty"`
 	// +optional
 	VMAnomalyHTTPClientSpec `json:",inline,omitempty" yaml:",inline,omitempty"`
-}
-
-// VMAnomalyVMWriterMetricFormatSpec defines the desired state of VMAnomalyVMWriterMetricFormat
-type VMAnomalyVMWriterMetricFormatSpec struct {
-	// Name of result metric
-	// Must have a value with $VAR placeholder in it to distinguish between resulting metrics
-	Name string `json:"__name__"`
-	// For is a special label with $QUERY_KEY placeholder
-	For string `json:"for"`
 }
 
 // VMAnomalyHTTPClientSpec defines the desired state of VMAnomalyHTTPClient

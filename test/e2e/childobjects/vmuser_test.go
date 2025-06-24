@@ -17,7 +17,7 @@ import (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test vmuser Controller", func() {
+var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() {
 	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	ctx := context.Background()
 	type opts struct {

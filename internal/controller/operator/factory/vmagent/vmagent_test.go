@@ -1100,7 +1100,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.bearerTokenFile=\"\",\"/etc/vmagent/config/default_some-secret_some-key\"", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{"-remoteWrite.bearerTokenFile=,\"/etc/vmagent/config/default_some-secret_some-key\"", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 		{
 			name: "test with headers",
@@ -1136,7 +1136,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.bearerTokenFile=\"\",\"/etc/vmagent/config/default_some-secret_some-key\"", "-remoteWrite.headers=,key: value^^second-key: value2", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{"-remoteWrite.bearerTokenFile=,\"/etc/vmagent/config/default_some-secret_some-key\"", "-remoteWrite.headers=,key: value^^second-key: value2", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 		{
 			name: "test with stream aggr",
@@ -1784,7 +1784,12 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 				t.Fatalf("CreateOrUpdateStreamAggrConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdCM corev1.ConfigMap
-			if err := cl.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.StreamAggrConfigName()}, &createdCM); err != nil {
+			if err := cl.Get(ctx,
+				types.NamespacedName{
+					Namespace: tt.cr.Namespace,
+					Name:      build.ResourceName(build.StreamAggrConfigResourceKind, tt.cr),
+				}, &createdCM,
+			); err != nil {
 				t.Fatalf("cannot fetch created cm: %v", err)
 			}
 			if err := tt.validate(&createdCM); err != nil {

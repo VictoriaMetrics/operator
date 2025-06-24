@@ -16,7 +16,7 @@ import (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test vmalertmanagerconfig Controller", func() {
+var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "alertmanager"), func() {
 	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	ctx := context.Background()
 	type opts struct {

@@ -56,7 +56,7 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, cr.RelabelingAssetName(), cr.Namespace); err != nil {
 		return err
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, cr.StreamAggrConfigName(), cr.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, build.ResourceName(build.StreamAggrConfigResourceKind, cr), cr.Namespace); err != nil {
 		return err
 	}
 

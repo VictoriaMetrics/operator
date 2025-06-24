@@ -606,28 +606,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 		})
 
 	}
-	if cr.HasAnyStreamAggrRule() {
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "stream-aggr-conf",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: cr.StreamAggrConfigName(),
-						},
-					},
-				},
-			},
-		)
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "stream-aggr-conf",
-				ReadOnly:  true,
-				MountPath: vmv1beta1.StreamAggrConfigDir,
-			},
-		)
-	}
-
+	volumes, agentVolumeMounts = build.StreamAggrVolumeTo(volumes, agentVolumeMounts, build.ResourceName(build.StreamAggrConfigResourceKind, cr), cr.Spec.StreamAggrConfig)
 	if cr.HasAnyRelabellingConfigs() {
 		volumes = append(volumes,
 			corev1.Volume{
@@ -694,32 +673,10 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmv1beta1.RelabelingConfigDir, globalRelabelingName))
 	}
 
-	if cr.Spec.StreamAggrConfig != nil {
-		if cr.Spec.StreamAggrConfig.HasAnyRule() {
-			args = append(args, "-streamAggr.config="+path.Join(vmv1beta1.StreamAggrConfigDir, globalAggregationConfigName))
-		}
-		if cr.Spec.StreamAggrConfig.KeepInput {
-			args = append(args, "-streamAggr.keepInput=true")
-		}
-		if cr.Spec.StreamAggrConfig.DropInput {
-			args = append(args, "-streamAggr.dropInput=true")
-		}
-		if cr.Spec.StreamAggrConfig.DedupInterval != "" {
-			args = append(args, fmt.Sprintf("-streamAggr.dedupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
-		}
-		if len(cr.Spec.StreamAggrConfig.DropInputLabels) > 0 {
-			args = append(args, fmt.Sprintf("-streamAggr.dropInputLabels=%s", strings.Join(cr.Spec.StreamAggrConfig.DropInputLabels, ",")))
-		}
-		if cr.Spec.StreamAggrConfig.IgnoreOldSamples {
-			args = append(args, "-streamAggr.ignoreOldSamples=true")
-		}
-		if cr.Spec.StreamAggrConfig.EnableWindows {
-			args = append(args, "-streamAggr.enableWindows=true")
-		}
-	}
-
+	streamAggrKeys := []string{globalAggregationConfigName}
+	streamAggrConfigs := []*vmv1beta1.StreamAggrConfig{cr.Spec.StreamAggrConfig}
+	args = build.StreamAggrArgsTo(args, "streamAggr", streamAggrKeys, streamAggrConfigs...)
 	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
-
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -907,20 +864,10 @@ func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Clie
 	return reconcile.ConfigMap(ctx, rclient, assestsCM, prevConfigMeta)
 }
 
-func buildStreamAggrConfigMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Namespace:       cr.Namespace,
-		Name:            cr.StreamAggrConfigName(),
-		Labels:          cr.AllLabels(),
-		Annotations:     cr.AnnotationsFiltered(),
-		OwnerReferences: cr.AsOwner(),
-	}
-}
-
 // buildStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
 func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
-		ObjectMeta: buildStreamAggrConfigMeta(cr),
+		ObjectMeta: build.ResourceMeta(build.StreamAggrConfigResourceKind, cr),
 		Data:       make(map[string]string),
 	}
 	// global section
@@ -950,8 +897,9 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	for i := range cr.Spec.RemoteWrite {
 		rw := cr.Spec.RemoteWrite[i]
 		if rw.StreamAggrConfig != nil {
-			if len(rw.StreamAggrConfig.Rules) > 0 {
-				data, err := yaml.Marshal(rw.StreamAggrConfig.Rules)
+			c := rw.StreamAggrConfig
+			if len(c.Rules) > 0 {
+				data, err := yaml.Marshal(c.Rules)
 				if err != nil {
 					return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
 				}
@@ -959,12 +907,12 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 					cfgCM.Data[rw.AsConfigMapKey(i, "stream-aggr-conf")] = string(data)
 				}
 			}
-			if rw.StreamAggrConfig.RuleConfigMap != nil {
+			if c.RuleConfigMap != nil {
 				data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
-					&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rw.StreamAggrConfig.RuleConfigMap.Name, Namespace: cr.Namespace}},
-					rw.StreamAggrConfig.RuleConfigMap.Key)
+					&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: c.RuleConfigMap.Name, Namespace: cr.Namespace}},
+					c.RuleConfigMap.Key)
 				if err != nil {
-					return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", rw.StreamAggrConfig.RuleConfigMap.Name, err)
+					return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", c.RuleConfigMap.Name, err)
 				}
 				if len(data) > 0 {
 					cfgCM.Data[rw.AsConfigMapKey(i, "stream-aggr-conf")] += data
@@ -989,14 +937,9 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	}
 	var prevConfigMeta *metav1.ObjectMeta
 	if prevCR != nil {
-		prevConfigMeta = ptr.To(buildStreamAggrConfigMeta(prevCR))
+		prevConfigMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, cr))
 	}
 	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
-}
-
-type remoteFlag struct {
-	isNotNull   bool
-	flagSetting string
 }
 
 func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
@@ -1091,263 +1034,139 @@ func sortMap(m map[string]string) []item {
 }
 
 func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, error) {
-	var finalArgs []string
-	var remoteArgs []remoteFlag
 	remoteTargets := cr.Spec.RemoteWrite
-
-	url := remoteFlag{flagSetting: "-remoteWrite.url=", isNotNull: true}
-
-	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
-	authPasswordFile := remoteFlag{flagSetting: "-remoteWrite.basicAuth.passwordFile="}
-	bearerTokenFile := remoteFlag{flagSetting: "-remoteWrite.bearerTokenFile="}
-	urlRelabelConfig := remoteFlag{flagSetting: "-remoteWrite.urlRelabelConfig="}
-	sendTimeout := remoteFlag{flagSetting: "-remoteWrite.sendTimeout="}
-	tlsCAs := remoteFlag{flagSetting: "-remoteWrite.tlsCAFile="}
-	tlsCerts := remoteFlag{flagSetting: "-remoteWrite.tlsCertFile="}
-	tlsKeys := remoteFlag{flagSetting: "-remoteWrite.tlsKeyFile="}
-	tlsInsecure := remoteFlag{flagSetting: "-remoteWrite.tlsInsecureSkipVerify="}
-	tlsServerName := remoteFlag{flagSetting: "-remoteWrite.tlsServerName="}
-	oauth2ClientID := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientID="}
-	oauth2ClientSecretFile := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientSecretFile="}
-	oauth2Scopes := remoteFlag{flagSetting: "-remoteWrite.oauth2.scopes="}
-	oauth2TokenURL := remoteFlag{flagSetting: "-remoteWrite.oauth2.tokenUrl="}
-	headers := remoteFlag{flagSetting: "-remoteWrite.headers="}
-	streamAggrConfig := remoteFlag{flagSetting: "-remoteWrite.streamAggr.config="}
-	streamAggrKeepInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.keepInput="}
-	streamAggrDropInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInput="}
-	streamAggrDedupInterval := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dedupInterval="}
-	streamAggrDropInputLabels := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInputLabels="}
-	streamAggrIgnoreFirstIntervals := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreFirstIntervals="}
-	streamAggrIgnoreOldSamples := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreOldSamples="}
-	streamAggrEnableWindows := remoteFlag{flagSetting: "-remoteWrite.streamAggr.enableWindows="}
-	maxDiskUsagePerURL := remoteFlag{flagSetting: "-remoteWrite.maxDiskUsagePerURL="}
-	forceVMProto := remoteFlag{flagSetting: "-remoteWrite.forceVMProto="}
-	proxyURL := remoteFlag{flagSetting: "-remoteWrite.proxyURL="}
 
 	maxDiskUsage := defaultMaxDiskUsage
 	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
 		maxDiskUsage = cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL.String()
 	}
+	url := build.NewFlag("-remoteWrite.url", "")
+	authUser := build.NewFlag("-remoteWrite.basicAuth.username", "")
+	authPasswordFile := build.NewFlag("-remoteWrite.basicAuth.passwordFile", "")
+	bearerTokenFile := build.NewFlag("-remoteWrite.bearerTokenFile", "")
+	urlRelabelConfig := build.NewFlag("-remoteWrite.urlRelabelConfig", "")
+	sendTimeout := build.NewFlag("-remoteWrite.sendTimeout", "")
+	tlsCAs := build.NewFlag("-remoteWrite.tlsCAFile", "")
+	tlsCerts := build.NewFlag("-remoteWrite.tlsCertFile", "")
+	tlsKeys := build.NewFlag("-remoteWrite.tlsKeyFile", "")
+	tlsInsecure := build.NewFlag("-remoteWrite.tlsInsecureSkipVerify", "false")
+	tlsServerName := build.NewFlag("-remoteWrite.tlsServerName", "")
+	oauth2ClientID := build.NewFlag("-remoteWrite.oauth2.clientID", "")
+	oauth2ClientSecretFile := build.NewFlag("-remoteWrite.oauth2.clientSecretFile", "")
+	oauth2Scopes := build.NewFlag("-remoteWrite.oauth2.scopes", "")
+	oauth2TokenURL := build.NewFlag("-remoteWrite.oauth2.tokenUrl", "")
+	headers := build.NewFlag("-remoteWrite.headers", "")
+	maxDiskUsagePerURL := build.NewFlag("-remoteWrite.maxDiskUsagePerURL", maxDiskUsage)
+	forceVMProto := build.NewFlag("-remoteWrite.forceVMProto", "false")
+	proxyURL := build.NewFlag("-remoteWrite.proxyURL", "")
+
+	var streamAggrConfigs []*vmv1beta1.StreamAggrConfig
+	var streamAggrKeys []string
 
 	for i := range remoteTargets {
 		rws := remoteTargets[i]
-		url.flagSetting += fmt.Sprintf("%s,", rws.URL)
-
-		var caPath, certPath, keyPath, serverName string
-		var insecure bool
+		url.Add(rws.URL, i)
 		if rws.TLSConfig != nil {
 			creds, err := ac.BuildTLSCreds(cr.Namespace, rws.TLSConfig)
 			if err != nil {
 				return nil, err
 			}
-			if creds.CAFile != "" {
-				tlsCAs.isNotNull = true
-				caPath = creds.CAFile
-			}
-			if creds.CertFile != "" {
-				tlsCerts.isNotNull = true
-				certPath = creds.CertFile
-			}
-			if creds.KeyFile != "" {
-				tlsKeys.isNotNull = true
-				keyPath = creds.KeyFile
-			}
+			tlsCAs.Add(creds.CAFile, i)
+			tlsCerts.Add(creds.CertFile, i)
+			tlsKeys.Add(creds.KeyFile, i)
 			if rws.TLSConfig.InsecureSkipVerify {
-				tlsInsecure.isNotNull = true
+				tlsInsecure.Add("true", i)
 			}
-			if rws.TLSConfig.ServerName != "" {
-				serverName = rws.TLSConfig.ServerName
-				tlsServerName.isNotNull = true
-			}
-			insecure = rws.TLSConfig.InsecureSkipVerify
+			tlsServerName.Add(rws.TLSConfig.ServerName, i)
 		}
-		tlsCAs.flagSetting += fmt.Sprintf("%s,", caPath)
-		tlsCerts.flagSetting += fmt.Sprintf("%s,", certPath)
-		tlsKeys.flagSetting += fmt.Sprintf("%s,", keyPath)
-		tlsServerName.flagSetting += fmt.Sprintf("%s,", serverName)
-		tlsInsecure.flagSetting += fmt.Sprintf("%v,", insecure)
-
-		var user string
-		var passFile string
 		if rws.BasicAuth != nil {
-			authUser.isNotNull = true
-			var err error
-			user, err = ac.LoadKeyFromSecret(cr.Namespace, &rws.BasicAuth.Username)
+			user, err := ac.LoadKeyFromSecret(cr.Namespace, &rws.BasicAuth.Username)
 			if err != nil {
 				return nil, fmt.Errorf("cannot load BasicAuth username: %w", err)
 			}
+			authUser.Add(strconv.Quote(user), i)
 			if len(rws.BasicAuth.Password.Name) > 0 {
-				authPasswordFile.isNotNull = true
-				var err error
-				passFile, err = ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &rws.BasicAuth.Password)
+				passFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &rws.BasicAuth.Password)
 				if err != nil {
 					return nil, fmt.Errorf("cannot load BasicAuth password: %w", err)
 				}
+				authPasswordFile.Add(passFile, i)
 			}
 			if len(rws.BasicAuth.PasswordFile) > 0 {
-				passFile = rws.BasicAuth.PasswordFile
-				authPasswordFile.isNotNull = true
+				authPasswordFile.Add(rws.BasicAuth.PasswordFile, i)
 			}
 		}
-		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
-		authPasswordFile.flagSetting += fmt.Sprintf("%s,", passFile)
-
-		var value string
 		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
-			bearerTokenFile.isNotNull = true
-			var err error
-			value, err = ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.BearerTokenSecret)
+			value, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.BearerTokenSecret)
 			if err != nil {
 				return nil, fmt.Errorf("cannot load BearerTokenSecret: %w", err)
 			}
+			bearerTokenFile.Add(strconv.Quote(value), i)
 		}
-		bearerTokenFile.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(value, `"`, `\"`))
-
-		value = ""
-
 		if rws.UrlRelabelConfig != nil || len(rws.InlineUrlRelabelConfig) > 0 {
-			urlRelabelConfig.isNotNull = true
-			value = path.Join(vmv1beta1.RelabelingConfigDir, fmt.Sprintf(urlRelabelingName, i))
+			urlRelabelConfig.Add(path.Join(vmv1beta1.RelabelingConfigDir, fmt.Sprintf(urlRelabelingName, i)), i)
 		}
-
-		urlRelabelConfig.flagSetting += fmt.Sprintf("%s,", value)
-
-		value = ""
 		if rws.SendTimeout != nil {
-			if !sendTimeout.isNotNull {
-				sendTimeout.isNotNull = true
-			}
-			value = *rws.SendTimeout
+			sendTimeout.Add(*rws.SendTimeout, i)
 		}
-		sendTimeout.flagSetting += fmt.Sprintf("%s,", value)
-
-		value = ""
 		if len(rws.Headers) > 0 {
-			headers.isNotNull = true
+			value := ""
 			for _, headerValue := range rws.Headers {
 				value += headerValue + "^^"
 			}
 			value = strings.TrimSuffix(value, "^^")
+			headers.Add(value, i)
 		}
-		headers.flagSetting += fmt.Sprintf("%s,", value)
-		var oaturl, oascopes, oaclientID, oaSecretKeyFile string
 		if rws.OAuth2 != nil {
 			if len(rws.OAuth2.TokenURL) > 0 {
-				oauth2TokenURL.isNotNull = true
-				oaturl = rws.OAuth2.TokenURL
+				oauth2TokenURL.Add(rws.OAuth2.TokenURL, i)
 			}
 
 			if len(rws.OAuth2.Scopes) > 0 {
-				oauth2Scopes.isNotNull = true
-				oascopes = strings.Join(rws.OAuth2.Scopes, ",")
+				oauth2Scopes.Add(strings.Join(rws.OAuth2.Scopes, ","), i)
 			}
 
 			if len(rws.OAuth2.ClientSecretFile) > 0 {
-				oauth2ClientSecretFile.isNotNull = true
-				oaSecretKeyFile = rws.OAuth2.ClientSecretFile
+				oauth2ClientSecretFile.Add(rws.OAuth2.ClientSecretFile, i)
 			}
 
 			if rws.OAuth2.ClientSecret != nil {
-				oauth2ClientSecretFile.isNotNull = true
-				var err error
-				oaSecretKeyFile, err = ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.OAuth2.ClientSecret)
+				oaSecretKeyFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.OAuth2.ClientSecret)
 				if err != nil {
 					return nil, fmt.Errorf("cannot load OAuth2 ClientSecret: %w", err)
 				}
+				oauth2ClientSecretFile.Add(oaSecretKeyFile, i)
 			}
-			if secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rws.OAuth2.ClientID); err != nil {
+			secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rws.OAuth2.ClientID)
+			if err != nil {
 				return nil, err
-			} else if len(secret) > 0 {
-				oaclientID = secret
-				oauth2ClientID.isNotNull = true
 			}
+			oauth2ClientID.Add(secret, i)
 
 		}
-		oauth2TokenURL.flagSetting += fmt.Sprintf("%s,", oaturl)
-		oauth2ClientSecretFile.flagSetting += fmt.Sprintf("%s,", oaSecretKeyFile)
-		oauth2ClientID.flagSetting += fmt.Sprintf("%s,", oaclientID)
-		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 
-		var dedupIntVal, streamConfVal string
-		var keepInputVal, dropInputVal, ignoreOldSamples, enableWindows bool
-		var ignoreFirstIntervalsVal int
-		if rws.StreamAggrConfig != nil {
-			if rws.StreamAggrConfig.HasAnyRule() {
-				streamAggrConfig.isNotNull = true
-				streamConfVal = path.Join(vmv1beta1.StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
-			}
+		streamAggrConfigs = append(streamAggrConfigs, rws.StreamAggrConfig)
+		streamAggrKeys = append(streamAggrKeys, rws.AsConfigMapKey(i, "stream-aggr-conf"))
 
-			dedupIntVal = rws.StreamAggrConfig.DedupInterval
-			if dedupIntVal != "" {
-				streamAggrDedupInterval.isNotNull = true
-			}
-
-			keepInputVal = rws.StreamAggrConfig.KeepInput
-			if keepInputVal {
-				streamAggrKeepInput.isNotNull = true
-			}
-			dropInputVal = rws.StreamAggrConfig.DropInput
-			if dropInputVal {
-				streamAggrDropInput.isNotNull = true
-			}
-			if len(rws.StreamAggrConfig.DropInputLabels) > 0 {
-				streamAggrDropInputLabels.isNotNull = true
-				streamAggrDropInputLabels.flagSetting += fmt.Sprintf("%s,", strings.Join(rws.StreamAggrConfig.DropInputLabels, ","))
-			}
-			ignoreFirstIntervalsVal = rws.StreamAggrConfig.IgnoreFirstIntervals
-			if ignoreFirstIntervalsVal > 0 {
-				streamAggrIgnoreFirstIntervals.isNotNull = true
-			}
-			ignoreOldSamples = rws.StreamAggrConfig.IgnoreOldSamples
-			if ignoreOldSamples {
-				streamAggrIgnoreOldSamples.isNotNull = true
-			}
-			enableWindows = rws.StreamAggrConfig.EnableWindows
-			if enableWindows {
-				streamAggrEnableWindows.isNotNull = true
-			}
-		}
-		streamAggrConfig.flagSetting += fmt.Sprintf("%s,", streamConfVal)
-		streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", keepInputVal)
-		streamAggrDropInput.flagSetting += fmt.Sprintf("%v,", dropInputVal)
-		streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", dedupIntVal)
-		streamAggrIgnoreFirstIntervals.flagSetting += fmt.Sprintf("%d,", ignoreFirstIntervalsVal)
-		streamAggrIgnoreOldSamples.flagSetting += fmt.Sprintf("%v,", ignoreOldSamples)
-		streamAggrEnableWindows.flagSetting += fmt.Sprintf("%v", enableWindows)
-
-		value = maxDiskUsage
 		if rws.MaxDiskUsage != nil {
-			value = rws.MaxDiskUsage.String()
-			maxDiskUsagePerURL.isNotNull = true
+			maxDiskUsagePerURL.Add(rws.MaxDiskUsage.String(), i)
 		}
-		maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", value)
 
-		if rws.ForceVMProto {
-			forceVMProto.isNotNull = true
-		}
-		forceVMProto.flagSetting += fmt.Sprintf("%t,", rws.ForceVMProto)
-
-		value = ""
+		forceVMProto.Add(strconv.FormatBool(rws.ForceVMProto), i)
 		if rws.ProxyURL != nil {
-			proxyURL.isNotNull = true
-			value = *rws.ProxyURL
-		}
-		proxyURL.flagSetting += fmt.Sprintf("%s,", value)
-	}
-
-	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout, proxyURL)
-	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
-	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
-	remoteArgs = append(remoteArgs, headers, authPasswordFile)
-	remoteArgs = append(remoteArgs, streamAggrConfig, streamAggrKeepInput, streamAggrDedupInterval, streamAggrDropInput, streamAggrDropInputLabels, streamAggrIgnoreFirstIntervals, streamAggrIgnoreOldSamples, streamAggrEnableWindows)
-	remoteArgs = append(remoteArgs, maxDiskUsagePerURL, forceVMProto)
-
-	for _, remoteArgType := range remoteArgs {
-		if remoteArgType.isNotNull {
-			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))
+			proxyURL.Add(*rws.ProxyURL, i)
 		}
 	}
-	return finalArgs, nil
+
+	var args []string
+	totalCount := len(remoteTargets)
+	args = build.AppendFlagsToArgs(args, totalCount, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout, proxyURL)
+	args = build.AppendFlagsToArgs(args, totalCount, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
+	args = build.AppendFlagsToArgs(args, totalCount, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
+	args = build.AppendFlagsToArgs(args, totalCount, headers, authPasswordFile)
+	args = build.StreamAggrArgsTo(args, "remoteWrite.streamAggr", streamAggrKeys, streamAggrConfigs...)
+	args = build.AppendFlagsToArgs(args, totalCount, maxDiskUsagePerURL, forceVMProto)
+	return args, nil
 }
 
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, extraWatchsMounts []corev1.VolumeMount) corev1.Container {

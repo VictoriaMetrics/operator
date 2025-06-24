@@ -20021,6 +20021,12 @@ spec:
                           Name of result metric
                           Must have a value with $VAR placeholder in it to distinguish between resulting metrics
                         type: string
+                      extraLabels:
+                        additionalProperties:
+                          type: string
+                        description: ExtraLabels defines additional labels to be added
+                          to the resulting metrics
+                        type: object
                       for:
                         description: For is a special label with $QUERY_KEY placeholder
                         type: string

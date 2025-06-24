@@ -65,11 +65,11 @@ schedulers:
     fit_every: 2m
     fit_window: 3h
 `,
-					Reader: &vmv1.VMAnomalyReadersSpec{
+					Reader: &vmv1.VMAnomalyReaderSpec{
 						DatasourceURL:  "http://test.com",
 						SamplingPeriod: "1m",
 					},
-					Writer: &vmv1.VMAnomalyWritersSpec{
+					Writer: &vmv1.VMAnomalyWriterSpec{
 						DatasourceURL: "http://write.endpoint",
 					},
 				},
@@ -140,11 +140,11 @@ schedulers:
 							TimeoutSeconds: 20,
 						},
 					},
-					Reader: &vmv1.VMAnomalyReadersSpec{
+					Reader: &vmv1.VMAnomalyReaderSpec{
 						DatasourceURL:  "http://test.com",
 						SamplingPeriod: "1m",
 					},
-					Writer: &vmv1.VMAnomalyWritersSpec{
+					Writer: &vmv1.VMAnomalyWriterSpec{
 						DatasourceURL: "http://write.endpoint",
 					},
 				},
@@ -255,7 +255,7 @@ schedulers:
     fit_every: 2m
     fit_window: 3h
 `,
-					Reader: &vmv1.VMAnomalyReadersSpec{
+					Reader: &vmv1.VMAnomalyReaderSpec{
 						DatasourceURL:  "http://test",
 						QueryRangePath: "/api/v1/query_range",
 						SamplingPeriod: "10s",
@@ -287,7 +287,7 @@ schedulers:
 							},
 						},
 					},
-					Writer: &vmv1.VMAnomalyWritersSpec{
+					Writer: &vmv1.VMAnomalyWriterSpec{
 						DatasourceURL: "http://test",
 					},
 				},

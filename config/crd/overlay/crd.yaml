@@ -20013,6 +20013,9 @@ spec:
                     description: HealthPath defines absolute or relative URL address
                       where to check availability of the remote webserver
                     type: string
+                  importJsonPath:
+                    description: Optional, to override the default import path
+                    type: string
                   metricFormat:
                     description: Metrics to save the output (in metric names or labels)
                     properties:

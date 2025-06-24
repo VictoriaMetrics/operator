@@ -167,7 +167,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							},
 						},
 						ConfigRawYaml: anomalyConfig,
-						Reader: &vmv1.VMAnomalyReadersSpec{
+						Reader: &vmv1.VMAnomalyReaderSpec{
 							DatasourceURL:  anomalyDatasourceURL,
 							QueryRangePath: "/api/v1/query_range",
 							SamplingPeriod: "10s",
@@ -198,7 +198,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 								},
 							},
 						},
-						Writer: &vmv1.VMAnomalyWritersSpec{
+						Writer: &vmv1.VMAnomalyWriterSpec{
 							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
@@ -260,12 +260,12 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							},
 						},
 						ConfigRawYaml: anomalyConfig,
-						Reader: &vmv1.VMAnomalyReadersSpec{
+						Reader: &vmv1.VMAnomalyReaderSpec{
 							DatasourceURL:  anomalyDatasourceURL,
 							QueryRangePath: "/api/v1/query_range",
 							SamplingPeriod: "10s",
 						},
-						Writer: &vmv1.VMAnomalyWritersSpec{
+						Writer: &vmv1.VMAnomalyWriterSpec{
 							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
@@ -344,12 +344,12 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							},
 						},
 						ConfigRawYaml: anomalyConfig,
-						Reader: &vmv1.VMAnomalyReadersSpec{
+						Reader: &vmv1.VMAnomalyReaderSpec{
 							DatasourceURL:  anomalyDatasourceURL,
 							QueryRangePath: "/api/v1/query_range",
 							SamplingPeriod: "10s",
 						},
-						Writer: &vmv1.VMAnomalyWritersSpec{
+						Writer: &vmv1.VMAnomalyWriterSpec{
 							DatasourceURL: anomalyDatasourceURL,
 						},
 					},
@@ -391,12 +391,12 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						},
 						PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: &intstr.IntOrString{IntVal: 1}},
 						ConfigRawYaml:       anomalyConfig,
-						Reader: &vmv1.VMAnomalyReadersSpec{
+						Reader: &vmv1.VMAnomalyReaderSpec{
 							DatasourceURL:  anomalyDatasourceURL,
 							QueryRangePath: "/api/v1/query_range",
 							SamplingPeriod: "10s",
 						},
-						Writer: &vmv1.VMAnomalyWritersSpec{
+						Writer: &vmv1.VMAnomalyWriterSpec{
 							DatasourceURL: anomalyDatasourceURL,
 						},
 					},

@@ -143,7 +143,7 @@ settings:
 							},
 						},
 					},
-					Writer: &vmv1.VMAnomalyWritersSpec{
+					Writer: &vmv1.VMAnomalyWriterSpec{
 						DatasourceURL: "http://write.endpoint",
 						MetricFormat: vmv1.VMAnomalyVMWriterMetricFormatSpec{
 							Name: "metrics_$VAR",
@@ -181,7 +181,7 @@ settings:
 							},
 						},
 					},
-					Reader: &vmv1.VMAnomalyReadersSpec{
+					Reader: &vmv1.VMAnomalyReaderSpec{
 						DatasourceURL:  "http://custom.ds",
 						QueryRangePath: "/api/v1/query_range",
 						SamplingPeriod: "10s",

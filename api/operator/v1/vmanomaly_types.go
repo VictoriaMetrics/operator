@@ -75,10 +75,10 @@ type VMAnomalySpec struct {
 	ConfigSecret *corev1.SecretKeySelector `json:"configSecret,omitempty"`
 	// Metrics source for VMAnomaly
 	// See https://docs.victoriametrics.com/anomaly-detection/components/reader/
-	Reader *VMAnomalyReadersSpec `json:"reader"`
+	Reader *VMAnomalyReaderSpec `json:"reader"`
 	// Metrics destination for VMAnomaly
 	// See https://docs.victoriametrics.com/anomaly-detection/components/writer/
-	Writer *VMAnomalyWritersSpec `json:"writer"`
+	Writer *VMAnomalyWriterSpec `json:"writer"`
 	// Storage configures storage for StatefulSet
 	// +optional
 	Storage *vmv1beta1.StorageSpec `json:"storage,omitempty"`
@@ -103,8 +103,8 @@ type VMAnomalySpec struct {
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
-// VMAnomalyWritersSpec defines writer configuration for VMAnomaly
-type VMAnomalyWritersSpec struct {
+// VMAnomalyWriterSpec defines writer configuration for VMAnomaly
+type VMAnomalyWriterSpec struct {
 	// DatasourceURL defines remote write url for write requests
 	// provided endpoint must serve /api/v1/import path
 	// vmanomaly joins datasourceURL + "/api/v1/import"
@@ -112,6 +112,9 @@ type VMAnomalyWritersSpec struct {
 	// Metrics to save the output (in metric names or labels)
 	// +optional
 	MetricFormat VMAnomalyVMWriterMetricFormatSpec `json:"metricFormat,omitempty" yaml:"metric_format,omitempty"`
+	// Optional, to override the default import path
+	// +optional
+	ImportJsonPath string `json:"importJsonPath,omitempty" yaml:"import_json_path,omitempty"`
 	// +optional
 	VMAnomalyHTTPClientSpec `json:",inline,omitempty" yaml:",inline,omitempty"`
 }
@@ -143,8 +146,8 @@ type VMAnomalyHTTPClientSpec struct {
 	BearerAuth *vmv1beta1.BearerAuth `json:"bearer,omitempty" yaml:"-"`
 }
 
-// VMAnomalyReadersSpec defines reader configuration for VMAnomaly
-type VMAnomalyReadersSpec struct {
+// VMAnomalyReaderSpec defines reader configuration for VMAnomaly
+type VMAnomalyReaderSpec struct {
 	// DatasourceURL address
 	// datatasource must serve /api/v1/query and /api/v1/query_range APIs
 	DatasourceURL string `json:"datasourceURL" yaml:"datasource_url,omitempty"`

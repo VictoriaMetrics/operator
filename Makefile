@@ -247,7 +247,7 @@ olm: operator-sdk opm yq docs
 	cp config/manifests/release-config.yaml bundle/$(VERSION)/
 	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO):$(TAG)"' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
-	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.18"' \
+	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.19"' \
 		bundle/$(VERSION)/metadata/annotations.yaml
 	$(if $(findstring localhost,$(REGISTRY)), \
 		$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) .; \

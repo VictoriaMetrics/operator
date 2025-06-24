@@ -223,16 +223,16 @@ func createOrUpdateShardedStatefulSet(ctx context.Context, rclient client.Client
 		shardMutator(cr, shardedDeploy, shardNum)
 		if prevStatefulSet != nil {
 			prevShardedObject = prevStatefulSet.DeepCopyObject().(*appsv1.StatefulSet)
-			shardMutator(cr, prevShardedObject, shardNum)
+			shardMutator(prevCR, prevShardedObject, shardNum)
 		}
 		placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
-		var prevStatefulSet *appsv1.StatefulSet
+		var prevDeploy *appsv1.StatefulSet
 		shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
 		if err != nil {
 			return fmt.Errorf("cannot fill placeholders for StatefulSet in sharded %T: %w", cr, err)
 		}
 		if prevShardedObject != nil {
-			prevStatefulSet, err = k8stools.RenderPlaceholders(prevStatefulSet, placeholders)
+			prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
 			if err != nil {
 				return fmt.Errorf("cannot fill placeholders for prev StatefulSet in sharded %T: %w", cr, err)
 			}
@@ -245,7 +245,7 @@ func createOrUpdateShardedStatefulSet(ctx context.Context, rclient client.Client
 				return selectorLabels
 			},
 		}
-		if err := reconcile.HandleSTSUpdate(ctx, rclient, statefulSetOpts, shardedDeploy, prevStatefulSet); err != nil {
+		if err := reconcile.HandleSTSUpdate(ctx, rclient, statefulSetOpts, shardedDeploy, prevDeploy); err != nil {
 			return err
 		}
 		statefulSetNames[shardedDeploy.Name] = struct{}{}

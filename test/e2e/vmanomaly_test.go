@@ -63,6 +63,14 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 			Name:      "anomaly",
 			Namespace: namespace,
 		},
+		Spec: vmv1beta1.VMSingleSpec{
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ReplicaCount: ptr.To[int32](1),
+			},
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				UseDefaultResources: ptr.To(false),
+			},
+		},
 	}
 	licenseKey := os.Getenv("LICENSE_KEY")
 	BeforeAll(func() {
@@ -430,7 +438,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					verify: func(cr *vmv1.VMAnomaly) {
 						Eventually(func() string {
 							return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
-						}, eventualDeploymentAppReadyTimeout, 1).Should(BeEmpty())
+						}, eventualStatefulsetAppReadyTimeout, 1).Should(BeEmpty())
 					},
 				},
 			),

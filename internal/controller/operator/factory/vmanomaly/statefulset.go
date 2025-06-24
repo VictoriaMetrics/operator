@@ -171,7 +171,6 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 
 	build.StatefulSetAddCommonParams(app, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 	app.Spec.Template.Spec.Volumes = append(app.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
-	app.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(app.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
 	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec)
 	app.Spec.VolumeClaimTemplates = append(app.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 	return app, nil

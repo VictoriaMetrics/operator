@@ -17,6 +17,7 @@ aliases:
 
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): fix marshaling of of `.spec.configRawYaml.settings`, previously it was skipped which caused `VManomaly` resource to be created with empty settings.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fixed typo in VMAnomaly shard creation.
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): properly apply strict security.
 
 ## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
 

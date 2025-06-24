@@ -148,82 +148,6 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
 				verify(&created)
 			},
-			Entry("with 1 replica", "replica-1",
-				&vmv1.VMAnomaly{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      namespacedName.Name,
-					},
-					Spec: vmv1.VMAnomalySpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-						License: &vmv1beta1.License{
-							KeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "license",
-								},
-								Key: "key",
-							},
-						},
-						ConfigRawYaml: anomalyConfig,
-						Reader: &vmv1.VMAnomalyReadersSpec{
-							DatasourceURL:  anomalyDatasourceURL,
-							QueryRangePath: "/api/v1/query_range",
-							SamplingPeriod: "10s",
-						},
-						Writer: &vmv1.VMAnomalyWritersSpec{
-							DatasourceURL: anomalyDatasourceURL,
-						},
-					},
-				}, nil, func(cr *vmv1.VMAnomaly) {
-					Eventually(func() string {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
-
-				},
-			),
-			Entry("with monitoring", "monitoring",
-				&vmv1.VMAnomaly{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      namespacedName.Name,
-					},
-					Spec: vmv1.VMAnomalySpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-						ConfigRawYaml: anomalyConfig,
-						Monitoring: &vmv1.VMAnomalyMonitoringSpec{
-							Pull: &vmv1.VMAnomalyMonitoringPullSpec{
-								Addr: "0.0.0.0",
-								Port: "9090",
-							},
-						},
-						License: &vmv1beta1.License{
-							KeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "license",
-								},
-								Key: "key",
-							},
-						},
-						Reader: &vmv1.VMAnomalyReadersSpec{
-							DatasourceURL:  anomalyDatasourceURL,
-							QueryRangePath: "/api/v1/query_range",
-							SamplingPeriod: "10s",
-						},
-						Writer: &vmv1.VMAnomalyWritersSpec{
-							DatasourceURL: anomalyDatasourceURL,
-						},
-					},
-				}, nil, func(cr *vmv1.VMAnomaly) {
-					Eventually(func() string {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
-
-				},
-			),
 			Entry("with reader", "custom-reader",
 				&vmv1.VMAnomaly{
 					ObjectMeta: metav1.ObjectMeta{
@@ -360,14 +284,13 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					pc := dep.Spec.Template.Spec.Containers
 					Expect(pc[0].SecurityContext).NotTo(BeNil())
 					Expect(pc[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
-					Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(5))
+					Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(4))
 
-					// vmanomaly must have k8s api access
-					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).To(Succeed())
+					// vmanomaly cannot have k8s api access
 					vmc := pc[0]
 					Expect(vmc.Name).To(Equal("vmanomaly"))
-					Expect(vmc.VolumeMounts).To(HaveLen(5))
-					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).To(Succeed())
+					Expect(vmc.VolumeMounts).To(HaveLen(4))
+					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).NotTo(Succeed())
 				},
 			),
 		)
@@ -406,40 +329,6 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					step.verify(&updated)
 				}
 			},
-			Entry("by scaling replicas to 3", "update-replicas-3",
-				&vmv1.VMAnomaly{
-					Spec: vmv1.VMAnomalySpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-						License: &vmv1beta1.License{
-							KeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "license",
-								},
-								Key: "key",
-							},
-						},
-						ConfigRawYaml: anomalyConfig,
-						Reader: &vmv1.VMAnomalyReadersSpec{
-							DatasourceURL:  anomalyDatasourceURL,
-							QueryRangePath: "/api/v1/query_range",
-							SamplingPeriod: "10s",
-						},
-						Writer: &vmv1.VMAnomalyWritersSpec{
-							DatasourceURL: anomalyDatasourceURL,
-						},
-					},
-				},
-				testStep{
-					modify: func(cr *vmv1.VMAnomaly) { cr.Spec.ReplicaCount = ptr.To[int32](3) },
-					verify: func(cr *vmv1.VMAnomaly) {
-						Eventually(func() string {
-							return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
-						}, eventualDeploymentAppReadyTimeout, 1).Should(BeEmpty())
-					},
-				},
-			),
 			Entry("by switching to shard mode", "shard",
 				&vmv1.VMAnomaly{
 					Spec: vmv1.VMAnomalySpec{

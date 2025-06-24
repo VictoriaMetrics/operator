@@ -171,7 +171,6 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	container = build.Probe(container, cr)
-	build.AddServiceAccountTokenVolumeMount(&container, &cr.Spec.CommonApplicationDeploymentParams)
 	containers := []corev1.Container{container}
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, containers, useStrictSecurity)
 	containers, err = k8stools.MergePatchContainers(containers, cr.Spec.Containers)

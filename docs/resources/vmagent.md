@@ -102,7 +102,7 @@ Here are some examples of `VMAgent` configuration with selectors:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-select-all
+  name: select-all
 spec:
   # ...
   selectAllByDefault: true
@@ -113,7 +113,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-select-ns
+  name: select-ns
 spec:
   # ...
   serviceScrapeNamespaceSelector: 
@@ -152,7 +152,7 @@ You can do it with `extraArgs` on [`VMSingle`](https://docs.victoriametrics.com/
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: vmsingle-example
+  name: example
 spec:
   # ...
   extraArgs:
@@ -166,7 +166,7 @@ For [`VMCluster`](https://docs.victoriametrics.com/operator/resources/vmcluster)
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: vmcluster-example
+  name: example
 spec:
   # ...
   vmselect:
@@ -189,7 +189,7 @@ For instance, let's create `VMAgent` with 2 replicas:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-ha-example
+  name: ha-example
 spec:
   # ...
   selectAllByDefault: true
@@ -219,7 +219,7 @@ Example of configuration for `StatefulMode`:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-ha-example
+  name: ha-example
 spec:
   # ...
   selectAllByDefault: true
@@ -253,7 +253,7 @@ Example usage (it is a complete example of `VMAgent` with high availability feat
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-ha-example
+  name: ha-example
 spec:
   # ...
   selectAllByDefault: true
@@ -321,7 +321,7 @@ See example below
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-example
+  name: example
 spec:
   # ...
   selectAllByDefault: true
@@ -360,7 +360,7 @@ After that, you need to specify the secret's name and key in VMAgent CRD in `add
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-example
+  name: example
 spec:
   # ...
   selectAllByDefault: true
@@ -431,7 +431,7 @@ and key `target-1-relabel.yaml` to one of remoteWrite target for relabeling only
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-example
+  name: example
 spec:
   # ...
   selectAllByDefault: true
@@ -439,8 +439,8 @@ spec:
    name: "vmagent-relabel"
    key: "global-relabel.yaml"
   remoteWrite:
-    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
-    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-persisted.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
       urlRelabelConfig:
         name: "vmagent-relabel"
         key: "target-1-relabel.yaml"
@@ -452,7 +452,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-example
+  name: example
 spec:
   # ...
   selectAllByDefault: true
@@ -468,8 +468,8 @@ spec:
    - action: drop
      source_labels: [aaa]
   remoteWrite:
-    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
-    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-persisted.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
       inlineUrlRelabelConfig:
        - action: keep_if_equal
          source_labels: [foo, bar]
@@ -511,7 +511,7 @@ data:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent
+  name: example
 spec:
   # ...
   selectAllByDefault: true
@@ -522,8 +522,8 @@ spec:
    name: "vmagent-relabel"
    key: "global-relabel.yaml"
   remoteWrite:
-    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
-    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-persisted.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
       urlRelabelConfig:
         name: "vmagent-relabel"
         key: "target-1-relabel.yaml"
@@ -592,7 +592,7 @@ To set `VMAgent` version add `spec.image.tag` name from [releases](https://githu
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent
+  name: example
 spec:
   image:
     repository: victoriametrics/vmagent
@@ -607,7 +607,7 @@ Also, you can specify `imagePullSecrets` if you are pulling images from private 
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent
+  name: example
 spec:
   image:
     repository: victoriametrics/vmagent
@@ -626,7 +626,7 @@ You can specify resources for each `VMAgent` resource in the `spec` section of t
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-resources-example
+  name: resources-example
 spec:
     # ...
     resources:
@@ -682,7 +682,7 @@ Here are complete example for [Reading metrics from Kafka](https://docs.victoria
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-ent-example
+  name: ent-example
 spec:
   # enabling enterprise features
   image:
@@ -713,7 +713,7 @@ Here are complete example for [Writing metrics to Kafka](https://docs.victoriame
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-ent-example
+  name: ent-example
 spec:
   # enabling enterprise features
   image:
@@ -763,7 +763,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-example
+  name: example
 spec:
   selectAllByDefault: true
   replicaCount: 1

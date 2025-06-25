@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-istio
+  name: istio
 spec:
   extraArgs:
     remoteWrite.tlsInsecureSkipVerify: "true"
@@ -16,7 +16,7 @@ spec:
       sidecar.istio.io/userVolumeMount: '[{"name": "istio-certs", "mountPath": "/etc/istio-certs/"}]'
       traffic.sidecar.istio.io/includeOutboundIPRanges: ""
   remoteWrite:
-    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
   selectAllByDefault: true
   extraEnvs:
     - name: POD_IP

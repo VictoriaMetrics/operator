@@ -71,7 +71,7 @@ Here are some examples of `VMAuth` configuration with selectors:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
-  name: vmauth-select-all
+  name: select-all
 spec:
   # ...
   selectAllByDefault: true
@@ -82,7 +82,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
-  name: vmauth-select-ns
+  name: select-ns
 spec:
   # ...
   userNamespaceSelector: 
@@ -100,7 +100,7 @@ For instance:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
-  name: vmauth-unauthorized-example
+  name: unauthorized-example
 spec:
   unauthorizedUserAccessSpec:
     - src_paths: ["/metrics"]
@@ -121,7 +121,7 @@ The `VMAuth` resource is stateless, so it can be scaled horizontally by increasi
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
-  name: vmauth-example
+  name: example
 spec:
     replicaCount: 3
     # ...
@@ -135,7 +135,7 @@ To set `VMAuth` version add `spec.image.tag` name from [releases](https://github
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
-  name: example-vmauth
+  name: example
 spec:
   image:
     repository: victoriametrics/vmauth
@@ -150,7 +150,7 @@ Also, you can specify `imagePullSecrets` if you are pulling images from private 
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
-  name: example-vmauth
+  name: example
 spec:
   image:
     repository: victoriametrics/vmauth
@@ -169,7 +169,7 @@ You can specify resources for each `VMAuth` resource in the `spec` section of th
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
-  name: vmauth-resources-example
+  name: resources-example
 spec:
     # ...
     resources:
@@ -225,7 +225,7 @@ Here are complete example with described above:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
-  name: vmauth-ent-example
+  name: ent-example
 spec:
   # enabling enterprise features
   image:
@@ -262,7 +262,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
 metadata:
-  name: vmuser-ent-example
+  name: ent-example
 spec:
   username: simple-user
   password: simple-password

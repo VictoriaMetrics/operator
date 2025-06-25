@@ -14,7 +14,7 @@ stringData:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: example-vmsingle
+  name: example
 spec:
   # Add fields here
   retentionPeriod: "1"

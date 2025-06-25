@@ -50,7 +50,7 @@ After that you can add `tenant` field for groups in `VMRule`:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
-  name: vmrule-ent-example
+  name: ent-example
 spec:
   groups:
     - name: vmalert-1
@@ -77,7 +77,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
-  name: vmrule-alerting-example
+  name: alerting-example
 spec:
   groups:
     - name: vmalert
@@ -99,7 +99,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
-  name: vmrule-recording-example
+  name: recording-example
 spec:
   groups:
     - name: vmrule_recording_groupname

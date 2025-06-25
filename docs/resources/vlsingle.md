@@ -47,7 +47,7 @@ To set `VLSingle` version add `spec.image.tag` name from [releases](https://gith
 apiVersion: operator.victoriametrics.com/v1
 kind: VLSingle
 metadata:
-  name: example-vlogs
+  name: example
 spec:
   image:
     repository: victoriametrics/victoria-logs
@@ -62,7 +62,7 @@ Also, you can specify `imagePullSecrets` if you are pulling images from private 
 apiVersion: operator.victoriametrics.com/v1
 kind: VLSingle
 metadata:
-  name: example-vlogs
+  name: example
 spec:
   image:
     repository: victoriametrics/victoria-logs

@@ -15,7 +15,7 @@ spec:
       cpu: "150m"
       memory: "250Mi"
   remoteWrite:
-  - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+  - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
     streamAggrConfig:
       rules:
       - match: '{__name__=~"request_duration_seconds|response_size_bytes"}'

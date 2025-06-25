@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
-  name: example-alertmanager-web-tls
+  name: example-web-tls
 spec:
   replicaCount: 1
   selectAllByDefault: false

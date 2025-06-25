@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMProbe
 metadata:
-  name: probe-agent
+  name: agent
 spec:
   jobName: static-probe
   vmProberSpec:
@@ -11,5 +11,5 @@ spec:
   targets:
     staticConfig:
       targets:
-      - vmagent-example-vmagent.default.svc:8429/health
+      - vmagent-example.default.svc:8429/health
   interval: 2s

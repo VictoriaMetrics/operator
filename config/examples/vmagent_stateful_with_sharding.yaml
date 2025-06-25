@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent-persisted
+  name: example-persisted
 spec:
   selectAllByDefault: true
   scrapeInterval: 30s
@@ -25,4 +25,4 @@ spec:
       cpu: "500m"
       memory: "750Mi"
   remoteWrite:
-  - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+  - url: "http://vmsingle-example.default.svc:8429/api/v1/write"

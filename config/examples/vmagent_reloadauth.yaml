@@ -11,7 +11,7 @@ spec:
     name: reload-key
     key: RELOAD_AUTH_KEY
   remoteWrite:
-    - url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-pvc.default.svc:8429/api/v1/write"
 ---
 apiVersion: v1
 kind: Secret

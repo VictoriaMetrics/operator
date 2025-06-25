@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: example-vmsingle-pvc
+  name: example-pvc
 spec:
   # Add fields here
   retentionPeriod: "1"

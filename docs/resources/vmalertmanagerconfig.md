@@ -55,7 +55,7 @@ spec:
       - alertname="pd"
       receiver: pagerduty
 status:
-  lastErrorParentAlertmanagerName: default/example-alertmanager
+  lastErrorParentAlertmanagerName: default/example
   lastSyncError: 'receiver at idx=2 is invalid: at idx=0 pagerduty_configs one of
     ''routing_key'' or ''service_key'' must be configured'
   lastSyncErrorTimestamp: 1722950290

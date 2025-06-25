@@ -23,7 +23,7 @@ stringData:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: example-vmcluster-persistent
+  name: example-persistent
 spec:
   # Add fields here
   retentionPeriod: "4"

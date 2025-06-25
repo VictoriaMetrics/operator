@@ -44,7 +44,7 @@ stringData:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent-full
+  name: example-full
 spec:
   serviceScrapeNamespaceSelector:
     matchLabels:
@@ -103,7 +103,7 @@ spec:
     name: "vm-agent-global-relabel-config"
     key: "relabel.yaml"
   remoteWrite:
-  - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+  - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
     basicAuth:
       username:
         name: rws-basic-auth
@@ -118,7 +118,7 @@ spec:
       key: "relabel.yaml"
       #      label:
       #        primary: "yes"
-  - url: "http://vmsingle-example-vmsingle.alternative.svc:8429/api/v1/write"
+  - url: "http://vmsingle-example.alternative.svc:8429/api/v1/write"
     #      maxDiskUsagePerURL: 33
     #      sendTimeout: 30s
     #      showURL: true

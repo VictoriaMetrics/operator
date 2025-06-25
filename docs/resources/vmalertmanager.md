@@ -74,7 +74,7 @@ stringData:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
-  name: example-alertmanager
+  name: example
 spec:
   replicaCount: 2
   configSecret: alertmanager-config
@@ -89,7 +89,7 @@ You can define configuration at `spec.configRawYaml` section of `VMAlertmanager`
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
-  name: example-alertmanager
+  name: example
 spec:
   replicaCount: 2
   configRawYaml: |
@@ -191,7 +191,7 @@ spec:
   apiVersion: operator.victoriametrics.com/v1beta1
   kind: VMAlertmanager
   metadata:
-    name: example-alertmanager
+    name: example
   spec:
     replicaCount: 2
     templates:
@@ -240,7 +240,7 @@ To set `VMAlertmanager` version add `spec.image.tag` name from [releases](https:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
-  name: example-vmalertmanager
+  name: example
 spec:
   image:
     repository: prom/alertmanager
@@ -255,7 +255,7 @@ Also, you can specify `imagePullSecrets` if you are pulling images from private 
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
-  name: example-vmalertmanager
+  name: example
 spec:
   image:
     repository: prom/alertmanager
@@ -274,7 +274,7 @@ You can specify resources for each `VMAlertManager` resource in the `spec` secti
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertManager
 metadata:
-  name: vmalertmanager-resources-example
+  name: resources-example
 spec:
     # ...
     resources:
@@ -313,7 +313,7 @@ Also, you can specify requests without limits - in this case default values for 
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
-  name: vmalertmanager-example
+  name: example
 spec:
   replicaCount: 1
   configRawYaml: |

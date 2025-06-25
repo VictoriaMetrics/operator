@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent-tls
+  name: example-tls
 spec:
   selectAllByDefault: true
   replicaCount: 1
@@ -23,7 +23,7 @@ spec:
           certFile: "/etc/vm/secrets/remote-tls/cert"
           keyFile: "/etc/vm/secrets/remote-tls/key"
   remoteWrite:
-    - url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-pvc.default.svc:8429/api/v1/write"
       tlsConfig:
         ca:
           secret:
@@ -36,7 +36,7 @@ spec:
         keySecret:
           name: remote-tls
           key: key
-    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
       tlsConfig:
         caFile: "/etc/vm/secrets/remote-tls/ca"
         certFile: "/etc/vm/secrets/remote-tls/cert"
@@ -45,7 +45,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
-  name: example-scrape-tls
+  name: example-tls
 spec:
   endpoints:
     - port: http
@@ -66,7 +66,7 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/component: monitoring
-      app.kubernetes.io/instance: example-vmagent-tls
+      app.kubernetes.io/instance: example-tls
       app.kubernetes.io/name: vmagent
       managed-by: vm-operator
 ---

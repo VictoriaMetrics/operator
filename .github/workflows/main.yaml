@@ -88,16 +88,6 @@ jobs:
           git diff --exit-code
           make test
           TAG=${TAG} make test-e2e
-          if [ -n '${{secrets.REPO_KEY}}' ]; then
-            echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
-            if [ -n '${{secrets.QUAY_ACCESSKEY}}' ]; then
-              echo ${{secrets.QUAY_ACCESSKEY}} | docker login quay.io --username '${{secrets.QUAY_USER}}' --password-stdin
-            fi
-            make publish
-          else
-            echo "there is no docker secret, just build"
-            make build
-          fi
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
         if: success() || failure()

@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - master
+    ignore-paths:
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/docs.yaml'
+      - 'codespell/**'
   pull_request:
     branches:
       - master
@@ -13,6 +18,11 @@ on:
       - synchronize
       - ready_for_review
       - converted_to_draft
+    ignore-paths:
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/docs.yaml'
+      - 'codespell/**'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

@@ -9,6 +9,9 @@ on:
       - 'README.md'
       - '.github/workflows/docs.yaml'
 
+permissions:
+  contents: write
+
 jobs:
   update-docs:
     runs-on: ubuntu-latest

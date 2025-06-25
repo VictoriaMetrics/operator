@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
@@ -36,7 +38,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 
 	Context("e2e vmalertmanager", func() {
 		ctx := context.Background()
-		namespace := "default"
+		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}

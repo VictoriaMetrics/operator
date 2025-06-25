@@ -1,6 +1,8 @@
 package childobjects
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
@@ -16,7 +18,7 @@ import (
 
 //nolint:dupl,lll
 var _ = Describe("test vmuser Controller", func() {
-	namespace := "default"
+	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	ctx := context.Background()
 	type opts struct {
 		vmauths []*vmv1beta1.VMAuth

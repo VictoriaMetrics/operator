@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -23,12 +24,13 @@ var _ = Describe("test  vmsingle Controller", Label("vm", "single"), func() {
 
 	Context("e2e vmsingle", func() {
 		var ctx context.Context
-		namespace := "default"
+		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}
 		BeforeEach(func() {
 			ctx = context.Background()
+
 		})
 		AfterEach(func() {
 			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMSingle{

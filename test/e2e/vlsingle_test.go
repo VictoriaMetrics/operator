@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,7 +25,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single"), func() {
 
 	Context("e2e vlsingle", func() {
 		var ctx context.Context
-		namespace := "default"
+		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}

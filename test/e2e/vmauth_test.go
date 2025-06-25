@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
@@ -23,7 +25,7 @@ import (
 var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 	Context("e2e ", func() {
 		var ctx context.Context
-		namespace := "default"
+		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}

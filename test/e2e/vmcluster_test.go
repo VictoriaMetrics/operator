@@ -21,7 +21,7 @@ import (
 
 //nolint:dupl,lll
 var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
-	namespace := "default"
+	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	var ctx context.Context
 	namespacedName := types.NamespacedName{
 		Namespace: namespace,

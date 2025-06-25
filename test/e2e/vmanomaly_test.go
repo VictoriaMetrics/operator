@@ -62,7 +62,7 @@ var (
 //nolint:dupl,lll
 var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise"), Ordered, func() {
 	ctx := context.Background()
-	namespace := "default"
+	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	anomalyDatasourceURL := fmt.Sprintf("http://vmsingle-anomaly.%s.svc:8428", namespace)
 	anomalySingle := vmv1beta1.VMSingle{
 		ObjectMeta: metav1.ObjectMeta{
@@ -110,7 +110,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 
 	})
 	Context("e2e vmanomaly", func() {
-		namespace := "default"
+		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}

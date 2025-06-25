@@ -39,7 +39,7 @@ To discover targets in all namespaces the `namespaceSelector` has to have value 
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMPodScrape
 metadata:
-  name: example-pod-scrape
+  name: example
 spec:
   namespaceSelector:
     any: true
@@ -67,7 +67,7 @@ More details about migration from prometheus-operator you can read in [this doc]
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMPodScrape
 metadata:
-  name: example-pod-scrape
+  name: example
 spec:
   podMetricsEndpoints:
     - port: web

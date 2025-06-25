@@ -46,7 +46,7 @@ To set `VMSingle` version add `spec.image.tag` name from [releases](https://gith
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: example-vmsingle
+  name: example
 spec:
   image:
     repository: victoriametrics/victoria-metrics
@@ -61,7 +61,7 @@ Also, you can specify `imagePullSecrets` if you are pulling images from private 
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: example-vmsingle
+  name: example
 spec:
   image:
     repository: victoriametrics/victoria-metrics
@@ -80,7 +80,7 @@ You can specify resources for each `VMSingle` resource in the `spec` section of 
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: vmsingle-resources-example
+  name: resources-example
 spec:
     # ...
     resources:
@@ -139,7 +139,7 @@ Here are complete example for [Downsampling](https://github.com/VictoriaMetrics/
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: vmsingle-ent-example
+  name: ent-example
 spec:
   # enabling enterprise features
   image:
@@ -166,7 +166,7 @@ The same method is used to enable retention filters - here are complete example 
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: vmsingle-ent-example
+  name: ent-example
 spec:
   # enabling enterprise features
   image:
@@ -199,7 +199,7 @@ Here is a complete example for backup configuration:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: example-vmsingle
+  name: example
 spec:
 
   vmBackup:
@@ -260,7 +260,7 @@ Steps:
     apiVersion: operator.victoriametrics.com/v1beta1
     kind: VMSingle
     metadata:
-      name: example-vmsingle
+      name: vmsingle
     spec:
     
       vmBackup:
@@ -314,7 +314,7 @@ Advantages of using `VMBackupmanager` include:
 ```yaml
 kind: VMSingle
 metadata:
-  name: vmsingle-example
+  name: example
 spec:
   retentionPeriod: "12"
   removePvcAfterDelete: true

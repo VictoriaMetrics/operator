@@ -5,7 +5,7 @@ metadata:
 spec:
   replicaCount: 1
   datasource:
-    url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429"
+    url: "http://vmsingle-example-pvc.default.svc:8429"
   notifiers:
     - selector:
         labelSelector:

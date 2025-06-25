@@ -55,7 +55,7 @@ Usage example:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: vmsingle-example-extraargs
+  name: example-extraargs
 spec:
   retentionPeriod: "1"
   extraArgs:
@@ -73,7 +73,7 @@ Usage example:
 ```yaml
 kind: VMSingle
 metadata:
-  name: vmsingle-example-extraenvs
+  name: example-extraenvs
 spec:
   retentionPeriod: "1"
   extraEnvs:

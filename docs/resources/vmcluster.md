@@ -124,7 +124,7 @@ Here is an example of a `VMCluster` resource with HA features:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: example-vmcluster-persistent
+  name: example-persistent
 spec:
   replicationFactor: 2       
   vmstorage:
@@ -199,7 +199,7 @@ For `VMCluster` you can specify tag name from [releases](https://github.com/Vict
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: example-vmcluster
+  name: example
 spec:
   vmstorage:
     replicaCount: 2
@@ -228,7 +228,7 @@ but `imagePullSecrets` is global setting for all `VMCluster` specification:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: example-vmcluster
+  name: example
 spec:
   vmstorage:
     replicaCount: 2
@@ -261,7 +261,7 @@ You can specify resources for each component of `VMCluster` resource in the `spe
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: vmcluster-resources-example
+  name: resources-example
 spec:
     # ...
     vmstorage:
@@ -353,7 +353,7 @@ Here are complete example for [Downsampling](https://docs.victoriametrics.com/Cl
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: vmcluster-ent-example
+  name: ent-example
 spec:
   
   vmselect:
@@ -400,7 +400,7 @@ Here are complete example for [Retention filters](https://docs.victoriametrics.c
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: vmcluster-ent-example
+  name: ent-example
 spec:
   
   vmstorage:
@@ -432,7 +432,7 @@ and operator will automatically create
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: vmcluster-ent-example
+  name: ent-example
 spec:
   
   vmselect:
@@ -486,7 +486,7 @@ Here are complete example for [mTLS protection](https://docs.victoriametrics.com
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: vmcluster-ent-example
+  name: ent-example
 spec:
   
   vmselect:
@@ -635,7 +635,7 @@ Here is a complete example for backup configuration:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: vmcluster-ent-example
+  name: ent-example
 spec:
   vmstorage:
     vmBackup:
@@ -687,7 +687,7 @@ Also see VMCluster example spec [here](https://github.com/VictoriaMetrics/operat
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
-  name: vmcluster-example-minimal
+  name: example-minimal
 spec:
   # ...
   retentionPeriod: "1"
@@ -704,7 +704,7 @@ spec:
 ```yaml
 kind: VMCluster
 metadata:
-  name: vmcluster-example-persistent
+  name: example-persistent
 spec:
   # ...
   retentionPeriod: "4"

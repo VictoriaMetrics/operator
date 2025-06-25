@@ -45,7 +45,7 @@ More details about migration from prometheus-operator you can read in [this doc]
 
 ### Static targets
 
-It will probe `VMAgent` with url - `vmagent-example-vmagent.default.svc:9115/health` with blackbox url:
+It will probe `VMAgent` with url - `vmagent-example.default.svc:9115/health` with blackbox url:
 `prometheus-blackbox-exporter.default.svc:9115` and module `http_2xx` 
 (it was specified at [blackbox configmap](#blackbox-exporter)).
 
@@ -53,7 +53,7 @@ It will probe `VMAgent` with url - `vmagent-example-vmagent.default.svc:9115/hea
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMProbe
 metadata:
-  name: vmprobe-static-example
+  name: static-example
 spec:
   jobName: static-probe
   vmProberSpec:
@@ -63,7 +63,7 @@ spec:
   targets:
    staticConfig: 
       targets:
-      -  vmagent-example-vmagent.default.svc:8429/health
+      -  vmagent-example.default.svc:8429/health
   interval: 2s 
 ```
 
@@ -75,7 +75,7 @@ After adding target to `VMAgent` configuration it starts probing itself throw bl
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMProbe
 metadata:
-  name: vmprobe-ingress-example
+  name: ingress-example
 spec:
   vmProberSpec:
      # by default scheme http, and path is /probe
@@ -187,7 +187,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: example-vmsingle-persisted
+  name: example-persisted
 spec:
   retentionPeriod: "1"
   removePvcAfterDelete: true
@@ -212,14 +212,14 @@ spec:
       http:
         paths:
           - backend:
-              serviceName: vmsingle-example-vmsingle-persisted
+              serviceName: vmsingle-example-persisted
               servicePort: 8428
             path: /
     - host: vmsingle2.example.com
       http:
         paths:
           - backend:
-              serviceName: vmsingle-example-vmsingle-persisted
+              serviceName: vmsingle-example-persisted
               servicePort: 8428
             path: /
 ```
@@ -230,10 +230,10 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-   name: example-vmagent
+   name: example
 spec:
    selectAllByDefault: true
    replicaCount: 1
    remoteWrite:
-     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
+     - url: "http://vmsingle-example-persisted.default.svc:8429/api/v1/write"
 ```

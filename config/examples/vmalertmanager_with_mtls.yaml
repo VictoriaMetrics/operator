@@ -149,7 +149,7 @@ spec:
   datasource:
     url: "http://vmsingle-vmcloud-mom.vmcloud.svc:8429"
   remoteWrite:
-     url: "http://vmagent-example-vmsingle-pvc.default.svc:8429"
+     url: "http://vmagent-example-pvc.default.svc:8429"
   evaluationInterval: "5s"
   selectAllByDefault: true
   secrets:

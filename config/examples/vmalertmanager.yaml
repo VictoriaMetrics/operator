@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: vmalertmanager-example-alertmanager
+  name: vmalertmanager-example
   labels:
     app: vm-operator
 type: Opaque
@@ -23,10 +23,10 @@ stringData:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
-  name: example-alertmanager
+  name: example
 spec:
   replicaCount: 2
-  configSecret: vmalertmanager-example-alertmanager
+  configSecret: vmalertmanager-example
   selectAllByDefault: true
   storage:
       volumeClaimTemplate:

@@ -12,7 +12,7 @@ stringData:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: example-vmalert
+  name: example
 spec:
   podMetadata:
     labels:
@@ -30,7 +30,7 @@ spec:
   - name: external.Url
     value: http://some-url
   datasource:
-    url: "http://vmagent-example-vmsingle.default.svc:8429"
+    url: "http://vmagent-example.default.svc:8429"
     basicAuth:
       username:
         name: vmalert-basic-auth
@@ -71,7 +71,7 @@ spec:
     - operator: Exists
       key: name
   remoteWrite:
-    url: "http://vmagent-example-vmsingle.default.svc:8429"
+    url: "http://vmagent-example.default.svc:8429"
     concurrency: 12
     flushInterval: 5m
     maxBatchSize: 20
@@ -84,7 +84,7 @@ spec:
         name: vmalert-basic-auth
         key: password
   remoteRead:
-    url: "http://vmagent-example-vmsingle.default.svc:8429"
+    url: "http://vmagent-example.default.svc:8429"
     lookback: 1h
     basicAuth:
       username:

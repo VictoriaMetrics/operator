@@ -51,7 +51,7 @@ Default psp:
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: vmagent-example-vmagent
+  name: vmagent-example
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -150,7 +150,7 @@ following [Kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-contai
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent
+  name: example
   namespace: default
 spec:
   remoteWrite:
@@ -166,7 +166,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: vmagent-example-vmagent-0
+  name: vmagent-example-0
   namespace: default
 spec:
   containers:
@@ -188,7 +188,7 @@ spec:
       readOnly: true
   dnsPolicy: ClusterFirst
   enableServiceLinks: true
-  hostname: vmagent-example-vmagent-0
+  hostname: vmagent-example-0
   initContainers:
   - args:
 ...
@@ -199,8 +199,8 @@ spec:
       name: kube-api-access-q44gh
       readOnly: true
 
-  serviceAccount: vmagent-example-vmagent
-  serviceAccountName: vmagent-example-vmagent
+  serviceAccount: vmagent-example
+  serviceAccountName: vmagent-example
   volumes:
 ...
   - emptyDir: {}
@@ -231,7 +231,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent
+  name: example
   namespace: default
 spec:
   disableAutomountServiceAccountToken: true
@@ -248,7 +248,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: vmagent-example-vmagent-0
+  name: vmagent-example-0
   namespace: default
 spec:
   automountServiceAccountToken: false
@@ -273,7 +273,7 @@ spec:
       readOnly: true
   dnsPolicy: ClusterFirst
   enableServiceLinks: true
-  hostname: vmagent-example-vmagent-0
+  hostname: vmagent-example-0
   initContainers:
   - args:
     name: config-init
@@ -282,8 +282,8 @@ spec:
       name: config
     - mountPath: /etc/vmagent/config_out
       name: config-out
-  serviceAccount: vmagent-example-vmagent
-  serviceAccountName: vmagent-example-vmagent
+  serviceAccount: vmagent-example
+  serviceAccountName: vmagent-example
   volumes:
 ...
   - name: kube-api-access

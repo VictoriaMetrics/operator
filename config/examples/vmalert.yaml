@@ -1,13 +1,13 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: example-vmalert
+  name: example
 spec:
   # Add fields here
   replicaCount: 1
   datasource:
-    url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429"
+    url: "http://vmsingle-example-pvc.default.svc:8429"
   notifier:
-    url: "http://vmalertmanager-example-alertmanager.default.svc:9093"
+    url: "http://vmalertmanager-example.default.svc:9093"
   evaluationInterval: "30s"
   selectAllByDefault: true

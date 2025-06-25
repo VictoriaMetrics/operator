@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
-  name: example-vmrule
+  name: example
 spec:
   groups:
   - name: kafka

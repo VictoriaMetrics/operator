@@ -4,7 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/name: vm-operator
     app.kubernetes.io/managed-by: kustomize
-  name: example-scrape-consul
+  name: example-consul
   annotations:
     scrape: annotation
 spec:

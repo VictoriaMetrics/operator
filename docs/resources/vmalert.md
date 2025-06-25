@@ -89,7 +89,7 @@ Here are some examples of `VMAlert` configuration with selectors:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: vmalert-select-all
+  name: select-all
 spec:
   # ...
   selectAllByDefault: true
@@ -100,7 +100,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: vmalert-select-ns
+  name: select-ns
 spec:
   # ...
   ruleNamespaceSelector: 
@@ -120,7 +120,7 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
     apiVersion: v1
     kind: Secret
     metadata:
-      name: vmalertmanager-example-alertmanager
+      name: vmalertmanager-example
       labels:
         app: vm-operator
     type: Opaque
@@ -151,7 +151,7 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
        usage: dedicated
     spec:
       replicaCount: 2
-      configSecret: vmalertmanager-example-alertmanager
+      configSecret: vmalertmanager-example
       configSelector: {}
       configNamespaceSelector: {}
       # ...
@@ -231,7 +231,7 @@ To set `VMAlert` version add `spec.image.tag` name from [releases](https://githu
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: example-vmalert
+  name: example
 spec:
   image:
     repository: victoriametrics/vmalert
@@ -246,7 +246,7 @@ Also, you can specify `imagePullSecrets` if you are pulling images from private 
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: example-vmalert
+  name: example
 spec:
   image:
     repository: victoriametrics/vmalert
@@ -265,7 +265,7 @@ You can specify resources for each `VMAlert` resource in the `spec` section of t
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: vmalert-resources-example
+  name: resources-example
 spec:
     # ...
     resources:
@@ -324,7 +324,7 @@ Here are complete example for [Reading rules from object storage](https://docs.v
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: vmalert-ent-example
+  name: ent-example
 spec:
   # enabling enterprise features
   image:
@@ -357,7 +357,7 @@ in [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule#enterpris
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: vmalert-ent-example
+  name: ent-example
 spec:
   # enabling enterprise features
   image:
@@ -380,7 +380,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
-  name: vmrule-ent-example
+  name: ent-example
 spec:
   groups:
     - name: vmalert-1
@@ -405,13 +405,13 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
-  name: example-vmalert
+  name: example
 spec:
   replicaCount: 1
   datasource:
-    url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429"
+    url: "http://vmsingle-example-persisted.default.svc:8429"
   notifier:
-    url: "http://vmalertmanager-example-alertmanager.default.svc:9093"
+    url: "http://vmalertmanager-example.default.svc:9093"
   evaluationInterval: "30s"
   selectAllByDefault: true
 ```

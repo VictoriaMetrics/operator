@@ -2,6 +2,7 @@ This documentation section describes the design and interaction between the cust
 Metrics Operator introduces.
 [Operator](https://docs.victoriametrics.com/operator) introduces the following custom resources:
 - [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent)
+- [VMAnomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly)
 - [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert)
 - [VMAlertManager](https://docs.victoriametrics.com/operator/resources/vmalertmanager)
 - [VMAlertManagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig)
@@ -92,6 +93,7 @@ This feature really useful for using with
 Page for every custom resource contains examples section:
 
 - [VMAgent examples](https://docs.victoriametrics.com/operator/resources/vmagent#examples)
+- [VMAnomaly examples](https://docs.victoriametrics.com/operator/resources/vmanomaly#examples)
 - [VMAlert examples](https://docs.victoriametrics.com/operator/resources/vmalert#examples)
 - [VMAlertmanager examples](https://docs.victoriametrics.com/operator/resources/vmalertmanager#examples)
 - [VMAlertmanagerConfig examples](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig#examples)
@@ -115,6 +117,7 @@ the **[examples directory](https://github.com/VictoriaMetrics/operator/tree/mast
 Every custom resource with deployable application has a fields for specifying version (docker image) of component:
 
 - [Managing versions for VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent#version-management)
+- [Managing versions for VMAnomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly#version-management)
 - [Managing versions for VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert#version-management)
 - [Managing versions for VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager#version-management)
 - [Managing versions for VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth#version-management)
@@ -126,6 +129,7 @@ Every custom resource with deployable application has a fields for specifying ve
 Every custom resource with deployable application has a fields and operator parameters for specifying resources for the component:
 
 - [Managing resources for VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent#resource-management)
+- [Managing resources for VMAnomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly#resource-management)
 - [Managing resources for VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert#resource-management)
 - [Managing resources for VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager#resource-management)
 - [Managing resources for VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth#resource-management)
@@ -137,6 +141,7 @@ Every custom resource with deployable application has a fields and operator para
 VictoriaMetrics operator support high availability for each component of the monitoring stack:
 
 - [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent#high-availability)
+- [VMAnomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly)
 - [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert#high-availability)
 - [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager#high-availability)
 - [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth#high-availability)

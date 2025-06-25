@@ -13,7 +13,7 @@ tags:
   - kubernetes
   - metrics
 ---
-`VLCluster` represents database for storing logs.
+`VLCluster` represents database for storing logs {{% available_from "v0.59.0" "operator" %}}.
 The `VLCluster` CRD declaratively defines a [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/)
 installation to run in a Kubernetes cluster.
 

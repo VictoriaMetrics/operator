@@ -200,13 +200,13 @@ func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ct
 	newUpdateStatus := actualStatus
 
 	switch actualStatus {
-	case vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusPaused:
+	case vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusOperational:
+		currMeta.Reason = ""
+	case vmv1beta1.UpdateStatusPaused:
 	case vmv1beta1.UpdateStatusFailed:
 		if maybeErr != nil {
 			currMeta.Reason = maybeErr.Error()
 		}
-	case vmv1beta1.UpdateStatusOperational:
-		currMeta.Reason = ""
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", actualStatus))
 	}

@@ -1,6 +1,7 @@
 # Temporary Build Files
 .DS_Store
 Dockerfile.cross
+report.xml
 .idea
 /bin/
 /build*

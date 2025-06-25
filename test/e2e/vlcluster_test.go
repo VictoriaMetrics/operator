@@ -24,7 +24,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "cluster"), func() {
 
 	Context("e2e vlcluster", func() {
 		var ctx context.Context
-		namespace := "default"
+		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}

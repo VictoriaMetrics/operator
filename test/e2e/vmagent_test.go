@@ -24,7 +24,7 @@ import (
 var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 	ctx := context.Background()
 	Context("e2e vmagent", func() {
-		namespace := "default"
+		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}

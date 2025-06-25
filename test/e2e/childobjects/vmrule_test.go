@@ -1,6 +1,7 @@
 package childobjects
 
 import (
+	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -16,7 +17,7 @@ import (
 
 //nolint:dupl,lll
 var _ = Describe("test vmrule Controller", func() {
-	namespace := "default"
+	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	ctx := context.Background()
 	type opts struct {
 		alerts []*vmv1beta1.VMAlert

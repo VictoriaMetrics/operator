@@ -13,6 +13,9 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"go.uber.org/zap/zapcore"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -105,6 +108,18 @@ func InitOperatorProcess() {
 		defer GinkgoRecover()
 		defer close(done)
 
+		suiteConfig, _ := GinkgoConfiguration()
+		k8sClient := GetClient()
+		for i := range suiteConfig.ParallelTotal {
+			testNamespace := corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("default-%d", i+1),
+				},
+			}
+			err := k8sClient.Create(context.Background(), &testNamespace)
+			Expect(err == nil || errors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
+		}
+
 		var err error
 		cfg, err := testEnv.Start()
 		Expect(err).ToNot(HaveOccurred())
@@ -157,6 +172,7 @@ func ShutdownOperatorProcess() {
 	By("tearing down the test environment")
 	cancelManager()
 	Eventually(stopped, 60, 2).Should(BeClosed())
+
 }
 
 func isLocalHost(host string) bool {

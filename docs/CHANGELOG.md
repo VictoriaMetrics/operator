@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): update shards concurrently. See [#1434](https://github.com/VictoriaMetrics/operator/issues/1434).
+
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): clear `status.reason` when transitioning to `expanding` state. This makes less confusing as resource in `expanding` state is no longer affected by an error displayed in `status.reason`. See [#1426](https://github.com/VictoriaMetrics/operator/issues/1426).
 
 ## [v0.60.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.1)

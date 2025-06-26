@@ -11,7 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -106,7 +106,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 		Expect(k8sClient.Delete(ctx, &anomalySingle)).To(Succeed())
 		Eventually(func() error {
 			return k8sClient.Get(context.Background(), types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
-		}, eventualDeletionTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+		}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 	})
 	Context("e2e vmanomaly", func() {
@@ -129,7 +129,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					Name:      namespacedName.Name,
 					Namespace: namespacedName.Namespace,
 				}, &vmv1.VMAnomaly{})
-			}, anomalyDeleteTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+			}, anomalyDeleteTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
 		DescribeTable("should create vmanomaly",
 			func(name string, cr *vmv1.VMAnomaly, setup func(), verify func(*vmv1.VMAnomaly)) {
@@ -216,7 +216,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					}
 					Expect(func() error {
 						if err := k8sClient.Create(ctx, tlsSecret); err != nil &&
-							!errors.IsAlreadyExists(err) {
+							!k8serrors.IsAlreadyExists(err) {
 							return err
 						}
 						return nil
@@ -415,10 +415,10 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Eventually(func() error {
 							return k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})
-						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 						Eventually(func() error {
 							return k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})
-						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					},
 				},
 				testStep{

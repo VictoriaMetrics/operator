@@ -6,7 +6,7 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -19,7 +19,7 @@ import (
 func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbacv1.RoleBinding) error {
 	var currentRB rbacv1.RoleBinding
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newRB.Namespace, Name: newRB.Name}, &currentRB); err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			logger.WithContext(ctx).Info(fmt.Sprintf("creating new RoleBinding %s", newRB.Name))
 			return rclient.Create(ctx, newRB)
 		}
@@ -56,7 +56,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbac
 func Role(ctx context.Context, rclient client.Client, newRL, prevRL *rbacv1.Role) error {
 	var currentRL rbacv1.Role
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newRL.Namespace, Name: newRL.Name}, &currentRL); err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Role %s", newRL.Name))
 			return rclient.Create(ctx, newRL)
 		}
@@ -91,7 +91,7 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newCRB, prev
 	var currentCRB rbacv1.ClusterRoleBinding
 
 	if err := rclient.Get(ctx, types.NamespacedName{Name: newCRB.Name, Namespace: newCRB.Namespace}, &currentCRB); err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRoleBinding %s", newCRB.Name))
 			return rclient.Create(ctx, newCRB)
 		}
@@ -129,7 +129,7 @@ func ClusterRole(ctx context.Context, rclient client.Client, newClusterRole, pre
 	var currentClusterRole rbacv1.ClusterRole
 
 	if err := rclient.Get(ctx, types.NamespacedName{Name: newClusterRole.Name, Namespace: newClusterRole.Namespace}, &currentClusterRole); err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRole %s", newClusterRole.Name))
 			return rclient.Create(ctx, newClusterRole)
 		}

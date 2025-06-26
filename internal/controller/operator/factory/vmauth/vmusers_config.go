@@ -14,7 +14,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -137,7 +137,7 @@ func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []*
 	for i := range secrets {
 		secret := secrets[i]
 		if err := rclient.Create(ctx, secret); err != nil {
-			if errors.IsAlreadyExists(err) {
+			if k8serrors.IsAlreadyExists(err) {
 				continue
 			}
 			return err

@@ -10,7 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -306,7 +306,7 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 	// wait until sts disappears
 	if err := wait.PollUntilContextTimeout(ctx, time.Second, time.Second*30, false, func(_ context.Context) (done bool, err error) {
 		err = rclient.Get(ctx, nsn, &appsv1.StatefulSet{})
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return true, nil
 		}
 		return false, fmt.Errorf("unexpected error for polling, want notFound, got: %w", err)

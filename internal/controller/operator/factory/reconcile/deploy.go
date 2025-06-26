@@ -8,7 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -37,7 +37,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 		var currentDeploy appsv1.Deployment
 		err := rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, &currentDeploy)
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Deployment %s", newDeploy.Name))
 				if err := rclient.Create(ctx, newDeploy); err != nil {
 					return fmt.Errorf("cannot create new deployment for app: %s, err: %w", newDeploy.Name, err)

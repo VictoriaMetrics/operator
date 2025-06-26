@@ -6,7 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,7 +21,7 @@ func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *c
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var currentSA corev1.ServiceAccount
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newSA.Name, Namespace: newSA.Namespace}, &currentSA); err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ServiceAccount %s", newSA.Name))
 				return rclient.Create(ctx, newSA)
 			}

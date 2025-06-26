@@ -6,7 +6,7 @@ import (
 
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,7 +21,7 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 		currentPdb := &policyv1.PodDisruptionBudget{}
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: newPDB.Namespace, Name: newPDB.Name}, currentPdb)
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating new PDB %s", newPDB.Name))
 				return rclient.Create(ctx, newPDB)
 			}

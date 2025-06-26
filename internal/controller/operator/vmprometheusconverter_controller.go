@@ -10,7 +10,7 @@ import (
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -304,7 +304,7 @@ func (c *ConverterController) CreatePrometheusRule(rule any) {
 
 	err := c.rclient.Create(context.Background(), cr)
 	if err != nil {
-		if errors.IsAlreadyExists(err) {
+		if k8serrors.IsAlreadyExists(err) {
 			c.UpdatePrometheusRule(nil, promRule)
 			return
 		}
@@ -322,7 +322,7 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new any) {
 	existingVMRule := &vmv1beta1.VMRule{}
 	err := c.rclient.Get(ctx, types.NamespacedName{Name: vmRule.Name, Namespace: vmRule.Namespace}, existingVMRule)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			if err = c.rclient.Create(ctx, vmRule); err == nil {
 				return
 			}
@@ -362,7 +362,7 @@ func (c *ConverterController) CreateServiceMonitor(service any) {
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMon, c.baseConf)
 	err := c.rclient.Create(context.Background(), vmServiceScrape)
 	if err != nil {
-		if errors.IsAlreadyExists(err) {
+		if k8serrors.IsAlreadyExists(err) {
 			c.UpdateServiceMonitor(nil, serviceMon)
 			return
 		}
@@ -380,7 +380,7 @@ func (c *ConverterController) UpdateServiceMonitor(_, new any) {
 	ctx := context.Background()
 	err := c.rclient.Get(ctx, types.NamespacedName{Name: vmServiceScrape.Name, Namespace: vmServiceScrape.Namespace}, existingVMServiceScrape)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			if err = c.rclient.Create(ctx, vmServiceScrape); err == nil {
 				return
 			}
@@ -420,7 +420,7 @@ func (c *ConverterController) CreatePodMonitor(pod any) {
 	podScrape := converter.ConvertPodMonitor(podMonitor, c.baseConf)
 	err := c.rclient.Create(c.ctx, podScrape)
 	if err != nil {
-		if errors.IsAlreadyExists(err) {
+		if k8serrors.IsAlreadyExists(err) {
 			c.UpdatePodMonitor(nil, podMonitor)
 			return
 		}
@@ -438,7 +438,7 @@ func (c *ConverterController) UpdatePodMonitor(_, new any) {
 	existingVMPodScrape := &vmv1beta1.VMPodScrape{}
 	err := c.rclient.Get(ctx, types.NamespacedName{Name: podScrape.Name, Namespace: podScrape.Namespace}, existingVMPodScrape)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			if err = c.rclient.Create(ctx, podScrape); err == nil {
 				return
 			}
@@ -486,7 +486,7 @@ func (c *ConverterController) CreateAlertmanagerConfig(new any) {
 	}
 	l := converterLogger.WithValues("vmalertmanagerconfig", vmAMc.Name, "namespace", vmAMc.Namespace)
 	if err := c.rclient.Create(context.Background(), vmAMc); err != nil {
-		if errors.IsAlreadyExists(err) {
+		if k8serrors.IsAlreadyExists(err) {
 			c.UpdateAlertmanagerConfig(nil, new)
 			return
 		}
@@ -513,7 +513,7 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new any) {
 	existAlertmanagerConfig := &vmv1beta1.VMAlertmanagerConfig{}
 	ctx := context.Background()
 	if err := c.rclient.Get(ctx, types.NamespacedName{Name: vmAMc.Name, Namespace: vmAMc.Namespace}, existAlertmanagerConfig); err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			if err = c.rclient.Create(ctx, vmAMc); err == nil {
 				return
 			}
@@ -593,7 +593,7 @@ func (c *ConverterController) CreateProbe(obj any) {
 	vmProbe := converter.ConvertProbe(probe, c.baseConf)
 	err := c.rclient.Create(c.ctx, vmProbe)
 	if err != nil {
-		if errors.IsAlreadyExists(err) {
+		if k8serrors.IsAlreadyExists(err) {
 			c.UpdateProbe(nil, probe)
 			return
 		}
@@ -611,7 +611,7 @@ func (c *ConverterController) UpdateProbe(_, new any) {
 	existingVMProbe := &vmv1beta1.VMProbe{}
 	err := c.rclient.Get(ctx, types.NamespacedName{Name: vmProbe.Name, Namespace: vmProbe.Namespace}, existingVMProbe)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			if err = c.rclient.Create(ctx, vmProbe); err == nil {
 				return
 			}
@@ -658,7 +658,7 @@ func (c *ConverterController) CreateScrapeConfig(scrapeConfig any) {
 	l := converterLogger.WithValues("vmscrapeconfig", vmScrapeConfig.Name, "namespace", vmScrapeConfig.Namespace)
 	err = c.rclient.Create(context.Background(), vmScrapeConfig)
 	if err != nil {
-		if errors.IsAlreadyExists(err) {
+		if k8serrors.IsAlreadyExists(err) {
 			c.UpdateScrapeConfig(nil, scrapeConfig)
 			return
 		}
@@ -684,7 +684,7 @@ func (c *ConverterController) UpdateScrapeConfig(_, newObj any) {
 	ctx := context.Background()
 	err = c.rclient.Get(ctx, types.NamespacedName{Name: vmScrapeConfig.Name, Namespace: vmScrapeConfig.Namespace}, existingVMScrapeConfig)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			if err = c.rclient.Create(ctx, vmScrapeConfig); err == nil {
 				return
 			}
@@ -769,7 +769,7 @@ func (s *sharedAPIDiscoverer) startPollFor(ctx context.Context, group string) {
 		case <-tick.C:
 			api, err := s.baseClient.ServerResourcesForGroupVersion(group)
 			if err != nil {
-				if !errors.IsNotFound(err) {
+				if !k8serrors.IsNotFound(err) {
 					converterLogger.Error(err, "cannot get server resource for api group version")
 				}
 				continue

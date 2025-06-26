@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -42,7 +42,7 @@ var _ = Describe("test vmrule Controller", func() {
 					nsn := types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace}
 					Eventually(func() error {
 						return k8sClient.Get(ctx, nsn, &vmv1beta1.VMAlert{})
-					}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "isNotFound"))
+					}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "isNotFound"))
 				}
 			})
 			step := steps[0]

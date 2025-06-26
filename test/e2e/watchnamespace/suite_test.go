@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -42,7 +42,7 @@ var _ = SynchronizedBeforeSuite(
 			},
 		}
 		err := k8sClient.Create(context.Background(), &testNamespace)
-		Expect(err == nil || errors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
+		Expect(err == nil || k8serrors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
 	})
 
 var _ = SynchronizedAfterSuite(

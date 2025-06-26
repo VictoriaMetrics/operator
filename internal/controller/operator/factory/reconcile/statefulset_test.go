@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -443,7 +443,7 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 			waitTimeout, false, func(ctx context.Context) (done bool, err error) {
 				var createdSts appsv1.StatefulSet
 				if err := rclient.Get(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, &createdSts); err != nil {
-					if errors.IsNotFound(err) {
+					if k8serrors.IsNotFound(err) {
 						return false, nil
 					}
 					return false, err

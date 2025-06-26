@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -352,7 +352,7 @@ func TestCreateOrUpdate(t *testing.T) {
 							return
 						case <-tc.C:
 							if err := cb(); err != nil {
-								if errors.IsNotFound(err) {
+								if k8serrors.IsNotFound(err) {
 									continue
 								}
 								t.Errorf("callback error: %s", err)

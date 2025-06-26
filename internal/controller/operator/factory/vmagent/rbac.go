@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -177,7 +177,7 @@ func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAge
 
 	for _, obj := range toMigrateObjects {
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: currentVersionName}, obj); err != nil {
-			if !errors.IsNotFound(err) {
+			if !k8serrors.IsNotFound(err) {
 				return fmt.Errorf("cannot get object: %w", err)
 			}
 			// update name with prev version formatting

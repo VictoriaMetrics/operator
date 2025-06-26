@@ -46,6 +46,8 @@ linters:
           alias: appsv1
         - pkg: k8s.io/api/autoscaling/v2"
           alias: autoscalingv2
+        - pkg: k8s.io/apimachinery/pkg/api/errors
+          alias: k8serrors
 formatters:
   enable:
     - gofmt

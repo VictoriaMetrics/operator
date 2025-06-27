@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+## [v0.60.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.2)
+
+**Release date:** 27 June 2025
+
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): clear `status.reason` when transitioning to `expanding` state. This makes less confusing as resource in `expanding` state is no longer affected by an error displayed in `status.reason`. See [#1426](https://github.com/VictoriaMetrics/operator/issues/1426).
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): properly load TLS secrets into VMAlert secret. See [#1437](https://github.com/VictoriaMetrics/operator/issues/1437).
 

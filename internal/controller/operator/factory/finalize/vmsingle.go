@@ -8,6 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 // OnVMSingleDelete deletes all vmsingle related resources
@@ -30,7 +31,7 @@ func OnVMSingleDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.
 			return err
 		}
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, cr.StreamAggrConfigName(), cr.Namespace); err != nil {
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, build.ResourceName(build.StreamAggrConfigResourceKind, cr), cr.Namespace); err != nil {
 		return err
 	}
 	if err := deleteSA(ctx, rclient, cr); err != nil {

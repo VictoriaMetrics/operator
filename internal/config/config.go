@@ -107,7 +107,7 @@ type BaseOperatorConf struct {
 	UseCustomConfigReloader bool `default:"false" env:"USECUSTOMCONFIGRELOADER"`
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry                string `default:"" env:"CONTAINERREGISTRY"`
-	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.59.1" env:"CUSTOMCONFIGRELOADERIMAGE"`
+	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.60.1" env:"CUSTOMCONFIGRELOADERIMAGE"`
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false" env:"PSPAUTOCREATEENABLED"`
 

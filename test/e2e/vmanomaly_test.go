@@ -60,7 +60,7 @@ var (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise"), Ordered, func() {
+var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise"), func() {
 	ctx := context.Background()
 	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	anomalyDatasourceURL := fmt.Sprintf("http://vmsingle-anomaly.%s.svc:8428", namespace)
@@ -71,7 +71,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 		},
 	}
 	licenseKey := os.Getenv("LICENSE_KEY")
-	BeforeAll(func() {
+	BeforeEach(func() {
 		if licenseKey == "" {
 			Skip("ignoring VMAnomaly tests, license was not found")
 		}
@@ -94,7 +94,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 		).Should(Succeed())
 
 	})
-	AfterAll(func() {
+	AfterEach(func() {
 		Expect(k8sClient.Delete(ctx,
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{

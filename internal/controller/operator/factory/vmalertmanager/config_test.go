@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -967,9 +967,9 @@ templates: []
 												"dev",
 											},
 											Fields: map[string]apiextensionsv1.JSON{
-												"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
-												"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
-												"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
+												"components":        {Raw: []byte(`{ name: "Monitoring" }`)},
+												"customfield_10001": {Raw: []byte(`"Random text"`)},
+												"customfield_10002": {Raw: []byte(`{"value": "red"}`)},
 											},
 										},
 									},
@@ -1003,9 +1003,9 @@ templates: []
 												"dev",
 											},
 											Fields: map[string]apiextensionsv1.JSON{
-												"components":        apiextensionsv1.JSON{Raw: []byte(`{ name: "Monitoring" }`)},
-												"customfield_10001": apiextensionsv1.JSON{Raw: []byte(`"Random text"`)},
-												"customfield_10002": apiextensionsv1.JSON{Raw: []byte(`{"value": "red"}`)},
+												"components":        {Raw: []byte(`{ name: "Monitoring" }`)},
+												"customfield_10001": {Raw: []byte(`"Random text"`)},
+												"customfield_10002": {Raw: []byte(`{"value": "red"}`)},
 											},
 										},
 									},
@@ -1886,7 +1886,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			secretName := tt.cr.ConfigSecretName()
 			err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: secretName}, &createdSecret)
 			if err != nil {
-				if errors.IsNotFound(err) && tt.secretMustBeMissing {
+				if k8serrors.IsNotFound(err) && tt.secretMustBeMissing {
 					return
 				}
 				t.Fatalf("config for alertmanager not exist, err: %v", err)
@@ -1931,7 +1931,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 
 			err = fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: secretName}, &createdSecret)
 			if err != nil {
-				if errors.IsNotFound(err) && tt.secretMustBeMissing {
+				if k8serrors.IsNotFound(err) && tt.secretMustBeMissing {
 					return
 				}
 				t.Fatalf("secret for alertmanager not exist, err: %v", err)

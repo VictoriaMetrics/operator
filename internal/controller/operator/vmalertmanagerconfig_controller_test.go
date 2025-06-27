@@ -21,7 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -44,7 +44,7 @@ var _ = Describe("VMAlertmanagerConfig Controller", func() {
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind VMAlertmanagerConfig")
 			err := k8sClient.Get(ctx, typeNamespacedName, vmalertmanagerconfig)
-			if err != nil && errors.IsNotFound(err) {
+			if err != nil && k8serrors.IsNotFound(err) {
 				resource := &vmv1beta1.VMAlertmanagerConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,

@@ -8,7 +8,7 @@ import (
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -53,7 +53,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 			})).To(Succeed())
 			Eventually(func() error {
 				return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMAlertmanager{})
-			}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
 		DescribeTable("should create alertmanager",
 			func(name string, cr *vmv1beta1.VMAlertmanager, verify func(*vmv1beta1.VMAlertmanager)) {
@@ -211,7 +211,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 								"alertmanager.yaml": []byte(alertmanagerTestConf),
 							},
 						}
-						if err := k8sClient.Create(ctx, &dstSecret); err != nil && !errors.IsNotFound(err) {
+						if err := k8sClient.Create(ctx, &dstSecret); err != nil && !k8serrors.IsNotFound(err) {
 							return err
 						}
 						return nil

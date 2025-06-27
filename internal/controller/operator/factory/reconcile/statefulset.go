@@ -11,7 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -76,7 +76,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var currentSts appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet %s", newSts.Name))
 				if err = rclient.Create(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot create new sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)

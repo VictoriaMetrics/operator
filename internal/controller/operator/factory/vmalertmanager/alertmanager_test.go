@@ -9,7 +9,7 @@ import (
 	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -222,7 +222,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 					case <-tc.C:
 						var got appsv1.StatefulSet
 						if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); err != nil {
-							if !errors.IsNotFound(err) {
+							if !k8serrors.IsNotFound(err) {
 								t.Errorf("cannot get statefulset for alertmanager: %s", err)
 								return
 							}
@@ -363,7 +363,7 @@ func Test_createDefaultAMConfig(t *testing.T) {
 
 			err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
 			if err != nil {
-				if errors.IsNotFound(err) && tt.secretMustBeMissing {
+				if k8serrors.IsNotFound(err) && tt.secretMustBeMissing {
 					return
 				}
 				t.Fatalf("config for alertmanager not exist, err: %v", err)

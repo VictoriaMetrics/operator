@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,7 +21,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 		var existVSS vmv1beta1.VMServiceScrape
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: vss.Namespace, Name: vss.Name}, &existVSS)
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating VMServiceScrape %s", vss.Name))
 				return rclient.Create(ctx, vss)
 			}
@@ -53,7 +53,7 @@ func VMPodScrapeForCRD(ctx context.Context, rclient client.Client, vps *vmv1beta
 		var existVPS vmv1beta1.VMPodScrape
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: vps.Namespace, Name: vps.Name}, &existVPS)
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating VMPodScrape %s", vps.Name))
 				return rclient.Create(ctx, vps)
 			}

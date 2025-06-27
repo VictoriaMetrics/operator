@@ -6,7 +6,7 @@ import (
 
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,7 +20,7 @@ func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.Horizon
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var currentHPA v2.HorizontalPodAutoscaler
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newHPA.GetName(), Namespace: newHPA.GetNamespace()}, &currentHPA); err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating HPA %s configuration", newHPA.Name))
 				return rclient.Create(ctx, newHPA)
 			}

@@ -18,3 +18,6 @@ resources:
 - vmstaticscrape.yaml
 - vmscrapeconfig.yaml
 - vlogs.yaml
+- vlsingle.yaml
+- vlcluster.yaml
+- vmanomaly.yaml

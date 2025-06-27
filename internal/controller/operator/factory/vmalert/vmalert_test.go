@@ -11,15 +11,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -27,12 +28,10 @@ func TestCreateOrUpdate(t *testing.T) {
 	tests := []struct {
 		name              string
 		cr                *vmv1beta1.VMAlert
-		c                 *config.BaseOperatorConf
 		cmNames           []string
-		want              reconcile.Result
 		wantErr           bool
 		predefinedObjects []runtime.Object
-		validator         func(vma *appsv1.Deployment) error
+		validator         func(*appsv1.Deployment, *corev1.Secret) error
 	}{
 		{
 			name: "base-spec-gen",
@@ -50,7 +49,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			},
-			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -96,7 +94,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					ExternalLabels: map[string]string{"label1": "value1", "label2": "value-2"},
 				},
 			},
-			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -114,10 +111,9 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			},
-
-			validator: func(vma *appsv1.Deployment) error {
+			validator: func(d *appsv1.Deployment, s *corev1.Secret) error {
 				var foundOk bool
-				for _, cnt := range vma.Spec.Template.Spec.Containers {
+				for _, cnt := range d.Spec.Template.Spec.Containers {
 					if cnt.Name == "vmalert" {
 						args := cnt.Args
 						for _, arg := range args {
@@ -197,7 +193,7 @@ func TestCreateOrUpdate(t *testing.T) {
 									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
 								},
 								Cert: vmv1beta1.SecretOrConfigMap{
-									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "cert"},
 								},
 								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 							},
@@ -205,7 +201,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			},
-			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&corev1.Secret{
@@ -237,6 +232,18 @@ func TestCreateOrUpdate(t *testing.T) {
 						},
 					},
 				},
+			},
+			validator: func(d *appsv1.Deployment, s *corev1.Secret) error {
+				if _, ok := s.Data["default_configmap_datasource-tls_ca"]; !ok {
+					return fmt.Errorf("failed to find expected TLS CA")
+				}
+				if _, ok := s.Data["default_configmap_datasource-tls_cert"]; !ok {
+					return fmt.Errorf("failed to find expected TLS cert")
+				}
+				if _, ok := s.Data["default_datasource-tls_key"]; !ok {
+					return fmt.Errorf("failed to find TLS key")
+				}
+				return nil
 			},
 		},
 		{
@@ -289,7 +296,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			},
-			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&corev1.Secret{
@@ -367,7 +373,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			},
-			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&corev1.Secret{
@@ -420,7 +425,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			},
-			c: config.MustGetBaseConfig(),
 			predefinedObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -460,9 +464,16 @@ func TestCreateOrUpdate(t *testing.T) {
 			if tt.validator != nil {
 				var generatedDeploment appsv1.Deployment
 				if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.PrefixedName()}, &generatedDeploment); err != nil {
-					t.Fatalf("cannot find generated deployment: %v, err: %v", tt.cr.PrefixedName(), err)
+					t.Fatalf("cannot find generated deployment=%q, err: %v", tt.cr.PrefixedName(), err)
 				}
-				if err := tt.validator(&generatedDeploment); err != nil {
+				var generatedTLSSecret corev1.Secret
+				tlsSecretName := build.ResourceName(build.TLSAssetsResourceKind, tt.cr)
+				if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tlsSecretName}, &generatedTLSSecret); err != nil {
+					if !errors.IsNotFound(err) {
+						t.Fatalf("unexpected error during attempt to get tls secret=%q, err: %v", build.ResourceName(build.TLSAssetsResourceKind, tt.cr), err)
+					}
+				}
+				if err := tt.validator(&generatedDeploment, &generatedTLSSecret); err != nil {
 					t.Fatalf("unexpected error at deployment validation: %v", err)
 				}
 			}

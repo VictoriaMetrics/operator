@@ -188,5 +188,8 @@ rules:
   - vmanomalies
   - vmanomalies/finalizers
   - vmanomalies/status
+  - vmstreamaggrrules
+  - vmstreamaggrrules/finalizers
+  - vmstreamaggrrules/status
   verbs:
   - '*'

@@ -1,6 +1,7 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"strconv"
@@ -10,7 +11,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // MustSkipRuntimeValidation defines whether runtime object validation must be skipped
@@ -201,4 +205,26 @@ func StreamAggrVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, na
 		})
 	}
 	return volumes, mounts
+}
+
+// SelectStreamAggrRules discovers all stream aggregation rules that match opts
+func SelectStreamAggrRules(ctx context.Context, rclient client.Client, opts *k8stools.SelectorOpts) ([]*vmv1.VMStreamAggrRule, error) {
+	var selectedRules []*vmv1.VMStreamAggrRule
+	var namespacedNames []string
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1.VMStreamAggrRuleList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			selectedRules = append(selectedRules, item)
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+		}
+	}); err != nil {
+		return nil, err
+	}
+	OrderByKeys(selectedRules, namespacedNames)
+	logger.SelectedObjects(ctx, "VMStreamAggrRule", len(namespacedNames), 0, namespacedNames)
+
+	return selectedRules, nil
 }

@@ -19,6 +19,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -141,7 +142,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		return fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
 	}
 
-	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, nil); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
 	}
 
@@ -865,15 +866,22 @@ func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Clie
 }
 
 // buildStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
-func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
+func buildStreamAggrConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, allRules []*vmv1.VMStreamAggrRule, idxs []int) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
 		ObjectMeta: build.ResourceMeta(build.StreamAggrConfigResourceKind, cr),
 		Data:       make(map[string]string),
 	}
 	// global section
+	var prevIdx int
+	var rules []vmv1beta1.StreamAggrRule
 	if cr.Spec.StreamAggrConfig != nil {
-		if len(cr.Spec.StreamAggrConfig.Rules) > 0 {
-			data, err := yaml.Marshal(cr.Spec.StreamAggrConfig.Rules)
+		prevIdx = idxs[0]
+		for _, r := range allRules[:prevIdx] {
+			rules = append(rules, r.Spec.StreamAggrRule)
+		}
+		rules = append(rules, cr.Spec.StreamAggrConfig.Rules...)
+		if len(rules) > 0 {
+			data, err := yaml.Marshal(rules)
 			if err != nil {
 				return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
 			}
@@ -896,10 +904,17 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 
 	for i := range cr.Spec.RemoteWrite {
 		rw := cr.Spec.RemoteWrite[i]
-		if rw.StreamAggrConfig != nil {
-			c := rw.StreamAggrConfig
-			if len(c.Rules) > 0 {
-				data, err := yaml.Marshal(c.Rules)
+		c := rw.StreamAggrConfig
+		if c != nil {
+			idx := idxs[i+1]
+			rules = rules[:0]
+			for _, r := range allRules[prevIdx:idx] {
+				rules = append(rules, r.Spec.StreamAggrRule)
+			}
+			prevIdx = idx
+			rules = append(rules, c.Rules...)
+			if len(rules) > 0 {
+				data, err := yaml.Marshal(rules)
 				if err != nil {
 					return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
 				}
@@ -925,13 +940,52 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	return cfgCM, nil
 }
 
-// createOrUpdateStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
-func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+// CreateOrUpdateStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
+func CreateOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject *vmv1.VMStreamAggrRule) error {
+	var prevCR *vmv1beta1.VMAgent
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, childObject); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject *vmv1.VMStreamAggrRule) error {
 	// fast path
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
-	streamAggrCM, err := buildStreamAggrConfig(ctx, cr, rclient)
+	opts := &k8stools.SelectorOpts{
+		DefaultNamespace: cr.Namespace,
+	}
+	var rules []*vmv1.VMStreamAggrRule
+	var err error
+	if cr.Spec.StreamAggrConfig != nil {
+		opts.NamespaceSelector = cr.Spec.StreamAggrConfig.RuleNamespaceSelector
+		opts.ObjectSelector = cr.Spec.StreamAggrConfig.RuleSelector
+		rules, err = build.SelectStreamAggrRules(ctx, rclient, opts)
+		if err != nil {
+			return fmt.Errorf("selecting StreamAggrRules failed: %w", err)
+		}
+	}
+	idxs := []int{len(rules)}
+	for _, rw := range cr.Spec.RemoteWrite {
+		var rls []*vmv1.VMStreamAggrRule
+		if rw.StreamAggrConfig != nil {
+			opts.NamespaceSelector = rw.StreamAggrConfig.RuleNamespaceSelector
+			opts.ObjectSelector = rw.StreamAggrConfig.RuleSelector
+			rls, err = build.SelectStreamAggrRules(ctx, rclient, opts)
+			if err != nil {
+				return fmt.Errorf("selecting StreamAggrRules failed: %w", err)
+			}
+		}
+		rules = append(rules, rls...)
+		idxs = append(idxs, len(rules))
+	}
+	streamAggrCM, err := buildStreamAggrConfig(ctx, rclient, cr, rules, idxs)
 	if err != nil {
 		return err
 	}
@@ -939,7 +993,22 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	if prevCR != nil {
 		prevConfigMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, cr))
 	}
-	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
+	err = reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
+	if err != nil {
+		return err
+	}
+	if childObject != nil {
+		parentObject := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+		for _, rule := range rules {
+			if rule.Name == childObject.Name && rule.Namespace == childObject.Namespace {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMStreamAggrRule{rule})
+			}
+		}
+		if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, rules); err != nil {
+			return fmt.Errorf("cannot update statuses for stream aggr rules objects: %w", err)
+		}
+	}
+	return nil
 }
 
 func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {

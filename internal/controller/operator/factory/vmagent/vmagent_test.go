@@ -1780,8 +1780,8 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			ctx := context.TODO()
-			if err := createOrUpdateStreamAggrConfig(ctx, cl, tt.cr, nil); (err != nil) != tt.wantErr {
-				t.Fatalf("CreateOrUpdateStreamAggrConfig() error = %v, wantErr %v", err, tt.wantErr)
+			if err := createOrUpdateStreamAggrConfig(ctx, cl, tt.cr, nil, nil); (err != nil) != tt.wantErr {
+				t.Fatalf("createOrUpdateStreamAggrConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdCM corev1.ConfigMap
 			if err := cl.Get(ctx,

@@ -372,6 +372,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		webhookv1beta1.SetupVMScrapeConfigWebhookWithManager,
 		webhookv1beta1.SetupVMStaticScrapeWebhookWithManager,
 		webhookv1beta1.SetupVMProbeWebhookWithManager,
+		webhookv1.SetupVMStreamAggrRuleWebhookWithManager,
 	})
 }
 
@@ -446,6 +447,7 @@ var controllersByName = map[string]crdController{
 	"VMCluster":            &vmcontroller.VMClusterReconciler{},
 	"VMAgent":              &vmcontroller.VMAgentReconciler{},
 	"VMAnomaly":            &vmcontroller.VMAnomalyReconciler{},
+	"VMStreamAggrRule":     &vmcontroller.VMStreamAggrRuleReconciler{},
 	"VMAuth":               &vmcontroller.VMAuthReconciler{},
 	"VMSingle":             &vmcontroller.VMSingleReconciler{},
 	"VLogs":                &vmcontroller.VLogsReconciler{},

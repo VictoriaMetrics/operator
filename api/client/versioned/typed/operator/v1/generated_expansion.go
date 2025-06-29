@@ -22,3 +22,5 @@ type VLClusterExpansion interface{}
 type VLSingleExpansion interface{}
 
 type VMAnomalyExpansion interface{}
+
+type VMStreamAggrRuleExpansion interface{}

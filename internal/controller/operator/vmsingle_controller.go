@@ -19,6 +19,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,8 +31,14 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmsingle"
+)
+
+var (
+	singleSync           sync.Mutex
+	singleReconcileLimit = limiter.NewRateLimiter("vmsingle", 5)
 )
 
 // VMSingleReconciler reconciles a VMSingle object
@@ -74,6 +81,9 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return result, &getError{err, "vmsingle", req}
 	}
+
+	singleSync.Lock()
+	defer singleSync.Unlock()
 
 	RegisterObjectStat(instance, "vmsingle")
 	if !instance.DeletionTimestamp.IsZero() {

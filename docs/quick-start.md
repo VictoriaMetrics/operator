@@ -251,6 +251,7 @@ spec:
   selectAllByDefault: true
   remoteWrite:
     - url: "http://vmsingle-demo.vm.svc:8429/api/v1/write"
+EOF
 ```
 The `selectAllByDefault` setting tells `VMAgent` to look for scrape resources in every namespace.
 The `remoteWrite.url` setting tells `VMAgent` where to send the scraped metrics.
@@ -258,7 +259,7 @@ We’ll use the `VMSingle` storage we created earlier as the remote write destin
 
 Apply the manifest to your cluster:
 ```sh
-kubectl -n vm apply -f vmagent-demo.yaml
+kubectl -n vm apply -f vmagent-demo.yaml;
 kubectl -n vm wait --for=jsonpath='{.status.updateStatus}'=operational vmagent/demo;
 kubectl -n vm rollout status deployment vmagent-demo  --watch=true;
 

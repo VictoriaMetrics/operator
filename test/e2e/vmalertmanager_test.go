@@ -204,26 +204,23 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					cr.Spec.ReplicaCount = ptr.To[int32](1)
 					cr.Spec.ConfigSecret = "non-default-am-config"
 					// create secret with config
-					Expect(func() error {
-						dstSecret := corev1.Secret{
+					dstSecret := corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      cr.Spec.ConfigSecret,
+							Namespace: namespace,
+						},
+						Data: map[string][]byte{
+							"alertmanager.yaml": []byte(alertmanagerTestConf),
+						},
+					}
+					Expect(k8sClient.Create(ctx, &dstSecret)).To(Succeed())
+					DeferCleanup(func(ctx SpecContext) {
+						Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      cr.Spec.ConfigSecret,
 								Namespace: namespace,
-							},
-							Data: map[string][]byte{
-								"alertmanager.yaml": []byte(alertmanagerTestConf),
-							},
-						}
-						Expect(k8sClient.Create(ctx, &dstSecret)).To(Succeed())
-						DeferCleanup(func(ctx SpecContext) {
-							Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
-								ObjectMeta: metav1.ObjectMeta{
-									Name:      cr.Spec.ConfigSecret,
-									Namespace: namespace,
-								}})).To(Succeed())
-						})
-						return nil
-					}()).To(Succeed())
+							}})).To(Succeed())
+					})
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
 					var amCfg corev1.Secret

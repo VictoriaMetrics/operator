@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path"
 
-	amlabels "github.com/prometheus/alertmanager/pkg/labels"
+	amparse "github.com/prometheus/alertmanager/matcher/parse"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -488,7 +488,7 @@ func (cr *VMAlertmanager) Validate() error {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
 	}
 	for idx, matchers := range cr.Spec.EnforcedTopRouteMatchers {
-		_, err := amlabels.ParseMatchers(matchers)
+		_, err := amparse.Matchers(matchers)
 		if err != nil {
 			return fmt.Errorf("incorrect EnforcedTopRouteMatchers=%q at idx=%d: %w", matchers, idx, err)
 		}

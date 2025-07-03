@@ -28,7 +28,8 @@ import (
 	"strings"
 
 	amcfg "github.com/prometheus/alertmanager/config"
-	"github.com/prometheus/alertmanager/pkg/labels"
+	amparse "github.com/prometheus/alertmanager/matcher/parse"
+
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -250,7 +251,7 @@ func parseNestedRoutes(src *Route) error {
 		return nil
 	}
 	for idx, matchers := range src.Matchers {
-		if _, err := labels.ParseMatchers(matchers); err != nil {
+		if _, err := amparse.Matchers(matchers); err != nil {
 			return fmt.Errorf("cannot parse matchers=%q idx=%d for route_receiver=%s: %w", matchers, idx, src.Receiver, err)
 		}
 	}

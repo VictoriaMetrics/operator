@@ -34,3 +34,13 @@ type TLSServerConfig struct {
 	// +optional
 	KeyFile string `json:"keyFile,omitempty"`
 }
+
+// ApplicationMode defines allowed application k8s application modes
+// +kubebuilder:validation:Enum=DaemonSet;StatefulSet;Deployment
+type ApplicationMode string
+
+const (
+	StatefulSetMode ApplicationMode = "StatefulSet"
+	DaemonSetMode   ApplicationMode = "DaemonSet"
+	DeploymentMode  ApplicationMode = "Deployment"
+)

@@ -1,0 +1,9 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VLAgent
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: vlagent-sample
+spec:
+  # TODO(user): Add fields here

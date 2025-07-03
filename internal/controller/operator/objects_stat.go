@@ -48,7 +48,7 @@ func newCollector() *objectCollector {
 	registeredObjects := []string{
 		"vmagent", "vmalert", "vmsingle", "vmcluster", "vmalertmanager", "vmauth", "vlogs", "vlsingle",
 		"vlcluster", "vmalertmanagerconfig", "vmrule", "vmuser", "vmservicescrape", "vmstaticscrape",
-		"vmnodescrape", "vmpodscrape", "vmprobescrape", "vmscrapeconfig", "vmanomaly",
+		"vmnodescrape", "vmpodscrape", "vmprobescrape", "vmscrapeconfig", "vmanomaly", "vlagent",
 	}
 	for _, controller := range registeredObjects {
 		oc.objectsByController[controller] = map[string]struct{}{}

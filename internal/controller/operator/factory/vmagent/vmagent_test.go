@@ -1360,7 +1360,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					InsertPorts: &vmv1beta1.InsertPorts{
+					InsertPorts: &vmv1beta1.VMInsertPorts{
 						InfluxPort: "8011",
 					},
 					ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
@@ -1406,7 +1406,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					InsertPorts: &vmv1beta1.InsertPorts{
+					InsertPorts: &vmv1beta1.VMInsertPorts{
 						InfluxPort: "8011",
 					},
 					ServiceSpec: &vmv1beta1.AdditionalServiceSpec{

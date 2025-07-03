@@ -59,7 +59,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 			if prevCR.Spec.StatefulMode {
 				svc.Spec.ClusterIP = "None"
 			}
-			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
+			build.AppendVMInsertPortsToService(prevCR.Spec.InsertPorts, svc)
 		})
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, cr.Spec.ServiceSpec)
 	}
@@ -67,7 +67,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		if cr.Spec.StatefulMode {
 			svc.Spec.ClusterIP = "None"
 		}
-		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
+		build.AppendVMInsertPortsToService(cr.Spec.InsertPorts, svc)
 	})
 
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
@@ -525,7 +525,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
-	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
+	ports = build.AppendVMInsertPorts(ports, cr.Spec.InsertPorts)
 
 	var agentVolumeMounts []corev1.VolumeMount
 	var configReloaderWatchMounts []corev1.VolumeMount

@@ -76,7 +76,7 @@ var _ = Describe("test  vmsingle Controller", Label("vm", "single"), func() {
 									},
 								},
 							},
-							InsertPorts: &vmv1beta1.InsertPorts{
+							InsertPorts: &vmv1beta1.VMInsertPorts{
 								OpenTSDBPort:     "8081",
 								OpenTSDBHTTPPort: "8082",
 								GraphitePort:     "8083",

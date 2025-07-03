@@ -221,7 +221,7 @@ type VMAgentSpec struct {
 	// +optional
 	AdditionalScrapeConfigs *corev1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// InsertPorts - additional listen ports for data ingestion.
-	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
+	InsertPorts *VMInsertPorts `json:"insertPorts,omitempty"`
 
 	// ServiceSpec that will be added to vmagent service spec
 	// +optional
@@ -706,7 +706,7 @@ func (cr *VMAgent) AsURL() string {
 
 // AsCRDOwner implements interface
 func (*VMAgent) AsCRDOwner() []metav1.OwnerReference {
-	return GetCRDAsOwner(Agent)
+	return GetCRDAsOwner(VMAgentOwner)
 }
 
 func (cr *VMAgent) Probe() *EmbeddedProbes {

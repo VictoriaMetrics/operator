@@ -313,7 +313,7 @@ func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
 	}
 
 	svc := build.Service(t, cr.Spec.VMInsert.Port, func(svc *corev1.Service) {
-		build.AppendInsertPortsToService(cr.Spec.VMInsert.InsertPorts, svc)
+		build.AppendVMInsertPortsToService(cr.Spec.VMInsert.InsertPorts, svc)
 		if cr.Spec.VMInsert.ClusterNativePort != "" {
 			svc.Spec.Ports = append(svc.Spec.Ports,
 				corev1.ServicePort{
@@ -790,7 +790,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 			ContainerPort: intstr.Parse(cr.Spec.VMInsert.Port).IntVal,
 		},
 	}
-	ports = build.AppendInsertPorts(ports, cr.Spec.VMInsert.InsertPorts)
+	ports = build.AppendVMInsertPorts(ports, cr.Spec.VMInsert.InsertPorts)
 	if cr.Spec.VMInsert.ClusterNativePort != "" {
 		ports = append(ports,
 			corev1.ContainerPort{

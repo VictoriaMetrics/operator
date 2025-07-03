@@ -179,7 +179,7 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
-	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
+	ports = build.AppendVMInsertPorts(ports, cr.Spec.InsertPorts)
 
 	var volumes []corev1.Volume
 	var vmMounts []corev1.VolumeMount
@@ -341,14 +341,14 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	}
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		addExtraPorts(svc, cr.Spec.VMBackup)
-		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
+		build.AppendVMInsertPortsToService(cr.Spec.InsertPorts, svc)
 	})
 
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			addExtraPorts(svc, prevCR.Spec.VMBackup)
-			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
+			build.AppendVMInsertPortsToService(prevCR.Spec.InsertPorts, svc)
 		})
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
 	}

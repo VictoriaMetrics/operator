@@ -214,8 +214,8 @@ func formatContainerImage(globalRepo string, containerImage string) string {
 	return globalRepo + containerImage[len("quay.io/"):]
 }
 
-// AppendInsertPorts conditionally adds ingestPorts to the given ports slice
-func AppendInsertPorts(ports []corev1.ContainerPort, ip *vmv1beta1.InsertPorts) []corev1.ContainerPort {
+// AppendVMInsertPorts conditionally adds ingestPorts to the given ports slice
+func AppendVMInsertPorts(ports []corev1.ContainerPort, ip *vmv1beta1.VMInsertPorts) []corev1.ContainerPort {
 	if ip == nil {
 		return ports
 	}
@@ -274,7 +274,7 @@ func AppendInsertPorts(ports []corev1.ContainerPort, ip *vmv1beta1.InsertPorts) 
 }
 
 // AppendArgsForInsertPorts conditionally appends insert ports as flags to the given args
-func AppendArgsForInsertPorts(args []string, ip *vmv1beta1.InsertPorts) []string {
+func AppendArgsForInsertPorts(args []string, ip *vmv1beta1.VMInsertPorts) []string {
 	if ip == nil {
 		return args
 	}

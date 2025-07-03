@@ -101,8 +101,8 @@ func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Ser
 	return svc
 }
 
-// AppendInsertPortsToService conditionally appends insert ports to the given service definition
-func AppendInsertPortsToService(ip *vmv1beta1.InsertPorts, svc *corev1.Service) {
+// AppendVMInsertPortsToService conditionally appends insert ports to the given service definition
+func AppendVMInsertPortsToService(ip *vmv1beta1.VMInsertPorts, svc *corev1.Service) {
 	if ip == nil || svc == nil {
 		return
 	}

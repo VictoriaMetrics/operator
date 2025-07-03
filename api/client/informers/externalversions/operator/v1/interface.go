@@ -23,6 +23,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// VLAgents returns a VLAgentInformer.
+	VLAgents() VLAgentInformer
 	// VLClusters returns a VLClusterInformer.
 	VLClusters() VLClusterInformer
 	// VLSingles returns a VLSingleInformer.
@@ -40,6 +42,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// VLAgents returns a VLAgentInformer.
+func (v *version) VLAgents() VLAgentInformer {
+	return &vLAgentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VLClusters returns a VLClusterInformer.

@@ -47,7 +47,7 @@ type VMSingleSpec struct {
 	StorageMetadata EmbeddedObjectMetadata `json:"storageMetadata,omitempty"`
 
 	// InsertPorts - additional listen ports for data ingestion.
-	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
+	InsertPorts *VMInsertPorts `json:"insertPorts,omitempty"`
 	// RemovePvcAfterDelete - if true, controller adds ownership to pvc
 	// and after VMSingle object deletion - pvc will be garbage collected
 	// by controller manager

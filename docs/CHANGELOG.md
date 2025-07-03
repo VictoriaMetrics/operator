@@ -21,6 +21,7 @@ aliases:
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): properly load TLS secrets into VMAlert secret. See [#1437](https://github.com/VictoriaMetrics/operator/issues/1437).
 
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): support `utf-8` symbols at `matchers`. See this [1446](https://github.com/VictoriaMetrics/operator/issues/1446) issue for details.
+* FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): enable `utf-8` support at labels and matchers by default for v0.28.+ versions of alertmanager. See this [1446](https://github.com/VictoriaMetrics/operator/issues/1446) issue for details.
 
 ## [v0.60.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.1)
 

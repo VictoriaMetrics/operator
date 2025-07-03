@@ -26,11 +26,14 @@ route:
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 12h
-  receiver: 'webhook'
+  receiver: blackhole
+  routes:
+  - receiver: blackhole
+    matchers:
+    - '{"env.version.!"="v1.0.0",instance="main"}'
 receivers:
-- name: 'webhook'
-  webhook_configs:
-  - url: 'http://alertmanagerwh:30500/'`
+- name: blackhole
+`
 )
 
 //nolint:dupl
@@ -211,9 +214,14 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 								"alertmanager.yaml": []byte(alertmanagerTestConf),
 							},
 						}
-						if err := k8sClient.Create(ctx, &dstSecret); err != nil && !k8serrors.IsNotFound(err) {
-							return err
-						}
+						Expect(k8sClient.Create(ctx, &dstSecret)).To(Succeed())
+						DeferCleanup(func(ctx SpecContext) {
+							Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      cr.Spec.ConfigSecret,
+									Namespace: namespace,
+								}})).To(Succeed())
+						})
 						return nil
 					}()).To(Succeed())
 				},
@@ -222,11 +230,6 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					Expect(k8sClient.Get(ctx,
 						types.NamespacedName{Name: cr.ConfigSecretName(), Namespace: namespace}, &amCfg)).To(Succeed())
 					Expect(string(amCfg.Data["alertmanager.yaml"])).To(Equal(alertmanagerTestConf))
-					Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      cr.Spec.ConfigSecret,
-							Namespace: namespace,
-						}})).To(Succeed())
 				},
 			),
 

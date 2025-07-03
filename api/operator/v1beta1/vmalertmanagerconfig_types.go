@@ -18,9 +18,11 @@ package v1beta1
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log/slog"
 	"net"
 	"net/url"
 	"regexp"
@@ -28,8 +30,8 @@ import (
 	"strings"
 
 	amcfg "github.com/prometheus/alertmanager/config"
+	"github.com/prometheus/alertmanager/matcher/compat"
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
-
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -1850,5 +1852,39 @@ func validateReceiver(recv Receiver) error {
 }
 
 func init() {
+	compat.InitFromFlags(slog.New(&amNoopLogger{}), &alertmanagerFlags{})
 	SchemeBuilder.Register(&VMAlertmanagerConfig{}, &VMAlertmanagerConfigList{})
 }
+
+type alertmanagerFlags struct{}
+
+// EnableReceiverNamesInMetrics implements featurecontrol.Flagger interface
+func (af *alertmanagerFlags) EnableReceiverNamesInMetrics() bool { return false }
+
+// ClassicMode implements featurecontrol.Flagger interface
+func (af *alertmanagerFlags) ClassicMode() bool { return false }
+
+// UTF8StrictMode implements featurecontrol.Flagger interface
+func (af *alertmanagerFlags) UTF8StrictMode() bool { return true }
+
+// EnableAutoGOMEMLIMIT implements featurecontrol.Flagger interface
+func (af *alertmanagerFlags) EnableAutoGOMEMLIMIT() bool { return false }
+
+// EnableAutoGOMAXPROCS implements featurecontrol.Flagger interface
+func (af *alertmanagerFlags) EnableAutoGOMAXPROCS() bool { return false }
+
+var _ slog.Handler = (*amNoopLogger)(nil)
+
+type amNoopLogger struct{}
+
+// Enabled implements slog.Handler interface
+func (al *amNoopLogger) Enabled(context.Context, slog.Level) bool { return false }
+
+// Handle implements slog.Handler interface
+func (al *amNoopLogger) Handle(context.Context, slog.Record) error { return nil }
+
+// WithAttrs implements slog.Handler interface
+func (al *amNoopLogger) WithAttrs(attrs []slog.Attr) slog.Handler { return al }
+
+// WithGroup implements slog.Handler interface
+func (al *amNoopLogger) WithGroup(name string) slog.Handler { return al }

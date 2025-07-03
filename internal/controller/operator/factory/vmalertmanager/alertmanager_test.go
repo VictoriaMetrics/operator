@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -348,6 +349,43 @@ func Test_createDefaultAMConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with utf-8",
+			args: args{
+				ctx: context.TODO(),
+				cr: &vmv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-am",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						ConfigSecret:            "some-name",
+						ConfigRawYaml:           "global: {}",
+						ConfigSelector:          &metav1.LabelSelector{},
+						ConfigNamespaceSelector: &metav1.LabelSelector{},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMAlertmanagerConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+						Route: &vmv1beta1.Route{Receiver: "base", Matchers: []string{`"baf"="daf"`}},
+						Receivers: []vmv1beta1.Receiver{
+							{
+								Name: "base",
+								WebhookConfigs: []vmv1beta1.WebhookConfig{
+									{URL: ptr.To("http://some-url")},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -368,6 +406,15 @@ func Test_createDefaultAMConfig(t *testing.T) {
 				}
 				t.Fatalf("config for alertmanager not exist, err: %v", err)
 			}
+
+			var amcfgs vmv1beta1.VMAlertmanagerConfigList
+			assert.Nil(t, fclient.List(tt.args.ctx, &amcfgs))
+			for _, amcfg := range amcfgs.Items {
+				if amcfg.Status.UpdateStatus != vmv1beta1.UpdateStatusOperational {
+					t.Fatalf("unexpected non-operational status: %s for amcfg: %s reason: %s ", amcfg.Status.UpdateStatus, amcfg.Name, amcfg.Status.Reason)
+				}
+			}
+
 		})
 	}
 }

@@ -62,7 +62,7 @@ func TestCreateOrUpdate(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMSingleSpec{
-						InsertPorts: &vmv1beta1.InsertPorts{
+						InsertPorts: &vmv1beta1.VMInsertPorts{
 							InfluxPort:       "8051",
 							OpenTSDBHTTPPort: "8052",
 							GraphitePort:     "8053",
@@ -134,7 +134,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMSingleSpec{
-						InsertPorts: &vmv1beta1.InsertPorts{
+						InsertPorts: &vmv1beta1.VMInsertPorts{
 							InfluxPort:       "8051",
 							OpenTSDBHTTPPort: "8052",
 							GraphitePort:     "8053",

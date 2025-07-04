@@ -17,6 +17,8 @@ limitations under the License.
 
 package v1
 
+type VLAgentExpansion interface{}
+
 type VLClusterExpansion interface{}
 
 type VLSingleExpansion interface{}

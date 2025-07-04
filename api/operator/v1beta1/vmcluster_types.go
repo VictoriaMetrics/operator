@@ -289,7 +289,7 @@ func prefixedName(name, prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, name)
 }
 
-type InsertPorts struct {
+type VMInsertPorts struct {
 	// GraphitePort listen port
 	// +optional
 	GraphitePort string `json:"graphitePort,omitempty"`
@@ -318,7 +318,7 @@ type VMInsert struct {
 	LogLevel string `json:"logLevel,omitempty"`
 
 	// InsertPorts - additional listen ports for data ingestion.
-	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
+	InsertPorts *VMInsertPorts `json:"insertPorts,omitempty"`
 
 	// ClusterNativePort for multi-level cluster setup.
 	// More [details](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#multi-level-cluster-setup)

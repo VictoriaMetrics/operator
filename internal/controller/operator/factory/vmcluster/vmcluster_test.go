@@ -101,7 +101,7 @@ func TestCreateOrUpdate(t *testing.T) {
 						VMInsert: &vmv1beta1.VMInsert{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To(int32(0))},
-							InsertPorts: &vmv1beta1.InsertPorts{
+							InsertPorts: &vmv1beta1.VMInsertPorts{
 								GraphitePort:     "8025",
 								OpenTSDBHTTPPort: "3311",
 								InfluxPort:       "5511",
@@ -323,7 +323,7 @@ func TestCreateOrUpdate(t *testing.T) {
 						VMInsert: &vmv1beta1.VMInsert{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To(int32(0))},
-							InsertPorts: &vmv1beta1.InsertPorts{
+							InsertPorts: &vmv1beta1.VMInsertPorts{
 								GraphitePort:     "8025",
 								OpenTSDBHTTPPort: "3311",
 								InfluxPort:       "5511",
@@ -718,7 +718,7 @@ spec:
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMInsert: &vmv1beta1.VMInsert{
-				InsertPorts: &vmv1beta1.InsertPorts{
+				InsertPorts: &vmv1beta1.VMInsertPorts{
 					OpenTSDBHTTPPort: "8087",
 				},
 			},
@@ -774,7 +774,7 @@ spec:
 					},
 				},
 				ClusterNativePort: "8055",
-				InsertPorts: &vmv1beta1.InsertPorts{
+				InsertPorts: &vmv1beta1.VMInsertPorts{
 					OpenTSDBHTTPPort: "8087",
 				},
 			},
@@ -859,7 +859,7 @@ spec:
 					},
 				},
 				ClusterNativePort: "8055",
-				InsertPorts: &vmv1beta1.InsertPorts{
+				InsertPorts: &vmv1beta1.VMInsertPorts{
 					OpenTSDBHTTPPort: "8087",
 				},
 			},
@@ -949,7 +949,7 @@ spec:
 					},
 				},
 				ClusterNativePort: "8055",
-				InsertPorts: &vmv1beta1.InsertPorts{
+				InsertPorts: &vmv1beta1.VMInsertPorts{
 					OpenTSDBHTTPPort: "8087",
 				},
 			},

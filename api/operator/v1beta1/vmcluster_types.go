@@ -54,7 +54,7 @@ type VMClusterSpec struct {
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See [here](https://docs.victoriametrics.com/enterprise)
+	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 	// +optional
 	License *License `json:"license,omitempty"`
 
@@ -250,7 +250,7 @@ type VMSelect struct {
 	// +optional
 	StorageSpec *StorageSpec `json:"storage,omitempty"`
 	// ClusterNativePort for multi-level cluster setup.
-	// More [details](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#multi-level-cluster-setup)
+	// More [details](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#multi-level-cluster-setup)
 	// +optional
 	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
 
@@ -321,7 +321,7 @@ type VMInsert struct {
 	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 
 	// ClusterNativePort for multi-level cluster setup.
-	// More [details](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#multi-level-cluster-setup)
+	// More [details](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#multi-level-cluster-setup)
 	// +optional
 	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
 
@@ -528,14 +528,14 @@ type VMBackup struct {
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Restore Allows to enable restore options for pod
-	// Read [more](https://docs.victoriametrics.com/vmbackupmanager#restore-commands)
+	// Read [more](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/#restore-commands)
 	// +optional
 	Restore *VMRestore `json:"restore,omitempty"`
 }
 
 func (cr *VMBackup) validate(l *License) error {
 	if !l.IsProvided() && !cr.AcceptEULA {
-		return fmt.Errorf("it is required to provide license key. See [here](https://docs.victoriametrics.com/enterprise)")
+		return fmt.Errorf("it is required to provide license key. See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)")
 	}
 
 	if l.IsProvided() {

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): Modify default `remoteWrite.maxDiskUsagePerURL` when statefulStorage.volumeClaimTemplate is set. See [#1209](https://github.com/VictoriaMetrics/operator/issues/1209)
+
 ## [v0.60.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.2)
 
 **Release date:** 27 June 2025

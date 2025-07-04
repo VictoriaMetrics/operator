@@ -3965,13 +3965,6 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.ExternalLabels != nil {
-		in, out := &in.ExternalLabels, &out.ExternalLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	if in.RemoteWrite != nil {
 		in, out := &in.RemoteWrite, &out.RemoteWrite
 		*out = make([]VMAgentRemoteWriteSpec, len(*in))
@@ -4174,6 +4167,35 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 				*out = new(RelabelConfig)
 				(*in).DeepCopyInto(*out)
 			}
+		}
+	}
+	if in.GlobalScrapeMetricRelabelConfigs != nil {
+		in, out := &in.GlobalScrapeMetricRelabelConfigs, &out.GlobalScrapeMetricRelabelConfigs
+		*out = make([]*RelabelConfig, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(RelabelConfig)
+				(*in).DeepCopyInto(*out)
+			}
+		}
+	}
+	if in.GlobalScrapeRelabelConfigs != nil {
+		in, out := &in.GlobalScrapeRelabelConfigs, &out.GlobalScrapeRelabelConfigs
+		*out = make([]*RelabelConfig, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(RelabelConfig)
+				(*in).DeepCopyInto(*out)
+			}
+		}
+	}
+	if in.ExternalLabels != nil {
+		in, out := &in.ExternalLabels, &out.ExternalLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
 	if in.MinScrapeInterval != nil {

@@ -61,15 +61,6 @@ type VMAgentSpec struct {
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
 
-	// ScrapeInterval defines how often scrape targets by default
-	// +optional
-	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
-	ScrapeInterval string `json:"scrapeInterval,omitempty"`
-	// ScrapeTimeout defines global timeout for targets scrape
-	// +optional
-	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
-	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
-
 	// APIServerConfig allows specifying a host and auth methods to access apiserver.
 	// If left empty, VMAgent is assumed to run inside of the cluster
 	// and will discover API servers automatically and use the pod's CA certificate
@@ -91,10 +82,6 @@ type VMAgentSpec struct {
 	// +optional
 	VMAgentExternalLabelName *string `json:"vmAgentExternalLabelName,omitempty"`
 
-	// ExternalLabels The labels to add to any time series scraped by vmagent.
-	// it doesn't affect metrics ingested directly by push API's
-	// +optional
-	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
 	// RemoteWrite list of victoria metrics /some other remote write system
 	// for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
 	// or for cluster different url
@@ -273,6 +260,24 @@ type VMAgentSpec struct {
 	// it's useful for adding specific labels to all targets
 	// +optional
 	ScrapeConfigRelabelTemplate []*RelabelConfig `json:"scrapeConfigRelabelTemplate,omitempty"`
+	// GlobalScrapeMetricRelabelConfigs is a global metric relabel configuration, which is applied to each scrape job.
+	// +optional
+	GlobalScrapeMetricRelabelConfigs []*RelabelConfig `json:"globalScrapeMetricRelabelConfigs,omitempty"`
+	// GlobalScrapeRelabelConfigs is a global relabel configuration, which is applied to each samples of each scrape job during service discovery.
+	// +optional
+	GlobalScrapeRelabelConfigs []*RelabelConfig `json:"globalScrapeRelabelConfigs,omitempty"`
+	// ScrapeInterval defines how often scrape targets by default
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	ScrapeInterval string `json:"scrapeInterval,omitempty"`
+	// ScrapeTimeout defines global timeout for targets scrape
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// ExternalLabels The labels to add to any time series scraped by vmagent.
+	// it doesn't affect metrics ingested directly by push API's
+	// +optional
+	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
 	// MinScrapeInterval allows limiting minimal scrape interval for VMServiceScrape, VMPodScrape and other scrapes
 	// If interval is lower than defined limit, `minScrapeInterval` will be used.
 	MinScrapeInterval *string `json:"minScrapeInterval,omitempty"`

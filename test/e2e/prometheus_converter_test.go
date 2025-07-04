@@ -39,7 +39,6 @@ var (
 					Scheme: ptr.To("HTTPS"),
 					StaticConfigs: []promv1alpha1.StaticConfig{
 						{
-
 							Targets: []promv1alpha1.Target{
 								"localhost:9100",
 							},
@@ -61,7 +60,6 @@ var (
 				return nil
 			},
 		},
-
 		{
 			name: "PrometheusScrapeConfig",
 			source: &promv1alpha1.ScrapeConfig{
@@ -297,106 +295,98 @@ func getObject(ctx context.Context, obj client.Object) (client.Object, error) {
 	return obj, err
 }
 
-var _ = Describe("test  prometheusConverter Controller", func() {
-	Context("e2e prome converter", func() {
-		for _, testCaseIt := range testCases {
-			testCase := testCaseIt
+var _ = Describe("prometheus converter", Label("vm", "prom"), func() {
+	for _, tc := range testCases {
+		Context(fmt.Sprintf("crud %s", tc.name), func() {
 			// adapt test for parallel execution
 			// https://onsi.github.io/ginkgo/#patterns-for-parallel-integration-specs
 			procSuffix := fmt.Sprintf("-%d", GinkgoParallelProcess())
-			testCase.source.SetName(testCase.source.GetName() + procSuffix)
-			testCase.targetTpl.SetName(testCase.targetTpl.GetName() + procSuffix)
+			tc.source.SetName(tc.source.GetName() + procSuffix)
+			tc.targetTpl.SetName(tc.targetTpl.GetName() + procSuffix)
 			ctx := context.Background()
-			Context(fmt.Sprintf("crud %s", testCase.name), func() {
-				AfterEach(func() {
-					k8sClient.Delete(ctx, testCase.source) // nolint:errcheck
-					Eventually(func() error {
-						_, err := getObject(ctx, testCase.source)
-						return err
-					}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-
-					k8sClient.Delete(ctx, testCase.targetTpl) // nolint:errcheck
-					Eventually(func() error {
-						_, err := getObject(ctx, testCase.targetTpl)
-						if err == nil {
-							return fmt.Errorf("Should be deleted")
-						}
-						return nil
-					}, 60, 1).Should(Succeed())
-				})
-
-				It("Should convert the object", func() {
-					source := testCase.source.DeepCopyObject().(client.Object)
-
-					Expect(k8sClient.Create(ctx, source)).To(Succeed())
-					Eventually(func() error {
-						target, err := getObject(ctx, testCase.targetTpl)
-						if err != nil {
-							return err
-						}
-						return testCase.targetValidator(target)
-					}, 60, 1).Should(Succeed())
-				})
-
-				It("Should update the converted object", func() {
-					source := testCase.source.DeepCopyObject().(client.Object)
-
-					Expect(k8sClient.Create(ctx, source)).To(Succeed())
-					Eventually(func() error {
-						_, err := getObject(ctx, testCase.targetTpl)
-						return err
-					}, 60, 1).Should(Succeed())
-
-					labels := source.GetLabels()
-					if labels == nil {
-						labels = make(map[string]string)
+			AfterEach(func() {
+				k8sClient.Delete(ctx, tc.source) // nolint:errcheck
+				Eventually(func() error {
+					_, err := getObject(ctx, tc.source)
+					return err
+				}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+				k8sClient.Delete(ctx, tc.targetTpl) // nolint:errcheck
+				Eventually(func() error {
+					_, err := getObject(ctx, tc.targetTpl)
+					if err == nil {
+						return fmt.Errorf("Should be deleted")
 					}
-					// Use this hack to trigger update manually for GenerationChange predicate
-					// It's not a problem for production workloads
-					// Since operator performs period syncs for parent objects
-					source.SetGeneration(source.GetGeneration() + 1)
-					labels["testKey"] = "testValue"
-					source.SetLabels(labels)
-
-					Expect(k8sClient.Update(ctx, source)).To(Succeed())
-					Eventually(func() error {
-						target, err := getObject(ctx, testCase.targetTpl)
-						if err != nil {
-							return err
-						}
-						if target.GetLabels() == nil || target.GetLabels()["testKey"] != "testValue" {
-							return fmt.Errorf("unexpected labels, want testKey=testValue, got: %v", target.GetLabels())
-						}
-						return nil
-					}, 60, 1).Should(Succeed())
-				})
-
-				It("Should delete the converted object", func() {
-					source := testCase.source.DeepCopyObject().(client.Object)
-
-					Expect(k8sClient.Create(ctx, source)).To(Succeed())
-					Eventually(func() error {
-						_, err := getObject(ctx, testCase.targetTpl)
-						return err
-					}, 60, 1).Should(Succeed())
-
-					Expect(func() error {
-						target, err := getObject(ctx, testCase.targetTpl)
-						if err != nil {
-							return err
-						}
-						if target.GetOwnerReferences() == nil {
-							return fmt.Errorf("expected owner reference to be non nil, object :%s", target.GetName())
-						}
-						return nil
-					}()).To(Succeed())
-					Expect(k8sClient.Delete(ctx, source)).To(Succeed())
-					Eventually(func() error {
-						_, err := getObject(ctx, testCase.targetTpl)
-						return err
-					}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-				})
+					return nil
+				}, 60, 1).Should(Succeed())
 			})
-		}
-	})
+			It("Should convert the object", func() {
+				source := tc.source.DeepCopyObject().(client.Object)
+				Expect(k8sClient.Create(ctx, source)).To(Succeed())
+				Eventually(func() error {
+					target, err := getObject(ctx, tc.targetTpl)
+					if err != nil {
+						return err
+					}
+					return tc.targetValidator(target)
+				}, 60, 1).Should(Succeed())
+			})
+
+			It("Should update the converted object", func() {
+				source := tc.source.DeepCopyObject().(client.Object)
+				Expect(k8sClient.Create(ctx, source)).To(Succeed())
+				Eventually(func() error {
+					_, err := getObject(ctx, tc.targetTpl)
+					return err
+				}, 60, 1).Should(Succeed())
+
+				labels := source.GetLabels()
+				if labels == nil {
+					labels = make(map[string]string)
+				}
+				// Use this hack to trigger update manually for GenerationChange predicate
+				// It's not a problem for production workloads
+				// Since operator performs period syncs for parent objects
+				source.SetGeneration(source.GetGeneration() + 1)
+				labels["testKey"] = "testValue"
+				source.SetLabels(labels)
+
+				Expect(k8sClient.Update(ctx, source)).To(Succeed())
+				Eventually(func() error {
+					target, err := getObject(ctx, tc.targetTpl)
+					if err != nil {
+						return err
+					}
+					if target.GetLabels() == nil || target.GetLabels()["testKey"] != "testValue" {
+						return fmt.Errorf("unexpected labels, want testKey=testValue, got: %v", target.GetLabels())
+					}
+					return nil
+				}, 60, 1).Should(Succeed())
+			})
+
+			It("Should delete the converted object", func() {
+				source := tc.source.DeepCopyObject().(client.Object)
+				Expect(k8sClient.Create(ctx, source)).To(Succeed())
+				Eventually(func() error {
+					_, err := getObject(ctx, tc.targetTpl)
+					return err
+				}, 60, 1).Should(Succeed())
+
+				Expect(func() error {
+					target, err := getObject(ctx, tc.targetTpl)
+					if err != nil {
+						return err
+					}
+					if target.GetOwnerReferences() == nil {
+						return fmt.Errorf("expected owner reference to be non nil, object: %s", target.GetName())
+					}
+					return nil
+				}()).To(Succeed())
+				Expect(k8sClient.Delete(ctx, source)).To(Succeed())
+				Eventually(func() error {
+					_, err := getObject(ctx, tc.targetTpl)
+					return err
+				}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			})
+		})
+	}
 })

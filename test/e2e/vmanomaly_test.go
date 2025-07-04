@@ -60,61 +60,46 @@ var (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise"), func() {
-	ctx := context.Background()
-	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-	anomalyDatasourceURL := fmt.Sprintf("http://vmsingle-anomaly.%s.svc:8428", namespace)
-	anomalySingle := vmv1beta1.VMSingle{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "anomaly",
-			Namespace: namespace,
-		},
-	}
+var _ = Describe("vmanomaly", Label("vm", "anomaly", "enterprise"), func() {
+	tlsSecretName := "vmanomaly-remote-tls-certs"
 	licenseKey := os.Getenv("LICENSE_KEY")
-	BeforeEach(func() {
-		if licenseKey == "" {
-			Skip("ignoring VMAnomaly tests, license was not found")
-		}
-		Expect(k8sClient.Create(ctx,
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "license",
-					Namespace: namespace,
-				},
-				StringData: map[string]string{
-					"key": licenseKey,
-				},
-			},
-		)).To(Succeed())
-
-		Expect(k8sClient.Create(ctx, &anomalySingle)).To(Succeed())
-		Eventually(func() error {
-			return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace})
-		}, eventualDeploymentAppReadyTimeout,
-		).Should(Succeed())
-
-	})
-	AfterEach(func() {
-		Expect(k8sClient.Delete(ctx,
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "license",
-					Namespace: namespace,
-				},
-			},
-		)).To(Succeed())
-		Expect(k8sClient.Delete(ctx, &anomalySingle)).To(Succeed())
-		Eventually(func() error {
-			return k8sClient.Get(context.Background(), types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
-		}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-
-	})
-	Context("e2e vmanomaly", func() {
+	Context("crud", func() {
+		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}
-		tlsSecretName := "vmanomaly-remote-tls-certs"
+		anomalyDatasourceURL := fmt.Sprintf("http://vmsingle-anomaly.%s.svc:8428", namespace)
+		anomalySingle := vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "anomaly",
+				Namespace: namespace,
+			},
+		}
+		BeforeEach(func() {
+			ctx = context.Background()
+			if licenseKey == "" {
+				Skip("ignoring VMAnomaly tests, license was not found")
+			}
+			Expect(k8sClient.Create(ctx,
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "license",
+						Namespace: namespace,
+					},
+					StringData: map[string]string{
+						"key": licenseKey,
+					},
+				},
+			)).To(Succeed())
+
+			Expect(k8sClient.Create(ctx, &anomalySingle)).To(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace})
+			}, eventualDeploymentAppReadyTimeout,
+			).Should(Succeed())
+
+		})
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx,
 				&vmv1.VMAnomaly{
@@ -130,6 +115,21 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					Namespace: namespacedName.Namespace,
 				}, &vmv1.VMAnomaly{})
 			}, anomalyDeleteTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			Expect(k8sClient.Delete(ctx,
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "license",
+						Namespace: namespace,
+					},
+				},
+			)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, &anomalySingle)).To(Succeed())
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      anomalySingle.Name,
+					Namespace: namespace,
+				}, &vmv1beta1.VMSingle{})
+			}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
 		DescribeTable("should create vmanomaly",
 			func(name string, cr *vmv1.VMAnomaly, setup func(), verify func(*vmv1.VMAnomaly)) {

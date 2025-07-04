@@ -984,6 +984,79 @@ func TestBuildRemoteWrites(t *testing.T) {
 			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432", "-remoteWrite.maxDiskUsagePerURL=1500MB,500MB,1073741824"},
 		},
 		{
+			name: "test automatic maxDiskUsage",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					StatefulMode: true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
+								},
+							},
+						},
+					},
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "localhost:8429",
+						},
+						{
+							URL: "localhost:8431",
+						},
+						{
+							URL: "localhost:8432",
+						},
+					},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432", "-remoteWrite.maxDiskUsagePerURL=3579139413,3579139413,3579139413"},
+		},
+		{
+			name: "test automatic maxDiskUsage with at least one defined",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					StatefulMode: true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
+								},
+							},
+						},
+					},
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:          "localhost:8429",
+							MaxDiskUsage: ptr.To(vmv1beta1.BytesString("5000MB")),
+						},
+						{
+							URL: "localhost:8431",
+						},
+						{
+							URL: "localhost:8432",
+						},
+					},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432", "-remoteWrite.maxDiskUsagePerURL=5000MB,2868709120,2868709120"},
+		},
+		{
 			name: "test forceVMProto",
 			cr: &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{

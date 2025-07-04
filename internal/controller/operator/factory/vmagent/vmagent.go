@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1018,6 +1019,14 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 		pqMountPath := vmAgentPersistentQueueDir
 		if cr.Spec.StatefulMode {
 			pqMountPath = vmAgentPersistentQueueSTSDir
+			if cr.Spec.StatefulStorage != nil {
+				if storage, ok := cr.Spec.StatefulStorage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
+					storageInt, ok := storage.AsInt64()
+					if ok {
+						maxDiskUsage = strconv.FormatInt(storageInt/int64(len(cr.Spec.RemoteWrite)), 10)
+					}
+				}
+			}
 		}
 		args = append(args,
 			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
@@ -1035,7 +1044,6 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 	if rws.MaxBlockSize != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.maxBlockSize=%d", *rws.MaxBlockSize))
 	}
-
 	if rws.Queues != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.queues=%d", *rws.Queues))
 	}
@@ -1129,6 +1137,9 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 		maxDiskUsage = cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL.String()
 	}
 
+	var maxDiskUsages []int64
+	var totalMaxDiskUsage int64
+	var undefinedMaxDiskUsageCount int
 	for i := range remoteTargets {
 		rws := remoteTargets[i]
 		url.flagSetting += fmt.Sprintf("%s,", rws.URL)
@@ -1315,12 +1326,19 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 		streamAggrIgnoreOldSamples.flagSetting += fmt.Sprintf("%v,", ignoreOldSamples)
 		streamAggrEnableWindows.flagSetting += fmt.Sprintf("%v", enableWindows)
 
-		value = maxDiskUsage
 		if rws.MaxDiskUsage != nil {
 			value = rws.MaxDiskUsage.String()
+			v, err := flagutil.ParseBytes(value)
+			if err != nil {
+				return nil, err
+			}
+			maxDiskUsages = append(maxDiskUsages, v)
 			maxDiskUsagePerURL.isNotNull = true
+			totalMaxDiskUsage += v
+		} else {
+			undefinedMaxDiskUsageCount++
+			maxDiskUsages = append(maxDiskUsages, 0)
 		}
-		maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", value)
 
 		if rws.ForceVMProto {
 			forceVMProto.isNotNull = true
@@ -1333,6 +1351,32 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 			value = *rws.ProxyURL
 		}
 		proxyURL.flagSetting += fmt.Sprintf("%s,", value)
+	}
+
+	if cr.Spec.StatefulMode {
+		if cr.Spec.StatefulStorage != nil {
+			if storage, ok := cr.Spec.StatefulStorage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
+				storageInt, ok := storage.AsInt64()
+				if ok {
+					if storageInt < totalMaxDiskUsage {
+						return nil, fmt.Errorf("total amount of storage that was assigned to -remoteWrite.maxDiskUsagePerURL %d exceeds available storage %d", totalMaxDiskUsage, storageInt)
+					}
+					if undefinedMaxDiskUsageCount > 0 {
+						maxDiskUsage = strconv.FormatInt((storageInt-totalMaxDiskUsage)/int64(undefinedMaxDiskUsageCount), 10)
+						maxDiskUsagePerURL.isNotNull = true
+					}
+				}
+			}
+		}
+	}
+	if maxDiskUsagePerURL.isNotNull {
+		for i, usage := range maxDiskUsages {
+			if usage > 0 {
+				maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", remoteTargets[i].MaxDiskUsage.String())
+			} else {
+				maxDiskUsagePerURL.flagSetting += fmt.Sprintf("%s,", maxDiskUsage)
+			}
+		}
 	}
 
 	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout, proxyURL)

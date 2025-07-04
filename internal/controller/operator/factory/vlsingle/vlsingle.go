@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	tlsAssetsDir           = "/etc/vm/tls-server-secrets"
 	vlsingleDataDir        = "/victoria-logs-data"
 	vlsingleDataVolumeName = "data"
 )
@@ -83,6 +84,8 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingl
 		}
 	}
 
+	ac := getAssetsCache(ctx, rclient, cr)
+
 	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
 		return err
@@ -97,13 +100,13 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingl
 
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
-		prevDeploy, err = newDeployment(prevCR)
+		prevDeploy, err = newDeployment(prevCR, ac)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
 
-	newDeploy, err := newDeployment(cr)
+	newDeploy, err := newDeployment(cr, ac)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vlsingle: %w", err)
 	}
@@ -111,8 +114,8 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingl
 	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
 }
 
-func newDeployment(r *vmv1.VLSingle) (*appsv1.Deployment, error) {
-	podSpec, err := makePodSpec(r)
+func newDeployment(r *vmv1.VLSingle, ac *build.AssetsCache) (*appsv1.Deployment, error) {
+	podSpec, err := makePodSpec(r, ac)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +145,7 @@ func newDeployment(r *vmv1.VLSingle) (*appsv1.Deployment, error) {
 	return depSpec, nil
 }
 
-func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
+func makePodSpec(r *vmv1.VLSingle, ac *build.AssetsCache) (*corev1.PodTemplateSpec, error) {
 	var args []string
 
 	if len(r.Spec.RetentionPeriod) > 0 {
@@ -206,6 +209,14 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 			},
 		})
 	}
+	if r.Spec.SyslogSpec != nil {
+		ports = build.SyslogPortsTo(ports, r.Spec.SyslogSpec)
+		var err error
+		args, err = build.SyslogArgsTo(args, r.Spec.SyslogSpec, r.Namespace, ac)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build vlsingle pod spec: %w", err)
+		}
+	}
 	volumes = append(volumes, r.Spec.Volumes...)
 	vmMounts := []corev1.VolumeMount{
 		{
@@ -213,7 +224,7 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 			MountPath: storagePath,
 		},
 	}
-
+	volumes, vmMounts = ac.VolumeTo(volumes, vmMounts)
 	vmMounts = append(vmMounts, r.Spec.VolumeMounts...)
 
 	for _, s := range r.Spec.Secrets {
@@ -300,7 +311,9 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
 	}
 
-	newService := build.Service(cr, cr.Spec.Port, nil)
+	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.SyslogServicePortsTo(svc, cr.Spec.SyslogSpec)
+	})
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
@@ -337,4 +350,14 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1.VLSingle, rclient cl
 	}
 
 	return nil
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }

@@ -360,6 +360,11 @@ func (in *VLAgentSpec) DeepCopyInto(out *VLAgentSpec) {
 		*out = new(v1beta1.License)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.SyslogSpec != nil {
+		in, out := &in.SyslogSpec, &out.SyslogSpec
+		*out = new(SyslogServerSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	in.CommonDefaultableParams.DeepCopyInto(&out.CommonDefaultableParams)
 	in.CommonApplicationDeploymentParams.DeepCopyInto(&out.CommonApplicationDeploymentParams)
 }
@@ -733,6 +738,11 @@ func (in *VLSingleSpec) DeepCopyInto(out *VLSingleSpec) {
 	if in.EmbeddedProbes != nil {
 		in, out := &in.EmbeddedProbes, &out.EmbeddedProbes
 		*out = new(v1beta1.EmbeddedProbes)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.SyslogSpec != nil {
+		in, out := &in.SyslogSpec, &out.SyslogSpec
+		*out = new(SyslogServerSpec)
 		(*in).DeepCopyInto(*out)
 	}
 }

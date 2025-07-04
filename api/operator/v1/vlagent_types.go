@@ -83,6 +83,9 @@ type VLAgentSpec struct {
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 	// +optional
 	License *vmv1beta1.License `json:"license,omitempty"`
+	// SyslogSpec defines syslog listener configuration
+	// +optional
+	SyslogSpec *SyslogServerSpec `json:"syslogSpec,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional

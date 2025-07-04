@@ -50,6 +50,8 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 			if prevCR.Spec.Mode == vmv1.StatefulSetMode {
 				svc.Spec.ClusterIP = "None"
 			}
+			syslogSpec := prevCR.Spec.SyslogSpec
+			build.SyslogServicePortsTo(svc, syslogSpec)
 		})
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, cr.Spec.ServiceSpec)
 	}
@@ -57,6 +59,8 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		if cr.Spec.Mode == vmv1.StatefulSetMode {
 			svc.Spec.ClusterIP = "None"
 		}
+		syslogSpec := cr.Spec.SyslogSpec
+		build.SyslogServicePortsTo(svc, syslogSpec)
 	})
 
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
@@ -386,6 +390,16 @@ func makeSpec(cr *vmv1.VLAgent, ac *build.AssetsCache) (*corev1.PodSpec, error) 
 
 	var agentVolumeMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
+
+	if cr.Spec.SyslogSpec != nil {
+		ports = build.SyslogPortsTo(ports, cr.Spec.SyslogSpec)
+		var err error
+		args, err = build.SyslogArgsTo(args, cr.Spec.SyslogSpec, cr.Namespace, ac)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build vlagent pod spec: %w", err)
+		}
+	}
+
 	volumes, agentVolumeMounts = ac.VolumeTo(volumes, agentVolumeMounts)
 	// mount data path any way, even if user changes its value
 	// we cannot rely on value of remoteWriteSettings.

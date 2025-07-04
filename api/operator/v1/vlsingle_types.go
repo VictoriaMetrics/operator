@@ -94,6 +94,9 @@ type VLSingleSpec struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// LivenessProbe that will be added to VLSingle pod
 	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	// SyslogSpec defines syslog listener configuration
+	// +optional
+	SyslogSpec *SyslogServerSpec `json:"syslogSpec,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional

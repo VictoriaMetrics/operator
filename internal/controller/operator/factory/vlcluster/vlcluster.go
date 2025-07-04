@@ -37,6 +37,8 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		}
 	}
 
+	ac := getAssetsCache(ctx, rclient, cr)
+
 	// handle case for loadbalancing
 	if cr.Spec.RequestsLoadBalancer.Enabled && cr.Spec.VLStorage != nil {
 		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
@@ -51,7 +53,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		return fmt.Errorf("cannot reconcile select: %w", err)
 	}
 
-	if err := createOrUpdateVLInsert(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateVLInsert(ctx, rclient, cr, prevCR, ac); err != nil {
 		return fmt.Errorf("cannot reconcile insert: %w", err)
 	}
 
@@ -251,4 +253,14 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 	}
 
 	return nil
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }

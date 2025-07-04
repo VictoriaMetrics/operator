@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -46,8 +47,17 @@ const (
 	StreamAggrConfigResourceKind ResourceKind = "stream-aggr"
 )
 
+type resourceOpts interface {
+	client.Object
+	PrefixedName() string
+	AnnotationsFiltered() map[string]string
+	AllLabels() map[string]string
+	AsOwner() []metav1.OwnerReference
+	GetNamespace() string
+}
+
 // ResourceName returns a name for provided resource and corresponding cr object
-func ResourceName(kind ResourceKind, cr builderOpts) string {
+func ResourceName(kind ResourceKind, cr resourceOpts) string {
 	var parts []string
 	switch kind {
 	case TLSAssetsResourceKind, StreamAggrConfigResourceKind:
@@ -58,7 +68,7 @@ func ResourceName(kind ResourceKind, cr builderOpts) string {
 }
 
 // ResourceMeta return kubernetes metadata object for given kind and cr
-func ResourceMeta(kind ResourceKind, cr builderOpts) metav1.ObjectMeta {
+func ResourceMeta(kind ResourceKind, cr resourceOpts) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:            ResourceName(kind, cr),
 		Namespace:       cr.GetNamespace(),
@@ -393,6 +403,35 @@ func (ac *AssetsCache) BuildTLSCreds(ns string, cfg *vmv1beta1.TLSConfig) (*TLSC
 		creds.CertFile = cfg.CertFile
 	} else if len(cfg.Cert.PrefixedName()) > 0 {
 		file, err := ac.LoadPathFromSecretOrConfigMap(TLSAssetsResourceKind, ns, &cfg.Cert)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch cert: %w", err)
+		}
+		creds.CertFile = file
+	}
+
+	if len(cfg.KeyFile) > 0 {
+		creds.KeyFile = cfg.KeyFile
+	} else if cfg.KeySecret != nil {
+		file, err := ac.LoadPathFromSecret(TLSAssetsResourceKind, ns, cfg.KeySecret)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch keySecret: %w", err)
+		}
+		creds.KeyFile = file
+	}
+	return creds, nil
+}
+
+// BuildTLSServerCreds fetches content of provided TLSServerConfig
+// Returns an object with paths to the fetched secret values mounted on disk
+func (ac *AssetsCache) BuildTLSServerCreds(ns string, cfg *vmv1.TLSServerConfig) (*TLSCreds, error) {
+	if cfg == nil {
+		return nil, nil
+	}
+	creds := &TLSCreds{}
+	if len(cfg.CertFile) > 0 {
+		creds.CertFile = cfg.CertFile
+	} else if cfg.CertSecret != nil {
+		file, err := ac.LoadPathFromSecret(TLSAssetsResourceKind, ns, cfg.CertSecret)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cert: %w", err)
 		}

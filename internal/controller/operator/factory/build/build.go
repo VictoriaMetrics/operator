@@ -8,8 +8,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -201,4 +203,106 @@ func StreamAggrVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, na
 		})
 	}
 	return volumes, mounts
+}
+
+// SyslogPortsTo adds syslog ports to pod spec
+func SyslogPortsTo(dst []corev1.ContainerPort, syslogSpec *vmv1.SyslogServerSpec) []corev1.ContainerPort {
+	if syslogSpec == nil {
+		return dst
+	}
+	for idx, tcp := range syslogSpec.TCPListeners {
+		dst = append(dst, corev1.ContainerPort{
+			Name:          fmt.Sprintf("syslog-tcp-%d", idx),
+			Protocol:      corev1.ProtocolTCP,
+			ContainerPort: tcp.ListenPort,
+		})
+	}
+
+	for idx, udp := range syslogSpec.UDPListeners {
+		dst = append(dst, corev1.ContainerPort{
+			Name:          fmt.Sprintf("syslog-udp-%d", idx),
+			Protocol:      corev1.ProtocolUDP,
+			ContainerPort: udp.ListenPort,
+		},
+		)
+	}
+	return dst
+}
+
+// SyslogServicePortsTo adds syslog ports to service spec
+func SyslogServicePortsTo(svc *corev1.Service, syslogSpec *vmv1.SyslogServerSpec) {
+	if syslogSpec == nil {
+		return
+	}
+	for idx, tcp := range syslogSpec.TCPListeners {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Name:       fmt.Sprintf("syslog-tcp-%d", idx),
+			Protocol:   corev1.ProtocolTCP,
+			Port:       tcp.ListenPort,
+			TargetPort: intstr.FromInt32(tcp.ListenPort),
+		})
+	}
+
+	for idx, udp := range syslogSpec.UDPListeners {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Name:       fmt.Sprintf("syslog-udp-%d", idx),
+			Protocol:   corev1.ProtocolUDP,
+			Port:       udp.ListenPort,
+			TargetPort: intstr.FromInt32(udp.ListenPort),
+		})
+	}
+}
+
+// SyslogArgsTo adds syslog command line flags
+func SyslogArgsTo(args []string, syslogSpec *vmv1.SyslogServerSpec, ns string, ac *AssetsCache) ([]string, error) {
+	if syslogSpec == nil {
+		return args, nil
+	}
+	tcpListenAddr := NewFlag("-syslog.listenAddr.tcp", "")
+	udpListenAddr := NewFlag("-syslog.listenAddr.udp", "")
+	tcpStreamFields := NewFlag("-syslog.streamFields.tcp", `''`)
+	udpStreamFields := NewFlag("-syslog.streamFields.udp", `''`)
+	tcpIgnoreFields := NewFlag("-syslog.ignoreFields.tcp", `''`)
+	udpIgnoreFields := NewFlag("-syslog.ignoreFields.udp", `''`)
+	tcpDecolorizedFields := NewFlag("-syslog.decolorizeFields.tcp", `''`)
+	udpDecolorizedFields := NewFlag("-syslog.decolorizeFields.udp", `''`)
+	tcpTenantID := NewFlag("-syslog.tenantID.tcp", "''")
+	udpTenantID := NewFlag("-syslog.tenantID.udp", "''")
+	tcpCompress := NewFlag("-syslog.compressMethod.tcp", "''")
+	udpCompress := NewFlag("-syslog.compressMethod.udp", "''")
+	tlsEnabled := NewFlag("-syslog.tls", "")
+	tlsCertFile := NewFlag("-syslog.tlsCertFile", "")
+	tlsKeyFile := NewFlag("-syslog.tlsKeyFile", "")
+
+	for i, sTCP := range syslogSpec.TCPListeners {
+		tcpListenAddr.Add(fmt.Sprintf(":%d", sTCP.ListenPort), i)
+		tcpStreamFields.Add(fmt.Sprintf("'%s'", string(sTCP.StreamFields)), i)
+		tcpDecolorizedFields.Add(fmt.Sprintf("'%s'", string(sTCP.DecolorizeFields)), i)
+		tcpIgnoreFields.Add(fmt.Sprintf("'%s'", string(sTCP.IgnoreFields)), i)
+		tcpTenantID.Add(fmt.Sprintf("'%s'", sTCP.TenantID), i)
+		tcpCompress.Add(fmt.Sprintf("'%s'", sTCP.CompressMethod), i)
+		if sTCP.TLSConfig != nil {
+			tlsEnabled.Add("true", i)
+			creds, err := ac.BuildTLSServerCreds(ns, sTCP.TLSConfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get TLS credentials for Syslog: %w", err)
+			}
+			tlsCertFile.Add(creds.CertFile, i)
+			tlsKeyFile.Add(creds.KeyFile, i)
+		}
+	}
+	tcpLen := len(syslogSpec.TCPListeners)
+	args = AppendFlagsToArgs(args, tcpLen, tcpListenAddr, tcpStreamFields, tcpIgnoreFields, tcpDecolorizedFields, tcpTenantID, tcpCompress, tlsEnabled, tlsCertFile, tlsKeyFile)
+
+	for i, sUDP := range syslogSpec.UDPListeners {
+		udpListenAddr.Add(fmt.Sprintf(":%d", sUDP.ListenPort), i)
+		udpStreamFields.Add(fmt.Sprintf("'%s'", string(sUDP.StreamFields)), i)
+		udpIgnoreFields.Add(fmt.Sprintf("'%s'", string(sUDP.IgnoreFields)), i)
+		udpDecolorizedFields.Add(fmt.Sprintf("'%s'", string(sUDP.DecolorizeFields)), i)
+		udpTenantID.Add(fmt.Sprintf("'%s'", sUDP.TenantID), i)
+		udpCompress.Add(fmt.Sprintf("'%s'", sUDP.CompressMethod), i)
+	}
+	udpLen := len(syslogSpec.UDPListeners)
+	args = AppendFlagsToArgs(args, udpLen, udpListenAddr, udpStreamFields, udpIgnoreFields, udpDecolorizedFields, udpTenantID, udpCompress)
+	return args, nil
 }

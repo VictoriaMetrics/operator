@@ -23,7 +23,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-func createOrUpdateVLInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdateVLInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster, ac *build.AssetsCache) error {
 	if cr.Spec.VLInsert == nil {
 		return nil
 	}
@@ -31,7 +31,7 @@ func createOrUpdateVLInsert(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdatePodDisruptionBudgetForVLInsert(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	if err := createOrUpdateVLInsertDeployment(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateVLInsertDeployment(ctx, rclient, cr, prevCR, ac); err != nil {
 		return err
 	}
 	insertSvc, err := createOrUpdateVLInsertService(ctx, rclient, cr, prevCR)
@@ -70,26 +70,26 @@ func createOrUpdatePodDisruptionBudgetForVLInsert(ctx context.Context, rclient c
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
-func createOrUpdateVLInsertDeployment(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdateVLInsertDeployment(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster, ac *build.AssetsCache) error {
 	var prevDeploy *appsv1.Deployment
 
 	if prevCR != nil && prevCR.Spec.VLInsert != nil {
 		var err error
-		prevDeploy, err = buildVLInsertDeployment(prevCR)
+		prevDeploy, err = buildVLInsertDeployment(prevCR, ac)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
-	newDeployment, err := buildVLInsertDeployment(cr)
+	newDeployment, err := buildVLInsertDeployment(cr, ac)
 	if err != nil {
 		return err
 	}
 	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, cr.Spec.VLInsert.HPA != nil)
 }
 
-func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
+func buildVLInsertDeployment(cr *vmv1.VLCluster, ac *build.AssetsCache) (*appsv1.Deployment, error) {
 
-	podSpec, err := buildVLInsertPodSpec(cr)
+	podSpec, err := buildVLInsertPodSpec(cr, ac)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 	return stsSpec, nil
 }
 
-func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
+func buildVLInsertPodSpec(cr *vmv1.VLCluster, ac *build.AssetsCache) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VLInsert.Port),
 		"-internalselect.disable=true",
@@ -169,13 +169,14 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	vmMounts = append(vmMounts, cr.Spec.VLInsert.VolumeMounts...)
 
 	if cr.Spec.VLInsert.SyslogSpec != nil && !cr.Spec.RequestsLoadBalancer.Enabled {
-		ports = addSyslogPortsTo(ports, cr.Spec.VLInsert.SyslogSpec)
-		args = buildSyslogArgs(args, cr.Spec.VLInsert.SyslogSpec)
-		for _, tcpC := range cr.Spec.VLInsert.SyslogSpec.TCPListeners {
-			volumes = addTLSConfigToVolumes(volumes, tcpC.TLSConfig)
-			vmMounts = addTLSConfigToVolumeMounts(vmMounts, tcpC.TLSConfig)
+		ports = build.SyslogPortsTo(ports, cr.Spec.VLInsert.SyslogSpec)
+		var err error
+		args, err = build.SyslogArgsTo(args, cr.Spec.VLInsert.SyslogSpec, cr.Namespace, ac)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build vlinsert pod spec: %w", err)
 		}
 	}
+	volumes, vmMounts = ac.VolumeTo(volumes, vmMounts)
 
 	for _, s := range cr.Spec.VLInsert.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -332,7 +333,7 @@ func buildVLInsertService(cr *vmv1.VLCluster) *corev1.Service {
 			// fast path
 			return
 		}
-		addSyslogPortsToService(svc, syslogSpec)
+		build.SyslogServicePortsTo(svc, syslogSpec)
 	})
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 		svc.Name = cr.GetVLInsertLBName()
@@ -341,164 +342,4 @@ func buildVLInsertService(cr *vmv1.VLCluster) *corev1.Service {
 		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetVLInsertName()
 	}
 	return svc
-}
-
-func buildSyslogArgs(dst []string, syslogSpec *vmv1.SyslogServerSpec) []string {
-	if syslogSpec == nil {
-		return dst
-	}
-	type groupFlag struct {
-		isNotNull   bool
-		flagSetting string
-	}
-
-	tcpListenAddr := groupFlag{flagSetting: "-syslog.listenAddr.tcp="}
-	udpListenAddr := groupFlag{flagSetting: "-syslog.listenAddr.udp="}
-	tcpStreamFields := groupFlag{flagSetting: "-syslog.streamFields.tcp="}
-	udpStreamFileds := groupFlag{flagSetting: "-syslog.streamFields.udp="}
-	tcpIgnoreFields := groupFlag{flagSetting: "-syslog.ignoreFields.tcp="}
-	udpIgnoreFields := groupFlag{flagSetting: "-syslog.ignoreFields.udp="}
-	tcpDecolorizedFields := groupFlag{flagSetting: "-syslog.decolorizeFields.tcp="}
-	udpDecolorizedFields := groupFlag{flagSetting: "-syslog.decolorizeFields.udp="}
-	tcpTenantID := groupFlag{flagSetting: "-syslog.tenantID.tcp="}
-	udpTenantID := groupFlag{flagSetting: "-syslog.tenantID.udp="}
-	tcpCompress := groupFlag{flagSetting: "-syslog.compressMethod.tcp="}
-	udpCompress := groupFlag{flagSetting: "-syslog.compressMethod.udp="}
-
-	tlsEnabled := groupFlag{flagSetting: "-syslog.tls="}
-	tlsCertFile := groupFlag{flagSetting: "-syslog.tlsCertFile="}
-	tlsKeyFile := groupFlag{flagSetting: "-syslog.tlsKeyFile="}
-
-	var value string
-	addValue := func(flag *groupFlag, fieldValue string) {
-		value = ""
-		if len(fieldValue) > 0 {
-			flag.isNotNull = true
-			value = fieldValue
-		}
-		flag.flagSetting += fmt.Sprintf("'%s',", value)
-	}
-
-	for _, sTCP := range syslogSpec.TCPListeners {
-		tcpListenAddr.flagSetting += fmt.Sprintf(":%d,", sTCP.ListenPort)
-		tcpListenAddr.isNotNull = true
-		addValue(&tcpStreamFields, string(sTCP.StreamFields))
-		addValue(&tcpDecolorizedFields, string(sTCP.DecolorizeFields))
-		addValue(&tcpIgnoreFields, string(sTCP.IgnoreFields))
-		addValue(&tcpTenantID, sTCP.TenantID)
-		addValue(&tcpCompress, sTCP.CompressMethod)
-
-		value = ""
-		if sTCP.TLSConfig != nil {
-			tlsEnabled.isNotNull = true
-			value = "true"
-		}
-		tlsEnabled.flagSetting += fmt.Sprintf("%s,", value)
-
-		if sTCP.TLSConfig != nil {
-			tlsC := sTCP.TLSConfig
-			value = ""
-			switch {
-			case tlsC.CertFile != "":
-				value = tlsC.CertFile
-				tlsCertFile.isNotNull = true
-			case tlsC.CertSecret != nil:
-				tlsCertFile.isNotNull = true
-				value = fmt.Sprintf("%s/%s/%s", tlsServerConfigMountPath, tlsC.CertSecret.Name, tlsC.CertSecret.Key)
-			}
-			tlsCertFile.flagSetting += fmt.Sprintf("%s,", value)
-
-			value = ""
-			switch {
-			case tlsC.KeyFile != "":
-				value = tlsC.KeyFile
-				tlsKeyFile.isNotNull = true
-			case tlsC.KeySecret != nil:
-				value = fmt.Sprintf("%s/%s/%s", tlsServerConfigMountPath, tlsC.KeySecret.Name, tlsC.KeySecret.Key)
-				tlsKeyFile.isNotNull = true
-			}
-			tlsKeyFile.flagSetting += fmt.Sprintf("%s,", value)
-		}
-	}
-
-	for _, sUDP := range syslogSpec.UDPListeners {
-		udpListenAddr.flagSetting += fmt.Sprintf(":%d,", sUDP.ListenPort)
-		udpListenAddr.isNotNull = true
-		addValue(&udpStreamFileds, string(sUDP.StreamFields))
-		addValue(&udpIgnoreFields, string(sUDP.IgnoreFields))
-		addValue(&udpDecolorizedFields, string(sUDP.DecolorizeFields))
-		addValue(&udpTenantID, sUDP.TenantID)
-		addValue(&udpCompress, sUDP.CompressMethod)
-	}
-	flags := []groupFlag{
-		tcpListenAddr,
-		tcpStreamFields,
-		tcpIgnoreFields,
-		tcpDecolorizedFields,
-		tcpTenantID,
-		tcpCompress,
-		tlsEnabled,
-		tlsCertFile,
-		tlsKeyFile,
-
-		udpListenAddr,
-		udpStreamFileds,
-		udpIgnoreFields,
-		udpDecolorizedFields,
-		udpTenantID,
-		udpCompress,
-	}
-	for _, flagArg := range flags {
-		if flagArg.isNotNull {
-			dst = append(dst, strings.TrimSuffix(flagArg.flagSetting, ","))
-		}
-	}
-	return dst
-}
-
-func addSyslogPortsTo(dst []corev1.ContainerPort, syslogSpec *vmv1.SyslogServerSpec) []corev1.ContainerPort {
-	if syslogSpec == nil {
-		return dst
-	}
-	for idx, tcp := range syslogSpec.TCPListeners {
-		dst = append(dst, corev1.ContainerPort{
-			Name:          fmt.Sprintf("syslog-tcp-%d", idx),
-			Protocol:      corev1.ProtocolTCP,
-			ContainerPort: tcp.ListenPort,
-		})
-	}
-
-	for idx, udp := range syslogSpec.UDPListeners {
-		dst = append(dst, corev1.ContainerPort{
-			Name:          fmt.Sprintf("syslog-udp-%d", idx),
-			Protocol:      corev1.ProtocolUDP,
-			ContainerPort: udp.ListenPort,
-		},
-		)
-	}
-	return dst
-}
-
-func addSyslogPortsToService(svc *corev1.Service, syslogSpec *vmv1.SyslogServerSpec) {
-	if syslogSpec == nil {
-		return
-	}
-	for idx, tcp := range syslogSpec.TCPListeners {
-		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-			Name:       fmt.Sprintf("syslog-tcp-%d", idx),
-			Protocol:   corev1.ProtocolTCP,
-			Port:       tcp.ListenPort,
-			TargetPort: intstr.FromInt32(tcp.ListenPort),
-		})
-	}
-
-	for idx, udp := range syslogSpec.UDPListeners {
-		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-			Name:       fmt.Sprintf("syslog-udp-%d", idx),
-			Protocol:   corev1.ProtocolUDP,
-			Port:       udp.ListenPort,
-			TargetPort: intstr.FromInt32(udp.ListenPort),
-		},
-		)
-	}
 }

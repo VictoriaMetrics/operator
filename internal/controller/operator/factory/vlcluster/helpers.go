@@ -1,10 +1,6 @@
 package vlcluster
 
 import (
-	"fmt"
-
-	corev1 "k8s.io/api/core/v1"
-
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
@@ -12,7 +8,7 @@ import (
 const (
 	vmauthLBServiceProxyJobNameLabel = "operator.victoriametrics.com/vmauthlb-proxy-job-name"
 	vmauthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
-	tlsServerConfigMountPath         = "/etc/vm/tls-server-secrets"
+	tlsAssetsDir                     = "/etc/vm/tls-server-secrets"
 )
 
 type optsBuilder struct {
@@ -55,68 +51,4 @@ func newOptsBuilder(cr *vmv1.VLCluster, name string, selectorLabels map[string]s
 		finalLabels:    cr.FinalLabels(selectorLabels),
 		selectorLabels: selectorLabels,
 	}
-}
-
-func addTLSConfigToVolumes(dst []corev1.Volume, tlsC *vmv1.TLSServerConfig) []corev1.Volume {
-	if tlsC == nil {
-		return dst
-	}
-	addSecretVolume := func(sr *corev1.SecretKeySelector) {
-		name := fmt.Sprintf("secret-tls-%s", sr.Name)
-		for _, dst := range dst {
-			if dst.Name == name {
-				return
-			}
-		}
-		dst = append(dst, corev1.Volume{
-			Name: name,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: sr.Name,
-				},
-			},
-		})
-	}
-	switch {
-	case tlsC.CertFile != "":
-	case tlsC.CertSecret != nil:
-		addSecretVolume(tlsC.CertSecret)
-	}
-
-	switch {
-	case tlsC.KeyFile != "":
-	case tlsC.KeySecret != nil:
-		addSecretVolume(tlsC.KeySecret)
-	}
-	return dst
-}
-
-func addTLSConfigToVolumeMounts(dst []corev1.VolumeMount, tlsC *vmv1.TLSServerConfig) []corev1.VolumeMount {
-	if tlsC == nil {
-		return dst
-	}
-	addSecretVolume := func(sr *corev1.SecretKeySelector) {
-		name := fmt.Sprintf("secret-tls-%s", sr.Name)
-		for _, dst := range dst {
-			if dst.Name == name {
-				return
-			}
-		}
-		dst = append(dst, corev1.VolumeMount{
-			Name:      name,
-			MountPath: fmt.Sprintf("%s/%s", tlsServerConfigMountPath, sr.Name),
-		})
-	}
-	switch {
-	case tlsC.CertFile != "":
-	case tlsC.CertSecret != nil:
-		addSecretVolume(tlsC.CertSecret)
-	}
-
-	switch {
-	case tlsC.KeyFile != "":
-	case tlsC.KeySecret != nil:
-		addSecretVolume(tlsC.KeySecret)
-	}
-	return dst
 }

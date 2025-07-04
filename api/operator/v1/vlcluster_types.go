@@ -740,6 +740,15 @@ func (cr *VLCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 
 var globalClusterLabels = map[string]string{"app.kubernetes.io/part-of": "vlcluster"}
 
+func (cr *VLCluster) AllLabels() map[string]string {
+	selectorLabels := cr.SelectorLabels()
+	// fast path
+	if cr.Spec.ManagedMetadata == nil {
+		return selectorLabels
+	}
+	return labels.Merge(selectorLabels, cr.Spec.ManagedMetadata.Labels)
+}
+
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr *VLCluster) FinalLabels(selectorLabels map[string]string) map[string]string {
 	baseLabels := labels.Merge(globalClusterLabels, selectorLabels)

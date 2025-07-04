@@ -21,6 +21,7 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add new field persistentVolumeClaimRetentionPolicy in VMAnomaly, VMCluster, VMAlertmanager and VMAgent CRs, that support StatefulSet mode. See [#1226](https://github.com/VictoriaMetrics/operator/issues/1226).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): added AWS section to VMAgent remoteWrite spec. See [#928](https://github.com/VictoriaMetrics/operator/issues/928).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): introduce global scrape config for VMAgent. See [#1179](https://github.com/VictoriaMetrics/operator/issues/1179).
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): Modify default `remoteWrite.maxDiskUsagePerURL` when statefulStorage.volumeClaimTemplate is set. See [#1209](https://github.com/VictoriaMetrics/operator/issues/1209)
 
 ## [v0.60.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.2)
 

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -491,14 +492,11 @@ func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
 func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, error) {
 	var args []string
 
-	if len(cr.Spec.RemoteWrite) > 0 {
-		rwArgs, err := buildRemoteWrites(cr, ac)
-		if err != nil {
-			return nil, err
-		}
+	if rwArgs, err := buildRemoteWriteArgs(cr, ac); err != nil {
+		return nil, fmt.Errorf("failed to build remote write args: %w", err)
+	} else {
 		args = append(args, rwArgs...)
 	}
-	args = append(args, buildRemoteWriteSettings(cr)...)
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 
@@ -945,82 +943,6 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
 }
 
-func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
-	// limit to 1GB
-	// most people do not care about this setting,
-	// but it may harmfully affect kubernetes cluster health
-	maxDiskUsage := defaultMaxDiskUsage
-	var containsMaxDiskUsage bool
-	for i := range cr.Spec.RemoteWrite {
-		rws := cr.Spec.RemoteWrite[i]
-		if rws.MaxDiskUsage != nil {
-			containsMaxDiskUsage = true
-			break
-		}
-	}
-	var args []string
-	if cr.Spec.RemoteWriteSettings == nil {
-		// fast path
-		pqMountPath := vmAgentPersistentQueueDir
-		if cr.Spec.StatefulMode {
-			pqMountPath = vmAgentPersistentQueueSTSDir
-		}
-		args = append(args,
-			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
-
-		if !containsMaxDiskUsage {
-			args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", maxDiskUsage))
-		}
-		return args
-	}
-
-	rws := *cr.Spec.RemoteWriteSettings
-	if rws.FlushInterval != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.flushInterval=%s", *rws.FlushInterval))
-	}
-	if rws.MaxBlockSize != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.maxBlockSize=%d", *rws.MaxBlockSize))
-	}
-
-	if rws.Queues != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.queues=%d", *rws.Queues))
-	}
-	if rws.ShowURL != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.showURL=%t", *rws.ShowURL))
-	}
-	pqMountPath := vmAgentPersistentQueueDir
-	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
-	}
-	if rws.TmpDataPath != nil {
-		pqMountPath = *rws.TmpDataPath
-	}
-	args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
-
-	if rws.MaxDiskUsagePerURL != nil {
-		maxDiskUsage = rws.MaxDiskUsagePerURL.String()
-	}
-	if !containsMaxDiskUsage {
-		args = append(args, "-remoteWrite.maxDiskUsagePerURL="+maxDiskUsage)
-	}
-	if rws.Labels != nil {
-		lbls := sortMap(rws.Labels)
-		flagValue := "-remoteWrite.label="
-		if len(lbls) > 0 {
-			flagValue += fmt.Sprintf("%s=%s", lbls[0].key, lbls[0].value)
-			for _, lv := range lbls[1:] {
-				flagValue += fmt.Sprintf(",%s=%s", lv.key, lv.value)
-			}
-			args = append(args, flagValue)
-		}
-
-	}
-	if rws.UseMultiTenantMode {
-		args = append(args, "-enableMultitenantHandlers=true")
-	}
-	return args
-}
-
 type item struct {
 	key, value string
 }
@@ -1036,155 +958,234 @@ func sortMap(m map[string]string) []item {
 	return kv
 }
 
-func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, error) {
-	remoteTargets := cr.Spec.RemoteWrite
-
+func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, error) {
 	maxDiskUsage := defaultMaxDiskUsage
 	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
 		maxDiskUsage = cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL.String()
 	}
-	url := build.NewFlag("-remoteWrite.url", "")
-	authUser := build.NewFlag("-remoteWrite.basicAuth.username", `""`)
-	authPasswordFile := build.NewFlag("-remoteWrite.basicAuth.passwordFile", "")
-	bearerTokenFile := build.NewFlag("-remoteWrite.bearerTokenFile", `""`)
-	urlRelabelConfig := build.NewFlag("-remoteWrite.urlRelabelConfig", "")
-	sendTimeout := build.NewFlag("-remoteWrite.sendTimeout", "")
-	tlsCAs := build.NewFlag("-remoteWrite.tlsCAFile", "")
-	tlsCerts := build.NewFlag("-remoteWrite.tlsCertFile", "")
-	tlsKeys := build.NewFlag("-remoteWrite.tlsKeyFile", "")
-	tlsInsecure := build.NewFlag("-remoteWrite.tlsInsecureSkipVerify", "false")
-	tlsServerName := build.NewFlag("-remoteWrite.tlsServerName", "")
-	oauth2ClientID := build.NewFlag("-remoteWrite.oauth2.clientID", "")
-	oauth2ClientSecretFile := build.NewFlag("-remoteWrite.oauth2.clientSecretFile", "")
-	oauth2Scopes := build.NewFlag("-remoteWrite.oauth2.scopes", "")
-	oauth2TokenURL := build.NewFlag("-remoteWrite.oauth2.tokenUrl", "")
-	headers := build.NewFlag("-remoteWrite.headers", "")
-	maxDiskUsagePerURL := build.NewFlag("-remoteWrite.maxDiskUsagePerURL", maxDiskUsage)
-	forceVMProto := build.NewFlag("-remoteWrite.forceVMProto", "false")
-	proxyURL := build.NewFlag("-remoteWrite.proxyURL", "")
-	awsEC2Endpoint := build.NewFlag("-remoteWrite.aws.ec2Endpoint", "")
-	awsRegion := build.NewFlag("-remoteWrite.aws.region", "")
-	awsRoleARN := build.NewFlag("-remoteWrite.aws.roleARN", "")
-	awsService := build.NewFlag("-remoteWrite.aws.service", "")
-	awsSTSEndpoint := build.NewFlag("-remoteWrite.aws.stsEndpoint", "")
-	awsUseSigv4 := build.NewFlag("-remoteWrite.aws.useSigv4", "false")
 
-	var streamAggrConfigs []*vmv1beta1.StreamAggrConfig
-	var streamAggrKeys []string
+	var totalMaxDiskUsage int64
+	var args []string
 
-	for i := range remoteTargets {
-		rws := remoteTargets[i]
-		url.Add(rws.URL, i)
-		if rws.TLSConfig != nil {
-			creds, err := ac.BuildTLSCreds(cr.Namespace, rws.TLSConfig)
-			if err != nil {
-				return nil, err
-			}
-			tlsCAs.Add(creds.CAFile, i)
-			tlsCerts.Add(creds.CertFile, i)
-			tlsKeys.Add(creds.KeyFile, i)
-			if rws.TLSConfig.InsecureSkipVerify {
-				tlsInsecure.Add("true", i)
-			}
-			tlsServerName.Add(rws.TLSConfig.ServerName, i)
-		}
-		if rws.BasicAuth != nil {
-			user, err := ac.LoadKeyFromSecret(cr.Namespace, &rws.BasicAuth.Username)
-			if err != nil {
-				return nil, fmt.Errorf("cannot load BasicAuth username: %w", err)
-			}
-			authUser.Add(strconv.Quote(user), i)
-			if len(rws.BasicAuth.Password.Name) > 0 {
-				passFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &rws.BasicAuth.Password)
-				if err != nil {
-					return nil, fmt.Errorf("cannot load BasicAuth password: %w", err)
+	var storageLimit int64
+	pqMountPath := vmAgentPersistentQueueDir
+	if cr.Spec.StatefulMode {
+		pqMountPath = vmAgentPersistentQueueSTSDir
+		if cr.Spec.StatefulStorage != nil {
+			if storage, ok := cr.Spec.StatefulStorage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
+				storageInt, ok := storage.AsInt64()
+				if ok {
+					storageLimit = storageInt
 				}
-				authPasswordFile.Add(passFile, i)
 			}
-			if len(rws.BasicAuth.PasswordFile) > 0 {
-				authPasswordFile.Add(rws.BasicAuth.PasswordFile, i)
-			}
-		}
-		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
-			value, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.BearerTokenSecret)
-			if err != nil {
-				return nil, fmt.Errorf("cannot load BearerTokenSecret: %w", err)
-			}
-			bearerTokenFile.Add(strconv.Quote(value), i)
-		}
-		if rws.UrlRelabelConfig != nil || len(rws.InlineUrlRelabelConfig) > 0 {
-			urlRelabelConfig.Add(path.Join(vmv1beta1.RelabelingConfigDir, fmt.Sprintf(urlRelabelingName, i)), i)
-		}
-		if rws.SendTimeout != nil {
-			sendTimeout.Add(*rws.SendTimeout, i)
-		}
-		if len(rws.Headers) > 0 {
-			value := ""
-			for _, headerValue := range rws.Headers {
-				value += headerValue + "^^"
-			}
-			value = strings.TrimSuffix(value, "^^")
-			headers.Add(value, i)
-		}
-		if rws.OAuth2 != nil {
-			if len(rws.OAuth2.TokenURL) > 0 {
-				oauth2TokenURL.Add(rws.OAuth2.TokenURL, i)
-			}
-
-			if len(rws.OAuth2.Scopes) > 0 {
-				oauth2Scopes.Add(strings.Join(rws.OAuth2.Scopes, ","), i)
-			}
-
-			if len(rws.OAuth2.ClientSecretFile) > 0 {
-				oauth2ClientSecretFile.Add(rws.OAuth2.ClientSecretFile, i)
-			}
-
-			if rws.OAuth2.ClientSecret != nil {
-				oaSecretKeyFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rws.OAuth2.ClientSecret)
-				if err != nil {
-					return nil, fmt.Errorf("cannot load OAuth2 ClientSecret: %w", err)
-				}
-				oauth2ClientSecretFile.Add(oaSecretKeyFile, i)
-			}
-			secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rws.OAuth2.ClientID)
-			if err != nil {
-				return nil, err
-			}
-			oauth2ClientID.Add(secret, i)
-
-		}
-
-		if rws.AWS != nil {
-			awsEC2Endpoint.Add(rws.AWS.EC2Endpoint, i)
-			awsRegion.Add(rws.AWS.Region, i)
-			awsRoleARN.Add(rws.AWS.RoleARN, i)
-			awsService.Add(rws.AWS.Service, i)
-			awsSTSEndpoint.Add(rws.AWS.STSEndpoint, i)
-			awsUseSigv4.Add(strconv.FormatBool(rws.AWS.UseSigv4), i)
-		}
-
-		streamAggrConfigs = append(streamAggrConfigs, rws.StreamAggrConfig)
-		streamAggrKeys = append(streamAggrKeys, rws.AsConfigMapKey(i, "stream-aggr-conf"))
-
-		if rws.MaxDiskUsage != nil {
-			maxDiskUsagePerURL.Add(rws.MaxDiskUsage.String(), i)
-		}
-
-		forceVMProto.Add(strconv.FormatBool(rws.ForceVMProto), i)
-		if rws.ProxyURL != nil {
-			proxyURL.Add(*rws.ProxyURL, i)
 		}
 	}
 
-	var args []string
-	totalCount := len(remoteTargets)
-	args = build.AppendFlagsToArgs(args, totalCount, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout, proxyURL)
-	args = build.AppendFlagsToArgs(args, totalCount, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
-	args = build.AppendFlagsToArgs(args, totalCount, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
-	args = build.AppendFlagsToArgs(args, totalCount, headers, authPasswordFile)
-	args = build.StreamAggrArgsTo(args, "remoteWrite.streamAggr", streamAggrKeys, streamAggrConfigs...)
-	args = build.AppendFlagsToArgs(args, totalCount, maxDiskUsagePerURL, forceVMProto)
-	args = build.AppendFlagsToArgs(args, totalCount, awsEC2Endpoint, awsRegion, awsRoleARN, awsService, awsSTSEndpoint, awsUseSigv4)
+	if len(cr.Spec.RemoteWrite) > 0 {
+		remoteTargets := cr.Spec.RemoteWrite
+		url := build.NewFlag("-remoteWrite.url", "")
+		authUser := build.NewFlag("-remoteWrite.basicAuth.username", `""`)
+		authPasswordFile := build.NewFlag("-remoteWrite.basicAuth.passwordFile", "")
+		bearerTokenFile := build.NewFlag("-remoteWrite.bearerTokenFile", `""`)
+		urlRelabelConfig := build.NewFlag("-remoteWrite.urlRelabelConfig", "")
+		sendTimeout := build.NewFlag("-remoteWrite.sendTimeout", "")
+		tlsCAs := build.NewFlag("-remoteWrite.tlsCAFile", "")
+		tlsCerts := build.NewFlag("-remoteWrite.tlsCertFile", "")
+		tlsKeys := build.NewFlag("-remoteWrite.tlsKeyFile", "")
+		tlsInsecure := build.NewFlag("-remoteWrite.tlsInsecureSkipVerify", "false")
+		tlsServerName := build.NewFlag("-remoteWrite.tlsServerName", "")
+		oauth2ClientID := build.NewFlag("-remoteWrite.oauth2.clientID", "")
+		oauth2ClientSecretFile := build.NewFlag("-remoteWrite.oauth2.clientSecretFile", "")
+		oauth2Scopes := build.NewFlag("-remoteWrite.oauth2.scopes", "")
+		oauth2TokenURL := build.NewFlag("-remoteWrite.oauth2.tokenUrl", "")
+		headers := build.NewFlag("-remoteWrite.headers", "")
+		forceVMProto := build.NewFlag("-remoteWrite.forceVMProto", "false")
+		proxyURL := build.NewFlag("-remoteWrite.proxyURL", "")
+		awsEC2Endpoint := build.NewFlag("-remoteWrite.aws.ec2Endpoint", "")
+		awsRegion := build.NewFlag("-remoteWrite.aws.region", "")
+		awsRoleARN := build.NewFlag("-remoteWrite.aws.roleARN", "")
+		awsService := build.NewFlag("-remoteWrite.aws.service", "")
+		awsSTSEndpoint := build.NewFlag("-remoteWrite.aws.stsEndpoint", "")
+		awsUseSigv4 := build.NewFlag("-remoteWrite.aws.useSigv4", "false")
+
+		var streamAggrConfigs []*vmv1beta1.StreamAggrConfig
+		var streamAggrKeys []string
+		var maxDiskUsages []int64
+		var undefinedMaxDiskUsageCount int
+
+		for i, rw := range remoteTargets {
+			url.Add(rw.URL, i)
+			if rw.TLSConfig != nil {
+				creds, err := ac.BuildTLSCreds(cr.Namespace, rw.TLSConfig)
+				if err != nil {
+					return nil, err
+				}
+				tlsCAs.Add(creds.CAFile, i)
+				tlsCerts.Add(creds.CertFile, i)
+				tlsKeys.Add(creds.KeyFile, i)
+				if rw.TLSConfig.InsecureSkipVerify {
+					tlsInsecure.Add("true", i)
+				}
+				tlsServerName.Add(rw.TLSConfig.ServerName, i)
+			}
+			if rw.BasicAuth != nil {
+				user, err := ac.LoadKeyFromSecret(cr.Namespace, &rw.BasicAuth.Username)
+				if err != nil {
+					return nil, fmt.Errorf("cannot load BasicAuth username: %w", err)
+				}
+				authUser.Add(strconv.Quote(user), i)
+				if len(rw.BasicAuth.Password.Name) > 0 {
+					passFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &rw.BasicAuth.Password)
+					if err != nil {
+						return nil, fmt.Errorf("cannot load BasicAuth password: %w", err)
+					}
+					authPasswordFile.Add(passFile, i)
+				}
+				if len(rw.BasicAuth.PasswordFile) > 0 {
+					authPasswordFile.Add(rw.BasicAuth.PasswordFile, i)
+				}
+			}
+			if rw.BearerTokenSecret != nil && rw.BearerTokenSecret.Name != "" {
+				value, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rw.BearerTokenSecret)
+				if err != nil {
+					return nil, fmt.Errorf("cannot load BearerTokenSecret: %w", err)
+				}
+				bearerTokenFile.Add(strconv.Quote(value), i)
+			}
+			if rw.UrlRelabelConfig != nil || len(rw.InlineUrlRelabelConfig) > 0 {
+				urlRelabelConfig.Add(path.Join(vmv1beta1.RelabelingConfigDir, fmt.Sprintf(urlRelabelingName, i)), i)
+			}
+			if rw.SendTimeout != nil {
+				sendTimeout.Add(*rw.SendTimeout, i)
+			}
+			if len(rw.Headers) > 0 {
+				value := ""
+				for _, headerValue := range rw.Headers {
+					value += headerValue + "^^"
+				}
+				value = strings.TrimSuffix(value, "^^")
+				headers.Add(value, i)
+			}
+			if rw.OAuth2 != nil {
+				if len(rw.OAuth2.TokenURL) > 0 {
+					oauth2TokenURL.Add(rw.OAuth2.TokenURL, i)
+				}
+				if len(rw.OAuth2.Scopes) > 0 {
+					oauth2Scopes.Add(strings.Join(rw.OAuth2.Scopes, ","), i)
+				}
+				if len(rw.OAuth2.ClientSecretFile) > 0 {
+					oauth2ClientSecretFile.Add(rw.OAuth2.ClientSecretFile, i)
+				}
+				if rw.OAuth2.ClientSecret != nil {
+					oaSecretKeyFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rw.OAuth2.ClientSecret)
+					if err != nil {
+						return nil, fmt.Errorf("cannot load OAuth2 ClientSecret: %w", err)
+					}
+					oauth2ClientSecretFile.Add(oaSecretKeyFile, i)
+				}
+				secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rw.OAuth2.ClientID)
+				if err != nil {
+					return nil, err
+				}
+				oauth2ClientID.Add(secret, i)
+			}
+			if rw.AWS != nil {
+				awsEC2Endpoint.Add(rw.AWS.EC2Endpoint, i)
+				awsRegion.Add(rw.AWS.Region, i)
+				awsRoleARN.Add(rw.AWS.RoleARN, i)
+				awsService.Add(rw.AWS.Service, i)
+				awsSTSEndpoint.Add(rw.AWS.STSEndpoint, i)
+				awsUseSigv4.Add(strconv.FormatBool(rw.AWS.UseSigv4), i)
+			}
+			streamAggrConfigs = append(streamAggrConfigs, rw.StreamAggrConfig)
+			streamAggrKeys = append(streamAggrKeys, rw.AsConfigMapKey(i, "stream-aggr-conf"))
+			if rw.MaxDiskUsage != nil {
+				v, err := flagutil.ParseBytes(rw.MaxDiskUsage.String())
+				if err != nil {
+					return nil, err
+				}
+				maxDiskUsages = append(maxDiskUsages, v)
+				totalMaxDiskUsage += v
+			} else {
+				undefinedMaxDiskUsageCount++
+				maxDiskUsages = append(maxDiskUsages, 0)
+			}
+			forceVMProto.Add(strconv.FormatBool(rw.ForceVMProto), i)
+			if rw.ProxyURL != nil {
+				proxyURL.Add(*rw.ProxyURL, i)
+			}
+		}
+
+		if storageLimit > 0 {
+			if storageLimit < totalMaxDiskUsage {
+				return nil, fmt.Errorf("total amount of storage that was assigned to -remoteWrite.maxDiskUsagePerURL %d exceeds available storage %d", totalMaxDiskUsage, storageLimit)
+			}
+			if undefinedMaxDiskUsageCount > 0 {
+				maxDiskUsage = strconv.FormatInt((storageLimit-totalMaxDiskUsage)/int64(undefinedMaxDiskUsageCount), 10)
+			}
+		}
+
+		maxDiskUsagePerURL := build.NewFlag("-remoteWrite.maxDiskUsagePerURL", maxDiskUsage)
+
+		if totalMaxDiskUsage > 0 {
+			for i, usage := range maxDiskUsages {
+				if usage > 0 {
+					maxDiskUsagePerURL.Add(cr.Spec.RemoteWrite[i].MaxDiskUsage.String(), i)
+				} else {
+					maxDiskUsagePerURL.Add(maxDiskUsage, i)
+				}
+			}
+		}
+
+		totalCount := len(remoteTargets)
+		args = build.AppendFlagsToArgs(args, totalCount, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout, proxyURL)
+		args = build.AppendFlagsToArgs(args, totalCount, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
+		args = build.AppendFlagsToArgs(args, totalCount, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
+		args = build.AppendFlagsToArgs(args, totalCount, headers, authPasswordFile, maxDiskUsagePerURL, forceVMProto)
+		args = build.StreamAggrArgsTo(args, "remoteWrite.streamAggr", streamAggrKeys, streamAggrConfigs...)
+		args = build.AppendFlagsToArgs(args, totalCount, awsEC2Endpoint, awsRegion, awsRoleARN, awsService, awsSTSEndpoint, awsUseSigv4)
+	}
+
+	if cr.Spec.RemoteWriteSettings != nil {
+		rws := cr.Spec.RemoteWriteSettings
+		if rws.MaxDiskUsagePerURL != nil {
+			maxDiskUsage = rws.MaxDiskUsagePerURL.String()
+		}
+		if rws.FlushInterval != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.flushInterval=%s", *rws.FlushInterval))
+		}
+		if rws.Queues != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.queues=%d", *rws.Queues))
+		}
+		if rws.ShowURL != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.showURL=%t", *rws.ShowURL))
+		}
+		if rws.TmpDataPath != nil {
+			pqMountPath = *rws.TmpDataPath
+		}
+		if rws.MaxBlockSize != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.maxBlockSize=%d", *rws.MaxBlockSize))
+		}
+		if rws.Labels != nil {
+			lbls := sortMap(rws.Labels)
+			flagValue := "-remoteWrite.label="
+			if len(lbls) > 0 {
+				flagValue += fmt.Sprintf("%s=%s", lbls[0].key, lbls[0].value)
+				for _, lv := range lbls[1:] {
+					flagValue += fmt.Sprintf(",%s=%s", lv.key, lv.value)
+				}
+				args = append(args, flagValue)
+			}
+		}
+		if rws.UseMultiTenantMode {
+			args = append(args, "-enableMultitenantHandlers=true")
+		}
+	}
+
+	args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
+	if totalMaxDiskUsage == 0 {
+		args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", maxDiskUsage))
+	}
 	return args, nil
 }
 

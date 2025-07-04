@@ -425,6 +425,9 @@ type VLStorage struct {
 	// Storage configures persistent volume for VLStorage
 	// +optional
 	Storage *vmv1beta1.StorageSpec `json:"storage,omitempty"`
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy
+	// +optional
+	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 
 	// MaintenanceInsertNodeIDs - excludes given node ids from insert requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
 	// lets say, you have pod-0, pod-1, pod-2, pod-3. to exclude pod-0 and pod-3 from insert routing, define nodeIDs: [0,3].

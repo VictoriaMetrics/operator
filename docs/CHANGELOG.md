@@ -13,6 +13,9 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/):
+ expose persistentVolumeClaimRetentionPolicy in CRs, that support StatefulSet mode. See [#1226](https://github.com/VictoriaMetrics/operator/issues/1226).
+
 ## [v0.60.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.2)
 
 **Release date:** 27 June 2025

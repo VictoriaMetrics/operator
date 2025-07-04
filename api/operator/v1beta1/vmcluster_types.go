@@ -245,6 +245,9 @@ type VMSelect struct {
 	// +deprecated
 	// +optional
 	Storage *StorageSpec `json:"persistentVolume,omitempty"`
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy
+	// +optional
+	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 	// StorageSpec - add persistent volume claim for cacheMountPath
 	// its needed for persistent cache
 	// +optional
@@ -408,6 +411,9 @@ type VMStorage struct {
 	// its useful for persistent cache
 	// +optional
 	Storage *StorageSpec `json:"storage,omitempty"`
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy
+	// +optional
+	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 
 	// VMInsertPort for VMInsert connections
 	// +optional

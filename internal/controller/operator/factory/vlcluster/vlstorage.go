@@ -155,6 +155,9 @@ func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 			ServiceName: cr.GetVLStorageName(),
 		},
 	}
+	if cr.Spec.VLStorage.PersistentVolumeClaimRetentionPolicy != nil {
+		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VLStorage.PersistentVolumeClaimRetentionPolicy
+	}
 	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, false), &cr.Spec.VLStorage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.VLStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VLStorage.GetStorageVolumeName(), &stsSpec.Spec)

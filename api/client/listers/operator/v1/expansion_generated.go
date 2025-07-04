@@ -40,3 +40,11 @@ type VMAnomalyListerExpansion interface{}
 // VMAnomalyNamespaceListerExpansion allows custom methods to be added to
 // VMAnomalyNamespaceLister.
 type VMAnomalyNamespaceListerExpansion interface{}
+
+// VMStreamAggrRuleListerExpansion allows custom methods to be added to
+// VMStreamAggrRuleLister.
+type VMStreamAggrRuleListerExpansion interface{}
+
+// VMStreamAggrRuleNamespaceListerExpansion allows custom methods to be added to
+// VMStreamAggrRuleNamespaceLister.
+type VMStreamAggrRuleNamespaceListerExpansion interface{}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path"
 	"sort"
-	"strings"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -16,6 +15,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
@@ -29,17 +29,17 @@ const (
 	streamAggrSecretKey = "config.yaml"
 )
 
-func createVMSingleStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
-	newPvc := makeVMSinglePvc(cr)
+func createStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
+	newPvc := makePvc(cr)
 	var prevPVC *corev1.PersistentVolumeClaim
 	if prevCR != nil && prevCR.Spec.Storage != nil {
-		prevPVC = makeVMSinglePvc(prevCR)
+		prevPVC = makePvc(prevCR)
 	}
 
 	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC)
 }
 
-func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
+func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -70,7 +70,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot delete objects from prev state: %w", err)
 	}
-	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, nil); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
 	}
 	if cr.IsOwnsServiceAccount() {
@@ -84,7 +84,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	}
 
 	if cr.Spec.Storage != nil && cr.Spec.StorageDataPath == "" {
-		if err := createVMSingleStorage(ctx, rclient, cr, prevCR); err != nil {
+		if err := createStorage(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create storage: %w", err)
 		}
 	}
@@ -101,12 +101,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	}
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
-		prevDeploy, err = newDeployForVMSingle(ctx, prevCR)
+		prevDeploy, err = newDeploy(ctx, prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
-	newDeploy, err := newDeployForVMSingle(ctx, cr)
+	newDeploy, err := newDeploy(ctx, cr)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
@@ -114,9 +114,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
 }
 
-func newDeployForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment, error) {
+func newDeploy(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment, error) {
 
-	podSpec, err := makeSpecForVMSingle(ctx, cr)
+	podSpec, err := makeSpec(ctx, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func newDeployForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.
 	return depSpec, nil
 }
 
-func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateSpec, error) {
+func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateSpec, error) {
 	var args []string
 
 	if cr.Spec.RetentionPeriod != "" {
@@ -235,43 +235,10 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 		})
 	}
 
-	if cr.HasAnyStreamAggrRule() {
-		volumes = append(volumes, corev1.Volume{
-			Name: k8stools.SanitizeVolumeName("stream-aggr-conf"),
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cr.StreamAggrConfigName(),
-					},
-				},
-			},
-		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      k8stools.SanitizeVolumeName("stream-aggr-conf"),
-			ReadOnly:  true,
-			MountPath: vmv1beta1.StreamAggrConfigDir,
-		})
-
-		args = append(args, fmt.Sprintf("--streamAggr.config=%s", path.Join(vmv1beta1.StreamAggrConfigDir, streamAggrSecretKey)))
-		if cr.Spec.StreamAggrConfig.KeepInput {
-			args = append(args, "--streamAggr.keepInput=true")
-		}
-		if cr.Spec.StreamAggrConfig.DropInput {
-			args = append(args, "--streamAggr.dropInput=true")
-		}
-		if len(cr.Spec.StreamAggrConfig.DropInputLabels) > 0 {
-			args = append(args, fmt.Sprintf("--streamAggr.dropInputLabels=%s", strings.Join(cr.Spec.StreamAggrConfig.DropInputLabels, ",")))
-		}
-		if cr.Spec.StreamAggrConfig.IgnoreFirstIntervals > 0 {
-			args = append(args, fmt.Sprintf("--streamAggr.ignoreFirstIntervals=%d", cr.Spec.StreamAggrConfig.IgnoreFirstIntervals))
-		}
-		if cr.Spec.StreamAggrConfig.IgnoreOldSamples {
-			args = append(args, "--streamAggr.ignoreOldSamples=true")
-		}
-		if cr.Spec.StreamAggrConfig.EnableWindows {
-			args = append(args, "--streamAggr.enableWindows=true")
-		}
-	}
+	volumes, vmMounts = build.StreamAggrVolumeTo(volumes, vmMounts, build.ResourceName(build.StreamAggrConfigResourceKind, cr), cr.Spec.StreamAggrConfig)
+	streamAggrKeys := []string{streamAggrSecretKey}
+	streamAggrConfigs := []*vmv1beta1.StreamAggrConfig{cr.Spec.StreamAggrConfig}
+	args = build.StreamAggrArgsTo(args, "streamAggr", streamAggrKeys, streamAggrConfigs...)
 
 	// deduplication can work without stream aggregation rules
 	if cr.Spec.StreamAggrConfig != nil && cr.Spec.StreamAggrConfig.DedupInterval != "" {
@@ -405,14 +372,19 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	return newService, nil
 }
 
-// buildVMSingleStreamAggrConfig build configmap with stream aggregation config for vmsingle.
-func buildVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) (*corev1.ConfigMap, error) {
+// buildStreamAggrConfig build configmap with stream aggregation config for vmsingle.
+func buildStreamAggrConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, allRules []*vmv1.VMStreamAggrRule) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
-		ObjectMeta: buildStreamAggrConfigMeta(cr),
+		ObjectMeta: build.ResourceMeta(build.StreamAggrConfigResourceKind, cr),
 		Data:       make(map[string]string),
 	}
-	if len(cr.Spec.StreamAggrConfig.Rules) > 0 {
-		data, err := yaml.Marshal(cr.Spec.StreamAggrConfig.Rules)
+	var rules []vmv1beta1.StreamAggrRule
+	for _, r := range allRules {
+		rules = append(rules, r.Spec.StreamAggrRule)
+	}
+	rules = append(rules, cr.Spec.StreamAggrConfig.Rules...)
+	if len(rules) > 0 {
+		data, err := yaml.Marshal(rules)
 		if err != nil {
 			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
 		}
@@ -434,30 +406,56 @@ func buildVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, 
 	return cfgCM, nil
 }
 
-func buildStreamAggrConfigMeta(cr *vmv1beta1.VMSingle) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Namespace:       cr.Namespace,
-		Name:            cr.StreamAggrConfigName(),
-		Labels:          cr.AllLabels(),
-		Annotations:     cr.AnnotationsFiltered(),
-		OwnerReferences: cr.AsOwner(),
+// CreateOrUpdateStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
+func CreateOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, childObject *vmv1.VMStreamAggrRule) error {
+	var prevCR *vmv1beta1.VMSingle
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, childObject); err != nil {
+		return err
+	}
+	return nil
 }
 
-// createOrUpdateStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
-func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
+func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, childObject *vmv1.VMStreamAggrRule) error {
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
-	streamAggrCM, err := buildVMSingleStreamAggrConfig(ctx, cr, rclient)
+	opts := &k8stools.SelectorOpts{
+		NamespaceSelector: cr.Spec.StreamAggrConfig.RuleNamespaceSelector,
+		ObjectSelector:    cr.Spec.StreamAggrConfig.RuleSelector,
+		DefaultNamespace:  cr.Namespace,
+	}
+	rules, err := build.SelectStreamAggrRules(ctx, rclient, opts)
+	if err != nil {
+		return fmt.Errorf("selecting StreamAggrRules failed: %w", err)
+	}
+	streamAggrCM, err := buildStreamAggrConfig(ctx, rclient, cr, rules)
 	if err != nil {
 		return err
 	}
-	var prevCMMeta *metav1.ObjectMeta
+	var prevConfigMeta *metav1.ObjectMeta
 	if prevCR != nil {
-		prevCMMeta = ptr.To(buildStreamAggrConfigMeta(prevCR))
+		prevConfigMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, prevCR))
 	}
-	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevCMMeta)
+	err = reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
+	if err != nil {
+		return err
+	}
+	if childObject != nil {
+		parentObject := fmt.Sprintf("%s.%s.vmsingle", cr.Name, cr.Namespace)
+		for _, rule := range rules {
+			if rule.Name == childObject.Name && rule.Namespace == childObject.Namespace {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMStreamAggrRule{rule})
+			}
+		}
+		if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, rules); err != nil {
+			return fmt.Errorf("cannot update statuses for stream aggr rules objects: %w", err)
+		}
+	}
+	return nil
 }
 
 func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {

@@ -30,6 +30,7 @@ type OperatorV1Interface interface {
 	VLClustersGetter
 	VLSinglesGetter
 	VMAnomaliesGetter
+	VMStreamAggrRulesGetter
 }
 
 // OperatorV1Client is used to interact with features provided by the operator group.
@@ -47,6 +48,10 @@ func (c *OperatorV1Client) VLSingles(namespace string) VLSingleInterface {
 
 func (c *OperatorV1Client) VMAnomalies(namespace string) VMAnomalyInterface {
 	return newVMAnomalies(c, namespace)
+}
+
+func (c *OperatorV1Client) VMStreamAggrRules(namespace string) VMStreamAggrRuleInterface {
+	return newVMStreamAggrRules(c, namespace)
 }
 
 // NewForConfig creates a new OperatorV1Client for the given config.

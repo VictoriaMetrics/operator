@@ -1,14 +1,20 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"path"
+	"strconv"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // MustSkipRuntimeValidation defines whether runtime object validation must be skipped
@@ -88,4 +94,137 @@ func LicenseVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, l *vm
 		MountPath: path.Join(secretMountDir, l.KeyRef.Name),
 	})
 	return volumes, mounts
+}
+
+func NewFlag(name, empty string) *Flag {
+	return &Flag{
+		name:  name,
+		empty: empty,
+	}
+}
+
+type Flag struct {
+	isSet bool
+	idx   int
+	name  string
+	value string
+	empty string
+}
+
+func (f *Flag) Add(value string, idx int) {
+	if idx > 0 {
+		if len(f.value) == 0 {
+			f.value += f.empty
+		}
+		f.value += ","
+		f.value += strings.Repeat(f.empty+",", idx-f.idx-1)
+		f.idx = idx
+	}
+	f.value += value
+	if value != f.empty && !f.isSet {
+		f.isSet = true
+	}
+}
+
+func (f *Flag) IsSet() bool {
+	return f.isSet
+}
+
+func AppendFlagsToArgs(args []string, total int, fss ...*Flag) []string {
+	for _, f := range fss {
+		if f.isSet {
+			args = append(args, f.name+"="+f.value+strings.Repeat(","+f.empty, total-f.idx-1))
+		}
+	}
+	return args
+}
+
+// StreamAggrArgsTo conditionally adds stream aggregation commandline args into given args
+func StreamAggrArgsTo(args []string, prefix string, keys []string, cs ...*vmv1beta1.StreamAggrConfig) []string {
+	if len(cs) == 0 {
+		return args
+	}
+
+	configFlag := NewFlag(fmt.Sprintf("-%s.config", prefix), "")
+	keepInputFlag := NewFlag(fmt.Sprintf("-%s.keepInput", prefix), "false")
+	dropInputFlag := NewFlag(fmt.Sprintf("-%s.dropInput", prefix), "false")
+	ignoreFirstIntervalsFlag := NewFlag(fmt.Sprintf("-%s.ignoreFirstIntervals", prefix), "0")
+	ignoreOldSamplesFlag := NewFlag(fmt.Sprintf("-%s.ignoreOldSamples", prefix), "false")
+	enableWindowsFlag := NewFlag(fmt.Sprintf("-%s.enableWindows", prefix), "false")
+	dedupIntervalFlag := NewFlag(fmt.Sprintf("-%s.dedupInterval", prefix), "")
+	dropInputLabelsFlag := NewFlag(fmt.Sprintf("-%s.dropInputLabels", prefix), "")
+
+	for i, c := range cs {
+		if c == nil {
+			continue
+		}
+		if c.HasAnyRule() {
+			configFlag.Add(path.Join(vmv1beta1.StreamAggrConfigDir, keys[i]), i)
+			keepInputFlag.Add(strconv.FormatBool(c.KeepInput), i)
+			dropInputFlag.Add(strconv.FormatBool(c.DropInput), i)
+			ignoreFirstIntervalsFlag.Add(strconv.Itoa(c.IgnoreFirstIntervals), i)
+			ignoreOldSamplesFlag.Add(strconv.FormatBool(c.IgnoreOldSamples), i)
+			enableWindowsFlag.Add(strconv.FormatBool(c.EnableWindows), i)
+		}
+		// deduplication can work without stream aggregation rules
+		dedupIntervalFlag.Add(c.DedupInterval, i)
+		dropInputLabelsFlag.Add(strings.Join(c.DropInputLabels, ","), i)
+	}
+	args = AppendFlagsToArgs(args, len(cs), configFlag, keepInputFlag, dropInputFlag, ignoreFirstIntervalsFlag, ignoreOldSamplesFlag, enableWindowsFlag)
+	args = AppendFlagsToArgs(args, len(cs), dedupIntervalFlag, dropInputLabelsFlag)
+	return args
+}
+
+// StreamAggrVolumeTo conditionally mounts configmap with stream aggregation config into given volumes and volume mounts
+func StreamAggrVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, name string, cs ...*vmv1beta1.StreamAggrConfig) ([]corev1.Volume, []corev1.VolumeMount) {
+	if len(cs) == 0 {
+		return volumes, mounts
+	}
+	hasRule := false
+	for _, c := range cs {
+		if c.HasAnyRule() {
+			hasRule = true
+			break
+		}
+	}
+	if hasRule {
+		volumes = append(volumes, corev1.Volume{
+			Name: "stream-aggr-conf",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: name,
+					},
+				},
+			},
+		})
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      "stream-aggr-conf",
+			ReadOnly:  true,
+			MountPath: vmv1beta1.StreamAggrConfigDir,
+		})
+	}
+	return volumes, mounts
+}
+
+// SelectStreamAggrRules discovers all stream aggregation rules that match opts
+func SelectStreamAggrRules(ctx context.Context, rclient client.Client, opts *k8stools.SelectorOpts) ([]*vmv1.VMStreamAggrRule, error) {
+	var selectedRules []*vmv1.VMStreamAggrRule
+	var namespacedNames []string
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1.VMStreamAggrRuleList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			selectedRules = append(selectedRules, item)
+			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+		}
+	}); err != nil {
+		return nil, err
+	}
+	OrderByKeys(selectedRules, namespacedNames)
+	logger.SelectedObjects(ctx, "VMStreamAggrRule", len(namespacedNames), 0, namespacedNames)
+
+	return selectedRules, nil
 }

@@ -525,6 +525,18 @@ type StreamAggrConfig struct {
 	// EnableWindows enables aggregating data in separate windows ( available from v0.54.0).
 	// +optional
 	EnableWindows bool `json:"enableWindows,omitempty"`
+	// RuleSelector defines VMStreamAggrRule to be selected for stream aggregation.
+	// Works in combination with RuleNamespaceSelector.
+	// RuleNamespaceSelector nil - only objects at aggregator's namespace.
+	// RuleSelector nil - only objects at RuleNamespaceSelector namespaces.
+	// +optional
+	RuleSelector *metav1.LabelSelector `json:"ruleSelector,omitempty"`
+	// RuleNamespaceSelector defines Namespaces to be selected for VMStreamAggrRule discovery.
+	// Works in combination with RuleSelector.
+	// RuleNamespaceSelector nil - only objects at aggregator's namespace.
+	// RuleSelector nil - only objects at RuleNamespaceSelector namespaces.
+	// +optional
+	RuleNamespaceSelector *metav1.LabelSelector `json:"ruleNamespaceSelector,omitempty"`
 }
 
 // StreamAggrRule defines the rule in stream aggregation config
@@ -636,8 +648,12 @@ type StreamAggrRule struct {
 
 // HasAnyRule returns true if there is at least one aggregation rule
 func (config *StreamAggrConfig) HasAnyRule() bool {
-	if config != nil && (len(config.Rules) > 0 || config.RuleConfigMap != nil) {
-		return true
+	if config != nil {
+		if len(config.Rules) > 0 || config.RuleConfigMap != nil {
+			return true
+		} else if config.RuleSelector != nil || config.RuleNamespaceSelector != nil {
+			return true
+		}
 	}
 	return false
 }

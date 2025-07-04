@@ -29,6 +29,8 @@ type Interface interface {
 	VLSingles() VLSingleInformer
 	// VMAnomalies returns a VMAnomalyInformer.
 	VMAnomalies() VMAnomalyInformer
+	// VMStreamAggrRules returns a VMStreamAggrRuleInformer.
+	VMStreamAggrRules() VMStreamAggrRuleInformer
 }
 
 type version struct {
@@ -55,4 +57,9 @@ func (v *version) VLSingles() VLSingleInformer {
 // VMAnomalies returns a VMAnomalyInformer.
 func (v *version) VMAnomalies() VMAnomalyInformer {
 	return &vMAnomalyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// VMStreamAggrRules returns a VMStreamAggrRuleInformer.
+func (v *version) VMStreamAggrRules() VMStreamAggrRuleInformer {
+	return &vMStreamAggrRuleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

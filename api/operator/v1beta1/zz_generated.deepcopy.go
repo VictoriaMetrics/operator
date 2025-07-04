@@ -4191,6 +4191,11 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(StorageSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PersistentVolumeClaimRetentionPolicy != nil {
+		in, out := &in.PersistentVolumeClaimRetentionPolicy, &out.PersistentVolumeClaimRetentionPolicy
+		*out = new(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy)
+		**out = **in
+	}
 	if in.ClaimTemplates != nil {
 		in, out := &in.ClaimTemplates, &out.ClaimTemplates
 		*out = make([]v1.PersistentVolumeClaim, len(*in))
@@ -4724,6 +4729,11 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 		in, out := &in.Storage, &out.Storage
 		*out = new(StorageSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.PersistentVolumeClaimRetentionPolicy != nil {
+		in, out := &in.PersistentVolumeClaimRetentionPolicy, &out.PersistentVolumeClaimRetentionPolicy
+		*out = new(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy)
+		**out = **in
 	}
 	if in.AdditionalPeers != nil {
 		in, out := &in.AdditionalPeers, &out.AdditionalPeers
@@ -6054,6 +6064,11 @@ func (in *VMSelect) DeepCopyInto(out *VMSelect) {
 		*out = new(StorageSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PersistentVolumeClaimRetentionPolicy != nil {
+		in, out := &in.PersistentVolumeClaimRetentionPolicy, &out.PersistentVolumeClaimRetentionPolicy
+		*out = new(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy)
+		**out = **in
+	}
 	if in.StorageSpec != nil {
 		in, out := &in.StorageSpec, &out.StorageSpec
 		*out = new(StorageSpec)
@@ -6444,6 +6459,11 @@ func (in *VMStorage) DeepCopyInto(out *VMStorage) {
 		in, out := &in.Storage, &out.Storage
 		*out = new(StorageSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.PersistentVolumeClaimRetentionPolicy != nil {
+		in, out := &in.PersistentVolumeClaimRetentionPolicy, &out.PersistentVolumeClaimRetentionPolicy
+		*out = new(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy)
+		**out = **in
 	}
 	if in.VMBackup != nil {
 		in, out := &in.VMBackup, &out.VMBackup

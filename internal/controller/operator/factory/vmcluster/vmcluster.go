@@ -515,6 +515,9 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 			ServiceName: cr.GetVMSelectName(),
 		},
 	}
+	if cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy != nil {
+		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy
+	}
 	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false), &cr.Spec.VMSelect.CommonApplicationDeploymentParams)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		storageSpec := cr.Spec.VMSelect.Storage
@@ -931,6 +934,9 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 			Template:    *podSpec,
 			ServiceName: cr.GetVMStorageName(),
 		},
+	}
+	if cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy != nil {
+		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy
 	}
 	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.VMStorage.Storage

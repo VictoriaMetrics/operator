@@ -537,6 +537,11 @@ func (in *VLStorage) DeepCopyInto(out *VLStorage) {
 		*out = new(v1beta1.StorageSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PersistentVolumeClaimRetentionPolicy != nil {
+		in, out := &in.PersistentVolumeClaimRetentionPolicy, &out.PersistentVolumeClaimRetentionPolicy
+		*out = new(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy)
+		**out = **in
+	}
 	if in.MaintenanceInsertNodeIDs != nil {
 		in, out := &in.MaintenanceInsertNodeIDs, &out.MaintenanceInsertNodeIDs
 		*out = make([]int32, len(*in))
@@ -796,6 +801,11 @@ func (in *VMAnomalySpec) DeepCopyInto(out *VMAnomalySpec) {
 		in, out := &in.Storage, &out.Storage
 		*out = new(v1beta1.StorageSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.PersistentVolumeClaimRetentionPolicy != nil {
+		in, out := &in.PersistentVolumeClaimRetentionPolicy, &out.PersistentVolumeClaimRetentionPolicy
+		*out = new(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy)
+		**out = **in
 	}
 	if in.ClaimTemplates != nil {
 		in, out := &in.ClaimTemplates, &out.ClaimTemplates

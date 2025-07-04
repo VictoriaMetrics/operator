@@ -7,7 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -35,7 +35,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1
 		var currentDs appsv1.DaemonSet
 		err := rclient.Get(ctx, types.NamespacedName{Name: newDs.Name, Namespace: newDs.Namespace}, &currentDs)
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating new DaemonSet %s", newDs.Name))
 				if err := rclient.Create(ctx, newDs); err != nil {
 					return fmt.Errorf("cannot create new DaemonSet for app: %s, err: %w", newDs.Name, err)

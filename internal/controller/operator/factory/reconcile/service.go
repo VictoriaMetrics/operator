@@ -6,7 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
@@ -55,7 +55,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 	currentService := &corev1.Service{}
 	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, currentService)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Service %s", newService.Name))
 			err := rclient.Create(ctx, newService)
 			if err != nil {

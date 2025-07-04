@@ -14,7 +14,7 @@ import (
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
@@ -117,7 +117,7 @@ func InitOperatorProcess() {
 				},
 			}
 			err := k8sClient.Create(context.Background(), &testNamespace)
-			Expect(err == nil || errors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
+			Expect(err == nil || k8serrors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
 		}
 
 		var err error

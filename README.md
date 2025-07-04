@@ -3,7 +3,7 @@
 [![Slack](https://img.shields.io/badge/join%20slack-%23victoriametrics-brightgreen.svg)](http://slack.victoriametrics.com/)
 [![GitHub license](https://img.shields.io/github/license/VictoriaMetrics/operator.svg)](https://github.com/VictoriaMetrics/operator/blob/master/LICENSE)
 [![Go Report](https://goreportcard.com/badge/github.com/VictoriaMetrics/operator)](https://goreportcard.com/report/github.com/VictoriaMetrics/operator)
-[![Build Status](https://github.com/VictoriaMetrics/VictoriaMetrics/workflows/main/badge.svg)](https://github.com/VictoriaMetrics/operator/actions)
+[![Build and Test Status](https://github.com/VictoriaMetrics/operator/actions/workflows/main.yaml/badge.svg)](https://github.com/VictoriaMetrics/operator/actions)
 
 <picture>
   <source srcset="docs/logo_white.webp" media="(prefers-color-scheme: dark)">

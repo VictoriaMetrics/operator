@@ -6,7 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,7 +26,7 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 	currentPVC := &corev1.PersistentVolumeClaim{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: newPVC.Namespace, Name: newPVC.Name}, currentPVC)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			l.Info(fmt.Sprintf("creating new PVC %s", newPVC.Name))
 			if err := rclient.Create(ctx, newPVC); err != nil {
 				return fmt.Errorf("cannot create new PVC: %w", err)

@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -66,7 +66,7 @@ func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1be
 	for idx, cm := range newConfigMaps {
 		var existCM corev1.ConfigMap
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: cm.Namespace, Name: cm.Name}, &existCM); err != nil {
-			if errors.IsNotFound(err) {
+			if k8serrors.IsNotFound(err) {
 				continue
 			}
 			return nil, err
@@ -84,7 +84,7 @@ func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1be
 			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ConfigMap %s for rules", cm.Name))
 			err := rclient.Create(ctx, &cm)
 			if err != nil {
-				if errors.IsAlreadyExists(err) {
+				if k8serrors.IsAlreadyExists(err) {
 					continue
 				}
 				return nil, fmt.Errorf("failed to create Configmap: %s, err: %w", cm.Name, err)
@@ -107,7 +107,7 @@ func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1be
 	for _, cm := range toCreate {
 		logger.WithContext(ctx).Info(fmt.Sprintf("creating additional configmap=%s for rules", cm.Name))
 		if err := rclient.Create(ctx, &cm); err != nil {
-			if errors.IsAlreadyExists(err) {
+			if k8serrors.IsAlreadyExists(err) {
 				continue
 			}
 			return nil, fmt.Errorf("failed to create new rules Configmap: %s, err: %w", cm.Name, err)

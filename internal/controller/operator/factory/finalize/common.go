@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,7 +43,7 @@ func patchReplaceFinalizers(ctx context.Context, rclient client.Client, instance
 		return fmt.Errorf("cannot marshal finalizers patch for=%q: %w", instance.GetName(), err)
 	}
 	if err := rclient.Patch(ctx, instance, client.RawPatch(types.JSONPatchType, patchData)); err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return nil
 		}
 		return fmt.Errorf("cannot patch finalizers for object=%q with name=%q: %w", instance.GetObjectKind().GroupVersionKind(), instance.GetName(), err)
@@ -71,7 +71,7 @@ func removeFinalizeObjByName(ctx context.Context, rclient client.Client, obj cli
 
 func removeFinalizeObjByNameWithOwnerReference(ctx context.Context, rclient client.Client, obj client.Object, name, ns string, keepOwnerReference bool) error {
 	if err := rclient.Get(ctx, types.NamespacedName{Name: name, Namespace: ns}, obj); err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return nil
 		}
 		return err
@@ -84,7 +84,7 @@ func removeFinalizeObjByNameWithOwnerReference(ctx context.Context, rclient clie
 // SafeDelete removes object, ignores notfound error.
 func SafeDelete(ctx context.Context, rclient client.Client, r client.Object) error {
 	if err := rclient.Delete(ctx, r); err != nil {
-		if !errors.IsNotFound(err) {
+		if !k8serrors.IsNotFound(err) {
 			return err
 		}
 	}
@@ -103,7 +103,7 @@ func SafeDeleteForSelectorsWithFinalizer(ctx context.Context, rclient client.Cli
 		Name:      objName,
 	}, r); err != nil {
 		// fast path
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return nil
 		}
 		return err
@@ -114,12 +114,12 @@ func SafeDeleteForSelectorsWithFinalizer(ctx context.Context, rclient client.Cli
 		return nil
 	}
 	if err := RemoveFinalizer(ctx, rclient, r); err != nil {
-		if !errors.IsNotFound(err) {
+		if !k8serrors.IsNotFound(err) {
 			return err
 		}
 	}
 	if err := rclient.Delete(ctx, r); err != nil {
-		if !errors.IsNotFound(err) {
+		if !k8serrors.IsNotFound(err) {
 			return err
 		}
 	}
@@ -155,18 +155,18 @@ func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r clien
 		Name:      objName,
 	}, r); err != nil {
 		// fast path
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
 	if err := RemoveFinalizer(ctx, rclient, r); err != nil {
-		if !errors.IsNotFound(err) {
+		if !k8serrors.IsNotFound(err) {
 			return err
 		}
 	}
 	if err := rclient.Delete(ctx, r); err != nil {
-		if !errors.IsNotFound(err) {
+		if !k8serrors.IsNotFound(err) {
 			return err
 		}
 	}

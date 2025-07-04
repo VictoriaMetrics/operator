@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -40,7 +40,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "cluster"), func() {
 			})).To(Succeed())
 			Eventually(func() error {
 				return k8sClient.Get(ctx, namespacedName, &vmv1.VLCluster{})
-			}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
 		baseVLCluster := &vmv1.VLCluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -193,7 +193,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "cluster"), func() {
 					},
 					verify: func(cr *vmv1.VLCluster) {
 						var dep appsv1.Deployment
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVMAuthLBName(), Namespace: namespace}, &dep)).To(MatchError(errors.IsNotFound, "isNotFound"))
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVMAuthLBName(), Namespace: namespace}, &dep)).To(MatchError(k8serrors.IsNotFound, "isNotFound"))
 
 						var svc corev1.Service
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVLSelectName(), Namespace: namespace}, &svc)).To(Succeed())
@@ -300,7 +300,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "cluster"), func() {
 
 						// vlselect must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLSelectName()}
-						Expect(k8sClient.Get(ctx, nsn, dep)).To(MatchError(errors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, dep)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					},
 				},
 				testStep{
@@ -326,7 +326,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "cluster"), func() {
 						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
 						// vlselect must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
-						Expect(k8sClient.Get(ctx, nsn, dep)).To(MatchError(errors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, dep)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					},
 				},
 				testStep{

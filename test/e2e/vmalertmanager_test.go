@@ -8,7 +8,7 @@ import (
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -26,11 +26,14 @@ route:
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 12h
-  receiver: 'webhook'
+  receiver: blackhole
+  routes:
+  - receiver: blackhole
+    matchers:
+    - '{"env.version.!"="v1.0.0",instance="main"}'
 receivers:
-- name: 'webhook'
-  webhook_configs:
-  - url: 'http://alertmanagerwh:30500/'`
+- name: blackhole
+`
 )
 
 //nolint:dupl
@@ -53,7 +56,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 			})).To(Succeed())
 			Eventually(func() error {
 				return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMAlertmanager{})
-			}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
 		DescribeTable("should create alertmanager",
 			func(name string, cr *vmv1beta1.VMAlertmanager, verify func(*vmv1beta1.VMAlertmanager)) {
@@ -201,32 +204,29 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					cr.Spec.ReplicaCount = ptr.To[int32](1)
 					cr.Spec.ConfigSecret = "non-default-am-config"
 					// create secret with config
-					Expect(func() error {
-						dstSecret := corev1.Secret{
+					dstSecret := corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      cr.Spec.ConfigSecret,
+							Namespace: namespace,
+						},
+						Data: map[string][]byte{
+							"alertmanager.yaml": []byte(alertmanagerTestConf),
+						},
+					}
+					Expect(k8sClient.Create(ctx, &dstSecret)).To(Succeed())
+					DeferCleanup(func(ctx SpecContext) {
+						Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      cr.Spec.ConfigSecret,
 								Namespace: namespace,
-							},
-							Data: map[string][]byte{
-								"alertmanager.yaml": []byte(alertmanagerTestConf),
-							},
-						}
-						if err := k8sClient.Create(ctx, &dstSecret); err != nil && !errors.IsNotFound(err) {
-							return err
-						}
-						return nil
-					}()).To(Succeed())
+							}})).To(Succeed())
+					})
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
 					var amCfg corev1.Secret
 					Expect(k8sClient.Get(ctx,
 						types.NamespacedName{Name: cr.ConfigSecretName(), Namespace: namespace}, &amCfg)).To(Succeed())
 					Expect(string(amCfg.Data["alertmanager.yaml"])).To(Equal(alertmanagerTestConf))
-					Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      cr.Spec.ConfigSecret,
-							Namespace: namespace,
-						}})).To(Succeed())
 				},
 			),
 

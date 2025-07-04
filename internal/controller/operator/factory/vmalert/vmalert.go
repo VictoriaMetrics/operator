@@ -379,32 +379,18 @@ func buildAuthArgs(args []string, namespace, flagPrefix string, cfg vmv1beta1.HT
 		args = append(args, fmt.Sprintf("-%s.basicAuth.username=%s", flagPrefix, secret))
 	}
 	if cfg.TLSConfig != nil {
-		if len(cfg.TLSConfig.CAFile) > 0 {
-			args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", flagPrefix, cfg.TLSConfig.CAFile))
-		} else if len(cfg.TLSConfig.CA.PrefixedName()) > 0 {
-			file, err := ac.LoadPathFromSecretOrConfigMap(build.TLSAssetsResourceKind, namespace, &cfg.TLSConfig.CA)
-			if err != nil {
-				return nil, err
-			}
-			args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", flagPrefix, file))
+		creds, err := ac.BuildTLSCreds(namespace, cfg.TLSConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load notifier TLS credentials: %w", err)
 		}
-		if len(cfg.TLSConfig.CertFile) > 0 {
-			args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", flagPrefix, cfg.TLSConfig.CertFile))
-		} else if len(cfg.TLSConfig.Cert.PrefixedName()) > 0 {
-			file, err := ac.LoadPathFromSecretOrConfigMap(build.TLSAssetsResourceKind, namespace, &cfg.TLSConfig.Cert)
-			if err != nil {
-				return nil, err
-			}
-			args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", flagPrefix, file))
+		if len(creds.CAFile) > 0 {
+			args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", flagPrefix, creds.CAFile))
 		}
-		if len(cfg.TLSConfig.KeyFile) > 0 {
-			args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", flagPrefix, cfg.TLSConfig.KeyFile))
-		} else if cfg.TLSConfig.KeySecret != nil {
-			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, namespace, cfg.TLSConfig.KeySecret)
-			if err != nil {
-				return nil, err
-			}
-			args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", flagPrefix, file))
+		if len(creds.CertFile) > 0 {
+			args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", flagPrefix, creds.CertFile))
+		}
+		if len(creds.KeyFile) > 0 {
+			args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", flagPrefix, creds.KeyFile))
 		}
 		if cfg.TLSConfig.ServerName != "" {
 			args = append(args, fmt.Sprintf("-%s.tlsServerName=%s", flagPrefix, cfg.TLSConfig.ServerName))
@@ -578,8 +564,6 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 	oauth2Scopes := remoteFlag{flagSetting: "-notifier.oauth2.scopes="}
 	oauth2TokenURL := remoteFlag{flagSetting: "-notifier.oauth2.tokenUrl="}
 
-	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
-
 	for _, nt := range notifierTargets {
 		url.flagSetting += fmt.Sprintf("%s,", nt.URL)
 
@@ -587,28 +571,20 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 		var inSecure bool
 		ntTLS := nt.TLSConfig
 		if ntTLS != nil {
-			if ntTLS.CAFile != "" {
-				caPath = ntTLS.CAFile
-			} else if ntTLS.CA.PrefixedName() != "" {
-				caPath = ntTLS.BuildAssetPath(pathPrefix, ntTLS.CA.PrefixedName(), ntTLS.CA.Key())
+			creds, err := ac.BuildTLSCreds(cr.Namespace, ntTLS)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load notifier TLS credentials: %w", err)
 			}
-			if caPath != "" {
+			if creds.CAFile != "" {
+				caPath = creds.CAFile
 				tlsCAs.isNotNull = true
 			}
-			if ntTLS.CertFile != "" {
-				certPath = ntTLS.CertFile
-			} else if ntTLS.Cert.PrefixedName() != "" {
-				certPath = ntTLS.BuildAssetPath(pathPrefix, ntTLS.Cert.PrefixedName(), ntTLS.Cert.Key())
-			}
-			if certPath != "" {
+			if creds.CertFile != "" {
+				certPath = creds.CertFile
 				tlsCerts.isNotNull = true
 			}
-			if ntTLS.KeyFile != "" {
-				keyPath = ntTLS.KeyFile
-			} else if ntTLS.KeySecret != nil {
-				keyPath = ntTLS.BuildAssetPath(pathPrefix, ntTLS.KeySecret.Name, ntTLS.KeySecret.Key)
-			}
-			if keyPath != "" {
+			if creds.KeyFile != "" {
+				keyPath = creds.KeyFile
 				tlsKeys.isNotNull = true
 			}
 			if ntTLS.InsecureSkipVerify {

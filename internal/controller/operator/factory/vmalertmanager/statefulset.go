@@ -9,9 +9,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -154,6 +155,8 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		fmt.Sprintf("--storage.path=%s", alertmanagerStorageDir),
 		fmt.Sprintf("--data.retention=%s", cr.Spec.Retention),
 	}
+
+	amArgs = addFeatureFlags(amArgs, cr)
 	if cr.Spec.WebConfig != nil {
 		amArgs = append(amArgs, fmt.Sprintf("--web.config.file=%s/%s", tlsAssetsDir, webserverConfigKey))
 	}
@@ -682,7 +685,7 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	var s corev1.Secret
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, &s); err != nil {
 		// return nil for backward compatibility
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			logger.WithContext(ctx).Error(err, fmt.Sprintf("alertmanager config secret=%q doesn't exist at namespace=%q, default config is used", secretName, ns))
 			return nil, nil
 		}
@@ -747,4 +750,24 @@ func subPathForStorage(s *vmv1beta1.StorageSpec) string {
 	}
 
 	return "alertmanager-db"
+}
+
+var utf8MinVersion = semver.MustParse("v0.28.0")
+
+// addFeatureFlags adds features based on alertmanager version
+//
+// https://github.com/prometheus/alertmanager/blob/main/featurecontrol/featurecontrol.go#L23
+func addFeatureFlags(args []string, cr *vmv1beta1.VMAlertmanager) []string {
+	amVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
+	if err != nil {
+		return args
+	}
+	var features []string
+	if amVersion.GreaterThanEqual(utf8MinVersion) {
+		features = append(features, "utf8-strict-mode")
+	}
+	if len(features) > 0 {
+		args = append(args, fmt.Sprintf("--enable-feature=%s", strings.Join(features, ",")))
+	}
+	return args
 }

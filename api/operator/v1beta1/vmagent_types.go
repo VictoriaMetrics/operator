@@ -98,7 +98,7 @@ type VMAgentSpec struct {
 	// RemoteWrite list of victoria metrics /some other remote write system
 	// for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
 	// or for cluster different url
-	// https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems
+	// https://docs.victoriametrics.com/victoriametrics/vmagent/#splitting-data-streams-among-multiple-systems
 	RemoteWrite []VMAgentRemoteWriteSpec `json:"remoteWrite"`
 	// RemoteWriteSettings defines global settings for all remoteWrite urls.
 	// +optional
@@ -233,7 +233,7 @@ type VMAgentSpec struct {
 	// ShardCount - numbers of shards of VMAgent
 	// in this case operator will use 1 deployment/sts per shard with
 	// replicas count according to spec.replicas,
-	// see [here](https://docs.victoriametrics.com/vmagent/#scraping-big-number-of-targets)
+	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)
 	// +optional
 	ShardCount *int `json:"shardCount,omitempty"`
 
@@ -307,7 +307,7 @@ type VMAgentSpec struct {
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See [here](https://docs.victoriametrics.com/enterprise)
+	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise)
 	// +optional
 	License *License `json:"license,omitempty"`
 
@@ -432,7 +432,7 @@ type VMAgentRemoteWriteSettings struct {
 	// +optional
 	Labels map[string]string `json:"label,omitempty"`
 	// Configures vmagent accepting data via the same multitenant endpoints as vminsert at VictoriaMetrics cluster does,
-	// see [here](https://docs.victoriametrics.com/vmagent/#multitenancy).
+	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#multitenancy).
 	// it's global setting and affects all remote storage configurations
 	// +optional
 	UseMultiTenantMode bool `json:"useMultiTenantMode,omitempty"`

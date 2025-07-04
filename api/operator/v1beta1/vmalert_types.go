@@ -139,7 +139,7 @@ type VMAlertSpec struct {
 	*EmbeddedProbes     `json:",inline"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See [here](https://docs.victoriametrics.com/enterprise)
+	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 	// +optional
 	License *License `json:"license,omitempty"`
 

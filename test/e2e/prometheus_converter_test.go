@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -313,7 +313,7 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 					Eventually(func() error {
 						_, err := getObject(ctx, testCase.source)
 						return err
-					}, eventualDeletionTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+					}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 					k8sClient.Delete(ctx, testCase.targetTpl) // nolint:errcheck
 					Eventually(func() error {
@@ -394,7 +394,7 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 					Eventually(func() error {
 						_, err := getObject(ctx, testCase.targetTpl)
 						return err
-					}, eventualDeletionTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+					}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 				})
 			})
 		}

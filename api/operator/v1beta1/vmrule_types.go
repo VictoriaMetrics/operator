@@ -64,12 +64,12 @@ type RuleGroup struct {
 	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	// ExtraFilterLabels optional list of label filters applied to every rule's
 	// request within a group. Is compatible only with VM datasource.
-	// See more details [here](https://docs.victoriametrics.com/#prometheus-querying-api-enhancements)
+	// See more details [here](https://docs.victoriametrics.com/victoriametrics/#prometheus-querying-api-enhancements)
 	// Deprecated: use params instead
 	// +optional
 	ExtraFilterLabels map[string]string `json:"extra_filter_labels,omitempty" yaml:"extra_filter_labels,omitempty"`
 	// Tenant id for group, can be used only with enterprise version of vmalert.
-	// See more details [here](https://docs.victoriametrics.com/vmalert#multitenancy).
+	// See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert#multitenancy).
 	// +optional
 	Tenant string `json:"tenant,omitempty" yaml:"tenant,omitempty"`
 	// Params optional HTTP URL parameters added to each rule request

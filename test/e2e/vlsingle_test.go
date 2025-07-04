@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,7 +41,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single"), func() {
 			})).To(Succeed())
 			Eventually(func() error {
 				return k8sClient.Get(ctx, namespacedName, &vmv1.VLSingle{})
-			}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
 		Context("crud", func() {
 			DescribeTable("should create",

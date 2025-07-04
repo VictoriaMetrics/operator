@@ -83,7 +83,8 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
                     "routes": [
                         {
                             "matchers": [
-                                "nested=env"
+                                "nested=env",
+                                "{\"foo\"!~\"[0-9]+\"}"
                             ]
                         }
                     ]
@@ -265,7 +266,7 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
             ]
         }
     }
-}`, `matcher value contains unescaped double quote: -124 matcher`)
+}`, `expected a comma or close brace`)
 
 	f(`{
     "apiVersion": "v1",
@@ -707,7 +708,8 @@ func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
                 {
                     "matchers": [
                         "test=\"team\"",
-                        "type=\"phone\""
+                        "type=\"phone\"",
+                        "{\"cloud.account.name\"=\"prod\"}"
                     ],
                     "receiver": "sns-phone"
                 }

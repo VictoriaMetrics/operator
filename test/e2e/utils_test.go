@@ -10,7 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -129,7 +129,7 @@ fi
 		Eventually(func() error {
 			var jb batchv1.Job
 			return k8sClient.Get(ctx, nss, &jb)
-		}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 	}()
 	Eventually(func() error {
 		var jb batchv1.Job

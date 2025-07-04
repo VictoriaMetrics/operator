@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/util/workqueue"
@@ -139,11 +139,11 @@ func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], S
 	case errors.As(err, &ge):
 		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
 		getObjectsErrorsTotal.WithLabelValues(ge.controller, ge.requestObject.String()).Inc()
-		if apierrors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			err = nil
 			return originResult, nil
 		}
-	case apierrors.IsConflict(err):
+	case k8serrors.IsConflict(err):
 		controller := "unknown"
 		namespacedName := "unknown"
 		if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
@@ -203,11 +203,11 @@ func handleReconcileErrWithoutStatus(
 	case errors.As(err, &ge):
 		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
 		getObjectsErrorsTotal.WithLabelValues(ge.controller, ge.requestObject.String()).Inc()
-		if apierrors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			err = nil
 			return originResult, nil
 		}
-	case apierrors.IsConflict(err):
+	case k8serrors.IsConflict(err):
 		controller := "unknown"
 		if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
 			controller = object.GetObjectKind().GroupVersionKind().GroupKind().Kind
@@ -392,7 +392,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 	if err != nil {
 		// do not change status on conflict to failed
 		// it should be retried on the next loop
-		if apierrors.IsConflict(err) {
+		if k8serrors.IsConflict(err) {
 			return
 		}
 		desiredStatus := vmv1beta1.UpdateStatusFailed

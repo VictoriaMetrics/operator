@@ -10,7 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -43,7 +43,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 					Name:      namespacedName.Name,
 					Namespace: namespacedName.Namespace,
 				}, &vmv1beta1.VMAgent{})
-			}, eventualDeletionTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+			}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
 
 		DescribeTable("should create vmagent",
@@ -201,7 +201,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 					}
 					Expect(func() error {
 						if err := k8sClient.Create(ctx, tlsSecret); err != nil &&
-							!errors.IsAlreadyExists(err) {
+							!k8serrors.IsAlreadyExists(err) {
 							return err
 						}
 						return nil
@@ -332,11 +332,11 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 					Expect(
 						k8sClient.Get(ctx,
 							newFormatNss,
-							&rbacv1.ClusterRole{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+							&rbacv1.ClusterRole{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					Expect(
 						k8sClient.Get(ctx,
 							newFormatNss,
-							&rbacv1.ClusterRoleBinding{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+							&rbacv1.ClusterRoleBinding{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 				},
 				func(cr *vmv1beta1.VMAgent) {
@@ -352,11 +352,11 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 					Expect(
 						k8sClient.Get(ctx,
 							prevFormatName,
-							&rbacv1.ClusterRole{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+							&rbacv1.ClusterRole{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					Expect(
 						k8sClient.Get(ctx,
 							prevFormatName,
-							&rbacv1.ClusterRoleBinding{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+							&rbacv1.ClusterRoleBinding{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					Expect(
 						k8sClient.Get(ctx,
 							newFormatName,
@@ -501,7 +501,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					},
 				},
 				testStep{
@@ -509,7 +509,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					},
 				},
 			),
@@ -540,10 +540,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Eventually(func() error {
 							return k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})
-						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 						Eventually(func() error {
 							return k8sClient.Get(ctx, nsn, &vmv1beta1.VMServiceScrape{})
-						}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					},
 				},
 				testStep{
@@ -576,8 +576,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMServiceScrape{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMServiceScrape{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					},
 				},
 				testStep{
@@ -589,9 +589,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMServiceScrape{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).To(MatchError(errors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 					},
 				},

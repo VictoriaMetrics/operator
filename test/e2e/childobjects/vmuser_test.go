@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -43,7 +43,7 @@ var _ = Describe("test vmuser Controller", func() {
 					nsn := types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace}
 					Eventually(func() error {
 						return k8sClient.Get(ctx, nsn, &vmv1beta1.VMAuth{})
-					}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "isNotFound"))
+					}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "isNotFound"))
 				}
 			})
 			step := steps[0]

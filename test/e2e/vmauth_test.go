@@ -10,7 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -44,7 +44,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 				})).To(Succeed())
 				Eventually(func() error {
 					return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMAuth{})
-				}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+				}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 			})
 			DescribeTable("should create vmauth", func(name string, cr *vmv1beta1.VMAuth, verify func(cr *vmv1beta1.VMAuth)) {
 				namespacedName.Name = name
@@ -363,7 +363,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).To(Succeed())
 							Eventually(func() error {
 								return k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})
-							}, eventualDeletionTimeout).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+							}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 						},
 					},
 					testStep{

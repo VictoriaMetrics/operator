@@ -8,7 +8,7 @@ import (
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -39,7 +39,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					Name:      namespacedName.Name,
 					Namespace: namespacedName.Namespace,
 				}, &vmv1beta1.VMAlert{})
-			}, eventualDeletionTimeout, 1).Should(MatchError(errors.IsNotFound, "IsNotFound"))
+			}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
 		tlsSecretName := "vmalert-remote-tls"
 		DescribeTable("should create vmalert",
@@ -206,7 +206,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					}
 					Expect(func() error {
 						if err := k8sClient.Create(ctx, tlsSecret); err != nil &&
-							!errors.IsAlreadyExists(err) {
+							!k8serrors.IsAlreadyExists(err) {
 							return err
 						}
 						return nil

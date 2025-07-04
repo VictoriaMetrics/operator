@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // SetupVMSingleWebhookWithManager will setup the manager to manage the webhooks
@@ -56,10 +55,6 @@ func (*VMSingleCustomValidator) ValidateCreate(ctx context.Context, obj runtime.
 	if err = r.Validate(); err != nil {
 		return
 	}
-	if r.Spec.VMBackup != nil && r.Spec.VMBackup.AcceptEULA {
-		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
-		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
-	}
 	return
 }
 
@@ -76,10 +71,6 @@ func (*VMSingleCustomValidator) ValidateUpdate(ctx context.Context, _, newObj ru
 	}
 	if err = r.Validate(); err != nil {
 		return
-	}
-	if r.Spec.VMBackup != nil && r.Spec.VMBackup.AcceptEULA {
-		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
-		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
 	return
 }

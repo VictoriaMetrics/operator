@@ -29,7 +29,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/manager"
 )
 
-// var cfg *rest.Config
 var testEnv *envtest.Environment
 var cancelManager context.CancelFunc
 var stopped = make(chan struct{})

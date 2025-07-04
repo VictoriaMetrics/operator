@@ -37,15 +37,16 @@ receivers:
 )
 
 //nolint:dupl
-var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), func() {
-
-	Context("e2e vmalertmanager", func() {
-		ctx := context.Background()
+var _ = Describe("vmalertmanager", Label("vm", "alertmanager"), func() {
+	Context("crud", func() {
+		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}
-
+		BeforeEach(func() {
+			ctx = context.Background()
+		})
 		// delete test results
 		AfterEach(func() {
 			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMAlertmanager{

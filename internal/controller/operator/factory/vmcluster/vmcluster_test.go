@@ -550,6 +550,9 @@ spec:
 	f("storage", &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
+			License: &vmv1beta1.License{
+				Key: ptr.To("test-key"),
+			},
 			VMStorage: &vmv1beta1.VMStorage{
 				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 					UseAsDefault: true,
@@ -564,9 +567,7 @@ spec:
 						},
 					},
 				},
-				VMBackup: &vmv1beta1.VMBackup{
-					AcceptEULA: true,
-				},
+				VMBackup: &vmv1beta1.VMBackup{},
 			},
 		},
 	}, `

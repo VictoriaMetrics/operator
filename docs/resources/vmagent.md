@@ -196,8 +196,8 @@ spec:
   vmAgentExternalLabelName: vmagent_ha
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
-  # Replication:
   scrapeInterval: 30s
+  # Replication:
   replicaCount: 2
   # ...
 ```
@@ -226,8 +226,8 @@ spec:
   vmAgentExternalLabelName: vmagent_ha
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
-  # Replication:
   scrapeInterval: 30s
+  # Replication:
   replicaCount: 2
   # StatefulMode:
   statefulMode: true
@@ -769,9 +769,9 @@ spec:
   replicaCount: 1
   scrapeInterval: 30s
   scrapeTimeout: 10s
-  vmAgentExternalLabelName: example
   externalLabels:
     cluster: my-cluster
+  vmAgentExternalLabelName: example
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
   inlineRelabelConfig:

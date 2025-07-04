@@ -484,18 +484,32 @@ func generateConfig(
 		cr.Spec.IgnoreNamespaceSelectors = true
 	}
 
-	if cr.Spec.ScrapeInterval == "" {
-		cr.Spec.ScrapeInterval = defaultScrapeInterval
+	scrapeInterval := defaultScrapeInterval
+	if cr.Spec.ScrapeInterval != "" {
+		scrapeInterval = cr.Spec.ScrapeInterval
 	}
-
 	globalItems := yaml.MapSlice{
-		{Key: "scrape_interval", Value: cr.Spec.ScrapeInterval},
+		{Key: "scrape_interval", Value: scrapeInterval},
 		{Key: "external_labels", Value: buildExternalLabels(cr)},
 	}
+
 	if cr.Spec.ScrapeTimeout != "" {
 		globalItems = append(globalItems, yaml.MapItem{
 			Key:   "scrape_timeout",
 			Value: cr.Spec.ScrapeTimeout,
+		})
+	}
+
+	if len(cr.Spec.GlobalScrapeMetricRelabelConfigs) > 0 {
+		globalItems = append(globalItems, yaml.MapItem{
+			Key:   "metric_relabel_configs",
+			Value: cr.Spec.GlobalScrapeMetricRelabelConfigs,
+		})
+	}
+	if len(cr.Spec.GlobalScrapeRelabelConfigs) > 0 {
+		globalItems = append(globalItems, yaml.MapItem{
+			Key:   "relabel_configs",
+			Value: cr.Spec.GlobalScrapeRelabelConfigs,
 		})
 	}
 
@@ -980,7 +994,6 @@ func buildExternalLabels(p *vmv1beta1.VMAgent) yaml.MapSlice {
 	if prometheusExternalLabelName != "" {
 		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", p.Namespace, p.Name)
 	}
-
 	for n, v := range p.Spec.ExternalLabels {
 		m[n] = v
 	}

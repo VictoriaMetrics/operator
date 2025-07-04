@@ -923,6 +923,22 @@ scrape_configs:
 					StaticScrapeSelector:           &metav1.LabelSelector{},
 					ProbeNamespaceSelector:         &metav1.LabelSelector{},
 					ProbeSelector:                  &metav1.LabelSelector{},
+					ScrapeTimeout:                  "20m",
+					ScrapeInterval:                 "30m",
+					ExternalLabels: map[string]string{
+						"externalLabelName": "externalLabelValue",
+					},
+					GlobalScrapeRelabelConfigs: []*vmv1beta1.RelabelConfig{
+						{
+							UnderScoreSourceLabels: []string{"test2"},
+						},
+					},
+
+					GlobalScrapeMetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+						{
+							UnderScoreSourceLabels: []string{"test1"},
+						},
+					},
 				},
 			},
 			c: func() *config.BaseOperatorConf {
@@ -987,9 +1003,17 @@ scrape_configs:
 				},
 			},
 			wantConfig: `global:
-  scrape_interval: 30s
+  scrape_interval: 30m
   external_labels:
+    externalLabelName: externalLabelValue
     prometheus: default/test
+  scrape_timeout: 20m
+  metric_relabel_configs:
+  - source_labels:
+    - test1
+  relabel_configs:
+  - source_labels:
+    - test2
 scrape_configs:
 - job_name: serviceScrape/default/test-vms/0
   kubernetes_sd_configs:

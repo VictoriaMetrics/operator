@@ -83,8 +83,8 @@ spec:
     repository: victoriametrics/vmagent
     tag: v1.46.0
     pullPolicy: IfNotPresent
-  scrapeInterval: 30s
   vmAgentExternalLabelName: vmagent
+  scrapeInterval: 30s
   externalLabels:
     key: value
   # Add fields here

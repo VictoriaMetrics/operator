@@ -672,6 +672,24 @@ Appears in: [VMAgentSpec](#vmagentspec)
 | tlsConfig<a href="#apiserverconfig-tlsconfig" id="apiserverconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig Config to use for accessing apiserver. |
 
 
+#### AWS
+
+
+
+AWS defines AWS cloud auth specific params
+
+Appears in: [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
+
+| Field | Description |
+| --- | --- |
+| ec2Endpoint<a href="#aws-ec2endpoint" id="aws-ec2endpoint">#</a><br/>_string_ | _(Required)_<br/>EC2Endpoint is an optional AWS EC2 API endpoint to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| region<a href="#aws-region" id="aws-region">#</a><br/>_string_ | _(Required)_<br/>Region is an optional AWS region to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| roleARN<a href="#aws-rolearn" id="aws-rolearn">#</a><br/>_string_ | _(Required)_<br/>RoleARN is an optional AWS region to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| service<a href="#aws-service" id="aws-service">#</a><br/>_string_ | _(Required)_<br/>Service is an optional AWS Service to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| stsEndpoint<a href="#aws-stsendpoint" id="aws-stsendpoint">#</a><br/>_string_ | _(Required)_<br/>STSEndpoint is an optional AWS STS API endpoint to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| useSigv4<a href="#aws-usesigv4" id="aws-usesigv4">#</a><br/>_boolean_ | _(Required)_<br/>UseSigv4 enables SigV4 request signing for the corresponding -remoteWrite.url |
+
+
 #### AdditionalServiceSpec
 
 
@@ -2805,6 +2823,7 @@ Appears in: [VMAgentSpec](#vmagentspec)
 
 | Field | Description |
 | --- | --- |
+| aws<a href="#vmagentremotewritespec-aws" id="vmagentremotewritespec-aws">#</a><br/>_[AWS](#aws)_ | _(Required)_<br/>AWS describes params specific to AWS cloud |
 | basicAuth<a href="#vmagentremotewritespec-basicauth" id="vmagentremotewritespec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication |
 | bearerTokenSecret<a href="#vmagentremotewritespec-bearertokensecret" id="vmagentremotewritespec-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
 | forceVMProto<a href="#vmagentremotewritespec-forcevmproto" id="vmagentremotewritespec-forcevmproto">#</a><br/>_boolean_ | _(Optional)_<br/>ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url |

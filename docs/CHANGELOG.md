@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): update shards concurrently. See [#1434](https://github.com/VictoriaMetrics/operator/issues/1434).
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): added AWS section to VMAgent remoteWrite spec. See [#928](https://github.com/VictoriaMetrics/operator/issues/928).
 
 ## [v0.60.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.2)
 

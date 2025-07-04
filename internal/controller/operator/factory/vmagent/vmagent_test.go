@@ -1282,6 +1282,48 @@ func TestBuildRemoteWrites(t *testing.T) {
 			},
 		},
 		{
+			name: "test with aws",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{
+						URL: "localhost:8429",
+						AWS: &vmv1beta1.AWS{
+							RoleARN: "arn:aws:iam::account:role/role-1",
+						},
+					},
+					{
+						URL: "localhost:8431",
+					},
+					{
+						URL: "localhost:8431",
+						AWS: &vmv1beta1.AWS{
+							UseSigv4: true,
+						},
+					},
+				}},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "remote2-aws-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"accesskey": []byte("accesskeytoken"),
+					},
+				},
+			},
+			want: []string{
+				`-remoteWrite.aws.roleARN=arn:aws:iam::account:role/role-1,,`,
+				`-remoteWrite.aws.useSigv4=false,false,true`,
+				`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8431`,
+			},
+		},
+		{
 			name: "test with proxyURL (one remote write with defaults)",
 			cr: &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{

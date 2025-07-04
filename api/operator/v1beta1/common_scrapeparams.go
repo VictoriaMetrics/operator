@@ -26,7 +26,7 @@ type VMScrapeParams struct {
 	// disable_keepalive allows disabling HTTP keep-alive when scraping targets.
 	// By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
 	// could be reused.
-	// See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements
+	// See https://docs.victoriametrics.com/victoriametrics/vmagent#scrape_config-enhancements
 	// +optional
 	DisableKeepAlive *bool `json:"disable_keep_alive,omitempty"`
 	// +optional
@@ -38,7 +38,7 @@ type VMScrapeParams struct {
 	// +optional
 	ScrapeOffset *string `json:"scrape_offset,omitempty"`
 	// ProxyClientConfig configures proxy auth settings for scraping
-	// See feature description https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy
+	// See feature description https://docs.victoriametrics.com/victoriametrics/vmagent#scraping-targets-via-a-proxy
 	// +optional
 	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
 	// Headers allows sending custom headers to scrape targets
@@ -149,7 +149,7 @@ func (ac *Authorization) validate() error {
 }
 
 // RelabelConfig allows dynamic rewriting of the label set
-// More info: https://docs.victoriametrics.com/#relabeling
+// More info: https://docs.victoriametrics.com/victoriametrics/#relabeling
 // +k8s:openapi-gen=true
 type RelabelConfig struct {
 	// UnderScoreSourceLabels - additional form of source labels source_labels
@@ -179,7 +179,7 @@ type RelabelConfig struct {
 	TargetLabel string `json:"targetLabel,omitempty" yaml:"-"`
 	// Regular expression against which the extracted value is matched. Default is '(.*)'
 	// victoriaMetrics supports multiline regex joined with |
-	// https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+	// https://docs.victoriametrics.com/victoriametrics/vmagent/#relabeling-enhancements
 	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields

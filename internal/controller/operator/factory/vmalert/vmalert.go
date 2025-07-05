@@ -321,6 +321,11 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 	}
 	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
 
+	var subdomain string
+	if cr.Spec.ForceSubdomain {
+		subdomain = cr.PrefixedName()
+	}
+
 	spec := &appsv1.DeploymentSpec{
 
 		Selector: &metav1.LabelSelector{
@@ -341,6 +346,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 				InitContainers:     cr.Spec.InitContainers,
 				Containers:         containers,
 				Volumes:            volumes,
+				Subdomain:          subdomain,
 			},
 		},
 	}

@@ -305,6 +305,11 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		}
 	}
 
+	var subdomain string
+	if cr.Spec.VLSelect.ForceSubdomain {
+		subdomain = cr.GetVLSelectLBName()
+	}
+
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VLSelectPodLabels(),
@@ -316,6 +321,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
 			RestartPolicy:      "Always",
+			Subdomain:          subdomain,
 		},
 	}
 

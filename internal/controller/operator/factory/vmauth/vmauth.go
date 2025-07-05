@@ -326,6 +326,11 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
 
+	var subdomain string
+	if cr.Spec.ForceSubdomain {
+		subdomain = cr.PrefixedName()
+	}
+
 	return &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
@@ -336,6 +341,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 			InitContainers:     ic,
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
+			Subdomain:          subdomain,
 		},
 	}, nil
 }

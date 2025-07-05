@@ -326,6 +326,10 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     type: array
+                  forceSubdomain:
+                    description: ForceSubdomain explicitly sets subdomain into a podspec
+                      equal to a primary service name
+                    type: boolean
                   host_aliases:
                     description: |-
                       HostAliasesUnderScore provides mapping for ip and hostname,
@@ -1238,6 +1242,10 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     type: array
+                  forceSubdomain:
+                    description: ForceSubdomain explicitly sets subdomain into a podspec
+                      equal to a primary service name
+                    type: boolean
                   host_aliases:
                     description: |-
                       HostAliasesUnderScore provides mapping for ip and hostname,
@@ -2006,6 +2014,10 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     type: array
+                  forceSubdomain:
+                    description: ForceSubdomain explicitly sets subdomain into a podspec
+                      equal to a primary service name
+                    type: boolean
                   futureRetention:
                     description: |-
                       FutureRetention for the stored logs
@@ -3081,6 +3093,10 @@ spec:
                       x-kubernetes-map-type: atomic
                   type: object
                 type: array
+              forceSubdomain:
+                description: ForceSubdomain explicitly sets subdomain into a podspec
+                  equal to a primary service name
+                type: boolean
               futureRetention:
                 description: |-
                   FutureRetention for the stored logs
@@ -5043,6 +5059,10 @@ spec:
                       x-kubernetes-map-type: atomic
                   type: object
                 type: array
+              forceSubdomain:
+                description: ForceSubdomain explicitly sets subdomain into a podspec
+                  equal to a primary service name
+                type: boolean
               host_aliases:
                 description: |-
                   HostAliasesUnderScore provides mapping for ip and hostname,
@@ -13966,6 +13986,10 @@ spec:
                       x-kubernetes-map-type: atomic
                   type: object
                 type: array
+              forceSubdomain:
+                description: ForceSubdomain explicitly sets subdomain into a podspec
+                  equal to a primary service name
+                type: boolean
               gossipConfig:
                 description: GossipConfig defines gossip TLS configuration for Alertmanager
                   cluster
@@ -16047,6 +16071,10 @@ spec:
                       x-kubernetes-map-type: atomic
                   type: object
                 type: array
+              forceSubdomain:
+                description: ForceSubdomain explicitly sets subdomain into a podspec
+                  equal to a primary service name
+                type: boolean
               host_aliases:
                 description: |-
                   HostAliasesUnderScore provides mapping for ip and hostname,
@@ -18265,6 +18293,10 @@ spec:
                       x-kubernetes-map-type: atomic
                   type: object
                 type: array
+              forceSubdomain:
+                description: ForceSubdomain explicitly sets subdomain into a podspec
+                  equal to a primary service name
+                type: boolean
               host_aliases:
                 description: |-
                   HostAliasesUnderScore provides mapping for ip and hostname,
@@ -20660,6 +20692,10 @@ spec:
                       x-kubernetes-map-type: atomic
                   type: object
                 type: array
+              forceSubdomain:
+                description: ForceSubdomain explicitly sets subdomain into a podspec
+                  equal to a primary service name
+                type: boolean
               host_aliases:
                 description: |-
                   HostAliasesUnderScore provides mapping for ip and hostname,
@@ -22434,6 +22470,10 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     type: array
+                  forceSubdomain:
+                    description: ForceSubdomain explicitly sets subdomain into a podspec
+                      equal to a primary service name
+                    type: boolean
                   host_aliases:
                     description: |-
                       HostAliasesUnderScore provides mapping for ip and hostname,
@@ -23228,6 +23268,10 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     type: array
+                  forceSubdomain:
+                    description: ForceSubdomain explicitly sets subdomain into a podspec
+                      equal to a primary service name
+                    type: boolean
                   host_aliases:
                     description: |-
                       HostAliasesUnderScore provides mapping for ip and hostname,
@@ -24488,6 +24532,10 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     type: array
+                  forceSubdomain:
+                    description: ForceSubdomain explicitly sets subdomain into a podspec
+                      equal to a primary service name
+                    type: boolean
                   host_aliases:
                     description: |-
                       HostAliasesUnderScore provides mapping for ip and hostname,
@@ -33452,6 +33500,10 @@ spec:
                       x-kubernetes-map-type: atomic
                   type: object
                 type: array
+              forceSubdomain:
+                description: ForceSubdomain explicitly sets subdomain into a podspec
+                  equal to a primary service name
+                type: boolean
               host_aliases:
                 description: |-
                   HostAliasesUnderScore provides mapping for ip and hostname,

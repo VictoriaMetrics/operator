@@ -779,11 +779,17 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 	}
 	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
 
+	var subdomain string
+	if cr.Spec.ForceSubdomain {
+		subdomain = cr.PrefixedName()
+	}
+
 	return &corev1.PodSpec{
 		Volumes:            volumes,
 		InitContainers:     ic,
 		Containers:         containers,
 		ServiceAccountName: cr.GetServiceAccountName(),
+		Subdomain:          subdomain,
 	}, nil
 }
 

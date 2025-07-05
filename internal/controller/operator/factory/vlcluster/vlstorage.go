@@ -294,6 +294,11 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 		}
 	}
 
+	var subdomain string
+	if cr.Spec.VLStorage.ForceSubdomain {
+		subdomain = cr.GetVLStorageName()
+	}
+
 	vmStoragePodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VLStoragePodLabels(),
@@ -304,6 +309,7 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 			InitContainers:     ic,
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
+			Subdomain:          subdomain,
 		},
 	}
 

@@ -179,6 +179,10 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
 	}
+	var subdomain string
+	if spec.ForceSubdomain {
+		subdomain = cr.GetVMAuthLBName()
+	}
 	lbDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
@@ -201,6 +205,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 					InitContainers:     spec.InitContainers,
 					Containers:         containers,
 					ServiceAccountName: cr.GetServiceAccountName(),
+					Subdomain:          subdomain,
 				},
 			},
 		},

@@ -1247,6 +1247,9 @@ type CommonApplicationDeploymentParams struct {
 	// could either be secret or configmap
 	// +optional
 	ExtraEnvsFrom []corev1.EnvFromSource `json:"extraEnvsFrom,omitempty"`
+	// ForceSubdomain explicitly sets subdomain into a podspec equal to a primary service name
+	// +optional
+	ForceSubdomain bool `json:"forceSubdomain,omitempty"`
 }
 
 // SecurityContext extends PodSecurityContext with ContainerSecurityContext

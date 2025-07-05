@@ -276,6 +276,11 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 		return nil, err
 	}
 
+	var subdomain string
+	if r.Spec.ForceSubdomain {
+		subdomain = r.PrefixedName()
+	}
+
 	vlsingleSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      r.PodLabels(),
@@ -286,6 +291,7 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 			InitContainers:     r.Spec.InitContainers,
 			Containers:         containers,
 			ServiceAccountName: r.GetServiceAccountName(),
+			Subdomain:          subdomain,
 		},
 	}
 

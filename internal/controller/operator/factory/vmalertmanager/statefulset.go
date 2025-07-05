@@ -422,6 +422,10 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 	if useVMConfigReloader {
 		volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
 	}
+	var subdomain string
+	if cr.Spec.ForceSubdomain {
+		subdomain = cr.PrefixedName()
+	}
 	return &appsv1.StatefulSetSpec{
 		ServiceName: cr.PrefixedName(),
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
@@ -441,6 +445,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 				Containers:         containers,
 				Volumes:            volumes,
 				ServiceAccountName: cr.GetServiceAccountName(),
+				Subdomain:          subdomain,
 			},
 		},
 	}, nil

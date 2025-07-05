@@ -244,6 +244,11 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		}
 	}
 
+	var subdomain string
+	if cr.Spec.VLInsert.ForceSubdomain {
+		subdomain = cr.GetVLInsertLBName()
+	}
+
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VLInsertPodLabels(),
@@ -254,6 +259,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 			InitContainers:     cr.Spec.VLInsert.InitContainers,
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
+			Subdomain:          subdomain,
 		},
 	}
 

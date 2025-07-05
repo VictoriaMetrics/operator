@@ -680,6 +680,11 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		}
 	}
 
+	var subdomain string
+	if cr.Spec.VMSelect.ForceSubdomain {
+		subdomain = cr.GetVMSelectLBName()
+	}
+
 	vmSelectPodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMSelectPodLabels(),
@@ -691,6 +696,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
 			RestartPolicy:      "Always",
+			Subdomain:          subdomain,
 		},
 	}
 
@@ -878,6 +884,11 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		}
 	}
 
+	var subdomain string
+	if cr.Spec.VMInsert.ForceSubdomain {
+		subdomain = cr.GetVMInsertLBName()
+	}
+
 	vmInsertPodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMInsertPodLabels(),
@@ -888,6 +899,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 			InitContainers:     cr.Spec.VMInsert.InitContainers,
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
+			Subdomain:          subdomain,
 		},
 	}
 
@@ -1119,6 +1131,11 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 		}
 	}
 
+	var subdomain string
+	if cr.Spec.VMStorage.ForceSubdomain {
+		subdomain = cr.GetVMStorageName()
+	}
+
 	vmStoragePodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMStoragePodLabels(),
@@ -1129,6 +1146,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 			InitContainers:     ic,
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
+			Subdomain:          subdomain,
 		},
 	}
 
@@ -1518,6 +1536,10 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
 	}
+	var subdomain string
+	if spec.ForceSubdomain {
+		subdomain = cr.GetVMAuthLBName()
+	}
 	lbDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
@@ -1540,6 +1562,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 					InitContainers:     spec.InitContainers,
 					Containers:         containers,
 					ServiceAccountName: cr.GetServiceAccountName(),
+					Subdomain:          subdomain,
 				},
 			},
 		},

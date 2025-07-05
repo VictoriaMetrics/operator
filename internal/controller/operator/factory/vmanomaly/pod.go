@@ -185,10 +185,17 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 			}
 		}
 	}
+
+	var subdomain string
+	if cr.Spec.ForceSubdomain {
+		subdomain = cr.PrefixedName()
+	}
+
 	return &corev1.PodSpec{
 		InitContainers:     ic,
 		Containers:         containers,
 		Volumes:            volumes,
 		ServiceAccountName: cr.GetServiceAccountName(),
+		Subdomain:          subdomain,
 	}, nil
 }

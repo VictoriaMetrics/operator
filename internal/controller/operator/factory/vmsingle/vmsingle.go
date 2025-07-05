@@ -334,6 +334,11 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 		return nil, err
 	}
 
+	var subdomain string
+	if cr.Spec.ForceSubdomain {
+		subdomain = cr.PrefixedName()
+	}
+
 	vmSingleSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
@@ -344,6 +349,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.P
 			InitContainers:     ic,
 			Containers:         containers,
 			ServiceAccountName: cr.GetServiceAccountName(),
+			Subdomain:          subdomain,
 		},
 	}
 

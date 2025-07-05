@@ -268,10 +268,6 @@ func (cr *VMSingle) PrefixedName() string {
 	return fmt.Sprintf("vmsingle-%s", cr.Name)
 }
 
-func (cr *VMSingle) StreamAggrConfigName() string {
-	return fmt.Sprintf("stream-aggr-vmsingle-%s", cr.Name)
-}
-
 // GetMetricPath returns prefixed path for metric requests
 func (cr *VMSingle) GetMetricPath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)

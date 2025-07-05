@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): update shards concurrently. See [#1434](https://github.com/VictoriaMetrics/operator/issues/1434).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): remove deprecated acceptEULA. Replaced it with license in tests. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).
 
 ## [v0.60.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.2)
 

@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // SetupVMSingleWebhookWithManager will setup the manager to manage the webhooks
@@ -42,33 +43,45 @@ type VMSingleCustomValidator struct{}
 var _ admission.CustomValidator = &VMSingleCustomValidator{}
 
 // ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMSingleCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*VMSingleCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
 	r, ok := obj.(*vmv1beta1.VMSingle)
 	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+		err = fmt.Errorf("BUG: unexpected type: %T", obj)
+		return
 	}
 	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
+		err = errors.New(r.Spec.ParsingError)
+		return
 	}
-	if err := r.Validate(); err != nil {
-		return nil, err
+	if err = r.Validate(); err != nil {
+		return
 	}
-	return nil, nil
+	if r.Spec.VMBackup != nil && r.Spec.VMBackup.AcceptEULA {
+		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
+		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
+	}
+	return
 }
 
 // ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMSingleCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
+func (*VMSingleCustomValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (warnings admission.Warnings, err error) {
 	r, ok := newObj.(*vmv1beta1.VMSingle)
 	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+		err = fmt.Errorf("BUG: unexpected type: %T", newObj)
+		return
 	}
 	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
+		err = errors.New(r.Spec.ParsingError)
+		return
 	}
-	if err := r.Validate(); err != nil {
-		return nil, err
+	if err = r.Validate(); err != nil {
+		return
 	}
-	return nil, nil
+	if r.Spec.VMBackup != nil && r.Spec.VMBackup.AcceptEULA {
+		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
+		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
+	}
+	return
 }
 
 // ValidateDelete implements admission.CustomValidator so a webhook will be registered for the type

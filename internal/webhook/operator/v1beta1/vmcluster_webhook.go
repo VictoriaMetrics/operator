@@ -43,39 +43,53 @@ type VMClusterCustomValidator struct{}
 var _ admission.CustomValidator = &VMClusterCustomValidator{}
 
 // ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
 	r, ok := obj.(*vmv1beta1.VMCluster)
 	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+		err = fmt.Errorf("BUG: unexpected type: %T", obj)
+		return
 	}
 	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
+		err = errors.New(r.Spec.ParsingError)
+		return
 	}
-	if err := r.Validate(); err != nil {
-		return nil, err
+	if err = r.Validate(); err != nil {
+		return
+	}
+	if r.Spec.VMStorage != nil && r.Spec.VMStorage.VMBackup != nil && r.Spec.VMStorage.VMBackup.AcceptEULA {
+		warnings = append(warnings, "deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
+		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
 	if r.Spec.VMSelect != nil && r.Spec.VMSelect.StorageSpec != nil {
-		logger.WithContext(ctx).Info("deprecated property is defined `vmcluster.spec.vmselect.persistentVolume`, use `storage` instead.")
+		warnings = append(warnings, "deprecated property is defined `spec.vmselect.persistentVolume`, use `storage` instead.")
+		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmselect.persistentVolume`, use `storage` instead.")
 	}
-	return nil, nil
+	return
 }
 
 // ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
+func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (warnings admission.Warnings, err error) {
 	r, ok := newObj.(*vmv1beta1.VMCluster)
 	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+		err = fmt.Errorf("BUG: unexpected type: %T", newObj)
+		return
 	}
 	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
+		err = errors.New(r.Spec.ParsingError)
+		return
 	}
-	if err := r.Validate(); err != nil {
-		return nil, err
+	if err = r.Validate(); err != nil {
+		return
+	}
+	if r.Spec.VMStorage != nil && r.Spec.VMStorage.VMBackup != nil && r.Spec.VMStorage.VMBackup.AcceptEULA {
+		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
+		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
 	if r.Spec.VMSelect != nil && r.Spec.VMSelect.StorageSpec != nil {
+		warnings = append(warnings, "deprecated property is defined `vmcluster.spec.vmselect.persistentVolume`, use `storage` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `vmcluster.spec.vmselect.persistentVolume`, use `storage` instead.")
 	}
-	return nil, nil
+	return
 }
 
 // ValidateDelete implements admission.CustomValidator so a webhook will be registered for the type

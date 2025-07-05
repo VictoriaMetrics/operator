@@ -25019,6 +25019,7 @@ spec:
                           AcceptEULA accepts enterprise feature usage, must be set to true.
                           otherwise backupmanager cannot be added to single/cluster version.
                           https://victoriametrics.com/legal/esa/
+                          Deprecated: use license.key or license.keyRef instead
                         type: boolean
                       concurrency:
                         description: Defines number of concurrent workers. Higher
@@ -34542,6 +34543,7 @@ spec:
                       AcceptEULA accepts enterprise feature usage, must be set to true.
                       otherwise backupmanager cannot be added to single/cluster version.
                       https://victoriametrics.com/legal/esa/
+                      Deprecated: use license.key or license.keyRef instead
                     type: boolean
                   concurrency:
                     description: Defines number of concurrent workers. Higher concurrency

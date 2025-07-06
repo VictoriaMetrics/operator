@@ -288,9 +288,10 @@ func Test_podIsReady(t *testing.T) {
 
 func Test_performRollingUpdateOnSts(t *testing.T) {
 	type args struct {
-		stsName   string
-		ns        string
-		podLabels map[string]string
+		stsName           string
+		ns                string
+		podLabels         map[string]string
+		podMaxUnavailable int
 	}
 	tests := []struct {
 		name              string
@@ -302,9 +303,10 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		{
 			name: "rolling update is not needed",
 			args: args{
-				stsName:   "vmselect-sts",
-				ns:        "default",
-				podLabels: map[string]string{"app": "vmselect"},
+				stsName:           "vmselect-sts",
+				ns:                "default",
+				podLabels:         map[string]string{"app": "vmselect"},
+				podMaxUnavailable: 1,
 			},
 			predefinedObjects: []runtime.Object{
 				&appsv1.StatefulSet{
@@ -339,9 +341,10 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		{
 			name: "rolling update is timeout",
 			args: args{
-				stsName:   "vmselect-sts",
-				ns:        "default",
-				podLabels: map[string]string{"app": "vmselect"},
+				stsName:           "vmselect-sts",
+				ns:                "default",
+				podLabels:         map[string]string{"app": "vmselect"},
+				podMaxUnavailable: 1,
 			},
 			predefinedObjects: []runtime.Object{
 				&appsv1.StatefulSet{
@@ -380,7 +383,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			if err := performRollingUpdateOnSts(context.Background(), false, fclient, tt.args.stsName, tt.args.ns, tt.args.podLabels); (err != nil) != tt.wantErr {
+			if err := performRollingUpdateOnSts(context.Background(), false, fclient, tt.args.stsName, tt.args.ns, tt.args.podLabels, tt.args.podMaxUnavailable); (err != nil) != tt.wantErr {
 				t.Errorf("performRollingUpdateOnSts() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

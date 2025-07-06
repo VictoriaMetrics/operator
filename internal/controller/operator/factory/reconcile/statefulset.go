@@ -6,14 +6,18 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,6 +36,7 @@ type STSOptions struct {
 	SelectorLabels     func() map[string]string
 	HPA                *vmv1beta1.EmbeddedHPA
 	UpdateReplicaCount func(count *int32)
+	UpdateBehavior     *vmv1beta1.StatefulSetUpdateStrategyBehavior
 }
 
 func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts *appsv1.StatefulSet) error {
@@ -145,9 +150,22 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 			}
 		}
 
+		// determine manual update behavior only with OnDelete policy, one by one by default
+		podMaxUnavailable := 1
+		if cr.UpdateBehavior != nil {
+			if newSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
+				podMaxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(cr.UpdateBehavior.MaxUnavailable, int(*newSts.Spec.Replicas), false)
+				if err != nil {
+					return err
+				}
+			} else {
+				logger.WithContext(ctx).Info(fmt.Sprintf("ignoring custom update behavior settings with update strategy=%s on sts: %s", newSts.Spec.UpdateStrategy.Type, newSts.Name))
+			}
+		}
+
 		// perform manual update only with OnDelete policy, which is default.
 		if newSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
-			if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels()); err != nil {
+			if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), podMaxUnavailable); err != nil {
 				return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
 			}
 		} else {
@@ -187,14 +205,14 @@ func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS typ
 	return &sts, nil
 }
 
-// we perform rolling update on sts by manually deleting pods one by one
+// we perform rolling update on sts by manually evicting pods one by one or in batches
 // we check sts revision (kubernetes controller-manager is responsible for that)
 // and compare pods revision label with sts revision
 // if it doesn't match - updated is needed
 //
 // we always check if sts.Status.CurrentRevision needs update, to keep it equal to UpdateRevision
 // see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
-func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, stsName string, ns string, podLabels map[string]string) error {
+func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, stsName string, ns string, podLabels map[string]string, podMaxUnavailable int) error {
 	time.Sleep(podWaitReadyIntervalCheck)
 	sts, err := getLatestStsState(ctx, rclient, types.NamespacedName{Name: stsName, Namespace: ns})
 	if err != nil {
@@ -278,6 +296,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	}
 
 	l.Info(fmt.Sprintf("discovered already updated pods=%d, pods needed to be update=%d", len(updatedPods), len(podsForUpdate)))
+
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
 		l.Info(fmt.Sprintf("checking ready status for already updated pod %s to revision version=%q", pod.Name, stsVersion))
@@ -288,19 +307,46 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		}
 	}
 
-	// perform update for not updated pods
-	for _, pod := range podsForUpdate {
-		l.Info(fmt.Sprintf("updating pod=%s revision label=%q", pod.Name, pod.Labels[podRevisionLabel]))
-		// we have to delete pod and wait for it readiness
-		err := rclient.Delete(ctx, &pod)
-		if err != nil {
-			return err
+	// perform update for not updated pods in batches according to podMaxUnavailable
+	for batchStart := 0; batchStart < len(podsForUpdate); batchStart += podMaxUnavailable {
+		var batch []corev1.Pod
+		var batchFailed atomic.Bool
+
+		// determine batch of pods to update
+		batchClose := batchStart + podMaxUnavailable
+		if batchClose > len(podsForUpdate) {
+			batchClose = len(podsForUpdate)
 		}
-		podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
-		if err = waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
-			return fmt.Errorf("cannot wait for pod ready state during re-creation: %w", err)
+		batch = podsForUpdate[batchStart:batchClose]
+
+		var wg sync.WaitGroup
+		for _, pod := range batch {
+			wg.Add(1)
+			go func(pod corev1.Pod) {
+				defer wg.Done()
+				l.Info(fmt.Sprintf("updating pod=%s revision label=%q", pod.Name, pod.Labels[podRevisionLabel]))
+				// evict pod to trigger re-creation
+				podEviction := policyv1.Eviction{ObjectMeta: pod.ObjectMeta}
+				if err := rclient.SubResource("eviction").Create(ctx, &pod, &podEviction); err != nil {
+					l.Error(err, fmt.Sprintf("cannot evict pod %s", pod.Name))
+					batchFailed.Store(true)
+					return
+				}
+				// wait for pod to be re-created
+				podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
+				if err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
+					l.Error(err, fmt.Sprintf("cannot wait for pod ready state during re-creation for pod %s", pod.Name))
+					batchFailed.Store(true)
+					return
+				}
+				l.Info(fmt.Sprintf("pod %s was updated successfully", pod.Name))
+			}(pod)
 		}
-		l.Info(fmt.Sprintf("pod %s was updated successfully", pod.Name))
+		wg.Wait()
+
+		if batchFailed.Load() {
+			return fmt.Errorf("one or more pods in the batch failed, see logs for details")
+		}
 	}
 
 	l.Info(fmt.Sprintf("finished statefulset update from revision=%q to revision=%q", sts.Status.CurrentRevision, stsVersion))

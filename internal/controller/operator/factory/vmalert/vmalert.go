@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -529,46 +530,37 @@ func createOrUpdateAssets(ctx context.Context, rclient client.Client, cr, prevCR
 	return nil
 }
 
-type remoteFlag struct {
-	isNotNull   bool
-	flagSetting string
-}
-
 func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string, error) {
-	var finalArgs []string
-	var notifierArgs []remoteFlag
+	var args []string
 	notifierTargets := cr.Spec.Notifiers
 
 	if _, ok := cr.Spec.ExtraArgs["notifier.blackhole"]; ok {
 		// notifier.blackhole disables sending notifications completely, so we don't need to add any notifier args
 		// also no need to add notifier.blackhole to args as it will be added with ExtraArgs
-		return finalArgs, nil
+		return args, nil
 	}
 
 	if len(notifierTargets) == 0 && cr.Spec.NotifierConfigRef != nil {
-		return append(finalArgs, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key)), nil
+		return append(args, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key)), nil
 	}
 
-	url := remoteFlag{flagSetting: "-notifier.url=", isNotNull: true}
-	authUser := remoteFlag{flagSetting: "-notifier.basicAuth.username="}
-	authPasswordFile := remoteFlag{flagSetting: "-notifier.basicAuth.passwordFile="}
-	tlsCAs := remoteFlag{flagSetting: "-notifier.tlsCAFile="}
-	tlsCerts := remoteFlag{flagSetting: "-notifier.tlsCertFile="}
-	tlsKeys := remoteFlag{flagSetting: "-notifier.tlsKeyFile="}
-	tlsServerName := remoteFlag{flagSetting: "-notifier.tlsServerName="}
-	tlsInSecure := remoteFlag{flagSetting: "-notifier.tlsInsecureSkipVerify="}
-	headers := remoteFlag{flagSetting: "-notifier.headers="}
-	bearerTokenPath := remoteFlag{flagSetting: "-notifier.bearerTokenFile="}
-	oauth2SecretFile := remoteFlag{flagSetting: "-notifier.oauth2.clientSecretFile="}
-	oauth2ClientID := remoteFlag{flagSetting: "-notifier.oauth2.clientID="}
-	oauth2Scopes := remoteFlag{flagSetting: "-notifier.oauth2.scopes="}
-	oauth2TokenURL := remoteFlag{flagSetting: "-notifier.oauth2.tokenUrl="}
+	url := build.NewFlag("-notifier.url", "")
+	authUser := build.NewFlag("-notifier.basicAuth.username", `""`)
+	authPasswordFile := build.NewFlag("-notifier.basicAuth.passwordFile", "")
+	tlsCAs := build.NewFlag("-notifier.tlsCAFile", "")
+	tlsCerts := build.NewFlag("-notifier.tlsCertFile", "")
+	tlsKeys := build.NewFlag("-notifier.tlsKeyFile", "")
+	tlsServerName := build.NewFlag("-notifier.tlsServerName", "")
+	tlsInsecure := build.NewFlag("-notifier.tlsInsecureSkipVerify", "false")
+	headers := build.NewFlag("-notifier.headers", "")
+	bearerTokenPath := build.NewFlag("-notifier.bearerTokenFile", "")
+	oauth2SecretFile := build.NewFlag("-notifier.oauth2.clientSecretFile", "")
+	oauth2ClientID := build.NewFlag("-notifier.oauth2.clientID", "")
+	oauth2Scopes := build.NewFlag("-notifier.oauth2.scopes", "")
+	oauth2TokenURL := build.NewFlag("-notifier.oauth2.tokenUrl", "")
 
-	for _, nt := range notifierTargets {
-		url.flagSetting += fmt.Sprintf("%s,", nt.URL)
-
-		var caPath, certPath, keyPath, ServerName string
-		var inSecure bool
+	for i, nt := range notifierTargets {
+		url.Add(nt.URL, i)
 		ntTLS := nt.TLSConfig
 		if ntTLS != nil {
 			creds, err := ac.BuildTLSCreds(cr.Namespace, ntTLS)
@@ -576,123 +568,85 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 				return nil, fmt.Errorf("failed to load notifier TLS credentials: %w", err)
 			}
 			if creds.CAFile != "" {
-				caPath = creds.CAFile
-				tlsCAs.isNotNull = true
+				tlsCAs.Add(creds.CAFile, i)
 			}
 			if creds.CertFile != "" {
-				certPath = creds.CertFile
-				tlsCerts.isNotNull = true
+				tlsCerts.Add(creds.CertFile, i)
 			}
 			if creds.KeyFile != "" {
-				keyPath = creds.KeyFile
-				tlsKeys.isNotNull = true
+				tlsKeys.Add(creds.KeyFile, i)
 			}
-			if ntTLS.InsecureSkipVerify {
-				tlsInSecure.isNotNull = true
-				inSecure = true
-			}
+			tlsInsecure.Add(strconv.FormatBool(ntTLS.InsecureSkipVerify), i)
 			if ntTLS.ServerName != "" {
-				ServerName = ntTLS.ServerName
-				tlsServerName.isNotNull = true
+				tlsServerName.Add(ntTLS.ServerName, i)
 			}
 		}
-		tlsCAs.flagSetting += fmt.Sprintf("%s,", caPath)
-		tlsCerts.flagSetting += fmt.Sprintf("%s,", certPath)
-		tlsKeys.flagSetting += fmt.Sprintf("%s,", keyPath)
-		tlsServerName.flagSetting += fmt.Sprintf("%s,", ServerName)
-		tlsInSecure.flagSetting += fmt.Sprintf("%v,", inSecure)
-		var headerFlagValue string
 		if len(nt.Headers) > 0 {
+			var value string
 			for _, headerKV := range nt.Headers {
-				headerFlagValue += headerKV + "^^"
+				value += headerKV + "^^"
 			}
-			headers.isNotNull = true
+			headers.Add(strings.TrimSuffix(value, "^^"), i)
 		}
-		headerFlagValue = strings.TrimSuffix(headerFlagValue, "^^")
-		headers.flagSetting += fmt.Sprintf("%s,", headerFlagValue)
-		var user, passFile string
 		if nt.BasicAuth != nil {
 			if len(nt.BasicAuth.PasswordFile) > 0 {
-				passFile = nt.BasicAuth.PasswordFile
-				authPasswordFile.isNotNull = true
+				authPasswordFile.Add(nt.BasicAuth.PasswordFile, i)
 			} else {
 				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &nt.BasicAuth.Password)
 				if err != nil {
 					return nil, err
 				}
-				passFile = file
-				authPasswordFile.isNotNull = true
+				authPasswordFile.Add(file, i)
 			}
-			authUser.isNotNull = true
 			secret, err := ac.LoadKeyFromSecret(cr.Namespace, &nt.BasicAuth.Username)
 			if err != nil {
 				return nil, err
 			}
-			user = secret
+			authUser.Add(strconv.Quote(secret), i)
 		}
-		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
-		authPasswordFile.flagSetting += fmt.Sprintf("%s,", passFile)
-
-		var tokenPath string
 		if nt.BearerAuth != nil {
 			if nt.TokenSecret != nil {
 				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, nt.TokenSecret)
 				if err != nil {
 					return nil, err
 				}
-				bearerTokenPath.isNotNull = true
-				tokenPath = file
+				bearerTokenPath.Add(file, i)
 			}
 			if len(nt.TokenFilePath) > 0 {
-				bearerTokenPath.isNotNull = true
-				tokenPath = nt.TokenFilePath
+				bearerTokenPath.Add(nt.TokenFilePath, i)
 			}
 		}
-		bearerTokenPath.flagSetting += fmt.Sprintf("%s,", tokenPath)
-		var scopes, tokenURL, secretFile, clientID string
 		if nt.OAuth2 != nil {
 			if nt.OAuth2.ClientSecret != nil {
 				file, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, nt.OAuth2.ClientSecret)
 				if err != nil {
 					return nil, err
 				}
-				oauth2SecretFile.isNotNull = true
-				secretFile = file
+				oauth2SecretFile.Add(file, i)
 			} else {
-				oauth2SecretFile.isNotNull = true
-				secretFile = nt.OAuth2.ClientSecretFile
+				oauth2SecretFile.Add(nt.OAuth2.ClientSecretFile, i)
 			}
 			if len(nt.OAuth2.Scopes) > 0 {
-				oauth2Scopes.isNotNull = true
-				scopes = strings.Join(nt.OAuth2.Scopes, ",")
+				oauth2Scopes.Add(strings.Join(nt.OAuth2.Scopes, ","), i)
 			}
 			if len(nt.OAuth2.TokenURL) > 0 {
-				oauth2TokenURL.isNotNull = true
-				tokenURL = nt.OAuth2.TokenURL
+				oauth2TokenURL.Add(nt.OAuth2.TokenURL, i)
 			}
 			secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &nt.OAuth2.ClientID)
 			if err != nil {
 				return nil, err
 			}
-			clientID = secret
-			oauth2ClientID.isNotNull = true
-		}
-		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", scopes)
-		oauth2TokenURL.flagSetting += fmt.Sprintf("%s,", tokenURL)
-		oauth2ClientID.flagSetting += fmt.Sprintf("%s,", clientID)
-		oauth2SecretFile.flagSetting += fmt.Sprintf("%s,", secretFile)
-	}
-	notifierArgs = append(notifierArgs, url, authUser, authPasswordFile)
-	notifierArgs = append(notifierArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs, tlsInSecure, headers, bearerTokenPath)
-	notifierArgs = append(notifierArgs, oauth2SecretFile, oauth2ClientID, oauth2Scopes, oauth2TokenURL)
-
-	for _, remoteArgType := range notifierArgs {
-		if remoteArgType.isNotNull {
-			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))
+			oauth2ClientID.Add(secret, i)
 		}
 	}
-
-	return finalArgs, nil
+	if !url.IsSet() {
+		args = append(args, "-notifier.url=")
+	}
+	totalCount := len(notifierTargets)
+	args = build.AppendFlagsToArgs(args, totalCount, url, authUser, authPasswordFile)
+	args = build.AppendFlagsToArgs(args, totalCount, tlsServerName, tlsKeys, tlsCerts, tlsCAs, tlsInsecure, headers, bearerTokenPath)
+	args = build.AppendFlagsToArgs(args, totalCount, oauth2SecretFile, oauth2ClientID, oauth2Scopes, oauth2TokenURL)
+	return args, nil
 }
 
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, extraWatchVolumeMounts []corev1.VolumeMount) corev1.Container {

@@ -18,14 +18,17 @@ import (
 )
 
 //nolint:dupl
-var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
-	ctx := context.Background()
-
-	Context("e2e vmalert", func() {
+var _ = Describe("vmalert", Label("vm", "alert"), func() {
+	tlsSecretName := "vmalert-remote-tls"
+	Context("crud", func() {
+		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}
+		BeforeEach(func() {
+			ctx = context.Background()
+		})
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
@@ -41,7 +44,6 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				}, &vmv1beta1.VMAlert{})
 			}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
-		tlsSecretName := "vmalert-remote-tls"
 		DescribeTable("should create vmalert",
 			func(name string, cr *vmv1beta1.VMAlert, setup func(), verify func(*vmv1beta1.VMAlert)) {
 

@@ -25322,13 +25322,6 @@ spec:
                   vmBackup:
                     description: VMBackup configuration for backup
                     properties:
-                      acceptEULA:
-                        description: |-
-                          AcceptEULA accepts enterprise feature usage, must be set to true.
-                          otherwise backupmanager cannot be added to single/cluster version.
-                          https://victoriametrics.com/legal/esa/
-                          Deprecated: use license.key or license.keyRef instead
-                        type: boolean
                       concurrency:
                         description: Defines number of concurrent workers. Higher
                           concurrency may reduce backup duration (default 10)
@@ -34846,13 +34839,6 @@ spec:
               vmBackup:
                 description: VMBackup configuration for backup
                 properties:
-                  acceptEULA:
-                    description: |-
-                      AcceptEULA accepts enterprise feature usage, must be set to true.
-                      otherwise backupmanager cannot be added to single/cluster version.
-                      https://victoriametrics.com/legal/esa/
-                      Deprecated: use license.key or license.keyRef instead
-                    type: boolean
                   concurrency:
                     description: Defines number of concurrent workers. Higher concurrency
                       may reduce backup duration (default 10)

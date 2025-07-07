@@ -1,7 +1,7 @@
 | Environment variables |
 | --- |
 | VM_METRICS_VERSION: `v1.120.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
-| VM_LOGS_VERSION: `v1.24.0` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
+| VM_LOGS_VERSION: `v1.25.0` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
 | VM_ANOMALY_VERSION: `v1.24.1` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a> |
 | VM_USECUSTOMCONFIGRELOADER: `false` <a href="#variables-vm-usecustomconfigreloader" id="variables-vm-usecustomconfigreloader">#</a><br>enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |
@@ -12,7 +12,7 @@
 | VM_CONFIG_RELOADER_REQUEST_CPU: `-` <a href="#variables-vm-config-reloader-request-cpu" id="variables-vm-config-reloader-request-cpu">#</a><br>defines global resource.requests.cpu for all config-reloader containers |
 | VM_CONFIG_RELOADER_REQUEST_MEMORY: `-` <a href="#variables-vm-config-reloader-request-memory" id="variables-vm-config-reloader-request-memory">#</a><br>defines global resource.requests.memory for all config-reloader containers |
 | VM_VLOGSDEFAULT_IMAGE: `victoriametrics/victoria-logs` <a href="#variables-vm-vlogsdefault-image" id="variables-vm-vlogsdefault-image">#</a> |
-| VM_VLOGSDEFAULT_VERSION: `${VM_LOGS_VERSION}-victorialogs` <a href="#variables-vm-vlogsdefault-version" id="variables-vm-vlogsdefault-version">#</a> |
+| VM_VLOGSDEFAULT_VERSION: `${VM_LOGS_VERSION}` <a href="#variables-vm-vlogsdefault-version" id="variables-vm-vlogsdefault-version">#</a> |
 | VM_VLOGSDEFAULT_PORT: `9428` <a href="#variables-vm-vlogsdefault-port" id="variables-vm-vlogsdefault-port">#</a> |
 | VM_VLOGSDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vlogsdefault-usedefaultresources" id="variables-vm-vlogsdefault-usedefaultresources">#</a> |
 | VM_VLOGSDEFAULT_RESOURCE_LIMIT_MEM: `1500Mi` <a href="#variables-vm-vlogsdefault-resource-limit-mem" id="variables-vm-vlogsdefault-resource-limit-mem">#</a> |
@@ -20,7 +20,7 @@
 | VM_VLOGSDEFAULT_RESOURCE_REQUEST_MEM: `500Mi` <a href="#variables-vm-vlogsdefault-resource-request-mem" id="variables-vm-vlogsdefault-resource-request-mem">#</a> |
 | VM_VLOGSDEFAULT_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vlogsdefault-resource-request-cpu" id="variables-vm-vlogsdefault-resource-request-cpu">#</a> |
 | VM_VLSINGLEDEFAULT_IMAGE: `victoriametrics/victoria-logs` <a href="#variables-vm-vlsingledefault-image" id="variables-vm-vlsingledefault-image">#</a> |
-| VM_VLSINGLEDEFAULT_VERSION: `${VM_LOGS_VERSION}-victorialogs` <a href="#variables-vm-vlsingledefault-version" id="variables-vm-vlsingledefault-version">#</a> |
+| VM_VLSINGLEDEFAULT_VERSION: `${VM_LOGS_VERSION}` <a href="#variables-vm-vlsingledefault-version" id="variables-vm-vlsingledefault-version">#</a> |
 | VM_VLSINGLEDEFAULT_PORT: `9428` <a href="#variables-vm-vlsingledefault-port" id="variables-vm-vlsingledefault-port">#</a> |
 | VM_VLSINGLEDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vlsingledefault-usedefaultresources" id="variables-vm-vlsingledefault-usedefaultresources">#</a> |
 | VM_VLSINGLEDEFAULT_RESOURCE_LIMIT_MEM: `1500Mi` <a href="#variables-vm-vlsingledefault-resource-limit-mem" id="variables-vm-vlsingledefault-resource-limit-mem">#</a> |
@@ -126,21 +126,21 @@
 | VM_VMAUTHDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmauthdefault-configreloadermemory" id="variables-vm-vmauthdefault-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VLCLUSTERDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vlclusterdefault-usedefaultresources" id="variables-vm-vlclusterdefault-usedefaultresources">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_IMAGE: `victoriametrics/victoria-logs` <a href="#variables-vm-vlclusterdefault-vlselectdefault-image" id="variables-vm-vlclusterdefault-vlselectdefault-image">#</a> |
-| VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_VERSION: `${VM_LOGS_VERSION}-victorialogs` <a href="#variables-vm-vlclusterdefault-vlselectdefault-version" id="variables-vm-vlclusterdefault-vlselectdefault-version">#</a> |
+| VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_VERSION: `${VM_LOGS_VERSION}` <a href="#variables-vm-vlclusterdefault-vlselectdefault-version" id="variables-vm-vlclusterdefault-vlselectdefault-version">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_PORT: `9471` <a href="#variables-vm-vlclusterdefault-vlselectdefault-port" id="variables-vm-vlclusterdefault-vlselectdefault-port">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_RESOURCE_LIMIT_MEM: `1024Mi` <a href="#variables-vm-vlclusterdefault-vlselectdefault-resource-limit-mem" id="variables-vm-vlclusterdefault-vlselectdefault-resource-limit-mem">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_RESOURCE_LIMIT_CPU: `1000m` <a href="#variables-vm-vlclusterdefault-vlselectdefault-resource-limit-cpu" id="variables-vm-vlclusterdefault-vlselectdefault-resource-limit-cpu">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_RESOURCE_REQUEST_MEM: `256Mi` <a href="#variables-vm-vlclusterdefault-vlselectdefault-resource-request-mem" id="variables-vm-vlclusterdefault-vlselectdefault-resource-request-mem">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_RESOURCE_REQUEST_CPU: `100m` <a href="#variables-vm-vlclusterdefault-vlselectdefault-resource-request-cpu" id="variables-vm-vlclusterdefault-vlselectdefault-resource-request-cpu">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_IMAGE: `victoriametrics/victoria-logs` <a href="#variables-vm-vlclusterdefault-vlstoragedefault-image" id="variables-vm-vlclusterdefault-vlstoragedefault-image">#</a> |
-| VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_VERSION: `${VM_LOGS_VERSION}-victorialogs` <a href="#variables-vm-vlclusterdefault-vlstoragedefault-version" id="variables-vm-vlclusterdefault-vlstoragedefault-version">#</a> |
+| VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_VERSION: `${VM_LOGS_VERSION}` <a href="#variables-vm-vlclusterdefault-vlstoragedefault-version" id="variables-vm-vlclusterdefault-vlstoragedefault-version">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_PORT: `9491` <a href="#variables-vm-vlclusterdefault-vlstoragedefault-port" id="variables-vm-vlclusterdefault-vlstoragedefault-port">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_LIMIT_MEM: `2048Mi` <a href="#variables-vm-vlclusterdefault-vlstoragedefault-resource-limit-mem" id="variables-vm-vlclusterdefault-vlstoragedefault-resource-limit-mem">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_LIMIT_CPU: `1000m` <a href="#variables-vm-vlclusterdefault-vlstoragedefault-resource-limit-cpu" id="variables-vm-vlclusterdefault-vlstoragedefault-resource-limit-cpu">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_REQUEST_MEM: `512Mi` <a href="#variables-vm-vlclusterdefault-vlstoragedefault-resource-request-mem" id="variables-vm-vlclusterdefault-vlstoragedefault-resource-request-mem">#</a> |
 | VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_REQUEST_CPU: `200m` <a href="#variables-vm-vlclusterdefault-vlstoragedefault-resource-request-cpu" id="variables-vm-vlclusterdefault-vlstoragedefault-resource-request-cpu">#</a> |
 | VM_VLCLUSTERDEFAULT_VLINSERTDEFAULT_IMAGE: `victoriametrics/victoria-logs` <a href="#variables-vm-vlclusterdefault-vlinsertdefault-image" id="variables-vm-vlclusterdefault-vlinsertdefault-image">#</a> |
-| VM_VLCLUSTERDEFAULT_VLINSERTDEFAULT_VERSION: `${VM_LOGS_VERSION}-victorialogs` <a href="#variables-vm-vlclusterdefault-vlinsertdefault-version" id="variables-vm-vlclusterdefault-vlinsertdefault-version">#</a> |
+| VM_VLCLUSTERDEFAULT_VLINSERTDEFAULT_VERSION: `${VM_LOGS_VERSION}` <a href="#variables-vm-vlclusterdefault-vlinsertdefault-version" id="variables-vm-vlclusterdefault-vlinsertdefault-version">#</a> |
 | VM_VLCLUSTERDEFAULT_VLINSERTDEFAULT_PORT: `9481` <a href="#variables-vm-vlclusterdefault-vlinsertdefault-port" id="variables-vm-vlclusterdefault-vlinsertdefault-port">#</a> |
 | VM_VLCLUSTERDEFAULT_VLINSERTDEFAULT_RESOURCE_LIMIT_MEM: `1024Mi` <a href="#variables-vm-vlclusterdefault-vlinsertdefault-resource-limit-mem" id="variables-vm-vlclusterdefault-vlinsertdefault-resource-limit-mem">#</a> |
 | VM_VLCLUSTERDEFAULT_VLINSERTDEFAULT_RESOURCE_LIMIT_CPU: `1000m` <a href="#variables-vm-vlclusterdefault-vlinsertdefault-resource-limit-cpu" id="variables-vm-vlclusterdefault-vlinsertdefault-resource-limit-cpu">#</a> |

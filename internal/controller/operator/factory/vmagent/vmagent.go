@@ -428,6 +428,9 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 				},
 			},
 		}
+		if cr.Spec.PersistentVolumeClaimRetentionPolicy != nil {
+			stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
+		}
 		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
 		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)

@@ -95,6 +95,9 @@ type VMAlertmanagerSpec struct {
 	// instances.
 	// +optional
 	Storage *StorageSpec `json:"storage,omitempty"`
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy
+	// +optional
+	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 
 	// ExternalURL the VMAlertmanager instances will be available under. This is
 	// necessary to generate correct URLs. This is necessary if VMAlertmanager is not

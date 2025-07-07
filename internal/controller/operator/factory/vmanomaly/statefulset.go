@@ -170,7 +170,9 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 			},
 		},
 	}
-
+	if cr.Spec.PersistentVolumeClaimRetentionPolicy != nil {
+		app.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
+	}
 	build.StatefulSetAddCommonParams(app, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 	app.Spec.Template.Spec.Volumes = append(app.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec)

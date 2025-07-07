@@ -82,6 +82,9 @@ type VMAnomalySpec struct {
 	// Storage configures storage for StatefulSet
 	// +optional
 	Storage *vmv1beta1.StorageSpec `json:"storage,omitempty"`
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy
+	// +optional
+	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 	// RollingUpdateStrategy allows configuration for strategyType
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional

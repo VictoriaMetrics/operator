@@ -3487,7 +3487,7 @@ Appears in: [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |
-| acceptEULA<a href="#vmbackup-accepteula" id="vmbackup-accepteula">#</a><br/>_boolean_ | _(Optional)_<br/>AcceptEULA accepts enterprise feature usage, must be set to true.<br />otherwise backupmanager cannot be added to single/cluster version.<br />https://victoriametrics.com/legal/esa/ |
+| acceptEULA<a href="#vmbackup-accepteula" id="vmbackup-accepteula">#</a><br/>_boolean_ | _(Optional)_<br/>AcceptEULA accepts enterprise feature usage, must be set to true.<br />otherwise backupmanager cannot be added to single/cluster version.<br />https://victoriametrics.com/legal/esa/<br />Deprecated: use license.key or license.keyRef instead |
 | concurrency<a href="#vmbackup-concurrency" id="vmbackup-concurrency">#</a><br/>_integer_ | _(Optional)_<br/>Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10) |
 | credentialsSecret<a href="#vmbackup-credentialssecret" id="vmbackup-credentialssecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>CredentialsSecret is secret in the same namespace for access to remote storage<br />The secret is mounted into /etc/vm/creds. |
 | customS3Endpoint<a href="#vmbackup-customs3endpoint" id="vmbackup-customs3endpoint">#</a><br/>_string_ | _(Optional)_<br/>Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set |

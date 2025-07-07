@@ -672,6 +672,24 @@ Appears in: [VMAgentSpec](#vmagentspec)
 | tlsConfig<a href="#apiserverconfig-tlsconfig" id="apiserverconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig Config to use for accessing apiserver. |
 
 
+#### AWS
+
+
+
+AWS defines AWS cloud auth specific params
+
+Appears in: [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
+
+| Field | Description |
+| --- | --- |
+| ec2Endpoint<a href="#aws-ec2endpoint" id="aws-ec2endpoint">#</a><br/>_string_ | _(Required)_<br/>EC2Endpoint is an optional AWS EC2 API endpoint to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| region<a href="#aws-region" id="aws-region">#</a><br/>_string_ | _(Required)_<br/>Region is an optional AWS region to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| roleARN<a href="#aws-rolearn" id="aws-rolearn">#</a><br/>_string_ | _(Required)_<br/>RoleARN is an optional AWS region to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| service<a href="#aws-service" id="aws-service">#</a><br/>_string_ | _(Required)_<br/>Service is an optional AWS Service to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| stsEndpoint<a href="#aws-stsendpoint" id="aws-stsendpoint">#</a><br/>_string_ | _(Required)_<br/>STSEndpoint is an optional AWS STS API endpoint to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set |
+| useSigv4<a href="#aws-usesigv4" id="aws-usesigv4">#</a><br/>_boolean_ | _(Required)_<br/>UseSigv4 enables SigV4 request signing for the corresponding -remoteWrite.url |
+
+
 #### AdditionalServiceSpec
 
 
@@ -2805,6 +2823,7 @@ Appears in: [VMAgentSpec](#vmagentspec)
 
 | Field | Description |
 | --- | --- |
+| aws<a href="#vmagentremotewritespec-aws" id="vmagentremotewritespec-aws">#</a><br/>_[AWS](#aws)_ | _(Required)_<br/>AWS describes params specific to AWS cloud |
 | basicAuth<a href="#vmagentremotewritespec-basicauth" id="vmagentremotewritespec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication |
 | bearerTokenSecret<a href="#vmagentremotewritespec-bearertokensecret" id="vmagentremotewritespec-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
 | forceVMProto<a href="#vmagentremotewritespec-forcevmproto" id="vmagentremotewritespec-forcevmproto">#</a><br/>_boolean_ | _(Optional)_<br/>ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url |
@@ -2870,6 +2889,8 @@ Appears in: [VMAgent](#vmagent)
 | extraArgs<a href="#vmagentspec-extraargs" id="vmagentspec-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | extraEnvs<a href="#vmagentspec-extraenvs" id="vmagentspec-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
 | extraEnvsFrom<a href="#vmagentspec-extraenvsfrom" id="vmagentspec-extraenvsfrom">#</a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
+| globalScrapeMetricRelabelConfigs<a href="#vmagentspec-globalscrapemetricrelabelconfigs" id="vmagentspec-globalscrapemetricrelabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>GlobalScrapeMetricRelabelConfigs is a global metric relabel configuration, which is applied to each scrape job. |
+| globalScrapeRelabelConfigs<a href="#vmagentspec-globalscraperelabelconfigs" id="vmagentspec-globalscraperelabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>GlobalScrapeRelabelConfigs is a global relabel configuration, which is applied to each samples of each scrape job during service discovery. |
 | hostAliases<a href="#vmagentspec-hostaliases" id="vmagentspec-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | hostNetwork<a href="#vmagentspec-hostnetwork" id="vmagentspec-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | host_aliases<a href="#vmagentspec-host_aliases" id="vmagentspec-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |

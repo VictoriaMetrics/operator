@@ -31,7 +31,7 @@ var (
 	// DO NOT FORGET TO MODIFY VERSIONS IN BaseOperatorConf
 	defaultEnvs = map[string]string{
 		"VM_METRICS_VERSION": "v1.120.0",
-		"VM_LOGS_VERSION":    "v1.24.0",
+		"VM_LOGS_VERSION":    "v1.25.0",
 		"VM_ANOMALY_VERSION": "v1.24.1",
 	}
 )
@@ -99,7 +99,7 @@ type BaseOperatorConf struct {
 	// DO NOT FORGET TO MODIFY VERSIONS IN defaultEnvs
 
 	MetricsVersion string `default:"v1.120.0" env:"METRICS_VERSION"`
-	LogsVersion    string `default:"v1.24.0" env:"LOGS_VERSION"`
+	LogsVersion    string `default:"v1.25.0" env:"LOGS_VERSION"`
 	AnomalyVersion string `default:"v1.24.1" env:"ANOMALY_VERSION"`
 
 	// enables custom config reloader for vmauth and vmagent,
@@ -122,7 +122,7 @@ type BaseOperatorConf struct {
 
 	VLogsDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
-		Version             string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
+		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
 		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9428"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
@@ -142,7 +142,7 @@ type BaseOperatorConf struct {
 
 	VLSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
-		Version             string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
+		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
 		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9428"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
@@ -368,7 +368,7 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
 		VLSelectDefault     struct {
 			Image    string `default:"victoriametrics/victoria-logs"`
-			Version  string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
+			Version  string `env:",expand" default:"${VM_LOGS_VERSION}"`
 			Port     string `default:"9471"`
 			Resource struct {
 				Limit struct {
@@ -383,7 +383,7 @@ type BaseOperatorConf struct {
 		} `prefix:"VLSELECTDEFAULT_"`
 		VLStorageDefault struct {
 			Image    string `default:"victoriametrics/victoria-logs"`
-			Version  string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
+			Version  string `env:",expand" default:"${VM_LOGS_VERSION}"`
 			Port     string `default:"9491"`
 			Resource struct {
 				Limit struct {
@@ -398,7 +398,7 @@ type BaseOperatorConf struct {
 		} `prefix:"VLSTORAGEDEFAULT_"`
 		VLInsertDefault struct {
 			Image    string `default:"victoriametrics/victoria-logs"`
-			Version  string `env:",expand" default:"${VM_LOGS_VERSION}-victorialogs"`
+			Version  string `env:",expand" default:"${VM_LOGS_VERSION}"`
 			Port     string `default:"9481"`
 			Resource struct {
 				Limit struct {

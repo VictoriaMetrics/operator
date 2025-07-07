@@ -3,6 +3,7 @@ module github.com/VictoriaMetrics/operator
 go 1.24.4
 
 require (
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/VictoriaMetrics/VictoriaMetrics v1.116.0
 	github.com/VictoriaMetrics/metrics v1.35.3
 	github.com/VictoriaMetrics/metricsql v0.84.5
@@ -34,7 +35,6 @@ require (
 )
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect

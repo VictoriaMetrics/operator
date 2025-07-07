@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.25.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.0).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.121.0](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/docs/victoriametrics/changelog/CHANGELOG.md#v11210) version.
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): update shards concurrently. See [#1434](https://github.com/VictoriaMetrics/operator/issues/1434).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): deprecated acceptEula parameter in VMBackup. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).

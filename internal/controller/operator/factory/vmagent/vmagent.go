@@ -1126,6 +1126,12 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 	maxDiskUsagePerURL := remoteFlag{flagSetting: "-remoteWrite.maxDiskUsagePerURL="}
 	forceVMProto := remoteFlag{flagSetting: "-remoteWrite.forceVMProto="}
 	proxyURL := remoteFlag{flagSetting: "-remoteWrite.proxyURL="}
+	awsEC2Endpoint := remoteFlag{flagSetting: "-remoteWrite.aws.ec2Endpoint="}
+	awsRegion := remoteFlag{flagSetting: "-remoteWrite.aws.region="}
+	awsRoleARN := remoteFlag{flagSetting: "-remoteWrite.aws.roleARN="}
+	awsService := remoteFlag{flagSetting: "-remoteWrite.aws.service="}
+	awsSTSEndpoint := remoteFlag{flagSetting: "-remoteWrite.aws.stsEndpoint="}
+	awsUseSigv4 := remoteFlag{flagSetting: "-remoteWrite.aws.useSigv4="}
 
 	maxDiskUsage := defaultMaxDiskUsage
 	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
@@ -1271,6 +1277,41 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 		oauth2ClientID.flagSetting += fmt.Sprintf("%s,", oaclientID)
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 
+		var ec2Endpoint, region, service, roleARN, stsEndpoint string
+		var useSigv4 bool
+		if rws.AWS != nil {
+			if len(rws.AWS.EC2Endpoint) > 0 {
+				ec2Endpoint = rws.AWS.EC2Endpoint
+				awsEC2Endpoint.isNotNull = true
+			}
+			if len(rws.AWS.Region) > 0 {
+				region = rws.AWS.Region
+				awsRegion.isNotNull = true
+			}
+			if len(rws.AWS.RoleARN) > 0 {
+				roleARN = rws.AWS.RoleARN
+				awsRoleARN.isNotNull = true
+			}
+			if len(rws.AWS.Service) > 0 {
+				service = rws.AWS.Service
+				awsService.isNotNull = true
+			}
+			if len(rws.AWS.STSEndpoint) > 0 {
+				stsEndpoint = rws.AWS.STSEndpoint
+				awsSTSEndpoint.isNotNull = true
+			}
+			if rws.AWS.UseSigv4 {
+				useSigv4 = rws.AWS.UseSigv4
+				awsUseSigv4.isNotNull = true
+			}
+		}
+		awsEC2Endpoint.flagSetting += fmt.Sprintf("%s,", ec2Endpoint)
+		awsRegion.flagSetting += fmt.Sprintf("%s,", region)
+		awsRoleARN.flagSetting += fmt.Sprintf("%s,", roleARN)
+		awsService.flagSetting += fmt.Sprintf("%s,", service)
+		awsSTSEndpoint.flagSetting += fmt.Sprintf("%s,", stsEndpoint)
+		awsUseSigv4.flagSetting += fmt.Sprintf("%v,", useSigv4)
+
 		var dedupIntVal, streamConfVal string
 		var keepInputVal, dropInputVal, ignoreOldSamples, enableWindows bool
 		var ignoreFirstIntervalsVal int
@@ -1344,6 +1385,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, 
 	remoteArgs = append(remoteArgs, headers, authPasswordFile)
 	remoteArgs = append(remoteArgs, streamAggrConfig, streamAggrKeepInput, streamAggrDedupInterval, streamAggrDropInput, streamAggrDropInputLabels, streamAggrIgnoreFirstIntervals, streamAggrIgnoreOldSamples, streamAggrEnableWindows)
 	remoteArgs = append(remoteArgs, maxDiskUsagePerURL, forceVMProto)
+	remoteArgs = append(remoteArgs, awsEC2Endpoint, awsRegion, awsRoleARN, awsService, awsSTSEndpoint, awsUseSigv4)
 
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNotNull {

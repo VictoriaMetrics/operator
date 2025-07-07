@@ -6204,6 +6204,39 @@ spec:
                   description: VMAgentRemoteWriteSpec defines the remote storage configuration
                     for VmAgent
                   properties:
+                    aws:
+                      description: AWS describes params specific to AWS cloud
+                      properties:
+                        ec2Endpoint:
+                          description: EC2Endpoint is an optional AWS EC2 API endpoint
+                            to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4
+                            is set
+                          type: string
+                        region:
+                          description: Region is an optional AWS region to use for
+                            the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4
+                            is set
+                          type: string
+                        roleARN:
+                          description: RoleARN is an optional AWS region to use for
+                            the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4
+                            is set
+                          type: string
+                        service:
+                          description: Service is an optional AWS Service to use for
+                            the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4
+                            is set
+                          type: string
+                        stsEndpoint:
+                          description: STSEndpoint is an optional AWS STS API endpoint
+                            to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4
+                            is set
+                          type: string
+                        useSigv4:
+                          description: UseSigv4 enables SigV4 request signing for
+                            the corresponding -remoteWrite.url
+                          type: boolean
+                      type: object
                     basicAuth:
                       description: BasicAuth allow an endpoint to authenticate over
                         basic authentication

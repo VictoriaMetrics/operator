@@ -443,6 +443,22 @@ type VMAgentRemoteWriteSettings struct {
 	UseMultiTenantMode bool `json:"useMultiTenantMode,omitempty"`
 }
 
+// AWS defines AWS cloud auth specific params
+type AWS struct {
+	// EC2Endpoint is an optional AWS EC2 API endpoint to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set
+	EC2Endpoint string `json:"ec2Endpoint,omitempty"`
+	// Region is an optional AWS region to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set
+	Region string `json:"region,omitempty"`
+	// RoleARN is an optional AWS region to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set
+	RoleARN string `json:"roleARN,omitempty"`
+	// Service is an optional AWS Service to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set
+	Service string `json:"service,omitempty"`
+	// STSEndpoint is an optional AWS STS API endpoint to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set
+	STSEndpoint string `json:"stsEndpoint,omitempty"`
+	// UseSigv4 enables SigV4 request signing for the corresponding -remoteWrite.url
+	UseSigv4 bool `json:"useSigv4,omitempty"`
+}
+
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
 // +k8s:openapi-gen=true
 type VMAgentRemoteWriteSpec struct {
@@ -494,6 +510,8 @@ type VMAgentRemoteWriteSpec struct {
 	// ProxyURL for -remoteWrite.url. Supported proxies: http, https, socks5. Example: socks5://proxy:1234
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
+	// AWS describes params specific to AWS cloud
+	AWS *AWS `json:"aws,omitempty"`
 }
 
 // AsConfigMapKey key for kubernetes configmap

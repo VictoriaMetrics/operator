@@ -505,9 +505,7 @@ func addVMClusterDefaults(objI any) {
 			cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
 		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
-		if cr.Spec.RequestsLoadBalancer.Spec.Image.Tag == "" {
-			cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = cr.Spec.ClusterVersion
-		}
+
 		cv := config.ApplicationDefaults(c.VMAuthDefault)
 		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, &cv)
 		spec := &cr.Spec.RequestsLoadBalancer.Spec
@@ -779,9 +777,7 @@ func addVLClusterDefaults(objI any) {
 			cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
 		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
-		if cr.Spec.RequestsLoadBalancer.Spec.Image.Tag == "" {
-			cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = cr.Spec.ClusterVersion
-		}
+
 		cv := config.ApplicationDefaults(c.VMAuthDefault)
 		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, &cv)
 		spec := &cr.Spec.RequestsLoadBalancer.Spec
@@ -799,5 +795,4 @@ func addVLClusterDefaults(objI any) {
 			spec.AdditionalServiceSpec.UseAsDefault = true
 		}
 	}
-
 }

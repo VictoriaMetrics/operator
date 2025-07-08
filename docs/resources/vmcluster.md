@@ -221,7 +221,7 @@ spec:
       pullPolicy: Always
 ```
 
-or for all cluster components all together using `clusterVersion` property that expects version without `-cluster` suffix, which will be optionally added to cluster components.
+or for all cluster components all together using `clusterVersion` property, that expects version without `-cluster` suffix, which will be optionally added to cluster components.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -229,7 +229,7 @@ kind: VMCluster
 metadata:
   name: example
 spec:
-  clusterVersion: v1.110.13-cluster
+  clusterVersion: v1.110.13
 ```
 
 Also, you can specify `imagePullSecrets` if you are pulling images from private repo, 

@@ -121,7 +121,7 @@ VMSingle supports features from [VictoriaMetrics Enterprise](https://docs.victor
 - [Multiple retentions / Retention filters](https://docs.victoriametrics.com/#retention-filters)
 - [Backup automation](https://docs.victoriametrics.com/vmbackupmanager)
 
-For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/) you need to specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref) and respective `-enterprise` and `-enterprise-cluster` container image suffices will be added automatically.
+For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/) you need to specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref) and respective `-enterprise` container image suffix will be added automatically.
 
 ### Downsampling
 

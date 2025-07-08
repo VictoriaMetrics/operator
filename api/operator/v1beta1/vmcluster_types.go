@@ -271,11 +271,17 @@ type VMSelect struct {
 	// Note, enabling this option disables vmselect to vmselect communication. In most cases it's not an issue.
 	// +optional
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
+
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process
 	// Can be changed for RollingUpdate
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
+	// RollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+	// +optional
+	RollingUpdateStrategyBehavior *StatefulSetUpdateStrategyBehavior `json:"rollingUpdateStrategyBehavior,omitempty"`
+
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
@@ -449,6 +455,10 @@ type VMStorage struct {
 	// Can be changed for RollingUpdate
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
+	// RollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+	// +optional
+	RollingUpdateStrategyBehavior *StatefulSetUpdateStrategyBehavior `json:"rollingUpdateStrategyBehavior,omitempty"`
 
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
@@ -601,6 +611,11 @@ func (cr *VMCluster) Validate() error {
 				return err
 			}
 		}
+		if vms.RollingUpdateStrategyBehavior != nil {
+			if err := vms.RollingUpdateStrategyBehavior.Validate(); err != nil {
+				return fmt.Errorf("vmselect: %w", err)
+			}
+		}
 	}
 	if cr.Spec.VMInsert != nil {
 		vmi := cr.Spec.VMInsert
@@ -621,6 +636,11 @@ func (cr *VMCluster) Validate() error {
 		if cr.Spec.VMStorage.VMBackup != nil {
 			if err := cr.Spec.VMStorage.VMBackup.validate(cr.Spec.License); err != nil {
 				return err
+			}
+		}
+		if vms.RollingUpdateStrategyBehavior != nil {
+			if err := vms.RollingUpdateStrategyBehavior.Validate(); err != nil {
+				return fmt.Errorf("vmstorage: %w", err)
 			}
 		}
 	}

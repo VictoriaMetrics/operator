@@ -24,7 +24,7 @@ rules:
   - events
   - persistentvolumeclaims
   - persistentvolumeclaims/finalizers
-  - pods
+  - pods/eviction
   - secrets
   - secrets/finalizers
   - services
@@ -37,6 +37,7 @@ rules:
   - ""
   resources:
   - configmaps/status
+  - pods
   - nodes
   - nodes/proxy
   - nodes/metrics

@@ -110,8 +110,8 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 }
 
 // ListObjectsByNamespace performs object list for given namespaces
-func ListObjectsByNamespace[L any, PL listing[L]](ctx context.Context, rclient client.Client, nss []string, collect func(PL), opts ...client.ListOption) error {
-	dst := PL(new(L))
+func ListObjectsByNamespace[T any, PT listing[T]](ctx context.Context, rclient client.Client, nss []string, collect func(PT), opts ...client.ListOption) error {
+	dst := PT(new(T))
 	if len(nss) == 0 {
 		if err := rclient.List(ctx, dst, opts...); err != nil {
 			return fmt.Errorf("cannot list objects at cluster scope: %w", err)
@@ -152,10 +152,7 @@ type ObjectWatcherForNamespaces struct {
 
 // NewObjectWatcherForNamespaces returns a watcher for events at multiple namespaces  for given object
 // in case of empty namespaces, performs cluster wide watch
-func NewObjectWatcherForNamespaces[T any, PT interface {
-	*T
-	client.ObjectList
-}](ctx context.Context, rclient client.WithWatch, crdTypeName string, namespaces []string) (watch.Interface, error) {
+func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rclient client.WithWatch, crdTypeName string, namespaces []string) (watch.Interface, error) {
 	initMetrics.Do(func() {
 		metrics.Registry.MustRegister(activeWatchers, watchEventsTotalByType)
 	})

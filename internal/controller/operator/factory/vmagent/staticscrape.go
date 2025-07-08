@@ -17,8 +17,8 @@ func generateStaticScrapeConfig(
 	ep *vmv1beta1.TargetEndpoint,
 	i int,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
+	se := cr.Spec.VMAgentSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",

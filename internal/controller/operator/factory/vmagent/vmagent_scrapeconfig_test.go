@@ -24,47 +24,56 @@ import (
 )
 
 func Test_generateRelabelConfig(t *testing.T) {
-	tests := []struct {
-		name string
-		rc   *vmv1beta1.RelabelConfig
-		want string
-	}{
-		{
-			name: "ok base cfg",
-			rc: &vmv1beta1.RelabelConfig{
-				TargetLabel:  "address",
-				SourceLabels: []string{"__address__"},
-				Action:       "replace",
-			},
-			want: `source_labels:
+	f := func(rc *vmv1beta1.RelabelConfig, want string) {
+		t.Helper()
+		// related fields only filled during json unmarshal
+		j, err := json.Marshal(rc)
+		if err != nil {
+			t.Fatalf("cannot serialize relabelConfig : %s", err)
+		}
+		var rlbCfg vmv1beta1.RelabelConfig
+		if err := json.Unmarshal(j, &rlbCfg); err != nil {
+			t.Fatalf("cannot parse relabelConfig : %s", err)
+		}
+		got := generateRelabelConfig(&rlbCfg)
+		gotBytes, err := yaml.Marshal(got)
+		if err != nil {
+			t.Errorf("cannot marshal generateRelabelConfig to yaml,err :%e", err)
+			return
+		}
+		assert.Equal(t, want, string(gotBytes))
+	}
+
+	// ok base cfg
+	f(&vmv1beta1.RelabelConfig{
+		TargetLabel:  "address",
+		SourceLabels: []string{"__address__"},
+		Action:       "replace",
+	}, `source_labels:
 - __address__
 target_label: address
 action: replace
-`,
-		},
-		{
-			name: "ok base with underscore",
-			rc: &vmv1beta1.RelabelConfig{
-				UnderScoreTargetLabel:  "address",
-				UnderScoreSourceLabels: []string{"__address__"},
-				Action:                 "replace",
-			},
-			want: `source_labels:
+`)
+
+	// ok base with underscore
+	f(&vmv1beta1.RelabelConfig{
+		UnderScoreTargetLabel:  "address",
+		UnderScoreSourceLabels: []string{"__address__"},
+		Action:                 "replace",
+	}, `source_labels:
 - __address__
 target_label: address
 action: replace
-`,
-		},
-		{
-			name: "ok base with graphite match labels",
-			rc: &vmv1beta1.RelabelConfig{
-				UnderScoreTargetLabel:  "address",
-				UnderScoreSourceLabels: []string{"__address__"},
-				Action:                 "graphite",
-				Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
-				Match:                  `foo.*.*.bar`,
-			},
-			want: `source_labels:
+`)
+
+	// ok base with graphite match labels
+	f(&vmv1beta1.RelabelConfig{
+		UnderScoreTargetLabel:  "address",
+		UnderScoreSourceLabels: []string{"__address__"},
+		Action:                 "graphite",
+		Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
+		Match:                  `foo.*.*.bar`,
+	}, `source_labels:
 - __address__
 target_label: address
 action: graphite
@@ -72,20 +81,18 @@ match: foo.*.*.bar
 labels:
   instance: ${2}:8080
   job: $1
-`,
-		},
-		{
-			name: "with empty replacement and separator",
-			rc: &vmv1beta1.RelabelConfig{
-				UnderScoreTargetLabel:  "address",
-				UnderScoreSourceLabels: []string{"__address__"},
-				Action:                 "graphite",
-				Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
-				Match:                  `foo.*.*.bar`,
-				Separator:              ptr.To(""),
-				Replacement:            ptr.To(""),
-			},
-			want: `source_labels:
+`)
+
+	// with empty replacement and separator
+	f(&vmv1beta1.RelabelConfig{
+		UnderScoreTargetLabel:  "address",
+		UnderScoreSourceLabels: []string{"__address__"},
+		Action:                 "graphite",
+		Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
+		Match:                  `foo.*.*.bar`,
+		Separator:              ptr.To(""),
+		Replacement:            ptr.To(""),
+	}, `source_labels:
 - __address__
 separator: ""
 target_label: address
@@ -95,179 +102,148 @@ match: foo.*.*.bar
 labels:
   instance: ${2}:8080
   job: $1
-`,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// related fields only filled during json unmarshal
-			j, err := json.Marshal(tt.rc)
-			if err != nil {
-				t.Fatalf("cannot serialize relabelConfig : %s", err)
-			}
-			var rlbCfg vmv1beta1.RelabelConfig
-			if err := json.Unmarshal(j, &rlbCfg); err != nil {
-				t.Fatalf("cannot parse relabelConfig : %s", err)
-			}
-			got := generateRelabelConfig(&rlbCfg)
-			gotBytes, err := yaml.Marshal(got)
-			if err != nil {
-				t.Errorf("cannot marshal generateRelabelConfig to yaml,err :%e", err)
-				return
-			}
-			assert.Equal(t, tt.want, string(gotBytes))
-		})
-	}
+`)
 }
 
 func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
-	tests := []struct {
-		name              string
-		cr                *vmv1beta1.VMAgent
-		c                 *config.BaseOperatorConf
-		predefinedObjects []runtime.Object
-		wantConfig        string
-		wantErr           bool
-	}{
-		{
-			name: "complete test",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-					ServiceScrapeSelector:          &metav1.LabelSelector{},
-					PodScrapeSelector:              &metav1.LabelSelector{},
-					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-					NodeScrapeSelector:             &metav1.LabelSelector{},
-					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-					StaticScrapeSelector:           &metav1.LabelSelector{},
-					ProbeNamespaceSelector:         &metav1.LabelSelector{},
-					ProbeSelector:                  &metav1.LabelSelector{},
+	f := func(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, predefinedObjects []runtime.Object, wantConfig string) {
+		t.Helper()
+		ctx := context.TODO()
+		testClient := k8stools.GetTestClientWithObjects(predefinedObjects)
+		cfgO := *config.MustGetBaseConfig()
+		if c != nil {
+			*config.MustGetBaseConfig() = *c
+			defer func() {
+				*config.MustGetBaseConfig() = cfgO
+			}()
+		}
+
+		build.AddDefaults(testClient.Scheme())
+		ac := getAssetsCache(ctx, testClient, cr)
+		if err := createOrUpdateConfigurationSecret(ctx, testClient, cr, nil, nil, ac); err != nil {
+			t.Errorf("CreateOrUpdateConfigurationSecret() error = %v", err)
+		}
+		var expectSecret corev1.Secret
+		if err := testClient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &expectSecret); err != nil {
+			t.Fatalf("cannot get vmagent config secret: %s", err)
+		}
+		gotCfg := expectSecret.Data[vmagentGzippedFilename]
+		cfgB := bytes.NewBuffer(gotCfg)
+		gr, err := gzip.NewReader(cfgB)
+		if err != nil {
+			t.Fatalf("er: %s", err)
+		}
+		data, err := io.ReadAll(gr)
+		if err != nil {
+			t.Fatalf("cannot read cfg: %s", err)
+		}
+		gr.Close()
+		assert.Equal(t, wantConfig, string(data))
+	}
+
+	// complete test
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+			ServiceScrapeSelector:          &metav1.LabelSelector{},
+			PodScrapeSelector:              &metav1.LabelSelector{},
+			PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+			NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+			NodeScrapeSelector:             &metav1.LabelSelector{},
+			StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+			StaticScrapeSelector:           &metav1.LabelSelector{},
+			ProbeNamespaceSelector:         &metav1.LabelSelector{},
+			ProbeSelector:                  &metav1.LabelSelector{},
+		},
+	}, config.MustGetBaseConfig(), []runtime.Object{
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "default",
+			},
+		},
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-system",
+			},
+		},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vms",
+			},
+			Spec: vmv1beta1.VMServiceScrapeSpec{
+				Selector:          metav1.LabelSelector{},
+				JobLabel:          "app",
+				NamespaceSelector: vmv1beta1.NamespaceSelector{},
+				Endpoints: []vmv1beta1.Endpoint{
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics",
+						},
+						Port: "8085",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							BearerTokenSecret: &corev1.SecretKeySelector{
+								Key: "bearer",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "access-creds",
+								},
+							},
+						},
+					},
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics-2",
+						},
+						Port: "8083",
+					},
 				},
 			},
-			c: config.MustGetBaseConfig(),
-			predefinedObjects: []runtime.Object{
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "default",
+		},
+		&vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "kube-system",
+				Name:      "test-vmp",
+			},
+			Spec: vmv1beta1.VMProbeSpec{
+				Targets: vmv1beta1.VMProbeTargets{
+					StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
+						Targets: []string{"localhost:8428"},
 					},
 				},
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "kube-system",
-					},
-				},
-				&vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vms",
-					},
-					Spec: vmv1beta1.VMServiceScrapeSpec{
-						Selector:          metav1.LabelSelector{},
-						JobLabel:          "app",
-						NamespaceSelector: vmv1beta1.NamespaceSelector{},
-						Endpoints: []vmv1beta1.Endpoint{
-							{
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics",
-								},
-								Port: "8085",
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									BearerTokenSecret: &corev1.SecretKeySelector{
-										Key: "bearer",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
-								},
-							},
-							{
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics-2",
-								},
-								Port: "8083",
-							},
+				VMProberSpec: vmv1beta1.VMProberSpec{URL: "http://blackbox"},
+			},
+		},
+		&vmv1beta1.VMPodScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vps",
+			},
+			Spec: vmv1beta1.VMPodScrapeSpec{
+				JobLabel:          "app",
+				NamespaceSelector: vmv1beta1.NamespaceSelector{},
+				Selector: metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "app",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"prod"},
 						},
 					},
 				},
-				&vmv1beta1.VMProbe{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "kube-system",
-						Name:      "test-vmp",
-					},
-					Spec: vmv1beta1.VMProbeSpec{
-						Targets: vmv1beta1.VMProbeTargets{
-							StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
-								Targets: []string{"localhost:8428"},
-							},
-						},
-						VMProberSpec: vmv1beta1.VMProberSpec{URL: "http://blackbox"},
-					},
-				},
-				&vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vps",
-					},
-					Spec: vmv1beta1.VMPodScrapeSpec{
-						JobLabel:          "app",
-						NamespaceSelector: vmv1beta1.NamespaceSelector{},
-						Selector: metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "app",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"prod"},
-								},
-							},
-						},
-						SampleLimit: 10,
-						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
-							{
-								Port: ptr.To("805"),
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics-3",
+				SampleLimit: 10,
+				PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+					{
+						Port: ptr.To("805"),
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics-3",
 
-									VMScrapeParams: &vmv1beta1.VMScrapeParams{
-										StreamParse: ptr.To(true),
-										ProxyClientConfig: &vmv1beta1.ProxyAuth{
-											TLSConfig: &vmv1beta1.TLSConfig{
-												InsecureSkipVerify: true,
-												KeySecret: &corev1.SecretKeySelector{
-													Key: "key",
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "access-creds",
-													},
-												},
-												Cert: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-													Key: "cert",
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "access-creds",
-													},
-												}},
-												CA: vmv1beta1.SecretOrConfigMap{
-													Secret: &corev1.SecretKeySelector{
-														Key: "ca",
-														LocalObjectReference: corev1.LocalObjectReference{
-															Name: "access-creds",
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-							{
-								Port: ptr.To("801"),
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics-5",
-								},
-								EndpointAuth: vmv1beta1.EndpointAuth{
+							VMScrapeParams: &vmv1beta1.VMScrapeParams{
+								StreamParse: ptr.To(true),
+								ProxyClientConfig: &vmv1beta1.ProxyAuth{
 									TLSConfig: &vmv1beta1.TLSConfig{
 										InsecureSkipVerify: true,
 										KeySecret: &corev1.SecretKeySelector{
@@ -295,85 +271,117 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 							},
 						},
 					},
-				},
-				&vmv1beta1.VMNodeScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vms",
-					},
-					Spec: vmv1beta1.VMNodeScrapeSpec{
+					{
+						Port: ptr.To("801"),
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics-5",
+						},
 						EndpointAuth: vmv1beta1.EndpointAuth{
-							BasicAuth: &vmv1beta1.BasicAuth{
-								Username: corev1.SecretKeySelector{
-									Key: "username",
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+								KeySecret: &corev1.SecretKeySelector{
+									Key: "key",
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "access-creds",
 									},
 								},
-								Password: corev1.SecretKeySelector{
-									Key: "password",
+								Cert: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+									Key: "cert",
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "access-creds",
 									},
-								},
-							},
-						},
-					},
-				},
-				&vmv1beta1.VMStaticScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vmstatic",
-					},
-					Spec: vmv1beta1.VMStaticScrapeSpec{
-						TargetEndpoints: []*vmv1beta1.TargetEndpoint{
-							{
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path:     "/metrics-3",
-									Scheme:   "https",
-									ProxyURL: ptr.To("https://some-proxy-1"),
-								},
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									OAuth2: &vmv1beta1.OAuth2{
-										TokenURL: "https://some-tr",
-										ClientSecret: &corev1.SecretKeySelector{
-											Key: "cs",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "access-creds",
-											},
-										},
-										ClientID: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												Key: "cid",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "access-creds",
-												},
-											},
+								}},
+								CA: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "ca",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "access-creds",
 										},
 									},
 								},
 							},
 						},
-					},
-				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "access-creds",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"cid":      []byte(`some-client-id`),
-						"cs":       []byte(`some-client-secret`),
-						"username": []byte(`some-username`),
-						"password": []byte(`some-password`),
-						"ca":       []byte(`some-ca-cert`),
-						"cert":     []byte(`some-cert`),
-						"key":      []byte(`some-key`),
-						"bearer":   []byte(`some-bearer`),
 					},
 				},
 			},
-			wantConfig: `global:
+		},
+		&vmv1beta1.VMNodeScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vms",
+			},
+			Spec: vmv1beta1.VMNodeScrapeSpec{
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					BasicAuth: &vmv1beta1.BasicAuth{
+						Username: corev1.SecretKeySelector{
+							Key: "username",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "access-creds",
+							},
+						},
+						Password: corev1.SecretKeySelector{
+							Key: "password",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "access-creds",
+							},
+						},
+					},
+				},
+			},
+		},
+		&vmv1beta1.VMStaticScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vmstatic",
+			},
+			Spec: vmv1beta1.VMStaticScrapeSpec{
+				TargetEndpoints: []*vmv1beta1.TargetEndpoint{
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path:     "/metrics-3",
+							Scheme:   "https",
+							ProxyURL: ptr.To("https://some-proxy-1"),
+						},
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							OAuth2: &vmv1beta1.OAuth2{
+								TokenURL: "https://some-tr",
+								ClientSecret: &corev1.SecretKeySelector{
+									Key: "cs",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
+								},
+								ClientID: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "cid",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "access-creds",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "access-creds",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"cid":      []byte(`some-client-id`),
+				"cs":       []byte(`some-client-secret`),
+				"username": []byte(`some-username`),
+				"password": []byte(`some-password`),
+				"ca":       []byte(`some-ca-cert`),
+				"cert":     []byte(`some-cert`),
+				"key":      []byte(`some-key`),
+				"bearer":   []byte(`some-bearer`),
+			},
+		},
+	}, `global:
   scrape_interval: 30s
   external_labels:
     prometheus: default/test
@@ -610,42 +618,123 @@ scrape_configs:
     client_id: some-client-id
     client_secret: some-client-secret
     token_url: https://some-tr
-`,
+`)
+
+	// with missing secret references
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
 		},
-		{
-			name: "with missing secret references",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-					ServiceScrapeSelector:          &metav1.LabelSelector{},
-					PodScrapeSelector:              &metav1.LabelSelector{},
-					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-					NodeScrapeSelector:             &metav1.LabelSelector{},
-					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-					StaticScrapeSelector:           &metav1.LabelSelector{},
-					ProbeNamespaceSelector:         &metav1.LabelSelector{},
-					ProbeSelector:                  &metav1.LabelSelector{},
+		Spec: vmv1beta1.VMAgentSpec{
+			ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+			ServiceScrapeSelector:          &metav1.LabelSelector{},
+			PodScrapeSelector:              &metav1.LabelSelector{},
+			PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+			NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+			NodeScrapeSelector:             &metav1.LabelSelector{},
+			StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+			StaticScrapeSelector:           &metav1.LabelSelector{},
+			ProbeNamespaceSelector:         &metav1.LabelSelector{},
+			ProbeSelector:                  &metav1.LabelSelector{},
+		},
+	}, config.MustGetBaseConfig(), []runtime.Object{
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "default",
+			},
+		},
+
+		&vmv1beta1.VMNodeScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-bad-0",
+			},
+			Spec: vmv1beta1.VMNodeScrapeSpec{
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					BasicAuth: &vmv1beta1.BasicAuth{
+						Username: corev1.SecretKeySelector{
+							Key: "username",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "access-credentials",
+							},
+						},
+						Password: corev1.SecretKeySelector{
+							Key: "password",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "access-credentials",
+							},
+						},
+					},
 				},
 			},
-			c: config.MustGetBaseConfig(),
-			predefinedObjects: []runtime.Object{
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "default",
+		},
+
+		&vmv1beta1.VMNodeScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-good",
+			},
+			Spec: vmv1beta1.VMNodeScrapeSpec{},
+		},
+
+		&vmv1beta1.VMNodeScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "bad-1",
+			},
+			Spec: vmv1beta1.VMNodeScrapeSpec{
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					BearerTokenSecret: &corev1.SecretKeySelector{
+						Key: "username",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "access-credentials",
+						},
 					},
 				},
-
-				&vmv1beta1.VMNodeScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-bad-0",
+			},
+		},
+		&vmv1beta1.VMPodScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vps-mixed",
+			},
+			Spec: vmv1beta1.VMPodScrapeSpec{
+				JobLabel:          "app",
+				NamespaceSelector: vmv1beta1.NamespaceSelector{},
+				Selector: metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "app",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"prod"},
+						},
 					},
-					Spec: vmv1beta1.VMNodeScrapeSpec{
+				},
+				SampleLimit: 10,
+				PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+					{
+						Port: ptr.To("805"),
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics-3",
+							VMScrapeParams: &vmv1beta1.VMScrapeParams{
+								StreamParse: ptr.To(true),
+								ProxyClientConfig: &vmv1beta1.ProxyAuth{
+									BearerToken: &corev1.SecretKeySelector{
+										Key: "username",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "access-credentials",
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						Port: ptr.To("801"),
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics-5",
+						},
 						EndpointAuth: vmv1beta1.EndpointAuth{
 							BasicAuth: &vmv1beta1.BasicAuth{
 								Username: corev1.SecretKeySelector{
@@ -663,184 +752,69 @@ scrape_configs:
 							},
 						},
 					},
-				},
-
-				&vmv1beta1.VMNodeScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-good",
+					{
+						Port: ptr.To("801"),
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics-5-good",
+						},
 					},
-					Spec: vmv1beta1.VMNodeScrapeSpec{},
 				},
-
-				&vmv1beta1.VMNodeScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "bad-1",
+			},
+		},
+		&vmv1beta1.VMPodScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vps-good",
+			},
+			Spec: vmv1beta1.VMPodScrapeSpec{
+				JobLabel:          "app",
+				NamespaceSelector: vmv1beta1.NamespaceSelector{},
+				Selector: metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "app",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"prod"},
+						},
 					},
-					Spec: vmv1beta1.VMNodeScrapeSpec{
+				},
+				PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+					{
+						Port: ptr.To("8011"),
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics-1-good",
+						},
+					},
+				},
+			},
+		},
+		&vmv1beta1.VMStaticScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vmstatic-bad",
+			},
+			Spec: vmv1beta1.VMStaticScrapeSpec{
+				TargetEndpoints: []*vmv1beta1.TargetEndpoint{
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path:     "/metrics-3",
+							Scheme:   "https",
+							ProxyURL: ptr.To("https://some-proxy-1"),
+						},
 						EndpointAuth: vmv1beta1.EndpointAuth{
-							BearerTokenSecret: &corev1.SecretKeySelector{
-								Key: "username",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-credentials",
-								},
-							},
-						},
-					},
-				},
-				&vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vps-mixed",
-					},
-					Spec: vmv1beta1.VMPodScrapeSpec{
-						JobLabel:          "app",
-						NamespaceSelector: vmv1beta1.NamespaceSelector{},
-						Selector: metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "app",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"prod"},
-								},
-							},
-						},
-						SampleLimit: 10,
-						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
-							{
-								Port: ptr.To("805"),
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics-3",
-									VMScrapeParams: &vmv1beta1.VMScrapeParams{
-										StreamParse: ptr.To(true),
-										ProxyClientConfig: &vmv1beta1.ProxyAuth{
-											BearerToken: &corev1.SecretKeySelector{
-												Key: "username",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "access-credentials",
-												},
-											},
-										},
+							OAuth2: &vmv1beta1.OAuth2{
+								TokenURL: "https://some-tr",
+								ClientSecret: &corev1.SecretKeySelector{
+									Key: "cs",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-credentials",
 									},
 								},
-							},
-							{
-								Port: ptr.To("801"),
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics-5",
-								},
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									BasicAuth: &vmv1beta1.BasicAuth{
-										Username: corev1.SecretKeySelector{
-											Key: "username",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "access-credentials",
-											},
-										},
-										Password: corev1.SecretKeySelector{
-											Key: "password",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "access-credentials",
-											},
-										},
-									},
-								},
-							},
-							{
-								Port: ptr.To("801"),
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics-5-good",
-								},
-							},
-						},
-					},
-				},
-				&vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vps-good",
-					},
-					Spec: vmv1beta1.VMPodScrapeSpec{
-						JobLabel:          "app",
-						NamespaceSelector: vmv1beta1.NamespaceSelector{},
-						Selector: metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "app",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"prod"},
-								},
-							},
-						},
-						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
-							{
-								Port: ptr.To("8011"),
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics-1-good",
-								},
-							},
-						},
-					},
-				},
-				&vmv1beta1.VMStaticScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vmstatic-bad",
-					},
-					Spec: vmv1beta1.VMStaticScrapeSpec{
-						TargetEndpoints: []*vmv1beta1.TargetEndpoint{
-							{
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path:     "/metrics-3",
-									Scheme:   "https",
-									ProxyURL: ptr.To("https://some-proxy-1"),
-								},
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									OAuth2: &vmv1beta1.OAuth2{
-										TokenURL: "https://some-tr",
-										ClientSecret: &corev1.SecretKeySelector{
-											Key: "cs",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "access-credentials",
-											},
-										},
-										ClientID: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												Key: "cid",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "access-credentials",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				&vmv1beta1.VMStaticScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vmstatic-bad-tls",
-					},
-					Spec: vmv1beta1.VMStaticScrapeSpec{
-						TargetEndpoints: []*vmv1beta1.TargetEndpoint{
-							{
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path:     "/metrics-3",
-									Scheme:   "https",
-									ProxyURL: ptr.To("https://some-proxy-1"),
-								},
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									TLSConfig: &vmv1beta1.TLSConfig{
-										Cert: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												Key: "cert",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-credentials",
-												},
-											},
+								ClientID: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "cid",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "access-credentials",
 										},
 									},
 								},
@@ -849,7 +823,37 @@ scrape_configs:
 					},
 				},
 			},
-			wantConfig: `global:
+		},
+		&vmv1beta1.VMStaticScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vmstatic-bad-tls",
+			},
+			Spec: vmv1beta1.VMStaticScrapeSpec{
+				TargetEndpoints: []*vmv1beta1.TargetEndpoint{
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path:     "/metrics-3",
+							Scheme:   "https",
+							ProxyURL: ptr.To("https://some-proxy-1"),
+						},
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								Cert: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "cert",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-credentials",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, `global:
   scrape_interval: 30s
   external_labels:
     prometheus: default/test
@@ -903,106 +907,102 @@ scrape_configs:
     target_label: node
   - target_label: job
     replacement: default/test-good
-`,
-		},
-		{
-			name: "with changed default config value",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-					ServiceScrapeSelector:          &metav1.LabelSelector{},
-					PodScrapeSelector:              &metav1.LabelSelector{},
-					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-					NodeScrapeSelector:             &metav1.LabelSelector{},
-					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-					StaticScrapeSelector:           &metav1.LabelSelector{},
-					ProbeNamespaceSelector:         &metav1.LabelSelector{},
-					ProbeSelector:                  &metav1.LabelSelector{},
-					ScrapeTimeout:                  "20m",
-					ScrapeInterval:                 "30m",
-					ExternalLabels: map[string]string{
-						"externalLabelName": "externalLabelValue",
-					},
-					GlobalScrapeRelabelConfigs: []*vmv1beta1.RelabelConfig{
-						{
-							UnderScoreSourceLabels: []string{"test2"},
-						},
-					},
+`)
 
-					GlobalScrapeMetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
-						{
-							UnderScoreSourceLabels: []string{"test1"},
+	// with changed default config value
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+			ServiceScrapeSelector:          &metav1.LabelSelector{},
+			PodScrapeSelector:              &metav1.LabelSelector{},
+			PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+			NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+			NodeScrapeSelector:             &metav1.LabelSelector{},
+			StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+			StaticScrapeSelector:           &metav1.LabelSelector{},
+			ProbeNamespaceSelector:         &metav1.LabelSelector{},
+			ProbeSelector:                  &metav1.LabelSelector{},
+			ScrapeTimeout:                  "20m",
+			ScrapeInterval:                 "30m",
+			ExternalLabels: map[string]string{
+				"externalLabelName": "externalLabelValue",
+			},
+			GlobalScrapeRelabelConfigs: []*vmv1beta1.RelabelConfig{
+				{
+					UnderScoreSourceLabels: []string{"test2"},
+				},
+			},
+
+			GlobalScrapeMetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+				{
+					UnderScoreSourceLabels: []string{"test1"},
+				},
+			},
+		},
+	}, func() *config.BaseOperatorConf {
+		cfg := *config.MustGetBaseConfig()
+		cfg.VMServiceScrapeDefault.EnforceEndpointSlices = true
+		return &cfg
+	}(), []runtime.Object{
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "default",
+			},
+		},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vms",
+			},
+			Spec: vmv1beta1.VMServiceScrapeSpec{
+				Selector:          metav1.LabelSelector{},
+				JobLabel:          "app",
+				NamespaceSelector: vmv1beta1.NamespaceSelector{},
+				Endpoints: []vmv1beta1.Endpoint{
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics",
 						},
+						Port: "8085",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							BearerTokenSecret: &corev1.SecretKeySelector{
+								Key: "bearer",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "access-creds",
+								},
+							},
+						},
+					},
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics-2",
+						},
+						Port: "8083",
 					},
 				},
 			},
-			c: func() *config.BaseOperatorConf {
-				cfg := *config.MustGetBaseConfig()
-				cfg.VMServiceScrapeDefault.EnforceEndpointSlices = true
-				return &cfg
-			}(),
-			predefinedObjects: []runtime.Object{
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "default",
-					},
-				},
-				&vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vms",
-					},
-					Spec: vmv1beta1.VMServiceScrapeSpec{
-						Selector:          metav1.LabelSelector{},
-						JobLabel:          "app",
-						NamespaceSelector: vmv1beta1.NamespaceSelector{},
-						Endpoints: []vmv1beta1.Endpoint{
-							{
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics",
-								},
-								Port: "8085",
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									BearerTokenSecret: &corev1.SecretKeySelector{
-										Key: "bearer",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
-								},
-							},
-							{
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics-2",
-								},
-								Port: "8083",
-							},
-						},
-					},
-				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "access-creds",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"cid":      []byte(`some-client-id`),
-						"cs":       []byte(`some-client-secret`),
-						"username": []byte(`some-username`),
-						"password": []byte(`some-password`),
-						"ca":       []byte(`some-ca-cert`),
-						"cert":     []byte(`some-cert`),
-						"key":      []byte(`some-key`),
-						"bearer":   []byte(`some-bearer`),
-					},
-				},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "access-creds",
+				Namespace: "default",
 			},
-			wantConfig: `global:
+			Data: map[string][]byte{
+				"cid":      []byte(`some-client-id`),
+				"cs":       []byte(`some-client-secret`),
+				"username": []byte(`some-username`),
+				"password": []byte(`some-password`),
+				"ca":       []byte(`some-ca-cert`),
+				"cert":     []byte(`some-cert`),
+				"key":      []byte(`some-key`),
+				"bearer":   []byte(`some-bearer`),
+			},
+		},
+	}, `global:
   scrape_interval: 30m
   external_labels:
     externalLabelName: externalLabelValue
@@ -1116,167 +1116,110 @@ scrape_configs:
     replacement: ${1}
   - target_label: endpoint
     replacement: "8083"
-`,
+`)
+
+	// with oauth2 tls config
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
 		},
-		{
-			name: "with oauth2 tls config",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
-					ServiceScrapeSelector:          &metav1.LabelSelector{},
-					PodScrapeSelector:              &metav1.LabelSelector{},
-					PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
-					NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
-					NodeScrapeSelector:             &metav1.LabelSelector{},
-					StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
-					StaticScrapeSelector:           &metav1.LabelSelector{},
-					ProbeNamespaceSelector:         &metav1.LabelSelector{},
-					ProbeSelector:                  &metav1.LabelSelector{},
+		Spec: vmv1beta1.VMAgentSpec{
+			ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+			ServiceScrapeSelector:          &metav1.LabelSelector{},
+			PodScrapeSelector:              &metav1.LabelSelector{},
+			PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+			NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+			NodeScrapeSelector:             &metav1.LabelSelector{},
+			StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+			StaticScrapeSelector:           &metav1.LabelSelector{},
+			ProbeNamespaceSelector:         &metav1.LabelSelector{},
+			ProbeSelector:                  &metav1.LabelSelector{},
+		},
+	}, nil, []runtime.Object{
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "default",
+			},
+		},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "test-vms",
+			},
+			Spec: vmv1beta1.VMServiceScrapeSpec{
+				Selector:          metav1.LabelSelector{},
+				JobLabel:          "app",
+				NamespaceSelector: vmv1beta1.NamespaceSelector{},
+				Endpoints: []vmv1beta1.Endpoint{
+					{
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics",
+						},
+						Port: "8085",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							OAuth2: &vmv1beta1.OAuth2{
+								ClientID: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "CLIENT_ID",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "oauth2-access",
+										},
+									},
+								},
+								ClientSecret: &corev1.SecretKeySelector{
+									Key: "CLIENT_SECRET",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "oauth2-access",
+									},
+								},
+								TokenURL: "http://some-url",
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CA: vmv1beta1.SecretOrConfigMap{
+										ConfigMap: &corev1.ConfigMapKeySelector{
+											Key: "CA",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-default",
+											},
+										},
+									},
+									Cert: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key: "CERT",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-auth",
+											},
+										},
+									},
+									KeySecret: &corev1.SecretKeySelector{
+										Key: "SECRET_KEY",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-auth",
+										},
+									},
+									InsecureSkipVerify: false,
+								},
+							},
+							BearerTokenSecret: &corev1.SecretKeySelector{
+								Key: "bearer",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "access-creds",
+								},
+							},
+						},
+					},
 				},
 			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "default",
-					},
-				},
-				&vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test-vms",
-					},
-					Spec: vmv1beta1.VMServiceScrapeSpec{
-						Selector:          metav1.LabelSelector{},
-						JobLabel:          "app",
-						NamespaceSelector: vmv1beta1.NamespaceSelector{},
-						Endpoints: []vmv1beta1.Endpoint{
-							{
-								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-									Path: "/metrics",
-								},
-								Port: "8085",
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									OAuth2: &vmv1beta1.OAuth2{
-										ClientID: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												Key: "CLIENT_ID",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "oauth2-access",
-												},
-											},
-										},
-										ClientSecret: &corev1.SecretKeySelector{
-											Key: "CLIENT_SECRET",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "oauth2-access",
-											},
-										},
-										TokenURL: "http://some-url",
-										TLSConfig: &vmv1beta1.TLSConfig{
-											CA: vmv1beta1.SecretOrConfigMap{
-												ConfigMap: &corev1.ConfigMapKeySelector{
-													Key: "CA",
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "tls-default",
-													},
-												},
-											},
-											Cert: vmv1beta1.SecretOrConfigMap{
-												Secret: &corev1.SecretKeySelector{
-													Key: "CERT",
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "tls-auth",
-													},
-												},
-											},
-											KeySecret: &corev1.SecretKeySelector{
-												Key: "SECRET_KEY",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-auth",
-												},
-											},
-											InsecureSkipVerify: false,
-										},
-									},
-									BearerTokenSecret: &corev1.SecretKeySelector{
-										Key: "bearer",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				&vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "dev-pods",
-					},
-					Spec: vmv1beta1.VMPodScrapeSpec{
-						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
-							{
-								Port: ptr.To("8081"),
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									OAuth2: &vmv1beta1.OAuth2{
-										ClientID: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												Key: "CLIENT_ID",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "oauth2-access",
-												},
-											},
-										},
-										ClientSecret: &corev1.SecretKeySelector{
-											Key: "CLIENT_SECRET",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "oauth2-access",
-											},
-										},
-										TokenURL: "http://some-url",
-										TLSConfig: &vmv1beta1.TLSConfig{
-											CA: vmv1beta1.SecretOrConfigMap{
-												ConfigMap: &corev1.ConfigMapKeySelector{
-													Key: "CA",
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "tls-default",
-													},
-												},
-											},
-											Cert: vmv1beta1.SecretOrConfigMap{
-												Secret: &corev1.SecretKeySelector{
-													Key: "CERT",
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "tls-auth",
-													},
-												},
-											},
-											KeySecret: &corev1.SecretKeySelector{
-												Key: "SECRET_KEY",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-auth",
-												},
-											},
-											InsecureSkipVerify: false,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				&vmv1beta1.VMNodeScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "k8s-nodes",
-					},
-					Spec: vmv1beta1.VMNodeScrapeSpec{
-						Port: "9093",
+		},
+		&vmv1beta1.VMPodScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "dev-pods",
+			},
+			Spec: vmv1beta1.VMPodScrapeSpec{
+				PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+					{
+						Port: ptr.To("8081"),
 						EndpointAuth: vmv1beta1.EndpointAuth{
 							OAuth2: &vmv1beta1.OAuth2{
 								ClientID: vmv1beta1.SecretOrConfigMap{
@@ -1323,53 +1266,107 @@ scrape_configs:
 						},
 					},
 				},
-				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "tls-default",
-						Namespace: "default",
-					},
-					Data: map[string]string{
-						"CA": "ca data",
-					},
-				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "tls-auth",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"CERT":       []byte(`cert data`),
-						"SECRET_KEY": []byte(`key data`),
-					},
-				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "oauth2-access",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"CLIENT_ID":     []byte(`data`),
-						"CLIENT_SECRET": []byte(`data`),
-					},
-				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "access-creds",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"cid":      []byte(`some-client-id`),
-						"cs":       []byte(`some-client-secret`),
-						"username": []byte(`some-username`),
-						"password": []byte(`some-password`),
-						"ca":       []byte(`some-ca-cert`),
-						"cert":     []byte(`some-cert`),
-						"key":      []byte(`some-key`),
-						"bearer":   []byte(`some-bearer`),
+			},
+		},
+		&vmv1beta1.VMNodeScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "k8s-nodes",
+			},
+			Spec: vmv1beta1.VMNodeScrapeSpec{
+				Port: "9093",
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					OAuth2: &vmv1beta1.OAuth2{
+						ClientID: vmv1beta1.SecretOrConfigMap{
+							Secret: &corev1.SecretKeySelector{
+								Key: "CLIENT_ID",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "oauth2-access",
+								},
+							},
+						},
+						ClientSecret: &corev1.SecretKeySelector{
+							Key: "CLIENT_SECRET",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "oauth2-access",
+							},
+						},
+						TokenURL: "http://some-url",
+						TLSConfig: &vmv1beta1.TLSConfig{
+							CA: vmv1beta1.SecretOrConfigMap{
+								ConfigMap: &corev1.ConfigMapKeySelector{
+									Key: "CA",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-default",
+									},
+								},
+							},
+							Cert: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									Key: "CERT",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-auth",
+									},
+								},
+							},
+							KeySecret: &corev1.SecretKeySelector{
+								Key: "SECRET_KEY",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "tls-auth",
+								},
+							},
+							InsecureSkipVerify: false,
+						},
 					},
 				},
 			},
-			wantConfig: `global:
+		},
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tls-default",
+				Namespace: "default",
+			},
+			Data: map[string]string{
+				"CA": "ca data",
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tls-auth",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"CERT":       []byte(`cert data`),
+				"SECRET_KEY": []byte(`key data`),
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "oauth2-access",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"CLIENT_ID":     []byte(`data`),
+				"CLIENT_SECRET": []byte(`data`),
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "access-creds",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"cid":      []byte(`some-client-id`),
+				"cs":       []byte(`some-client-secret`),
+				"username": []byte(`some-username`),
+				"password": []byte(`some-password`),
+				"ca":       []byte(`some-ca-cert`),
+				"cert":     []byte(`some-cert`),
+				"key":      []byte(`some-key`),
+				"bearer":   []byte(`some-bearer`),
+			},
+		},
+	}, `global:
   scrape_interval: 30s
   external_labels:
     prometheus: default/test
@@ -1493,67 +1490,64 @@ scrape_configs:
       ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
       cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
       key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
-`,
+`)
+
+	// daemonset mode
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "per-node",
+			Namespace: "default",
 		},
-		{
-			name: "daemonset mode",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "per-node",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					DaemonSetMode:      true,
-					SelectAllByDefault: true,
-				},
+		Spec: vmv1beta1.VMAgentSpec{
+			DaemonSetMode:      true,
+			SelectAllByDefault: true,
+		},
+	}, nil, []runtime.Object{
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "default",
 			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "default",
-					},
-				},
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "default-2",
-					},
-				},
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "system",
-					},
-				},
-				&vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "svc-1",
-						Namespace: "default-1",
-					},
-					Spec: vmv1beta1.VMServiceScrapeSpec{
-						Endpoints: []vmv1beta1.Endpoint{
-							{
-								Port: "http",
-							},
-						},
-					},
-				},
-				&vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "pod-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMPodScrapeSpec{
-						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
-							{
-								Port: ptr.To("web"),
-							},
-							{
-								PortNumber: ptr.To(int32(8085)),
-							},
-						},
+		},
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "default-2",
+			},
+		},
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "system",
+			},
+		},
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "svc-1",
+				Namespace: "default-1",
+			},
+			Spec: vmv1beta1.VMServiceScrapeSpec{
+				Endpoints: []vmv1beta1.Endpoint{
+					{
+						Port: "http",
 					},
 				},
 			},
-			wantConfig: `global:
+		},
+		&vmv1beta1.VMPodScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMPodScrapeSpec{
+				PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+					{
+						Port: ptr.To("web"),
+					},
+					{
+						PortNumber: ptr.To(int32(8085)),
+					},
+				},
+			},
+		},
+	}, `global:
   scrape_interval: 30s
   external_labels:
     prometheus: default/per-node
@@ -1620,199 +1614,156 @@ scrape_configs:
     target_label: pod
   - target_label: job
     replacement: default/pod-1
-`,
+`)
+
+	// with invalid objects syntax
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "select-all",
+			Namespace: "default",
 		},
-		{
-			name: "with invalid objects syntax",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "select-all",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					SelectAllByDefault: true,
-					VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-						ArbitraryFSAccessThroughSMs: vmv1beta1.ArbitraryFSAccessThroughSMsConfig{
-							Deny: true,
-						},
-					},
-					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-						{
-							URL: "http://some-single.example.com",
-						},
-					},
+		Spec: vmv1beta1.VMAgentSpec{
+			SelectAllByDefault: true,
+			VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
+				ArbitraryFSAccessThroughSMs: vmv1beta1.ArbitraryFSAccessThroughSMsConfig{
+					Deny: true,
 				},
 			},
-			predefinedObjects: []runtime.Object{
-				&vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "fs-access",
-					},
-					Spec: vmv1beta1.VMServiceScrapeSpec{
-						Endpoints: []vmv1beta1.Endpoint{
-							{
-								Port: "8080",
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									TLSConfig: &vmv1beta1.TLSConfig{
-										CAFile: "/etc/passwd",
-									},
-								},
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL: "http://some-single.example.com",
+				},
+			},
+		},
+	}, nil, []runtime.Object{
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "fs-access",
+			},
+			Spec: vmv1beta1.VMServiceScrapeSpec{
+				Endpoints: []vmv1beta1.Endpoint{
+					{
+						Port: "8080",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CAFile: "/etc/passwd",
 							},
 						},
 					},
 				},
-				&vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "bad-syntax",
-					},
-					Spec: vmv1beta1.VMPodScrapeSpec{
+			},
+		},
+		&vmv1beta1.VMPodScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "bad-syntax",
+			},
+			Spec: vmv1beta1.VMPodScrapeSpec{
+				Selector: *metav1.SetAsLabelSelector(map[string]string{
+					"alb.ingress.kubernetes.io/tags": "Environment=devl",
+				}),
+			},
+		},
+		&vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "bad-syntax",
+			},
+			Spec: vmv1beta1.VMProbeSpec{
+				Targets: vmv1beta1.VMProbeTargets{
+					Ingress: &vmv1beta1.ProbeTargetIngress{
 						Selector: *metav1.SetAsLabelSelector(map[string]string{
 							"alb.ingress.kubernetes.io/tags": "Environment=devl",
 						}),
 					},
 				},
-				&vmv1beta1.VMProbe{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "bad-syntax",
-					},
-					Spec: vmv1beta1.VMProbeSpec{
-						Targets: vmv1beta1.VMProbeTargets{
-							Ingress: &vmv1beta1.ProbeTargetIngress{
-								Selector: *metav1.SetAsLabelSelector(map[string]string{
-									"alb.ingress.kubernetes.io/tags": "Environment=devl",
-								}),
-							},
-						},
-					},
-				},
 			},
-			wantConfig: `global:
+		},
+	}, `global:
   scrape_interval: 30s
   external_labels:
     prometheus: default/select-all
 scrape_configs: []
-`,
-		},
-		{
-			name: "with partial missing refs",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "select-all",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					SelectAllByDefault: true,
-					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-						{
-							URL: "http://some-single.example.com",
-						},
-					},
-				},
-			},
-			predefinedObjects: []runtime.Object{
-				&vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "partially-correct",
-					},
-					Spec: vmv1beta1.VMServiceScrapeSpec{
-						Endpoints: []vmv1beta1.Endpoint{
-							{
-								Port: "8080",
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									TLSConfig: &vmv1beta1.TLSConfig{
-										CA: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												Key: "ca",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-auth",
-												},
-											},
-										},
-									},
-								},
-							},
-							{
-								Port: "8081",
-							},
-						},
-					},
-				},
-				&vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "partially-correct",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMPodScrapeSpec{
-						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
-							{
-								Port: ptr.To("8035"),
-							},
-							{
-								Port: ptr.To("8080"),
-								EndpointAuth: vmv1beta1.EndpointAuth{
-									TLSConfig: &vmv1beta1.TLSConfig{
-										CA: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												Key: "ca",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-auth",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			wantConfig: `global:
-  scrape_interval: 30s
-  external_labels:
-    prometheus: default/select-all
-scrape_configs: []
-`,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.TODO()
-			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			cfgO := *config.MustGetBaseConfig()
-			if tt.c != nil {
-				*config.MustGetBaseConfig() = *tt.c
-				defer func() {
-					*config.MustGetBaseConfig() = cfgO
-				}()
-			}
+`)
 
-			build.AddDefaults(testClient.Scheme())
-			ac := getAssetsCache(ctx, testClient, tt.cr)
-			if err := createOrUpdateConfigurationSecret(ctx, testClient, tt.cr, nil, nil, ac); (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateConfigurationSecret() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			var expectSecret corev1.Secret
-			if err := testClient.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.PrefixedName()}, &expectSecret); err != nil {
-				t.Fatalf("cannot get vmagent config secret: %s", err)
-			}
-			gotCfg := expectSecret.Data[vmagentGzippedFilename]
-			cfgB := bytes.NewBuffer(gotCfg)
-			gr, err := gzip.NewReader(cfgB)
-			if err != nil {
-				t.Fatalf("er: %s", err)
-			}
-			data, err := io.ReadAll(gr)
-			if err != nil {
-				t.Fatalf("cannot read cfg: %s", err)
-			}
-			gr.Close()
-			assert.Equal(t, tt.wantConfig, string(data))
-		})
-	}
+	// with partial missing refs
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "select-all",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			SelectAllByDefault: true,
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL: "http://some-single.example.com",
+				},
+			},
+		},
+	}, nil, []runtime.Object{
+		&vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "partially-correct",
+			},
+			Spec: vmv1beta1.VMServiceScrapeSpec{
+				Endpoints: []vmv1beta1.Endpoint{
+					{
+						Port: "8080",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "ca",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-auth",
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						Port: "8081",
+					},
+				},
+			},
+		},
+		&vmv1beta1.VMPodScrape{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "partially-correct",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMPodScrapeSpec{
+				PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+					{
+						Port: ptr.To("8035"),
+					},
+					{
+						Port: ptr.To("8080"),
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "ca",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-auth",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/select-all
+scrape_configs: []
+`)
 }
 
 func TestScrapeObjectFailedStatus(t *testing.T) {

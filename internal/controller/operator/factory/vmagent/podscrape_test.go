@@ -15,46 +15,43 @@ import (
 )
 
 func Test_generatePodScrapeConfig(t *testing.T) {
-	type args struct {
-		cr              *vmv1beta1.VMAgent
-		sc              *vmv1beta1.VMPodScrape
-		ep              vmv1beta1.PodMetricsEndpoint
-		i               int
-		apiserverConfig *vmv1beta1.APIServerConfig
-		se              vmv1beta1.VMAgentSecurityEnforcements
+	f := func(cr *vmv1beta1.VMAgent, sc *vmv1beta1.VMPodScrape, ep vmv1beta1.PodMetricsEndpoint, i int, want string, predefinedObjects []runtime.Object) {
+		ctx := context.Background()
+		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
+		ac := getAssetsCache(ctx, fclient, cr)
+		got, err := generatePodScrapeConfig(ctx, cr, sc, ep, i, ac)
+		if err != nil {
+			t.Errorf("cannot generate PodScrapeConfig, err: %e", err)
+			return
+		}
+		gotBytes, err := yaml.Marshal(got)
+		if err != nil {
+			t.Errorf("cannot marshal PodScrapeConfig to yaml,err :%e", err)
+			return
+		}
+		assert.Equal(t, want, string(gotBytes))
 	}
-	tests := []struct {
-		name              string
-		args              args
-		predefinedObjects []runtime.Object
-		want              string
-	}{
-		{
-			name: "simple test",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-				},
-				sc: &vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-1",
-						Namespace: "default",
-					},
-				},
-				ep: vmv1beta1.PodMetricsEndpoint{
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						Path: "/metric",
-					},
-					Port: ptr.To("web"),
-					AttachMetadata: vmv1beta1.AttachMetadata{
-						Node: ptr.To(true),
-					},
-				},
-			},
-			want: `job_name: podScrape/default/test-1/0
+
+	// simple test
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vmagent",
+			Namespace: "default",
+		},
+	}, &vmv1beta1.VMPodScrape{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-1",
+			Namespace: "default",
+		},
+	}, vmv1beta1.PodMetricsEndpoint{
+		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+			Path: "/metric",
+		},
+		Port: ptr.To("web"),
+		AttachMetadata: vmv1beta1.AttachMetadata{
+			Node: ptr.To(true),
+		},
+	}, 0, `job_name: podScrape/default/test-1/0
 kubernetes_sd_configs:
 - role: pod
   attach_metadata:
@@ -86,35 +83,29 @@ relabel_configs:
   replacement: default/test-1
 - target_label: endpoint
   replacement: web
-`,
+`, nil)
+
+	// disabled running filter
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vmagent",
+			Namespace: "default",
 		},
-		{
-			name: "disabled running filter",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-				},
-				sc: &vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-1",
-						Namespace: "default",
-					},
-				},
-				ep: vmv1beta1.PodMetricsEndpoint{
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						Path: "/metric",
-					},
-					Port: ptr.To("web"),
-					AttachMetadata: vmv1beta1.AttachMetadata{
-						Node: ptr.To(true),
-					},
-					FilterRunning: ptr.To(false),
-				},
-			},
-			want: `job_name: podScrape/default/test-1/0
+	}, &vmv1beta1.VMPodScrape{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-1",
+			Namespace: "default",
+		},
+	}, vmv1beta1.PodMetricsEndpoint{
+		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+			Path: "/metric",
+		},
+		Port: ptr.To("web"),
+		AttachMetadata: vmv1beta1.AttachMetadata{
+			Node: ptr.To(true),
+		},
+		FilterRunning: ptr.To(false),
+	}, 0, `job_name: podScrape/default/test-1/0
 kubernetes_sd_configs:
 - role: pod
   attach_metadata:
@@ -142,52 +133,45 @@ relabel_configs:
   replacement: default/test-1
 - target_label: endpoint
   replacement: web
-`,
+`, nil)
+	// test with selector
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vmagent",
+			Namespace: "default",
 		},
-		{
-			name: "test with selector",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						EnableKubernetesAPISelectors: true,
-					},
+		Spec: vmv1beta1.VMAgentSpec{
+			EnableKubernetesAPISelectors: true,
+		},
+	}, &vmv1beta1.VMPodScrape{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-1",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMPodScrapeSpec{
+			NamespaceSelector: vmv1beta1.NamespaceSelector{
+				Any: true,
+			},
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"label-1": "value-1",
+					"label-2": "value-2",
+					"label-3": "value-3",
 				},
-				sc: &vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-1",
-						Namespace: "default",
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{
+						Key:      "some-label",
+						Operator: metav1.LabelSelectorOpExists,
 					},
-					Spec: vmv1beta1.VMPodScrapeSpec{
-						NamespaceSelector: vmv1beta1.NamespaceSelector{
-							Any: true,
-						},
-						Selector: metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"label-1": "value-1",
-								"label-2": "value-2",
-								"label-3": "value-3",
-							},
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "some-label",
-									Operator: metav1.LabelSelectorOpExists,
-								},
-							},
-						},
-					},
-				},
-				ep: vmv1beta1.PodMetricsEndpoint{
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						Path: "/metric",
-					},
-					Port: ptr.To("web"),
 				},
 			},
-			want: `job_name: podScrape/default/test-1/0
+		},
+	}, vmv1beta1.PodMetricsEndpoint{
+		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+			Path: "/metric",
+		},
+		Port: ptr.To("web"),
+	}, 0, `job_name: podScrape/default/test-1/0
 kubernetes_sd_configs:
 - role: pod
   selectors:
@@ -217,59 +201,53 @@ relabel_configs:
   replacement: default/test-1
 - target_label: endpoint
   replacement: web
-`,
+`, nil)
+
+	// with portNumber
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vmagent",
+			Namespace: "default",
 		},
-		{
-			name: "with portNumber",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						EnableKubernetesAPISelectors: true,
-					},
+		Spec: vmv1beta1.VMAgentSpec{
+			EnableKubernetesAPISelectors: true,
+		},
+	}, &vmv1beta1.VMPodScrape{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-1",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMPodScrapeSpec{
+			NamespaceSelector: vmv1beta1.NamespaceSelector{
+				Any: true,
+			},
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"label-1": "value-1",
 				},
-				sc: &vmv1beta1.VMPodScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-1",
-						Namespace: "default",
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{
+						Key:      "some-label",
+						Operator: metav1.LabelSelectorOpExists,
 					},
-					Spec: vmv1beta1.VMPodScrapeSpec{
-						NamespaceSelector: vmv1beta1.NamespaceSelector{
-							Any: true,
-						},
-						Selector: metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"label-1": "value-1",
-							},
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "some-label",
-									Operator: metav1.LabelSelectorOpExists,
-								},
-								{
-									Key:      "some-other",
-									Operator: metav1.LabelSelectorOpDoesNotExist,
-								},
-								{
-									Key:      "bad-labe",
-									Operator: metav1.LabelSelectorOpNotIn,
-									Values:   []string{"one", "two"},
-								},
-							},
-						},
+					{
+						Key:      "some-other",
+						Operator: metav1.LabelSelectorOpDoesNotExist,
 					},
-				},
-				ep: vmv1beta1.PodMetricsEndpoint{
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						Path: "/metric",
+					{
+						Key:      "bad-labe",
+						Operator: metav1.LabelSelectorOpNotIn,
+						Values:   []string{"one", "two"},
 					},
-					PortNumber: ptr.To[int32](8081),
 				},
 			},
-			want: `job_name: podScrape/default/test-1/0
+		},
+	}, vmv1beta1.PodMetricsEndpoint{
+		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+			Path: "/metric",
+		},
+		PortNumber: ptr.To[int32](8081),
+	}, 0, `job_name: podScrape/default/test-1/0
 kubernetes_sd_configs:
 - role: pod
   selectors:
@@ -297,25 +275,5 @@ relabel_configs:
   target_label: pod
 - target_label: job
   replacement: default/test-1
-`,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			ac := getAssetsCache(ctx, fclient, tt.args.cr)
-			got, err := generatePodScrapeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.ep, tt.args.i, tt.args.apiserverConfig, ac, tt.args.se)
-			if err != nil {
-				t.Errorf("cannot generate PodScrapeConfig, err: %e", err)
-				return
-			}
-			gotBytes, err := yaml.Marshal(got)
-			if err != nil {
-				t.Errorf("cannot marshal PodScrapeConfig to yaml,err :%e", err)
-				return
-			}
-			assert.Equal(t, tt.want, string(gotBytes))
-		})
-	}
+`, nil)
 }

@@ -16,51 +16,50 @@ import (
 )
 
 func Test_generateProbeConfig(t *testing.T) {
-	type args struct {
-		cr              *vmv1beta1.VMAgent
-		sc              *vmv1beta1.VMProbe
-		i               int
-		apiserverConfig *vmv1beta1.APIServerConfig
-		se              vmv1beta1.VMAgentSecurityEnforcements
+	f := func(cr *vmv1beta1.VMAgent, sc *vmv1beta1.VMProbe, i int, want string, predefinedObjects []runtime.Object) {
+		t.Helper()
+		ctx := context.Background()
+		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
+		ac := getAssetsCache(ctx, fclient, cr)
+		got, err := generateProbeConfig(ctx, cr, sc, i, ac)
+		if err != nil {
+			t.Errorf("cannot generate ProbeConfig, err: %e", err)
+			return
+		}
+		gotBytes, err := yaml.Marshal(got)
+		if err != nil {
+			t.Errorf("cannot decode probe config, it must be in yaml format: %e", err)
+			return
+		}
+		assert.Equal(t, want, string(gotBytes))
 	}
-	tests := []struct {
-		name              string
-		args              args
-		want              string
-		predefinedObjects []runtime.Object
-	}{
-		{
-			name: "generate static config",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-				},
-				sc: &vmv1beta1.VMProbe{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "static-probe",
-					},
-					Spec: vmv1beta1.VMProbeSpec{
-						Module: "http",
-						VMProberSpec: vmv1beta1.VMProberSpec{
-							URL:    "blackbox-monitor:9115",
-							Scheme: "https",
-							Path:   "/probe2",
-						},
-						Targets: vmv1beta1.VMProbeTargets{
-							StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
-								Targets: []string{"host-1", "host-2"},
-								Labels:  map[string]string{"label1": "value1"},
-							},
-						},
-					},
-				},
-				i: 0,
+
+	// generate static config
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vmagent",
+			Namespace: "default",
+		},
+	}, &vmv1beta1.VMProbe{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "static-probe",
+		},
+		Spec: vmv1beta1.VMProbeSpec{
+			Module: "http",
+			VMProberSpec: vmv1beta1.VMProberSpec{
+				URL:    "blackbox-monitor:9115",
+				Scheme: "https",
+				Path:   "/probe2",
 			},
-			want: `job_name: probe/default/static-probe/0
+			Targets: vmv1beta1.VMProbeTargets{
+				StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
+					Targets: []string{"host-1", "host-2"},
+					Labels:  map[string]string{"label1": "value1"},
+				},
+			},
+		},
+	}, 0, `job_name: probe/default/static-probe/0
 honor_labels: false
 metrics_path: /probe2
 params:
@@ -82,41 +81,36 @@ relabel_configs:
   target_label: instance
 - target_label: __address__
   replacement: blackbox-monitor:9115
-`,
+`, nil)
+
+	// with ingress discover
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vmagent",
+			Namespace: "default",
 		},
-		{
-			name: "with ingress discover",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-				},
-				sc: &vmv1beta1.VMProbe{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "probe-ingress",
-						Namespace: "monitor",
-					},
-					Spec: vmv1beta1.VMProbeSpec{
-						Module:       "http200",
-						VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
-						Targets: vmv1beta1.VMProbeTargets{
-							Ingress: &vmv1beta1.ProbeTargetIngress{
-								NamespaceSelector: vmv1beta1.NamespaceSelector{},
-								RelabelConfigs: []*vmv1beta1.RelabelConfig{
-									{
-										SourceLabels: []string{"label1"},
-										TargetLabel:  "api",
-										Action:       "replacement",
-									},
-								},
-							},
+	}, &vmv1beta1.VMProbe{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "probe-ingress",
+			Namespace: "monitor",
+		},
+		Spec: vmv1beta1.VMProbeSpec{
+			Module:       "http200",
+			VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+			Targets: vmv1beta1.VMProbeTargets{
+				Ingress: &vmv1beta1.ProbeTargetIngress{
+					NamespaceSelector: vmv1beta1.NamespaceSelector{},
+					RelabelConfigs: []*vmv1beta1.RelabelConfig{
+						{
+							SourceLabels: []string{"label1"},
+							TargetLabel:  "api",
+							Action:       "replacement",
 						},
 					},
 				},
 			},
-			want: `job_name: probe/monitor/probe-ingress/0
+		},
+	}, 0, `job_name: probe/monitor/probe-ingress/0
 honor_labels: false
 metrics_path: /probe
 params:
@@ -159,76 +153,69 @@ relabel_configs:
   target_label: instance
 - target_label: __address__
   replacement: blackbox:9115
-`,
-		},
+`, nil)
 
-		{
-			name: "generate with vm params",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
+	// generate with vm params
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vmagent",
+			Namespace: "default",
+		},
+	}, &vmv1beta1.VMProbe{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "static-probe",
+		},
+		Spec: vmv1beta1.VMProbeSpec{
+			Module: "http",
+			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+				FollowRedirects: ptr.To(true),
+				ScrapeInterval:  "10s",
+				Interval:        "5s",
+				Params: map[string][]string{
+					"timeout": {"10s"},
 				},
-				sc: &vmv1beta1.VMProbe{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "static-probe",
-					},
-					Spec: vmv1beta1.VMProbeSpec{
-						Module: "http",
-						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-							FollowRedirects: ptr.To(true),
-							ScrapeInterval:  "10s",
-							Interval:        "5s",
-							Params: map[string][]string{
-								"timeout": {"10s"},
-							},
-							ScrapeTimeout: "15s",
-							VMScrapeParams: &vmv1beta1.VMScrapeParams{
-								StreamParse: ptr.To(false),
-								ProxyClientConfig: &vmv1beta1.ProxyAuth{
-									TLSConfig: &vmv1beta1.TLSConfig{
-										CA: vmv1beta1.SecretOrConfigMap{
-											ConfigMap: &corev1.ConfigMapKeySelector{
-												Key: "ca",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-secret",
-												},
-											},
-										},
-										Cert: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												Key: "cert",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-secret",
-												},
-											},
-										},
-										KeyFile: "/tmp/key-1",
+				ScrapeTimeout: "15s",
+				VMScrapeParams: &vmv1beta1.VMScrapeParams{
+					StreamParse: ptr.To(false),
+					ProxyClientConfig: &vmv1beta1.ProxyAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							CA: vmv1beta1.SecretOrConfigMap{
+								ConfigMap: &corev1.ConfigMapKeySelector{
+									Key: "ca",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
 									},
 								},
 							},
-						},
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							BearerTokenFile: "/tmp/some_path",
-							BasicAuth: &vmv1beta1.BasicAuth{
-								PasswordFile: "/tmp/some-file-ba",
+							Cert: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									Key: "cert",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+								},
 							},
-						},
-						VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox-monitor:9115"},
-						Targets: vmv1beta1.VMProbeTargets{
-							StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
-								Targets: []string{"host-1", "host-2"},
-								Labels:  map[string]string{"label1": "value1"},
-							},
+							KeyFile: "/tmp/key-1",
 						},
 					},
 				},
-				i: 0,
 			},
-			want: `job_name: probe/default/static-probe/0
+			EndpointAuth: vmv1beta1.EndpointAuth{
+				BearerTokenFile: "/tmp/some_path",
+				BasicAuth: &vmv1beta1.BasicAuth{
+					PasswordFile: "/tmp/some-file-ba",
+				},
+			},
+			VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox-monitor:9115"},
+			Targets: vmv1beta1.VMProbeTargets{
+				StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
+					Targets: []string{"host-1", "host-2"},
+					Labels:  map[string]string{"label1": "value1"},
+				},
+			},
+		},
+	}, 0, `job_name: probe/default/static-probe/0
 honor_labels: false
 scrape_interval: 10s
 scrape_timeout: 15s
@@ -262,68 +249,62 @@ proxy_tls_config:
 bearer_token_file: /tmp/some_path
 basic_auth:
   password_file: /tmp/some-file-ba
-`,
-			predefinedObjects: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "tls-secret",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"key":  []byte("key-value"),
-						"cert": []byte("cert-value"),
-					},
-				},
-				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "tls-secret",
-						Namespace: "default",
-					},
-					Data: map[string]string{
-						"ca": "ca-value",
-					},
-				},
+`, []runtime.Object{
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tls-secret",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"key":  []byte("key-value"),
+				"cert": []byte("cert-value"),
 			},
 		},
-		{
-			name: "with ingress selectors",
-			args: args{
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "default-vmagent",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						EnableKubernetesAPISelectors: true,
-					},
-				},
-				sc: &vmv1beta1.VMProbe{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "probe-ingress",
-						Namespace: "monitor",
-					},
-					Spec: vmv1beta1.VMProbeSpec{
-						Module:       "http200",
-						VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
-						Targets: vmv1beta1.VMProbeTargets{
-							Ingress: &vmv1beta1.ProbeTargetIngress{
-								NamespaceSelector: vmv1beta1.NamespaceSelector{},
-								Selector: *metav1.SetAsLabelSelector(map[string]string{
-									"ingress-class": "ngin",
-								}),
-								RelabelConfigs: []*vmv1beta1.RelabelConfig{
-									{
-										SourceLabels: []string{"label1"},
-										TargetLabel:  "api",
-										Action:       "replacement",
-									},
-								},
-							},
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tls-secret",
+				Namespace: "default",
+			},
+			Data: map[string]string{
+				"ca": "ca-value",
+			},
+		},
+	})
+
+	// with ingress selectors
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vmagent",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			EnableKubernetesAPISelectors: true,
+		},
+	}, &vmv1beta1.VMProbe{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "probe-ingress",
+			Namespace: "monitor",
+		},
+		Spec: vmv1beta1.VMProbeSpec{
+			Module:       "http200",
+			VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+			Targets: vmv1beta1.VMProbeTargets{
+				Ingress: &vmv1beta1.ProbeTargetIngress{
+					NamespaceSelector: vmv1beta1.NamespaceSelector{},
+					Selector: *metav1.SetAsLabelSelector(map[string]string{
+						"ingress-class": "ngin",
+					}),
+					RelabelConfigs: []*vmv1beta1.RelabelConfig{
+						{
+							SourceLabels: []string{"label1"},
+							TargetLabel:  "api",
+							Action:       "replacement",
 						},
 					},
 				},
 			},
-			want: `job_name: probe/monitor/probe-ingress/0
+		},
+	}, 0, `job_name: probe/monitor/probe-ingress/0
 honor_labels: false
 metrics_path: /probe
 params:
@@ -369,25 +350,5 @@ relabel_configs:
   target_label: instance
 - target_label: __address__
   replacement: blackbox:9115
-`,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			ac := getAssetsCache(ctx, fclient, tt.args.cr)
-			got, err := generateProbeConfig(ctx, tt.args.cr, tt.args.sc, tt.args.i, tt.args.apiserverConfig, ac, tt.args.se)
-			if err != nil {
-				t.Errorf("cannot generate ProbeConfig, err: %e", err)
-				return
-			}
-			gotBytes, err := yaml.Marshal(got)
-			if err != nil {
-				t.Errorf("cannot decode probe config, it must be in yaml format :%e", err)
-				return
-			}
-			assert.Equal(t, tt.want, string(gotBytes))
-		})
-	}
+`, nil)
 }

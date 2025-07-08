@@ -664,9 +664,7 @@ Also, you can specify requests without limits - in this case default values for 
 VMAgent supports feature [Kafka integration](https://docs.victoriametrics.com/vmagent#kafka-integration)
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
-For using Enterprise version of [vmagent](https://docs.victoriametrics.com/vmagent) you need to:
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
- - change version of `vmagent` to version with `-enterprise` suffix using [Version management](#version-management).
+For using Enterprise version of [vmagent](https://docs.victoriametrics.com/vmagent) you need to specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref) and respective `-enterprise` container image suffix will be added automatically.
 
 After that you can pass [Kafka integration](https://docs.victoriametrics.com/vmagent#kafka-integration)
 flags to `VMAgent` with [extraArgs](./#extra-arguments).
@@ -686,8 +684,6 @@ spec:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
-  image:
-    tag: v1.110.13-enterprise
   extraArgs:
     # using enterprise features: reading metrics from kafka
     # more details about kafka integration you can read on https://docs.victoriametrics.com/vmagent#kafka-integration
@@ -715,8 +711,6 @@ spec:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
-  image:
-    tag: v1.110.13-enterprise
   # using enterprise features: writing metrics to Kafka
   # more details about kafka integration you can read on https://docs.victoriametrics.com/vmagent/#kafka-integration
   remoteWrite:

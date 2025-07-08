@@ -1,6 +1,7 @@
 package build
 
 import (
+	"github.com/Masterminds/semver/v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -170,6 +171,14 @@ func isExternallyAccessible(service *corev1.Service) bool {
 		(service.Spec.Type == corev1.ServiceTypeClusterIP && len(service.Spec.ExternalIPs) > 0)
 }
 
+func isTagAdjustable(version string) bool {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false
+	}
+	return len(v.Prerelease()) == 0
+}
+
 func addVMAuthDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAuth)
 	c := getCfg()
@@ -184,6 +193,9 @@ func addVMAuthDefaults(objI any) {
 		}
 	}
 	cv := config.ApplicationDefaults(c.VMAuthDefault)
+	if cr.Spec.License.IsProvided() && isTagAdjustable(cv.Version) {
+		cv.Version += "-enterprise"
+	}
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
@@ -191,8 +203,10 @@ func addVMAuthDefaults(objI any) {
 func addVMAlertDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAlert)
 	c := getCfg()
-
 	cv := config.ApplicationDefaults(c.VMAlertDefault)
+	if cr.Spec.License.IsProvided() && isTagAdjustable(cv.Version) {
+		cv.Version += "-enterprise"
+	}
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 	if cr.Spec.ConfigReloaderImageTag == "" {
@@ -203,8 +217,10 @@ func addVMAlertDefaults(objI any) {
 func addVMAgentDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAgent)
 	c := getCfg()
-
 	cv := config.ApplicationDefaults(c.VMAgentDefault)
+	if cr.Spec.License.IsProvided() && isTagAdjustable(cv.Version) {
+		cv.Version += "-enterprise"
+	}
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
@@ -214,7 +230,6 @@ func addVMSingleDefaults(objI any) {
 	c := getCfg()
 	useBackupDefaultResources := c.VMBackup.UseDefaultResources
 	cv := config.ApplicationDefaults(c.VMSingleDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
 	if cr.Spec.UseDefaultResources != nil {
 		useBackupDefaultResources = *cr.Spec.UseDefaultResources
 	}
@@ -234,6 +249,13 @@ func addVMSingleDefaults(objI any) {
 			}
 		}(c.VMBackup.Resource),
 	}
+	if cr.Spec.License.IsProvided() {
+		if isTagAdjustable(cv.Version) {
+			cv.Version += "-enterprise"
+		}
+	}
+	backupDefaults.Version += "-enterprise"
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
 	addDefaultsToVMBackup(cr.Spec.VMBackup, useBackupDefaultResources, backupDefaults)
 }
 
@@ -342,7 +364,13 @@ func addVMClusterDefaults(objI any) {
 	if cr.Spec.ClusterDomainName == "" {
 		cr.Spec.ClusterDomainName = c.ClusterDomainName
 	}
-
+	clusterSuffix := "-cluster"
+	lbSuffix := ""
+	backupSuffix := "-enterprise"
+	if cr.Spec.License.IsProvided() {
+		clusterSuffix = "-enterprise-cluster"
+		lbSuffix = "-enterprise"
+	}
 	if cr.Spec.VMStorage != nil {
 		if cr.Spec.VMStorage.UseStrictSecurity == nil {
 			cr.Spec.VMStorage.UseStrictSecurity = &useStrictSecurity
@@ -358,7 +386,6 @@ func addVMClusterDefaults(objI any) {
 		}
 		backupDefaults := &config.ApplicationDefaults{
 			Image:               c.VMBackup.Image,
-			Version:             c.VMBackup.Version,
 			Port:                c.VMBackup.Port,
 			UseDefaultResources: c.VMBackup.UseDefaultResources,
 			Resource: struct {
@@ -372,17 +399,27 @@ func addVMClusterDefaults(objI any) {
 				}
 			}(c.VMBackup.Resource),
 		}
+		version := c.VMBackup.Version
+		if cr.Spec.ClusterVersion != "" {
+			version = cr.Spec.ClusterVersion
+		}
+		if isTagAdjustable(version) {
+			version += backupSuffix
+		}
+		backupDefaults.Version = version
 		if cr.Spec.VMStorage.Image.Repository == "" {
 			cr.Spec.VMStorage.Image.Repository = c.VMClusterDefault.VMStorageDefault.Image
 		}
 		cr.Spec.VMStorage.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.VMStorage.Image.Repository)
-
 		if cr.Spec.VMStorage.Image.Tag == "" {
+			tag := c.VMClusterDefault.VMStorageDefault.Version
 			if cr.Spec.ClusterVersion != "" {
-				cr.Spec.VMStorage.Image.Tag = cr.Spec.ClusterVersion
-			} else {
-				cr.Spec.VMStorage.Image.Tag = c.VMClusterDefault.VMStorageDefault.Version
+				tag = cr.Spec.ClusterVersion
 			}
+			if isTagAdjustable(tag) {
+				tag += clusterSuffix
+			}
+			cr.Spec.VMStorage.Image.Tag = tag
 		}
 		if cr.Spec.VMStorage.VMInsertPort == "" {
 			cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
@@ -433,11 +470,14 @@ func addVMClusterDefaults(objI any) {
 		}
 		cr.Spec.VMInsert.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.VMInsert.Image.Repository)
 		if cr.Spec.VMInsert.Image.Tag == "" {
+			tag := c.VMClusterDefault.VMInsertDefault.Version
 			if cr.Spec.ClusterVersion != "" {
-				cr.Spec.VMInsert.Image.Tag = cr.Spec.ClusterVersion
-			} else {
-				cr.Spec.VMInsert.Image.Tag = c.VMClusterDefault.VMInsertDefault.Version
+				tag = cr.Spec.ClusterVersion
 			}
+			if isTagAdjustable(tag) {
+				tag += clusterSuffix
+			}
+			cr.Spec.VMInsert.Image.Tag = tag
 		}
 		if cr.Spec.VMInsert.Port == "" {
 			cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
@@ -466,16 +506,18 @@ func addVMClusterDefaults(objI any) {
 		}
 		cr.Spec.VMSelect.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.VMSelect.Image.Repository)
 		if cr.Spec.VMSelect.Image.Tag == "" {
+			tag := c.VMClusterDefault.VMSelectDefault.Version
 			if cr.Spec.ClusterVersion != "" {
-				cr.Spec.VMSelect.Image.Tag = cr.Spec.ClusterVersion
-			} else {
-				cr.Spec.VMSelect.Image.Tag = c.VMClusterDefault.VMSelectDefault.Version
+				tag = cr.Spec.ClusterVersion
 			}
+			if isTagAdjustable(tag) {
+				tag += clusterSuffix
+			}
+			cr.Spec.VMSelect.Image.Tag = tag
 		}
 		if cr.Spec.VMSelect.Port == "" {
 			cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
 		}
-
 		if cr.Spec.VMSelect.DNSPolicy == "" {
 			cr.Spec.VMSelect.DNSPolicy = corev1.DNSClusterFirst
 		}
@@ -506,7 +548,11 @@ func addVMClusterDefaults(objI any) {
 		}
 		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
 		if cr.Spec.RequestsLoadBalancer.Spec.Image.Tag == "" {
-			cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = cr.Spec.ClusterVersion
+			tag := cr.Spec.ClusterVersion
+			if isTagAdjustable(tag) {
+				tag += lbSuffix
+			}
+			cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = tag
 		}
 		cv := config.ApplicationDefaults(c.VMAuthDefault)
 		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, &cv)
@@ -779,9 +825,6 @@ func addVLClusterDefaults(objI any) {
 			cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
 		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
-		if cr.Spec.RequestsLoadBalancer.Spec.Image.Tag == "" {
-			cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = cr.Spec.ClusterVersion
-		}
 		cv := config.ApplicationDefaults(c.VMAuthDefault)
 		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, &cv)
 		spec := &cr.Spec.RequestsLoadBalancer.Spec

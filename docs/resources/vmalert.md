@@ -304,9 +304,7 @@ VMAlert supports features [Reading rules from object storage](https://docs.victo
 and [Multitenancy](https://docs.victoriametrics.com/vmalert#multitenancy)
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
-For using Enterprise version of [vmalert](https://docs.victoriametrics.com/vmalert) you need to
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
- - change version of `vmalert` to version with `-enterprise` suffix using [Version management](#version-management).
+For using Enterprise version of [vmalert](https://docs.victoriametrics.com/vmalert) you need to specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref) and respective `-enterprise` and `-enterprise-cluster` container image suffices will be added automatically.
 
 ### Reading rules from object storage
 
@@ -328,8 +326,6 @@ spec:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
-  image:
-    tag: v1.110.13-enterprise
   extraArgs:
     # using enterprise features: Reading rules from object storage
     # more details about reading rules from object storage you can read on https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage
@@ -359,8 +355,6 @@ spec:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
-  image:
-    tag: v1.110.13-enterprise
   extraArgs:
     # using enterprise features: Multitenancy
     # more details about multitenancy you can read on https://docs.victoriametrics.com/vmalert#multitenancy

@@ -125,13 +125,13 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		},
 	}
 	volumes = append(volumes, spec.Volumes...)
-	vmounts := []corev1.VolumeMount{
+	vmMounts := []corev1.VolumeMount{
 		{
 			MountPath: "/opt/vmauth-config/",
 			Name:      configMountName,
 		},
 	}
-	vmounts = append(vmounts, spec.VolumeMounts...)
+	vmMounts = append(vmMounts, spec.VolumeMounts...)
 
 	args := []string{
 		"-auth.config=/opt/vmauth-config/config.yaml",
@@ -166,7 +166,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		Resources:       spec.Resources,
 		Image:           fmt.Sprintf("%s:%s", spec.Image.Repository, spec.Image.Tag),
 		ImagePullPolicy: spec.Image.PullPolicy,
-		VolumeMounts:    vmounts,
+		VolumeMounts:    vmMounts,
 	}
 	vmauthLBCnt = build.Probe(vmauthLBCnt, &spec)
 	containers := []corev1.Container{

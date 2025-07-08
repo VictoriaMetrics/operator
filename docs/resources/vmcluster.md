@@ -221,7 +221,7 @@ spec:
       pullPolicy: Always
 ```
 
-or for all cluster components all together, using `clusterVersion` property:
+or for all cluster components all together using `clusterVersion` property that expects version without `-cluster` suffix, which will be optionally added to cluster components.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -346,9 +346,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#vi
 VMCluster doesn't support yet feature 
 [Automatic discovery for vmstorage nodes](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#automatic-vmstorage-discovery).
 
-For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/Cluster-VictoriaMetrics) you need to:
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
- - change version of `vmcluster` to version with `-enterprise-cluster` suffix using [Version management](#version-management).
+For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/Cluster-VictoriaMetrics) you need to specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref) and respective `-enterprise` and `-enterprise-cluster` container image suffices will be added automatically.
 
 ### Downsampling
 
@@ -368,7 +366,7 @@ spec:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
-  clusterVersion: v1.110.13-enterprise-cluster
+  clusterVersion: v1.110.13
   vmselect:
     # enabling enterprise features for vmselect
     extraArgs:
@@ -403,7 +401,7 @@ spec:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
-  clusterVersion: v1.110.13-enterprise-cluster
+  clusterVersion: v1.110.13
   vmstorage:
     extraArgs:
       # using enterprise features: Retention filters
@@ -431,7 +429,7 @@ spec:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
-  clusterVersion: v1.110.13-enterprise-cluster
+  clusterVersion: v1.110.13
 
   # ...other fields...
 ```
@@ -458,7 +456,7 @@ spec:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
-  clusterVersion: v1.110.13-enterprise-cluster
+  clusterVersion: v1.110.13
   vmselect:
     extraArgs:
       # using enterprise features: mTLS protection

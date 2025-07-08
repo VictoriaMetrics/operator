@@ -256,7 +256,7 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
 		VMSelectDefault     struct {
 			Image    string `default:"victoriametrics/vmselect"`
-			Version  string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
+			Version  string `env:",expand" default:"${VM_METRICS_VERSION}"`
 			Port     string `default:"8481"`
 			Resource struct {
 				Limit struct {
@@ -271,7 +271,7 @@ type BaseOperatorConf struct {
 		} `prefix:"VMSELECTDEFAULT_"`
 		VMStorageDefault struct {
 			Image        string `default:"victoriametrics/vmstorage"`
-			Version      string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
+			Version      string `env:",expand" default:"${VM_METRICS_VERSION}"`
 			VMInsertPort string `default:"8400" env:"VMINSERTPORT"`
 			VMSelectPort string `default:"8401" env:"VMSELECTPORT"`
 			Port         string `default:"8482"`
@@ -288,7 +288,7 @@ type BaseOperatorConf struct {
 		} `prefix:"VMSTORAGEDEFAULT_"`
 		VMInsertDefault struct {
 			Image    string `default:"victoriametrics/vminsert"`
-			Version  string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
+			Version  string `env:",expand" default:"${VM_METRICS_VERSION}"`
 			Port     string `default:"8480"`
 			Resource struct {
 				Limit struct {
@@ -328,7 +328,7 @@ type BaseOperatorConf struct {
 	DisableSelfServiceScrapeCreation bool `default:"false" env:"DISABLESELFSERVICESCRAPECREATION"`
 	VMBackup                         struct {
 		Image               string `default:"victoriametrics/vmbackupmanager"`
-		Version             string `env:",expand" default:"${VM_METRICS_VERSION}-enterprise"`
+		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
 		Port                string `default:"8300"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {

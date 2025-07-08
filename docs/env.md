@@ -71,14 +71,14 @@
 | VM_VMSINGLEDEFAULT_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vmsingledefault-resource-request-cpu" id="variables-vm-vmsingledefault-resource-request-cpu">#</a> |
 | VM_VMCLUSTERDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmclusterdefault-usedefaultresources" id="variables-vm-vmclusterdefault-usedefaultresources">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_IMAGE: `victoriametrics/vmselect` <a href="#variables-vm-vmclusterdefault-vmselectdefault-image" id="variables-vm-vmclusterdefault-vmselectdefault-image">#</a> |
-| VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_VERSION: `${VM_METRICS_VERSION}-cluster` <a href="#variables-vm-vmclusterdefault-vmselectdefault-version" id="variables-vm-vmclusterdefault-vmselectdefault-version">#</a> |
+| VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmclusterdefault-vmselectdefault-version" id="variables-vm-vmclusterdefault-vmselectdefault-version">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_PORT: `8481` <a href="#variables-vm-vmclusterdefault-vmselectdefault-port" id="variables-vm-vmclusterdefault-vmselectdefault-port">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_RESOURCE_LIMIT_MEM: `1000Mi` <a href="#variables-vm-vmclusterdefault-vmselectdefault-resource-limit-mem" id="variables-vm-vmclusterdefault-vmselectdefault-resource-limit-mem">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_RESOURCE_LIMIT_CPU: `500m` <a href="#variables-vm-vmclusterdefault-vmselectdefault-resource-limit-cpu" id="variables-vm-vmclusterdefault-vmselectdefault-resource-limit-cpu">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_RESOURCE_REQUEST_MEM: `500Mi` <a href="#variables-vm-vmclusterdefault-vmselectdefault-resource-request-mem" id="variables-vm-vmclusterdefault-vmselectdefault-resource-request-mem">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_RESOURCE_REQUEST_CPU: `100m` <a href="#variables-vm-vmclusterdefault-vmselectdefault-resource-request-cpu" id="variables-vm-vmclusterdefault-vmselectdefault-resource-request-cpu">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_IMAGE: `victoriametrics/vmstorage` <a href="#variables-vm-vmclusterdefault-vmstoragedefault-image" id="variables-vm-vmclusterdefault-vmstoragedefault-image">#</a> |
-| VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_VERSION: `${VM_METRICS_VERSION}-cluster` <a href="#variables-vm-vmclusterdefault-vmstoragedefault-version" id="variables-vm-vmclusterdefault-vmstoragedefault-version">#</a> |
+| VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmclusterdefault-vmstoragedefault-version" id="variables-vm-vmclusterdefault-vmstoragedefault-version">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_VMINSERTPORT: `8400` <a href="#variables-vm-vmclusterdefault-vmstoragedefault-vminsertport" id="variables-vm-vmclusterdefault-vmstoragedefault-vminsertport">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_VMSELECTPORT: `8401` <a href="#variables-vm-vmclusterdefault-vmstoragedefault-vmselectport" id="variables-vm-vmclusterdefault-vmstoragedefault-vmselectport">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_PORT: `8482` <a href="#variables-vm-vmclusterdefault-vmstoragedefault-port" id="variables-vm-vmclusterdefault-vmstoragedefault-port">#</a> |
@@ -87,7 +87,7 @@
 | VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_RESOURCE_REQUEST_MEM: `500Mi` <a href="#variables-vm-vmclusterdefault-vmstoragedefault-resource-request-mem" id="variables-vm-vmclusterdefault-vmstoragedefault-resource-request-mem">#</a> |
 | VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_RESOURCE_REQUEST_CPU: `250m` <a href="#variables-vm-vmclusterdefault-vmstoragedefault-resource-request-cpu" id="variables-vm-vmclusterdefault-vmstoragedefault-resource-request-cpu">#</a> |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_IMAGE: `victoriametrics/vminsert` <a href="#variables-vm-vmclusterdefault-vminsertdefault-image" id="variables-vm-vmclusterdefault-vminsertdefault-image">#</a> |
-| VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_VERSION: `${VM_METRICS_VERSION}-cluster` <a href="#variables-vm-vmclusterdefault-vminsertdefault-version" id="variables-vm-vmclusterdefault-vminsertdefault-version">#</a> |
+| VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmclusterdefault-vminsertdefault-version" id="variables-vm-vmclusterdefault-vminsertdefault-version">#</a> |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_PORT: `8480` <a href="#variables-vm-vmclusterdefault-vminsertdefault-port" id="variables-vm-vmclusterdefault-vminsertdefault-port">#</a> |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_LIMIT_MEM: `500Mi` <a href="#variables-vm-vmclusterdefault-vminsertdefault-resource-limit-mem" id="variables-vm-vmclusterdefault-vminsertdefault-resource-limit-mem">#</a> |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_LIMIT_CPU: `500m` <a href="#variables-vm-vmclusterdefault-vminsertdefault-resource-limit-cpu" id="variables-vm-vmclusterdefault-vminsertdefault-resource-limit-cpu">#</a> |
@@ -106,7 +106,7 @@
 | VM_VMALERTMANAGER_RESOURCE_REQUEST_CPU: `30m` <a href="#variables-vm-vmalertmanager-resource-request-cpu" id="variables-vm-vmalertmanager-resource-request-cpu">#</a> |
 | VM_DISABLESELFSERVICESCRAPECREATION: `false` <a href="#variables-vm-disableselfservicescrapecreation" id="variables-vm-disableselfservicescrapecreation">#</a> |
 | VM_VMBACKUP_IMAGE: `victoriametrics/vmbackupmanager` <a href="#variables-vm-vmbackup-image" id="variables-vm-vmbackup-image">#</a> |
-| VM_VMBACKUP_VERSION: `${VM_METRICS_VERSION}-enterprise` <a href="#variables-vm-vmbackup-version" id="variables-vm-vmbackup-version">#</a> |
+| VM_VMBACKUP_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmbackup-version" id="variables-vm-vmbackup-version">#</a> |
 | VM_VMBACKUP_PORT: `8300` <a href="#variables-vm-vmbackup-port" id="variables-vm-vmbackup-port">#</a> |
 | VM_VMBACKUP_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmbackup-usedefaultresources" id="variables-vm-vmbackup-usedefaultresources">#</a> |
 | VM_VMBACKUP_RESOURCE_LIMIT_MEM: `500Mi` <a href="#variables-vm-vmbackup-resource-limit-mem" id="variables-vm-vmbackup-resource-limit-mem">#</a> |

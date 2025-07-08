@@ -207,9 +207,7 @@ Also, you can specify requests without limits - in this case default values for 
 Custom resource `VMAuth` supports feature [IP filters](https://docs.victoriametrics.com/vmauth#ip-filters)
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
-For using Enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth) you need to:
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
- - change version of `vmauth` to version with `-enterprise` suffix using [Version management](#version-management).
+For using Enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth) you need to specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref) and respective `-enterprise` and `-enterprise-cluster` container image suffices will be added automatically.
 
 ### IP Filters
 
@@ -229,8 +227,6 @@ spec:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
-  image:
-    tag: v1.110.13-enterprise
   # using enterprise features: ip filters for vmauth
   # more details about ip filters you can read in https://docs.victoriametrics.com/vmauth#ip-filters
   ip_filters:

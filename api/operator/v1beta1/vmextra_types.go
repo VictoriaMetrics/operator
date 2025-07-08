@@ -1060,6 +1060,43 @@ func LastAppliedChangesAsPatch(crMeta metav1.ObjectMeta, spec any) (client.Patch
 
 }
 
+// StatefulSetUpdateStrategyBehavior customizes behavior for StatefulSet updates.
+type StatefulSetUpdateStrategyBehavior struct {
+	// MaxUnavailable defines the maximum number of pods that can be unavailable during the update.
+	// It can be specified as an absolute number (e.g. 2) or a percentage of the total pods (e.g. "50%").
+	// For example, if set to 100%, all pods will be upgraded at once, minimizing downtime when needed.
+	// +optional
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
+}
+
+var percentPattern = regexp.MustCompile(`^\d+%$`)
+
+func (s *StatefulSetUpdateStrategyBehavior) Validate() error {
+	// If maxUnavailable is an integer, it must be >= 1
+	if s.MaxUnavailable.Type == intstr.Int {
+		if s.MaxUnavailable.IntValue() < 1 {
+			return fmt.Errorf("maxUnavailable must be greater than 0, got %d", s.MaxUnavailable.IntValue())
+		}
+	}
+
+	// If maxUnavailable is a percentage, it must be >= 1%
+	if s.MaxUnavailable.Type == intstr.String {
+		if !percentPattern.MatchString(s.MaxUnavailable.StrVal) {
+			return fmt.Errorf("maxUnavailable must be a percentage, got %s", s.MaxUnavailable.StrVal)
+		}
+
+		percent, err := strconv.Atoi(s.MaxUnavailable.StrVal[:len(s.MaxUnavailable.StrVal)-1])
+		if err != nil {
+			return err
+		}
+		if percent < 1 || percent > 100 {
+			return fmt.Errorf("maxUnavailable percentage must be between 1%% and 100%%, got %s", s.MaxUnavailable.StrVal)
+		}
+	}
+
+	return nil
+}
+
 // CommonDefaultableParams contains Application settings
 // with known values populated from operator configuration
 type CommonDefaultableParams struct {

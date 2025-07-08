@@ -175,6 +175,7 @@ func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prev
 				cr.Spec.VMSelect.ReplicaCount = count
 			}
 		},
+		UpdateBehavior: cr.Spec.VMSelect.RollingUpdateStrategyBehavior,
 	}
 	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
 }
@@ -390,6 +391,7 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 	stsOpts := reconcile.STSOptions{
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		SelectorLabels: cr.VMStorageSelectorLabels,
+		UpdateBehavior: cr.Spec.VMStorage.RollingUpdateStrategyBehavior,
 	}
 	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
 }

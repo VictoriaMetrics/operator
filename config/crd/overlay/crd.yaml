@@ -23871,6 +23871,21 @@ spec:
                       Default is OnDelete, in this case operator handles update process
                       Can be changed for RollingUpdate
                     type: string
+                  rollingUpdateStrategyBehavior:
+                    description: |-
+                      RollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+                      It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+                    properties:
+                      maxUnavailable:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          MaxUnavailable defines the maximum number of pods that can be unavailable during the update.
+                          It can be specified as an absolute number (e.g. 2) or a percentage of the total pods (e.g. "50%").
+                          For example, if set to 100%, all pods will be upgraded at once, minimizing downtime when needed.
+                        x-kubernetes-int-or-string: true
+                    type: object
                   runtimeClassName:
                     description: |-
                       RuntimeClassName - defines runtime class for kubernetes pod.
@@ -25120,6 +25135,21 @@ spec:
                       Default is OnDelete, in this case operator handles update process
                       Can be changed for RollingUpdate
                     type: string
+                  rollingUpdateStrategyBehavior:
+                    description: |-
+                      RollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+                      It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+                    properties:
+                      maxUnavailable:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          MaxUnavailable defines the maximum number of pods that can be unavailable during the update.
+                          It can be specified as an absolute number (e.g. 2) or a percentage of the total pods (e.g. "50%").
+                          For example, if set to 100%, all pods will be upgraded at once, minimizing downtime when needed.
+                        x-kubernetes-int-or-string: true
+                    type: object
                   runtimeClassName:
                     description: |-
                       RuntimeClassName - defines runtime class for kubernetes pod.

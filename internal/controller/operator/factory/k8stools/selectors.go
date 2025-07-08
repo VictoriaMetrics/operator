@@ -32,7 +32,7 @@ func (s *SelectorOpts) isUnmanaged() bool {
 }
 
 // VisitSelected applies given function to any T child object matched by selectors defined in parent obj selectors
-func VisitSelected[L any, PL listing[L]](ctx context.Context, rclient client.Client, s *SelectorOpts, cb func(PL)) error {
+func VisitSelected[T any, PT listing[T]](ctx context.Context, rclient client.Client, s *SelectorOpts, cb func(PT)) error {
 	if s.isUnmanaged() {
 		return nil
 	}

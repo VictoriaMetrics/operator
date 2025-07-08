@@ -139,7 +139,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vmauth
-    tag: v1.93.4
+    tag: v1.110.13
     pullPolicy: Always
   # ...
 ```
@@ -154,7 +154,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vmauth
-    tag: v1.93.4
+    tag: v1.110.13
     pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret
@@ -207,12 +207,9 @@ Also, you can specify requests without limits - in this case default values for 
 Custom resource `VMAuth` supports feature [IP filters](https://docs.victoriametrics.com/vmauth#ip-filters)
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
-For using Enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth)
-you need to change version of `vmauth` to version with `-enterprise` suffix using [Version management](#version-management).
-
-All the enterprise apps require `-eula` command-line flag to be passed to them. 
-This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
-So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMAuth`:
+For using Enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth) you need to:
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - change version of `vmauth` to version with `-enterprise` suffix using [Version management](#version-management).
 
 ### IP Filters
 
@@ -228,15 +225,12 @@ metadata:
   name: ent-example
 spec:
   # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
   image:
-    # enterprise version of vmauth
-    tag: v1.93.5-enterprise
-  extraArgs:
-    # should be true and means that you have the legal right to run a vmauth enterprise
-    # that can either be a signed contract or an email with confirmation to run the service in a trial period
-    # https://victoriametrics.com/legal/esa/
-    eula: true
-  
+    tag: v1.110.13-enterprise
   # using enterprise features: ip filters for vmauth
   # more details about ip filters you can read in https://docs.victoriametrics.com/vmauth#ip-filters
   ip_filters:

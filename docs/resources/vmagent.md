@@ -596,7 +596,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vmagent
-    tag: v1.93.4
+    tag: v1.110.13
     pullPolicy: Always
   # ...
 ```
@@ -611,7 +611,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vmagent
-    tag: v1.93.4
+    tag: v1.110.13
     pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret
@@ -664,12 +664,9 @@ Also, you can specify requests without limits - in this case default values for 
 VMAgent supports feature [Kafka integration](https://docs.victoriametrics.com/vmagent#kafka-integration)
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
-For using Enterprise version of [vmagent](https://docs.victoriametrics.com/vmagent)
-you need to change version of `vmagent` to version with `-enterprise` suffix using [Version management](#version-management).
-
-All the enterprise apps require `-eula` command-line flag to be passed to them.
-This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
-So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMAgent`:
+For using Enterprise version of [vmagent](https://docs.victoriametrics.com/vmagent) you need to:
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - change version of `vmagent` to version with `-enterprise` suffix using [Version management](#version-management).
 
 After that you can pass [Kafka integration](https://docs.victoriametrics.com/vmagent#kafka-integration)
 flags to `VMAgent` with [extraArgs](./#extra-arguments).
@@ -685,15 +682,13 @@ metadata:
   name: ent-example
 spec:
   # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
   image:
-    # enterprise version of vmagent
-    tag: v1.93.5-enterprise
+    tag: v1.110.13-enterprise
   extraArgs:
-    # should be true and means that you have the legal right to run a vmagent enterprise
-    # that can either be a signed contract or an email with confirmation to run the service in a trial period
-    # https://victoriametrics.com/legal/esa/
-    eula: true
-    
     # using enterprise features: reading metrics from kafka
     # more details about kafka integration you can read on https://docs.victoriametrics.com/vmagent#kafka-integration
     # more details about these and other flags you can read on https://docs.victoriametrics.com/vmagent#command-line-flags-for-kafka-consumer
@@ -716,15 +711,12 @@ metadata:
   name: ent-example
 spec:
   # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
   image:
-    # enterprise version of vmagent
-    tag: v1.93.5-enterprise
-  extraArgs:
-    # should be true and means that you have the legal right to run a vmagent enterprise
-    # that can either be a signed contract or an email with confirmation to run the service in a trial period
-    # https://victoriametrics.com/legal/esa/
-    eula: true
-  
+    tag: v1.110.13-enterprise
   # using enterprise features: writing metrics to Kafka
   # more details about kafka integration you can read on https://docs.victoriametrics.com/vmagent/#kafka-integration
   remoteWrite:

@@ -205,20 +205,31 @@ spec:
     replicaCount: 2
     image:
       repository: victoriametrics/vmstorage
-      tag: v1.93.4-cluster
+      tag: v1.110.13-cluster
       pullPolicy: Always
   vmselect:
     replicaCount: 2
     image:
       repository: victoriametrics/vmselect
-      tag: v1.93.4-cluster
+      tag: v1.110.13-cluster
       pullPolicy: Always
   vminsert:
     replicaCount: 2
     image:
       repository: victoriametrics/vminsert
-      tag: v1.93.4-cluster
+      tag: v1.110.13-cluster
       pullPolicy: Always
+```
+
+or for all cluster components all together, using `clusterVersion` property:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example
+spec:
+  clusterVersion: v1.110.13-cluster
 ```
 
 Also, you can specify `imagePullSecrets` if you are pulling images from private repo, 
@@ -234,19 +245,19 @@ spec:
     replicaCount: 2
     image:
       repository: victoriametrics/vmstorage
-      tag: v1.93.4-cluster
+      tag: v1.110.13-cluster
       pullPolicy: Always
   vmselect:
     replicaCount: 2
     image:
       repository: victoriametrics/vmselect
-      tag: v1.93.4-cluster
+      tag: v1.110.13-cluster
       pullPolicy: Always
   vminsert:
     replicaCount: 2
     image:
       repository: victoriametrics/vminsert
-      tag: v1.93.4-cluster
+      tag: v1.110.13-cluster
       pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret
@@ -317,7 +328,7 @@ These default parameters will be used if:
 Field `resources` in `VMCluster/*` spec have higher priority than operator parameters.
 
 If you set `VM_VMCLUSTERDEFAULT_USEDEFAULTRESOURCES` to `false` and don't specify `resources` in `VMCluster/*` CRD,
-then `VMCluste/*r` pods will be created without resource requests and limits.
+then `VMCluster/*` pods will be created without resource requests and limits.
 
 Also, you can specify requests without limits - in this case default values for limits will not be used.
 
@@ -335,12 +346,9 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#vi
 VMCluster doesn't support yet feature 
 [Automatic discovery for vmstorage nodes](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#automatic-vmstorage-discovery).
 
-For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/Cluster-VictoriaMetrics)
-you need to change version of `VMCluster` to version with `-enterprise` suffix using [Version management](#version-management).
-
-All the enterprise apps require `-eula` command-line flag to be passed to them.
-This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
-So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMCluster`.
+For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/Cluster-VictoriaMetrics) you need to:
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - change version of `vmcluster` to version with `-enterprise-cluster` suffix using [Version management](#version-management).
 
 ### Downsampling
 
@@ -355,33 +363,21 @@ kind: VMCluster
 metadata:
   name: ent-example
 spec:
-  
+  # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
+  clusterVersion: v1.110.13-enterprise-cluster
   vmselect:
     # enabling enterprise features for vmselect
-    image:
-      # enterprise version of vmselect
-      tag: v1.93.5-enterprise-cluster
     extraArgs:
-      # should be true and means that you have the legal right to run a vmselect enterprise
-      # that can either be a signed contract or an email with confirmation to run the service in a trial period
-      # https://victoriametrics.com/legal/esa/
-      eula: true
-      
       # using enterprise features: Downsampling
       # more details about downsampling you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#downsampling
       downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
-      
   vmstorage:
     # enabling enterprise features for vmstorage
-    image:
-      # enterprise version of vmstorage
-      tag: v1.93.5-enterprise-cluster
     extraArgs:
-      # should be true and means that you have the legal right to run a vmstorage enterprise
-      # that can either be a signed contract or an email with confirmation to run the service in a trial period
-      # https://victoriametrics.com/legal/esa/
-      eula: true
-
       # using enterprise features: Downsampling
       # more details about downsampling you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#downsampling
       downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
@@ -402,18 +398,14 @@ kind: VMCluster
 metadata:
   name: ent-example
 spec:
-  
+  # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
+  clusterVersion: v1.110.13-enterprise-cluster
   vmstorage:
-    # enabling enterprise features for vmstorage
-    image:
-      # enterprise version of vmstorage
-      tag: v1.93.5-enterprise-cluster
     extraArgs:
-      # should be true and means that you have the legal right to run a vmstorage enterprise
-      # that can either be a signed contract or an email with confirmation to run the service in a trial period
-      # https://victoriametrics.com/legal/esa/
-      eula: true
-
       # using enterprise features: Retention filters
       # more details about retention filters you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#retention-filters
       retentionFilter: '{vm_account_id="5",env="dev"}:5d,{vm_account_id="5",env="prod"}:5y'
@@ -434,39 +426,12 @@ kind: VMCluster
 metadata:
   name: ent-example
 spec:
-  
-  vmselect:
-    # enabling enterprise features for vmselect
-    image:
-      # enterprise version of vmselect
-      tag: v1.93.5-enterprise-cluster
-    extraArgs:
-      # should be true and means that you have the legal right to run a vmselect enterprise
-      # that can either be a signed contract or an email with confirmation to run the service in a trial period
-      # https://victoriametrics.com/legal/esa/
-      eula: true
-      
-  vminsert:
-    # enabling enterprise features for vminsert
-    image:
-      # enterprise version of vminsert
-      tag: v1.93.5-enterprise-cluster
-    extraArgs:
-      # should be true and means that you have the legal right to run a vminsert enterprise
-      # that can either be a signed contract or an email with confirmation to run the service in a trial period
-      # https://victoriametrics.com/legal/esa/
-      eula: true
-      
-  vmstorage:
-    # enabling enterprise features for vmstorage
-    image:
-      # enterprise version of vmstorage
-      tag: v1.93.5-enterprise-cluster
-    extraArgs:
-      # should be true and means that you have the legal right to run a vmstorage enterprise
-      # that can either be a signed contract or an email with confirmation to run the service in a trial period
-      # https://victoriametrics.com/legal/esa/
-      eula: true
+  # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
+  clusterVersion: v1.110.13-enterprise-cluster
 
   # ...other fields...
 ```
@@ -488,18 +453,14 @@ kind: VMCluster
 metadata:
   name: ent-example
 spec:
-  
+  # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
+  clusterVersion: v1.110.13-enterprise-cluster
   vmselect:
-    # enabling enterprise features for vmselect
-    image:
-      # enterprise version of vmselect
-      tag: v1.93.5-enterprise-cluster
     extraArgs:
-      # should be true and means that you have the legal right to run a vmselect enterprise
-      # that can either be a signed contract or an email with confirmation to run the service in a trial period
-      # https://victoriametrics.com/legal/esa/
-      eula: true
-      
       # using enterprise features: mTLS protection
       # more details about mTLS protection you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#mtls-protection
       cluster.tls: true
@@ -515,16 +476,7 @@ spec:
         mountPath: /etc/mtls
       
   vminsert:
-    # enabling enterprise features for vminsert
-    image:
-      # enterprise version of vminsert
-      tag: v1.93.5-enterprise-cluster
     extraArgs:
-      # should be true and means that you have the legal right to run a vminsert enterprise
-      # that can either be a signed contract or an email with confirmation to run the service in a trial period
-      # https://victoriametrics.com/legal/esa/
-      eula: true
-
       # using enterprise features: mTLS protection
       # more details about mTLS protection you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#mtls-protection
       cluster.tls: true
@@ -540,21 +492,12 @@ spec:
         mountPath: /etc/mtls
       
   vmstorage:
-    # enabling enterprise features for vmstorage
-    image:
-      # enterprise version of vmstorage
-      tag: v1.93.5-enterprise-cluster
     env:
       - name: POD
         valueFrom:
           fieldRef:
             fieldPath: metadata.name
     extraArgs:
-      # should be true and means that you have the legal right to run a vmstorage enterprise
-      # that can either be a signed contract or an email with confirmation to run the service in a trial period
-      # https://victoriametrics.com/legal/esa/
-      eula: true
-
       # using enterprise features: mTLS protection
       # more details about mTLS protection you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#mtls-protection
       cluster.tls: true

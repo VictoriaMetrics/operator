@@ -235,7 +235,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vmalert
-    tag: v1.93.4
+    tag: v1.110.13
     pullPolicy: Always
   # ...
 ```
@@ -250,7 +250,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vmalert
-    tag: v1.93.4
+    tag: v1.110.13
     pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret
@@ -304,12 +304,9 @@ VMAlert supports features [Reading rules from object storage](https://docs.victo
 and [Multitenancy](https://docs.victoriametrics.com/vmalert#multitenancy)
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
-For using Enterprise version of [vmalert](https://docs.victoriametrics.com/vmalert)
-you need to change version of `VMAlert` to version with `-enterprise` suffix using [Version management](#version-management).
-
-All the enterprise apps require `-eula` command-line flag to be passed to them.
-This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
-So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMAlert`:
+For using Enterprise version of [vmalert](https://docs.victoriametrics.com/vmalert) you need to
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - change version of `vmalert` to version with `-enterprise` suffix using [Version management](#version-management).
 
 ### Reading rules from object storage
 
@@ -327,15 +324,13 @@ metadata:
   name: ent-example
 spec:
   # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
   image:
-    # enterprise version of vmalert
-    tag: v1.93.5-enterprise
+    tag: v1.110.13-enterprise
   extraArgs:
-    # should be true and means that you have the legal right to run a vmalert enterprise
-    # that can either be a signed contract or an email with confirmation to run the service in a trial period
-    # https://victoriametrics.com/legal/esa/
-    eula: true
-    
     # using enterprise features: Reading rules from object storage
     # more details about reading rules from object storage you can read on https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage
     rule: s3://bucket/dir/alert.rules
@@ -360,15 +355,13 @@ metadata:
   name: ent-example
 spec:
   # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
   image:
-    # enterprise version of vmalert
-    tag: v1.93.5-enterprise
+    tag: v1.110.13-enterprise
   extraArgs:
-    # should be true and means that you have the legal right to run a vmalert enterprise
-    # that can either be a signed contract or an email with confirmation to run the service in a trial period
-    # https://victoriametrics.com/legal/esa/
-    eula: true
-
     # using enterprise features: Multitenancy
     # more details about multitenancy you can read on https://docs.victoriametrics.com/vmalert#multitenancy
     clusterMode: true 

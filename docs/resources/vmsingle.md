@@ -50,7 +50,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/victoria-metrics
-    tag: v1.93.4
+    tag: v1.110.13
     pullPolicy: Always
   # ...
 ```
@@ -65,7 +65,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/victoria-metrics
-    tag: v1.93.4
+    tag: v1.110.13
     pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret
@@ -121,12 +121,9 @@ VMSingle supports features from [VictoriaMetrics Enterprise](https://docs.victor
 - [Multiple retentions / Retention filters](https://docs.victoriametrics.com/#retention-filters)
 - [Backup automation](https://docs.victoriametrics.com/vmbackupmanager)
 
-For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/)
-you need to change version of `VMSingle` to version with `-enterprise` suffix using [Version management](#version-management).
-
-All the enterprise apps require `-eula` command-line flag to be passed to them.
-This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
-So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMSingle`.
+For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/) you need to:
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - change version of `vmsingle` to version with `-enterprise` suffix using [Version management](#version-management).
 
 ### Downsampling
 
@@ -142,15 +139,13 @@ metadata:
   name: ent-example
 spec:
   # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
   image:
-    # enterprise version of vmsingle
-    tag: v1.93.5-enterprise
+    tag: v1.110.13-enterprise
   extraArgs:
-    # should be true and means that you have the legal right to run a vmsingle enterprise
-    # that can either be a signed contract or an email with confirmation to run the service in a trial period
-    # https://victoriametrics.com/legal/esa/
-    eula: true
-    
     # using enterprise features: Downsampling
     # more details about downsampling you can read on https://docs.victoriametrics.com/#downsampling
     downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
@@ -169,15 +164,13 @@ metadata:
   name: ent-example
 spec:
   # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
   image:
-    # enterprise version of vmsingle
-    tag: v1.93.5-enterprise
+    tag: v1.110.13-enterprise
   extraArgs:
-    # should be true and means that you have the legal right to run a vmsingle enterprise
-    # that can either be a signed contract or an email with confirmation to run the service in a trial period
-    # https://victoriametrics.com/legal/esa/
-    eula: true
-    
     # using enterprise features: Retention filters
     # more details about retention filters you can read on https://docs.victoriametrics.com/#retention-filters
     retentionFilter: '{team="juniors"}:3d,{env=~"dev|staging"}:30d'
@@ -201,13 +194,14 @@ kind: VMSingle
 metadata:
   name: example
 spec:
-
+  # enabling enterprise features
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
+  image:
+    tag: v1.110.13-enterprise
   vmBackup:
-    # should be true and means that you have the legal right to run a vmsingle enterprise
-    # that can either be a signed contract or an email with confirmation to run the service in a trial period
-    # https://victoriametrics.com/legal/esa/
-    acceptEULA: true
-
     # using enterprise features: Backup automation
     # more details about backup automation you can read on https://docs.victoriametrics.com/vmbackupmanager/
     destination: "s3://your_bucket/folder"
@@ -262,13 +256,14 @@ Steps:
     metadata:
       name: vmsingle
     spec:
-    
+      # enabling enterprise features
+      license:
+        keyRef:
+          name: k8s-secret-that-contains-license
+          key: key-in-a-secret-that-contains-license
+      image:
+        tag: v1.110.13-enterprise
       vmBackup:
-        # should be true and means that you have the legal right to run a vmsingle enterprise
-        # that can either be a signed contract or an email with confirmation to run the service in a trial period
-        # https://victoriametrics.com/legal/esa/
-        acceptEULA: true
-    
         # using enterprise features: Backup automation
         # more details about backup automation you can read https://docs.victoriametrics.com/vmbackupmanager/
         destination: "s3://your_bucket/folder"

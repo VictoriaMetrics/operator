@@ -1,6 +1,8 @@
 package build
 
 import (
+	"strings"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -184,7 +186,7 @@ func addVMAuthDefaults(objI any) {
 		}
 	}
 	cv := config.ApplicationDefaults(c.VMAuthDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
 
@@ -193,7 +195,7 @@ func addVMAlertDefaults(objI any) {
 	c := getCfg()
 
 	cv := config.ApplicationDefaults(c.VMAlertDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 	if cr.Spec.ConfigReloaderImageTag == "" {
 		panic("cannot be empty")
@@ -205,7 +207,7 @@ func addVMAgentDefaults(objI any) {
 	c := getCfg()
 
 	cv := config.ApplicationDefaults(c.VMAgentDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
 
@@ -214,7 +216,7 @@ func addVMSingleDefaults(objI any) {
 	c := getCfg()
 	useBackupDefaultResources := c.VMBackup.UseDefaultResources
 	cv := config.ApplicationDefaults(c.VMSingleDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 	if cr.Spec.UseDefaultResources != nil {
 		useBackupDefaultResources = *cr.Spec.UseDefaultResources
 	}
@@ -241,7 +243,7 @@ func addVLogsDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VLogs)
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VLogsDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
 }
 
 func addVMAnomalyDefaults(objI any) {
@@ -264,7 +266,7 @@ func addVMAnomalyDefaults(objI any) {
 	}
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VMAnomalyDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
 	if cr.Spec.Monitoring == nil {
 		cr.Spec.Monitoring = &vmv1.VMAnomalyMonitoringSpec{
 			Pull: &vmv1.VMAnomalyMonitoringPullSpec{
@@ -278,7 +280,7 @@ func addVLSingleDefaults(objI any) {
 	cr := objI.(*vmv1.VLSingle)
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VLSingleDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
 }
 
 func addVMAlertmanagerDefaults(objI any) {
@@ -320,7 +322,7 @@ func addVMAlertmanagerDefaults(objI any) {
 	if cr.Spec.TerminationGracePeriodSeconds == nil {
 		cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](120)
 	}
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
 
@@ -507,7 +509,7 @@ func addVMClusterDefaults(objI any) {
 		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
 
 		cv := config.ApplicationDefaults(c.VMAuthDefault)
-		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, &cv)
+		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 		spec := &cr.Spec.RequestsLoadBalancer.Spec
 		if spec.EmbeddedProbes == nil {
 			spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{}
@@ -525,7 +527,7 @@ func addVMClusterDefaults(objI any) {
 	}
 }
 
-func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, appDefaults *config.ApplicationDefaults) {
+func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, license *vmv1beta1.License, appDefaults *config.ApplicationDefaults) {
 	c := getCfg()
 
 	if common.Image.Repository == "" {
@@ -537,7 +539,11 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, appDef
 	common.Image.Repository = formatContainerImage(c.ContainerRegistry, common.Image.Repository)
 	if common.Image.Tag == "" {
 		common.Image.Tag = appDefaults.Version
+		if license.IsProvided() {
+			common.Image.Tag = addEntSuffixToTag(common.Image.Tag)
+		}
 	}
+
 	if common.Port == "" {
 		common.Port = appDefaults.Port
 	}
@@ -608,6 +614,8 @@ func addDefaultsToVMBackup(cr *vmv1beta1.VMBackup, useDefaultResources bool, app
 	cr.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Image.Repository)
 	if cr.Image.Tag == "" {
 		cr.Image.Tag = appDefaults.Version
+		// vmbackup always uses enterprise version
+		cr.Image.Tag = addEntSuffixToTag(cr.Image.Tag)
 	}
 	if cr.Port == "" {
 		cr.Port = appDefaults.Port
@@ -779,7 +787,7 @@ func addVLClusterDefaults(objI any) {
 		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
 
 		cv := config.ApplicationDefaults(c.VMAuthDefault)
-		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, &cv)
+		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, nil, &cv)
 		spec := &cr.Spec.RequestsLoadBalancer.Spec
 		if spec.EmbeddedProbes == nil {
 			spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{}
@@ -795,4 +803,25 @@ func addVLClusterDefaults(objI any) {
 			spec.AdditionalServiceSpec.UseAsDefault = true
 		}
 	}
+}
+
+func addEntSuffixToTag(versionTag string) string {
+	// expected version tag is:
+	// vX.Y.Z with optional suffix -
+	if !strings.HasPrefix(versionTag, "v") || strings.Count(versionTag, ".") != 2 {
+		return versionTag
+	}
+	idx := strings.Index(versionTag, "-")
+	if idx > 0 {
+		suffix := versionTag[idx:]
+		switch suffix {
+		case "-enterprise", "-enterprise-cluster":
+		case "-cluster":
+			versionTag = versionTag[:idx] + "-enterprise-cluster"
+		}
+	} else {
+		versionTag += "-enterprise"
+	}
+
+	return versionTag
 }

@@ -2,7 +2,7 @@ ARG ROOT
 ARG BUILDINFO
 
 # Build the manager binary
-FROM golang:1.24.4 AS builder
+FROM golang:1.24.5 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 

@@ -384,7 +384,8 @@ func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.Names
 		}
 		revision := pod.Labels[podRevisionLabel]
 		if revision != desiredRevision {
-			return true, fmt.Errorf("unexpected pod label %s=%s, want revision=%s", podRevisionLabel, revision, desiredRevision)
+			logger.WithContext(ctx).Info(fmt.Sprintf("unexpected pod label %s=%s, want revision=%s", podRevisionLabel, revision, desiredRevision))
+			return false, nil
 		}
 		if PodIsReady(pod, minReadySeconds) {
 			return true, nil

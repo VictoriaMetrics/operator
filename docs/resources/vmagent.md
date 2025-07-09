@@ -212,6 +212,8 @@ and `VMAgent` loses state of the PersistentQueue on pod restarts.
 
 In `StatefulMode` `VMAgent` doesn't lose state of the PersistentQueue (file-based buffer size for unsent data) on pod restarts.
 Operator creates `StatefulSet` and, with provided `PersistentVolumeClaimTemplate` at `StatefulStorage` configuration param, metrics queue is stored on disk.
+Operator automatically configures [remoteWrite.maxDiskUsagePerURL](https://docs.victoriametrics.com/victoriametrics/vmagent/#on-disk-persistence) based on provided `requests.storage`.
+It uses the following formula for calculation: `requests.storage/count(remoteWrite)`
 
 Example of configuration for `StatefulMode`:
 

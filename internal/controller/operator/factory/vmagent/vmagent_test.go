@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -755,7 +754,7 @@ func TestCreateOrUpdate(t *testing.T) {
 	}
 }
 
-func TestBuildRemoteWrites(t *testing.T) {
+func TestBuildRemoteWriteArgs(t *testing.T) {
 	tests := []struct {
 		name              string
 		cr                *vmv1beta1.VMAgent
@@ -813,7 +812,13 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.tlsCAFile=/etc/vmagent-tls/certs/default_tls-secret_ca,/path/to_ca", "-remoteWrite.tlsCertFile=,/etc/vmagent-tls/certs/default_tls-secret_cert", "-remoteWrite.url=localhost:8429,localhost:8429"},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.tlsCAFile=/etc/vmagent-tls/certs/default_tls-secret_ca,/path/to_ca`,
+				`-remoteWrite.tlsCertFile=,/etc/vmagent-tls/certs/default_tls-secret_cert`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+				`-remoteWrite.url=localhost:8429,localhost:8429`,
+			},
 		},
 		{
 			name: "test insecure with key only",
@@ -850,7 +855,13 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.tlsInsecureSkipVerify=true", "-remoteWrite.tlsKeyFile=/etc/vmagent-tls/certs/default_tls-secret_key"},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.url=localhost:8429`,
+				`-remoteWrite.tlsInsecureSkipVerify=true`,
+				`-remoteWrite.tlsKeyFile=/etc/vmagent-tls/certs/default_tls-secret_key`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
 		},
 		{
 			name: "test insecure",
@@ -869,7 +880,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				}},
 			},
-			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.tlsInsecureSkipVerify=true"},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.url=localhost:8429`,
+				`-remoteWrite.tlsInsecureSkipVerify=true`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
 		},
 		{
 			name: "test inline relabeling",
@@ -911,7 +927,13 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.url=localhost:8429,remote-1:8429,remote-1:8429", "-remoteWrite.tlsInsecureSkipVerify=true,true,true", "-remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_relabeling-0.yaml,,/etc/vm/relabeling/url_relabeling-2.yaml"},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.url=localhost:8429,remote-1:8429,remote-1:8429`,
+				`-remoteWrite.tlsInsecureSkipVerify=true,true,true`,
+				`-remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_relabeling-0.yaml,,/etc/vm/relabeling/url_relabeling-2.yaml`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
 		},
 		{
 			name: "test sendTimeout",
@@ -932,7 +954,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				}},
 			},
-			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.url=localhost:8429,localhost:8431`,
+				`-remoteWrite.sendTimeout=10s,15s`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
 		},
 		{
 			name: "test multi-tenant",
@@ -958,7 +985,13 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.url=http://vminsert-cluster-1:8480/insert/multitenant/prometheus/api/v1/write,http://vmagent-aggregation:8429", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{
+				`-enableMultitenantHandlers=true`,
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.url=http://vminsert-cluster-1:8480/insert/multitenant/prometheus/api/v1/write,http://vmagent-aggregation:8429`,
+				`-remoteWrite.sendTimeout=10s,15s`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
 		},
 		{
 			name: "test maxDiskUsage",
@@ -981,7 +1014,92 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				}},
 			},
-			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432", "-remoteWrite.maxDiskUsagePerURL=1500MB,500MB,1073741824"},
+			want: []string{
+				`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
+				`-remoteWrite.maxDiskUsagePerURL=1500MB,500MB,1073741824`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
+		},
+		{
+			name: "test automatic maxDiskUsage",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					StatefulMode: true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
+								},
+							},
+						},
+					},
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "localhost:8429",
+						},
+						{
+							URL: "localhost:8431",
+						},
+						{
+							URL: "localhost:8432",
+						},
+					},
+				},
+			},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=3579139413`,
+				`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
+				`-remoteWrite.tmpDataPath=/vmagent_pq/vmagent-remotewrite-data`,
+			},
+		},
+		{
+			name: "test automatic maxDiskUsage with at least one defined",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					StatefulMode: true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
+								},
+							},
+						},
+					},
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:          "localhost:8429",
+							MaxDiskUsage: ptr.To(vmv1beta1.BytesString("5000MB")),
+						},
+						{
+							URL: "localhost:8431",
+						},
+						{
+							URL: "localhost:8432",
+						},
+					},
+				},
+			},
+			want: []string{
+				`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
+				`-remoteWrite.maxDiskUsagePerURL=5000MB,3579139413,3579139413`,
+				`-remoteWrite.tmpDataPath=/vmagent_pq/vmagent-remotewrite-data`,
+			},
 		},
 		{
 			name: "test forceVMProto",
@@ -1004,7 +1122,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				}},
 			},
-			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432", "-remoteWrite.forceVMProto=true,false,true"},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
+				`-remoteWrite.forceVMProto=true,false,true`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
 		},
 		{
 			name: "test oauth2",
@@ -1059,12 +1182,14 @@ func TestBuildRemoteWrites(t *testing.T) {
 				},
 			},
 			want: []string{
-				"-remoteWrite.oauth2.clientID=,some-id",
-				"-remoteWrite.oauth2.clientSecretFile=,/etc/vmagent/config/default_some-cm_some-secret",
-				"-remoteWrite.oauth2.scopes=,scope-1",
-				"-remoteWrite.oauth2.tokenUrl=,http://some-url",
-				"-remoteWrite.url=localhost:8429,localhost:8431",
-				"-remoteWrite.sendTimeout=10s,15s",
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.oauth2.clientID=,some-id`,
+				`-remoteWrite.oauth2.clientSecretFile=,/etc/vmagent/config/default_some-cm_some-secret`,
+				`-remoteWrite.oauth2.scopes=,scope-1`,
+				`-remoteWrite.oauth2.tokenUrl=,http://some-url`,
+				`-remoteWrite.url=localhost:8429,localhost:8431`,
+				`-remoteWrite.sendTimeout=10s,15s`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
 			},
 		},
 		{
@@ -1100,7 +1225,13 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.bearerTokenFile=\"\",\"/etc/vmagent/config/default_some-secret_some-key\"", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.bearerTokenFile="","/etc/vmagent/config/default_some-secret_some-key"`,
+				`-remoteWrite.url=localhost:8429,localhost:8431`,
+				`-remoteWrite.sendTimeout=10s,15s`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
 		},
 		{
 			name: "test with headers",
@@ -1136,7 +1267,14 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.bearerTokenFile=\"\",\"/etc/vmagent/config/default_some-secret_some-key\"", "-remoteWrite.headers=,key: value^^second-key: value2", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.bearerTokenFile="","/etc/vmagent/config/default_some-secret_some-key"`,
+				`-remoteWrite.headers=,key: value^^second-key: value2`,
+				`-remoteWrite.url=localhost:8429,localhost:8431`,
+				`-remoteWrite.sendTimeout=10s,15s`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
 		},
 		{
 			name: "test with stream aggr",
@@ -1171,10 +1309,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 				}},
 			},
 			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 				`-remoteWrite.streamAggr.config=/etc/vm/stream-aggr/RWS_0-CM-STREAM-AGGR-CONF,/etc/vm/stream-aggr/RWS_1-CM-STREAM-AGGR-CONF`,
 				`-remoteWrite.streamAggr.dedupInterval=10s,`,
 				`-remoteWrite.streamAggr.keepInput=false,true`,
 				`-remoteWrite.url=localhost:8429,localhost:8431`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
 			},
 		},
 		{
@@ -1200,10 +1340,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 				}},
 			},
 			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 				`-remoteWrite.streamAggr.config=/etc/vm/stream-aggr/RWS_0-CM-STREAM-AGGR-CONF`,
 				`-remoteWrite.streamAggr.dedupInterval=10s`,
 				`-remoteWrite.streamAggr.keepInput=true`,
 				`-remoteWrite.url=localhost:8431`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
 			},
 		},
 		{
@@ -1227,8 +1369,10 @@ func TestBuildRemoteWrites(t *testing.T) {
 				}},
 			},
 			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 				`-remoteWrite.streamAggr.config=/etc/vm/stream-aggr/RWS_0-CM-STREAM-AGGR-CONF`,
 				`-remoteWrite.url=localhost:8431`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
 			},
 		},
 		{
@@ -1275,10 +1419,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 				}},
 			},
 			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 				`-remoteWrite.streamAggr.config=,/etc/vm/stream-aggr/RWS_1-CM-STREAM-AGGR-CONF,,/etc/vm/stream-aggr/RWS_3-CM-STREAM-AGGR-CONF,`,
 				`-remoteWrite.streamAggr.dedupInterval=,10s,,,`,
 				`-remoteWrite.streamAggr.keepInput=false,true,false,false,false`,
 				`-remoteWrite.url=localhost:8428,localhost:8429,localhost:8430,localhost:8431,localhost:8432`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
 			},
 		},
 		{
@@ -1318,9 +1464,11 @@ func TestBuildRemoteWrites(t *testing.T) {
 				},
 			},
 			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 				`-remoteWrite.aws.roleARN=arn:aws:iam::account:role/role-1,,`,
 				`-remoteWrite.aws.useSigv4=false,false,true`,
 				`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8431`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
 			},
 		},
 		{
@@ -1346,8 +1494,174 @@ func TestBuildRemoteWrites(t *testing.T) {
 				},
 			},
 			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 				`-remoteWrite.proxyURL=,http://proxy.example.com,`,
 				`-remoteWrite.url=http://localhost:8431,http://localhost:8432,http://localhost:8433`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
+		},
+		{
+			name: "test with StatefulMode",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{StatefulMode: true},
+			},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.tmpDataPath=/vmagent_pq/vmagent-remotewrite-data`,
+			},
+		},
+		{
+			name: "test simple ok",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+			},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
+		},
+		{
+			name: "test labels",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						Labels: map[string]string{
+							"label-1": "value1",
+							"label-2": "value2",
+						},
+					},
+				},
+			},
+			want: []string{
+				`-remoteWrite.label=label-1=value1,label-2=value2`,
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
+		},
+		{
+			name: "test label",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						ShowURL: ptr.To(true),
+						Labels: map[string]string{
+							"label-1": "value1",
+						},
+					},
+				},
+			},
+			want: []string{
+				`-remoteWrite.label=label-1=value1`,
+				`-remoteWrite.showURL=true`,
+				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+			},
+		},
+		{
+			name: "with remoteWriteSettings",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						ShowURL:            ptr.To(true),
+						TmpDataPath:        ptr.To("/tmp/my-path"),
+						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
+						UseMultiTenantMode: true,
+					},
+				},
+			},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=1000`,
+				`-remoteWrite.tmpDataPath=/tmp/my-path`,
+				`-remoteWrite.showURL=true`,
+				`-enableMultitenantHandlers=true`,
+			},
+		},
+		{
+			name: "maxDiskUsage already set in RemoteWriteSpec",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:          "localhost:8431",
+							MaxDiskUsage: ptr.To(vmv1beta1.BytesString("500MB")),
+						},
+					},
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
+					},
+				},
+			},
+			want: []string{
+				`-remoteWrite.maxDiskUsagePerURL=500MB`,
+				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+				`-remoteWrite.url=localhost:8431`,
+			},
+		},
+		{
+			name: "maxDiskUsage already set in RemoteWriteSpec",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-vmagent",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "localhost:8429",
+						},
+						{
+							URL: "localhost:8431",
+						},
+						{
+							URL: "localhost:8432",
+						},
+					},
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						MaxBlockSize: ptr.To(int32(1000)),
+					},
+					StatefulMode: true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []string{
+				`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
+				`-remoteWrite.maxBlockSize=1000`,
+				`-remoteWrite.maxDiskUsagePerURL=3579139413`,
+				`-remoteWrite.tmpDataPath=/vmagent_pq/vmagent-remotewrite-data`,
 			},
 		},
 	}
@@ -1357,7 +1671,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			ac := getAssetsCache(ctx, fclient, tt.cr)
 			sort.Strings(tt.want)
-			got, err := buildRemoteWrites(tt.cr, ac)
+			got, err := buildRemoteWriteArgs(tt.cr, ac)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
@@ -1966,121 +2280,6 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			sort.Strings(got)
 			sort.Strings(tt.want)
 			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TestBuildRemoteWriteSettings(t *testing.T) {
-	tests := []struct {
-		name string
-		cr   *vmv1beta1.VMAgent
-		want []string
-	}{
-		{
-			name: "test with StatefulMode",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default-vmagent",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{StatefulMode: true},
-			},
-			want: []string{"-remoteWrite.maxDiskUsagePerURL=1073741824", "-remoteWrite.tmpDataPath=/vmagent_pq/vmagent-remotewrite-data"},
-		},
-		{
-			name: "test simple ok",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default-vmagent",
-					Namespace: "default",
-				},
-			},
-			want: []string{"-remoteWrite.maxDiskUsagePerURL=1073741824", "-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"},
-		},
-		{
-			name: "test labels",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default-vmagent",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-						Labels: map[string]string{
-							"label-1": "value1",
-							"label-2": "value2",
-						},
-					},
-				},
-			},
-			want: []string{"-remoteWrite.label=label-1=value1,label-2=value2", "-remoteWrite.maxDiskUsagePerURL=1073741824", "-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"},
-		},
-		{
-			name: "test label",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default-vmagent",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-						ShowURL: ptr.To(true),
-						Labels: map[string]string{
-							"label-1": "value1",
-						},
-					},
-				},
-			},
-			want: []string{"-remoteWrite.label=label-1=value1", "-remoteWrite.showURL=true", "-remoteWrite.maxDiskUsagePerURL=1073741824", "-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"},
-		},
-		{
-			name: "with remoteWriteSettings",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default-vmagent",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-						ShowURL:            ptr.To(true),
-						TmpDataPath:        ptr.To("/tmp/my-path"),
-						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
-						UseMultiTenantMode: true,
-					},
-				},
-			},
-			want: []string{"-remoteWrite.maxDiskUsagePerURL=1000", "-remoteWrite.tmpDataPath=/tmp/my-path", "-remoteWrite.showURL=true", "-enableMultitenantHandlers=true"},
-		},
-		{
-			name: "maxDiskUsage already set in RemoteWriteSpec",
-			cr: &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default-vmagent",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-						{
-							URL:          "localhost:8431",
-							MaxDiskUsage: ptr.To(vmv1beta1.BytesString("500MB")),
-						},
-					},
-					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
-					},
-				},
-			},
-			want: []string{"-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := buildRemoteWriteSettings(tt.cr)
-			sort.Strings(got)
-			sort.Strings(tt.want)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildRemoteWriteSettings() = \n%v\n, want \n%v\n", got, tt.want)
-			}
 		})
 	}
 }

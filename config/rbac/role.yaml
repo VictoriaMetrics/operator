@@ -132,6 +132,9 @@ rules:
 - apiGroups:
   - operator.victoriametrics.com
   resources:
+  - vlagents
+  - vlagents/finalizers
+  - vlagents/status
   - vlogs
   - vlogs/finalizers
   - vlogs/status

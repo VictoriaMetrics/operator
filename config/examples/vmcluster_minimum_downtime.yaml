@@ -1,0 +1,35 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: minimum-donwtime
+spec:
+  retentionPeriod: "4"
+  replicationFactor: 2
+  vmstorage:
+    extraArgs:
+      # by default vmstorage waits for 25 seconds
+      storage.vminsertConnsShutdownDuration: "1ms"
+    rollingUpdateStrategyBehavior:
+      maxUnavailable: 100%
+    replicaCount: 4
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 10Gi
+  vmselect:
+    replicaCount: 2
+    rollingUpdateStrategyBehavior:
+      maxUnavailable: 100%
+    cacheMountPath: "/select-cache"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 10Gi
+  vminsert:
+    replicaCount: 2
+    rollingUpdate:
+      maxUnavailable: 100%

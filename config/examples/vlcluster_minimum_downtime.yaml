@@ -1,0 +1,26 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VLCluster
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: example
+spec:
+  vlinsert:
+    replicaCount: 1
+  vlselect:
+    replicaCount: 1
+  vlstorage:
+    rollingUpdateStrategyBehavior:
+      maxUnavailable: 100%
+    retentionPeriod: "1y"
+    replicaCount: 8
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 50Gi
+  requestsLoadBalancer:
+    enabled: true
+    spec: {}

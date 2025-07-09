@@ -439,6 +439,11 @@ type VLStorage struct {
 
 	vmv1beta1.CommonDefaultableParams           `json:",inline"`
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
+
+	// RollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+	// +optional
+	RollingUpdateStrategyBehavior *vmv1beta1.StatefulSetUpdateStrategyBehavior `json:"rollingUpdateStrategyBehavior,omitempty"`
 }
 
 // GetStorageVolumeName returns formatted name for vlstorage volume

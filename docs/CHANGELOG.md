@@ -22,6 +22,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): do not add `spec.clusterVersion`  to the `spec.requestsLoadBalancer.spec.image.tag` as default value. See this [1365](https://github.com/VictoriaMetrics/operator/issues/1365) issue for details.
 
+* FEATURE: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): added the `maxUnavailable` field to VLStorage specs to allow customization of rolling update behavior. See [#1457](https://github.com/VictoriaMetrics/operator/issues/1457).
 * FEATURE: [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/): add new field `spec.syslogSpec` for [syslog](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog) data ingestion configuration. See this [1441](https://github.com/VictoriaMetrics/operator/issues/1441) issue for details.
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): update shards concurrently. See [#1434](https://github.com/VictoriaMetrics/operator/issues/1434).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/anomaly-detection/): update shards concurrently. See [#1434](https://github.com/VictoriaMetrics/operator/issues/1434). Thanks to the @xiaozongyang for [1272](https://github.com/VictoriaMetrics/operator/pull/1272) pull request.
@@ -31,7 +32,8 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): transit `VLogs` Custom Resource into `read-only` state. Operator ignores create and update requests for it.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): added AWS section to VMAgent remoteWrite spec. See [#928](https://github.com/VictoriaMetrics/operator/issues/928).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): introduce global scrape config for VMAgent. See [#1179](https://github.com/VictoriaMetrics/operator/issues/1179).
-* FEATURE: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): added the `maxUnavailable` field to VMStorage and VMSelect specs to allow customization of rolling update behavior. See [#1457](https://github.com/VictoriaMetrics/operator/issues/1457).
+* FEATURE: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): added the `maxUnavailable` field to VMStorage and VMSelect specs to allow customization of rolling update behavior. See [#1457](https://github.com/VictoriaMetrics/operator/issues/1457) and minimum downtime update strategy [doc](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#minimum-downtime-strategy)
+
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): Modify default `remoteWrite.maxDiskUsagePerURL` when statefulStorage.volumeClaimTemplate is set. See [#1209](https://github.com/VictoriaMetrics/operator/issues/1209)
 
 ## [v0.60.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.2)

@@ -124,6 +124,7 @@ func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, 
 	stsOpts := reconcile.STSOptions{
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		SelectorLabels: cr.VLStorageSelectorLabels,
+		UpdateBehavior: cr.Spec.VLStorage.RollingUpdateStrategyBehavior,
 	}
 	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
 }

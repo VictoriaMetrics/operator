@@ -398,6 +398,7 @@ Appears in: [VLClusterSpec](#vlclusterspec)
 | retentionPeriod<a href="#vlstorage-retentionperiod" id="vlstorage-retentionperiod">#</a><br/>_string_ | _(Optional)_<br/>RetentionPeriod for the stored logs<br />https://docs.victoriametrics.com/victorialogs/#retention |
 | revisionHistoryLimitCount<a href="#vlstorage-revisionhistorylimitcount" id="vlstorage-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
 | rollingUpdateStrategy<a href="#vlstorage-rollingupdatestrategy" id="vlstorage-rollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>RollingUpdateStrategy defines strategy for application updates<br />Default is OnDelete, in this case operator handles update process<br />Can be changed for RollingUpdate |
+| rollingUpdateStrategyBehavior<a href="#vlstorage-rollingupdatestrategybehavior" id="vlstorage-rollingupdatestrategybehavior">#</a><br/>_[StatefulSetUpdateStrategyBehavior](#statefulsetupdatestrategybehavior)_ | _(Optional)_<br/>RollingUpdateStrategyBehavior defines customized behavior for rolling updates.<br />It applies if the RollingUpdateStrategy is set to OnDelete, which is the default. |
 | runtimeClassName<a href="#vlstorage-runtimeclassname" id="vlstorage-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
 | schedulerName<a href="#vlstorage-schedulername" id="vlstorage-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
 | secrets<a href="#vlstorage-secrets" id="vlstorage-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
@@ -2327,7 +2328,7 @@ Appears in: [Receiver](#receiver)
 
 StatefulSetUpdateStrategyBehavior customizes behavior for StatefulSet updates.
 
-Appears in: [VMSelect](#vmselect), [VMStorage](#vmstorage)
+Appears in: [VLStorage](#vlstorage), [VMSelect](#vmselect), [VMStorage](#vmstorage)
 
 | Field | Description |
 | --- | --- |

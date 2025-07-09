@@ -1097,7 +1097,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 			want: []string{
 				`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
-				`-remoteWrite.maxDiskUsagePerURL=5000MB,2868709120,2868709120`,
+				`-remoteWrite.maxDiskUsagePerURL=5000MB,3579139413,3579139413`,
 				`-remoteWrite.tmpDataPath=/vmagent_pq/vmagent-remotewrite-data`,
 			},
 		},

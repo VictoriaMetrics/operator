@@ -98,6 +98,10 @@ type VLSingleSpec struct {
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// SyslogSpec defines syslog listener configuration
+	// +optional
+	SyslogSpec *SyslogServerSpec `json:"syslogSpec,omitempty"`
 }
 
 // VLSingleStatus defines the observed state of VLSingle

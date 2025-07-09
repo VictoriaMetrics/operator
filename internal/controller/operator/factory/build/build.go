@@ -99,6 +99,14 @@ func NewFlag(name, empty string) *Flag {
 	}
 }
 
+// NewEmptyFlag builds Flag with empty string default value
+func NewEmptyFlag(name string) *Flag {
+	return &Flag{
+		name:  name,
+		empty: "",
+	}
+}
+
 type Flag struct {
 	isSet bool
 	idx   int

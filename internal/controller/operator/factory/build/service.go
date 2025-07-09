@@ -1,11 +1,14 @@
 package build
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -171,5 +174,30 @@ func AppendInsertPortsToService(ip *vmv1beta1.InsertPorts, svc *corev1.Service) 
 				Port:       intstr.Parse(ip.OpenTSDBHTTPPort).IntVal,
 				TargetPort: intstr.Parse(ip.OpenTSDBHTTPPort),
 			})
+	}
+}
+
+// AddSyslogPortsToService adds syslog ports to the provided service
+func AddSyslogPortsToService(svc *corev1.Service, syslogSpec *vmv1.SyslogServerSpec) {
+	if syslogSpec == nil {
+		return
+	}
+	for idx, tcp := range syslogSpec.TCPListeners {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Name:       fmt.Sprintf("syslog-tcp-%d", idx),
+			Protocol:   corev1.ProtocolTCP,
+			Port:       tcp.ListenPort,
+			TargetPort: intstr.FromInt32(tcp.ListenPort),
+		})
+	}
+
+	for idx, udp := range syslogSpec.UDPListeners {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Name:       fmt.Sprintf("syslog-udp-%d", idx),
+			Protocol:   corev1.ProtocolUDP,
+			Port:       udp.ListenPort,
+			TargetPort: intstr.FromInt32(udp.ListenPort),
+		},
+		)
 	}
 }

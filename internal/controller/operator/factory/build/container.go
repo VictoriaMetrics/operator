@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
@@ -381,4 +382,156 @@ func AddConfigReloadAuthKeyToReloader(container *corev1.Container, spec *vmv1bet
 		Name:      authKeyMountName,
 		MountPath: authKeyMountPath,
 	})
+}
+
+// AddSyslogPortsTo adds syslog ports into provided dst
+func AddSyslogPortsTo(dst []corev1.ContainerPort, syslogSpec *vmv1.SyslogServerSpec) []corev1.ContainerPort {
+	if syslogSpec == nil {
+		return dst
+	}
+	for idx, tcp := range syslogSpec.TCPListeners {
+		dst = append(dst, corev1.ContainerPort{
+			Name:          fmt.Sprintf("syslog-tcp-%d", idx),
+			Protocol:      corev1.ProtocolTCP,
+			ContainerPort: tcp.ListenPort,
+		})
+	}
+
+	for idx, udp := range syslogSpec.UDPListeners {
+		dst = append(dst, corev1.ContainerPort{
+			Name:          fmt.Sprintf("syslog-udp-%d", idx),
+			Protocol:      corev1.ProtocolUDP,
+			ContainerPort: udp.ListenPort,
+		},
+		)
+	}
+	return dst
+}
+
+// AddSyslogArgsTo adds syslog flag args into provided dst
+func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsServerConfigMountPath string) []string {
+	if syslogSpec == nil {
+		return dst
+	}
+
+	tcpListenAddr := NewEmptyFlag("-syslog.listenAddr.tcp")
+	tcpStreamFields := NewFlag("-syslog.streamFields.tcp", "''")
+	tcpIgnoreFields := NewFlag("-syslog.ignoreFields.tcp", "''")
+	tcpDecolorizedFields := NewFlag("-syslog.decolorizeFields.tcp", "''")
+	tcpTenantID := NewEmptyFlag("-syslog.tenantID.tcp")
+	tcpCompress := NewEmptyFlag("-syslog.compressMethod.tcp")
+	tlsEnabled := NewEmptyFlag("-syslog.tls")
+	tlsCertFile := NewEmptyFlag("-syslog.tlsCertFile")
+	tlsKeyFile := NewEmptyFlag("-syslog.tlsKeyFile")
+
+	var value string
+
+	for idx, sTCP := range syslogSpec.TCPListeners {
+		tcpListenAddr.Add(fmt.Sprintf(":%d", sTCP.ListenPort), idx)
+		tcpStreamFields.Add(fmt.Sprintf("'%s'", sTCP.StreamFields), idx)
+		tcpDecolorizedFields.Add(fmt.Sprintf("'%s'", sTCP.DecolorizeFields), idx)
+		tcpIgnoreFields.Add(fmt.Sprintf("'%s'", sTCP.IgnoreFields), idx)
+		tcpTenantID.Add(sTCP.TenantID, idx)
+		tcpCompress.Add(sTCP.CompressMethod, idx)
+
+		if sTCP.TLSConfig != nil {
+			tlsEnabled.Add("true", idx)
+			tlsC := sTCP.TLSConfig
+			value = ""
+			switch {
+			case tlsC.CertFile != "":
+				value = tlsC.CertFile
+			case tlsC.CertSecret != nil:
+				value = fmt.Sprintf("%s/%s/%s", tlsServerConfigMountPath, tlsC.CertSecret.Name, tlsC.CertSecret.Key)
+			}
+			tlsCertFile.Add(value, idx)
+			value = ""
+			switch {
+			case tlsC.KeyFile != "":
+				value = tlsC.KeyFile
+			case tlsC.KeySecret != nil:
+				value = fmt.Sprintf("%s/%s/%s", tlsServerConfigMountPath, tlsC.KeySecret.Name, tlsC.KeySecret.Key)
+			}
+			tlsKeyFile.Add(value, idx)
+		}
+	}
+	dst = AppendFlagsToArgs(dst, len(syslogSpec.TCPListeners), tcpListenAddr, tcpStreamFields, tcpIgnoreFields, tcpDecolorizedFields, tcpTenantID, tcpCompress, tlsEnabled, tlsCertFile, tlsKeyFile)
+
+	udpListenAddr := NewEmptyFlag("-syslog.listenAddr.udp")
+	// vmv1.FieldsListString must be quoted with ''
+	udpStreamFileds := NewFlag("-syslog.streamFields.udp", "''")
+	udpIgnoreFields := NewFlag("-syslog.ignoreFields.udp", "''")
+	udpDecolorizedFields := NewFlag("-syslog.decolorizeFields.udp", "''")
+	udpTenantID := NewEmptyFlag("-syslog.tenantID.udp")
+	udpCompress := NewEmptyFlag("-syslog.compressMethod.udp")
+
+	for idx, sUDP := range syslogSpec.UDPListeners {
+		udpListenAddr.Add(fmt.Sprintf(":%d", sUDP.ListenPort), idx)
+		udpStreamFileds.Add(fmt.Sprintf("'%s'", sUDP.StreamFields), idx)
+		udpIgnoreFields.Add(fmt.Sprintf("'%s'", sUDP.IgnoreFields), idx)
+		udpDecolorizedFields.Add(fmt.Sprintf("'%s'", sUDP.DecolorizeFields), idx)
+		udpTenantID.Add(sUDP.TenantID, idx)
+		udpCompress.Add(sUDP.CompressMethod, idx)
+	}
+
+	dst = AppendFlagsToArgs(dst, len(syslogSpec.UDPListeners), udpListenAddr, udpStreamFileds, udpIgnoreFields, udpDecolorizedFields, udpTenantID, udpCompress)
+
+	return dst
+}
+
+// AddSyslogTLSConfigToVolumes adds syslog tlsConfig volumes and mounts to the provided dsts
+func AddSyslogTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.VolumeMount, syslogSpec *vmv1.SyslogServerSpec, tlsServerConfigMountPath string) ([]corev1.Volume, []corev1.VolumeMount) {
+	if syslogSpec == nil || len(syslogSpec.TCPListeners) == 0 {
+		return dstVolumes, dstMounts
+	}
+
+	addSecretVolume := func(sr *corev1.SecretKeySelector) {
+		name := fmt.Sprintf("secret-tls-%s", sr.Name)
+		for _, dst := range dstVolumes {
+			if dst.Name == name {
+				return
+			}
+		}
+		dstVolumes = append(dstVolumes, corev1.Volume{
+			Name: name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: sr.Name,
+				},
+			},
+		})
+	}
+	addSecretMount := func(sr *corev1.SecretKeySelector) {
+		name := fmt.Sprintf("secret-tls-%s", sr.Name)
+		for _, dst := range dstMounts {
+			if dst.Name == name {
+				return
+			}
+		}
+		dstMounts = append(dstMounts, corev1.VolumeMount{
+			Name:      name,
+			MountPath: fmt.Sprintf("%s/%s", tlsServerConfigMountPath, sr.Name),
+		})
+	}
+	for _, tc := range syslogSpec.TCPListeners {
+		if tc.TLSConfig == nil {
+			continue
+		}
+		tlsC := tc.TLSConfig
+		switch {
+		case tlsC.CertFile != "":
+		case tlsC.CertSecret != nil:
+			addSecretVolume(tlsC.CertSecret)
+			addSecretMount(tlsC.CertSecret)
+		}
+
+		switch {
+		case tlsC.KeyFile != "":
+		case tlsC.KeySecret != nil:
+			addSecretVolume(tlsC.KeySecret)
+			addSecretMount(tlsC.KeySecret)
+		}
+
+	}
+	return dstVolumes, dstMounts
 }

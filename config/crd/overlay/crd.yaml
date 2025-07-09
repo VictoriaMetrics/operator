@@ -3742,6 +3742,157 @@ spec:
                       More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
                     type: string
                 type: object
+              syslogSpec:
+                description: SyslogSpec defines syslog listener configuration
+                properties:
+                  tcpListeners:
+                    description: TCPListeners defines syslog server TCP listener configuration
+                    items:
+                      description: SyslogTCPListener defines configuration for TCP
+                        syslog server listen
+                      properties:
+                        compressMethod:
+                          description: |-
+                            CompressMethod for syslog messages
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression
+                          pattern: ^(none|zstd|gzip|deflate)$
+                          type: string
+                        decolorizeFields:
+                          description: |-
+                            DecolorizeFields to remove ANSI color codes across logs
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
+                          type: string
+                        ignoreFields:
+                          description: |-
+                            IgnoreFields to ignore at logs
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
+                          type: string
+                        listenPort:
+                          description: ListenPort defines listen port
+                          format: int32
+                          type: integer
+                        streamFields:
+                          description: |-
+                            StreamFields to use as log stream labels
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields
+                          type: string
+                        tenantID:
+                          description: |-
+                            TenantID for logs ingested in form of accountID:projectID
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multiple-configs
+                          type: string
+                        tlsConfig:
+                          description: TLSServerConfig defines VictoriaMetrics TLS
+                            configuration for the application's server
+                          properties:
+                            certFile:
+                              description: |-
+                                CertFile defines path to the pre-mounted file with certificate
+                                mutually exclusive with CertSecretRef
+                              type: string
+                            certSecret:
+                              description: |-
+                                CertSecretRef defines reference for secret with certificate content under given key
+                                mutually exclusive with CertFile
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must
+                                    be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key
+                                    must be defined
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            keyFile:
+                              description: |-
+                                KeyFile defines path to the pre-mounted file with certificate key
+                                mutually exclusive with KeySecretRef
+                              type: string
+                            keySecret:
+                              description: |-
+                                Key defines reference for secret with certificate key content under given key
+                                mutually exclusive with KeyFile
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must
+                                    be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key
+                                    must be defined
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                          type: object
+                      required:
+                      - listenPort
+                      type: object
+                    type: array
+                  udpListeners:
+                    description: UDPListeners defines syslog server UDP listener configuration
+                    items:
+                      description: SyslogUDPListener defines configuration for UDP
+                        syslog server listen
+                      properties:
+                        compressMethod:
+                          description: |-
+                            CompressMethod for syslog messages
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression
+                          pattern: ^(none|zstd|gzip|deflate)$
+                          type: string
+                        decolorizeFields:
+                          description: |-
+                            DecolorizeFields to remove ANSI color codes across logs
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
+                          type: string
+                        ignoreFields:
+                          description: |-
+                            IgnoreFields to ignore at logs
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
+                          type: string
+                        listenPort:
+                          description: ListenPort defines listen port
+                          format: int32
+                          type: integer
+                        streamFields:
+                          description: |-
+                            StreamFields to use as log stream labels
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields
+                          type: string
+                        tenantID:
+                          description: |-
+                            TenantID for logs ingested in form of accountID:projectID
+                            see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multiple-configs
+                          type: string
+                      required:
+                      - listenPort
+                      type: object
+                    type: array
+                type: object
               terminationGracePeriodSeconds:
                 description: TerminationGracePeriodSeconds period for container graceful
                   termination

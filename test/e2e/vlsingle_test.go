@@ -21,7 +21,7 @@ import (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test vlsingle Controller", Label("vl", "single"), func() {
+var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), func() {
 
 	Context("e2e vlsingle", func() {
 		var ctx context.Context
@@ -245,6 +245,72 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single"), func() {
 
 							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
 
+						},
+					},
+				),
+				Entry("with syslog tls", "syslog-tls",
+					baseVLSingle.DeepCopy(),
+					testStep{
+						modify: func(cr *vmv1.VLSingle) {
+							tlsSecret := corev1.Secret{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      "syslog-tls",
+									Namespace: namespace,
+								},
+								StringData: map[string]string{
+									"TLS_CERT": tlsCert,
+									"TLS_KEY":  tlsKey,
+								},
+							}
+							Expect(k8sClient.Create(ctx, &tlsSecret)).To(Succeed())
+							DeferCleanup(func(ctx SpecContext) {
+								Expect(k8sClient.Delete(ctx, &tlsSecret)).To(Succeed())
+							})
+							cr.Spec.SyslogSpec = &vmv1.SyslogServerSpec{
+								TCPListeners: []*vmv1.SyslogTCPListener{
+									{
+										ListenPort:   9505,
+										IgnoreFields: vmv1.FieldsListString(`["ip","id"]`),
+									},
+									{
+										ListenPort:   9500,
+										StreamFields: vmv1.FieldsListString(`["stream", "log.message"]`),
+										IgnoreFields: vmv1.FieldsListString(`["_id","_container_id"]`),
+										TLSConfig: &vmv1.TLSServerConfig{
+											CertSecret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: tlsSecret.Name,
+												},
+												Key: "TLS_CERT",
+											},
+											KeySecret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: tlsSecret.Name,
+												},
+												Key: "TLS_KEY",
+											},
+										},
+									},
+								},
+								UDPListeners: []*vmv1.SyslogUDPListener{
+									{
+										ListenPort:       9500,
+										StreamFields:     vmv1.FieldsListString(`["stream", "log.message"]`),
+										CompressMethod:   "zstd",
+										DecolorizeFields: vmv1.FieldsListString(`["severity"]`),
+									},
+								},
+							}
+						},
+						verify: func(cr *vmv1.VLSingle) {
+							var svc corev1.Service
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &svc)).To(Succeed())
+							Expect(svc.Spec.Ports).To(HaveLen(4))
+
+							var dep appsv1.Deployment
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &dep)).To(Succeed())
+							Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(2))
+							Expect(dep.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(2))
 						},
 					},
 				),

@@ -22,6 +22,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): do not add `spec.clusterVersion`  to the `spec.requestsLoadBalancer.spec.image.tag` as default value. See this [1365](https://github.com/VictoriaMetrics/operator/issues/1365) issue for details.
 
+* FEATURE: [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/): add new field `spec.syslogSpec` for [syslog](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog) data ingestion configuration. See this [1441](https://github.com/VictoriaMetrics/operator/issues/1441) issue for details.
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): update shards concurrently. See [#1434](https://github.com/VictoriaMetrics/operator/issues/1434).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/anomaly-detection/): update shards concurrently. See [#1434](https://github.com/VictoriaMetrics/operator/issues/1434). Thanks to the @xiaozongyang for [1272](https://github.com/VictoriaMetrics/operator/pull/1272) pull request.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): deprecated acceptEula parameter in VMBackup. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).

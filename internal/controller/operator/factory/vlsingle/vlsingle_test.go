@@ -102,6 +102,79 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 			},
 			want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vlsingle-base", Namespace: "default"}},
 		},
+		{
+			name: "with syslog tls config",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &vmv1.VLSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base",
+						Namespace: "default",
+					},
+					Spec: vmv1.VLSingleSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							Port: "8435",
+						},
+						SyslogSpec: &vmv1.SyslogServerSpec{
+							TCPListeners: []*vmv1.SyslogTCPListener{
+								{
+									ListenPort:       3001,
+									DecolorizeFields: vmv1.FieldsListString(`["log","level"]`),
+								},
+								{
+									ListenPort:   3002,
+									StreamFields: vmv1.FieldsListString(`["job","instance"]`),
+									IgnoreFields: vmv1.FieldsListString(`["ip"]`),
+									TLSConfig: &vmv1.TLSServerConfig{
+										KeySecret: &corev1.SecretKeySelector{
+											Key: "tls-key",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "syslog-tls-server",
+											},
+										},
+										CertSecret: &corev1.SecretKeySelector{
+											Key: "tls-cert",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "syslog-tls-server",
+											},
+										},
+									},
+								},
+							},
+							UDPListeners: []*vmv1.SyslogUDPListener{
+								{
+									ListenPort:     3001,
+									CompressMethod: "zstd",
+									StreamFields:   vmv1.FieldsListString(`["job","instance"]`),
+									IgnoreFields:   vmv1.FieldsListString(`["ip"]`),
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "vlsingle-0",
+						Labels: map[string]string{
+							"app.kubernetes.io/component": "monitoring",
+							"app.kubernetes.io/name":      "vlsingle",
+							"app.kubernetes.io/instance":  "base",
+							"managed-by":                  "vm-operator",
+						},
+					},
+					Status: corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "True"}}},
+				},
+				k8stools.NewReadyDeployment("vlsingle-base", "default"),
+			},
+
+			want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vlsingle-base", Namespace: "default"}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	vlsingleDataDir        = "/victoria-logs-data"
-	vlsingleDataVolumeName = "data"
+	vlsingleDataDir          = "/victoria-logs-data"
+	vlsingleDataVolumeName   = "data"
+	tlsServerConfigMountPath = "/etc/vm/tls-server-secrets"
 )
 
 func createOrUpdatePVC(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLSingle) error {
@@ -249,6 +250,11 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		})
 	}
+	if r.Spec.SyslogSpec != nil {
+		args = build.AddSyslogArgsTo(args, r.Spec.SyslogSpec, tlsServerConfigMountPath)
+		volumes, vmMounts = build.AddSyslogTLSConfigToVolumes(volumes, vmMounts, r.Spec.SyslogSpec, tlsServerConfigMountPath)
+		ports = build.AddSyslogPortsTo(ports, r.Spec.SyslogSpec)
+	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, r.Spec.ExtraArgs, "-")
 	sort.Strings(args)
@@ -296,11 +302,15 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLSingle) (*corev1.Service, error) {
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
-		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
+		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddSyslogPortsToService(svc, prevCR.Spec.SyslogSpec)
+		})
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
 	}
 
-	newService := build.Service(cr, cr.Spec.Port, nil)
+	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddSyslogPortsToService(svc, cr.Spec.SyslogSpec)
+	})
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {

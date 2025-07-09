@@ -6,10 +6,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -310,7 +309,6 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	// perform update for not updated pods in batches according to podMaxUnavailable
 	for batchStart := 0; batchStart < len(podsForUpdate); batchStart += podMaxUnavailable {
 		var batch []corev1.Pod
-		var batchFailed atomic.Bool
 
 		// determine batch of pods to update
 		batchClose := batchStart + podMaxUnavailable
@@ -319,33 +317,40 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		}
 		batch = podsForUpdate[batchStart:batchClose]
 
-		var wg sync.WaitGroup
+		errG, ctx := errgroup.WithContext(ctx)
 		for _, pod := range batch {
-			wg.Add(1)
-			go func(pod corev1.Pod) {
-				defer wg.Done()
+			errG.Go(func() error {
 				l.Info(fmt.Sprintf("updating pod=%s revision label=%q", pod.Name, pod.Labels[podRevisionLabel]))
-				// evict pod to trigger re-creation
-				podEviction := policyv1.Eviction{ObjectMeta: pod.ObjectMeta}
-				if err := rclient.SubResource("eviction").Create(ctx, &pod, &podEviction); err != nil {
-					l.Error(err, fmt.Sprintf("cannot evict pod %s", pod.Name))
-					batchFailed.Store(true)
-					return
+
+				// eviction may fail due to podDisruption budget and it's unexpected
+				// so retry pod eviction
+				evictErr := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
+					// evict pod to trigger re-creation
+					podEviction := policyv1.Eviction{ObjectMeta: pod.ObjectMeta}
+					if err := rclient.SubResource("eviction").Create(ctx, &pod, &podEviction); err != nil {
+						// retry distruption interrupt error:
+						// https://github.com/kubernetes/kubernetes/blob/9a50e306361ea936e57fb6eb8c635f971e7bb707/pkg/registry/core/pod/storage/eviction.go#L418
+						if strings.Contains(err.Error(), "Cannot evict pod as it would violate the pod's disruption budget") {
+							return false, nil
+						}
+						return false, fmt.Errorf("cannot evict pod %s: %w", pod.Name, err)
+					}
+					return true, nil
+				})
+				if evictErr != nil {
+					return fmt.Errorf("cannot perform pod eviction: %w", err)
 				}
 				// wait for pod to be re-created
 				podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
 				if err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
-					l.Error(err, fmt.Sprintf("cannot wait for pod ready state during re-creation for pod %s", pod.Name))
-					batchFailed.Store(true)
-					return
+					return fmt.Errorf("cannot wait for pod ready state during re-creation for pod %s: %w", pod.Name, err)
 				}
 				l.Info(fmt.Sprintf("pod %s was updated successfully", pod.Name))
-			}(pod)
+				return nil
+			})
 		}
-		wg.Wait()
-
-		if batchFailed.Load() {
-			return fmt.Errorf("one or more pods in the batch failed, see logs for details")
+		if err := errG.Wait(); err != nil {
+			return fmt.Errorf("fail to perform batch update with size: %d: %w", len(batch), err)
 		}
 	}
 

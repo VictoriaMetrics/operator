@@ -37,50 +37,46 @@ for editing [`vmagent` custom resources](https://docs.victoriametrics.com/operat
 
 ## Security policies
 
-VictoriaMetrics operator provides several security features, such as [PodSecurityPolicies](https://kubernetes.io/docs/concepts/policy/pod-security-policy/),
-[PodSecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+VictoriaMetrics operator provides several security features. First of all, it's built-in hardening configuration.
 
-### PodSecurityPolicy
+Environment variable `VM_ENABLESTRICTSECURITY=true` applies generic security options to the all created resources.
 
-> PodSecurityPolicy was [deprecated](https://kubernetes.io/docs/concepts/security/pod-security-policy/) in Kubernetes v1.21, and removed from Kubernetes in v1.25.
+Such as `PodSecurityContext` and `SecurityContext` per `Container` 
 
-If your Kubernetes version is under v1.25 and want to use PodSecurityPolicy, you can set env `VM_PSPAUTOCREATEENABLED: "true"` in operator, it will create serviceAccount for each cluster resource and binds default `PodSecurityPolicy` to it.
-
-Default psp:
 ```yaml
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: vmagent-example
-spec:
-  allowPrivilegeEscalation: false
-  fsGroup:
-    rule: RunAsAny
-  hostNetwork: true
-  requiredDropCapabilities:
-  - ALL
-  runAsUser:
-    rule: RunAsAny
-  seLinux:
-    rule: RunAsAny
-  supplementalGroups:
-    rule: RunAsAny
-  volumes:
-  - persistentVolumeClaim
-  - secret
-  - emptyDir
-  - configMap
-  - projected
-  - downwardAPI
-  - nfs
+  securityContext:
+    // '65534' refers to 'nobody' in all the used default images like alpine, busybox.
+    fsGroup: 65534
+    fsGroupChangePolicy: OnRootMismatch
+    runAsGroup: 65534
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
 ```
 
-User may also override default pod security policy with setting: `spec.podSecurityPolicyName: "psp-name"`.
 
-## PodSecurityContext
+ It's also possible to config strict security on resource basis:
 
-VictoriaMetrics operator will add default Security Context to managed pods and containers if env `EnableStrictSecurity: "true"` is set.
-The following SecurityContext will be applied:
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: strict-security
+  namespace: monitoring-system
+spec:
+  retentionPeriod: "2"
+  removePvcAfterDelete: true
+  useStrictSecurity: true
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 25Gi
+```
+
+ In addition, operator supports more granular per resource security configuration with [spec.securityContext](https://docs.victoriametrics.com/operator/api/#securitycontext) and [ContainerSecurityContext](https://docs.victoriametrics.com/operator/api/#containersecuritycontext)
 
 ### Pod SecurityContext
 

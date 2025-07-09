@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -31,7 +30,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vlsingle"
 )
 
 // VLogsReconciler reconciles a VLogs object
@@ -85,21 +83,7 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 	if instance.Spec.ParsingError != "" {
 		return result, &parsingError{instance.Spec.ParsingError, "vlogs"}
 	}
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
-	}
-	r.Client.Scheme().Default(instance)
-
-	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err = vlsingle.CreateOrUpdateVLogs(ctx, r, instance); err != nil {
-			return result, fmt.Errorf("failed create or update vlogs: %w", err)
-		}
-
-		return result, nil
-	})
-
-	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
-
+	l.Info("VLogs CustomResource transited into read-only state. Please migrate to the VLSingle.")
 	return
 }
 

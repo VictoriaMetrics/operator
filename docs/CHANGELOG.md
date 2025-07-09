@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+**Update Note 1:** This release by transits `VLogs` resource into `read-only`  state.
+To perform migration to the `VLSingle` please follow [this docs](https://docs.victoriametrics.com/operator/resources/vlsingle/#migration-from-vlogs)
+
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.25.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.121.0](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/docs/victoriametrics/changelog/CHANGELOG.md#v11210) version.
 
@@ -23,6 +27,7 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): deprecated acceptEula parameter in VMBackup. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add new field persistentVolumeClaimRetentionPolicy in VMAnomaly, VMCluster, VMAlertmanager and VMAgent CRs, that support StatefulSet mode. See [#1226](https://github.com/VictoriaMetrics/operator/issues/1226).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `-enterprise` suffix to default `image.tag` value, if `license` configuration is defined for CustomResource. See this [1365](https://github.com/VictoriaMetrics/operator/issues/1365) issue for details.
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): transit `VLogs` Custom Resource into `read-only` state. Operator ignores create and update requests for it.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): added AWS section to VMAgent remoteWrite spec. See [#928](https://github.com/VictoriaMetrics/operator/issues/928).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): introduce global scrape config for VMAgent. See [#1179](https://github.com/VictoriaMetrics/operator/issues/1179).
 * FEATURE: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): added the `maxUnavailable` field to VMStorage and VMSelect specs to allow customization of rolling update behavior. See [#1457](https://github.com/VictoriaMetrics/operator/issues/1457).

@@ -52,28 +52,16 @@ type VLAgentSpec struct {
 	// +optional
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
-	// UpdateStrategy - overrides default update strategy.
-	// works only for deployments, statefulset always use OnDelete.
-	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
-	// +optional
-	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
-	// RollingUpdate - overrides deployment update params.
-	// +optional
-	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
-	// Mode runs `VLAgent` in one of k8s modes: `Deployment`, `StatefulSet` or `DaemonSet`
-	// +optional
-	Mode ApplicationMode `json:"mode,omitempty"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// StatefulStorage configures storage for StatefulSet
 	// +optional
-	StatefulStorage *vmv1beta1.StorageSpec `json:"statefulStorage,omitempty"`
+	Storage *vmv1beta1.StorageSpec `json:"storage,omitempty"`
 	// StatefulRollingUpdateStrategy allows configuration for strategyType
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional
-	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
 	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
@@ -81,11 +69,6 @@ type VLAgentSpec struct {
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for VLAgent in Mode: StatefulSet
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
-	// License allows to configure license key to be used for enterprise features.
-	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
-	// +optional
-	License *vmv1beta1.License `json:"license,omitempty"`
 	// SyslogSpec defines syslog listener configuration
 	// +optional
 	SyslogSpec *SyslogServerSpec `json:"syslogSpec,omitempty"`
@@ -94,6 +77,7 @@ type VLAgentSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	*vmv1beta1.EmbeddedProbes                   `json:",inline"`
 	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
@@ -103,6 +87,7 @@ func (cr *VLAgent) SetLastSpec(prevSpec VLAgentSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
+// Validate performs syntax validation
 func (cr *VLAgent) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
@@ -117,6 +102,12 @@ func (cr *VLAgent) Validate() error {
 		if rw.URL == "" {
 			return fmt.Errorf("remoteWrite.url cannot be empty at idx: %d", idx)
 		}
+		if err := rw.OAuth2.Validate(); err != nil {
+			return fmt.Errorf("remoteWrite.oauth2 has incorrect syntax at idx: %d: %w", idx, err)
+		}
+		if err := rw.TLSConfig.Validate(); err != nil {
+			return fmt.Errorf("remoteWrite.tlsConfig has incorrect syntax at idx: %d: %w", idx, err)
+		}
 	}
 	return nil
 }
@@ -127,7 +118,6 @@ func (cr *VLAgent) UnmarshalJSON(src []byte) error {
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
 	}
-	// TODO: remove it at v0.56.0 release
 	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
 		return err
 	}
@@ -146,9 +136,11 @@ func (cr *VLAgentSpec) UnmarshalJSON(src []byte) error {
 
 // VLAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
 type VLAgentRemoteWriteSettings struct {
-	// The maximum size in bytes of unpacked request to send to remote storage
+	// The maximum size of unpacked request to send to remote storage
 	// +optional
-	MaxBlockSize *int32 `json:"maxBlockSize,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	MaxBlockSize *vmv1beta1.BytesString `json:"maxBlockSize,omitempty"`
 
 	// The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
 	// +optional
@@ -161,7 +153,8 @@ type VLAgentRemoteWriteSettings struct {
 	// Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info
 	// +optional
 	ShowURL *bool `json:"showURL,omitempty"`
-	// Path to directory where temporary data for remote write component is stored (default vlagent-remotewrite-data)
+	// Path to directory where temporary data for remote write component is stored (default /vlagent_pq/vlagent-remotewrite-data)
+	// If defined, operator ignores spec.storage field and skips adding volume and volumeMount for pq
 	// +optional
 	TmpDataPath *string `json:"tmpDataPath,omitempty"`
 	// Interval for flushing the data to remote storage. (default 1s)
@@ -175,18 +168,18 @@ type VLAgentRemoteWriteSettings struct {
 type VLAgentRemoteWriteSpec struct {
 	// URL of the endpoint to send samples to.
 	URL string `json:"url"`
-	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// +optional
-	BasicAuth *vmv1beta1.BasicAuth `json:"basicAuth,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
 	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	// Optional bearer auth token to use for -remoteWrite.url
+	// +optional
+	BearerTokenPath string `json:"bearerTokenPath,omitempty"`
 	// OAuth2 defines auth configuration
 	// +optional
-	OAuth2 *vmv1beta1.OAuth2 `json:"oauth2,omitempty"`
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 	// TLSConfig describes tls configuration for remote write target
 	// +optional
-	TLSConfig *vmv1beta1.TLSConfig `json:"tlsConfig,omitempty"`
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// Timeout for sending a single block of data to -remoteWrite.url (default 1m0s)
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
@@ -195,7 +188,6 @@ type VLAgentRemoteWriteSpec struct {
 	// Must be in form of semicolon separated header with value
 	// e.g.
 	// headerName: headerValue
-	// vlagent supports since 1.79.0 version
 	// +optional
 	Headers []string `json:"headers,omitempty"`
 	// MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite
@@ -274,6 +266,7 @@ func (cr *VLAgent) AsOwner() []metav1.OwnerReference {
 	}
 }
 
+// PodAnnotations returns pod metadata annotations
 func (cr *VLAgent) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
@@ -298,6 +291,7 @@ func (cr *VLAgent) DefaultStatusFields(vs *VLAgentStatus) {
 	vs.Replicas = replicaCount
 }
 
+// AnnotationsFiltered implements build.builderOpts interface
 func (cr *VLAgent) AnnotationsFiltered() map[string]string {
 	if cr.Spec.ManagedMetadata == nil {
 		return nil
@@ -309,6 +303,7 @@ func (cr *VLAgent) AnnotationsFiltered() map[string]string {
 	return dst
 }
 
+// SelectorLabels returns selector labels for querieng any vlagent related resources
 func (cr *VLAgent) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlagent",
@@ -318,6 +313,7 @@ func (cr *VLAgent) SelectorLabels() map[string]string {
 	}
 }
 
+// PodLabels returns labels for pod metadata
 func (cr *VLAgent) PodLabels() map[string]string {
 	lbls := cr.SelectorLabels()
 	if cr.Spec.PodMetadata == nil {
@@ -327,6 +323,7 @@ func (cr *VLAgent) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
+// AllLabels returns global labels for all vlagent related resources
 func (cr *VLAgent) AllLabels() map[string]string {
 	selectorLabels := cr.SelectorLabels()
 	// fast path
@@ -336,10 +333,12 @@ func (cr *VLAgent) AllLabels() map[string]string {
 	return labels.Merge(selectorLabels, cr.Spec.ManagedMetadata.Labels)
 }
 
+// PrefixedName returns name of resource with fixed prefix
 func (cr *VLAgent) PrefixedName() string {
 	return fmt.Sprintf("vlagent-%s", cr.Name)
 }
 
+// HealthPath returns path for health requests
 func (cr *VLAgent) HealthPath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
@@ -359,6 +358,7 @@ func (cr *VLAgent) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
+// GetServiceAccountName returns ServiceAccount for resource
 func (cr *VLAgent) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
@@ -366,6 +366,7 @@ func (cr *VLAgent) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// IsOwnsServiceAccount implements build.objectForServiceAccountBuilder
 func (cr *VLAgent) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
@@ -374,7 +375,7 @@ func (cr *VLAgent) IsOwnsServiceAccount() bool {
 func (cr *VLAgent) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {
-		port = "8429"
+		port = "9428"
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
@@ -387,22 +388,27 @@ func (cr *VLAgent) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
+// Probe implements build.probeCRD interface
 func (cr *VLAgent) Probe() *vmv1beta1.EmbeddedProbes {
 	return cr.Spec.EmbeddedProbes
 }
 
+// ProbePath implements build.probeCRD interface
 func (cr *VLAgent) ProbePath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
+// ProbeScheme implements build.probeCRD interface
 func (cr *VLAgent) ProbeScheme() string {
 	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
 }
 
+// ProbePort implements build.probeCRD interface
 func (cr *VLAgent) ProbePort() string {
 	return cr.Spec.Port
 }
 
+// ProbeNeedLiveness implements build.probeCRD interface
 func (*VLAgent) ProbeNeedLiveness() bool {
 	return true
 }
@@ -417,6 +423,7 @@ func (cr *VLAgent) HasSpecChanges() (bool, error) {
 	return vmv1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
+// Paused checks if resource reconcile should be paused
 func (cr *VLAgent) Paused() bool {
 	return cr.Spec.Paused
 }

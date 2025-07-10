@@ -21,15 +21,12 @@
 | VM_VLOGSDEFAULT_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vlogsdefault-resource-request-cpu" id="variables-vm-vlogsdefault-resource-request-cpu">#</a> |
 | VM_VLAGENTDEFAULT_IMAGE: `victoriametrics/vlagent` <a href="#variables-vm-vlagentdefault-image" id="variables-vm-vlagentdefault-image">#</a> |
 | VM_VLAGENTDEFAULT_VERSION: `${VM_LOGS_VERSION}` <a href="#variables-vm-vlagentdefault-version" id="variables-vm-vlagentdefault-version">#</a> |
-| VM_VLAGENTDEFAULT_CONFIGRELOADIMAGE: `quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1` <a href="#variables-vm-vlagentdefault-configreloadimage" id="variables-vm-vlagentdefault-configreloadimage">#</a> |
 | VM_VLAGENTDEFAULT_PORT: `9429` <a href="#variables-vm-vlagentdefault-port" id="variables-vm-vlagentdefault-port">#</a> |
 | VM_VLAGENTDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vlagentdefault-usedefaultresources" id="variables-vm-vlagentdefault-usedefaultresources">#</a> |
 | VM_VLAGENTDEFAULT_RESOURCE_LIMIT_MEM: `500Mi` <a href="#variables-vm-vlagentdefault-resource-limit-mem" id="variables-vm-vlagentdefault-resource-limit-mem">#</a> |
 | VM_VLAGENTDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vlagentdefault-resource-limit-cpu" id="variables-vm-vlagentdefault-resource-limit-cpu">#</a> |
 | VM_VLAGENTDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vlagentdefault-resource-request-mem" id="variables-vm-vlagentdefault-resource-request-mem">#</a> |
 | VM_VLAGENTDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vlagentdefault-resource-request-cpu" id="variables-vm-vlagentdefault-resource-request-cpu">#</a> |
-| VM_VLAGENTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vlagentdefault-configreloadercpu" id="variables-vm-vlagentdefault-configreloadercpu">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VLAGENTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vlagentdefault-configreloadermemory" id="variables-vm-vlagentdefault-configreloadermemory">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VLSINGLEDEFAULT_IMAGE: `victoriametrics/victoria-logs` <a href="#variables-vm-vlsingledefault-image" id="variables-vm-vlsingledefault-image">#</a> |
 | VM_VLSINGLEDEFAULT_VERSION: `${VM_LOGS_VERSION}` <a href="#variables-vm-vlsingledefault-version" id="variables-vm-vlsingledefault-version">#</a> |
 | VM_VLSINGLEDEFAULT_PORT: `9428` <a href="#variables-vm-vlsingledefault-port" id="variables-vm-vlsingledefault-port">#</a> |

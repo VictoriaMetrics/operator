@@ -33,17 +33,6 @@ Package v1 contains API Schema definitions for the operator v1 API group
 
 
 
-#### ApplicationMode
-
-_Underlying type:_ _string_
-
-ApplicationMode defines allowed application k8s application modes
-
-_Validation:_
-- Enum: [DaemonSet StatefulSet Deployment]Appears in: [VLAgentSpec](#vlagentspec)
-
-
-
 #### FieldsListString
 
 _Underlying type:_ _string_
@@ -53,6 +42,26 @@ FieldsListString represents list of json encoded strings
 
 Appears in: [SyslogTCPListener](#syslogtcplistener), [SyslogUDPListener](#syslogudplistener)
 
+
+
+#### OAuth2
+
+
+
+OAuth2 defines OAuth2 configuration parametrs
+with optional references to secrets with corresponding sensetive values
+
+Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec)
+
+| Field | Description |
+| --- | --- |
+| clientIDFile<a href="#oauth2-clientidfile" id="oauth2-clientidfile">#</a><br/>_string_ | _(Optional)_<br/>ClientIDFile defines path to pre-mounted OAuth2 client id |
+| clientIDSecret<a href="#oauth2-clientidsecret" id="oauth2-clientidsecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>ClientIDSecret defines secret or configmap containing the OAuth2 client id |
+| clientSecret<a href="#oauth2-clientsecret" id="oauth2-clientsecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The secret containing the OAuth2 client secret |
+| clientSecretFile<a href="#oauth2-clientsecretfile" id="oauth2-clientsecretfile">#</a><br/>_string_ | _(Optional)_<br/>ClientSecretFile defines path to pre-mounted OAuth2 client secret |
+| endpointParams<a href="#oauth2-endpointparams" id="oauth2-endpointparams">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>EndpointParams to append to the token URL |
+| scopes<a href="#oauth2-scopes" id="oauth2-scopes">#</a><br/>_string array_ | _(Optional)_<br/>Scopes used for the token request |
+| tokenURL<a href="#oauth2-tokenurl" id="oauth2-tokenurl">#</a><br/>_string_ | _(Required)_<br/>TokenURL defines URL to fetch the token from |
 
 
 #### SyslogServerSpec
@@ -106,6 +115,27 @@ Appears in: [SyslogServerSpec](#syslogserverspec)
 | tenantID<a href="#syslogudplistener-tenantid" id="syslogudplistener-tenantid">#</a><br/>_string_ | _(Optional)_<br/>TenantID for logs ingested in form of accountID:projectID<br />see https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multiple-configs |
 
 
+#### TLSConfig
+
+
+
+TLSConfig specifies TLS configuration parameters
+with optional references to secrets with corresponding sensetive values
+
+Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec)
+
+| Field | Description |
+| --- | --- |
+| caFile<a href="#tlsconfig-cafile" id="tlsconfig-cafile">#</a><br/>_string_ | _(Optional)_<br/>CAFile defines path to the pre-mounted file with TLS ca certificate |
+| caSecretKeyRef<a href="#tlsconfig-casecretkeyref" id="tlsconfig-casecretkeyref">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>CASecret defines secret reference with tls CA key by given key |
+| certFile<a href="#tlsconfig-certfile" id="tlsconfig-certfile">#</a><br/>_string_ | _(Optional)_<br/>CertFile defines path to the pre-mounted file with TLS certificate<br />mutually exclusive with CertSecret |
+| certSecretKeyRef<a href="#tlsconfig-certsecretkeyref" id="tlsconfig-certsecretkeyref">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>CertSecret defines secret reference with TLS cert by given key<br />mutually exclusive with CASecret |
+| insecureSkipVerify<a href="#tlsconfig-insecureskipverify" id="tlsconfig-insecureskipverify">#</a><br/>_boolean_ | _(Optional)_<br/>Disable target certificate validation. |
+| keyFile<a href="#tlsconfig-keyfile" id="tlsconfig-keyfile">#</a><br/>_string_ | _(Optional)_<br/>KeyFile defines path to the pre-mounted file with TLS cert key<br />mutually exclusive with CertSecret |
+| keySecretKeyRef<a href="#tlsconfig-keysecretkeyref" id="tlsconfig-keysecretkeyref">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>CertSecret defines secret reference with TLS key by given key |
+| serverName<a href="#tlsconfig-servername" id="tlsconfig-servername">#</a><br/>_string_ | _(Optional)_<br/>Used to verify the hostname for the targets. |
+
+
 #### TLSServerConfig
 
 
@@ -116,7 +146,7 @@ Appears in: [SyslogTCPListener](#syslogtcplistener)
 
 | Field | Description |
 | --- | --- |
-| certFile<a href="#tlsserverconfig-certfile" id="tlsserverconfig-certfile">#</a><br/>_string_ | _(Optional)_<br/>CertFile defines path to the pre-mounted file with certificate<br />mutually exclusive with CertSecretRef |
+| certFile<a href="#tlsserverconfig-certfile" id="tlsserverconfig-certfile">#</a><br/>_string_ | _(Optional)_<br/>CertFile defines path to the pre-mounted file with certificate<br />mutually exclusive with CertSecret |
 | certSecret<a href="#tlsserverconfig-certsecret" id="tlsserverconfig-certsecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>CertSecretRef defines reference for secret with certificate content under given key<br />mutually exclusive with CertFile |
 | keyFile<a href="#tlsserverconfig-keyfile" id="tlsserverconfig-keyfile">#</a><br/>_string_ | _(Optional)_<br/>KeyFile defines path to the pre-mounted file with certificate key<br />mutually exclusive with KeySecretRef |
 | keySecret<a href="#tlsserverconfig-keysecret" id="tlsserverconfig-keysecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Key defines reference for secret with certificate key content under given key<br />mutually exclusive with KeyFile |
@@ -149,11 +179,11 @@ Appears in: [VLAgentSpec](#vlagentspec)
 | Field | Description |
 | --- | --- |
 | flushInterval<a href="#vlagentremotewritesettings-flushinterval" id="vlagentremotewritesettings-flushinterval">#</a><br/>_string_ | _(Optional)_<br/>Interval for flushing the data to remote storage. (default 1s) |
-| maxBlockSize<a href="#vlagentremotewritesettings-maxblocksize" id="vlagentremotewritesettings-maxblocksize">#</a><br/>_integer_ | _(Optional)_<br/>The maximum size in bytes of unpacked request to send to remote storage |
+| maxBlockSize<a href="#vlagentremotewritesettings-maxblocksize" id="vlagentremotewritesettings-maxblocksize">#</a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>The maximum size of unpacked request to send to remote storage |
 | maxDiskUsagePerURL<a href="#vlagentremotewritesettings-maxdiskusageperurl" id="vlagentremotewritesettings-maxdiskusageperurl">#</a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath |
 | queues<a href="#vlagentremotewritesettings-queues" id="vlagentremotewritesettings-queues">#</a><br/>_integer_ | _(Optional)_<br/>The number of concurrent queues |
 | showURL<a href="#vlagentremotewritesettings-showurl" id="vlagentremotewritesettings-showurl">#</a><br/>_boolean_ | _(Optional)_<br/>Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info |
-| tmpDataPath<a href="#vlagentremotewritesettings-tmpdatapath" id="vlagentremotewritesettings-tmpdatapath">#</a><br/>_string_ | _(Optional)_<br/>Path to directory where temporary data for remote write component is stored (default vlagent-remotewrite-data) |
+| tmpDataPath<a href="#vlagentremotewritesettings-tmpdatapath" id="vlagentremotewritesettings-tmpdatapath">#</a><br/>_string_ | _(Optional)_<br/>Path to directory where temporary data for remote write component is stored (default /vlagent_pq/vlagent-remotewrite-data)<br />If defined, operator ignores spec.storage field and skips adding volume and volumeMount for pq |
 
 
 #### VLAgentRemoteWriteSpec
@@ -166,9 +196,9 @@ Appears in: [VLAgentSpec](#vlagentspec)
 
 | Field | Description |
 | --- | --- |
-| basicAuth<a href="#vlagentremotewritespec-basicauth" id="vlagentremotewritespec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication |
+| bearerTokenPath<a href="#vlagentremotewritespec-bearertokenpath" id="vlagentremotewritespec-bearertokenpath">#</a><br/>_string_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
 | bearerTokenSecret<a href="#vlagentremotewritespec-bearertokensecret" id="vlagentremotewritespec-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
-| headers<a href="#vlagentremotewritespec-headers" id="vlagentremotewritespec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers allow configuring custom http headers<br />Must be in form of semicolon separated header with value<br />e.g.<br />headerName: headerValue<br />vlagent supports since 1.79.0 version |
+| headers<a href="#vlagentremotewritespec-headers" id="vlagentremotewritespec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers allow configuring custom http headers<br />Must be in form of semicolon separated header with value<br />e.g.<br />headerName: headerValue |
 | maxDiskUsage<a href="#vlagentremotewritespec-maxdiskusage" id="vlagentremotewritespec-maxdiskusage">#</a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite<br />It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL |
 | oauth2<a href="#vlagentremotewritespec-oauth2" id="vlagentremotewritespec-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | proxyURL<a href="#vlagentremotewritespec-proxyurl" id="vlagentremotewritespec-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL for -remoteWrite.url. Supported proxies: http, https, socks5. Example: socks5://proxy:1234 |
@@ -204,12 +234,10 @@ Appears in: [VLAgent](#vlagent)
 | image<a href="#vlagentspec-image" id="vlagentspec-image">#</a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
 | imagePullSecrets<a href="#vlagentspec-imagepullsecrets" id="vlagentspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
 | initContainers<a href="#vlagentspec-initcontainers" id="vlagentspec-initcontainers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
-| license<a href="#vlagentspec-license" id="vlagentspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/) |
 | logFormat<a href="#vlagentspec-logformat" id="vlagentspec-logformat">#</a><br/>_string_ | _(Optional)_<br/>LogFormat for VLAgent to be configured with. |
 | logLevel<a href="#vlagentspec-loglevel" id="vlagentspec-loglevel">#</a><br/>_string_ | _(Optional)_<br/>LogLevel for VLAgent to be configured with.<br />INFO, WARN, ERROR, FATAL, PANIC |
 | managedMetadata<a href="#vlagentspec-managedmetadata" id="vlagentspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
 | minReadySeconds<a href="#vlagentspec-minreadyseconds" id="vlagentspec-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
-| mode<a href="#vlagentspec-mode" id="vlagentspec-mode">#</a><br/>_[ApplicationMode](#applicationmode)_ | _(Optional)_<br/>Mode runs `VLAgent` in one of k8s modes: `Deployment`, `StatefulSet` or `DaemonSet` |
 | nodeSelector<a href="#vlagentspec-nodeselector" id="vlagentspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
 | paused<a href="#vlagentspec-paused" id="vlagentspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
 | persistentVolumeClaimRetentionPolicy<a href="#vlagentspec-persistentvolumeclaimretentionpolicy" id="vlagentspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy |
@@ -223,7 +251,7 @@ Appears in: [VLAgent](#vlagent)
 | replicaCount<a href="#vlagentspec-replicacount" id="vlagentspec-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
 | resources<a href="#vlagentspec-resources" id="vlagentspec-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
 | revisionHistoryLimitCount<a href="#vlagentspec-revisionhistorylimitcount" id="vlagentspec-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
-| rollingUpdate<a href="#vlagentspec-rollingupdate" id="vlagentspec-rollingupdate">#</a><br/>_[RollingUpdateDeployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#rollingupdatedeployment-v1-apps)_ | _(Optional)_<br/>RollingUpdate - overrides deployment update params. |
+| rollingUpdateStrategy<a href="#vlagentspec-rollingupdatestrategy" id="vlagentspec-rollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>StatefulRollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
 | runtimeClassName<a href="#vlagentspec-runtimeclassname" id="vlagentspec-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
 | schedulerName<a href="#vlagentspec-schedulername" id="vlagentspec-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
 | secrets<a href="#vlagentspec-secrets" id="vlagentspec-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
@@ -231,13 +259,11 @@ Appears in: [VLAgent](#vlagent)
 | serviceAccountName<a href="#vlagentspec-serviceaccountname" id="vlagentspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | serviceScrapeSpec<a href="#vlagentspec-servicescrapespec" id="vlagentspec-servicescrapespec">#</a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vlagent VMServiceScrape spec |
 | serviceSpec<a href="#vlagentspec-servicespec" id="vlagentspec-servicespec">#</a><br/>_[AdditionalServiceSpec](#additionalservicespec)_ | _(Optional)_<br/>ServiceSpec that will be added to vlagent service spec |
-| statefulRollingUpdateStrategy<a href="#vlagentspec-statefulrollingupdatestrategy" id="vlagentspec-statefulrollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>StatefulRollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
-| statefulStorage<a href="#vlagentspec-statefulstorage" id="vlagentspec-statefulstorage">#</a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>StatefulStorage configures storage for StatefulSet |
+| storage<a href="#vlagentspec-storage" id="vlagentspec-storage">#</a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>StatefulStorage configures storage for StatefulSet |
 | syslogSpec<a href="#vlagentspec-syslogspec" id="vlagentspec-syslogspec">#</a><br/>_[SyslogServerSpec](#syslogserverspec)_ | _(Optional)_<br/>SyslogSpec defines syslog listener configuration |
 | terminationGracePeriodSeconds<a href="#vlagentspec-terminationgraceperiodseconds" id="vlagentspec-terminationgraceperiodseconds">#</a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
 | tolerations<a href="#vlagentspec-tolerations" id="vlagentspec-tolerations">#</a><br/>_[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#toleration-v1-core) array_ | _(Optional)_<br/>Tolerations If specified, the pod's tolerations. |
 | topologySpreadConstraints<a href="#vlagentspec-topologyspreadconstraints" id="vlagentspec-topologyspreadconstraints">#</a><br/>_[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#topologyspreadconstraint-v1-core) array_ | _(Optional)_<br/>TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ |
-| updateStrategy<a href="#vlagentspec-updatestrategy" id="vlagentspec-updatestrategy">#</a><br/>_[DeploymentStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#deploymentstrategytype-v1-apps)_ | _(Optional)_<br/>UpdateStrategy - overrides default update strategy.<br />works only for deployments, statefulset always use OnDelete. |
 | useDefaultResources<a href="#vlagentspec-usedefaultresources" id="vlagentspec-usedefaultresources">#</a><br/>_boolean_ | _(Optional)_<br/>UseDefaultResources controls resource settings<br />By default, operator sets built-in resource requirements |
 | useStrictSecurity<a href="#vlagentspec-usestrictsecurity" id="vlagentspec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vlagentspec-volumemounts" id="vlagentspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
@@ -966,7 +992,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1775,7 +1801,7 @@ License holds license key for enterprise features.
 Using license key is supported starting from VictoriaMetrics corev1.94.0.
 See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 
-Appears in: [VLAgentSpec](#vlagentspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec)
+Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -1890,7 +1916,7 @@ Appears in: [DiscoverySelector](#discoveryselector), [ProbeTargetIngress](#probe
 
 OAuth2 defines OAuth2 configuration
 
-Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -2618,7 +2644,7 @@ Appears in: [AlertmanagerGossipConfig](#alertmanagergossipconfig)
 
 TLSConfig specifies TLSConfig configuration parameters.
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |

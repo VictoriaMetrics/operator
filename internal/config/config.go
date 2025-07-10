@@ -143,7 +143,7 @@ type BaseOperatorConf struct {
 	VLAgentDefault struct {
 		Image               string `default:"victoriametrics/vlagent"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
+		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9429"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -156,10 +156,8 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+		ConfigReloaderCPU    string `env:"-"`
+		ConfigReloaderMemory string `env:"-"`
 	} `prefix:"VLAGENTDEFAULT_"`
 
 	VLSingleDefault struct {

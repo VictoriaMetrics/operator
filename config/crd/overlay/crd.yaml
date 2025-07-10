@@ -736,50 +736,6 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
-              license:
-                description: |-
-                  License allows to configure license key to be used for enterprise features.
-                  Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
-                properties:
-                  forceOffline:
-                    description: Enforce offline verification of the license key.
-                    type: boolean
-                  key:
-                    description: |-
-                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
-                      To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
-                    type: string
-                  keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
-                    properties:
-                      key:
-                        description: The key of the secret to select from.  Must be
-                          a valid secret key.
-                        type: string
-                      name:
-                        default: ""
-                        description: |-
-                          Name of the referent.
-                          This field is effectively required, but due to backwards compatibility is
-                          allowed to be empty. Instances of this type with an empty value here are
-                          almost certainly wrong.
-                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                        type: string
-                      optional:
-                        description: Specify whether the Secret or its key must be
-                          defined
-                        type: boolean
-                    required:
-                    - key
-                    type: object
-                    x-kubernetes-map-type: atomic
-                  reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
-                    type: string
-                type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object
@@ -831,14 +787,6 @@ spec:
                   Has no effect for VLogs and VMSingle
                 format: int32
                 type: integer
-              mode:
-                description: 'Mode runs `VLAgent` in one of k8s modes: `Deployment`,
-                  `StatefulSet` or `DaemonSet`'
-                enum:
-                - DaemonSet
-                - StatefulSet
-                - Deployment
-                type: string
               nodeSelector:
                 additionalProperties:
                   type: string
@@ -966,68 +914,9 @@ spec:
                   description: VLAgentRemoteWriteSpec defines the remote storage configuration
                     for VmAgent
                   properties:
-                    basicAuth:
-                      description: BasicAuth allow an endpoint to authenticate over
-                        basic authentication
-                      properties:
-                        password:
-                          description: |-
-                            Password defines reference for secret with password value
-                            The secret needs to be in the same namespace as scrape object
-                          properties:
-                            key:
-                              description: The key of the secret to select from.  Must
-                                be a valid secret key.
-                              type: string
-                            name:
-                              default: ""
-                              description: |-
-                                Name of the referent.
-                                This field is effectively required, but due to backwards compatibility is
-                                allowed to be empty. Instances of this type with an empty value here are
-                                almost certainly wrong.
-                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              type: string
-                            optional:
-                              description: Specify whether the Secret or its key must
-                                be defined
-                              type: boolean
-                          required:
-                          - key
-                          type: object
-                          x-kubernetes-map-type: atomic
-                        password_file:
-                          description: |-
-                            PasswordFile defines path to password file at disk
-                            must be pre-mounted
-                          type: string
-                        username:
-                          description: |-
-                            Username defines reference for secret with username value
-                            The secret needs to be in the same namespace as scrape object
-                          properties:
-                            key:
-                              description: The key of the secret to select from.  Must
-                                be a valid secret key.
-                              type: string
-                            name:
-                              default: ""
-                              description: |-
-                                Name of the referent.
-                                This field is effectively required, but due to backwards compatibility is
-                                allowed to be empty. Instances of this type with an empty value here are
-                                almost certainly wrong.
-                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              type: string
-                            optional:
-                              description: Specify whether the Secret or its key must
-                                be defined
-                              type: boolean
-                          required:
-                          - key
-                          type: object
-                          x-kubernetes-map-type: atomic
-                      type: object
+                    bearerTokenPath:
+                      description: Optional bearer auth token to use for -remoteWrite.url
+                      type: string
                     bearerTokenSecret:
                       description: Optional bearer auth token to use for -remoteWrite.url
                       properties:
@@ -1058,7 +947,6 @@ spec:
                         Must be in form of semicolon separated header with value
                         e.g.
                         headerName: headerValue
-                        vlagent supports since 1.79.0 version
                       items:
                         type: string
                       type: array
@@ -1070,60 +958,36 @@ spec:
                     oauth2:
                       description: OAuth2 defines auth configuration
                       properties:
-                        client_id:
-                          description: The secret or configmap containing the OAuth2
+                        clientIDFile:
+                          description: ClientIDFile defines path to pre-mounted OAuth2
                             client id
+                          type: string
+                        clientIDSecret:
+                          description: ClientIDSecret defines secret or configmap
+                            containing the OAuth2 client id
                           properties:
-                            configMap:
-                              description: ConfigMap containing data to use for the
-                                targets.
-                              properties:
-                                key:
-                                  description: The key to select.
-                                  type: string
-                                name:
-                                  default: ""
-                                  description: |-
-                                    Name of the referent.
-                                    This field is effectively required, but due to backwards compatibility is
-                                    allowed to be empty. Instances of this type with an empty value here are
-                                    almost certainly wrong.
-                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  type: string
-                                optional:
-                                  description: Specify whether the ConfigMap or its
-                                    key must be defined
-                                  type: boolean
-                              required:
-                              - key
-                              type: object
-                              x-kubernetes-map-type: atomic
-                            secret:
-                              description: Secret containing data to use for the targets.
-                              properties:
-                                key:
-                                  description: The key of the secret to select from.  Must
-                                    be a valid secret key.
-                                  type: string
-                                name:
-                                  default: ""
-                                  description: |-
-                                    Name of the referent.
-                                    This field is effectively required, but due to backwards compatibility is
-                                    allowed to be empty. Instances of this type with an empty value here are
-                                    almost certainly wrong.
-                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  type: string
-                                optional:
-                                  description: Specify whether the Secret or its key
-                                    must be defined
-                                  type: boolean
-                              required:
-                              - key
-                              type: object
-                              x-kubernetes-map-type: atomic
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
                           type: object
-                        client_secret:
+                          x-kubernetes-map-type: atomic
+                        clientSecret:
                           description: The secret containing the OAuth2 client secret
                           properties:
                             key:
@@ -1147,39 +1011,26 @@ spec:
                           - key
                           type: object
                           x-kubernetes-map-type: atomic
-                        client_secret_file:
-                          description: ClientSecretFile defines path for client secret
-                            file.
+                        clientSecretFile:
+                          description: ClientSecretFile defines path to pre-mounted
+                            OAuth2 client secret
                           type: string
-                        endpoint_params:
+                        endpointParams:
                           additionalProperties:
                             type: string
-                          description: Parameters to append to the token URL
+                          description: EndpointParams to append to the token URL
                           type: object
-                        proxy_url:
-                          description: |-
-                            The proxy URL for token_url connection
-                            ( available from v0.55.0).
-                            Is only supported by Scrape objects family
-                          type: string
                         scopes:
-                          description: OAuth2 scopes used for the token request
+                          description: Scopes used for the token request
                           items:
                             type: string
                           type: array
-                        tls_config:
-                          description: |-
-                            TLSConfig for token_url connection
-                            ( available from v0.55.0).
-                            Is only supported by Scrape objects family
-                          x-kubernetes-preserve-unknown-fields: true
-                        token_url:
-                          description: The URL to fetch the token from
+                        tokenURL:
+                          description: TokenURL defines URL to fetch the token from
                           minLength: 1
                           type: string
                       required:
-                      - client_id
-                      - token_url
+                      - tokenURL
                       type: object
                     proxyURL:
                       description: 'ProxyURL for -remoteWrite.url. Supported proxies:
@@ -1194,130 +1045,77 @@ spec:
                       description: TLSConfig describes tls configuration for remote
                         write target
                       properties:
-                        ca:
-                          description: Struct containing the CA cert to use for the
-                            targets.
-                          properties:
-                            configMap:
-                              description: ConfigMap containing data to use for the
-                                targets.
-                              properties:
-                                key:
-                                  description: The key to select.
-                                  type: string
-                                name:
-                                  default: ""
-                                  description: |-
-                                    Name of the referent.
-                                    This field is effectively required, but due to backwards compatibility is
-                                    allowed to be empty. Instances of this type with an empty value here are
-                                    almost certainly wrong.
-                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  type: string
-                                optional:
-                                  description: Specify whether the ConfigMap or its
-                                    key must be defined
-                                  type: boolean
-                              required:
-                              - key
-                              type: object
-                              x-kubernetes-map-type: atomic
-                            secret:
-                              description: Secret containing data to use for the targets.
-                              properties:
-                                key:
-                                  description: The key of the secret to select from.  Must
-                                    be a valid secret key.
-                                  type: string
-                                name:
-                                  default: ""
-                                  description: |-
-                                    Name of the referent.
-                                    This field is effectively required, but due to backwards compatibility is
-                                    allowed to be empty. Instances of this type with an empty value here are
-                                    almost certainly wrong.
-                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  type: string
-                                optional:
-                                  description: Specify whether the Secret or its key
-                                    must be defined
-                                  type: boolean
-                              required:
-                              - key
-                              type: object
-                              x-kubernetes-map-type: atomic
-                          type: object
                         caFile:
-                          description: Path to the CA cert in the container to use
-                            for the targets.
+                          description: CAFile defines path to the pre-mounted file
+                            with TLS ca certificate
                           type: string
-                        cert:
-                          description: Struct containing the client cert file for
-                            the targets.
+                        caSecretKeyRef:
+                          description: CASecret defines secret reference with tls
+                            CA key by given key
                           properties:
-                            configMap:
-                              description: ConfigMap containing data to use for the
-                                targets.
-                              properties:
-                                key:
-                                  description: The key to select.
-                                  type: string
-                                name:
-                                  default: ""
-                                  description: |-
-                                    Name of the referent.
-                                    This field is effectively required, but due to backwards compatibility is
-                                    allowed to be empty. Instances of this type with an empty value here are
-                                    almost certainly wrong.
-                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  type: string
-                                optional:
-                                  description: Specify whether the ConfigMap or its
-                                    key must be defined
-                                  type: boolean
-                              required:
-                              - key
-                              type: object
-                              x-kubernetes-map-type: atomic
-                            secret:
-                              description: Secret containing data to use for the targets.
-                              properties:
-                                key:
-                                  description: The key of the secret to select from.  Must
-                                    be a valid secret key.
-                                  type: string
-                                name:
-                                  default: ""
-                                  description: |-
-                                    Name of the referent.
-                                    This field is effectively required, but due to backwards compatibility is
-                                    allowed to be empty. Instances of this type with an empty value here are
-                                    almost certainly wrong.
-                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  type: string
-                                optional:
-                                  description: Specify whether the Secret or its key
-                                    must be defined
-                                  type: boolean
-                              required:
-                              - key
-                              type: object
-                              x-kubernetes-map-type: atomic
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
                           type: object
+                          x-kubernetes-map-type: atomic
                         certFile:
-                          description: Path to the client cert file in the container
-                            for the targets.
+                          description: |-
+                            CertFile defines path to the pre-mounted file with TLS certificate
+                            mutually exclusive with CertSecret
                           type: string
+                        certSecretKeyRef:
+                          description: |-
+                            CertSecret defines secret reference with TLS cert by given key
+                            mutually exclusive with CASecret
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
                         insecureSkipVerify:
                           description: Disable target certificate validation.
                           type: boolean
                         keyFile:
-                          description: Path to the client key file in the container
-                            for the targets.
+                          description: |-
+                            KeyFile defines path to the pre-mounted file with TLS cert key
+                            mutually exclusive with CertSecret
                           type: string
-                        keySecret:
-                          description: Secret containing the client key file for the
-                            targets.
+                        keySecretKeyRef:
+                          description: CertSecret defines secret reference with TLS
+                            key by given key
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1361,10 +1159,9 @@ spec:
                     pattern: '[0-9]+(ms|s|m|h)'
                     type: string
                   maxBlockSize:
-                    description: The maximum size in bytes of unpacked request to
-                      send to remote storage
-                    format: int32
-                    type: integer
+                    description: The maximum size of unpacked request to send to remote
+                      storage
+                    x-kubernetes-preserve-unknown-fields: true
                   maxDiskUsagePerURL:
                     description: The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
                     x-kubernetes-preserve-unknown-fields: true
@@ -1378,8 +1175,9 @@ spec:
                       auth info
                     type: boolean
                   tmpDataPath:
-                    description: Path to directory where temporary data for remote
-                      write component is stored (default vlagent-remotewrite-data)
+                    description: |-
+                      Path to directory where temporary data for remote write component is stored (default /vlagent_pq/vlagent-remotewrite-data)
+                      If defined, operator ignores spec.storage field and skips adding volume and volumeMount for pq
                     type: string
                 type: object
               replicaCount:
@@ -1455,43 +1253,11 @@ spec:
                   Defaults to 10.
                 format: int32
                 type: integer
-              rollingUpdate:
-                description: RollingUpdate - overrides deployment update params.
-                properties:
-                  maxSurge:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    description: |-
-                      The maximum number of pods that can be scheduled above the desired number of
-                      pods.
-                      Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
-                      This can not be 0 if MaxUnavailable is 0.
-                      Absolute number is calculated from percentage by rounding up.
-                      Defaults to 25%.
-                      Example: when this is set to 30%, the new ReplicaSet can be scaled up immediately when
-                      the rolling update starts, such that the total number of old and new pods do not exceed
-                      130% of desired pods. Once old pods have been killed,
-                      new ReplicaSet can be scaled up further, ensuring that total number of pods running
-                      at any time during the update is at most 130% of desired pods.
-                    x-kubernetes-int-or-string: true
-                  maxUnavailable:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    description: |-
-                      The maximum number of pods that can be unavailable during the update.
-                      Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
-                      Absolute number is calculated from percentage by rounding down.
-                      This can not be 0 if MaxSurge is 0.
-                      Defaults to 25%.
-                      Example: when this is set to 30%, the old ReplicaSet can be scaled down to 70% of desired pods
-                      immediately when the rolling update starts. Once new pods are ready, old ReplicaSet
-                      can be scaled down further, followed by scaling up the new ReplicaSet, ensuring
-                      that the total number of pods available at all times during the update is at
-                      least 70% of desired pods.
-                    x-kubernetes-int-or-string: true
-                type: object
+              rollingUpdateStrategy:
+                description: |-
+                  StatefulRollingUpdateStrategy allows configuration for strategyType
+                  set it to RollingUpdate for disabling operator statefulSet rollingUpdate
+                type: string
               runtimeClassName:
                 description: |-
                   RuntimeClassName - defines runtime class for kubernetes pod.
@@ -1578,12 +1344,7 @@ spec:
                 description: StartupProbe that will be added to CRD pod
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
-              statefulRollingUpdateStrategy:
-                description: |-
-                  StatefulRollingUpdateStrategy allows configuration for strategyType
-                  set it to RollingUpdate for disabling operator statefulSet rollingUpdate
-                type: string
-              statefulStorage:
+              storage:
                 description: StatefulStorage configures storage for StatefulSet
                 properties:
                   disableMountSubPath:
@@ -2101,7 +1862,7 @@ spec:
                             certFile:
                               description: |-
                                 CertFile defines path to the pre-mounted file with certificate
-                                mutually exclusive with CertSecretRef
+                                mutually exclusive with CertSecret
                               type: string
                             certSecret:
                               description: |-
@@ -2266,14 +2027,6 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
-              updateStrategy:
-                description: |-
-                  UpdateStrategy - overrides default update strategy.
-                  works only for deployments, statefulset always use OnDelete.
-                enum:
-                - Recreate
-                - RollingUpdate
-                type: string
               useDefaultResources:
                 description: |-
                   UseDefaultResources controls resource settings
@@ -3264,7 +3017,7 @@ spec:
                                 certFile:
                                   description: |-
                                     CertFile defines path to the pre-mounted file with certificate
-                                    mutually exclusive with CertSecretRef
+                                    mutually exclusive with CertSecret
                                   type: string
                                 certSecret:
                                   description: |-
@@ -6254,7 +6007,7 @@ spec:
                             certFile:
                               description: |-
                                 CertFile defines path to the pre-mounted file with certificate
-                                mutually exclusive with CertSecretRef
+                                mutually exclusive with CertSecret
                               type: string
                             certSecret:
                               description: |-

@@ -36,7 +36,7 @@ func SetupVLAgentWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1-vmagent,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmagents,verbs=create;update,versions=v1,name=vvmagent-v1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1-vlagent,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vlagents,verbs=create;update,versions=v1,name=vvlagent-v1.kb.io,admissionReviewVersions=v1
 type VLAgentCustomValidator struct{}
 
 var _ admission.CustomValidator = &VLAgentCustomValidator{}

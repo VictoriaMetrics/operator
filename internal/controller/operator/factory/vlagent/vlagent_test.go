@@ -28,7 +28,7 @@ import (
 )
 
 func TestCreateOrUpdate(t *testing.T) {
-	f := func(cr *vmv1.VLAgent, mustAddPrevSpec, statefulSetMode, wantErr bool, validate func(set *appsv1.StatefulSet) error, predefinedObjects ...runtime.Object) {
+	f := func(cr *vmv1.VLAgent, mustAddPrevSpec, wantErr bool, validate func(set *appsv1.StatefulSet) error, predefinedObjects ...runtime.Object) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
 		ctx := context.TODO()
@@ -49,40 +49,35 @@ func TestCreateOrUpdate(t *testing.T) {
 			err := CreateOrUpdate(ctx, cr, fclient)
 			errC <- err
 		}()
-
-		if statefulSetMode {
-			err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, false, func(ctx context.Context) (done bool, err error) {
-				var sts appsv1.StatefulSet
-				if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: fmt.Sprintf("vlagent-%s", cr.Name)}, &sts); err != nil {
-					return false, nil
-				}
-				sts.Status.ReadyReplicas = ptr.Deref(cr.Spec.ReplicaCount, 0)
-				sts.Status.UpdatedReplicas = ptr.Deref(cr.Spec.ReplicaCount, 0)
-				sts.Status.CurrentReplicas = ptr.Deref(cr.Spec.ReplicaCount, 0)
-				err = fclient.Status().Update(ctx, &sts)
-				if err != nil {
-					return false, err
-				}
-				return true, nil
-			})
-			if err != nil {
-				t.Errorf("cannot wait sts ready: %s", err)
+		err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, false, func(ctx context.Context) (done bool, err error) {
+			var sts appsv1.StatefulSet
+			if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: fmt.Sprintf("vlagent-%s", cr.Name)}, &sts); err != nil {
+				return false, nil
 			}
+			sts.Status.ReadyReplicas = ptr.Deref(cr.Spec.ReplicaCount, 0)
+			sts.Status.UpdatedReplicas = ptr.Deref(cr.Spec.ReplicaCount, 0)
+			sts.Status.CurrentReplicas = ptr.Deref(cr.Spec.ReplicaCount, 0)
+			sts.Status.ObservedGeneration = sts.GetGeneration()
+			err = fclient.Status().Update(ctx, &sts)
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		})
+		if err != nil {
+			t.Errorf("cannot wait sts ready: %s", err)
 		}
-
-		err := <-errC
+		err = <-errC
 		if (err != nil) != wantErr {
 			t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, wantErr)
 			return
 		}
-		if statefulSetMode {
-			var got appsv1.StatefulSet
-			if err := fclient.Get(context.Background(), types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got); (err != nil) != wantErr {
-				t.Fatalf("CreateOrUpdate() error = %v, wantErr %v", err, wantErr)
-			}
-			if err := validate(&got); err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+		var got appsv1.StatefulSet
+		if err := fclient.Get(context.Background(), types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got); (err != nil) != wantErr {
+			t.Fatalf("CreateOrUpdate() error = %v, wantErr %v", err, wantErr)
+		}
+		if err := validate(&got); err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
 	}
 
@@ -97,11 +92,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				{URL: "http://remote-write"},
 			},
 			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ReplicaCount: ptr.To(int32(1)),
+				ReplicaCount: ptr.To(int32(0)),
 			},
 			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
-			Mode:                    vmv1.StatefulSetMode,
-			StatefulStorage: &vmv1beta1.StorageSpec{
+			Storage: &vmv1beta1.StorageSpec{
 				VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: ptr.To("embed-sc"),
@@ -129,7 +123,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-	}, false, true, false, func(got *appsv1.StatefulSet) error {
+	}, false, false, func(got *appsv1.StatefulSet) error {
 		if len(got.Spec.Template.Spec.Containers) != 1 {
 			return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 1)
 		}
@@ -157,55 +151,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			return fmt.Errorf("unexpected extra VolumeClaimTemplates resources, diff: %v", diff)
 		}
 		return nil
-	}, k8stools.NewReadyDeployment("vlagent-example-agent", "default"))
-
-	// generate vlagent with bauth-secret
-	f(&vmv1.VLAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-agent-bauth",
-			Namespace: "default",
-		},
-		Spec: vmv1.VLAgentSpec{
-			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-				{
-					URL: "http://remote-write",
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "bauth-secret",
-							},
-							Key: "user",
-						},
-						Password: corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "bauth-secret",
-							},
-							Key: "password",
-						},
-					},
-				},
-			},
-		},
-	}, false, false, false, nil, k8stools.NewReadyDeployment("vlagent-example-agent-bauth", "default"), &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "bauth-secret", Namespace: "default"},
-		Data:       map[string][]byte{"user": []byte(`user-name`), "password": []byte(`user-password`)},
 	})
-
-	// fail if bearer token secret is missing, without basic auth
-	f(&vmv1.VLAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-agent-bearer-missing",
-			Namespace: "default",
-		},
-		Spec: vmv1.VLAgentSpec{
-			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-				{
-					URL:               "http://remote-write",
-					BearerTokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bearer-secret"}, Key: "token"},
-				},
-			},
-		},
-	}, false, false, true, nil)
 
 	// generate vlagent with tls-secret
 	f(&vmv1.VLAgent{
@@ -214,26 +160,25 @@ func TestCreateOrUpdate(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1.VLAgentSpec{
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ReplicaCount: ptr.To(int32(0)),
+			},
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{URL: "http://remote-write"},
 				{
 					URL: "http://remote-write2",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						CA: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "remote2-secret",
-								},
-								Key: "ca",
+					TLSConfig: &vmv1.TLSConfig{
+						CASecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "remote2-secret",
 							},
+							Key: "ca",
 						},
-						Cert: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "remote2-secret",
-								},
-								Key: "ca",
+						CertSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "remote2-secret",
 							},
+							Key: "ca",
 						},
 						KeySecret: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
@@ -245,23 +190,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				{
 					URL: "http://remote-write3",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						CA: vmv1beta1.SecretOrConfigMap{
-							ConfigMap: &corev1.ConfigMapKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "remote3-cm",
-								},
-								Key: "ca",
-							},
-						},
-						Cert: vmv1beta1.SecretOrConfigMap{
-							ConfigMap: &corev1.ConfigMapKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "remote3-cm",
-								},
-								Key: "ca",
-							},
-						},
+					TLSConfig: &vmv1.TLSConfig{
 						KeySecret: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "remote3-secret",
@@ -272,11 +201,11 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				{
 					URL:       "http://remote-write4",
-					TLSConfig: &vmv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"},
+					TLSConfig: &vmv1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"},
 				},
 			},
 		},
-	}, false, false, false, nil, k8stools.NewReadyDeployment("vlagent-example-agent-tls", "default"), &corev1.Namespace{
+	}, false, false, func(set *appsv1.StatefulSet) error { return nil }, &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"},
 	}, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "tls-scrape", Namespace: "default"},
@@ -292,37 +221,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		Data:       map[string]string{"ca": "ca-data", "cert": "cert-data"},
 	})
 
-	// generate vlagent statefulset with serviceName when additional service is headless
-	f(&vmv1.VLAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-agent-with-headless-service",
-			Namespace: "default",
-		},
-		Spec: vmv1.VLAgentSpec{
-			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-				{URL: "http://remote-write"},
-			},
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ReplicaCount: ptr.To(int32(1)),
-			},
-			Mode: vmv1.StatefulSetMode,
-			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
-				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
-					Name: "my-headless-additional-service",
-				},
-				Spec: corev1.ServiceSpec{
-					ClusterIP: corev1.ClusterIPNone,
-				},
-			},
-		},
-	}, false, true, false, func(got *appsv1.StatefulSet) error {
-		if got.Spec.ServiceName != "my-headless-additional-service" {
-			return fmt.Errorf("unexpected serviceName, got: %s, want: %s", got.Spec.ServiceName, "my-headless-additional-service")
-		}
-		return nil
-	}, k8stools.NewReadyDeployment("vlagent-example-agent", "default"))
-
-	// generate vlagent statefulset with prevSpec
+	// generate vlagent with prevSpec
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "example-agent",
@@ -335,8 +234,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 				ReplicaCount: ptr.To(int32(1)),
 			},
-			Mode: vmv1.StatefulSetMode,
-			StatefulStorage: &vmv1beta1.StorageSpec{
+			Storage: &vmv1beta1.StorageSpec{
 				VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: ptr.To("embed-sc"),
@@ -364,7 +262,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-	}, true, true, false, func(got *appsv1.StatefulSet) error {
+	}, true, false, func(got *appsv1.StatefulSet) error {
 		if len(got.Spec.Template.Spec.Containers) != 1 {
 			return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 1)
 		}
@@ -404,18 +302,15 @@ func TestCreateOrUpdate(t *testing.T) {
 			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 				ReplicaCount: ptr.To(int32(0)),
 			},
-			Mode: vmv1.StatefulSetMode,
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
 					URL: "http://some-url",
-					OAuth2: &vmv1beta1.OAuth2{
+					OAuth2: &vmv1.OAuth2{
 						TokenURL: "http://oauth2-svc/auth",
-						ClientID: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								Key: "client-id",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "oauth2-access",
-								},
+						ClientIDSecret: &corev1.SecretKeySelector{
+							Key: "client-id",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "oauth2-access",
 							},
 						},
 						ClientSecret: &corev1.SecretKeySelector{
@@ -424,12 +319,12 @@ func TestCreateOrUpdate(t *testing.T) {
 								Name: "oauth2-access",
 							},
 						},
-						TLSConfig: &vmv1beta1.TLSConfig{},
 					},
+					TLSConfig: &vmv1.TLSConfig{},
 				},
 			},
 		},
-	}, false, true, false, func(set *appsv1.StatefulSet) error {
+	}, false, false, func(set *appsv1.StatefulSet) error {
 		cnt := set.Spec.Template.Spec.Containers[0]
 		if cnt.Name != "vlagent" {
 			return fmt.Errorf("unexpected container name: %q, want: vlagent", cnt.Name)
@@ -458,13 +353,10 @@ func TestCreateOrUpdate(t *testing.T) {
 }
 
 func TestBuildRemoteWriteArgs(t *testing.T) {
-	f := func(cr *vmv1.VLAgent, want []string, predefinedObjects ...runtime.Object) {
+	f := func(cr *vmv1.VLAgent, want []string) {
 		t.Helper()
-		ctx := context.Background()
-		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
-		ac := getAssetsCache(ctx, fclient, cr)
 		sort.Strings(want)
-		got, err := buildRemoteWriteArgs(cr, ac)
+		got, err := buildRemoteWriteArgs(cr)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -475,56 +367,43 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	// test with tls config full
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "oauth2",
+			Name:      "tls",
 			Namespace: "default",
 		},
 		Spec: vmv1.VLAgentSpec{
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
 					URL: "localhost:8429",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						CA: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "tls-secret",
-								},
-								Key: "ca",
+					TLSConfig: &vmv1.TLSConfig{
+						CASecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "tls-secret",
 							},
+							Key: "ca",
 						},
 					},
 				},
 				{
 					URL: "localhost:8429",
-					TLSConfig: &vmv1beta1.TLSConfig{
+					TLSConfig: &vmv1.TLSConfig{
 						CAFile: "/path/to_ca",
-						Cert: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "tls-secret",
-								},
-								Key: "cert",
+						CertSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "tls-secret",
 							},
+							Key: "cert",
 						},
 					},
 				},
 			},
 		},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
-		`-remoteWrite.tlsCAFile=/etc/vlagent-tls/certs/default_tls-secret_ca,/path/to_ca`,
-		`-remoteWrite.tlsCertFile=,/etc/vlagent-tls/certs/default_tls-secret_cert`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
+		`-remoteWrite.tlsCAFile=/etc/vl/remote-write-assets/tls-secret/ca,/path/to_ca`,
+		`-remoteWrite.tlsCertFile=,/etc/vl/remote-write-assets/tls-secret/cert`,
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 		`-remoteWrite.url=localhost:8429,localhost:8429`,
-	}, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "tls-secret",
-			Namespace: "default",
-		},
-		Data: map[string][]byte{
-			"ca":   []byte("ca-value"),
-			"cert": []byte("cert-value"),
-		},
-	})
+	},
+	)
 
 	// test insecure with key only
 	f(&vmv1.VLAgent{
@@ -536,7 +415,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
 					URL: "localhost:8429",
-					TLSConfig: &vmv1beta1.TLSConfig{
+					TLSConfig: &vmv1.TLSConfig{
 						KeySecret: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "tls-secret",
@@ -549,19 +428,10 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 		},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 		`-remoteWrite.url=localhost:8429`,
 		`-remoteWrite.tlsInsecureSkipVerify=true`,
-		`-remoteWrite.tlsKeyFile=/etc/vlagent-tls/certs/default_tls-secret_key`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
-	}, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "tls-secret",
-			Namespace: "default",
-		},
-		Data: map[string][]byte{
-			"key": []byte("key-value"),
-		},
+		`-remoteWrite.tlsKeyFile=/etc/vl/remote-write-assets/tls-secret/key`,
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test insecure
@@ -573,16 +443,15 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		Spec: vmv1.VLAgentSpec{RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 			{
 				URL: "localhost:8429",
-				TLSConfig: &vmv1beta1.TLSConfig{
+				TLSConfig: &vmv1.TLSConfig{
 					InsecureSkipVerify: true,
 				},
 			},
 		}},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 		`-remoteWrite.url=localhost:8429`,
 		`-remoteWrite.tlsInsecureSkipVerify=true`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test sendTimeout
@@ -603,10 +472,9 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 		}},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 		`-remoteWrite.url=localhost:8429,localhost:8431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test maxDiskUsage
@@ -630,8 +498,8 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		}},
 	}, []string{
 		`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
-		`-remoteWrite.maxDiskUsagePerURL=1500MB,500MB,1073741824`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
+		`-remoteWrite.maxDiskUsagePerURL=1500MB,500MB,`,
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test automatic maxDiskUsage
@@ -641,8 +509,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1.VLAgentSpec{
-			Mode: vmv1.StatefulSetMode,
-			StatefulStorage: &vmv1beta1.StorageSpec{
+			Storage: &vmv1beta1.StorageSpec{
 				VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: ptr.To("embed-sc"),
@@ -679,8 +546,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1.VLAgentSpec{
-			Mode: vmv1.StatefulSetMode,
-			StatefulStorage: &vmv1beta1.StorageSpec{
+			Storage: &vmv1beta1.StorageSpec{
 				VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: ptr.To("embed-sc"),
@@ -725,49 +591,33 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			{
 				URL:         "localhost:8431",
 				SendTimeout: ptr.To("15s"),
-				OAuth2: &vmv1beta1.OAuth2{
-					Scopes:   []string{"scope-1"},
+				OAuth2: &vmv1.OAuth2{
+					Scopes:   []string{"scope-1", "scope-2"},
 					TokenURL: "http://some-url",
 					ClientSecret: &corev1.SecretKeySelector{
-						Key: "some-secret",
+						Key: "some-client-secret",
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "some-cm",
+							Name: "some-secret",
 						},
 					},
-					ClientID: vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "some-cm"},
-						Key:                  "some-key",
-					}},
+					ClientIDSecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "some-secret"},
+						Key:                  "some-id",
+					},
+					EndpointParams: map[string]string{"query": "value1", "timeout": "30s"},
 				},
 			},
 		}},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
-		`-remoteWrite.oauth2.clientID=,some-id`,
-		`-remoteWrite.oauth2.clientSecretFile=,/etc/vlagent/config/default_some-cm_some-secret`,
-		`-remoteWrite.oauth2.scopes=,scope-1`,
+		`-remoteWrite.oauth2.clientID=,/etc/vl/remote-write-assets/some-secret/some-id`,
+		`-remoteWrite.oauth2.clientSecretFile=,/etc/vl/remote-write-assets/some-secret/some-client-secret`,
+		`-remoteWrite.oauth2.scopes=,scope-1;scope-2`,
 		`-remoteWrite.oauth2.tokenUrl=,http://some-url`,
+		`-remoteWrite.oauth2.endpointParams=,'{"query":"value1","timeout":"30s"}'`,
 		`-remoteWrite.url=localhost:8429,localhost:8431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
-	}, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "some-cm",
-			Namespace: "default",
-		},
-		Data: map[string][]byte{
-			"some-secret": []byte("some-secret"),
-		},
-	},
-		&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "some-cm",
-				Namespace: "default",
-			},
-			Data: map[string]string{
-				"some-key": "some-id",
-			},
-		})
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
+	})
 
 	// test bearer token
 	f(&vmv1.VLAgent{
@@ -790,19 +640,10 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 		}},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
-		`-remoteWrite.bearerTokenFile="","/etc/vlagent/config/default_some-secret_some-key"`,
+		`-remoteWrite.bearerTokenFile=,/etc/vl/remote-write-assets/some-secret/some-key`,
 		`-remoteWrite.url=localhost:8429,localhost:8431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
-	}, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "some-secret",
-			Namespace: "default",
-		},
-		Data: map[string][]byte{
-			"some-key": []byte("token"),
-		},
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test with headers
@@ -827,20 +668,11 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 		}},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
-		`-remoteWrite.bearerTokenFile="","/etc/vlagent/config/default_some-secret_some-key"`,
-		`-remoteWrite.headers=,key: value^^second-key: value2`,
+		`-remoteWrite.bearerTokenFile=,/etc/vl/remote-write-assets/some-secret/some-key`,
+		`-remoteWrite.headers='','key: value^^second-key: value2'`,
 		`-remoteWrite.url=localhost:8429,localhost:8431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
-	}, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "some-secret",
-			Namespace: "default",
-		},
-		Data: map[string][]byte{
-			"some-key": []byte("token"),
-		},
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test with proxyURL (one remote write with defaults)
@@ -864,10 +696,9 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 		},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 		`-remoteWrite.proxyURL=,http://proxy.example.com,`,
 		`-remoteWrite.url=http://localhost:8431,http://localhost:8432,http://localhost:8433`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test with StatefulMode
@@ -876,9 +707,8 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			Name:      "default-vlagent",
 			Namespace: "default",
 		},
-		Spec: vmv1.VLAgentSpec{Mode: vmv1.StatefulSetMode},
+		Spec: vmv1.VLAgentSpec{},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
@@ -889,8 +719,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			Namespace: "default",
 		},
 	}, []string{
-		`-remoteWrite.maxDiskUsagePerURL=1073741824`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// with remoteWriteSettings
@@ -931,7 +760,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		},
 	}, []string{
 		`-remoteWrite.maxDiskUsagePerURL=500MB`,
-		`-remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data`,
+		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 		`-remoteWrite.url=localhost:8431`,
 	})
 
@@ -954,10 +783,9 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 				},
 			},
 			RemoteWriteSettings: &vmv1.VLAgentRemoteWriteSettings{
-				MaxBlockSize: ptr.To(int32(1000)),
+				MaxBlockSize: ptr.To(vmv1beta1.BytesString(`1000`)),
 			},
-			Mode: vmv1.StatefulSetMode,
-			StatefulStorage: &vmv1beta1.StorageSpec{
+			Storage: &vmv1beta1.StorageSpec{
 				VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: ptr.To("embed-sc"),
@@ -978,108 +806,10 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	})
 }
 
-func TestCreateOrUpdateService(t *testing.T) {
-	tests := []struct {
-		name                  string
-		cr                    *vmv1.VLAgent
-		want                  func(svc *corev1.Service) error
-		wantAdditionalService func(svc *corev1.Service) error
-		wantErr               bool
-		predefinedObjects     []runtime.Object
-	}{
-		{
-			name: "base case",
-			cr: &vmv1.VLAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "base",
-					Namespace: "default",
-				},
-			},
-			want: func(svc *corev1.Service) error {
-				if svc.Name != "vlagent-base" {
-					return fmt.Errorf("unexpected name for service: %v", svc.Name)
-				}
-				if len(svc.Spec.Ports) != 1 {
-					return fmt.Errorf("unexpected count for service ports: %v", len(svc.Spec.Ports))
-				}
-				return nil
-			},
-		},
-		{
-			name: "base case with extra service",
-			cr: &vmv1.VLAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "base",
-					Namespace: "default",
-				},
-				Spec: vmv1.VLAgentSpec{
-					ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
-						EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "extra-svc"},
-						Spec: corev1.ServiceSpec{
-							Type: corev1.ServiceTypeNodePort,
-						},
-					},
-				},
-			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "extra-svc",
-						Namespace: "default",
-						Labels: map[string]string{
-							"app.kubernetes.io/name":      "vlagent",
-							"app.kubernetes.io/instance":  "base",
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-						},
-					},
-					Spec: corev1.ServiceSpec{
-						Type: corev1.ServiceTypeClusterIP,
-					},
-				},
-			},
-			want: func(svc *corev1.Service) error {
-				if svc.Name != "vlagent-base" {
-					return fmt.Errorf("unexpected name for service: %v", svc.Name)
-				}
-				if len(svc.Spec.Ports) != 1 {
-					return fmt.Errorf("unexpected count for ports, want 3, got: %v", len(svc.Spec.Ports))
-				}
-				return nil
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			ctx := context.TODO()
-			got, err := createOrUpdateService(ctx, cl, tt.cr, nil)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateService() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if err := tt.want(got); err != nil {
-				t.Errorf("CreateOrUpdateService() unexpected error: %v", err)
-			}
-			if tt.wantAdditionalService != nil {
-				var additionalSvc corev1.Service
-				if err := cl.Get(ctx, types.NamespacedName{Namespace: tt.cr.Namespace, Name: tt.cr.Spec.ServiceSpec.NameOrDefault(tt.cr.Name)}, &additionalSvc); err != nil {
-					t.Fatalf("unexpected error: %s", err)
-				}
-				if err := tt.wantAdditionalService(&additionalSvc); err != nil {
-					t.Fatalf("CreateOrUpdateService validation failed for additional service: %s", err)
-				}
-			}
-		})
-	}
-}
-
 func TestMakeSpecForAgentOk(t *testing.T) {
 	f := func(cr *vmv1.VLAgent, predefinedObjects []runtime.Object, wantYaml string) {
 		t.Helper()
-		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
-		ac := getAssetsCache(ctx, fclient, cr)
 		scheme := fclient.Scheme()
 		build.AddDefaults(scheme)
 		scheme.Default(cr)
@@ -1092,7 +822,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		if err != nil {
 			t.Fatalf("BUG: cannot parse as yaml: %q", err)
 		}
-		got, err := makeSpec(cr, ac)
+		got, err := makeSpec(cr)
 		if err != nil {
 			t.Fatalf("not expected error=%q", err)
 		}
@@ -1125,27 +855,12 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 			},
 		},
 	}, []runtime.Object{}, `
-volumes:
-  - name: config
-    volumesource:
-      secret:
-        secretname: vlagent-agent
-  - name: tls-assets
-    volumesource:
-      secret: 
-        secretname: tls-assets-vlagent-agent
-  - name: persistent-queue-data
-    volumesource:
-      emptydir:
-        medium: ""
-        sizelimit: null
 containers:
   - name: vlagent
     image: vm-repo:v1.97.1
     args:
       - -httpListenAddr=:9425
-      - -remoteWrite.maxDiskUsagePerURL=1073741824
-      - -remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data
+      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
     ports:
       - name: http
         hostport: 0
@@ -1164,15 +879,9 @@ containers:
           format: BinarySI
       claims: []
     volumemounts:
-      - name: config
-        readonly: true
-        mountpath: /etc/vlagent/config
-      - name: tls-assets
-        readonly: true
-        mountpath: /etc/vlagent-tls/certs
       - name: persistent-queue-data
         readonly: false
-        mountpath: /tmp/vlagent-remotewrite-data
+        mountpath: /vlagent_pq/vlagent-remotewrite-data
     livenessprobe:
       probehandler:
         httpget:
@@ -1213,39 +922,20 @@ serviceaccountname: vlagent-agent
 			},
 		},
 	}, []runtime.Object{}, `
-volumes:
-  - name: config
-    volumesource:
-      secret: 
-        secretname: vlagent-agent
-  - name: tls-assets
-    volumesource:
-      secret:
-        secretname: tls-assets-vlagent-agent
-  - name: persistent-queue-data
-    volumesource:
-      emptydir: {}
 containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
       - -httpListenAddr=:9429
-      - -remoteWrite.maxDiskUsagePerURL=1073741824
-      - -remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data
+      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
     ports:
       - name: http
         containerport: 9429
         protocol: TCP
     volumemounts:
-      - name: config
-        readonly: true
-        mountpath: /etc/vlagent/config
-      - name: tls-assets
-        readonly: true
-        mountpath: /etc/vlagent-tls/certs
       - name: persistent-queue-data
         readonly: false
-        mountpath: /tmp/vlagent-remotewrite-data
+        mountpath: /vlagent_pq/vlagent-remotewrite-data
         subpath: ""
         mountpropagation: null
         subpathexpr: ""
@@ -1306,27 +996,13 @@ serviceaccountname: vlagent-agent
 			},
 		},
 	}, []runtime.Object{}, `
-volumes:
-  - name: config
-    volumesource:
-      secret:
-        secretname: vlagent-agent
-  - name: tls-assets
-    volumesource:
-      secret:
-        secretname: tls-assets-vlagent-agent
-  - name: persistent-queue-data
-    volumesource:
-      emptydir:
-        medium: ""
-        sizelimit: null
 containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
       - -httpListenAddr=:9425
-      - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,1073741824
-      - -remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data
+      - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
+      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
     ports:
       - name: http
@@ -1337,15 +1013,9 @@ containers:
       requests: {}
       claims: []
     volumemounts:
-      - name: config
-        readonly: true
-        mountpath: /etc/vlagent/config
-      - name: tls-assets
-        readonly: true
-        mountpath: /etc/vlagent-tls/certs
       - name: persistent-queue-data
         readonly: false
-        mountpath: /tmp/vlagent-remotewrite-data
+        mountpath: /vlagent_pq/vlagent-remotewrite-data
     livenessprobe:
       probehandler:
         httpget:
@@ -1404,27 +1074,13 @@ serviceaccountname: vlagent-agent
 			},
 		},
 	}, nil, `
-volumes:
-  - name: config
-    volumesource:
-      secret:
-        secretname: vlagent-agent
-  - name: tls-assets
-    volumesource:
-      secret:
-        secretname: tls-assets-vlagent-agent
-  - name: persistent-queue-data
-    volumesource:
-      emptydir:
-        medium: ""
-        sizelimit: null
 containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=10GB,20MB,10GB
-      - -remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data
+      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
     ports:
       - name: http
@@ -1435,15 +1091,9 @@ containers:
       requests: {}
       claims: []
     volumemounts:
-      - name: config
-        readonly: true
-        mountpath: /etc/vlagent/config
-      - name: tls-assets
-        readonly: true
-        mountpath: /etc/vlagent-tls/certs
       - name: persistent-queue-data
         readonly: false
-        mountpath: /tmp/vlagent-remotewrite-data
+        mountpath: /vlagent_pq/vlagent-remotewrite-data
     livenessprobe:
       probehandler:
         httpget:
@@ -1506,27 +1156,13 @@ serviceaccountname: vlagent-agent
 			},
 		},
 	}, nil, `
-volumes:
-  - name: config
-    volumesource:
-      secret:
-        secretname: vlagent-agent
-  - name: tls-assets
-    volumesource:
-      secret:
-        secretname: tls-assets-vlagent-agent
-  - name: persistent-queue-data
-    volumesource:
-      emptydir:
-        medium: ""
-        sizelimit: null
 containers:
   - name: vlagent
     image: victoriametrics/vlagent:v0.0.1
     args:
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=35GiB
-      - -remoteWrite.tmpDataPath=/tmp/vlagent-remotewrite-data
+      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
     ports:
       - name: http
@@ -1537,15 +1173,9 @@ containers:
       requests: {}
       claims: []
     volumemounts:
-      - name: config
-        readonly: true
-        mountpath: /etc/vlagent/config
-      - name: tls-assets
-        readonly: true
-        mountpath: /etc/vlagent-tls/certs
       - name: persistent-queue-data
         readonly: false
-        mountpath: /tmp/vlagent-remotewrite-data
+        mountpath: /vlagent_pq/vlagent-remotewrite-data
     livenessprobe:
       probehandler:
         httpget:

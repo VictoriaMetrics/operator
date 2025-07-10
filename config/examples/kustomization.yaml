@@ -20,3 +20,4 @@ resources:
 - vlogs.yaml
 - vlsingle.yaml
 - vlcluster.yaml
+- vlagent.yaml

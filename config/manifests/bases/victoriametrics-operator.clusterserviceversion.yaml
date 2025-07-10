@@ -726,6 +726,7 @@ spec:
           - endpoints
           - endpointslices
           - pods
+          - pods/eviction
           - app
           - ingresses
           verbs:

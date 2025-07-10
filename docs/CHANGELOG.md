@@ -16,6 +16,9 @@ aliases:
 **Update Note 1:** This release by transits `VLogs` resource into `read-only`  state.
 To perform migration to the `VLSingle` please follow [this docs](https://docs.victoriametrics.com/operator/resources/vlsingle/#migration-from-vlogs)
 
+**Update Note 2:**: This release requires an additional `pods/eviction` RBAC permssion for operator.
+
+
 * SECURITY: upgrade Go builder from Go1.24.4 to Go1.24.5. See [the list of issues addressed in Go1.24.5](https://github.com/golang/go/issues?q=milestone%3AGo1.24.5+label%3ACherryPickApproved).
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.25.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.0).

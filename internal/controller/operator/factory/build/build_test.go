@@ -12,79 +12,41 @@ import (
 )
 
 func TestLicenseAddArgsTo(t *testing.T) {
-	type args struct {
-		args           []string
-		secretMountDir string
+	f := func(license vmv1beta1.License, args []string, secretMountDir string, want []string) {
+		got := LicenseArgsTo(args, &license, secretMountDir)
+		slices.Sort(got)
+		slices.Sort(want)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("vmv1beta1.License.MaybeAddToArgs() = %v, want %v", got, want)
+		}
 	}
-	tests := []struct {
-		name    string
-		license vmv1beta1.License
-		args    args
-		want    []string
-	}{
-		{
-			name: "license key provided",
-			license: vmv1beta1.License{
-				Key: ptr.To("test-key"),
-			},
-			args: args{
-				args:           []string{},
-				secretMountDir: "/etc/secrets",
-			},
-			want: []string{"-license=test-key"},
-		},
-		{
-			name: "license key provided with force offline",
-			license: vmv1beta1.License{
-				Key:          ptr.To("test-key"),
-				ForceOffline: ptr.To(true),
-			},
-			args: args{
-				args:           []string{},
-				secretMountDir: "/etc/secrets",
-			},
-			want: []string{"-license=test-key", "-license.forceOffline=true"},
-		},
-		{
-			name: "license key provided with reload interval",
-			license: vmv1beta1.License{
-				KeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "license-secret"},
-					Key:                  "license-key",
-				},
-				ReloadInterval: ptr.To("30s"),
-			},
-			args: args{
-				args:           []string{},
-				secretMountDir: "/etc/secrets",
-			},
-			want: []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-licenseFile.reloadInterval=30s"},
-		},
-		{
-			name: "license key provided via secret with force offline",
-			license: vmv1beta1.License{
-				KeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "license-secret"},
-					Key:                  "license-key",
-				},
-				ForceOffline: ptr.To(true),
-			},
-			args: args{
-				args:           []string{},
-				secretMountDir: "/etc/secrets",
-			},
-			want: []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-license.forceOffline=true"},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := LicenseArgsTo(tt.args.args, &tt.license, tt.args.secretMountDir)
-			slices.Sort(got)
-			slices.Sort(tt.want)
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("vmv1beta1.License.MaybeAddToArgs() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	// license key provided
+	f(vmv1beta1.License{
+		Key: ptr.To("test-key"),
+	}, []string{}, "/etc/secrets", []string{"-license=test-key"})
+
+	// license key provided with force offline
+	f(vmv1beta1.License{
+		Key:          ptr.To("test-key"),
+		ForceOffline: ptr.To(true),
+	}, []string{}, "/etc/secrets", []string{"-license=test-key", "-license.forceOffline=true"})
+
+	// license key provided with reload interval
+	f(vmv1beta1.License{
+		KeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: "license-secret"},
+			Key:                  "license-key",
+		},
+		ReloadInterval: ptr.To("30s"),
+	}, []string{}, "/etc/secrets", []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-licenseFile.reloadInterval=30s"})
+
+	// license key provided via secret with force offline
+	f(vmv1beta1.License{
+		KeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: "license-secret"},
+			Key:                  "license-key",
+		},
+		ForceOffline: ptr.To(true),
+	}, []string{}, "/etc/secrets", []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-license.forceOffline=true"})
 }

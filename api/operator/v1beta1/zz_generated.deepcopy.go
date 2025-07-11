@@ -3139,6 +3139,11 @@ func (in *StreamAggrRule) DeepCopyInto(out *StreamAggrRule) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.KeepInput != nil {
+		in, out := &in.KeepInput, &out.KeepInput
+		*out = new(bool)
+		**out = **in
+	}
 	if in.By != nil {
 		in, out := &in.By, &out.By
 		*out = make([]string, len(*in))

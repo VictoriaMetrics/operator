@@ -32,6 +32,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VLogs{}, addVLogsDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VLSingle{}, addVLSingleDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VLCluster{}, addVLClusterDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VLAgent{}, addVLAgentDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 }
@@ -209,6 +210,14 @@ func addVMAgentDefaults(objI any) {
 	cv := config.ApplicationDefaults(c.VMAgentDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+}
+
+func addVLAgentDefaults(objI any) {
+	cr := objI.(*vmv1.VLAgent)
+	c := getCfg()
+
+	cv := config.ApplicationDefaults(c.VLAgentDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
 }
 
 func addVMSingleDefaults(objI any) {

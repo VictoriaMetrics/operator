@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -98,6 +99,9 @@ type VMAuthSpec struct {
 	// currently it has collision with inlined fields
 	// IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 
+	// JWTIssuers represents configuration section for JWT issuers
+	// +optional
+	JWTIssuers []*VMAuthJWTIssuer `json:"jwt_issuers,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
@@ -145,6 +149,26 @@ type VMAuthSpec struct {
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
+}
+
+// VMAuthJWTIssuer defines JWT issuer parameters
+type VMAuthJWTIssuer struct {
+	// Match defines map of claims to match issuer against
+	Match map[string]string `json:"match,omitempty"`
+	// DiscoveryURL is OpenID Connect discovery URL
+	// +optional
+	DiscoveryURL string `json:"discovery_url,omitempty"`
+	// JWKsURL is the OpenID Connect JWKS URL
+	// +optional
+	JWKsURL string `json:"jwks_url,omitempty"`
+	// PublicKeyFiles is a list of paths pointing to public key files in PEM format to use
+	// for verifying JWT tokens
+	PublicKeyFiles []string `json:"public_key_files,omitempty"`
+	// PublicKeySecrets is a list of k8s Secret selectors pointing to public key files in PEM format to use
+	// for verifying JWT tokens
+	PublicKeySecrets []*corev1.SecretKeySelector `json:"public_key_secrets,omitempty"`
+	// SyncPeriod defines how frequently JWT issuer keys are synchronized
+	SyncPeriod string `json:"sync_period,omitempty"`
 }
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
@@ -447,7 +471,6 @@ func (cr *VMAuth) Validate() error {
 			return fmt.Errorf("incorrect cr.spec UnauthorizedAccessConfig options: %w", err)
 		}
 	}
-
 	if cr.Spec.UnauthorizedUserAccessSpec != nil {
 		if err := cr.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec.UnauthorizedUserAccess syntax: %w", err)

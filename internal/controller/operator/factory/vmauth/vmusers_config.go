@@ -363,6 +363,38 @@ func (pos *parsedObjects) generateVMAuthConfig(cr *vmv1beta1.VMAuth, crdCache ma
 		return nil, fmt.Errorf("cannot build unauthorized_user config section: %w", err)
 	}
 
+	var issuerCfg []yaml.MapSlice
+	for _, issuer := range cr.Spec.JWTIssuers {
+		if issuer == nil {
+			continue
+		}
+		var issuerItem yaml.MapSlice
+		if len(issuer.DiscoveryURL) > 0 {
+			issuerItem = append(issuerItem, yaml.MapItem{Key: "discovery_url", Value: issuer.DiscoveryURL})
+		}
+		if len(issuer.JWKsURL) > 0 {
+			issuerItem = append(issuerItem, yaml.MapItem{Key: "jwks_url", Value: issuer.JWKsURL})
+		}
+		var publicKeyFiles []string
+		if len(issuer.PublicKeyFiles) > 0 {
+			publicKeyFiles = append(publicKeyFiles, issuer.PublicKeyFiles...)
+		}
+		for _, ref := range issuer.PublicKeySecrets {
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, ref)
+			if err != nil {
+				return nil, fmt.Errorf("cannot build jwt config section: %w", err)
+			}
+			publicKeyFiles = append(publicKeyFiles, file)
+		}
+		if len(publicKeyFiles) > 0 {
+			issuerItem = append(issuerItem, yaml.MapItem{Key: "public_key_files", Value: publicKeyFiles})
+		}
+		issuerCfg = append(issuerCfg, issuerItem)
+	}
+	if len(issuerCfg) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "jwt_issuers", Value: issuerCfg})
+	}
+
 	if len(unAuthorizedAccessValue) > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: unAuthorizedAccessValue})
 	}
@@ -755,26 +787,11 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1b
 	}
 
 	// generate user access config.
-	var name, username, password, token string
-	if user.Spec.Name != nil {
-		name = *user.Spec.Name
-	}
-	if name != "" {
+	if user.Spec.Name != nil && len(*user.Spec.Name) > 0 {
 		r = append(r, yaml.MapItem{
 			Key:   "name",
-			Value: name,
+			Value: *user.Spec.Name,
 		})
-	}
-
-	if user.Spec.Username != nil {
-		username = *user.Spec.Username
-	}
-	if user.Spec.Password != nil {
-		password = *user.Spec.Password
-	}
-
-	if user.Spec.BearerToken != nil {
-		token = *user.Spec.BearerToken
 	}
 	r, err = addUserConfigOptionToYaml(r, user.Spec.VMUserConfigOptions, cr, ac)
 	if err != nil {
@@ -786,32 +803,34 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1b
 			Value: user.Spec.MetricLabels,
 		})
 	}
-
-	// fast path.
-	if token != "" {
+	if user.Spec.BearerToken != nil && len(*user.Spec.BearerToken) > 0 {
 		r = append(r, yaml.MapItem{
 			Key:   "bearer_token",
-			Value: token,
+			Value: *user.Spec.BearerToken,
 		})
 		return r, nil
 	}
-	// mutate vmuser
-	if username == "" {
-		username = user.Name
-		user.Spec.Username = ptr.To(username)
+	if user.Spec.JWTToken != nil {
+		r = append(r, yaml.MapItem{
+			Key:   "jwt_token",
+			Value: user.Spec.JWTToken,
+		})
+		return r, nil
 	}
-
+	username := user.Name
+	if user.Spec.Username != nil && len(*user.Spec.Username) > 0 {
+		username = *user.Spec.Username
+	}
 	r = append(r, yaml.MapItem{
 		Key:   "username",
 		Value: username,
 	})
-	if password != "" {
+	if user.Spec.Password != nil && len(*user.Spec.Password) > 0 {
 		r = append(r, yaml.MapItem{
 			Key:   "password",
-			Value: password,
+			Value: *user.Spec.Password,
 		})
 	}
-
 	return r, nil
 }
 

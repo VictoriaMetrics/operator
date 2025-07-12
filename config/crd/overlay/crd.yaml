@@ -25978,6 +25978,64 @@ spec:
                   and v1.111.0 vmauth version
                   related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security
                 type: string
+              jwt_issuers:
+                description: JWTIssuers represents configuration section for JWT issuers
+                items:
+                  description: VMAuthJWTIssuer defines JWT issuer parameters
+                  properties:
+                    discovery_url:
+                      description: DiscoveryURL is OpenID Connect discovery URL
+                      type: string
+                    jwks_url:
+                      description: JWKsURL is the OpenID Connect JWKS URL
+                      type: string
+                    match:
+                      additionalProperties:
+                        type: string
+                      description: Match defines map of claims to match issuer against
+                      type: object
+                    public_key_files:
+                      description: |-
+                        PublicKeyFiles is a list of paths pointing to public key files in PEM format to use
+                        for verifying JWT tokens
+                      items:
+                        type: string
+                      type: array
+                    public_key_secrets:
+                      description: |-
+                        PublicKeySecrets is a list of k8s Secret selectors pointing to public key files in PEM format to use
+                        for verifying JWT tokens
+                      items:
+                        description: SecretKeySelector selects a key of a Secret.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      type: array
+                    sync_period:
+                      description: SyncPeriod defines how frequently JWT issuer keys
+                        are synchronized
+                      type: string
+                  type: object
+                type: array
               license:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
@@ -41987,6 +42045,19 @@ spec:
                     items:
                       type: string
                     type: array
+                type: object
+              jwt_token:
+                description: JWTToken defines JWT auth section for user
+                properties:
+                  allow_unhealthy:
+                    description: AllowUnhealthy defines if unhealthy JWT issuer status
+                      is ignored
+                    type: boolean
+                  match:
+                    additionalProperties:
+                      type: string
+                    description: Match defines claim match map
+                    type: object
                 type: object
               load_balancing_policy:
                 description: |-

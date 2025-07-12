@@ -16,6 +16,8 @@ type VMUserSpec struct {
 	// Name of the VMUser object.
 	// +optional
 	Name *string `json:"name,omitempty"`
+	// JWTToken defines JWT auth section for user
+	JWTToken *VMUserJWTToken `json:"jwt_token,omitempty"`
 	// Username basic auth user name for accessing protected endpoint,
 	// will be replaced with metadata.name of VMUser if omitted.
 	// +optional
@@ -51,6 +53,14 @@ type VMUserSpec struct {
 	// ManagedMetadata defines metadata that will be added to the all objects
 	// created by operator for the given CustomResource
 	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+}
+
+// VMUserJWTToken describes JWT auth for user
+type VMUserJWTToken struct {
+	// Match defines claim match map
+	Match map[string]string `json:"match,omitempty" yaml:"match,omitempty"`
+	// AllowUnhealthy defines if unhealthy JWT issuer status is ignored
+	AllowUnhealthy bool `json:"allow_unhealthy,omitempty" yaml:"allow_unhealthy,omitempty"`
 }
 
 // TargetRef describes target for user traffic forwarding.

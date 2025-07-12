@@ -7,7 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	v12 "k8s.io/api/networking/v1"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -84,6 +85,9 @@ type VMAuthSpec struct {
 	// will be added after removal of VMUserConfigOptions
 	// currently it has collision with inlined fields
 	// IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+	// VMAuthJWTConfig represents configuration section for JWT authorization
+	// +optional
+	JWT *VMAuthJWTConfig `json:"jwt,omitempty"`
 	// will be removed at v1.0 release
 	// +deprecated
 	// +kubebuilder:validation:Schemaless
@@ -123,6 +127,25 @@ type VMAuthSpec struct {
 	// UseProxyProtocol enables proxy protocol for vmauth
 	// https://www.haproxy.org/download/2.3/doc/proxy-protocol.txt
 	UseProxyProtocol bool `json:"useProxyProtocol,omitempty"`
+}
+
+// VMAuthJWTConfig defines JWT configuration parameters
+type VMAuthJWTConfig struct {
+	// EnforcePrefix requries JWT token to start with "Bearer: "
+	// +optional
+	EnforcePrefix bool `json:"enforce_prefix,omitempty"`
+	// PublicKeySecrets secret key selectors for JWT public keys
+	// +optional
+	PublicKeySecrets []*corev1.SecretKeySelector `json:"public_key_secrets,omitempty"`
+	// PublicKeyFiles paths to JWT public keys
+	// +optional
+	PublicKeyFiles []string `json:"public_key_files,omitempty"`
+	// JWKSEndpoints endpoints list for JWT public keys retrieval
+	// +optional
+	JWKSEndpoints []string `json:"jwks_endpoints,omitempty"`
+	// OIDCEndpoints list of discovery endpoints
+	// +optional
+	OIDCEndpoints []string `json:"oidc_endpoints,omitempty"`
 }
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
@@ -425,7 +448,9 @@ func (cr *VMAuth) Validate() error {
 			return fmt.Errorf("incorrect cr.spec UnauthorizedAccessConfig options: %w", err)
 		}
 	}
-
+	if cr.Spec.JWT != nil && !cr.Spec.License.IsProvided() {
+		return fmt.Errorf("spec.jwt is only allowed in enterprise mode, but no license provided")
+	}
 	if cr.Spec.UnauthorizedUserAccessSpec != nil {
 		if err := cr.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec.UnauthorizedUserAccess syntax: %w", err)
@@ -461,11 +486,11 @@ type EmbeddedIngress struct {
 	// ExtraRules - additional rules for ingress,
 	// must be checked for correctness by user.
 	// +optional
-	ExtraRules []v12.IngressRule `json:"extraRules,omitempty" yaml:"extraRules,omitempty"`
+	ExtraRules []networkingv1.IngressRule `json:"extraRules,omitempty" yaml:"extraRules,omitempty"`
 	// ExtraTLS - additional TLS configuration for ingress
 	// must be checked for correctness by user.
 	// +optional
-	ExtraTLS []v12.IngressTLS `json:"extraTls,omitempty" yaml:"extraTls,omitempty"`
+	ExtraTLS []networkingv1.IngressTLS `json:"extraTls,omitempty" yaml:"extraTls,omitempty"`
 	// Host defines ingress host parameter for default rule
 	// It will be used, only if TlsHosts is empty
 	// +optional

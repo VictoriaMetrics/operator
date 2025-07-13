@@ -13,11 +13,16 @@ aliases:
 
 ## tip
 
+## [v0.61.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.0)
+
+**Release date:** 13 July 2025
+
 **Update Note 1:** This release by transits `VLogs` resource into `read-only`  state.
 To perform migration to the `VLSingle` please follow [this docs](https://docs.victoriametrics.com/operator/resources/vlsingle/#migration-from-vlogs)
 
 **Update Note 2:**: This release requires an additional `pods/eviction` RBAC permssion for operator.
 
+**Update Note 3:**: This release requires adds new CustomResource `VLAgent`. It requires to update `CRD` versions.
 
 * SECURITY: upgrade Go builder from Go1.24.4 to Go1.24.5. See [the list of issues addressed in Go1.24.5](https://github.com/golang/go/issues?q=milestone%3AGo1.24.5+label%3ACherryPickApproved).
 

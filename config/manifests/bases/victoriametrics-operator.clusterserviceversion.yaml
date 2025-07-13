@@ -715,6 +715,26 @@ spec:
           - patch
           - update
         - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vlclusters
+          - vlsingles
+          - vlagents
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vlclusters/status
+          - vlsingles/status
+          - vlagents/status
+        - apiGroups:
           - ""
           - networking.k8s.io
           - extensions

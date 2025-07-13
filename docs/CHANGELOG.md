@@ -26,6 +26,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): respect `PodDisruptionBudget` at `StatefulSet` updates. See this [1458](https://github.com/VictoriaMetrics/operator/pull/1458) PR for details. Thanks to the @vpedosyuk for the fix.
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): do not add `spec.clusterVersion`  to the `spec.requestsLoadBalancer.spec.image.tag` as default value. See this [1365](https://github.com/VictoriaMetrics/operator/issues/1365) issue for details.
+* BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): properly generate format URL port for `Vlogs` and `VLSingle` at `targetRef.crd`. See [1465](https://github.com/VictoriaMetrics/operator/issues/1465) this issue for details.
 
 * FEATURE: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): added the `maxUnavailable` field to VLStorage specs to allow customization of rolling update behavior. See [#1457](https://github.com/VictoriaMetrics/operator/issues/1457).
 * FEATURE: [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/): add new field `spec.syslogSpec` for [syslog](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog) data ingestion configuration. See this [1441](https://github.com/VictoriaMetrics/operator/issues/1441) issue for details.

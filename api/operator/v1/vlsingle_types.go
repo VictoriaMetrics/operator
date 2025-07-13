@@ -314,7 +314,7 @@ func (cr *VLSingle) IsOwnsServiceAccount() bool {
 func (cr *VLSingle) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {
-		port = "8429"
+		port = "9428"
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {

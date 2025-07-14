@@ -21,7 +21,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 
 * SECURITY: upgrade Go builder from Go1.24.4 to Go1.24.5. See [the list of issues addressed in Go1.24.5](https://github.com/golang/go/issues?q=milestone%3AGo1.24.5+label%3ACherryPickApproved).
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.25.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.0).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.25.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.1).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.121.0](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/docs/victoriametrics/changelog/CHANGELOG.md#v11210) version.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): respect `PodDisruptionBudget` at `StatefulSet` updates. See this [1458](https://github.com/VictoriaMetrics/operator/pull/1458) PR for details. Thanks to the @vpedosyuk for the fix.

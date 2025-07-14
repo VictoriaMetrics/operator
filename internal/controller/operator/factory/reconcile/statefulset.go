@@ -338,7 +338,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 					return true, nil
 				})
 				if evictErr != nil {
-					return fmt.Errorf("cannot perform pod eviction: %w", err)
+					return fmt.Errorf("cannot perform pod eviction: %w", evictErr)
 				}
 				// wait for pod to be re-created
 				podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}

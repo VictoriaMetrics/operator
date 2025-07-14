@@ -135,6 +135,8 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 	}
 	// HACK: makeSpec could load content into ac and it must be called
 	// before secret config reconcile
+	//
+	// TODO: @f41gh7 rewrite this section with VLAgent secret assets injection pattern
 	if _, err := makeSpec(cr, ac); err != nil {
 		return err
 	}

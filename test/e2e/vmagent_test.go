@@ -21,7 +21,7 @@ import (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
+var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), func() {
 	ctx := context.Background()
 	Context("e2e vmagent", func() {
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
@@ -65,6 +65,52 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent"), func() {
 				verify(&created)
 
 			},
+			Entry("with rw stream aggr and relabeling", "stream-aggr", &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      namespacedName.Name,
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+
+							URL: "http://localhost:8429/api/v1/write",
+							InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
+								{
+									SourceLabels: []string{"job"},
+									Action:       "drop",
+								},
+							},
+						},
+						{
+							URL: "http://localhost:8428/api/v1/write",
+							StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
+								KeepInput: true,
+								Rules: []vmv1beta1.StreamAggrRule{
+									{
+										By:       []string{"verb", "le"},
+										Interval: "1m",
+										Match:    vmv1beta1.StringOrArray{"apiserver_request_duration_seconds_bucket"},
+										Outputs:  []string{"total"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+				nil,
+				func(cr *vmv1beta1.VMAgent) {
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(6))
+					Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(2))
+					vmagentCnt := dep.Spec.Template.Spec.Containers[1]
+					Expect(vmagentCnt.Name).To(Equal("vmagent"))
+					Expect(vmagentCnt.VolumeMounts).To(HaveLen(6))
+					Expect(vmagentCnt.Args).To(ContainElements("-remoteWrite.streamAggr.config=,/etc/vm/stream-aggr/RWS_1-CM-STREAM-AGGR-CONF", "-remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_relabeling-0.yaml,"))
+				},
+			),
 			Entry("with 1 replica", "replica-1", &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,

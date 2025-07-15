@@ -21,7 +21,7 @@ patches:
     apiVersion: v1
     kind: Secret
     metadata:
-      name: vmalertmanager-example
+      name: am-global-config
 - patch: |-
     $patch: delete
     kind: ClusterRoleBinding

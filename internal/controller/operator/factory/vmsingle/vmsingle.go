@@ -234,7 +234,7 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 		})
 	}
 
-	volumes, vmMounts = build.StreamAggrVolumeTo(volumes, vmMounts, build.ResourceName(build.StreamAggrConfigResourceKind, cr), cr.Spec.StreamAggrConfig)
+	volumes, vmMounts = build.StreamAggrVolumeTo(volumes, vmMounts, cr)
 	streamAggrKeys := []string{streamAggrSecretKey}
 	streamAggrConfigs := []*vmv1beta1.StreamAggrConfig{cr.Spec.StreamAggrConfig}
 	args = build.StreamAggrArgsTo(args, "streamAggr", streamAggrKeys, streamAggrConfigs...)

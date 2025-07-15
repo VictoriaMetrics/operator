@@ -668,24 +668,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 		})
 
 	}
-	if cr.HasAnyStreamAggrRule() {
-		volumes = append(volumes, corev1.Volume{
-			Name: "stream-aggr-conf",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: build.ResourceName(build.StreamAggrConfigResourceKind, cr),
-					},
-				},
-			},
-		})
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      "stream-aggr-conf",
-			ReadOnly:  true,
-			MountPath: vmv1beta1.StreamAggrConfigDir,
-		})
-
-	}
+	volumes, agentVolumeMounts = build.StreamAggrVolumeTo(volumes, agentVolumeMounts, cr)
 	if cr.HasAnyRelabellingConfigs() {
 		volumes = append(volumes,
 			corev1.Volume{

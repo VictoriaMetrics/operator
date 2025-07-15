@@ -179,25 +179,20 @@ func StreamAggrArgsTo(args []string, prefix string, keys []string, cs ...*vmv1be
 	return args
 }
 
+type streamAggrOpts interface {
+	builderOpts
+	HasAnyStreamAggrRule() bool
+}
+
 // StreamAggrVolumeTo conditionally mounts configmap with stream aggregation config into given volumes and volume mounts
-func StreamAggrVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, name string, cs ...*vmv1beta1.StreamAggrConfig) ([]corev1.Volume, []corev1.VolumeMount) {
-	if len(cs) == 0 {
-		return volumes, mounts
-	}
-	hasRule := false
-	for _, c := range cs {
-		if c.HasAnyRule() {
-			hasRule = true
-			break
-		}
-	}
-	if hasRule {
+func StreamAggrVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, cr streamAggrOpts) ([]corev1.Volume, []corev1.VolumeMount) {
+	if cr.HasAnyStreamAggrRule() {
 		volumes = append(volumes, corev1.Volume{
 			Name: "stream-aggr-conf",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: name,
+						Name: ResourceName(StreamAggrConfigResourceKind, cr),
 					},
 				},
 			},

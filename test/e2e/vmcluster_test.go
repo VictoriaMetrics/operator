@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,17 +19,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 //nolint:dupl,lll
-var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
-	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-	var ctx context.Context
-	namespacedName := types.NamespacedName{
-		Namespace: namespace,
-	}
+var _ = Describe("vmcluster", Label("vm", "cluster"), func() {
+	licenseKey := os.Getenv("LICENSE_KEY")
 	Context("create", func() {
-		JustBeforeEach(func() {
+		var ctx context.Context
+		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
+		namespacedName := types.NamespacedName{
+			Namespace: namespace,
+		}
+		BeforeEach(func() {
 			ctx = context.Background()
 		})
 		AfterEach(func() {
@@ -284,6 +287,27 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 		)
 	})
 	Context("update", func() {
+		var ctx context.Context
+		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
+		namespacedName := types.NamespacedName{
+			Namespace: namespace,
+		}
+		BeforeEach(func() {
+			ctx = context.Background()
+			if licenseKey != "" {
+				Expect(k8sClient.Create(ctx,
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "license",
+							Namespace: namespace,
+						},
+						StringData: map[string]string{
+							"key": licenseKey,
+						},
+					},
+				)).To(Succeed())
+			}
+		})
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -296,8 +320,17 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					Name:      namespacedName.Name,
 					Namespace: namespace,
 				}, &vmv1beta1.VMCluster{})
-
 			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(k8serrors.IsNotFound, "want not found error"))
+			if licenseKey != "" {
+				Expect(k8sClient.Delete(ctx,
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "license",
+							Namespace: namespace,
+						},
+					},
+				)).To(Succeed())
+			}
 		})
 
 		type testStep struct {
@@ -307,11 +340,28 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 		}
 
 		DescribeTable("should update exist cluster",
-			func(name string, initCR *vmv1beta1.VMCluster, steps ...testStep) {
+			func(name string, isEnterprise bool, initCR *vmv1beta1.VMCluster, steps ...testStep) {
+				if isEnterprise {
+					if licenseKey == "" {
+						Skip("ignoring VMCluster test, license was not found")
+					}
+					cfg := config.MustGetBaseConfig()
+					tag := cfg.MetricsVersion + "-enterprise-cluster"
+					initCR.Spec.VMStorage.Image.Tag = tag
+					initCR.Spec.VMSelect.Image.Tag = tag
+					initCR.Spec.VMInsert.Image.Tag = tag
+					initCR.Spec.License = &vmv1beta1.License{
+						KeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "license",
+							},
+							Key: "key",
+						},
+					}
+				}
 				namespacedName.Name = name
 				initCR.Namespace = namespace
 				initCR.Name = name
-				ctx = context.Background()
 				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, initCR, namespacedName)
@@ -340,7 +390,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					step.verify(&updated)
 				}
 			},
-			Entry("by scaling select and storage replicas to 2", "storage-select-r-2",
+			Entry("by scaling select and storage replicas to 2", "storage-select-r-2", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -371,7 +421,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 				},
 			),
-			Entry("by adding vmbackupmanager to vmstorage ", "with-backup",
+			Entry("by adding vmbackupmanager to vmstorage ", "with-backup", true,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -385,9 +435,10 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -422,7 +473,6 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 							{Name: "backup", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 						}
 						cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
-							AcceptEULA:  true,
 							Destination: "fs:///opt/backup-dir",
 							VolumeMounts: []corev1.VolumeMount{
 								{Name: "backup", MountPath: "/opt/backup-dir"},
@@ -444,7 +494,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 				},
 			),
-			Entry("by scaling storage and insert replicas to 2", "storage-insert-r-2",
+			Entry("by scaling storage and insert replicas to 2", "storage-insert-r-2", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -478,7 +528,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 				},
 			),
-			Entry("by changing storage revisionHistoryLimit to 2", "storage-revision-2",
+			Entry("by changing storage revisionHistoryLimit to 2", "storage-revision-2", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -509,7 +559,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 				},
 			),
-			Entry("by adding clusterNative ports", "storage-native-r-2",
+			Entry("by adding clusterNative ports", "storage-native-r-2", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -551,7 +601,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 				},
 			),
-			Entry("by deleting select component", "select-delete",
+			Entry("by deleting select component", "select-delete", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -611,7 +661,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 				},
 			),
-			Entry("by deleting storage and insert components", "storage-insert-delete",
+			Entry("by deleting storage and insert components", "storage-insert-delete", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -692,7 +742,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 				},
 			),
-			Entry("by deleting deleting and renaming additional services", "select-additional-svc",
+			Entry("by deleting deleting and renaming additional services", "select-additional-svc", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -782,7 +832,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 				},
 			),
-			Entry("by adding imagePullSecret", "storage-image-pull-secret",
+			Entry("by adding imagePullSecret", "storage-image-pull-secret", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod:  "1",
@@ -830,7 +880,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 				},
 			),
-			Entry("by switching to vmauth loadbalancer", "with-load-balancing",
+			Entry("by switching to vmauth loadbalancer", "with-load-balancing", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -934,7 +984,7 @@ up{baz="bar"} 123
 					},
 				},
 			),
-			Entry("by switching partially to vmauth loadbalanacer", "with-partial-load-balancing",
+			Entry("by switching partially to vmauth loadbalanacer", "with-partial-load-balancing", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -1064,7 +1114,7 @@ up{baz="bar"} 123
 					},
 				},
 			),
-			Entry("by running with load-balancer and modify vmauth", "with-load-balancing-modify-auth",
+			Entry("by running with load-balancer and modify vmauth", "with-load-balancing-modify-auth", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -1174,7 +1224,7 @@ up{baz="bar"} 123
 					},
 				},
 			),
-			Entry("by changing annotations for created objects", "manage-annotations",
+			Entry("by changing annotations for created objects", "manage-annotations", false,
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{Enabled: true},
@@ -1249,30 +1299,6 @@ up{baz="bar"} 123
 				},
 			),
 		)
-	})
-	Context("update", func() {
-		AfterEach(func() {
-			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: namespace,
-					Name:      namespacedName.Name,
-				},
-			})).To(Succeed())
-			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{
-					Name:      namespacedName.Name,
-					Namespace: namespace,
-				}, &vmv1beta1.VMCluster{})
-
-			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(k8serrors.IsNotFound, "want not found error"))
-		})
-
-		type testStep struct {
-			setup  func(*vmv1beta1.VMCluster)
-			modify func(*vmv1beta1.VMCluster)
-			verify func(*vmv1beta1.VMCluster)
-		}
-
 		DescribeTable("should respect customized behavior",
 			func(name string, initCR *vmv1beta1.VMCluster, steps ...testStep) {
 				namespacedName.Name = name

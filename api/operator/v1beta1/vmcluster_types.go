@@ -468,13 +468,6 @@ type VMStorage struct {
 }
 
 type VMBackup struct {
-	// AcceptEULA accepts enterprise feature usage, must be set to true.
-	// otherwise backupmanager cannot be added to single/cluster version.
-	// https://victoriametrics.com/legal/esa/
-	// Deprecated: use license.key or license.keyRef instead
-	// +deprecated
-	// +optional
-	AcceptEULA bool `json:"acceptEULA"`
 	// SnapshotCreateURL overwrites url for snapshot create
 	// +optional
 	SnapshotCreateURL string `json:"snapshotCreateURL,omitempty"`
@@ -552,7 +545,7 @@ type VMBackup struct {
 }
 
 func (cr *VMBackup) validate(l *License) error {
-	if !l.IsProvided() && !cr.AcceptEULA {
+	if !l.IsProvided() {
 		return fmt.Errorf("it is required to provide license key. See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)")
 	}
 

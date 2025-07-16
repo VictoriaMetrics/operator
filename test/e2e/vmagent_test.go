@@ -21,15 +21,17 @@ import (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), func() {
-	ctx := context.Background()
-	Context("e2e vmagent", func() {
+var _ = Describe("vmagent", Label("vm", "agent"), func() {
+	tlsSecretName := "vmagent-remote-tls-certs"
+	Context("crud", func() {
+		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{
 			Namespace: namespace,
 		}
-		tlsSecretName := "vmagent-remote-tls-certs"
-
+		BeforeEach(func() {
+			ctx = context.Background()
+		})
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{

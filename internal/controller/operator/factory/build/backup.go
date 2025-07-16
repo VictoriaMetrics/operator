@@ -26,9 +26,9 @@ func VMBackupManager(
 	isCluster bool,
 	license *vmv1beta1.License,
 ) (*corev1.Container, error) {
-	if !cr.AcceptEULA && !license.IsProvided() {
-		logger.WithContext(ctx).Info("EULA or license wasn't defined, update your backup settings." +
-			" Follow https://docs.victoriametrics.com/enterprise.html for further instructions.")
+	if !license.IsProvided() {
+		logger.WithContext(ctx).Info("license wasn't defined, update your backup settings." +
+			" Follow https://docs.victoriametrics.com/victoriametrics/enterprise/ for further instructions.")
 		return nil, nil
 	}
 	snapshotCreateURL := cr.SnapshotCreateURL

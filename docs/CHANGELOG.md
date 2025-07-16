@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): remove deprecated acceptEULA. Replaced it with license in tests. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).
+
 ## [v0.61.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.0)
 
 **Release date:** 15 July 2025

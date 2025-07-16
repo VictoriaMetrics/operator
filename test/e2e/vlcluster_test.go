@@ -20,9 +20,8 @@ import (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"), func() {
-
-	Context("e2e vlcluster", func() {
+var _ = Describe("vlsingle", Label("vl", "cluster"), func() {
+	Context("crud", func() {
 		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		namespacedName := types.NamespacedName{

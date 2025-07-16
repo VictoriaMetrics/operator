@@ -1128,6 +1128,9 @@ bearer_token_file: /var/run/token
 				i: 0,
 				apiserverConfig: &vmv1beta1.APIServerConfig{
 					Host: "default-k8s-host",
+					TLSConfig: &vmv1beta1.TLSConfig{
+						CAFile: "/etc/vmagent-tls/certs/default_k8s_host_ca",
+					},
 				},
 				se: vmv1beta1.VMAgentSecurityEnforcements{
 					OverrideHonorLabels:      false,
@@ -1145,6 +1148,8 @@ kubernetes_sd_configs:
     names:
     - default
   api_server: default-k8s-host
+  tls_config:
+    ca_file: /etc/vmagent-tls/certs/default_k8s_host_ca
   selectors:
   - role: endpoints
     label: dc=prod,env=dev,team=go

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add TLS configuration for scrape configuration. Previously, tls options were applied to the root of scrape configuration, which caused an error at `vmagent` startup. Bug was introduced in v0.60.0 release.
+
 ## [v0.61.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.0)
 
 **Release date:** 15 July 2025

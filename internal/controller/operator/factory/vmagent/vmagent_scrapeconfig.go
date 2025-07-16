@@ -897,7 +897,7 @@ func generateK8SSDConfig(ac *build.AssetsCache, opts generateK8SSDConfigOptions)
 				return nil, fmt.Errorf("cannot add tls asset for apiServerConfig: %w", err)
 			}
 			if len(cfg) > 0 {
-				k8sSDConfig = append(k8sSDConfig, cfg...)
+				k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "tls_config", Value: cfg})
 			}
 		}
 	}

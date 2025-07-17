@@ -18,6 +18,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -43,6 +44,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
+		if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
+			return fmt.Errorf("cannot create vmanomaly role and binding for it, err: %w", err)
+		}
 	}
 
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
@@ -52,15 +56,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, cfg)
+	ac := getAssetsCache(ctx, rclient, cr)
 
-	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, ac)
+	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, nil, ac)
 	if err != nil {
 		return err
 	}
@@ -138,7 +136,7 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 	}
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 	podAnnotations := cr.PodAnnotations()
-	if len(configHash) > 0 {
+	if len(configHash) > 0 && !reloadSupported(cr) {
 		podAnnotations = labels.Merge(podAnnotations, map[string]string{
 			"checksum/config": configHash,
 		})
@@ -347,4 +345,14 @@ func createOrUpdateStatefulSet(ctx context.Context, rclient client.Client, cr *v
 		return err
 	}
 	return nil
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }

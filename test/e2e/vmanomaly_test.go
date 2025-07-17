@@ -280,14 +280,14 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					// assert security
 					Expect(dep.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
 					Expect(dep.Spec.Template.Spec.SecurityContext.RunAsUser).NotTo(BeNil())
-					Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
+					Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(2))
 					pc := dep.Spec.Template.Spec.Containers
 					Expect(pc[0].SecurityContext).NotTo(BeNil())
 					Expect(pc[0].SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
-					Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(4))
+					Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(5))
 
 					// vmanomaly cannot have k8s api access
-					vmc := pc[0]
+					vmc := pc[1]
 					Expect(vmc.Name).To(Equal("vmanomaly"))
 					Expect(vmc.VolumeMounts).To(HaveLen(4))
 					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).NotTo(Succeed())

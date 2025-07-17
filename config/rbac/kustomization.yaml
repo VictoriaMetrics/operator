@@ -52,3 +52,6 @@ resources:
 # - operator_vmalert_viewer_role.yaml
 # - operator_vmagent_editor_role.yaml
 # - operator_vmagent_viewer_role.yaml
+# - operator_vmanomalymodel_admin_role.yaml
+# - operator_vmanomalymodel_editor_role.yaml
+# - operator_vmanomalymodel_viewer_role.yaml

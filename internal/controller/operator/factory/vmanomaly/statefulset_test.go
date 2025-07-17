@@ -79,7 +79,7 @@ schedulers:
 				if set.Name != "vmanomaly-test-anomaly" {
 					return fmt.Errorf("unexpected name, got: %s, want: %s", set.Name, "vmanomaly-test-anomaly")
 				}
-				if diff := deep.Equal(set.Spec.Template.Spec.Containers[0].Resources, corev1.ResourceRequirements{
+				if diff := deep.Equal(set.Spec.Template.Spec.Containers[1].Resources, corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("200m"),
 						corev1.ResourceMemory: resource.MustParse("500Mi"),
@@ -151,10 +151,10 @@ schedulers:
 			},
 			wantErr: false,
 			validate: func(set *appsv1.StatefulSet) error {
-				if len(set.Spec.Template.Spec.Containers) != 1 {
+				if len(set.Spec.Template.Spec.Containers) != 2 {
 					return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(set.Spec.Template.Spec.Containers), 2)
 				}
-				container := set.Spec.Template.Spec.Containers[0]
+				container := set.Spec.Template.Spec.Containers[1]
 				if container.Name != "vmanomaly" {
 					return fmt.Errorf("unexpected container name, got: %s, want: %s", container.Name, "vmanomaly")
 				}
@@ -330,7 +330,7 @@ schedulers:
 			}
 			ctx := context.TODO()
 			ac := build.NewAssetsCache(ctx, fclient, cfg)
-			if _, err := createOrUpdateConfig(ctx, fclient, tt.cr, nil, ac); (err != nil) != tt.wantErr {
+			if _, err := createOrUpdateConfig(ctx, fclient, tt.cr, nil, nil, ac); (err != nil) != tt.wantErr {
 				t.Fatalf("createOrUpdateConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantErr {

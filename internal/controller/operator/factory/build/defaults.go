@@ -283,6 +283,7 @@ func addVMAnomalyDefaults(objI any) {
 			},
 		}
 	}
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
 }
 
 func addVLSingleDefaults(objI any) {

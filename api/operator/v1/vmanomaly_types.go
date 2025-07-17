@@ -94,6 +94,18 @@ type VMAnomalySpec struct {
 	// Monitoring configures how expose anomaly metrics
 	// See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/
 	Monitoring *VMAnomalyMonitoringSpec `json:"monitoring,omitempty"`
+	// ModelSelector defines VMAnomalyModels to be selected for anomaly detection.
+	// Works in combination with ModelNamespaceSelector.
+	// ModelNamespaceSelector nil - only objects at VMAnomaly namespace.
+	// Selector nil - only objects at ModelNamespaceSelector namespaces.
+	// +optional
+	ModelSelector *metav1.LabelSelector `json:"modelSelector,omitempty"`
+	// ModelNamespaceSelector Namespaces to be selected for VMAnomalyModel discovery.
+	// Works in combination with ModelSelector.
+	// ModelNamespaceSelector nil - only objects at VMAnomaly namespace.
+	// Selector nil - only objects at ModelNamespaceSelector namespaces.
+	// +optional
+	ModelNamespaceSelector *metav1.LabelSelector `json:"modelNamespaceSelector,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/enterprise)
@@ -103,6 +115,7 @@ type VMAnomalySpec struct {
 	// +optional
 	ServiceAccountName                          string `json:"serviceAccountName,omitempty"`
 	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
+	vmv1beta1.CommonConfigReloaderParams        `json:",inline,omitempty"`
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
@@ -340,6 +353,11 @@ func (cr *VMAnomaly) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// AsCRDOwner implements interface
+func (*VMAnomaly) AsCRDOwner() []metav1.OwnerReference {
+	return vmv1beta1.GetCRDAsOwner(vmv1beta1.Anomaly)
+}
+
 // IsOwnsServiceAccount checks if ServiceAccountName is set explicitly
 func (cr *VMAnomaly) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
@@ -454,6 +472,10 @@ func (cr *VMAnomaly) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
+func (cr *VMAnomaly) GetClusterRoleName() string {
+	return fmt.Sprintf("monitoring:%s:vmanomaly-%s", cr.Namespace, cr.Name)
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAnomalySpec) UnmarshalJSON(src []byte) error {
 	type pcr VMAnomalySpec
@@ -462,6 +484,16 @@ func (cr *VMAnomalySpec) UnmarshalJSON(src []byte) error {
 		return nil
 	}
 	return nil
+}
+
+// IsUnmanaged checks if object should managed any config objects
+func (cr *VMAnomaly) IsUnmanaged() bool {
+	return cr.IsModelUnmanaged()
+}
+
+// IsModelUnmanaged checks if object should managed model config objects
+func (cr *VMAnomaly) IsModelUnmanaged() bool {
+	return cr.Spec.ModelSelector == nil && cr.Spec.ModelNamespaceSelector == nil
 }
 
 // +kubebuilder:object:root=true

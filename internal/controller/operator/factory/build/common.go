@@ -1,7 +1,6 @@
 package build
 
 import (
-	"iter"
 	"sort"
 )
 
@@ -36,31 +35,4 @@ func (s *keysSorter[T]) Less(i, j int) bool {
 func (s *keysSorter[T]) Swap(i, j int) {
 	s.target[i], s.target[j] = s.target[j], s.target[i]
 	s.sorter[i], s.sorter[j] = s.sorter[j], s.sorter[i]
-}
-
-// ShardNumIter iterates over shardCount in order defined in backward
-func ShardNumIter(backward bool, shardCount int) iter.Seq[*int] {
-	if shardCount <= 1 {
-		return func(yield func(*int) bool) {
-			yield(nil)
-		}
-	}
-	if backward {
-		return func(yield func(*int) bool) {
-			for shardCount > 0 {
-				shardCount--
-				num := shardCount
-				if !yield(&num) {
-					return
-				}
-			}
-		}
-	}
-	return func(yield func(*int) bool) {
-		for i := 0; i < shardCount; i++ {
-			if !yield(&i) {
-				return
-			}
-		}
-	}
 }

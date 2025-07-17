@@ -75,7 +75,7 @@ Usage of bin/operator:
   -zap-encoder value
     	Zap log encoding (one of 'json' or 'console')
   -zap-log-level value
-    	Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
+    	Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', 'panic'or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
   -zap-stacktrace-level value
     	Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
   -zap-time-encoding value

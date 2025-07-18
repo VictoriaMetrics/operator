@@ -39,7 +39,7 @@ func VisitSelected[T any, PT listing[T]](ctx context.Context, rclient client.Cli
 	if s.isUnmanaged() {
 		return nil
 	}
-	nss, err := discoverNamespaces(ctx, rclient, s)
+	dnsr, err := discoverNamespaces(ctx, rclient, s)
 	if err != nil {
 		return err
 	}
@@ -52,19 +52,24 @@ func VisitSelected[T any, PT listing[T]](ctx context.Context, rclient client.Cli
 		}
 		opts.LabelSelector = selector
 	}
-	if nss == nil {
+	if dnsr == nil {
 		// special case, nil value must be treated as selectors match nothing
 		return nil
 	}
+	nss := dnsr.namespaces
 	// namespaces could still be empty and it's ok
 	return ListObjectsByNamespace(ctx, rclient, nss, cb, opts)
 }
 
+type discoverNamespacesResponse struct {
+	namespaces []string
+}
+
 // discoverNamespaces select namespaces by given label selector
-func discoverNamespaces(ctx context.Context, rclient client.Client, s *SelectorOpts) ([]string, error) {
+func discoverNamespaces(ctx context.Context, rclient client.Client, s *SelectorOpts) (*discoverNamespacesResponse, error) {
 	watchNS := getWatchNamespaces()
 
-	namespaces := []string{}
+	var namespaces []string
 	switch {
 	case len(watchNS) > 0:
 		// perform match only for watched namespaces
@@ -83,7 +88,7 @@ func discoverNamespaces(ctx context.Context, rclient client.Client, s *SelectorO
 	case s.NamespaceSelector != nil:
 		if len(s.NamespaceSelector.MatchExpressions) == 0 && len(s.NamespaceSelector.MatchLabels) == 0 {
 			// fast path, match everything
-			return namespaces, nil
+			return &discoverNamespacesResponse{namespaces: namespaces}, nil
 		}
 		// perform a cluster wide request for namespaces with given filters
 		opts := &client.ListOptions{}
@@ -96,14 +101,12 @@ func discoverNamespaces(ctx context.Context, rclient client.Client, s *SelectorO
 		if err := rclient.List(ctx, l, opts); err != nil {
 			return nil, fmt.Errorf("cannot select namespaces for  match: %w", err)
 		}
+		if len(l.Items) == 0 {
+			return nil, nil
+		}
 		for _, n := range l.Items {
 			namespaces = append(namespaces, n.Name)
 		}
-		// if nsSelector is specified and no match, return nil value
-		// it must be respected by VisitSelected function
-		if len(namespaces) == 0 {
-			return nil, nil
-		}
 	}
-	return namespaces, nil
+	return &discoverNamespacesResponse{namespaces: namespaces}, nil
 }

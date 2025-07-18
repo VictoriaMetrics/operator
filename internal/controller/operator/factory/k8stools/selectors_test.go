@@ -2,7 +2,6 @@ package k8stools
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -12,92 +11,76 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func Test_discoverNamespaces(t *testing.T) {
-	tests := []struct {
-		name         string
-		selectorOpts *SelectorOpts
-		predefinedNs []runtime.Object
-		want         []string
-		wantErr      bool
-	}{
-		{
-			name:         "no match",
-			selectorOpts: &SelectorOpts{},
-			predefinedNs: []runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}},
-			want:         []string{},
-			wantErr:      false,
-		},
-		{
-			name:         "match everything(empty slice)",
-			selectorOpts: &SelectorOpts{SelectAll: true},
-			predefinedNs: []runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}},
-			want:         []string{},
-			wantErr:      false,
-		},
-		{
-			name: "select 1 ns with label selector",
-			selectorOpts: &SelectorOpts{
-				NamespaceSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"name": "kube-system",
-					},
-				},
-			},
-			predefinedNs: []runtime.Object{
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", Labels: map[string]string{"name": "kube-system"}}},
-			},
-			want:    []string{"kube-system"},
-			wantErr: false,
-		},
-		{
-			name: "no match with ns selector",
-			selectorOpts: &SelectorOpts{
-				NamespaceSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"name": "kube-system",
-					},
-				},
-			},
-			predefinedNs: []runtime.Object{
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default", Labels: map[string]string{"name": "default"}}},
-			},
-			want:    nil,
-			wantErr: false,
-		},
-		{
-			name: "match for object NS only",
-			selectorOpts: &SelectorOpts{
-				DefaultNamespace: "default",
-				ObjectSelector: &metav1.LabelSelector{
+func Test_discoverNamespacesOk(t *testing.T) {
+	type opts struct {
+		selectorOpts      SelectorOpts
+		predefinedObjects []runtime.Object
+		want              *discoverNamespacesResponse
+	}
+	f := func(opts opts) {
+		t.Helper()
+		fclient := GetTestClientWithObjects(opts.predefinedObjects)
+		got, err := discoverNamespaces(context.TODO(), fclient, &opts.selectorOpts)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if d := cmp.Diff(got, opts.want, cmp.AllowUnexported(discoverNamespacesResponse{})); len(d) > 0 {
+			t.Fatalf("unexpected diff: %s", d)
+		}
+	}
 
-					MatchLabels: map[string]string{
-						"name": "kube-system",
-					},
+	// match nothing on namespace selector mismatch
+	o := opts{
+		selectorOpts: SelectorOpts{
+			NamespaceSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"env": "dev"},
+			},
+		},
+		predefinedObjects: []runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}},
+	}
+	f(o)
+
+	// match everything - non-nil want
+	o = opts{
+		predefinedObjects: []runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}},
+		want:              &discoverNamespacesResponse{},
+	}
+	f(o)
+
+	// select 1 ns with label selector
+	o = opts{
+		selectorOpts: SelectorOpts{
+			NamespaceSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"name": "kube-system",
 				},
 			},
-			predefinedNs: []runtime.Object{
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default", Labels: map[string]string{"name": "default-1"}}},
-			},
-			want:    []string{"default"},
-			wantErr: false,
 		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", Labels: map[string]string{"name": "kube-system"}}},
+		},
+		want: &discoverNamespacesResponse{namespaces: []string{"kube-system"}},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fclient := GetTestClientWithObjects(tt.predefinedNs)
-			got, err := discoverNamespaces(context.TODO(), fclient, tt.selectorOpts)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("discoverNamespaces() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("discoverNamespaces() got = %v, want %v", got, tt.want)
-			}
-		})
+	f(o)
+	// match for object NS only
+	o = opts{
+		selectorOpts: SelectorOpts{
+			DefaultNamespace: "default",
+			ObjectSelector: &metav1.LabelSelector{
+
+				MatchLabels: map[string]string{
+					"name": "kube-system",
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default", Labels: map[string]string{"name": "default-1"}}},
+		},
+		want: &discoverNamespacesResponse{namespaces: []string{"default"}},
 	}
+	f(o)
 }
 
 func TestVisitSelected(t *testing.T) {

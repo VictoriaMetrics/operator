@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
+
+var getWatchNamespaces = config.MustGetWatchNamespaces
 
 type listing[L any] interface {
 	client.ObjectList
@@ -36,7 +39,7 @@ func VisitSelected[T any, PT listing[T]](ctx context.Context, rclient client.Cli
 	if s.isUnmanaged() {
 		return nil
 	}
-	nss, err := discoverNamespaces(ctx, rclient, s)
+	dnsr, err := discoverNamespaces(ctx, rclient, s)
 	if err != nil {
 		return err
 	}
@@ -49,38 +52,61 @@ func VisitSelected[T any, PT listing[T]](ctx context.Context, rclient client.Cli
 		}
 		opts.LabelSelector = selector
 	}
+	if dnsr == nil {
+		// special case, nil value must be treated as selectors match nothing
+		return nil
+	}
+	nss := dnsr.namespaces
 	// namespaces could still be empty and it's ok
 	return ListObjectsByNamespace(ctx, rclient, nss, cb, opts)
 }
 
+type discoverNamespacesResponse struct {
+	namespaces []string
+}
+
 // discoverNamespaces select namespaces by given label selector
-func discoverNamespaces(ctx context.Context, rclient client.Client, s *SelectorOpts) ([]string, error) {
-	namespaces := config.MustGetWatchNamespaces()
-	if s.NamespaceSelector == nil && s.ObjectSelector != nil {
+func discoverNamespaces(ctx context.Context, rclient client.Client, s *SelectorOpts) (*discoverNamespacesResponse, error) {
+	watchNS := getWatchNamespaces()
+
+	var namespaces []string
+	switch {
+	case len(watchNS) > 0:
+		// perform match only for watched namespaces
+		// filters by namespace is disabled, since operator cannot access cluster-wide APIs
+		// this case could be improved to additionally filter by namespace name - metadata.name label
+
+		// impossible case
+		if !slices.Contains(watchNS, s.DefaultNamespace) {
+			panic(fmt.Sprintf("BUG: watch namespaces: %s must contain namespace for the current reconcile object: %s", strings.Join(watchNS, ","), s.DefaultNamespace))
+		}
+		namespaces = append(namespaces, watchNS...)
+
+	case s.ObjectSelector != nil && s.NamespaceSelector == nil:
 		// in single namespace mode, return object ns
-		if len(namespaces) == 0 || slices.Contains(namespaces, s.DefaultNamespace) {
-			namespaces = append(namespaces[:0], s.DefaultNamespace)
+		namespaces = append(namespaces, s.DefaultNamespace)
+	case s.NamespaceSelector != nil:
+		if len(s.NamespaceSelector.MatchExpressions) == 0 && len(s.NamespaceSelector.MatchLabels) == 0 {
+			// fast path, match everything
+			return &discoverNamespacesResponse{namespaces: namespaces}, nil
 		}
-	} else if len(namespaces) == 0 {
 		// perform a cluster wide request for namespaces with given filters
-		// filters by namespace is disabled, when WATCH_NAMESPACES is defined,
-		// since operator cannot access cluster-wide APIs this case could be improved
-		// to additionally filter by namespace name - metadata.name label
 		opts := &client.ListOptions{}
-		if s.NamespaceSelector != nil {
-			selector, err := metav1.LabelSelectorAsSelector(s.NamespaceSelector)
-			if err != nil {
-				return nil, fmt.Errorf("cannot convert selector: %w", err)
-			}
-			opts.LabelSelector = selector
+		selector, err := metav1.LabelSelectorAsSelector(s.NamespaceSelector)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert selector: %w", err)
 		}
+		opts.LabelSelector = selector
 		l := &corev1.NamespaceList{}
 		if err := rclient.List(ctx, l, opts); err != nil {
 			return nil, fmt.Errorf("cannot select namespaces for  match: %w", err)
+		}
+		if len(l.Items) == 0 {
+			return nil, nil
 		}
 		for _, n := range l.Items {
 			namespaces = append(namespaces, n.Name)
 		}
 	}
-	return namespaces, nil
+	return &discoverNamespacesResponse{namespaces: namespaces}, nil
 }

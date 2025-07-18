@@ -1,8 +1,6 @@
 package vmanomaly
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -19,15 +17,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmanomaly/config"
 )
-
-func gzipConfig(buf *bytes.Buffer, conf []byte) error {
-	w := gzip.NewWriter(buf)
-	defer w.Close()
-	if _, err := w.Write(conf); err != nil {
-		return err
-	}
-	return nil
-}
 
 // CreateOrUpdateConfig builds configuration for VMAnomaly
 func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject client.Object) error {
@@ -53,19 +42,10 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 	if err != nil {
 		return "", err
 	}
-	secretConfigKey := configEnvsubstFilename
-	if reloadSupported(cr) {
-		secretConfigKey = gzippedFilename
-		var buf bytes.Buffer
-		if err = gzipConfig(&buf, data); err != nil {
-			return "", fmt.Errorf("cannot gzip config for vmanomaly: %w", err)
-		}
-		data = buf.Bytes()
-	}
 	newSecretConfig := &corev1.Secret{
 		ObjectMeta: build.ResourceMeta(build.SecretConfigResourceKind, cr),
 		Data: map[string][]byte{
-			secretConfigKey: data,
+			configEnvsubstFilename: data,
 		},
 	}
 

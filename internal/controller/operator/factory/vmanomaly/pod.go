@@ -23,12 +23,11 @@ var reloadMinVersion = semver.MustParse("v1.25.0")
 const (
 	anomalyDir             = "/etc/vmanomaly"
 	confDir                = anomalyDir + "/config"
-	confOutDir             = anomalyDir + "/config_out"
+	configEnvsubstFilename = "vmanomaly.env.yaml"
+	confFile               = confDir + "/" + configEnvsubstFilename
 	tlsAssetsDir           = anomalyDir + "/tls"
 	storageDir             = "/storage"
 	configVolumeName       = "config"
-	gzippedFilename        = "vmanomaly.yaml.gz"
-	configEnvsubstFilename = "vmanomaly.env.yaml"
 )
 
 func reloadSupported(cr *vmv1.VMAnomaly) bool {
@@ -69,41 +68,18 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 				},
 			},
 		},
-		{
-			Name: "config-out",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
 	}
 
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      cr.GetVolumeName(),
-			MountPath: storageDir,
-		},
-	}
-	var configReloaderMounts []corev1.VolumeMount
-	var initContainers []corev1.Container
-	var containers []corev1.Container
-
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
-	if reloadSupported(cr) {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "config-out",
-			MountPath: confOutDir,
-		})
-		configReloader := buildConfigReloaderContainer(cr, configReloaderMounts)
-		containers = append(containers, configReloader)
-		initContainers = append(initContainers, buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, false), cr, configReloader.Args)...)
-		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
-	} else {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      configVolumeName,
 			MountPath: confDir,
 			ReadOnly:  true,
-		})
+		},
+		{
+			Name:      cr.GetVolumeName(),
+			MountPath: storageDir,
+		},
 	}
 
 	for _, s := range cr.Spec.Secrets {
@@ -167,6 +143,10 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
+	var initContainers []corev1.Container
+
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
 
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
@@ -186,13 +166,12 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 			}
 		}
 	}
-	// vmanomaly accepts configuration file as a last element of args
+
 	if reloadSupported(cr) {
 		args = append(args, "--watch")
-		args = append(args, path.Join(confOutDir, configEnvsubstFilename))
-	} else {
-		args = append(args, path.Join(confDir, configEnvsubstFilename))
 	}
+	// vmanomaly accepts configuration file as a last element of args
+	args = append(args, confFile)
 
 	container := corev1.Container{
 		Args:                     args,
@@ -206,7 +185,7 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	container = build.Probe(container, cr)
-	containers = append(containers, container)
+	containers := []corev1.Container{container}
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, containers, useStrictSecurity)
 	containers, err = k8stools.MergePatchContainers(containers, cr.Spec.Containers)
 	if err != nil {
@@ -226,134 +205,4 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 		Volumes:            volumes,
 		ServiceAccountName: cr.GetServiceAccountName(),
 	}, nil
-}
-
-func buildConfigReloaderContainer(cr *vmv1.VMAnomaly, extraWatchsMounts []corev1.VolumeMount) corev1.Container {
-	var configReloadVolumeMounts []corev1.VolumeMount
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
-
-	configReloadVolumeMounts = append(configReloadVolumeMounts,
-		corev1.VolumeMount{
-			Name:      "config-out",
-			MountPath: confOutDir,
-		},
-	)
-	if !useVMConfigReloader {
-		configReloadVolumeMounts = append(configReloadVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "config",
-				MountPath: confDir,
-			})
-	}
-
-	configReloadArgs := buildConfigReloaderArgs(cr, extraWatchsMounts)
-
-	configReloadVolumeMounts = append(configReloadVolumeMounts, extraWatchsMounts...)
-	cntr := corev1.Container{
-		Name:                     "config-reloader",
-		Image:                    cr.Spec.ConfigReloaderImageTag,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		Env: []corev1.EnvVar{
-			{
-				Name: "POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
-				},
-			},
-		},
-		Command:      []string{"/bin/prometheus-config-reloader"},
-		Args:         configReloadArgs,
-		VolumeMounts: configReloadVolumeMounts,
-		Resources:    cr.Spec.ConfigReloaderResources,
-	}
-	if useVMConfigReloader {
-		cntr.Command = nil
-		build.AddServiceAccountTokenVolumeMount(&cntr, &cr.Spec.CommonApplicationDeploymentParams)
-	}
-	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &cntr)
-	build.AddConfigReloadAuthKeyToReloader(&cntr, &cr.Spec.CommonConfigReloaderParams)
-	return cntr
-}
-
-func buildConfigReloaderArgs(cr *vmv1.VMAnomaly, extraWatchVolumes []corev1.VolumeMount) []string {
-	// by default use watched-dir
-	// it should simplify parsing for latest and empty version tags.
-	dirsArg := "watched-dir"
-
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
-
-	args := []string{
-		fmt.Sprintf("--reload-url=http://localhost:%s/metrics", cr.Spec.Port),
-		fmt.Sprintf("--config-envsubst-file=%s", path.Join(confOutDir, configEnvsubstFilename)),
-	}
-	if useVMConfigReloader {
-		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
-		args = append(args, fmt.Sprintf("--config-secret-key=%s", gzippedFilename))
-	} else {
-		args = append(args, fmt.Sprintf("--config-file=%s", path.Join(confDir, gzippedFilename)))
-	}
-	for _, vl := range extraWatchVolumes {
-		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vl.MountPath))
-	}
-	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		for idx, arg := range args {
-			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
-				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
-				args[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
-			}
-		}
-		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			args = append(args, fmt.Sprintf(`--%s=%s`, k, v))
-		}
-		sort.Strings(args)
-	}
-
-	return args
-}
-
-func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1.VMAnomaly, configReloaderArgs []string) []corev1.Container {
-	var initReloader corev1.Container
-	baseImage := cr.Spec.ConfigReloaderImageTag
-	resources := cr.Spec.ConfigReloaderResources
-	if useVMConfigReloader {
-		initReloader = corev1.Container{
-			Image: baseImage,
-			Name:  "config-init",
-			Args:  append(configReloaderArgs, "--only-init-config"),
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "config-out",
-					MountPath: confOutDir,
-				},
-			},
-			Resources: resources,
-		}
-		build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
-		return []corev1.Container{initReloader}
-	}
-	initReloader = corev1.Container{
-		Image: baseImage,
-		Name:  "config-init",
-		Command: []string{
-			"/bin/sh",
-		},
-		Args: []string{
-			"-c",
-			fmt.Sprintf("gunzip -c %s > %s", path.Join(confDir, gzippedFilename), path.Join(confOutDir, configEnvsubstFilename)),
-		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "config",
-				MountPath: confDir,
-			},
-			{
-				Name:      "config-out",
-				MountPath: confOutDir,
-			},
-		},
-		Resources: resources,
-	}
-
-	return []corev1.Container{initReloader}
 }

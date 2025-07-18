@@ -1260,7 +1260,6 @@ func (in *VMAnomalySpec) DeepCopyInto(out *VMAnomalySpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.CommonDefaultableParams.DeepCopyInto(&out.CommonDefaultableParams)
-	in.CommonConfigReloaderParams.DeepCopyInto(&out.CommonConfigReloaderParams)
 	in.CommonApplicationDeploymentParams.DeepCopyInto(&out.CommonApplicationDeploymentParams)
 }
 

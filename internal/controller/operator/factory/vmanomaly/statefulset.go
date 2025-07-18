@@ -18,7 +18,6 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -43,9 +42,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
-		}
-		if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
-			return fmt.Errorf("cannot create vmanomaly role and binding for it, err: %w", err)
 		}
 	}
 

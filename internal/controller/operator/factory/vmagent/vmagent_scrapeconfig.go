@@ -517,8 +517,6 @@ func generateConfig(
 
 	cfg = append(cfg, yaml.MapItem{Key: "global", Value: globalItems})
 
-	apiserverConfig := cr.Spec.APIServerConfig
-
 	var scrapeConfigs []yaml.MapSlice
 	var err error
 
@@ -530,9 +528,7 @@ func generateConfig(
 				cr,
 				ss,
 				ep, i,
-				apiserverConfig,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:scrapeConfigsLen]
@@ -553,9 +549,7 @@ func generateConfig(
 				ctx,
 				cr,
 				identifier, ep, i,
-				apiserverConfig,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:scrapeConfigsLen]
@@ -577,9 +571,7 @@ func generateConfig(
 			cr,
 			identifier,
 			idx,
-			apiserverConfig,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		idx++
 		if err != nil {
@@ -597,9 +589,7 @@ func generateConfig(
 			ctx,
 			cr,
 			identifier,
-			apiserverConfig,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		if err != nil {
 			return err
@@ -621,7 +611,6 @@ func generateConfig(
 				identifier,
 				ep, i,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:scrapeConfigsLen]
@@ -641,7 +630,6 @@ func generateConfig(
 			cr,
 			identifier,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		if err != nil {
 			return err

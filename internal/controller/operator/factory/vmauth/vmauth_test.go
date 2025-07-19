@@ -23,130 +23,95 @@ func TestCreateOrUpdate(t *testing.T) {
 		cb(c)
 		return c
 	}
-	type args struct {
-		cr *vmv1beta1.VMAuth
-		c  *config.BaseOperatorConf
-	}
-	tests := []struct {
-		name              string
-		args              args
-		wantErr           bool
+	type opts struct {
+		cr                *vmv1beta1.VMAuth
+		c                 *config.BaseOperatorConf
 		predefinedObjects []runtime.Object
-	}{
-		{
-			name: "simple-unmanaged",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-				},
-				c: config.MustGetBaseConfig(),
-			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-			},
-		},
-		{
-			name: "simple-with-external-config",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						ExternalConfig: vmv1beta1.ExternalConfig{
-							SecretRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "external-cfg",
-								},
-							},
-						},
-					},
-				},
-				c: config.MustGetBaseConfig(),
-			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "external-cfg",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"config.yaml": {},
-					},
-				},
+	}
+	f := func(opts opts) {
+		t.Helper()
+		if opts.c == nil {
+			_ = config.MustGetBaseConfig()
+		}
+		ctx := context.Background()
+		tc := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
+		// TODO fix
+		if err := CreateOrUpdate(ctx, opts.cr, tc); err != nil {
+			t.Errorf("CreateOrUpdate() error = %v", err)
+		}
+	}
+
+	// simple unmanaged
+	o := opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
 			},
 		},
-		{
-			name: "with-match-all",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
-				},
-				c: config.MustGetBaseConfig(),
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+		},
+	}
+	f(o)
+
+	// simple with external config
+	o = opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
 			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-				&vmv1beta1.VMUser{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "user-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{
-						UserName: ptr.To("user-1"),
-						Password: ptr.To("password-1"),
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								Static: &vmv1beta1.StaticRef{
-									URLs: []string{"http://url-1", "http://url-2"},
-								},
-							},
+			Spec: vmv1beta1.VMAuthSpec{
+				ExternalConfig: vmv1beta1.ExternalConfig{
+					SecretRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "external-cfg",
 						},
 					},
 				},
 			},
 		},
-		{
-			name: "with customer config reloader",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "external-cfg",
+					Namespace: "default",
 				},
-				c: mutateConf(func(c *config.BaseOperatorConf) {
-					c.UseCustomConfigReloader = true
-				}),
+				Data: map[string][]byte{
+					"config.yaml": {},
+				},
 			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-				&vmv1beta1.VMUser{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "user-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{
-						UserName: ptr.To("user-1"),
-						Password: ptr.To("password-1"),
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								Static: &vmv1beta1.StaticRef{
-									URLs: []string{"http://url-1", "http://url-2"},
-								},
+		},
+	}
+	f(o)
+
+	// with match all
+	o = opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				SelectAllByDefault: true,
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					UserName: ptr.To("user-1"),
+					Password: ptr.To("password-1"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: &vmv1beta1.StaticRef{
+								URLs: []string{"http://url-1", "http://url-2"},
 							},
 						},
 					},
@@ -154,34 +119,66 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			tc := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			// TODO fix
-			if err := CreateOrUpdate(ctx, tt.args.cr, tc); (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+	f(o)
+
+	// with customer config reloader
+	o = opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				SelectAllByDefault: true,
+			},
+		},
+		c: mutateConf(func(c *config.BaseOperatorConf) {
+			c.UseCustomConfigReloader = true
+		}),
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					UserName: ptr.To("user-1"),
+					Password: ptr.To("password-1"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: &vmv1beta1.StaticRef{
+								URLs: []string{"http://url-1", "http://url-2"},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
+	f(o)
 }
 
 func TestMakeSpecForAuthOk(t *testing.T) {
-	f := func(t *testing.T, cr *vmv1beta1.VMAuth, wantYaml string) {
+	type opts struct {
+		cr       *vmv1beta1.VMAuth
+		wantYaml string
+	}
+	f := func(opts opts) {
 		t.Helper()
 
 		scheme := k8stools.GetTestClientWithObjects(nil).Scheme()
 		build.AddDefaults(scheme)
-		scheme.Default(cr)
+		scheme.Default(opts.cr)
 		var wantSpec corev1.PodSpec
-		if err := yaml.Unmarshal([]byte(wantYaml), &wantSpec); err != nil {
-			t.Fatalf("not expected wantYaml: %q: \n%q", wantYaml, err)
+		if err := yaml.Unmarshal([]byte(opts.wantYaml), &wantSpec); err != nil {
+			t.Fatalf("not expected wantYaml: %q: \n%q", opts.wantYaml, err)
 		}
 		wantYAMLForCompare, err := yaml.Marshal(wantSpec)
 		if err != nil {
 			t.Fatalf("BUG: cannot parse as yaml: %q", err)
 		}
-		got, err := makeSpecForVMAuth(cr)
+		got, err := makeSpecForVMAuth(opts.cr)
 		if err != nil {
 			t.Fatalf("not expected error=%q", err)
 		}
@@ -192,8 +189,9 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
 	}
 
-	t.Run("custom-loader", func(t *testing.T) {
-		f(t, &vmv1beta1.VMAuth{
+	// custom loader
+	o := opts{
+		cr: &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
 			Spec: vmv1beta1.VMAuthSpec{
 				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
@@ -209,7 +207,8 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
 				},
 			},
-		}, `
+		},
+		wantYaml: `
 volumes:
   - name: config-out
     volumesource:
@@ -327,10 +326,13 @@ containers:
     terminationmessagepolicy: FallbackToLogsOnError
 serviceaccountname: vmauth-auth
 
-`)
-	})
-	t.Run("no-custom-loader", func(t *testing.T) {
-		f(t, &vmv1beta1.VMAuth{
+`,
+	}
+	f(o)
+
+	// no custom loader
+	o = opts{
+		cr: &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
 			Spec: vmv1beta1.VMAuthSpec{
 				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
@@ -346,7 +348,8 @@ serviceaccountname: vmauth-auth
 					UseVMConfigReloader:    ptr.To(false),
 				},
 			},
-		}, `
+		},
+		wantYaml: `
 volumes:
   - name: config-out
     volumesource:
@@ -445,6 +448,7 @@ containers:
     terminationmessagepolicy: FallbackToLogsOnError
 serviceaccountname: vmauth-auth
 
-`)
-	})
+`,
+	}
+	f(o)
 }

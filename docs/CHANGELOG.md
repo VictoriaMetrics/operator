@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+## [v0.61.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.1)
+
+**Release date:** 19 July 2025
+
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add TLS configuration for scrape configuration. Previously, tls options were applied to the root of scrape configuration, which caused an error at `vmagent` startup. Bug was introduced in v0.60.0 release.
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/), [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/) and [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): reduce Kubernetes API-server and operator resource usage for objects discovery with `NamespaceSelector: {}`. See this [1468](https://github.com/VictoriaMetrics/operator/issues/1468) issue for details.
 

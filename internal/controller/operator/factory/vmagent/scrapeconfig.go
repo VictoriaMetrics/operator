@@ -16,8 +16,8 @@ func generateScrapeConfig(
 	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMScrapeConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
+	se := cr.Spec.VMAgentSecurityEnforcements
 	jobName := fmt.Sprintf("scrapeConfig/%s/%s", sc.Namespace, sc.Name)
 	cfg := yaml.MapSlice{
 		{

@@ -52,15 +52,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, cfg)
+	ac := getAssetsCache(ctx, rclient, cr)
 
-	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, ac)
+	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, nil, ac)
 	if err != nil {
 		return err
 	}
@@ -138,7 +132,7 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 	}
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 	podAnnotations := cr.PodAnnotations()
-	if len(configHash) > 0 {
+	if len(configHash) > 0 && !reloadSupported(cr) {
 		podAnnotations = labels.Merge(podAnnotations, map[string]string{
 			"checksum/config": configHash,
 		})
@@ -347,4 +341,14 @@ func createOrUpdateStatefulSet(ctx context.Context, rclient client.Client, cr *v
 		return err
 	}
 	return nil
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }

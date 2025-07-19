@@ -330,7 +330,7 @@ schedulers:
 			}
 			ctx := context.TODO()
 			ac := build.NewAssetsCache(ctx, fclient, cfg)
-			if _, err := createOrUpdateConfig(ctx, fclient, tt.cr, nil, ac); (err != nil) != tt.wantErr {
+			if _, err := createOrUpdateConfig(ctx, fclient, tt.cr, nil, nil, ac); (err != nil) != tt.wantErr {
 				t.Fatalf("createOrUpdateConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantErr {

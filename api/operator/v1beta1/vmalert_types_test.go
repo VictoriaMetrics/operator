@@ -5,47 +5,52 @@ import (
 )
 
 func TestVMAlert_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		spec    VMAlertSpec
+	type opts struct {
+		cr      *VMAlert
 		wantErr bool
-	}{
-		{
-			name: "wo datasource",
-			spec: VMAlertSpec{
+	}
+	f := func(opts opts) {
+		t.Helper()
+		if err := opts.cr.Validate(); (err != nil) != opts.wantErr {
+			t.Errorf("Validate() error = %v, wantErr %v", err, opts.wantErr)
+		}
+	}
+
+	// wo datasource
+	o := opts{
+		cr: &VMAlert{
+			Spec: VMAlertSpec{
 				Notifier: &VMAlertNotifierSpec{
 					URL: "some-url",
 				},
 			},
-			wantErr: true,
 		},
-		{
-			name: "with notifier blackhole",
-			spec: VMAlertSpec{
+		wantErr: true,
+	}
+	f(o)
+
+	// with notifier blackhole
+	o = opts{
+		cr: &VMAlert{
+			Spec: VMAlertSpec{
 				Datasource: VMAlertDatasourceSpec{URL: "http://some-url"},
 				CommonApplicationDeploymentParams: CommonApplicationDeploymentParams{
 					ExtraArgs: map[string]string{"notifier.blackhole": "true"},
 				},
 			},
-			wantErr: false,
 		},
-		{
-			name: "wo notifier url",
-			spec: VMAlertSpec{
+	}
+	f(o)
+
+	// wo notifier url
+	o = opts{
+		cr: &VMAlert{
+			Spec: VMAlertSpec{
 				Datasource: VMAlertDatasourceSpec{URL: "some-url"},
 				Notifier:   &VMAlertNotifierSpec{},
 			},
-			wantErr: true,
 		},
+		wantErr: true,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &VMAlert{
-				Spec: tt.spec,
-			}
-			if err := r.Validate(); (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	f(o)
 }

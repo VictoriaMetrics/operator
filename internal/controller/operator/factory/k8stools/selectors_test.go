@@ -383,5 +383,4 @@ func TestVisitSelected(t *testing.T) {
 		},
 	}
 	f(o)
-
 }

@@ -14,83 +14,71 @@ import (
 )
 
 func TestCreateVMAgentClusterAccess(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		cr  *vmv1beta1.VMAgent
-	}
-	tests := []struct {
-		name              string
-		args              args
-		wantErr           bool
+	type opts struct {
+		cr                *vmv1beta1.VMAgent
 		predefinedObjects []runtime.Object
-	}{
-		{
-			name: "ok create default rbac",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "rbac-test",
-					},
-					Spec: vmv1beta1.VMAgentSpec{},
-				},
+	}
+	f := func(opts opts) {
+		fclient := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
+		ctx := context.TODO()
+		if err := createVMAgentK8sAPIAccess(ctx, fclient, opts.cr, nil, true); err != nil {
+			t.Errorf("CreateVMAgentK8sAPIAccess() error = %v", err)
+		}
+	}
+
+	// ok create default rbac
+	o := opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "rbac-test",
 			},
-			wantErr: false,
-		},
-		{
-			name: "ok with exist rbac",
-			args: args{
-				ctx: context.TODO(),
-				cr: &vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default-2",
-						Name:      "rbac-test",
-					},
-					Spec: vmv1beta1.VMAgentSpec{},
-				},
-			},
-			predefinedObjects: []runtime.Object{
-				&rbacv1.ClusterRole{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "monitoring:vmagent-cluster-access-rbac-test",
-						Namespace: "default-2",
-						Labels: map[string]string{
-							"app.kubernetes.io/name":      "vmagent",
-							"app.kubernetes.io/instance":  "rbac-test",
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-						},
-					},
-				},
-				&rbacv1.ClusterRoleBinding{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "monitoring:vmagent-cluster-access-rbac-test",
-						Namespace: "default-2",
-						Labels: map[string]string{
-							"app.kubernetes.io/name":      "vmagent",
-							"app.kubernetes.io/instance":  "rbac-test",
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-						},
-					},
-				},
-				&corev1.ServiceAccount{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmagent-rbac-test",
-						Namespace: "default-2",
-					},
-				},
-			},
-			wantErr: false,
+			Spec: vmv1beta1.VMAgentSpec{},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := createVMAgentK8sAPIAccess(tt.args.ctx, fclient, tt.args.cr, nil, true); (err != nil) != tt.wantErr {
-				t.Errorf("CreateVMAgentK8sAPIAccess() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+	f(o)
+
+	// ok with exist rbac
+	o = opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default-2",
+				Name:      "rbac-test",
+			},
+			Spec: vmv1beta1.VMAgentSpec{},
+		},
+		predefinedObjects: []runtime.Object{
+			&rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "monitoring:vmagent-cluster-access-rbac-test",
+					Namespace: "default-2",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vmagent",
+						"app.kubernetes.io/instance":  "rbac-test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+					},
+				},
+			},
+			&rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "monitoring:vmagent-cluster-access-rbac-test",
+					Namespace: "default-2",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vmagent",
+						"app.kubernetes.io/instance":  "rbac-test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+					},
+				},
+			},
+			&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmagent-rbac-test",
+					Namespace: "default-2",
+				},
+			},
+		},
 	}
+	f(o)
 }

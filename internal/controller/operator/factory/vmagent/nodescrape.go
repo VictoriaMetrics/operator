@@ -14,10 +14,10 @@ func generateNodeScrapeConfig(
 	ctx context.Context,
 	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMNodeScrape,
-	apiserverConfig *vmv1beta1.APIServerConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
+	apiserverConfig := cr.Spec.APIServerConfig
+	se := cr.Spec.VMAgentSecurityEnforcements
 	nodeSpec := &sc.Spec
 	cfg := yaml.MapSlice{
 		{

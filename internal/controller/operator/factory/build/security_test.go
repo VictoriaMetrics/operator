@@ -14,61 +14,15 @@ import (
 )
 
 func TestAddStrictSecuritySettingsToPod(t *testing.T) {
-	type args struct {
-		podSecurityPolicy    *vmv1beta1.SecurityContext
+	type opts struct {
+		psp                  *vmv1beta1.SecurityContext
 		enableStrictSecurity bool
-		exp                  *corev1.PodSecurityContext
-		kubeletVersion       version.Info
+		expected             *corev1.PodSecurityContext
+		k8sVersion           version.Info
 	}
-	tests := []struct {
-		name     string
-		args     args
-		validate func(svc *corev1.Service) error
-	}{
-		{
-			name: "enforce strict security",
-			args: args{
-				enableStrictSecurity: true,
-				exp: &corev1.PodSecurityContext{
-					RunAsNonRoot:        ptr.To(true),
-					RunAsUser:           ptr.To(int64(65534)),
-					RunAsGroup:          ptr.To(int64(65534)),
-					FSGroup:             ptr.To(int64(65534)),
-					FSGroupChangePolicy: (*corev1.PodFSGroupChangePolicy)(ptr.To("OnRootMismatch")),
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: corev1.SeccompProfileTypeRuntimeDefault,
-					},
-				},
-				kubeletVersion: version.Info{Major: "1", Minor: "27"},
-			},
-		},
-		{
-			name: "disable enableStrictSecurity",
-			args: args{
-				enableStrictSecurity: false,
-				exp:                  nil,
-				kubeletVersion:       version.Info{Major: "1", Minor: "27"},
-			},
-		},
-		{
-			name: "use custom security",
-			args: args{
-				podSecurityPolicy: &vmv1beta1.SecurityContext{
-					PodSecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: ptr.To(false),
-					},
-					ContainerSecurityContext: nil,
-				},
-				enableStrictSecurity: true,
-				exp: &corev1.PodSecurityContext{
-					RunAsNonRoot: ptr.To(false),
-				},
-				kubeletVersion: version.Info{Major: "1", Minor: "27"},
-			},
-		},
-	}
-	for _, tt := range tests {
-		if err := k8stools.SetKubernetesVersionWithDefaults(&tt.args.kubeletVersion, 0, 0); err != nil {
+	f := func(opts opts) {
+		t.Helper()
+		if err := k8stools.SetKubernetesVersionWithDefaults(&opts.k8sVersion, 0, 0); err != nil {
 			t.Fatalf("cannot set k8s version for testing: %q", err)
 		}
 		defer func() {
@@ -78,283 +32,310 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 				t.Fatalf("cannot set k8s version for testing: %q", err)
 			}
 		}()
-		res := AddStrictSecuritySettingsToPod(tt.args.podSecurityPolicy, tt.args.enableStrictSecurity)
-		if diff := deep.Equal(res, tt.args.exp); len(diff) > 0 {
-			t.Fatalf("got unexpected result: %v, expect: %v", res, tt.args.exp)
+		res := AddStrictSecuritySettingsToPod(opts.psp, opts.enableStrictSecurity)
+		if diff := deep.Equal(res, opts.expected); len(diff) > 0 {
+			t.Fatalf("got unexpected result: %v, expect: %v", res, opts.expected)
 		}
 	}
+
+	// enforce strict security
+	o := opts{
+		enableStrictSecurity: true,
+		expected: &corev1.PodSecurityContext{
+			RunAsNonRoot:        ptr.To(true),
+			RunAsUser:           ptr.To(int64(65534)),
+			RunAsGroup:          ptr.To(int64(65534)),
+			FSGroup:             ptr.To(int64(65534)),
+			FSGroupChangePolicy: (*corev1.PodFSGroupChangePolicy)(ptr.To("OnRootMismatch")),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		},
+		k8sVersion: version.Info{Major: "1", Minor: "27"},
+	}
+	f(o)
+
+	// disable enableStrictSecurity
+	o = opts{
+		k8sVersion: version.Info{Major: "1", Minor: "27"},
+	}
+	f(o)
+
+	// use custom security
+	o = opts{
+		psp: &vmv1beta1.SecurityContext{
+			PodSecurityContext: &corev1.PodSecurityContext{
+				RunAsNonRoot: ptr.To(false),
+			},
+			ContainerSecurityContext: nil,
+		},
+		enableStrictSecurity: true,
+		expected: &corev1.PodSecurityContext{
+			RunAsNonRoot: ptr.To(false),
+		},
+		k8sVersion: version.Info{Major: "1", Minor: "27"},
+	}
+	f(o)
 }
 
 func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
-
-	type args struct {
+	type opts struct {
 		sc                *vmv1beta1.SecurityContext
 		containers        []corev1.Container
 		useStrictSecurity bool
+		expected          []corev1.Container
 	}
-	tests := []struct {
-		name     string
-		args     args
-		expected []corev1.Container
-	}{
-		{
-			name: "default security",
-			args: args{
-				useStrictSecurity: true,
-				containers: []corev1.Container{
-					{
-						Name: "c1",
-					},
-					{
-						Name: "c2",
-					},
-				},
-			},
-			expected: []corev1.Container{
-				{
-					Name:            "c1",
-					SecurityContext: defaultSecurityContext,
-				},
-				{
-					Name:            "c2",
-					SecurityContext: defaultSecurityContext,
-				},
-			},
-		},
-		{
-			name: "add from spec",
-			args: args{
-				useStrictSecurity: true,
-				sc: &vmv1beta1.SecurityContext{
-					PodSecurityContext: &corev1.PodSecurityContext{
-						RunAsUser:    ptr.To[int64](1),
-						RunAsNonRoot: ptr.To(false),
-					},
-					ContainerSecurityContext: &vmv1beta1.ContainerSecurityContext{
-						Privileged: ptr.To(true),
-					},
-				},
-				containers: []corev1.Container{
-					{
-						Name: "c1",
-					},
-					{
-						Name: "c2",
-					},
-				},
-			},
-			expected: []corev1.Container{
-				{
-					Name: "c1",
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser:    ptr.To[int64](1),
-						RunAsNonRoot: ptr.To(false),
-						Privileged:   ptr.To(true),
-					},
-				},
-				{
-					Name: "c2",
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser:    ptr.To[int64](1),
-						RunAsNonRoot: ptr.To(false),
-						Privileged:   ptr.To(true),
-					},
-				},
-			},
-		},
+	f := func(opts opts) {
+		t.Helper()
+		AddStrictSecuritySettingsToContainers(opts.sc, opts.containers, opts.useStrictSecurity)
+		assert.Equal(t, opts.expected, opts.containers)
+	}
 
-		{
-			name: "replace defined context",
-			args: args{
-				useStrictSecurity: true,
-				containers: []corev1.Container{
-					{
-						Name: "c1",
-						SecurityContext: &corev1.SecurityContext{
-							ReadOnlyRootFilesystem: ptr.To(false),
-						},
-					},
-					{
-						Name: "c2",
-						SecurityContext: &corev1.SecurityContext{
-							ReadOnlyRootFilesystem: ptr.To(false),
-							RunAsUser:              ptr.To[int64](1000),
-							RunAsGroup:             ptr.To[int64](1000),
-						},
-					},
-				},
+	// default security
+	o := opts{
+		containers: []corev1.Container{
+			{
+				Name: "c1",
 			},
-			expected: []corev1.Container{
-				{
-					Name:            "c1",
-					SecurityContext: defaultSecurityContext,
-				},
-				{
-					Name:            "c2",
-					SecurityContext: defaultSecurityContext,
-				},
+			{
+				Name: "c2",
 			},
 		},
-		{
-			name: "replace partial security context",
-			args: args{
-				useStrictSecurity: true,
-				containers: []corev1.Container{
-					{
-						Name: "c1",
-						SecurityContext: &corev1.SecurityContext{
-							ReadOnlyRootFilesystem: ptr.To(false),
-						},
-					},
-					{
-						Name: "c2",
-					},
-				},
+		useStrictSecurity: true,
+		expected: []corev1.Container{
+			{
+				Name:            "c1",
+				SecurityContext: defaultSecurityContext,
 			},
-			expected: []corev1.Container{
-				{
-					Name:            "c1",
-					SecurityContext: defaultSecurityContext,
-				},
-				{
-					Name:            "c2",
-					SecurityContext: defaultSecurityContext,
-				},
+			{
+				Name:            "c2",
+				SecurityContext: defaultSecurityContext,
 			},
 		},
-		{
-			name: "replace security context if external defined",
-			args: args{
-				useStrictSecurity: true,
-				sc: &vmv1beta1.SecurityContext{
-					PodSecurityContext: &corev1.PodSecurityContext{
-						RunAsUser: ptr.To[int64](1000),
-					},
-				},
-				containers: []corev1.Container{
-					{
-						Name: "c1",
-						SecurityContext: &corev1.SecurityContext{
-							ReadOnlyRootFilesystem: ptr.To(false),
-						},
-					},
-					{
-						Name: "c2",
-					},
-				},
-			},
-			expected: []corev1.Container{
-				{
-					Name: "c1",
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To[int64](1000),
-					},
-				},
-				{
-					Name: "c2",
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To[int64](1000),
-					},
-				},
-			},
-		},
-		{
-			name: "insecure mode",
-			args: args{
-				useStrictSecurity: false,
-				containers: []corev1.Container{
-					{
-						Name: "c1",
-					},
-					{
-						Name: "c2",
-					},
-				},
-			},
-			expected: []corev1.Container{
-				{
-					Name: "c1",
-				},
-				{
-					Name: "c2",
-				},
-			},
-		},
-		{
-			name: "add external if useStrict is false",
-			args: args{
-				useStrictSecurity: false,
-				sc: &vmv1beta1.SecurityContext{
-					PodSecurityContext: &corev1.PodSecurityContext{
-						RunAsUser: ptr.To[int64](1000),
-					},
-				},
-				containers: []corev1.Container{
-					{
-						Name: "c1",
-					},
-					{
-						Name: "c2",
-					},
-				},
-			},
-			expected: []corev1.Container{
-				{
-					Name: "c1",
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To[int64](1000),
-					},
-				},
-				{
-					Name: "c2",
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To[int64](1000),
-					},
-				},
-			},
-		},
+	}
+	f(o)
 
-		{
-			name: "replace with external if useStrict is false",
-			args: args{
-				useStrictSecurity: false,
-				sc: &vmv1beta1.SecurityContext{
-					PodSecurityContext: &corev1.PodSecurityContext{
-						RunAsUser: ptr.To[int64](1000),
-					},
-				},
-				containers: []corev1.Container{
-					{
-						Name: "c1",
-						SecurityContext: &corev1.SecurityContext{
-							ReadOnlyRootFilesystem: ptr.To(false),
-						},
-					},
-					{
-						Name: "c2",
-					},
+	// add from spec
+	o = opts{
+		sc: &vmv1beta1.SecurityContext{
+			PodSecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:    ptr.To[int64](1),
+				RunAsNonRoot: ptr.To(false),
+			},
+			ContainerSecurityContext: &vmv1beta1.ContainerSecurityContext{
+				Privileged: ptr.To(true),
+			},
+		},
+		containers: []corev1.Container{
+			{
+				Name: "c1",
+			},
+			{
+				Name: "c2",
+			},
+		},
+		useStrictSecurity: true,
+		expected: []corev1.Container{
+			{
+				Name: "c1",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser:    ptr.To[int64](1),
+					RunAsNonRoot: ptr.To(false),
+					Privileged:   ptr.To(true),
 				},
 			},
-			expected: []corev1.Container{
-				{
-					Name: "c1",
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To[int64](1000),
-					},
-				},
-				{
-					Name: "c2",
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To[int64](1000),
-					},
+			{
+				Name: "c2",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser:    ptr.To[int64](1),
+					RunAsNonRoot: ptr.To(false),
+					Privileged:   ptr.To(true),
 				},
 			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			AddStrictSecuritySettingsToContainers(tt.args.sc, tt.args.containers, tt.args.useStrictSecurity)
-			assert.Equal(t, tt.expected, tt.args.containers)
-		})
+	f(o)
+
+	// replace defined context
+	o = opts{
+		containers: []corev1.Container{
+			{
+				Name: "c1",
+				SecurityContext: &corev1.SecurityContext{
+					ReadOnlyRootFilesystem: ptr.To(false),
+				},
+			},
+			{
+				Name: "c2",
+				SecurityContext: &corev1.SecurityContext{
+					ReadOnlyRootFilesystem: ptr.To(false),
+					RunAsUser:              ptr.To[int64](1000),
+					RunAsGroup:             ptr.To[int64](1000),
+				},
+			},
+		},
+		useStrictSecurity: true,
+		expected: []corev1.Container{
+			{
+				Name:            "c1",
+				SecurityContext: defaultSecurityContext,
+			},
+			{
+				Name:            "c2",
+				SecurityContext: defaultSecurityContext,
+			},
+		},
 	}
+	f(o)
+
+	// replace partial security context
+	o = opts{
+		containers: []corev1.Container{
+			{
+				Name: "c1",
+				SecurityContext: &corev1.SecurityContext{
+					ReadOnlyRootFilesystem: ptr.To(false),
+				},
+			},
+			{
+				Name: "c2",
+			},
+		},
+		useStrictSecurity: true,
+		expected: []corev1.Container{
+			{
+				Name:            "c1",
+				SecurityContext: defaultSecurityContext,
+			},
+			{
+				Name:            "c2",
+				SecurityContext: defaultSecurityContext,
+			},
+		},
+	}
+	f(o)
+
+	// replace security context if external defined
+	o = opts{
+		sc: &vmv1beta1.SecurityContext{
+			PodSecurityContext: &corev1.PodSecurityContext{
+				RunAsUser: ptr.To[int64](1000),
+			},
+		},
+		containers: []corev1.Container{
+			{
+				Name: "c1",
+				SecurityContext: &corev1.SecurityContext{
+					ReadOnlyRootFilesystem: ptr.To(false),
+				},
+			},
+			{
+				Name: "c2",
+			},
+		},
+		useStrictSecurity: true,
+		expected: []corev1.Container{
+			{
+				Name: "c1",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.To[int64](1000),
+				},
+			},
+			{
+				Name: "c2",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.To[int64](1000),
+				},
+			},
+		},
+	}
+	f(o)
+
+	// insecure mode
+	o = opts{
+		containers: []corev1.Container{
+			{
+				Name: "c1",
+			},
+			{
+				Name: "c2",
+			},
+		},
+		expected: []corev1.Container{
+			{
+				Name: "c1",
+			},
+			{
+				Name: "c2",
+			},
+		},
+	}
+	f(o)
+
+	// add external if useStrict is false
+	o = opts{
+		sc: &vmv1beta1.SecurityContext{
+			PodSecurityContext: &corev1.PodSecurityContext{
+				RunAsUser: ptr.To[int64](1000),
+			},
+		},
+		containers: []corev1.Container{
+			{
+				Name: "c1",
+			},
+			{
+				Name: "c2",
+			},
+		},
+		expected: []corev1.Container{
+			{
+				Name: "c1",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.To[int64](1000),
+				},
+			},
+			{
+				Name: "c2",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.To[int64](1000),
+				},
+			},
+		},
+	}
+	f(o)
+
+	// replace with external if useStrict is false
+	o = opts{
+		sc: &vmv1beta1.SecurityContext{
+			PodSecurityContext: &corev1.PodSecurityContext{
+				RunAsUser: ptr.To[int64](1000),
+			},
+		},
+		containers: []corev1.Container{
+			{
+				Name: "c1",
+				SecurityContext: &corev1.SecurityContext{
+					ReadOnlyRootFilesystem: ptr.To(false),
+				},
+			},
+			{
+				Name: "c2",
+			},
+		},
+		expected: []corev1.Container{
+			{
+				Name: "c1",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.To[int64](1000),
+				},
+			},
+			{
+				Name: "c2",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.To[int64](1000),
+				},
+			},
+		},
+	}
+	f(o)
 }

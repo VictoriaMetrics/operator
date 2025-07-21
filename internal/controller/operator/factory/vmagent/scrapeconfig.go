@@ -223,10 +223,7 @@ func generateScrapeConfig(
 			if config.AttachMetadata.Node != nil {
 				switch config.Role {
 				case "pod", "endpoints", "endpointslice":
-					configs[i] = append(configs[i], yaml.MapItem{
-						Key:   "attach_metadata",
-						Value: *config.AttachMetadata.Node,
-					})
+					configs[i] = addAttachMetadata(configs[i], &config.AttachMetadata)
 				}
 			}
 

@@ -312,7 +312,8 @@ kubernetes_sd_configs:
   role: pod
   tls_config:
     insecure_skip_verify: true
-  attach_metadata: true
+  attach_metadata:
+    node: true
   selectors:
   - role: pod
     label: app/instance

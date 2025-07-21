@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add `attach_metadata` section to scrape configuration. See [#1476](https://github.com/VictoriaMetrics/operator/issues/1476).
+
 Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.122.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.122.0) version
 
 ## [v0.61.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.1)

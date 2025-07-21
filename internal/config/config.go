@@ -30,7 +30,7 @@ var (
 	//
 	// DO NOT FORGET TO MODIFY VERSIONS IN BaseOperatorConf
 	defaultEnvs = map[string]string{
-		"VM_METRICS_VERSION": "v1.121.0",
+		"VM_METRICS_VERSION": "v1.122.0",
 		"VM_LOGS_VERSION":    "v1.25.1",
 		"VM_ANOMALY_VERSION": "v1.24.1",
 	}
@@ -98,7 +98,7 @@ type BaseOperatorConf struct {
 	//
 	// DO NOT FORGET TO MODIFY VERSIONS IN defaultEnvs
 
-	MetricsVersion string `default:"v1.121.0" env:"METRICS_VERSION"`
+	MetricsVersion string `default:"v1.122.0" env:"METRICS_VERSION"`
 	LogsVersion    string `default:"v1.25.1" env:"LOGS_VERSION"`
 	AnomalyVersion string `default:"v1.24.1" env:"ANOMALY_VERSION"`
 

@@ -1330,17 +1330,18 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, extraWatchVolumes []corev1.V
 		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vl.MountPath))
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		for idx, arg := range args {
-			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
-				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
-				args[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
+		newArgs := args[:0]
+		for _, arg := range args {
+			argName := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
+			if _, ok := cr.Spec.ConfigReloaderExtraArgs[argName]; !ok {
+				newArgs = append(newArgs, arg)
 			}
 		}
 		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			args = append(args, fmt.Sprintf(`--%s=%s`, k, v))
+			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
 		}
-		sort.Strings(args)
+		sort.Strings(newArgs)
+		args = newArgs
 	}
 
 	return args

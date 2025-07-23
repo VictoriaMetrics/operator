@@ -37,8 +37,8 @@ type TLSServerConfig struct {
 	KeyFile string `json:"keyFile,omitempty"`
 }
 
-// OAuth2 defines OAuth2 configuration parametrs
-// with optional references to secrets with corresponding sensetive values
+// OAuth2 defines OAuth2 configuration parameters
+// with optional references to secrets with corresponding sensitive values
 type OAuth2 struct {
 	// ClientIDSecret defines secret or configmap containing the OAuth2 client id
 	// +optional
@@ -94,7 +94,7 @@ func (o *OAuth2) Validate() error {
 }
 
 // TLSConfig specifies TLS configuration parameters
-// with optional references to secrets with corresponding sensetive values
+// with optional references to secrets with corresponding sensitive values
 type TLSConfig struct {
 	// CASecret defines secret reference with tls CA key by given key
 	// +optional

@@ -83,7 +83,7 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAgentList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
-		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
+		return result, fmt.Errorf("cannot list vmagents for vmpodscrape: %w", err)
 	}
 
 	for i := range objects.Items {
@@ -105,7 +105,7 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
 			if err != nil {
-				l.Error(err, "cannot match vmagent and vmPodScrape")
+				l.Error(err, "cannot match vmagent and vmpodscrape")
 				continue
 			}
 			if !match {

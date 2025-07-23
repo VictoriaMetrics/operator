@@ -80,7 +80,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAlertList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
-		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
+		return result, fmt.Errorf("cannot list vmalerts for vmrule: %w", err)
 	}
 
 	for i := range objects.Items {
@@ -102,7 +102,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			}
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
 			if err != nil {
-				l.Error(err, "cannot match vmalert and vmRule")
+				l.Error(err, "cannot match vmalert and vmrule")
 				continue
 			}
 			if !match {

@@ -213,7 +213,7 @@ type EmbeddedObjectMetadata struct {
 	Annotations map[string]string `json:"annotations,omitempty" protobuf:"bytes,12,rep,name=annotations"`
 }
 
-// StorageSpec defines the configured storage for a group Prometheus servers.
+// StorageSpec defines the configured storage for a group VM servers.
 // If neither `emptyDir` nor `volumeClaimTemplate` is specified, then by default an [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) will be used.
 // +k8s:openapi-gen=true
 type StorageSpec struct {
@@ -225,7 +225,7 @@ type StorageSpec struct {
 	// info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
 	// +optional
 	EmptyDir *corev1.EmptyDirVolumeSource `json:"emptyDir,omitempty"`
-	// A PVC spec to be used by the VMAlertManager StatefulSets.
+	// A PVC spec to be used by the StatefulSets/Deployments.
 	// +optional
 	VolumeClaimTemplate EmbeddedPersistentVolumeClaim `json:"volumeClaimTemplate,omitempty"`
 }

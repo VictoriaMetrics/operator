@@ -278,8 +278,11 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 	for shardNum := range shardNumIter(isUpscaling, shardsCount) {
 		wg.Add(1)
 		go func(shardNum int) {
-			defer wg.Done()
-
+			var rv returnValue
+			defer func() {
+				rtCh <- &rv
+				wg.Done()
+			}()
 			shardedDeploy := newDeploy.DeepCopyObject()
 			var prevShardedObject runtime.Object
 			addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy)
@@ -288,17 +291,14 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 				addShardSettingsToVMAgent(shardNum, shardsCount, prevShardedObject)
 			}
 			placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
+
 			switch shardedDeploy := shardedDeploy.(type) {
 			case *appsv1.Deployment:
 				var prevDeploy *appsv1.Deployment
 				var err error
 				shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
 				if err != nil {
-					rtCh <- &returnValue{
-						deploymentName: "",
-						stsName:        "",
-						err:            fmt.Errorf("cannot fill placeholders for deployment sharded vmagent(%d): %w", shardNum, err),
-					}
+					rv.err = fmt.Errorf("cannot fill placeholders for deployment sharded vmagent(%d): %w", shardNum, err)
 					return
 				}
 				if prevShardedObject != nil {
@@ -308,33 +308,23 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 						prevDeploy = prevObjApp
 						prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, placeholders)
 						if err != nil {
-							rtCh <- &returnValue{
-								deploymentName: "",
-								stsName:        "",
-								err:            fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent(%d): %w", shardNum, err),
-							}
+							rv.err = fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent(%d): %w", shardNum, err)
 							return
 						}
 					}
 				}
+
 				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, prevDeploy, false); err != nil {
-					rtCh <- &returnValue{
-						deploymentName: "",
-						stsName:        "",
-						err:            fmt.Errorf("cannot reconcile deployment for sharded vmagent(%d): %w", shardNum, err),
-					}
+					rv.err = fmt.Errorf("cannot reconcile deployment for sharded vmagent(%d): %w", shardNum, err)
 					return
 				}
+				rv.deploymentName = shardedDeploy.Name
 			case *appsv1.StatefulSet:
 				var prevSts *appsv1.StatefulSet
 				var err error
 				shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
 				if err != nil {
-					rtCh <- &returnValue{
-						deploymentName: "",
-						stsName:        "",
-						err:            fmt.Errorf("cannot fill placeholders for sts in sharded vmagent(%d): %w", shardNum, err),
-					}
+					rv.err = fmt.Errorf("cannot fill placeholders for sts in sharded vmagent(%d): %w", shardNum, err)
 					return
 				}
 				if prevShardedObject != nil {
@@ -344,11 +334,7 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 						prevSts = prevObjApp
 						prevSts, err = k8stools.RenderPlaceholders(prevSts, placeholders)
 						if err != nil {
-							rtCh <- &returnValue{
-								deploymentName: "",
-								stsName:        "",
-								err:            fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent(%d): %w", shardNum, err),
-							}
+							rv.err = fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent(%d): %w", shardNum, err)
 							return
 						}
 					}
@@ -362,13 +348,13 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 					},
 				}
 				if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, prevSts); err != nil {
-					rtCh <- &returnValue{
-						deploymentName: "",
-						stsName:        "",
-						err:            fmt.Errorf("cannot reconcile sts for sharded vmagent(%d): %w", shardNum, err),
-					}
+					rv.err = fmt.Errorf("cannot reconcile sts for sharded vmagent(%d): %w", shardNum, err)
 					return
 				}
+				rv.stsName = shardedDeploy.Name
+
+			default:
+				panic(fmt.Sprintf("BUG: unexpected deploy object type: %T", shardedDeploy))
 			}
 		}(shardNum)
 	}

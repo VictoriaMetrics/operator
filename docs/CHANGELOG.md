@@ -13,9 +13,10 @@ aliases:
 
 ## tip
 
-* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add `attach_metadata` section to scrape configuration. See [#1476](https://github.com/VictoriaMetrics/operator/issues/1476).
-
 Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.122.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.122.0) version
+
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add `attach_metadata` section to scrape configuration. See [#1476](https://github.com/VictoriaMetrics/operator/issues/1476).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly update sharded VMAgent. Previously operator endlessly recreated `Deployment/StatefulSet`. See this issue [#1478](https://github.com/VictoriaMetrics/operator/issues/1478) for details.
 
 ## [v0.61.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.1)
 

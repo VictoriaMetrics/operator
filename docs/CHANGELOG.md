@@ -41,7 +41,7 @@ Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated de
 **Update Note 1:** This release by transits `VLogs` resource into `read-only`  state.
 To perform migration to the `VLSingle` please follow [this docs](https://docs.victoriametrics.com/operator/resources/vlsingle/#migration-from-vlogs)
 
-**Update Note 2:**: This release requires an additional `pods/eviction` RBAC permssion for operator.
+**Update Note 2:**: This release requires an additional `pods/eviction` RBAC permission for operator.
 
 **Update Note 3:**: This release requires adds new CustomResource `VLAgent`. It requires to update `CRD` versions.
 

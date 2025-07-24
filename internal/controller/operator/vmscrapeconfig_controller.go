@@ -83,7 +83,7 @@ func (r *VMScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAgentList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
-		return result, fmt.Errorf("cannot list vmagent for vmscrapeconfig: %w", err)
+		return result, fmt.Errorf("cannot list vmagents for vmscrapeconfig: %w", err)
 	}
 
 	for i := range objects.Items {
@@ -107,7 +107,7 @@ func (r *VMScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
 			if err != nil {
-				l.Error(err, "cannot match vmagent and vmScrapeConfig")
+				l.Error(err, "cannot match vmagent and vmscrapeconfig")
 				continue
 			}
 			if !match {

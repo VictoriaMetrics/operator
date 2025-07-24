@@ -425,7 +425,7 @@ type VLStorage struct {
 	// Storage configures persistent volume for VLStorage
 	// +optional
 	Storage *vmv1beta1.StorageSpec `json:"storage,omitempty"`
-	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 

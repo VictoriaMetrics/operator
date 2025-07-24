@@ -414,7 +414,7 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 
 		if storageLimit > 0 {
 			// conditionally change default value of maxDiskUsage
-			// user defined value must have prioirty over automatically calculated.
+			// user defined value must have priority over automatically calculated.
 			//
 			// it's fine to have over-provisioing of total disk usage
 			// however, we should return warning during validation.

@@ -95,7 +95,7 @@ type VMAlertmanagerSpec struct {
 	// instances.
 	// +optional
 	Storage *StorageSpec `json:"storage,omitempty"`
-	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 

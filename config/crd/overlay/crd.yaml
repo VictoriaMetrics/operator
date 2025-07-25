@@ -800,7 +800,7 @@ spec:
                 type: boolean
               persistentVolumeClaimRetentionPolicy:
                 description: PersistentVolumeClaimRetentionPolicy allows configuration
-                  of PVC rentention policy
+                  of PVC retention policy
                 properties:
                   whenDeleted:
                     description: |-
@@ -1379,7 +1379,7 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   volumeClaimTemplate:
-                    description: A PVC spec to be used by the VMAlertManager StatefulSets.
+                    description: A PVC spec to be used by the StatefulSets/Deployments.
                     properties:
                       apiVersion:
                         description: |-
@@ -4400,7 +4400,7 @@ spec:
                     type: boolean
                   persistentVolumeClaimRetentionPolicy:
                     description: PersistentVolumeClaimRetentionPolicy allows configuration
-                      of PVC rentention policy
+                      of PVC retention policy
                     properties:
                       whenDeleted:
                         description: |-
@@ -4731,7 +4731,7 @@ spec:
                             x-kubernetes-int-or-string: true
                         type: object
                       volumeClaimTemplate:
-                        description: A PVC spec to be used by the VMAlertManager StatefulSets.
+                        description: A PVC spec to be used by the StatefulSets/Deployments.
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
@@ -8130,7 +8130,7 @@ spec:
                 type: boolean
               persistentVolumeClaimRetentionPolicy:
                 description: PersistentVolumeClaimRetentionPolicy allows configuration
-                  of PVC rentention policy
+                  of PVC retention policy
                 properties:
                   whenDeleted:
                     description: |-
@@ -10142,7 +10142,7 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   volumeClaimTemplate:
-                    description: A PVC spec to be used by the VMAlertManager StatefulSets.
+                    description: A PVC spec to be used by the StatefulSets/Deployments.
                     properties:
                       apiVersion:
                         description: |-
@@ -17007,7 +17007,7 @@ spec:
                 type: boolean
               persistentVolumeClaimRetentionPolicy:
                 description: PersistentVolumeClaimRetentionPolicy allows configuration
-                  of PVC rentention policy
+                  of PVC retention policy
                 properties:
                   whenDeleted:
                     description: |-
@@ -17339,7 +17339,7 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   volumeClaimTemplate:
-                    description: A PVC spec to be used by the VMAlertManager StatefulSets.
+                    description: A PVC spec to be used by the StatefulSets/Deployments.
                     properties:
                       apiVersion:
                         description: |-
@@ -21115,7 +21115,7 @@ spec:
                       VMAnomaly uses prometheus text exposition format
                     properties:
                       basicAuth:
-                        description: Basic auth defines basic autorization configuration
+                        description: Basic auth defines basic authorization configuration
                         properties:
                           password:
                             description: |-
@@ -21403,7 +21403,7 @@ spec:
                 type: boolean
               persistentVolumeClaimRetentionPolicy:
                 description: PersistentVolumeClaimRetentionPolicy allows configuration
-                  of PVC rentention policy
+                  of PVC retention policy
                 properties:
                   whenDeleted:
                     description: |-
@@ -21496,7 +21496,7 @@ spec:
                   See https://docs.victoriametrics.com/anomaly-detection/components/reader/
                 properties:
                   basicAuth:
-                    description: Basic auth defines basic autorization configuration
+                    description: Basic auth defines basic authorization configuration
                     properties:
                       password:
                         description: |-
@@ -21970,7 +21970,7 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   volumeClaimTemplate:
-                    description: A PVC spec to be used by the VMAlertManager StatefulSets.
+                    description: A PVC spec to be used by the StatefulSets/Deployments.
                     properties:
                       apiVersion:
                         description: |-
@@ -22564,7 +22564,7 @@ spec:
                   See https://docs.victoriametrics.com/anomaly-detection/components/writer/
                 properties:
                   basicAuth:
-                    description: Basic auth defines basic autorization configuration
+                    description: Basic auth defines basic authorization configuration
                     properties:
                       password:
                         description: |-
@@ -26066,13 +26066,13 @@ spec:
                             x-kubernetes-int-or-string: true
                         type: object
                       volumeClaimTemplate:
-                        description: A PVC spec to be used by the VMAlertManager StatefulSets.
+                        description: A PVC spec to be used by the StatefulSets/Deployments.
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
                   persistentVolumeClaimRetentionPolicy:
                     description: PersistentVolumeClaimRetentionPolicy allows configuration
-                      of PVC rentention policy
+                      of PVC retention policy
                     properties:
                       whenDeleted:
                         description: |-
@@ -26391,7 +26391,7 @@ spec:
                             x-kubernetes-int-or-string: true
                         type: object
                       volumeClaimTemplate:
-                        description: A PVC spec to be used by the VMAlertManager StatefulSets.
+                        description: A PVC spec to be used by the StatefulSets/Deployments.
                         properties:
                           apiVersion:
                             description: |-
@@ -27336,7 +27336,7 @@ spec:
                     type: boolean
                   persistentVolumeClaimRetentionPolicy:
                     description: PersistentVolumeClaimRetentionPolicy allows configuration
-                      of PVC rentention policy
+                      of PVC retention policy
                     properties:
                       whenDeleted:
                         description: |-
@@ -27655,7 +27655,7 @@ spec:
                             x-kubernetes-int-or-string: true
                         type: object
                       volumeClaimTemplate:
-                        description: A PVC spec to be used by the VMAlertManager StatefulSets.
+                        description: A PVC spec to be used by the StatefulSets/Deployments.
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
                     type: object

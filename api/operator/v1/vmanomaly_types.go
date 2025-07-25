@@ -82,7 +82,7 @@ type VMAnomalySpec struct {
 	// Storage configures storage for StatefulSet
 	// +optional
 	Storage *vmv1beta1.StorageSpec `json:"storage,omitempty"`
-	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 	// RollingUpdateStrategy allows configuration for strategyType
@@ -138,7 +138,7 @@ type VMAnomalyHTTPClientSpec struct {
 	Timeout string `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	// TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant.
 	TenantID string `json:"tenantID,omitempty" yaml:"tenant_id,omitempty"`
-	// Basic auth defines basic autorization configuration
+	// Basic auth defines basic authorization configuration
 	BasicAuth *vmv1beta1.BasicAuth `json:"basicAuth,omitempty" yaml:"-"`
 	// TLSConfig defines tls connection configuration
 	TLSConfig *vmv1beta1.TLSConfig `json:"tlsConfig,omitempty" yaml:"-"`

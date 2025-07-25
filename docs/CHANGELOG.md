@@ -13,14 +13,22 @@ aliases:
 
 ## tip
 
-* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add `attach_metadata` section to scrape configuration. See [#1476](https://github.com/VictoriaMetrics/operator/issues/1476).
 * BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): fixed config reloader command line arguments override. Related issue [#1378](https://github.com/VictoriaMetrics/operator/issues/1478).
 
+## [v0.61.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.2)
+
+**Release date:** 19 July 2025
+
 Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.122.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.122.0) version
+
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add `attach_metadata` section to scrape configuration. See [#1476](https://github.com/VictoriaMetrics/operator/issues/1476).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly update sharded VMAgent. Previously operator endlessly recreated `Deployment/StatefulSet`. See this issue [#1478](https://github.com/VictoriaMetrics/operator/issues/1478) for details.
 
 ## [v0.61.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.1)
 
 **Release date:** 19 July 2025
+
+**It isn't recommended to use Operator  v0.61.1 because of the bug [#1478](https://github.com/VictoriaMetrics/operator/issues/1478), which may result in `VMAgent` endless reconcile loop. Upgrade to [v0.61.2](https://docs.victoriametrics.com/operator/changelog/#v0612) instead.**
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add TLS configuration for scrape configuration. Previously, tls options were applied to the root of scrape configuration, which caused an error at `vmagent` startup. Bug was introduced in v0.60.0 release.
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/), [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/) and [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): reduce Kubernetes API-server and operator resource usage for objects discovery with `NamespaceSelector: {}`. See this [1468](https://github.com/VictoriaMetrics/operator/issues/1468) issue for details.
@@ -29,10 +37,13 @@ Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated de
 
 **Release date:** 15 July 2025
 
+
+**It isn't recommended to use Operator  v0.61.0 because of the bug [#1478](https://github.com/VictoriaMetrics/operator/issues/1478), which may result in `VMAgent` endless reconcile loop. Upgrade to [v0.61.2](https://docs.victoriametrics.com/operator/changelog/#v0612) instead.**
+
 **Update Note 1:** This release by transits `VLogs` resource into `read-only`  state.
 To perform migration to the `VLSingle` please follow [this docs](https://docs.victoriametrics.com/operator/resources/vlsingle/#migration-from-vlogs)
 
-**Update Note 2:**: This release requires an additional `pods/eviction` RBAC permssion for operator.
+**Update Note 2:**: This release requires an additional `pods/eviction` RBAC permission for operator.
 
 **Update Note 3:**: This release requires adds new CustomResource `VLAgent`. It requires to update `CRD` versions.
 

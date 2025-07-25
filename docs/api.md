@@ -48,8 +48,8 @@ Appears in: [SyslogTCPListener](#syslogtcplistener), [SyslogUDPListener](#syslog
 
 
 
-OAuth2 defines OAuth2 configuration parametrs
-with optional references to secrets with corresponding sensetive values
+OAuth2 defines OAuth2 configuration parameters
+with optional references to secrets with corresponding sensitive values
 
 Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec)
 
@@ -120,7 +120,7 @@ Appears in: [SyslogServerSpec](#syslogserverspec)
 
 
 TLSConfig specifies TLS configuration parameters
-with optional references to secrets with corresponding sensetive values
+with optional references to secrets with corresponding sensitive values
 
 Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec)
 
@@ -240,7 +240,7 @@ Appears in: [VLAgent](#vlagent)
 | minReadySeconds<a href="#vlagentspec-minreadyseconds" id="vlagentspec-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
 | nodeSelector<a href="#vlagentspec-nodeselector" id="vlagentspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
 | paused<a href="#vlagentspec-paused" id="vlagentspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
-| persistentVolumeClaimRetentionPolicy<a href="#vlagentspec-persistentvolumeclaimretentionpolicy" id="vlagentspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy |
+| persistentVolumeClaimRetentionPolicy<a href="#vlagentspec-persistentvolumeclaimretentionpolicy" id="vlagentspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
 | podDisruptionBudget<a href="#vlagentspec-poddisruptionbudget" id="vlagentspec-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
 | podMetadata<a href="#vlagentspec-podmetadata" id="vlagentspec-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Optional)_<br/>PodMetadata configures Labels and Annotations which are propagated to the vlagent pods. |
 | port<a href="#vlagentspec-port" id="vlagentspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
@@ -548,7 +548,7 @@ Appears in: [VLClusterSpec](#vlclusterspec)
 | minReadySeconds<a href="#vlstorage-minreadyseconds" id="vlstorage-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
 | nodeSelector<a href="#vlstorage-nodeselector" id="vlstorage-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
 | paused<a href="#vlstorage-paused" id="vlstorage-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
-| persistentVolumeClaimRetentionPolicy<a href="#vlstorage-persistentvolumeclaimretentionpolicy" id="vlstorage-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy |
+| persistentVolumeClaimRetentionPolicy<a href="#vlstorage-persistentvolumeclaimretentionpolicy" id="vlstorage-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
 | podDisruptionBudget<a href="#vlstorage-poddisruptionbudget" id="vlstorage-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
 | podMetadata<a href="#vlstorage-podmetadata" id="vlstorage-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Required)_<br/>PodMetadata configures Labels and Annotations which are propagated to the VLStorage pods. |
 | port<a href="#vlstorage-port" id="vlstorage-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
@@ -604,7 +604,7 @@ Appears in: [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnom
 
 | Field | Description |
 | --- | --- |
-| basicAuth<a href="#vmanomalyhttpclientspec-basicauth" id="vmanomalyhttpclientspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic autorization configuration |
+| basicAuth<a href="#vmanomalyhttpclientspec-basicauth" id="vmanomalyhttpclientspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic authorization configuration |
 | bearer<a href="#vmanomalyhttpclientspec-bearer" id="vmanomalyhttpclientspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
 | healthPath<a href="#vmanomalyhttpclientspec-healthpath" id="vmanomalyhttpclientspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
 | tenantID<a href="#vmanomalyhttpclientspec-tenantid" id="vmanomalyhttpclientspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
@@ -640,7 +640,7 @@ Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
 
 | Field | Description |
 | --- | --- |
-| basicAuth<a href="#vmanomalymonitoringpushspec-basicauth" id="vmanomalymonitoringpushspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic autorization configuration |
+| basicAuth<a href="#vmanomalymonitoringpushspec-basicauth" id="vmanomalymonitoringpushspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic authorization configuration |
 | bearer<a href="#vmanomalymonitoringpushspec-bearer" id="vmanomalymonitoringpushspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
 | extraLabels<a href="#vmanomalymonitoringpushspec-extralabels" id="vmanomalymonitoringpushspec-extralabels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>ExtraLabels defines a set of labels to attach to the pushed metrics |
 | healthPath<a href="#vmanomalymonitoringpushspec-healthpath" id="vmanomalymonitoringpushspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
@@ -676,7 +676,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 
 | Field | Description |
 | --- | --- |
-| basicAuth<a href="#vmanomalyreadersspec-basicauth" id="vmanomalyreadersspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic autorization configuration |
+| basicAuth<a href="#vmanomalyreadersspec-basicauth" id="vmanomalyreadersspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic authorization configuration |
 | bearer<a href="#vmanomalyreadersspec-bearer" id="vmanomalyreadersspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
 | dataRange<a href="#vmanomalyreadersspec-datarange" id="vmanomalyreadersspec-datarange">#</a><br/>_string array_ | _(Required)_<br/>Optional argumentallows defining valid data ranges for input of all the queries in queries |
 | datasourceURL<a href="#vmanomalyreadersspec-datasourceurl" id="vmanomalyreadersspec-datasourceurl">#</a><br/>_string_ | _(Required)_<br/>DatasourceURL address<br />datatasource must serve /api/v1/query and /api/v1/query_range APIs |
@@ -729,7 +729,7 @@ Appears in: [VMAnomaly](#vmanomaly)
 | monitoring<a href="#vmanomalyspec-monitoring" id="vmanomalyspec-monitoring">#</a><br/>_[VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)_ | _(Required)_<br/>Monitoring configures how expose anomaly metrics<br />See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/ |
 | nodeSelector<a href="#vmanomalyspec-nodeselector" id="vmanomalyspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
 | paused<a href="#vmanomalyspec-paused" id="vmanomalyspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
-| persistentVolumeClaimRetentionPolicy<a href="#vmanomalyspec-persistentvolumeclaimretentionpolicy" id="vmanomalyspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy |
+| persistentVolumeClaimRetentionPolicy<a href="#vmanomalyspec-persistentvolumeclaimretentionpolicy" id="vmanomalyspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
 | podDisruptionBudget<a href="#vmanomalyspec-poddisruptionbudget" id="vmanomalyspec-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
 | podMetadata<a href="#vmanomalyspec-podmetadata" id="vmanomalyspec-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Optional)_<br/>PodMetadata configures Labels and Annotations which are propagated to the vmanomaly pods. |
 | port<a href="#vmanomalyspec-port" id="vmanomalyspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
@@ -785,7 +785,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 
 | Field | Description |
 | --- | --- |
-| basicAuth<a href="#vmanomalywritersspec-basicauth" id="vmanomalywritersspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic autorization configuration |
+| basicAuth<a href="#vmanomalywritersspec-basicauth" id="vmanomalywritersspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic authorization configuration |
 | bearer<a href="#vmanomalywritersspec-bearer" id="vmanomalywritersspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
 | datasourceURL<a href="#vmanomalywritersspec-datasourceurl" id="vmanomalywritersspec-datasourceurl">#</a><br/>_string_ | _(Required)_<br/>DatasourceURL defines remote write url for write requests<br />provided endpoint must serve /api/v1/import path<br />vmanomaly joins datasourceURL + "/api/v1/import" |
 | healthPath<a href="#vmanomalywritersspec-healthpath" id="vmanomalywritersspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
@@ -2546,7 +2546,7 @@ Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLAgentStatus](#vlagents
 
 
 
-StorageSpec defines the configured storage for a group Prometheus servers.
+StorageSpec defines the configured storage for a group VM servers.
 If neither `emptyDir` nor `volumeClaimTemplate` is specified, then by default an [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) will be used.
 
 Appears in: [VLAgentSpec](#vlagentspec), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMSelect](#vmselect), [VMStorage](#vmstorage)
@@ -2555,7 +2555,7 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLStorage](#vlstorage), [VMAgentSpec](
 | --- | --- |
 | disableMountSubPath<a href="#storagespec-disablemountsubpath" id="storagespec-disablemountsubpath">#</a><br/>_boolean_ | _(Optional)_<br/>Deprecated: subPath usage will be disabled by default in a future release, this option will become unnecessary.<br />DisableMountSubPath allows to remove any subPath usage in volume mounts. |
 | emptyDir<a href="#storagespec-emptydir" id="storagespec-emptydir">#</a><br/>_[EmptyDirVolumeSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#emptydirvolumesource-v1-core)_ | _(Optional)_<br/>EmptyDirVolumeSource to be used by the Prometheus StatefulSets. If specified, used in place of any volumeClaimTemplate. More<br />info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir |
-| volumeClaimTemplate<a href="#storagespec-volumeclaimtemplate" id="storagespec-volumeclaimtemplate">#</a><br/>_[EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)_ | _(Optional)_<br/>A PVC spec to be used by the VMAlertManager StatefulSets. |
+| volumeClaimTemplate<a href="#storagespec-volumeclaimtemplate" id="storagespec-volumeclaimtemplate">#</a><br/>_[EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)_ | _(Optional)_<br/>A PVC spec to be used by the StatefulSets/Deployments. |
 
 
 #### StreamAggrConfig
@@ -3095,7 +3095,7 @@ Appears in: [VMAgent](#vmagent)
 | overrideHonorLabels<a href="#vmagentspec-overridehonorlabels" id="vmagentspec-overridehonorlabels">#</a><br/>_boolean_ | _(Optional)_<br/>OverrideHonorLabels if set to true overrides all user configured honor_labels.<br />If HonorLabels is set in scrape objects  to true, this overrides honor_labels to false. |
 | overrideHonorTimestamps<a href="#vmagentspec-overridehonortimestamps" id="vmagentspec-overridehonortimestamps">#</a><br/>_boolean_ | _(Optional)_<br/>OverrideHonorTimestamps allows to globally enforce honoring timestamps in all scrape configs. |
 | paused<a href="#vmagentspec-paused" id="vmagentspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
-| persistentVolumeClaimRetentionPolicy<a href="#vmagentspec-persistentvolumeclaimretentionpolicy" id="vmagentspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy |
+| persistentVolumeClaimRetentionPolicy<a href="#vmagentspec-persistentvolumeclaimretentionpolicy" id="vmagentspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
 | podDisruptionBudget<a href="#vmagentspec-poddisruptionbudget" id="vmagentspec-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
 | podMetadata<a href="#vmagentspec-podmetadata" id="vmagentspec-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Optional)_<br/>PodMetadata configures Labels and Annotations which are propagated to the vmagent pods. |
 | podScrapeNamespaceSelector<a href="#vmagentspec-podscrapenamespaceselector" id="vmagentspec-podscrapenamespaceselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>PodScrapeNamespaceSelector defines Namespaces to be selected for VMPodScrape discovery.<br />Works in combination with Selector.<br />NamespaceSelector nil - only objects at VMAgent namespace.<br />Selector nil - only objects at NamespaceSelector namespaces.<br />If both nil - behaviour controlled by selectAllByDefault |
@@ -3423,7 +3423,7 @@ Appears in: [VMAlertmanager](#vmalertmanager)
 | minReadySeconds<a href="#vmalertmanagerspec-minreadyseconds" id="vmalertmanagerspec-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
 | nodeSelector<a href="#vmalertmanagerspec-nodeselector" id="vmalertmanagerspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
 | paused<a href="#vmalertmanagerspec-paused" id="vmalertmanagerspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
-| persistentVolumeClaimRetentionPolicy<a href="#vmalertmanagerspec-persistentvolumeclaimretentionpolicy" id="vmalertmanagerspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy |
+| persistentVolumeClaimRetentionPolicy<a href="#vmalertmanagerspec-persistentvolumeclaimretentionpolicy" id="vmalertmanagerspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
 | podDisruptionBudget<a href="#vmalertmanagerspec-poddisruptionbudget" id="vmalertmanagerspec-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
 | podMetadata<a href="#vmalertmanagerspec-podmetadata" id="vmalertmanagerspec-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Optional)_<br/>PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods. |
 | port<a href="#vmalertmanagerspec-port" id="vmalertmanagerspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
@@ -4164,7 +4164,7 @@ Appears in: [VMClusterSpec](#vmclusterspec)
 | nodeSelector<a href="#vmselect-nodeselector" id="vmselect-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
 | paused<a href="#vmselect-paused" id="vmselect-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
 | persistentVolume<a href="#vmselect-persistentvolume" id="vmselect-persistentvolume">#</a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>Storage - add persistent volume for cacheMountPath<br />its useful for persistent cache<br />use storage instead of persistentVolume. |
-| persistentVolumeClaimRetentionPolicy<a href="#vmselect-persistentvolumeclaimretentionpolicy" id="vmselect-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy |
+| persistentVolumeClaimRetentionPolicy<a href="#vmselect-persistentvolumeclaimretentionpolicy" id="vmselect-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
 | podDisruptionBudget<a href="#vmselect-poddisruptionbudget" id="vmselect-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
 | podMetadata<a href="#vmselect-podmetadata" id="vmselect-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Required)_<br/>PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods. |
 | port<a href="#vmselect-port" id="vmselect-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
@@ -4380,7 +4380,7 @@ Appears in: [VMClusterSpec](#vmclusterspec)
 | minReadySeconds<a href="#vmstorage-minreadyseconds" id="vmstorage-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
 | nodeSelector<a href="#vmstorage-nodeselector" id="vmstorage-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
 | paused<a href="#vmstorage-paused" id="vmstorage-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
-| persistentVolumeClaimRetentionPolicy<a href="#vmstorage-persistentvolumeclaimretentionpolicy" id="vmstorage-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC rentention policy |
+| persistentVolumeClaimRetentionPolicy<a href="#vmstorage-persistentvolumeclaimretentionpolicy" id="vmstorage-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
 | podDisruptionBudget<a href="#vmstorage-poddisruptionbudget" id="vmstorage-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
 | podMetadata<a href="#vmstorage-podmetadata" id="vmstorage-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Required)_<br/>PodMetadata configures Labels and Annotations which are propagated to the VMStorage pods. |
 | port<a href="#vmstorage-port" id="vmstorage-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |

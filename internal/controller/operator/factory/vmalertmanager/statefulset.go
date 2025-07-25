@@ -636,9 +636,9 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 	}
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
-	var configReloaderArgs []string
+	var args []string
 	if useVMConfigReloader {
-		configReloaderArgs = append(configReloaderArgs,
+		args = append(args,
 			fmt.Sprintf("--reload-url=%s", localReloadURL),
 			fmt.Sprintf("--config-envsubst-file=%s", alertmanagerConfFile),
 			fmt.Sprintf("--config-secret-key=%s", alertmanagerSecretConfigKey),
@@ -646,33 +646,34 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 			"--webhook-method=POST",
 		)
 		for _, vm := range crVolumeMounts {
-			configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--watched-dir=%s", vm.MountPath))
+			args = append(args, fmt.Sprintf("--watched-dir=%s", vm.MountPath))
 		}
 	} else {
 		// Add watching for every volume mount in config-reloader
-		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("-webhook-url=%s", localReloadURL))
+		args = append(args, fmt.Sprintf("-webhook-url=%s", localReloadURL))
 		for _, vm := range crVolumeMounts {
-			configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("-volume-dir=%s", vm.MountPath))
+			args = append(args, fmt.Sprintf("-volume-dir=%s", vm.MountPath))
 		}
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		for idx, arg := range configReloaderArgs {
-			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
-				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
-				configReloaderArgs[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
+		newArgs := args[:0]
+		for _, arg := range args {
+			argName := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
+			if _, ok := cr.Spec.ConfigReloaderExtraArgs[argName]; !ok {
+				newArgs = append(newArgs, arg)
 			}
 		}
 		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			configReloaderArgs = append(configReloaderArgs, fmt.Sprintf(`--%s=%s`, k, v))
+			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
 		}
-		sort.Strings(configReloaderArgs)
+		sort.Strings(newArgs)
+		args = newArgs
 	}
 
 	configReloaderContainer := corev1.Container{
 		Name:                     "config-reloader",
 		Image:                    cr.Spec.ConfigReloaderImageTag,
-		Args:                     configReloaderArgs,
+		Args:                     args,
 		VolumeMounts:             crVolumeMounts,
 		Resources:                cr.Spec.ConfigReloaderResources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,

@@ -657,27 +657,28 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []st
 		volumeWatchArg = "--watched-dir"
 		reloadURLArg = "--reload-url"
 	}
-	confReloadArgs := []string{
+	args := []string{
 		fmt.Sprintf("%s=%s", reloadURLArg, vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 	}
 	for _, cm := range ruleConfigMapNames {
-		confReloadArgs = append(confReloadArgs, fmt.Sprintf("%s=%s", volumeWatchArg, path.Join(vmAlertConfigDir, cm)))
+		args = append(args, fmt.Sprintf("%s=%s", volumeWatchArg, path.Join(vmAlertConfigDir, cm)))
 	}
 	for _, wm := range extraWatchVolumeMounts {
-		confReloadArgs = append(confReloadArgs, fmt.Sprintf("%s=%s", volumeWatchArg, wm.MountPath))
+		args = append(args, fmt.Sprintf("%s=%s", volumeWatchArg, wm.MountPath))
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		for idx, arg := range confReloadArgs {
-			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
-				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
-				confReloadArgs[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
+		newArgs := args[:0]
+		for _, arg := range args {
+			argName := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
+			if _, ok := cr.Spec.ConfigReloaderExtraArgs[argName]; !ok {
+				newArgs = append(newArgs, arg)
 			}
 		}
 		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			confReloadArgs = append(confReloadArgs, fmt.Sprintf(`--%s=%s`, k, v))
+			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
 		}
-		sort.Strings(confReloadArgs)
+		sort.Strings(newArgs)
+		args = newArgs
 	}
 	var reloaderVolumes []corev1.VolumeMount
 	for _, name := range ruleConfigMapNames {
@@ -693,7 +694,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []st
 	configReloaderContainer := corev1.Container{
 		Name:                     "config-reloader",
 		Image:                    cr.Spec.ConfigReloaderImageTag,
-		Args:                     confReloadArgs,
+		Args:                     args,
 		Resources:                cr.Spec.ConfigReloaderResources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		VolumeMounts:             reloaderVolumes,

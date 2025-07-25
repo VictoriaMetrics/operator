@@ -522,18 +522,18 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	if len(cr.Spec.InternalListenPort) > 0 {
 		port = cr.Spec.InternalListenPort
 	}
-	configReloaderArgs := []string{
+	args := []string{
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if useVMConfigReloader {
-		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
+		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
 		if len(cr.Spec.InternalListenPort) == 0 && useProxyProtocol(cr) {
-			configReloaderArgs = append(configReloaderArgs, "--reload-use-proxy-protocol")
+			args = append(args, "--reload-use-proxy-protocol")
 		}
 	} else {
-		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))
+		args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))
 	}
 
 	reloaderMounts := []corev1.VolumeMount{
@@ -549,17 +549,18 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 		})
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		for idx, arg := range configReloaderArgs {
-			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
-				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
-				configReloaderArgs[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
+		newArgs := args[:0]
+		for _, arg := range args {
+			argName := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
+			if _, ok := cr.Spec.ConfigReloaderExtraArgs[argName]; !ok {
+				newArgs = append(newArgs, arg)
 			}
 		}
 		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			configReloaderArgs = append(configReloaderArgs, fmt.Sprintf(`--%s=%s`, k, v))
+			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
 		}
-		sort.Strings(configReloaderArgs)
+		sort.Strings(newArgs)
+		args = newArgs
 	}
 	configReloader := corev1.Container{
 		Name:  "config-reloader",
@@ -575,7 +576,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 			},
 		},
 		Command:      []string{"/bin/prometheus-config-reloader"},
-		Args:         configReloaderArgs,
+		Args:         args,
 		VolumeMounts: reloaderMounts,
 		Resources:    cr.Spec.ConfigReloaderResources,
 	}
@@ -590,7 +591,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	return configReloader
 }
 
-func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, configReloaderArgs []string) []corev1.Container {
+func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, args []string) []corev1.Container {
 	baseImage := cr.Spec.ConfigReloaderImageTag
 	resources := cr.Spec.ConfigReloaderResources
 	var initReloader corev1.Container
@@ -598,7 +599,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, co
 		initReloader = corev1.Container{
 			Image: baseImage,
 			Name:  "config-init",
-			Args:  append(configReloaderArgs, "--only-init-config"),
+			Args:  append(args, "--only-init-config"),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "config-out",

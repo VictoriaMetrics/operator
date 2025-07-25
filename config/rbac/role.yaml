@@ -89,6 +89,7 @@ rules:
 - apiGroups:
   - policy
   resources:
+  - pods
   - poddisruptionbudgets
   - poddisruptionbudgets/finalizers
   verbs:

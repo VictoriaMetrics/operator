@@ -49,7 +49,6 @@ func Test_buildProbe(t *testing.T) {
 		cr        testBuildProbeCR
 		validate  func(corev1.Container) error
 	}
-
 	f := func(o opts) {
 		t.Helper()
 		got := Probe(o.container, o.cr)
@@ -353,7 +352,182 @@ func TestAddSyslogArgsTo(t *testing.T) {
 		"-syslog.compressMethod.udp=zstd",
 	}
 	f(&spec, expected)
+}
 
+func TestStorageVolumeMountsTo(t *testing.T) {
+	type opts struct {
+		pvcSrc          *corev1.PersistentVolumeClaimVolumeSource
+		volumeName      string
+		storagePath     string
+		volumes         []corev1.Volume
+		expectedVolumes []corev1.Volume
+		mounts          []corev1.VolumeMount
+		expectedMounts  []corev1.VolumeMount
+	}
+	f := func(o opts) {
+		t.Helper()
+		gotVolumes, gotMounts := StorageVolumeMountsTo(o.volumes, o.mounts, o.pvcSrc, o.volumeName, o.storagePath)
+		assert.Equal(t, o.expectedMounts, gotMounts)
+		assert.Equal(t, o.expectedVolumes, gotVolumes)
+	}
+
+	// no PVC spec and no volumes and mounts
+	f(opts{
+		volumeName:  "test",
+		storagePath: "/test",
+		expectedVolumes: []corev1.Volume{{
+			Name: "test",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      "test",
+			MountPath: "/test",
+		}},
+	})
+
+	// with PVC spec and no volumes and mounts
+	f(opts{
+		volumeName:  "test",
+		storagePath: "/test",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		expectedVolumes: []corev1.Volume{{
+			Name: "test",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "test-claim",
+				},
+			},
+		}},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      "test",
+			MountPath: "/test",
+		}},
+	})
+
+	// with PVC spec and matching data volume
+	f(opts{
+		volumes: []corev1.Volume{{
+			Name: "test",
+			VolumeSource: corev1.VolumeSource{
+				AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+					VolumeID: "aws-volume",
+				},
+			},
+		}},
+		volumeName:  "test",
+		storagePath: "/test",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		expectedVolumes: []corev1.Volume{
+			{
+				Name: "test",
+				VolumeSource: corev1.VolumeSource{
+					AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+						VolumeID: "aws-volume",
+					},
+				},
+			},
+			{
+				Name: "test",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "test-claim",
+					},
+				},
+			},
+		},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      "test",
+			MountPath: "/test",
+		}},
+	})
+
+	// with PVC spec and not matching data volume
+	f(opts{
+		volumes: []corev1.Volume{{
+			Name: "extra",
+			VolumeSource: corev1.VolumeSource{
+				AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+					VolumeID: "aws-volume",
+				},
+			},
+		}},
+		volumeName:  "test",
+		storagePath: "/test",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		expectedVolumes: []corev1.Volume{
+			{
+				Name: "extra",
+				VolumeSource: corev1.VolumeSource{
+					AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+						VolumeID: "aws-volume",
+					},
+				},
+			},
+			{
+				Name: "test",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "test-claim",
+					},
+				},
+			},
+		},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      "test",
+			MountPath: "/test",
+		}},
+	})
+
+	// with PVC spec and existing data volume mount
+	f(opts{
+		volumes: []corev1.Volume{{
+			Name: "extra",
+			VolumeSource: corev1.VolumeSource{
+				AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+					VolumeID: "aws-volume",
+				},
+			},
+		}},
+		mounts: []corev1.VolumeMount{{
+			Name:      "test",
+			MountPath: "/other-path",
+		}},
+		volumeName:  "test",
+		storagePath: "/test",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		expectedVolumes: []corev1.Volume{
+			{
+				Name: "extra",
+				VolumeSource: corev1.VolumeSource{
+					AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+						VolumeID: "aws-volume",
+					},
+				},
+			},
+			{
+				Name: "test",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "test-claim",
+					},
+				},
+			},
+		},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      "test",
+			MountPath: "/other-path",
+		}},
+	})
 }
 
 func TestBuildConfigReloaderContainer(t *testing.T) {

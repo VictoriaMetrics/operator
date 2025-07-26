@@ -609,3 +609,47 @@ func AddSyslogTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.
 	}
 	return dstVolumes, dstMounts
 }
+
+func StorageVolumeMountsTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, pvcSrc *corev1.PersistentVolumeClaimVolumeSource, volumeName, storagePath string) ([]corev1.Volume, []corev1.VolumeMount) {
+	var alreadyMounted bool
+	for _, volumeMount := range mounts {
+		if volumeMount.Name == volumeName {
+			alreadyMounted = true
+			break
+		}
+	}
+	if !alreadyMounted {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      volumeName,
+			MountPath: storagePath,
+		})
+	}
+	if pvcSrc != nil {
+		volumes = append(volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: pvcSrc,
+			},
+		})
+		return volumes, mounts
+	}
+
+	var volumePresent bool
+	for _, volume := range volumes {
+		if volume.Name == volumeName {
+			volumePresent = true
+			break
+		}
+	}
+	if volumePresent {
+		return volumes, mounts
+	}
+
+	volumes = append(volumes, corev1.Volume{
+		Name: volumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	return volumes, mounts
+}

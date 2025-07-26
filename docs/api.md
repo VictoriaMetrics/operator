@@ -3547,6 +3547,24 @@ Appears in: [VMAuthLoadBalancer](#vmauthloadbalancer)
 | volumes<a href="#vmauthloadbalancerspec-volumes" id="vmauthloadbalancerspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
 
 
+#### VMAuthOIDCRealm
+
+
+
+VMAuthOIDCRealm defines OIDC realm parameters
+
+Appears in: [VMAuthSpec](#vmauthspec)
+
+| Field | Description |
+| --- | --- |
+| enforce_prefix<a href="#vmauthoidcrealm-enforce_prefix" id="vmauthoidcrealm-enforce_prefix">#</a><br/>_boolean_ | _(Optional)_<br/>EnforcePrefix requires JWT token to start with "Bearer: " |
+| issuer_url<a href="#vmauthoidcrealm-issuer_url" id="vmauthoidcrealm-issuer_url">#</a><br/>_string_ | _(Optional)_<br/>IssuerURL is OpenID Connect issuer URL |
+| jwks_url<a href="#vmauthoidcrealm-jwks_url" id="vmauthoidcrealm-jwks_url">#</a><br/>_string_ | _(Optional)_<br/>JWKsURL is the OpenID Connect JWKS URL |
+| public_key_files<a href="#vmauthoidcrealm-public_key_files" id="vmauthoidcrealm-public_key_files">#</a><br/>_string array_ | _(Required)_<br/>PublicKeyFiles is a list of paths pointing to public key files in PEM format to use<br />for verifying JWT tokens |
+| public_key_secrets<a href="#vmauthoidcrealm-public_key_secrets" id="vmauthoidcrealm-public_key_secrets">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core) array_ | _(Required)_<br/>PublicKeySecrets is a list of k8s Secret selectors pointing to public key files in PEM format to use<br />for verifying JWT tokens |
+| skip_discovery<a href="#vmauthoidcrealm-skip_discovery" id="vmauthoidcrealm-skip_discovery">#</a><br/>_boolean_ | _(Optional)_<br/>SkipDiscovery allows to skip OIDC discovery and use manually supplied Endpoints |
+
+
 #### VMAuthSpec
 
 
@@ -3587,6 +3605,7 @@ Appears in: [VMAuth](#vmauth)
 | initContainers<a href="#vmauthspec-initcontainers" id="vmauthspec-initcontainers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
 | internalListenPort<a href="#vmauthspec-internallistenport" id="vmauthspec-internallistenport">#</a><br/>_string_ | _(Optional)_<br/>InternalListenPort instructs vmauth to serve internal routes at given port<br />available from v0.56.0 operator<br />and v1.111.0 vmauth version<br />related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security |
 | ip_filters<a href="#vmauthspec-ip_filters" id="vmauthspec-ip_filters">#</a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters) |
+| jwt<a href="#vmauthspec-jwt" id="vmauthspec-jwt">#</a><br/>_[VMAuthOIDCRealm](#vmauthoidcrealm) array_ | _(Optional)_<br/>IPFilters global access ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)<br />will be added after removal of VMUserConfigOptions<br />currently it has collision with inlined fields<br />IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`<br />OODC represents configuration section for OIDC authorization |
 | license<a href="#vmauthspec-license" id="vmauthspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/) |
 | load_balancing_policy<a href="#vmauthspec-load_balancing_policy" id="vmauthspec-load_balancing_policy">#</a><br/>_string_ | _(Optional)_<br/>LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth#load-balancing) for more details (default "least_loaded") |
 | logFormat<a href="#vmauthspec-logformat" id="vmauthspec-logformat">#</a><br/>_string_ | _(Optional)_<br/>LogFormat for VMAuth to be configured with. |
@@ -4476,6 +4495,7 @@ Appears in: [VMUser](#vmuser)
 | Field | Description |
 | --- | --- |
 | bearerToken<a href="#vmuserspec-bearertoken" id="vmuserspec-bearertoken">#</a><br/>_string_ | _(Optional)_<br/>BearerToken Authorization header value for accessing protected endpoint. |
+| client_id<a href="#vmuserspec-client_id" id="vmuserspec-client_id">#</a><br/>_string_ | _(Optional)_<br/>ClientID extracted from JWT token |
 | default_url<a href="#vmuserspec-default_url" id="vmuserspec-default_url">#</a><br/>_string array_ | _(Required)_<br/>DefaultURLs backend url for non-matching paths filter<br />usually used for default backend with error message |
 | disable_secret_creation<a href="#vmuserspec-disable_secret_creation" id="vmuserspec-disable_secret_creation">#</a><br/>_boolean_ | _(Required)_<br/>DisableSecretCreation skips related secret creation for vmuser |
 | discover_backend_ips<a href="#vmuserspec-discover_backend_ips" id="vmuserspec-discover_backend_ips">#</a><br/>_boolean_ | _(Required)_<br/>DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. |

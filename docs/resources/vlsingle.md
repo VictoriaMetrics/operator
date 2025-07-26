@@ -116,6 +116,9 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Examples
 
+
+### VLSingle with resources set
+
 ```yaml
 apiVersion: operator.victoriametrics.com/v1
 kind: VLSingle
@@ -127,6 +130,57 @@ spec:
     resources:
       requests:
         storage: 50Gi
+  resources:
+    requests:
+      memory: 500Mi
+      cpu: 500m
+    limits:
+      memory: 10Gi
+      cpu: 5
+```
+
+### VLSingle with existing volume
+
+create PVC and bind it to existing PV `existing-pv-name`
+
+> `spec.storageClassName` should match a storage class name of PersistentVolume
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+  volumeName: existing-pv-name
+```
+
+create VLSingle with PVC `example-pvc` mounted
+
+> `spec.replicaCount` should be set to `1` since existing volume can only be mounted once
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VLSingle
+metadata:
+  name: example
+spec:
+  replicaCount: 1
+  retentionPeriod: "12"
+  extraArgs:
+    storageDataPath: /vl-data
+  volumes:
+    - name: vlstorage
+      persistentVolumeClaim:
+        claimName: example-pvc
+  volumeMounts:
+    - name: vlstorage
+      mountPath: /vl-data
   resources:
     requests:
       memory: 500Mi

@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): support `spec.limit`, `spec.labels`, `spec.query_offset` and `spec.group[*].keep_firing_for` PrometheusRule properties conversion to VMRule. Related issue [#1485](https://github.com/VictoriaMetrics/operator/issues/1485).
 * BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): fixed config reloader command line arguments override. Related issue [#1378](https://github.com/VictoriaMetrics/operator/issues/1478).
 
 ## [v0.61.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.2)

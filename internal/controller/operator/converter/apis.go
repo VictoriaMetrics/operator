@@ -36,12 +36,22 @@ func ConvertPromRule(prom *promv1.PrometheusRule, conf *config.BaseOperatorConf)
 			if promRuleItem.For != nil {
 				trule.For = string(*promRuleItem.For)
 			}
+			if promRuleItem.KeepFiringFor != nil {
+				trule.KeepFiringFor = string(*promRuleItem.KeepFiringFor)
+			}
 			ruleItems = append(ruleItems, trule)
 		}
 
 		tgroup := vmv1beta1.RuleGroup{
-			Name:  promGroup.Name,
-			Rules: ruleItems,
+			Name:   promGroup.Name,
+			Rules:  ruleItems,
+			Labels: promGroup.Labels,
+		}
+		if promGroup.QueryOffset != nil {
+			tgroup.EvalOffset = string(*promGroup.QueryOffset)
+		}
+		if promGroup.Limit != nil {
+			tgroup.Limit = *promGroup.Limit
 		}
 		if promGroup.Interval != nil {
 			tgroup.Interval = string(*promGroup.Interval)
@@ -472,8 +482,8 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 			},
 		},
 	}
-	if probe.Spec.ProberSpec.ProxyURL != "" {
-		cp.Spec.ProxyURL = &probe.Spec.ProberSpec.ProxyURL
+	if probe.Spec.ProberSpec.ProxyURL != nil {
+		cp.Spec.ProxyURL = probe.Spec.ProberSpec.ProxyURL
 	}
 	if probe.Spec.SampleLimit != nil {
 		cp.Spec.SampleLimit = *probe.Spec.SampleLimit

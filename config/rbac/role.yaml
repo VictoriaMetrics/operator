@@ -192,5 +192,8 @@ rules:
   - vmanomalies
   - vmanomalies/finalizers
   - vmanomalies/status
+  - vmanomalymodels
+  - vmanomalymodels/finalizers
+  - vmanomalymodels/status
   verbs:
   - '*'

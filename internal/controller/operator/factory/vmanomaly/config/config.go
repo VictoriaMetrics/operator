@@ -23,7 +23,7 @@ type validatable interface {
 
 type config struct {
 	Schedulers map[string]*scheduler `yaml:"schedulers,omitempty"`
-	Models     map[string]*model     `yaml:"models,omitempty"`
+	Models     map[string]*Model     `yaml:"models,omitempty"`
 	Reader     *reader               `yaml:"reader,omitempty"`
 	Writer     *writer               `yaml:"writer,omitempty"`
 	Monitoring *monitoring           `yaml:"monitoring,omitempty"`
@@ -37,7 +37,7 @@ type settings struct {
 	RestoreState      bool    `yaml:"restore_state,omitempty"`
 }
 
-func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
+func (c *config) override(cr *vmv1.VMAnomaly, models []*vmv1.VMAnomalyModel, ac *build.AssetsCache) error {
 	if cr.Spec.Reader == nil {
 		return fmt.Errorf("reader is required for anomaly name=%s/%s", cr.Namespace, cr.Name)
 	}
@@ -96,6 +96,15 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 			}
 		}
 		c.Monitoring = &m
+	}
+
+	// override models
+	for _, m := range models {
+		nm, err := modelFromSpec(&m.Spec)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal model=%q: %w", m.Name, err)
+		}
+		c.Models[fmt.Sprintf("%s-%s", m.Namespace, m.Name)] = nm
 	}
 	return nil
 }
@@ -242,7 +251,7 @@ func (c *clientConfig) override(cr *vmv1.VMAnomaly, cfg *vmv1.VMAnomalyHTTPClien
 }
 
 // Load returns vmanomaly config merged with provided secrets
-func Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byte, error) {
+func Load(cr *vmv1.VMAnomaly, models []*vmv1.VMAnomalyModel, ac *build.AssetsCache) ([]byte, error) {
 	var data []byte
 	switch {
 	case cr.Spec.ConfigSecret != nil:
@@ -261,7 +270,7 @@ func Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal anomaly configuration, name=%q: %w", cr.Name, err)
 	}
-	if err = c.override(cr, ac); err != nil {
+	if err = c.override(cr, models, ac); err != nil {
 		return nil, fmt.Errorf("failed to update secret values with values from anomaly instance, name=%q: %w", cr.Name, err)
 	}
 	if err = c.validate(); err != nil {

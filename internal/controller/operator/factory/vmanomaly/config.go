@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,16 +18,34 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmanomaly/config"
 )
 
+// CreateOrUpdateConfig builds configuration for VMAnomaly
+func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject client.Object) error {
+	var prevCR *vmv1.VMAnomaly
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+	ac := getAssetsCache(ctx, rclient, cr)
+	if _, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
+		return err
+	}
+	return nil
+}
+
 // createOrUpdateConfig reconcile configuration for vmanomaly and returns configuration consistent hash
-func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, ac *build.AssetsCache) (string, error) {
-	data, err := config.Load(cr, ac)
+func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, childObject client.Object, ac *build.AssetsCache) (string, error) {
+	models, err := config.SelectModels(ctx, rclient, cr)
+	if err != nil {
+		return "", fmt.Errorf("selecting VMAnomalyModels failed: %w", err)
+	}
+	data, err := config.Load(cr, models, ac)
 	if err != nil {
 		return "", err
 	}
 	newSecretConfig := &corev1.Secret{
 		ObjectMeta: build.ResourceMeta(build.SecretConfigResourceKind, cr),
 		Data: map[string][]byte{
-			secretConfigKey: data,
+			configEnvsubstFilename: data,
 		},
 	}
 
@@ -49,8 +69,27 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 		return "", err
 	}
 
+	if err := updateStatusesForChildObjects(ctx, rclient, cr, models, childObject); err != nil {
+		return "", err
+	}
+
 	hash := sha256.New()
 	hash.Write(data)
 	hashBytes := hash.Sum(nil)
 	return hex.EncodeToString(hashBytes), nil
+}
+
+func updateStatusesForChildObjects(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, models []*vmv1.VMAnomalyModel, childObject client.Object) error {
+	parentObject := fmt.Sprintf("%s.%s.vmanomaly", cr.Name, cr.Namespace)
+	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
+		// fast path
+		if t, ok := childObject.(*vmv1.VMAnomalyModel); ok {
+			for _, o := range models {
+				if o.Name == t.Name && o.Namespace == t.Namespace {
+					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMAnomalyModel{o})
+				}
+			}
+		}
+	}
+	return nil
 }

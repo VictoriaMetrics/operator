@@ -285,6 +285,142 @@ settings:
 `,
 			wantErr: false,
 		},
+		{
+			name: "with external models",
+			cr: &vmv1.VMAnomaly{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-anomaly",
+					Namespace: "default",
+				},
+				Spec: vmv1.VMAnomalySpec{
+					License: &vmv1beta1.License{
+						Key: ptr.To("test"),
+					},
+					ConfigRawYaml: `
+reader:
+  class: vm
+  datasource_url: "http://test.com"
+  sampling_period: 1m
+  queries:
+    test:
+      expr: vm_metric
+      data_range: [0, inf]
+writer:
+  class: vm
+  datasource_url: "http://test.com"
+models:
+  model_univariate_1:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['test']
+schedulers:
+  scheduler_periodic_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+settings:
+  restore_state: true
+`,
+					ModelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{"prod"},
+							},
+						},
+					},
+					Writer: &vmv1.VMAnomalyWritersSpec{
+						DatasourceURL: "http://write.endpoint",
+						MetricFormat: vmv1.VMAnomalyVMWriterMetricFormatSpec{
+							Name: "metrics_$VAR",
+							For:  "custom_$QUERY_KEY",
+							ExtraLabels: map[string]string{
+								"label1": "value1",
+								"label2": "value2",
+							},
+						},
+						VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+							TenantID: "0:2",
+						},
+					},
+					Reader: &vmv1.VMAnomalyReadersSpec{
+						DatasourceURL:  "http://custom.ds",
+						QueryRangePath: "/api/v1/query_range",
+						SamplingPeriod: "10s",
+						VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+							TenantID: "0:1",
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1.VMAnomalyModel{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-anomaly",
+						Labels: map[string]string{
+							"app": "prod",
+						},
+						Namespace: "default",
+					},
+					Spec: vmv1.VMAnomalyModelSpec{
+						Class: "zscore",
+						Params: runtime.RawExtension{
+							Raw: []byte(`{
+  "queries": ["test"],
+  "z_threshold": 2.5
+}`),
+						},
+					},
+				},
+			},
+			expected: `
+models:
+  default-test-anomaly:
+    class: zscore
+    queries:
+    - test
+    z_threshold: 2.5
+  model_univariate_1:
+    class: zscore
+    queries:
+    - test
+    z_threshold: 2.5
+schedulers:
+  scheduler_periodic_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://custom.ds
+  sampling_period: 10s
+  query_range_path: /api/v1/query_range
+  queries:
+    test:
+      expr: vm_metric
+      data_range:
+      - "0"
+      - inf
+  tenant_id: "0:1"
+writer:
+  class: vm
+  datasource_url: http://write.endpoint
+  metric_format:
+    __name__: metrics_$VAR
+    for: custom_$QUERY_KEY
+    label1: value1
+    label2: value2
+  tenant_id: "0:2"
+monitoring:
+  pull:
+    port: "8490"
+settings:
+  restore_state: true
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -301,7 +437,11 @@ settings:
 				},
 			}
 			ac := build.NewAssetsCache(ctx, fclient, cfg)
-			loaded, err := Load(tt.cr, ac)
+			models, err := SelectModels(ctx, fclient, tt.cr)
+			if err != nil {
+				t.Fatalf("failed to load models: %v", err)
+			}
+			loaded, err := Load(tt.cr, models, ac)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Load() error = %v, wantErr %v", err, tt.wantErr)
 			}

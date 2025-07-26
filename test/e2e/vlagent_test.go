@@ -108,7 +108,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-							{URL: "http://localhost:8428"},
+							{URL: "http://localhost:9428"},
 						},
 						ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 							EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
@@ -147,9 +147,9 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 							},
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-							{URL: "http://localhost:8428"},
+							{URL: "http://localhost:9428"},
 							{
-								URL: "http://localhost:8425",
+								URL: "http://localhost:9425",
 								TLSConfig: &vmv1.TLSConfig{
 									CASecret: &corev1.SecretKeySelector{
 										LocalObjectReference: corev1.LocalObjectReference{
@@ -222,7 +222,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 							{
-								URL: "http://localhost:8428",
+								URL: "http://localhost:9428",
 								BearerTokenSecret: &corev1.SecretKeySelector{
 									Key: "token",
 									LocalObjectReference: corev1.LocalObjectReference{
@@ -233,7 +233,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 								MaxDiskUsage: ptr.To(vmv1beta1.BytesString(`10GB`)),
 							},
 							{
-								URL: "http://localhost:8425",
+								URL: "http://localhost:9425",
 								OAuth2: &vmv1.OAuth2{
 									TokenURL:       "http://oauth2.example.com",
 									Scopes:         []string{"scope-1", "scope-2"},
@@ -332,7 +332,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 							DisableAutomountServiceAccountToken: true,
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-							{URL: "http://localhost:8428"},
+							{URL: "http://localhost:9428"},
 						},
 					},
 				}, nil, func(cr *vmv1.VLAgent) {
@@ -401,7 +401,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-							{URL: "http://some-vm-single:8428"},
+							{URL: "http://some-vl-single:9428"},
 						},
 					},
 				},
@@ -422,7 +422,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					},
 					PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: &intstr.IntOrString{IntVal: 1}},
 					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-						{URL: "http://some-vm-single:8428"},
+						{URL: "http://some-vl-single:9428"},
 					},
 				},
 				},

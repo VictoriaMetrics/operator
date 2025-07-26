@@ -297,7 +297,7 @@ func (cr *VMSingle) IsOwnsServiceAccount() bool {
 func (cr *VMSingle) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {
-		port = "8429"
+		port = "8428"
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {

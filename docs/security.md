@@ -150,7 +150,7 @@ metadata:
   namespace: default
 spec:
   remoteWrite:
-  - url: http://vmsingle-vms-victoria-metrics-k8s-stack.default.svc:8429/api/v1/write
+  - url: http://vmsingle-vms-victoria-metrics-k8s-stack.default.svc:8428/api/v1/write
   replicaCount: 1
   selectAllByDefault: true
   statefulMode: true
@@ -232,7 +232,7 @@ metadata:
 spec:
   disableAutomountServiceAccountToken: true
   remoteWrite:
-  - url: http://vmsingle-vms-victoria-metrics-k8s-stack.default.svc:8429/api/v1/write
+  - url: http://vmsingle-vms-victoria-metrics-k8s-stack.default.svc:8428/api/v1/write
   replicaCount: 1
   selectAllByDefault: true
   statefulMode: true

@@ -195,7 +195,7 @@ spec:
   selectAllByDefault: true
   vmAgentExternalLabelName: vmagent_ha
   remoteWrite:
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   scrapeInterval: 30s
   # Replication:
   replicaCount: 2
@@ -227,7 +227,7 @@ spec:
   selectAllByDefault: true
   vmAgentExternalLabelName: vmagent_ha
   remoteWrite:
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   scrapeInterval: 30s
   # Replication:
   replicaCount: 2
@@ -261,7 +261,7 @@ spec:
   selectAllByDefault: true
   vmAgentExternalLabelName: vmagent_ha
   remoteWrite:
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   # Replication:
   scrapeInterval: 30s
   replicaCount: 2
@@ -332,7 +332,7 @@ spec:
       static_configs:
       - targets: ["localhost:9090"]
   remoteWrite:
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   # ...
 ```
 
@@ -370,7 +370,7 @@ spec:
     name: additional-scrape-configs
     key: prometheus-additional.yaml
   remoteWrite:
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   # ...
 ```
 
@@ -441,8 +441,8 @@ spec:
    name: "vmagent-relabel"
    key: "global-relabel.yaml"
   remoteWrite:
-    - url: "http://vmsingle-example-persisted.default.svc:8429/api/v1/write"
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-persisted.default.svc:8428/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
       urlRelabelConfig:
         name: "vmagent-relabel"
         key: "target-1-relabel.yaml"
@@ -470,8 +470,8 @@ spec:
    - action: drop
      source_labels: [aaa]
   remoteWrite:
-    - url: "http://vmsingle-example-persisted.default.svc:8429/api/v1/write"
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-persisted.default.svc:8428/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
       inlineUrlRelabelConfig:
        - action: keep_if_equal
          source_labels: [foo, bar]
@@ -524,8 +524,8 @@ spec:
    name: "vmagent-relabel"
    key: "global-relabel.yaml"
   remoteWrite:
-    - url: "http://vmsingle-example-persisted.default.svc:8429/api/v1/write"
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-persisted.default.svc:8428/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
       urlRelabelConfig:
         name: "vmagent-relabel"
         key: "target-1-relabel.yaml"
@@ -767,7 +767,7 @@ spec:
     cluster: my-cluster
   vmAgentExternalLabelName: example
   remoteWrite:
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   inlineRelabelConfig:
     - action: labeldrop
       regex: "temp.*"
@@ -807,7 +807,7 @@ spec:
   selectAllByDefault: true
   daemonSetMode: true
   remoteWrite:
-    - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
 ```
 
  daemonSetMode has the following restrictions and limitations:

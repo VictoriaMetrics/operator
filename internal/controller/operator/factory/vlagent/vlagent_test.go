@@ -373,7 +373,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		Spec: vmv1.VLAgentSpec{
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
-					URL: "localhost:8429",
+					URL: "localhost:9429",
 					TLSConfig: &vmv1.TLSConfig{
 						CASecret: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
@@ -384,7 +384,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 					},
 				},
 				{
-					URL: "localhost:8429",
+					URL: "localhost:9429",
 					TLSConfig: &vmv1.TLSConfig{
 						CAFile: "/path/to_ca",
 						CertSecret: &corev1.SecretKeySelector{
@@ -401,7 +401,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		`-remoteWrite.tlsCAFile=/etc/vl/remote-write-assets/tls-secret/ca,/path/to_ca`,
 		`-remoteWrite.tlsCertFile=,/etc/vl/remote-write-assets/tls-secret/cert`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
-		`-remoteWrite.url=localhost:8429,localhost:8429`,
+		`-remoteWrite.url=localhost:9429,localhost:9429`,
 	},
 	)
 
@@ -414,7 +414,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		Spec: vmv1.VLAgentSpec{
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
-					URL: "localhost:8429",
+					URL: "localhost:9429",
 					TLSConfig: &vmv1.TLSConfig{
 						KeySecret: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
@@ -428,7 +428,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 		},
 	}, []string{
-		`-remoteWrite.url=localhost:8429`,
+		`-remoteWrite.url=localhost:9429`,
 		`-remoteWrite.tlsInsecureSkipVerify=true`,
 		`-remoteWrite.tlsKeyFile=/etc/vl/remote-write-assets/tls-secret/key`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
@@ -442,14 +442,14 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		},
 		Spec: vmv1.VLAgentSpec{RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 			{
-				URL: "localhost:8429",
+				URL: "localhost:9429",
 				TLSConfig: &vmv1.TLSConfig{
 					InsecureSkipVerify: true,
 				},
 			},
 		}},
 	}, []string{
-		`-remoteWrite.url=localhost:8429`,
+		`-remoteWrite.url=localhost:9429`,
 		`-remoteWrite.tlsInsecureSkipVerify=true`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
@@ -462,17 +462,17 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		},
 		Spec: vmv1.VLAgentSpec{RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 			{
-				URL: "localhost:8429",
+				URL: "localhost:9429",
 
 				SendTimeout: ptr.To("10s"),
 			},
 			{
-				URL:         "localhost:8431",
+				URL:         "localhost:9431",
 				SendTimeout: ptr.To("15s"),
 			},
 		}},
 	}, []string{
-		`-remoteWrite.url=localhost:8429,localhost:8431`,
+		`-remoteWrite.url=localhost:9429,localhost:9431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
@@ -485,19 +485,19 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		},
 		Spec: vmv1.VLAgentSpec{RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 			{
-				URL:          "localhost:8429",
+				URL:          "localhost:9429",
 				MaxDiskUsage: ptr.To(vmv1beta1.BytesString("1500MB")),
 			},
 			{
-				URL:          "localhost:8431",
+				URL:          "localhost:9431",
 				MaxDiskUsage: ptr.To(vmv1beta1.BytesString("500MB")),
 			},
 			{
-				URL: "localhost:8432",
+				URL: "localhost:9432",
 			},
 		}},
 	}, []string{
-		`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
+		`-remoteWrite.url=localhost:9429,localhost:9431,localhost:9432`,
 		`-remoteWrite.maxDiskUsagePerURL=1500MB,500MB,`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
@@ -523,19 +523,19 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
-					URL: "localhost:8429",
+					URL: "localhost:9429",
 				},
 				{
-					URL: "localhost:8431",
+					URL: "localhost:9431",
 				},
 				{
-					URL: "localhost:8432",
+					URL: "localhost:9432",
 				},
 			},
 		},
 	}, []string{
 		`-remoteWrite.maxDiskUsagePerURL=3579139413`,
-		`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
+		`-remoteWrite.url=localhost:9429,localhost:9431,localhost:9432`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
@@ -560,19 +560,19 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
-					URL:          "localhost:8429",
+					URL:          "localhost:9429",
 					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("5000MB")),
 				},
 				{
-					URL: "localhost:8431",
+					URL: "localhost:9431",
 				},
 				{
-					URL: "localhost:8432",
+					URL: "localhost:9432",
 				},
 			},
 		},
 	}, []string{
-		`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
+		`-remoteWrite.url=localhost:9429,localhost:9431,localhost:9432`,
 		`-remoteWrite.maxDiskUsagePerURL=5000MB,3579139413,3579139413`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
@@ -585,11 +585,11 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		},
 		Spec: vmv1.VLAgentSpec{RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 			{
-				URL:         "localhost:8429",
+				URL:         "localhost:9429",
 				SendTimeout: ptr.To("10s"),
 			},
 			{
-				URL:         "localhost:8431",
+				URL:         "localhost:9431",
 				SendTimeout: ptr.To("15s"),
 				OAuth2: &vmv1.OAuth2{
 					Scopes:   []string{"scope-1", "scope-2"},
@@ -614,7 +614,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		`-remoteWrite.oauth2.scopes=,scope-1;scope-2`,
 		`-remoteWrite.oauth2.tokenUrl=,http://some-url`,
 		`-remoteWrite.oauth2.endpointParams=,'{"query":"value1","timeout":"30s"}'`,
-		`-remoteWrite.url=localhost:8429,localhost:8431`,
+		`-remoteWrite.url=localhost:9429,localhost:9431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
@@ -627,11 +627,11 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		},
 		Spec: vmv1.VLAgentSpec{RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 			{
-				URL:         "localhost:8429",
+				URL:         "localhost:9429",
 				SendTimeout: ptr.To("10s"),
 			},
 			{
-				URL:         "localhost:8431",
+				URL:         "localhost:9431",
 				SendTimeout: ptr.To("15s"),
 				BearerTokenSecret: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{Name: "some-secret"},
@@ -641,7 +641,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		}},
 	}, []string{
 		`-remoteWrite.bearerTokenFile=,/etc/vl/remote-write-assets/some-secret/some-key`,
-		`-remoteWrite.url=localhost:8429,localhost:8431`,
+		`-remoteWrite.url=localhost:9429,localhost:9431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
@@ -654,11 +654,11 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		},
 		Spec: vmv1.VLAgentSpec{RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 			{
-				URL:         "localhost:8429",
+				URL:         "localhost:9429",
 				SendTimeout: ptr.To("10s"),
 			},
 			{
-				URL:         "localhost:8431",
+				URL:         "localhost:9431",
 				SendTimeout: ptr.To("15s"),
 				BearerTokenSecret: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{Name: "some-secret"},
@@ -670,7 +670,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.bearerTokenFile=,/etc/vl/remote-write-assets/some-secret/some-key`,
 		`-remoteWrite.headers='','key: value^^second-key: value2'`,
-		`-remoteWrite.url=localhost:8429,localhost:8431`,
+		`-remoteWrite.url=localhost:9429,localhost:9431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
@@ -684,20 +684,20 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		Spec: vmv1.VLAgentSpec{
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
-					URL: "http://localhost:8431",
+					URL: "http://localhost:9431",
 				},
 				{
-					URL:      "http://localhost:8432",
+					URL:      "http://localhost:9432",
 					ProxyURL: ptr.To("http://proxy.example.com"),
 				},
 				{
-					URL: "http://localhost:8433",
+					URL: "http://localhost:9433",
 				},
 			},
 		},
 	}, []string{
 		`-remoteWrite.proxyURL=,http://proxy.example.com,`,
-		`-remoteWrite.url=http://localhost:8431,http://localhost:8432,http://localhost:8433`,
+		`-remoteWrite.url=http://localhost:9431,http://localhost:9432,http://localhost:9433`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
@@ -750,7 +750,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		Spec: vmv1.VLAgentSpec{
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
-					URL:          "localhost:8431",
+					URL:          "localhost:9431",
 					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("500MB")),
 				},
 			},
@@ -761,7 +761,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.maxDiskUsagePerURL=500MB`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
-		`-remoteWrite.url=localhost:8431`,
+		`-remoteWrite.url=localhost:9431`,
 	})
 
 	// maxDiskUsage already set in RemoteWriteSpec
@@ -773,13 +773,13 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		Spec: vmv1.VLAgentSpec{
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 				{
-					URL: "localhost:8429",
+					URL: "localhost:9429",
 				},
 				{
-					URL: "localhost:8431",
+					URL: "localhost:9431",
 				},
 				{
-					URL: "localhost:8432",
+					URL: "localhost:9432",
 				},
 			},
 			RemoteWriteSettings: &vmv1.VLAgentRemoteWriteSettings{
@@ -799,7 +799,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			},
 		},
 	}, []string{
-		`-remoteWrite.url=localhost:8429,localhost:8431,localhost:8432`,
+		`-remoteWrite.url=localhost:9429,localhost:9431,localhost:9432`,
 		`-remoteWrite.maxBlockSize=1000`,
 		`-remoteWrite.maxDiskUsagePerURL=3579139413`,
 		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,

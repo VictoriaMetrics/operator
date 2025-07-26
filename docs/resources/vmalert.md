@@ -166,7 +166,7 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
     spec:
       replicaCount: 2
       datasource:
-        url: http://vmsingle-example.default.svc:8429
+        url: http://vmsingle-example.default.svc:8428
       notifiers:
         - url: http://vmalertmanager-example-0.vmalertmanager-example.default.svc:9093
         - url: http://vmalertmanager-example-1.vmalertmanager-example.default.svc:9093
@@ -184,7 +184,7 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
     spec:
       replicaCount: 2
       datasource:
-       url: http://vmsingle-example.default.svc:8429
+       url: http://vmsingle-example.default.svc:8428
       notifiers:
         - selector:
             namespaceSelector:
@@ -402,7 +402,7 @@ metadata:
 spec:
   replicaCount: 1
   datasource:
-    url: "http://vmsingle-example-persisted.default.svc:8429"
+    url: "http://vmsingle-example-persisted.default.svc:8428"
   notifier:
     url: "http://vmalertmanager-example.default.svc:9093"
   evaluationInterval: "30s"

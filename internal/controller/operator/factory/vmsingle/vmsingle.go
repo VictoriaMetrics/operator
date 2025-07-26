@@ -151,11 +151,6 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod))
 	}
 
-	// if customStorageDataPath is not empty, do not add volumes
-	// and volumeMounts
-	// it's user responsibility to provide correct values
-	mustAddVolumeMounts := cr.Spec.StorageDataPath == ""
-
 	storagePath := vmSingleDataDir
 	if cr.Spec.StorageDataPath != "" {
 		storagePath = cr.Spec.StorageDataPath
@@ -184,8 +179,17 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 	var volumes []corev1.Volume
 	var vmMounts []corev1.VolumeMount
 
-	volumes, vmMounts = addVolumeMountsTo(volumes, vmMounts, cr, mustAddVolumeMounts, storagePath)
+	volumes = append(volumes, cr.Spec.Volumes...)
+	vmMounts = append(vmMounts, cr.Spec.VolumeMounts...)
 
+	var pvcSpec *corev1.PersistentVolumeClaimVolumeSource
+	if cr.Spec.Storage == nil {
+		pvcSpec = &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: cr.PrefixedName(),
+		}
+	}
+
+	volumes, vmMounts = build.StorageVolumeMountsTo(volumes, vmMounts, pvcSpec, vmDataVolumeName, storagePath)
 	if cr.Spec.VMBackup != nil && cr.Spec.VMBackup.CredentialsSecret != nil {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("secret-" + cr.Spec.VMBackup.CredentialsSecret.Name),
@@ -196,9 +200,6 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 			},
 		})
 	}
-
-	volumes = append(volumes, cr.Spec.Volumes...)
-	vmMounts = append(vmMounts, cr.Spec.VolumeMounts...)
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -436,59 +437,4 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 	}
 
 	return nil
-}
-
-func addVolumeMountsTo(volumes []corev1.Volume, vmMounts []corev1.VolumeMount, cr *vmv1beta1.VMSingle, mustAddVolumeMounts bool, storagePath string) ([]corev1.Volume, []corev1.VolumeMount) {
-
-	switch {
-	case mustAddVolumeMounts:
-		// add volume and mount point by operator directly
-		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      vmDataVolumeName,
-			MountPath: storagePath},
-		)
-
-		vlSource := corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		}
-		if cr.Spec.Storage != nil {
-			vlSource = corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: cr.PrefixedName(),
-				},
-			}
-		}
-		volumes = append(volumes, corev1.Volume{
-			Name:         vmDataVolumeName,
-			VolumeSource: vlSource})
-
-	case len(cr.Spec.Volumes) > 0:
-		// add missing volumeMount point for backward compatibility
-		// it simplifies management of external PVCs
-		var volumeNamePresent bool
-		for _, volume := range cr.Spec.Volumes {
-			if volume.Name == vmDataVolumeName {
-				volumeNamePresent = true
-				break
-			}
-		}
-		if volumeNamePresent {
-			var mustSkipVolumeAdd bool
-			for _, volumeMount := range cr.Spec.VolumeMounts {
-				if volumeMount.Name == vmDataVolumeName {
-					mustSkipVolumeAdd = true
-					break
-				}
-			}
-			if !mustSkipVolumeAdd {
-				vmMounts = append(vmMounts, corev1.VolumeMount{
-					Name:      vmDataVolumeName,
-					MountPath: storagePath,
-				})
-			}
-		}
-
-	}
-
-	return volumes, vmMounts
 }

@@ -83,7 +83,7 @@ type VMAgentSpec struct {
 	VMAgentExternalLabelName *string `json:"vmAgentExternalLabelName,omitempty"`
 
 	// RemoteWrite list of victoria metrics /some other remote write system
-	// for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
+	// for vm it must looks like: http://victoria-metrics-single:8428/api/v1/write
 	// or for cluster different url
 	// https://docs.victoriametrics.com/victoriametrics/vmagent/#splitting-data-streams-among-multiple-systems
 	RemoteWrite []VMAgentRemoteWriteSpec `json:"remoteWrite"`

@@ -58,7 +58,7 @@ type TargetRef struct {
 	// +optional
 	CRD *CRDRef `json:"crd,omitempty"`
 	// Static - user defined url for traffic forward,
-	// for instance http://vmsingle:8429
+	// for instance http://vmsingle:8428
 	// +optional
 	Static *StaticRef `json:"static,omitempty"`
 	// Paths - matched path to route.

@@ -411,7 +411,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
   url_map:
   - src_paths:
     - "/.*"
-    url_prefix: "http://vmsingle-some-url:8429"`,
+    url_prefix: "http://vmsingle-some-url:8428"`,
 								},
 							}
 							Expect(k8sClient.Create(ctx, extSecret)).To(Succeed())
@@ -484,7 +484,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
   url_map:
   - src_paths:
     - "/.*"
-    url_prefix: "http://vmsingle-some-url:8429"`,
+    url_prefix: "http://vmsingle-some-url:8428"`,
 								},
 							}
 							Expect(k8sClient.Create(ctx, extSecret)).To(Succeed())

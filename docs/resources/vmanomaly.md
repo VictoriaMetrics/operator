@@ -380,7 +380,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VMAnomaly` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
+by default all `VMAnomaly` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VMANOMALY_RESOURCE_LIMIT_MEM` - default memory limit for `VMAnomaly` pods,
 - `VM_VMANOMALY_RESOURCE_LIMIT_CPU` - default memory limit for `VMAnomaly` pods,
@@ -401,7 +401,7 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Examples
 
-Below is an example of VMAnomaly setup with [periodic scheduler](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/index.html#periodic-scheduler), [z-score model](https://docs.victoriametrics.com/anomaly-detection/components/models/#z-score), that is applied against data extracted using given `ingestion_rate` query from `http://vmsingle-read-example:8428` endpoint
+Below is an example of VMAnomaly setup with [periodic scheduler](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#periodic-scheduler), [z-score model](https://docs.victoriametrics.com/anomaly-detection/components/models/#z-score), that is applied against data extracted using given `ingestion_rate` query from `http://vmsingle-read-example:8428` endpoint
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1

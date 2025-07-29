@@ -17,11 +17,11 @@ tags:
 `VMAlert` - executes a list of given [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) 
 or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules against configured address. 
 
-The `VMAlert` CRD declaratively defines a desired [VMAlert](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmalert)
+The `VMAlert` CRD declaratively defines a desired [VMAlert](https://docs.victoriametrics.com/victoriametrics/vmalert/)
 setup to run in a Kubernetes cluster.
 
 It has few required config options - `datasource` and `notifier` are required, for other config parameters
-check [doc](https://docs.victoriametrics.com/operator/api#vmalert).
+check [doc](https://docs.victoriametrics.com/operator/api/#vmalert).
 
 For each `VMAlert` resource, the Operator deploys a properly configured `Deployment` in the same namespace.
 The VMAlert `Pod`s are configured to mount a list of `Configmaps` prefixed with `<VMAlert-name>-number` containing
@@ -32,7 +32,7 @@ name `<VMAlert-name>`.
 
 ## Specification
 
-You can see the full actual specification of the `VMAlert` resource in the **[API docs -> VMAlert](https://docs.victoriametrics.com/operator/api#vmalert)**.
+You can see the full actual specification of the `VMAlert` resource in the **[API docs -> VMAlert](https://docs.victoriametrics.com/operator/api/#vmalert)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](./#extra-arguments).
@@ -53,7 +53,7 @@ spec:
   ruleNamespaceSelector: {}
 ```
 
-[VMRule](https://docs.victoriametrics.com/operator/resources/vmrule) objects generate part of `VMAlert` configuration.
+[VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/) objects generate part of `VMAlert` configuration.
 
 For filtering rules `VMAlert` uses selectors `ruleNamespaceSelector` and `ruleSelector`.
 It allows configuring rules access control across namespaces and different environments.
@@ -80,7 +80,7 @@ Here's a more visual and more detailed view:
 | *any*                   | undefined      | *any*                | **defined**       | all vmrules only at `VMAlert`'s namespace                                                            |
 | *any*                   | **defined**    | *any*                | **defined**       | all vmrules only at `VMAlert`'s namespace for given `ruleSelector` are matching                      |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration#namespaced-mode).
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
 
 Here are some examples of `VMAlert` configuration with selectors:
 
@@ -110,9 +110,9 @@ spec:
 
 ## High availability
 
-`VMAlert` can be launched with multiple replicas without an additional configuration as far [alertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager) is responsible for alert deduplication.
+`VMAlert` can be launched with multiple replicas without an additional configuration as far [alertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/) is responsible for alert deduplication.
 
-Note, if you want to use `VMAlert` with high-available [`VMAlertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager), which has more than 1 replica. 
+Note, if you want to use `VMAlert` with high-available [`VMAlertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager/), which has more than 1 replica. 
 You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can use service discovery for notifier, examples:
 
 - alertmanager:
@@ -221,7 +221,7 @@ spec:
     url: http://vmselect-demo.vm.svc:8481/select/0/prometheus
 ```
 
-More details about `remoteWrite` and `remoteRead` you can read in [vmalert docs](https://docs.victoriametrics.com/vmalert/#alerts-state-on-restarts).
+More details about `remoteWrite` and `remoteRead` you can read in [vmalert docs](https://docs.victoriametrics.com/victoriametrics/vmalert/#alerts-state-on-restarts).
 
 ## Version management
 
@@ -279,7 +279,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VMAlert` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
+by default all `VMAlert` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VMALERTDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VMAlert` pods,
 - `VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VMAlert` pods,
@@ -300,11 +300,11 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Enterprise features
 
-VMAlert supports features [Reading rules from object storage](https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage)
-and [Multitenancy](https://docs.victoriametrics.com/vmalert#multitenancy)
-from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
+VMAlert supports features [Reading rules from object storage](https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage)
+and [Multitenancy](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy)
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise).
 
-For using Enterprise version of [vmalert](https://docs.victoriametrics.com/vmalert) you need to
+For using Enterprise version of [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) you need to
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
  - change version of `vmalert` to version with `-enterprise` suffix using [Version management](#version-management).
 
@@ -313,9 +313,9 @@ For using Enterprise version of [vmalert](https://docs.victoriametrics.com/vmale
 After that you can pass `-rule` command-line argument with `s3://` or `gs://`
 to `VMAlert` with [extraArgs](./#extra-arguments).
 
-More details about reading rules from object storage you can read in [vmalert docs](https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage).
+More details about reading rules from object storage you can read in [vmalert docs](https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage).
 
-Here are complete example for [Reading rules from object storage](https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage):
+Here are complete example for [Reading rules from object storage](https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -332,7 +332,7 @@ spec:
     tag: v1.110.13-enterprise
   extraArgs:
     # using enterprise features: Reading rules from object storage
-    # more details about reading rules from object storage you can read on https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage
+    # more details about reading rules from object storage you can read on https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage
     rule: s3://bucket/dir/alert.rules
     
   # ...other fields...
@@ -340,13 +340,13 @@ spec:
 
 ### Multitenancy
 
-After enabling enterprise version you can use [Multitenancy](https://docs.victoriametrics.com/vmalert#multitenancy)
+After enabling enterprise version you can use [Multitenancy](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy)
 feature in `VMAlert`.
 
 For that you need to set `clusterMode` command-line flag 
 with [extraArgs](./#extra-arguments)
 and specify `tenant` field for groups 
-in [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule#enterprise-features):
+in [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/#enterprise-features):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -363,7 +363,7 @@ spec:
     tag: v1.110.13-enterprise
   extraArgs:
     # using enterprise features: Multitenancy
-    # more details about multitenancy you can read on https://docs.victoriametrics.com/vmalert#multitenancy
+    # more details about multitenancy you can read on https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy
     clusterMode: true 
 
   # ...other fields...
@@ -379,7 +379,7 @@ spec:
     - name: vmalert-1
       rules:
         # using enterprise features: Multitenancy
-        # more details about multitenancy you can read on https://docs.victoriametrics.com/vmalert#multitenancy
+        # more details about multitenancy you can read on https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy
         - tenant: 1
           alert: vmalert config reload error
           expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0

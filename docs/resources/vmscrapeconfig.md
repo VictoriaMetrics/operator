@@ -13,14 +13,14 @@ tags:
   - kubernetes
   - metrics
 ---
-The `VMScrapeConfig` CRD allows to define a scrape config using [any of the service discovery options supported in victoriametrics](https://docs.victoriametrics.com/sd_configs).
+The `VMScrapeConfig` CRD allows to define a scrape config using [any of the service discovery options supported in victoriametrics](https://docs.victoriametrics.com/victoriametrics/sd_configs/).
 
-`VMScrapeConfig` object generates part of [VMAgent](https://docs.victoriametrics.com/vmagent) configuration with Prometheus-compatible scrape targets.
+`VMScrapeConfig` object generates part of [VMAgent](https://docs.victoriametrics.com/victoriametrics/vmagent/) configuration with Prometheus-compatible scrape targets.
 
 ## Specification
 
 You can see the full actual specification of the `VMScrapeConfig` resource in
-the **[API docs -> VMScrapeConfig](https://docs.victoriametrics.com/operator/api#vmscrapeconfig)**.
+the **[API docs -> VMScrapeConfig](https://docs.victoriametrics.com/operator/api/#vmscrapeconfig)**.
 
 Also, you can check out the [examples](#examples) section.
 
@@ -29,7 +29,7 @@ Also, you can check out the [examples](#examples) section.
 The `VMScrapeConfig` CRD from VictoriaMetrics Operator is a drop-in replacement 
 for the Prometheus `ScrapeConfig` from prometheus-operator.
 
-More details about migration from prometheus-operator you can read in [this doc](https://docs.victoriametrics.com/operator/migration).
+More details about migration from prometheus-operator you can read in [this doc](https://docs.victoriametrics.com/operator/migration/).
 
 ## Examples
 

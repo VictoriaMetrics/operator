@@ -323,7 +323,7 @@ func RunManager(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot setup watch client: %w", err)
 	}
-	converterController, err := vmcontroller.NewConverterController(ctx, baseClient, wc, *promCRDResyncPeriod, baseConfig)
+	converterController, err := vmcontroller.NewConverterController(ctx, ctrl.Log, baseClient, wc, *promCRDResyncPeriod, baseConfig)
 	if err != nil {
 		setupLog.Error(err, "cannot setup prometheus CRD converter: %w", err)
 		return err

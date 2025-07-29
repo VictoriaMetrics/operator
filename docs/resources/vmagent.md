@@ -584,7 +584,7 @@ metadata:
 
 ### Additional information
 
-`VMAgent` also has some extra options for relabeling actions, you can check it [docs](https://docs.victoriametrics.com/victoriametrics//vmagent/#relabeling).
+`VMAgent` also has some extra options for relabeling actions, you can check it [docs](https://docs.victoriametrics.com/victoriametrics/vmagent/#relabeling).
 
 ## Version management
 

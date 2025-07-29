@@ -54,7 +54,7 @@ VM_ENABLEDPROMETHEUSCONVERTER_PROBE=false
 VM_ENABLEDPROMETHEUSCONVERTER_SCRAPECONFIG=false
 ```
 
-For [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoriametrics-operator) you can use following way:
+For [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoriametrics-operator/) you can use following way:
 
 ```yaml
 # values.yaml
@@ -70,18 +70,18 @@ Otherwise, VictoriaMetrics Operator would try to discover prometheus-operator AP
 
 ![migration from prometheus](./migration_prometheus-conversion.webp)
 
-For more information about the operator's workflow, see [this doc](https://docs.victoriametrics.com/operator).
+For more information about the operator's workflow, see [this doc](https://docs.victoriametrics.com/operator/).
 
 ## Deletion synchronization
 
 By default, the operator doesn't make converted objects disappear after original ones are deleted. To change this behaviour
-configure adding `OwnerReferences` to converted objects with following [operator parameter](https://docs.victoriametrics.com/operator/setup#settings):
+configure adding `OwnerReferences` to converted objects with following [operator parameter](https://docs.victoriametrics.com/operator/setup/#settings):
 
 ```sh
 VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES=true
 ```
 
-For [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoriametrics-operator) you can use following way:
+For [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoriametrics-operator/) you can use following way:
 
 ```yaml
 # values.yaml
@@ -122,15 +122,15 @@ spec:
 
 Annotation `operator.victoriametrics.com/ignore-prometheus-updates` can be set on one of the resources:
 
-- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape)
-- [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape)
-- [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule)
-- [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe)
-- [VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig)
-- [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig)
+- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/)
+- [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/)
+- [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/)
+- [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe/)
+- [VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/)
+- [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/)
 
-And annotation doesn't make sense for [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape)
-and [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape) because these objects are not created as a result of conversion.
+And annotation doesn't make sense for [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape/)
+and [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape/) because these objects are not created as a result of conversion.
 
 ## Labels and annotations synchronization
 
@@ -163,18 +163,18 @@ spec:
 
 Annotation `operator.victoriametrics.com/merge-meta-strategy` can be set on one of the resources:
 
-- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape)
-- [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape)
-- [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule)
-- [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe)
-- [VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig)
-- [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig)
+- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/)
+- [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/)
+- [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/)
+- [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe/)
+- [VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/)
+- [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/)
 
-And annotation doesn't make sense for [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape)
-and [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape) because these objects are not created as a result of conversion.
+And annotation doesn't make sense for [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape/)
+and [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape/) because these objects are not created as a result of conversion.
 
 You can filter labels for syncing 
-with [operator parameter](https://docs.victoriametrics.com/operator/setup#settings) `VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES`:
+with [operator parameter](https://docs.victoriametrics.com/operator/setup/#settings) `VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES`:
 
 ```sh
 # it excludes all labels that start with "helm.sh" or "argoproj.io" from synchronization
@@ -182,7 +182,7 @@ VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES=helm.sh,argoproj.io
 ```
 
 In the same way, annotations with specified prefixes can be excluded from synchronization 
-with [operator parameter](https://docs.victoriametrics.com/operator/setup#settings) `VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES`:
+with [operator parameter](https://docs.victoriametrics.com/operator/setup/#settings) `VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES`:
 
 ```sh
 # it excludes all annotations that start with "helm.sh" or "argoproj.io" from synchronization
@@ -192,7 +192,7 @@ VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES=helm.sh,argoproj.io
 ## Using converter with ArgoCD
 
 If you use ArgoCD, you can allow ignoring objects at ArgoCD converted from Prometheus CRD 
-with [operator parameter](https://docs.victoriametrics.com/operator/setup#settings) `VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS`. 
+with [operator parameter](https://docs.victoriametrics.com/operator/setup/#settings) `VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS`. 
 
 It helps to properly use converter with ArgoCD and should help prevent out-of-sync issues with argo-cd based deployments:
 
@@ -203,9 +203,9 @@ VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS=true
 
 ## Data migration
 
-You can use [vmctl](https://docs.victoriametrics.com/vmctl) for migrating your data from Prometheus to VictoriaMetrics.
+You can use [vmctl](https://docs.victoriametrics.com/victoriametrics/vmctl/) for migrating your data from Prometheus to VictoriaMetrics.
 
-See [this doc](https://docs.victoriametrics.com/vmctl#migrating-data-from-prometheus) for more details.
+See [this doc](https://docs.victoriametrics.com/victoriametrics/vmctl/#migrating-data-from-prometheus) for more details.
 
 ## Auto-discovery for prometheus.io annotations
 
@@ -293,6 +293,6 @@ spec:
 You can find yaml-file with this example [here](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmservicescrape_service_sd.yaml).
 
 Check out more information about:
-- [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent)
-- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape)
-- [Relabeling](https://docs.victoriametrics.com/vmagent#relabeling)
+- [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/)
+- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/)
+- [Relabeling](https://docs.victoriametrics.com/victoriametrics/vmagent/#relabeling)

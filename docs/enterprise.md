@@ -14,7 +14,7 @@ tags:
   - metrics
 ---
 Operator doesn't have enterprise version for itself, but it supports 
-[enterprise features for VictoriaMetrics components](https://docs.victoriametrics.com/enterprise/):
+[enterprise features for VictoriaMetrics components](https://docs.victoriametrics.com/victoriametrics/enterprise/):
 
 - [VMAgent Enterprise features](https://docs.victoriametrics.com/operator/resources/vmagent/#enterprise-features):
   - [Reading metrics from kafka](https://docs.victoriametrics.com/operator/resources/vmagent/#reading-metrics-from-kafka)
@@ -40,7 +40,7 @@ Operator doesn't have enterprise version for itself, but it supports
   - [IP Filters](https://docs.victoriametrics.com/operator/resources/vmuser/#ip-filters) 
 
 More information about enterprise features you can read 
-on [VictoriaMetrics Enterprise page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise-features).
+on [VictoriaMetrics Enterprise page](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 In order to find examples of deploying enterprise components with operator,
-please, check [this](https://docs.victoriametrics.com/enterprise#kubernetes-operator) documentation.
+please, check [this](https://docs.victoriametrics.com/victoriametrics/enterprise/#kubernetes-operator) documentation.

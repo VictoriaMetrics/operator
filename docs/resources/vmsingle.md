@@ -127,10 +127,10 @@ For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/vict
 
 ### Downsampling
 
-After that you can pass [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-node-victoriametrics/#downsampling)
+After that you can pass [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling)
 flag to `VMSingle` with [extraArgs](./#extra-arguments) too.
 
-Here are complete example for [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-node-victoriametrics/#downsampling):
+Here are complete example for [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling):
  
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -155,7 +155,7 @@ spec:
 
 ### Retention filters
 
-The same method is used to enable retention filters - here are complete example for [Retention filters](https://docs.victoriametrics.com/victoriametrics/single-node-victoriametrics/#retention-filters).
+The same method is used to enable retention filters - here are complete example for [Retention filters](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters).
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1

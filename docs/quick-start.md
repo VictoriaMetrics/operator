@@ -172,12 +172,12 @@ That's it! You now have a fully operational VictoriaMetrics storage instance run
 Let’s explore how to interact with the storage. First, you need to make the storage port accessible from your machine.
 To do this, open a separate terminal and run the port-forward command below:
 ```sh
-VMSINGLE_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmsingle" -o jsonpath="{.items[0].metadata.name}");
-kubectl port-forward -n vm $VMSINGLE_POD_NAME 8428:8429;
+VMSINGLE_SVC_NAME=$(kubectl get svc -n vm -l "app.kubernetes.io/name=vmsingle" -o jsonpath="{.items[0].metadata.name}");
+kubectl port-forward -n vm svc/$VMSINGLE_SVC_NAME 8428;
 
 # Output:
-# Forwarding from 127.0.0.1:8428 -> 8429
-# Forwarding from [::1]:8428 -> 8429
+# Forwarding from 127.0.0.1:8428 -> 8428
+# Forwarding from [::1]:8428 -> 8428
 ```
 Make sure it stays up and running throughout the rest of this documentation.
 
@@ -250,7 +250,7 @@ metadata:
 spec:
   selectAllByDefault: true
   remoteWrite:
-    - url: "http://vmsingle-demo.vm.svc:8429/api/v1/write"
+    - url: "http://vmsingle-demo.vm.svc:8428/api/v1/write"
 EOF
 ```
 The `selectAllByDefault` setting tells `VMAgent` to look for scrape resources in every namespace.
@@ -383,8 +383,8 @@ This is because the VictoriaMetrics operator automatically creates scrape config
 If you prefer a visual interface, you can use the VMAgent UI.
 First, forward port `8429` from the VMAgent pod to your local machine:
 ```sh
-VMAGENT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmagent" -o jsonpath="{.items[0].metadata.name}");
-kubectl port-forward -n vm $VMAGENT_POD_NAME 8429:8429;
+VMAGENT_SVC_NAME=$(kubectl get svc -n vm -l "app.kubernetes.io/name=vmagent" -o jsonpath="{.items[0].metadata.name}");
+kubectl port-forward -n vm svc/$VMAGENT_SVC_NAME 8429:8429;
 ```
 Then open this URL in your browser: http://localhost:8429/targets
 There, you’ll see all the targets that VMAgent is scraping, their status, the latest metrics, and when each was last scraped.
@@ -458,15 +458,15 @@ metadata:
 spec:
   # Metrics source (VMCluster/VMSingle)
   datasource:
-    url: "http://vmsingle-demo.vm.svc:8429"
+    url: "http://vmsingle-demo.vm.svc:8428"
 
   # Where alert state and recording rules are stored
   remoteWrite:
-    url: "http://vmsingle-demo.vm.svc:8429"
+    url: "http://vmsingle-demo.vm.svc:8428"
 
   # Where the previous alert state is loaded from. Optional
   remoteRead:
-    url: "http://vmsingle-demo.vm.svc:8429"
+    url: "http://vmsingle-demo.vm.svc:8428"
 
   # Alertmanager URL for sending alerts
   notifier:
@@ -534,8 +534,8 @@ kubectl exec -n vm $VMALERT_POD_NAME -c vmalert  -- wget -qO -  http://127.0.0.1
 If you prefer using a web interface, you can open the `VMAlert` UI in your browser.
 First, forward port `8080` from the `VMAlert` pod to your local machine:
 ```sh
-VMALERT_POD_NAME=$(kubectl get pod -n vm -l "app.kubernetes.io/name=vmalert" -o jsonpath="{.items[0].metadata.name}")
-kubectl port-forward -n vm $VMALERT_POD_NAME 8080:8080
+VMALERT_SVC_NAME=$(kubectl get svc -n vm -l "app.kubernetes.io/name=vmalert" -o jsonpath="{.items[0].metadata.name}")
+kubectl port-forward -n vm svc/$VMALERT_SVC_NAME 8080:8080
 ```
 Then go to: http://localhost:8080/vmalert/groups.
 You’ll see all groups, alerts and a lot more.

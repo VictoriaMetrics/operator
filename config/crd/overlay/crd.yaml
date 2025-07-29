@@ -8622,7 +8622,7 @@ spec:
               remoteWrite:
                 description: |-
                   RemoteWrite list of victoria metrics /some other remote write system
-                  for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
+                  for vm it must looks like: http://victoria-metrics-single:8428/api/v1/write
                   or for cluster different url
                   https://docs.victoriametrics.com/victoriametrics/vmagent/#splitting-data-streams-among-multiple-systems
                 items:
@@ -39046,7 +39046,7 @@ spec:
                     static:
                       description: |-
                         Static - user defined url for traffic forward,
-                        for instance http://vmsingle:8429
+                        for instance http://vmsingle:8428
                       properties:
                         url:
                           description: URL http url for given staticRef.

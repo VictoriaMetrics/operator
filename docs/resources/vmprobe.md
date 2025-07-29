@@ -235,5 +235,5 @@ spec:
    selectAllByDefault: true
    replicaCount: 1
    remoteWrite:
-     - url: "http://vmsingle-example-persisted.default.svc:8429/api/v1/write"
+     - url: "http://vmsingle-example-persisted.default.svc:8428/api/v1/write"
 ```

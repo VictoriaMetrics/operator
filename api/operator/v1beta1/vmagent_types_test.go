@@ -5,42 +5,64 @@ import (
 )
 
 func TestVMAgent_Validate(t *testing.T) {
-
-	tests := []struct {
-		name    string
-		spec    VMAgentSpec
+	type opts struct {
+		cr      *VMAgent
 		wantErr bool
-	}{
-		{
-			name:    "wo remotewrite",
-			spec:    VMAgentSpec{},
-			wantErr: true,
+	}
+	f := func(opts opts) {
+		t.Helper()
+		if err := opts.cr.Validate(); (err != nil) != opts.wantErr {
+			t.Errorf("Validate() error = %v, wantErr %v", err, opts.wantErr)
+		}
+	}
+
+	// wo remotewrite
+	o := opts{
+		cr:      &VMAgent{},
+		wantErr: true,
+	}
+	f(o)
+
+	// rw empty url
+	o = opts{
+		cr: &VMAgent{
+			Spec: VMAgentSpec{
+				RemoteWrite: []VMAgentRemoteWriteSpec{
+					{},
+				},
+			},
 		},
-		{
-			name: "rw empty url",
-			spec: VMAgentSpec{RemoteWrite: []VMAgentRemoteWriteSpec{
-				{},
-			}},
-			wantErr: true,
-		},
-		{
-			name: "bad inline cfg",
-			spec: VMAgentSpec{
+		wantErr: true,
+	}
+	f(o)
+
+	// bad inline cfg
+	o = opts{
+		cr: &VMAgent{
+			Spec: VMAgentSpec{
 				RemoteWrite:        []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
 				InlineScrapeConfig: "some; none yaml formatted string",
 			},
-			wantErr: true,
 		},
-		{
-			name: "valid inline cfg",
-			spec: VMAgentSpec{
+		wantErr: true,
+	}
+	f(o)
+
+	// valid inline cfg
+	o = opts{
+		cr: &VMAgent{
+			Spec: VMAgentSpec{
 				RemoteWrite:        []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
 				InlineScrapeConfig: `key: value`,
 			},
 		},
-		{
-			name: "valid relabeling",
-			spec: VMAgentSpec{
+	}
+	f(o)
+
+	// valid relabeling
+	o = opts{
+		cr: &VMAgent{
+			Spec: VMAgentSpec{
 				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
 				InlineRelabelConfig: []*RelabelConfig{
 					{
@@ -50,9 +72,13 @@ func TestVMAgent_Validate(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "relabeling with if array",
-			spec: VMAgentSpec{
+	}
+	f(o)
+
+	// relabeling with if array
+	o = opts{
+		cr: &VMAgent{
+			Spec: VMAgentSpec{
 				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
 				InlineRelabelConfig: []*RelabelConfig{
 					{
@@ -66,14 +92,5 @@ func TestVMAgent_Validate(t *testing.T) {
 			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &VMAgent{
-				Spec: tt.spec,
-			}
-			if err := r.Validate(); (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	f(o)
 }

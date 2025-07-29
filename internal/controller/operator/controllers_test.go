@@ -14,91 +14,83 @@ import (
 )
 
 func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
-	tests := []struct {
-		name              string
-		selectAll         bool
+	type opts struct {
+		opts              *k8stools.SelectorOpts
 		sourceCRD         client.Object
 		targetCRD         client.Object
-		selector          *metav1.LabelSelector
-		namespaceSelector *metav1.LabelSelector
 		predefinedObjects []runtime.Object
 		isMatch           bool
-	}{
-		{
-			name:      "match: selectors are nil, selectAll=true",
-			selectAll: true,
-			sourceCRD: &vmv1beta1.VMRule{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rule",
-					Namespace: "n1",
-					Labels: map[string]string{
-						"app": "target-app",
-					},
-				},
-			},
-			targetCRD: &vmv1beta1.VMAlert{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmalert",
-					Namespace: "n2",
-				},
-				Spec: vmv1beta1.VMAlertSpec{
-					RuleSelector:          &metav1.LabelSelector{},
-					RuleNamespaceSelector: &metav1.LabelSelector{},
-				},
-			},
-			selector:          nil,
-			namespaceSelector: nil,
-			isMatch:           true,
+	}
+	f := func(opts opts) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
+		matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, opts.sourceCRD, opts.targetCRD, opts.opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if matches != opts.isMatch {
+			t.Fatalf("isSelectorsMatchesTargetCRD(): expect %t, got %t", opts.isMatch, matches)
+		}
+	}
+
+	// match: selectors are nil, selectAll=true
+	o := opts{
+		opts: &k8stools.SelectorOpts{
+			SelectAll: true,
 		},
-		{
-			name:      "not match: selectors are nil, selectAll=false",
-			selectAll: false,
-			sourceCRD: &vmv1beta1.VMRule{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rule",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app": "target-app",
-					},
+
+		sourceCRD: &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rule",
+				Namespace: "n1",
+				Labels: map[string]string{
+					"app": "target-app",
 				},
 			},
-			targetCRD: &vmv1beta1.VMAlert{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmalert",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAlertSpec{
-					RuleSelector:          &metav1.LabelSelector{},
-					RuleNamespaceSelector: &metav1.LabelSelector{},
-				},
-			},
-			selector:          nil,
-			namespaceSelector: nil,
-			isMatch:           false,
 		},
-		{
-			name:      "match: selector matches, selectAll=any",
-			selectAll: false,
-			sourceCRD: &vmv1beta1.VMRule{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rule",
-					Namespace: "default",
-					Labels: map[string]string{
-						"cluster": "prod",
-						"a":       "b",
-					},
+		targetCRD: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-vmalert",
+				Namespace: "n2",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				RuleSelector:          &metav1.LabelSelector{},
+				RuleNamespaceSelector: &metav1.LabelSelector{},
+			},
+		},
+		isMatch: true,
+	}
+	f(o)
+
+	// not match: selectors are nil, selectAll=false
+	o = opts{
+		opts: &k8stools.SelectorOpts{},
+		sourceCRD: &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rule",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app": "target-app",
 				},
 			},
-			targetCRD: &vmv1beta1.VMAlert{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmalert",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAlertSpec{
-					RuleSelector: &metav1.LabelSelector{},
-				},
+		},
+		targetCRD: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-vmalert",
+				Namespace: "default",
 			},
-			selector: &metav1.LabelSelector{
+			Spec: vmv1beta1.VMAlertSpec{
+				RuleSelector:          &metav1.LabelSelector{},
+				RuleNamespaceSelector: &metav1.LabelSelector{},
+			},
+		},
+	}
+	f(o)
+
+	// match: selector matches, selectAll=any
+	o = opts{
+		opts: &k8stools.SelectorOpts{
+			ObjectSelector: &metav1.LabelSelector{
 				MatchExpressions: []metav1.LabelSelectorRequirement{
 					{
 						Key:      "cluster",
@@ -112,45 +104,35 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			namespaceSelector: nil,
-			isMatch:           true,
 		},
-		{
-			name:      "not match: selector not match, selectAll=any",
-			selectAll: true,
-			sourceCRD: &vmv1beta1.VMRule{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rule",
-					Namespace: "default",
-					Labels: map[string]string{
-						"cluster": "poc",
-						"a":       "b",
-					},
+		sourceCRD: &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rule",
+				Namespace: "default",
+				Labels: map[string]string{
+					"cluster": "prod",
+					"a":       "b",
 				},
 			},
-			targetCRD: &vmv1beta1.VMAlert{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmalert",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAlertSpec{
-					RuleSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "cluster",
-								Operator: metav1.LabelSelectorOpNotIn,
-								Values:   []string{"poc"},
-							},
-							{
-								Key:      "a",
-								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{"b"},
-							},
-						},
-					},
-				},
+		},
+		targetCRD: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-vmalert",
+				Namespace: "default",
 			},
-			selector: &metav1.LabelSelector{
+			Spec: vmv1beta1.VMAlertSpec{
+				RuleSelector: &metav1.LabelSelector{},
+			},
+		},
+		isMatch: true,
+	}
+	f(o)
+
+	// not match: selector not match, selectAll=any
+	o = opts{
+		opts: &k8stools.SelectorOpts{
+			SelectAll: true,
+			ObjectSelector: &metav1.LabelSelector{
 				MatchExpressions: []metav1.LabelSelectorRequirement{
 					{
 						Key:      "cluster",
@@ -164,128 +146,134 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			namespaceSelector: nil,
-			isMatch:           false,
 		},
-		{
-			name:      "match: namespaceselector matches, selectAll=any",
-			selectAll: false,
-			sourceCRD: &vmv1beta1.VMRule{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rule",
-					Namespace: "default",
-					Labels: map[string]string{
-						"cluster": "prod",
-						"a":       "b",
-					},
+		sourceCRD: &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rule",
+				Namespace: "default",
+				Labels: map[string]string{
+					"cluster": "poc",
+					"a":       "b",
 				},
 			},
-			targetCRD: &vmv1beta1.VMAlert{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmalert",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAlertSpec{
-					RuleNamespaceSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"kubernetes.io/metadata.name": "default",
+		},
+		targetCRD: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-vmalert",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				RuleSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "cluster",
+							Operator: metav1.LabelSelectorOpNotIn,
+							Values:   []string{"poc"},
+						},
+						{
+							Key:      "a",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"b"},
 						},
 					},
 				},
 			},
-			selector: nil,
-			namespaceSelector: &metav1.LabelSelector{
+		},
+	}
+	f(o)
+
+	// match: namespaceselector matches, selectAll=any
+	o = opts{
+		opts: &k8stools.SelectorOpts{
+			NamespaceSelector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"kubernetes.io/metadata.name": "default",
 				},
 			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{Name: "default", Labels: map[string]string{"kubernetes.io/metadata.name": "default"}},
-				},
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{Name: "vm-stack", Labels: map[string]string{"kubernetes.io/metadata.name": "vm-stack"}},
-				},
-			},
-			isMatch: true,
 		},
-		{
-			name:      "not match: namespaceselector not matches, selectAll=any",
-			selectAll: true,
-			sourceCRD: &vmv1beta1.VMRule{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rule",
-					Namespace: "default",
-					Labels: map[string]string{
-						"cluster": "prod",
-						"a":       "b",
+		sourceCRD: &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rule",
+				Namespace: "default",
+				Labels: map[string]string{
+					"cluster": "prod",
+					"a":       "b",
+				},
+			},
+		},
+		targetCRD: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-vmalert",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				RuleNamespaceSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"kubernetes.io/metadata.name": "default",
 					},
 				},
 			},
-			targetCRD: &vmv1beta1.VMAlert{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmalert",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAlertSpec{
-					RuleNamespaceSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"kubernetes.io/metadata.name": "default",
-						},
-					},
-				},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: "default", Labels: map[string]string{"kubernetes.io/metadata.name": "default"}},
 			},
-			selector: nil,
-			namespaceSelector: &metav1.LabelSelector{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: "vm-stack", Labels: map[string]string{"kubernetes.io/metadata.name": "vm-stack"}},
+			},
+		},
+		isMatch: true,
+	}
+	f(o)
+
+	// not match: namespaceselector not matches, selectAll=any
+	o = opts{
+		opts: &k8stools.SelectorOpts{
+			SelectAll: true,
+			NamespaceSelector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"kubernetes.io/metadata.name": "vm-stack",
 				},
 			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{Name: "default", Labels: map[string]string{"kubernetes.io/metadata.name": "default"}},
-				},
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{Name: "vm-stack", Labels: map[string]string{"kubernetes.io/metadata.name": "vm-stack"}},
-				},
-			},
-			isMatch: false,
 		},
-		{
-			name:      "match: selector+namespaceSelector match, selectAll=any",
-			selectAll: false,
-			sourceCRD: &vmv1beta1.VMRule{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rule",
-					Namespace: "default",
-					Labels: map[string]string{
-						"cluster": "prod",
+		sourceCRD: &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rule",
+				Namespace: "default",
+				Labels: map[string]string{
+					"cluster": "prod",
+					"a":       "b",
+				},
+			},
+		},
+		targetCRD: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-vmalert",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				RuleNamespaceSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"kubernetes.io/metadata.name": "default",
 					},
 				},
 			},
-			targetCRD: &vmv1beta1.VMAlert{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmalert",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAlertSpec{
-					RuleSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "cluster",
-								Operator: metav1.LabelSelectorOpNotIn,
-								Values:   []string{"poc"},
-							},
-						},
-					},
-					RuleNamespaceSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"kubernetes.io/metadata.name": "default",
-						},
-					},
-				},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: "default", Labels: map[string]string{"kubernetes.io/metadata.name": "default"}},
 			},
-			selector: &metav1.LabelSelector{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: "vm-stack", Labels: map[string]string{"kubernetes.io/metadata.name": "vm-stack"}},
+			},
+		},
+	}
+	f(o)
+
+	// match: selector+namespaceSelector match, selectAll=any
+	o = opts{
+		opts: &k8stools.SelectorOpts{
+			ObjectSelector: &metav1.LabelSelector{
 				MatchExpressions: []metav1.LabelSelectorRequirement{
 					{
 						Key:      "cluster",
@@ -294,37 +282,52 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			namespaceSelector: &metav1.LabelSelector{
+			NamespaceSelector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"kubernetes.io/metadata.name": "default",
 				},
 			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{Name: "default", Labels: map[string]string{"kubernetes.io/metadata.name": "default"}},
-				},
-				&corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{Name: "vm-stack", Labels: map[string]string{"kubernetes.io/metadata.name": "vm-stack"}},
+		},
+		sourceCRD: &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rule",
+				Namespace: "default",
+				Labels: map[string]string{
+					"cluster": "prod",
 				},
 			},
-			isMatch: true,
 		},
+		targetCRD: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-vmalert",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				RuleSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "cluster",
+							Operator: metav1.LabelSelectorOpNotIn,
+							Values:   []string{"poc"},
+						},
+					},
+				},
+				RuleNamespaceSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"kubernetes.io/metadata.name": "default",
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: "default", Labels: map[string]string{"kubernetes.io/metadata.name": "default"}},
+			},
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: "vm-stack", Labels: map[string]string{"kubernetes.io/metadata.name": "vm-stack"}},
+			},
+		},
+		isMatch: true,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			opts := &k8stools.SelectorOpts{
-				SelectAll:         tt.selectAll,
-				NamespaceSelector: tt.namespaceSelector,
-				ObjectSelector:    tt.selector,
-			}
-			matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, tt.sourceCRD, tt.targetCRD, opts)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if matches != tt.isMatch {
-				t.Fatalf("BUG: %s: expect %t, got %t", tt.name, tt.isMatch, matches)
-			}
-		})
-	}
+	f(o)
 }

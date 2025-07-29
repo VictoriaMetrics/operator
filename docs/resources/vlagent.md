@@ -3,7 +3,7 @@ weight: 10
 title: VLAgent
 menu:
   docs:
-    identifier: operator-cr-vmagent
+    identifier: operator-cr-vlagent
     parent: operator-cr
     weight: 1
 aliases:

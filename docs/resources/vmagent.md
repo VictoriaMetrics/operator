@@ -206,7 +206,7 @@ Now, even if something happens to one of the vmagent, you'll still have the data
 
 ### StatefulMode
 
-VMAgent supports [persistent buffering](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent/#replication-and-high-availability)
+VMAgent supports [persistent buffering](https://docs.victoriametrics.com/victoriametrics/vmagent/#replication-and-high-availability)
 for sending data to remote storage. By default, operator set `-remoteWrite.tmpDataPath` for `VMAgent` to `/tmp` (that use k8s ephemeral storage)
 and `VMAgent` loses state of the PersistentQueue on pod restarts.
 
@@ -584,7 +584,7 @@ metadata:
 
 ### Additional information
 
-`VMAgent` also has some extra options for relabeling actions, you can check it [docs](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent#relabeling).
+`VMAgent` also has some extra options for relabeling actions, you can check it [docs](https://docs.victoriametrics.com/victoriametrics//vmagent/#relabeling).
 
 ## Version management
 

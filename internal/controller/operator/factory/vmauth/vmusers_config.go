@@ -20,6 +20,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -166,25 +167,17 @@ func filterNonUniqUsers(sus *skipableVMUsers) {
 
 type objectWithURL interface {
 	client.Object
-	AsURL() string
+	AsComponentURL(string) string
 }
 
-func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithURL) (string, error) {
-	obj := objT.(client.Object)
-	// dirty hack to restore original type of vmcluster
-	// since cluster type erased by wrapping it into clusterWithURL
-	// we must restore it original type by unwrapping type
-	uw, ok := objT.(unwrapObject)
-	if ok {
-		obj = uw.origin()
-	}
+func getAsURLObject(ctx context.Context, rclient client.Client, obj objectWithURL, component string) (string, error) {
 	if err := rclient.Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, obj); err != nil {
 		if build.IsNotFound(err) {
 			return "", fmt.Errorf("cannot find object by the given ref,namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
 		return "", fmt.Errorf("cannot get object by given ref namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
 	}
-	return objT.AsURL(), nil
+	return obj.AsComponentURL(component), nil
 }
 
 func addAuthCredentialsBuildSecrets(sus *skipableVMUsers, ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
@@ -313,49 +306,17 @@ func injectAuthSettings(secret *corev1.Secret, vmuser *vmv1beta1.VMUser) bool {
 }
 
 var crdNameToObject = map[string]objectWithURL{
-	"VMAgent":  &vmv1beta1.VMAgent{},
-	"VMAlert":  &vmv1beta1.VMAlert{},
-	"VMSingle": &vmv1beta1.VMSingle{},
-	"VLogs":    &vmv1beta1.VLogs{},
-	// keep both variants for backward-compatibility
-	"VMAlertmanager":      &vmv1beta1.VMAlertmanager{},
-	"VMAlertManager":      &vmv1beta1.VMAlertmanager{},
-	"VMCluster/vmselect":  newClusterWithURL("vmselect"),
-	"VMCluster/vminsert":  newClusterWithURL("vminsert"),
-	"VMCluster/vmstorage": newClusterWithURL("vmstorage"),
-}
-
-// helper interface to restore VMCluster type
-type unwrapObject interface {
-	origin() client.Object
-}
-
-type clusterWithURL struct {
-	client.Object
-	vmc       *vmv1beta1.VMCluster
-	component string
-}
-
-func newClusterWithURL(component string) *clusterWithURL {
-	vmc := &vmv1beta1.VMCluster{}
-	return &clusterWithURL{vmc, vmc, component}
-}
-
-func (c *clusterWithURL) origin() client.Object {
-	return c.vmc
-}
-
-func (c *clusterWithURL) AsURL() string {
-	switch c.component {
-	case "vmselect":
-		return c.vmc.VMSelectURL()
-	case "vmstorage":
-		return c.vmc.VMStorageURL()
-	case "vminsert":
-		return c.vmc.VMInsertURL()
-	default:
-		panic(fmt.Sprintf("BUG: not expected component=%q for clusterWithURL object", c.component))
-	}
+	"VMAgent":        &vmv1beta1.VMAgent{},
+	"VMAlert":        &vmv1beta1.VMAlert{},
+	"VMSingle":       &vmv1beta1.VMSingle{},
+	"VLogs":          &vmv1beta1.VLogs{},
+	"VMAlertmanager": &vmv1beta1.VMAlertmanager{},
+	"VMAlertManager": &vmv1beta1.VMAlertmanager{},
+	"VMCluster":      &vmv1beta1.VMCluster{},
+	"VLSingle":       &vmv1.VLSingle{},
+	"VTSingle":       &vmv1.VTSingle{},
+	"VLCluster":      &vmv1.VLCluster{},
+	"VTCluster":      &vmv1.VTCluster{},
 }
 
 // fetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
@@ -371,13 +332,19 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVM
 			if _, ok := crdCacheURLCache[ref.CRD.AsKey()]; ok {
 				continue
 			}
-			crdObj, ok := crdNameToObject[ref.CRD.Kind]
+			var component string
+			kind := ref.CRD.Kind
+			if idx := strings.Index(kind, "/"); idx >= 0 {
+				component = kind[idx+1:]
+				kind = kind[:idx]
+			}
+			crdObj, ok := crdNameToObject[kind]
 			if !ok {
-				user.Status.CurrentSyncError = fmt.Sprintf("unsupported kind for ref: %q at idx=%d", ref.CRD.Kind, j)
+				user.Status.CurrentSyncError = fmt.Sprintf("unsupported kind for ref: %q at idx=%d", kind, j)
 				return false
 			}
-			ref.CRD.AddRefToObj(crdObj.(client.Object))
-			url, err := getAsURLObject(ctx, rclient, crdObj)
+			ref.CRD.AddRefToObj(crdObj)
+			url, err := getAsURLObject(ctx, rclient, crdObj, component)
 			if err != nil {
 				if !build.IsNotFound(err) {
 					resultErr = fmt.Errorf("cannot get object as url: %w", err)
@@ -695,6 +662,23 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 
 	}
 
+	appendPaths := func(paths []string, tr *vmv1beta1.TargetRef) []string {
+		if tr.CRD != nil {
+			switch tr.CRD.Kind {
+			case "VMCluster/vminsert":
+				return addVMInsertPaths(paths)
+			case "VMCluster/vmselect":
+				return addVMSelectPaths(paths)
+			case "VLCluster/vlinsert", "VTCluster/vtinsert":
+				return append(paths, "/insert/.*")
+			case "VLCluster/vlselect", "VTCluster/vtselect":
+				return append(paths, "/select/.*")
+			}
+		}
+		return append(paths, "/.*")
+
+	}
+
 	for i := range refs {
 		var urlMap yaml.MapSlice
 		ref := refs[i]
@@ -711,14 +695,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 		case 0:
 			// special case for
 			// https://github.com/VictoriaMetrics/operator/issues/379
-			switch {
-			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vminsert":
-				paths = addVMInsertPaths(paths)
-			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vmselect":
-				paths = addVMSelectPaths(paths)
-			default:
-				paths = append(paths, "/.*")
-			}
+			paths = appendPaths(paths, &ref)
 
 		case 1:
 			switch paths[0] {

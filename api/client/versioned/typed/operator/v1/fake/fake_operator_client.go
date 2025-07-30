@@ -43,6 +43,14 @@ func (c *FakeOperatorV1) VMAnomalies(namespace string) v1.VMAnomalyInterface {
 	return newFakeVMAnomalies(c, namespace)
 }
 
+func (c *FakeOperatorV1) VTClusters(namespace string) v1.VTClusterInterface {
+	return newFakeVTClusters(c, namespace)
+}
+
+func (c *FakeOperatorV1) VTSingles(namespace string) v1.VTSingleInterface {
+	return newFakeVTSingles(c, namespace)
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeOperatorV1) RESTClient() rest.Interface {

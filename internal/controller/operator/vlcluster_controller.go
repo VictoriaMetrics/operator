@@ -69,13 +69,13 @@ func (r *VLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	RegisterObjectStat(instance, "vlcluster")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVClusterDelete(ctx, r.Client, instance); err != nil {
+		if err := finalize.OnVLClusterDelete(ctx, r.Client, instance); err != nil {
 			return result, err
 		}
 		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vlsingle"}
+		return result, &parsingError{instance.Spec.ParsingError, "vlcluster"}
 	}
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
@@ -84,7 +84,7 @@ func (r *VLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
 		if err = vlcluster.CreateOrUpdate(ctx, r, instance); err != nil {
-			return result, fmt.Errorf("failed create or update vlsingle: %w", err)
+			return result, fmt.Errorf("failed create or update vlcluster: %w", err)
 		}
 
 		return result, nil

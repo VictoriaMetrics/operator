@@ -1067,6 +1067,59 @@ func Test_buildConfig(t *testing.T) {
 						},
 					},
 				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-3",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-token-3"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLSingle",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-4",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-token-4"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VTCluster/vtselect",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1.VTCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: vmv1.VTClusterSpec{
+						Select: &vmv1.VTSelect{},
+					},
+				},
+				&vmv1.VLSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
 				&vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
@@ -1082,6 +1135,12 @@ func Test_buildConfig(t *testing.T) {
 - url_prefix:
   - http://vmagent-test.default.svc:8429
   bearer_token: bearer-token-2
+- url_prefix:
+  - http://vlsingle-test.default.svc:9428
+  bearer_token: bearer-token-3
+- url_prefix:
+  - http://vtselect-test.default.svc:10471
+  bearer_token: bearer-token-4
 `,
 		},
 		{

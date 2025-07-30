@@ -42,11 +42,11 @@ metadata:
   name: example
 spec:
   ...
-  clusterVersion: v1.22.0-victoria-logs
+  clusterVersion: v1.26.0
   vlstorage:
     image:
       repository: victoriametrics/victoria-logs
-      tag: v1.19.0-victoria-logs
+      tag: v1.25.0
       pullPolicy: Always
   # ...
 ```
@@ -89,10 +89,10 @@ spec:
 If these parameters are not specified, then,
 by default all `VLCluster` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
-- `VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_LIMIT_MEM:` - default memory limit for `VLCluster.vlstorage` pods,
-- `VLSTORAGEDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VLCluster.vlstorage` pods,
+- `VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VLCluster.vlstorage` pods,
+- `VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_LIMIT_CPU` - default cpu limit for `VLCluster.vlstorage` pods,
 - `VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_REQUEST_MEM` - default memory limit for `VLCluster.vlstorage` pods,
-- `VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_REQUEST_CPU` - default memory limit for `VLCluster.vlstorage` pods.
+- `VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_REQUEST_CPU` - default cpu limit for `VLCluster.vlstorage` pods.
 
 These default parameters will be used if:
 
@@ -101,7 +101,7 @@ These default parameters will be used if:
 
 Field `resources` in `VLSingle` spec have higher priority than operator parameters.
 
-If you set `VM_VLOGSDEFAULT_USEDEFAULTRESOURCES` to `false` and don't specify `resources` in `VLSingle` CRD,
+If you set `VM_VLCLUSTEREDEFAULT_USEDEFAULTRESOURCES` to `false` and don't specify `resources` in `VLSingle` CRD,
 then `VLSingle` pods will be created without resource requests and limits.
 
 Also, you can specify requests without limits - in this case default values for limits will not be used.

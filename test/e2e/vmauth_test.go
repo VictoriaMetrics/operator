@@ -47,8 +47,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 				}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 			})
 			DescribeTable("should create vmauth", func(name string, cr *vmv1beta1.VMAuth, verify func(cr *vmv1beta1.VMAuth)) {
-				namespacedName.Name = name
 				cr.Name = name
+				cr.Namespace = namespace
+				namespacedName.Name = name
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, namespacedName)
@@ -56,9 +57,6 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 				verify(cr)
 			},
 				Entry("with 1 replica", "replica-1", &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespacedName.Namespace,
-					},
 					Spec: vmv1beta1.VMAuthSpec{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
@@ -83,9 +81,6 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 					Expect(reloaderContainer.Resources.Requests.Memory()).To(Equal(ptr.To(resource.MustParse("25Mi"))))
 				}),
 				Entry("with strict security and vm config-reloader", "strict-with-reloader", &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespacedName.Namespace,
-					},
 					Spec: vmv1beta1.VMAuthSpec{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 							UseStrictSecurity:   ptr.To(true),

@@ -21,6 +21,8 @@ resources:
 - bases/operator.victoriametrics.com_vlogs.yaml
 - bases/operator.victoriametrics.com_vlsingles.yaml
 - bases/operator.victoriametrics.com_vlclusters.yaml
+- bases/operator.victoriametrics.com_vtsingles.yaml
+- bases/operator.victoriametrics.com_vtclusters.yaml
 - bases/operator.victoriametrics.com_vmanomalies.yaml
 patches:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
@@ -69,6 +71,14 @@ patches:
   target:
     kind: CustomResourceDefinition
     name: vlclusters.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vtsingles.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vtsingles.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vtclusters.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vtclusters.operator.victoriametrics.com
 - path: patches/operator.victoriametrics.com_vlagents.yaml
   target:
     kind: CustomResourceDefinition

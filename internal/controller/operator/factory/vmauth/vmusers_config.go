@@ -185,7 +185,7 @@ func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithU
 		}
 		return "", fmt.Errorf("cannot get object by given ref namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
 	}
-	return objT.AsURL(), nil
+	return obj.AsComponentURL(component), nil
 }
 
 func addAuthCredentialsBuildSecrets(sus *skipableVMUsers, ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
@@ -355,6 +355,15 @@ var clusterComponentToURL = map[string]func(obj client.Object) string{
 	"vlstorage": func(obj client.Object) string {
 		return obj.(*vmv1.VLCluster).StorageURL()
 	},
+	"vtinsert": func(obj client.Object) string {
+		return obj.(*vmv1.VTCluster).InsertURL()
+	},
+	"vtselect": func(obj client.Object) string {
+		return obj.(*vmv1.VTCluster).SelectURL()
+	},
+	"vtstorage": func(obj client.Object) string {
+		return obj.(*vmv1.VTCluster).StorageURL()
+	},
 }
 
 type clusterWithURL struct {
@@ -370,6 +379,8 @@ func newClusterWithURL(component string) *clusterWithURL {
 		clusterObj = &vmv1beta1.VMCluster{}
 	case strings.HasPrefix(component, "vl"):
 		clusterObj = &vmv1.VLCluster{}
+	case strings.HasPrefix(component, "vt"):
+		clusterObj = &vmv1.VTCluster{}
 	default:
 		panic(fmt.Sprintf("BUG: unexpected component name: %q", component))
 	}
@@ -402,13 +413,19 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVM
 			if _, ok := crdCacheURLCache[ref.CRD.AsKey()]; ok {
 				continue
 			}
-			crdObj, ok := crdNameToObject[ref.CRD.Kind]
+			var component string
+			kind := ref.CRD.Kind
+			if idx := strings.Index(kind, "/"); idx >= 0 {
+				component = kind[idx+1:]
+				kind = kind[:idx]
+			}
+			crdObj, ok := crdNameToObject[kind]
 			if !ok {
-				user.Status.CurrentSyncError = fmt.Sprintf("unsupported kind for ref: %q at idx=%d", ref.CRD.Kind, j)
+				user.Status.CurrentSyncError = fmt.Sprintf("unsupported kind for ref: %q at idx=%d", kind, j)
 				return false
 			}
-			ref.CRD.AddRefToObj(crdObj.(client.Object))
-			url, err := getAsURLObject(ctx, rclient, crdObj)
+			ref.CRD.AddRefToObj(crdObj)
+			url, err := getAsURLObject(ctx, rclient, crdObj, component)
 			if err != nil {
 				if !build.IsNotFound(err) {
 					resultErr = fmt.Errorf("cannot get object as url: %w", err)
@@ -726,6 +743,23 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 
 	}
 
+	appendPaths := func(paths []string, tr *vmv1beta1.TargetRef) []string {
+		if tr.CRD != nil {
+			switch tr.CRD.Kind {
+			case "VMCluster/vminsert":
+				return addVMInsertPaths(paths)
+			case "VMCluster/vmselect":
+				return addVMSelectPaths(paths)
+			case "VLCluster/vlinsert", "VTCluster/vtinsert":
+				return append(paths, "/insert/.*")
+			case "VLCluster/vlselect", "VTCluster/vtselect":
+				return append(paths, "/select/.*")
+			}
+		}
+		return append(paths, "/.*")
+
+	}
+
 	for i := range refs {
 		var urlMap yaml.MapSlice
 		ref := refs[i]
@@ -742,14 +776,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 		case 0:
 			// special case for
 			// https://github.com/VictoriaMetrics/operator/issues/379
-			switch {
-			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vminsert":
-				paths = addVMInsertPaths(paths)
-			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vmselect":
-				paths = addVMSelectPaths(paths)
-			default:
-				paths = append(paths, "/.*")
-			}
+			paths = appendPaths(paths, &ref)
 
 		case 1:
 			switch paths[0] {

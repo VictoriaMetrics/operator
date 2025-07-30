@@ -33,6 +33,8 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1.VLSingle{}, addVLSingleDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VLCluster{}, addVLClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VLAgent{}, addVLAgentDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VTSingle{}, addVTSingleDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VTCluster{}, addVTClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 }
@@ -289,6 +291,13 @@ func addVLSingleDefaults(objI any) {
 	cr := objI.(*vmv1.VLSingle)
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VLSingleDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
+}
+
+func addVTSingleDefaults(objI any) {
+	cr := objI.(*vmv1.VTSingle)
+	c := getCfg()
+	cv := config.ApplicationDefaults(c.VTSingleDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
 }
 
@@ -649,7 +658,173 @@ func addVMServiceScrapeDefaults(objI any) {
 
 const (
 	vlStorageDefaultDBPath = "/vlstorage-data"
+	vtStorageDefaultDBPath = "/vtstorage-data"
 )
+
+func addVTClusterDefaults(objI any) {
+	cr := objI.(*vmv1.VTCluster)
+	c := getCfg()
+
+	// cluster is tricky is has main strictSecurity and per app
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
+	if cr.Spec.ClusterDomainName == "" {
+		cr.Spec.ClusterDomainName = c.ClusterDomainName
+	}
+
+	if cr.Spec.Storage != nil {
+		if cr.Spec.Storage.UseStrictSecurity == nil {
+			cr.Spec.Storage.UseStrictSecurity = &useStrictSecurity
+		}
+		if cr.Spec.Storage.DisableSelfServiceScrape == nil {
+			cr.Spec.Storage.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		}
+		cr.Spec.Storage.ImagePullSecrets = append(cr.Spec.Storage.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
+
+		if cr.Spec.Storage.Image.Repository == "" {
+			cr.Spec.Storage.Image.Repository = c.VTClusterDefault.StorageDefault.Image
+		}
+		cr.Spec.Storage.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.Storage.Image.Repository)
+
+		if cr.Spec.Storage.Image.Tag == "" {
+			if cr.Spec.ClusterVersion != "" {
+				cr.Spec.Storage.Image.Tag = cr.Spec.ClusterVersion
+			} else {
+				cr.Spec.Storage.Image.Tag = c.VTClusterDefault.StorageDefault.Version
+			}
+		}
+
+		if cr.Spec.Storage.Port == "" {
+			cr.Spec.Storage.Port = c.VTClusterDefault.StorageDefault.Port
+		}
+
+		if cr.Spec.Storage.DNSPolicy == "" {
+			cr.Spec.Storage.DNSPolicy = corev1.DNSClusterFirst
+		}
+		if cr.Spec.Storage.SchedulerName == "" {
+			cr.Spec.Storage.SchedulerName = "default-scheduler"
+		}
+		if cr.Spec.Storage.Image.PullPolicy == "" {
+			cr.Spec.Storage.Image.PullPolicy = corev1.PullIfNotPresent
+		}
+		if cr.Spec.Storage.StorageDataPath == "" {
+			cr.Spec.Storage.StorageDataPath = vtStorageDefaultDBPath
+		}
+		if cr.Spec.Storage.UseDefaultResources == nil {
+			cr.Spec.Storage.UseDefaultResources = &c.VTClusterDefault.UseDefaultResources
+		}
+		cr.Spec.Storage.Resources = Resources(cr.Spec.Storage.Resources,
+			config.Resource(c.VTClusterDefault.StorageDefault.Resource),
+			*cr.Spec.Storage.UseDefaultResources,
+		)
+	}
+
+	if cr.Spec.Insert != nil {
+		if cr.Spec.Insert.UseStrictSecurity == nil {
+			cr.Spec.Insert.UseStrictSecurity = &useStrictSecurity
+		}
+		if cr.Spec.Insert.DisableSelfServiceScrape == nil {
+			cr.Spec.Insert.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		}
+		cr.Spec.Insert.ImagePullSecrets = append(cr.Spec.Insert.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
+
+		if cr.Spec.Insert.Image.Repository == "" {
+			cr.Spec.Insert.Image.Repository = c.VTClusterDefault.InsertDefault.Image
+		}
+		cr.Spec.Insert.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.Insert.Image.Repository)
+		if cr.Spec.Insert.Image.Tag == "" {
+			if cr.Spec.ClusterVersion != "" {
+				cr.Spec.Insert.Image.Tag = cr.Spec.ClusterVersion
+			} else {
+				cr.Spec.Insert.Image.Tag = c.VTClusterDefault.InsertDefault.Version
+			}
+		}
+		if cr.Spec.Insert.Port == "" {
+			cr.Spec.Insert.Port = c.VTClusterDefault.InsertDefault.Port
+		}
+		if cr.Spec.Insert.UseDefaultResources == nil {
+			cr.Spec.Insert.UseDefaultResources = &c.VTClusterDefault.UseDefaultResources
+		}
+		cr.Spec.Insert.Resources = Resources(cr.Spec.Insert.Resources,
+			config.Resource(c.VTClusterDefault.InsertDefault.Resource),
+			*cr.Spec.Insert.UseDefaultResources,
+		)
+
+	}
+
+	if cr.Spec.Select != nil {
+		if cr.Spec.Select.UseStrictSecurity == nil {
+			cr.Spec.Select.UseStrictSecurity = &useStrictSecurity
+		}
+		if cr.Spec.Select.DisableSelfServiceScrape == nil {
+			cr.Spec.Select.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		}
+
+		cr.Spec.Select.ImagePullSecrets = append(cr.Spec.Select.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
+
+		if cr.Spec.Select.Image.Repository == "" {
+			cr.Spec.Select.Image.Repository = c.VTClusterDefault.SelectDefault.Image
+		}
+		cr.Spec.Select.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.Select.Image.Repository)
+		if cr.Spec.Select.Image.Tag == "" {
+			if cr.Spec.ClusterVersion != "" {
+				cr.Spec.Select.Image.Tag = cr.Spec.ClusterVersion
+			} else {
+				cr.Spec.Select.Image.Tag = c.VTClusterDefault.SelectDefault.Version
+			}
+		}
+		if cr.Spec.Select.Port == "" {
+			cr.Spec.Select.Port = c.VTClusterDefault.SelectDefault.Port
+		}
+
+		if cr.Spec.Select.DNSPolicy == "" {
+			cr.Spec.Select.DNSPolicy = corev1.DNSClusterFirst
+		}
+		if cr.Spec.Select.SchedulerName == "" {
+			cr.Spec.Select.SchedulerName = "default-scheduler"
+		}
+		if cr.Spec.Select.Image.PullPolicy == "" {
+			cr.Spec.Select.Image.PullPolicy = corev1.PullIfNotPresent
+		}
+
+		if cr.Spec.Select.UseDefaultResources == nil {
+			cr.Spec.Select.UseDefaultResources = &c.VTClusterDefault.UseDefaultResources
+		}
+		cr.Spec.Select.Resources = Resources(cr.Spec.Select.Resources,
+			config.Resource(c.VTClusterDefault.SelectDefault.Resource),
+			*cr.Spec.Select.UseDefaultResources,
+		)
+	}
+
+	if cr.Spec.RequestsLoadBalancer.Enabled {
+		if cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity == nil {
+			cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity = &useStrictSecurity
+		}
+		if cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape == nil {
+			cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		}
+		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
+
+		cv := config.ApplicationDefaults(c.VMAuthDefault)
+		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, nil, &cv)
+		spec := &cr.Spec.RequestsLoadBalancer.Spec
+		if spec.EmbeddedProbes == nil {
+			spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{}
+		}
+		if spec.StartupProbe == nil {
+			spec.StartupProbe = &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{},
+				},
+			}
+		}
+		if spec.AdditionalServiceSpec != nil && !spec.AdditionalServiceSpec.UseAsDefault {
+			spec.AdditionalServiceSpec.UseAsDefault = true
+		}
+	}
+}
 
 func addVLClusterDefaults(objI any) {
 	cr := objI.(*vmv1.VLCluster)

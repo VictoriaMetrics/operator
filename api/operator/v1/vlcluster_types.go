@@ -619,6 +619,7 @@ func (cr *VLCluster) GetVLStorageName() string {
 	return prefixedName(cr.Name, "vlstorage")
 }
 
+//nolint:dupl,lll
 func (cr *VLCluster) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
@@ -746,11 +747,11 @@ func (cr *VLCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	return result
 }
 
-var globalClusterLabels = map[string]string{"app.kubernetes.io/part-of": "vlcluster"}
+var globalVLClusterLabels = map[string]string{"app.kubernetes.io/part-of": "vlcluster"}
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr *VLCluster) FinalLabels(selectorLabels map[string]string) map[string]string {
-	baseLabels := labels.Merge(globalClusterLabels, selectorLabels)
+	baseLabels := labels.Merge(globalVLClusterLabels, selectorLabels)
 	if cr.Spec.ManagedMetadata == nil {
 		// fast path
 		return baseLabels
@@ -896,6 +897,18 @@ func (cr *VLCluster) StorageURL() string {
 		}
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.VLStorage.ExtraArgs), cr.GetVLStorageName(), cr.Namespace, port)
+}
+
+func (cr *VLCluster) AsComponentURL(component string) string {
+	switch component {
+	case "vlinsert":
+		return cr.InsertURL()
+	case "vlselect":
+		return cr.SelectURL()
+	case "vlstorage":
+		return cr.StorageURL()
+	}
+	return ""
 }
 
 // +kubebuilder:object:root=true

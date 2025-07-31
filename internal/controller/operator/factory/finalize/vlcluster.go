@@ -16,7 +16,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-func OnVClusterDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) error {
+func OnVLClusterDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) error {
 
 	if cr.Spec.VLInsert != nil {
 		if err := OnVLInsertDelete(ctx, rclient, cr, cr.Spec.VLInsert); err != nil {

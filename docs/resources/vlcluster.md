@@ -33,7 +33,7 @@ Also, you can check out the [examples](#examples) section.
 
 ## Version management
 
-To set `VLCluster` version add `spec.clusterVersion` or `spec.COMPONENT.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
+To set `VLCluster` version add `spec.clusterVersion` or `spec.COMPONENT.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaLogs/releases)
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1
@@ -138,10 +138,10 @@ spec:
 - vlselectint-CLUSTER_NAME - needed for vlinsert pod discovery
 - vlclusterlb-CLUSTER_NAME - needed for metrics collection and exposing `vlselect` and `vlinsert` components via `VMAuth` balancer.
 
-The `requestsLoadBalancer` feature works transparently and is managed entirely by the `VLCluster` operator, 
-with no direct access to the underlying [VMAuth](https://docs.victoriametrics.com/victoriametrics/vmauth/) configuration. 
-If you need more control over load balancing behavior, 
-or want to combine request routing with authentication or (m)TLS, 
+The `requestsLoadBalancer` feature works transparently and is managed entirely by the `VLCluster` operator,
+with no direct access to the underlying [VMAuth](https://docs.victoriametrics.com/victoriametrics/vmauth/) configuration.
+If you need more control over load balancing behavior,
+or want to combine request routing with authentication or (m)TLS,
 consider deploying a standalone [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/) resource instead of enabling `requestsLoadBalancer`.
 
 

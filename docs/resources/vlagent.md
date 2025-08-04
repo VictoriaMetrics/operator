@@ -107,13 +107,13 @@ kind: VLAgent
 metadata:
   name: resources-example
 spec:
-    resources:
-      requests:
-        memory: "64Mi"
-        cpu: "250m"
-      limits:
-        memory: "128Mi"
-        cpu: "500m"
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "250m"
+    limits:
+      memory: "128Mi"
+      cpu: "500m"
 ```
 
 If these parameters are not specified, then,

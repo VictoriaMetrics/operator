@@ -32,7 +32,7 @@ metadata:
   name: example
 spec:
   remoteWrite:
-    - url: "http://VictoriaLogs-1:9428/internal/insert"
+    - url: "http://victorialogs-1:9428/internal/insert"
     - url: "http://VictoriaLogs-2:9428/internal/insert"
 ```
 

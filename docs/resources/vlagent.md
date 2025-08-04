@@ -33,7 +33,7 @@ metadata:
 spec:
   remoteWrite:
     - url: "http://victorialogs-1:9428/internal/insert"
-    - url: "http://VictoriaLogs-2:9428/internal/insert"
+    - url: "http://victorialogs-2:9428/internal/insert"
 ```
 
 This will allow you to start VLAgent so it can receive logs from [all supported sources](https://docs.victoriametrics.com/victorialogs/data-ingestion/),

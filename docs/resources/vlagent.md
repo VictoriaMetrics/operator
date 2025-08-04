@@ -126,7 +126,7 @@ by default all `VLAgent` pods have resource requests and limits from the default
 
 These default parameters will be used if:
 
-- `VM_VLOGSDEFAULT_USEDEFAULTRESOURCES` is set to `true` (default value),
+- `VM_VLAGENTDEFAULT_USEDEFAULTRESOURCES` is set to `true` (default value),
 - `VLAgent` CR doesn't have `resources` field in `spec` section.
 
 Field `resources` in `VLAgent` spec have higher priority than operator parameters.

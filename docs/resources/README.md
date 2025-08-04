@@ -28,7 +28,7 @@ You can find the specification for the custom resources on **[API Docs](https://
 
 ### Extra arguments
 
-If you can't find necessary field in the specification of custom resource, 
+If you can't find necessary field in the specification of custom resource,
 you can use `extraArgs` field for passing additional arguments to the application.
 
 Field `extraArgs` is supported for the following custom resources:
@@ -41,6 +41,7 @@ Field `extraArgs` is supported for the following custom resources:
 - [VMCluster/vminsert spec](https://docs.victoriametrics.com/operator/api/#vminsert)
 - [VMCluster/vmstorage spec](https://docs.victoriametrics.com/operator/api/#vmstorage)
 - [VMSingle spec](https://docs.victoriametrics.com/operator/api/#vmsinglespec)
+- [VLAgent spec](https://docs.victoriametrics.com/operator/api/#vlagentspec)
 
 Supported flags for each application can be found the in the corresponding documentation:
 
@@ -49,6 +50,7 @@ Supported flags for each application can be found the in the corresponding docum
 - [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/#advanced-usage)
 - [VMCluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#list-of-command-line-flags)
 - [VMSingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#list-of-command-line-flags)
+- [VLAgent](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage)
 
 Usage example:
 
@@ -66,7 +68,7 @@ spec:
 
 ### Extra environment variables
 
-Flag can be replaced with environment variable, it's useful for retrieving value from secret. 
+Flag can be replaced with environment variable, it's useful for retrieving value from secret.
 You can use `extraEnvs` field for passing additional arguments to the application.
 
 Usage example:
@@ -85,7 +87,7 @@ spec:
           key: dedup
 ```
 
-This feature really useful for using with 
+This feature really useful for using with
 [`-envflag.enable` command-line argument](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#environment-variables).
 
 ## Examples

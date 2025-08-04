@@ -131,7 +131,7 @@ These default parameters will be used if:
 
 Field `resources` in `VLAgent` spec have higher priority than operator parameters.
 
-If you set `VM_VLOGSDEFAULT_USEDEFAULTRESOURCES` to `false` and don't specify `resources` in `VLAgent` CRD,
+If you set `VM_VLAGENTDEFAULT_USEDEFAULTRESOURCES` to `false` and don't specify `resources` in `VLAgent` CRD,
 then `VLAgent` pods will be created without resource requests and limits.
 
 Also, you can specify requests without limits - in this case default values for limits will not be used.

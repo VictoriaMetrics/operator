@@ -492,7 +492,7 @@ spec:
         mountPath: /etc/mtls
       
   vmstorage:
-    env:
+    extraEnvs:
       - name: POD
         valueFrom:
           fieldRef:

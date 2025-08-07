@@ -137,6 +137,13 @@ func RunManager(ctx context.Context) error {
 	}
 
 	opts.BindFlags(managerFlags)
+
+	// If warn is still absent from zap-log-level commandline help explain why
+	if f := managerFlags.Lookup("zap-log-level"); f != nil && !strings.Contains(f.Usage, "warn") {
+		f.Usage += "\nNote: warn is missing by design due to warn level not being supported by controller-runtime\n" +
+			"See: https://dave.cheney.net/2015/11/05/lets-talk-about-logging and https://github.com/kubernetes-sigs/controller-runtime/issues/2002 for more information."
+	}
+
 	vmcontroller.BindFlags(managerFlags)
 	if err := managerFlags.Parse(os.Args[1:]); err != nil {
 		return fmt.Errorf("cannot parse provided flags: %w", err)

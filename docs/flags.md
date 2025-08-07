@@ -76,6 +76,8 @@ Usage of bin/operator:
     	Zap log encoding (one of 'json' or 'console')
   -zap-log-level value
     	Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', 'panic'or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
+    	Note: warn is missing by design due to warn level not being supported by controller-runtime
+    	See: https://dave.cheney.net/2015/11/05/lets-talk-about-logging and https://github.com/kubernetes-sigs/controller-runtime/issues/2002 for more information.
   -zap-stacktrace-level value
     	Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
   -zap-time-encoding value

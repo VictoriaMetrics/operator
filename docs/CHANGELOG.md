@@ -18,6 +18,7 @@ Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated de
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.25.2](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1252) version
 
 * FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): support `spec.limit`, `spec.labels`, `spec.query_offset` and `spec.group[*].keep_firing_for` PrometheusRule properties conversion to VMRule. Related issue [#1485](https://github.com/VictoriaMetrics/operator/issues/1485).
+* BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/) and [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/): do not mount emptydir if storage data volume is already present in volumes list. Now it's impossible to mount external PVC without overriding default storageDataPath using `spec.extraArgs` and without having unneeded emptydir listed among pod volumes. Related issues [#1477](https://github.com/VictoriaMetrics/operator/issues/1477).
 * BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): fixed config reloader command line arguments override. Related issue [#1378](https://github.com/VictoriaMetrics/operator/issues/1478).
 
 ## [v0.61.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.2)

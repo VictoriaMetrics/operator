@@ -68,7 +68,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingl
 	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
 		return err
 	}
-	if cr.Spec.Storage != nil && cr.Spec.StorageDataPath == "" {
+	if cr.Spec.Storage != nil {
 		if err := createOrUpdatePVC(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
@@ -153,9 +153,6 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 		args = append(args, fmt.Sprintf("-retention.maxDiskSpaceUsageBytes=%s", r.Spec.RetentionMaxDiskSpaceUsageBytes))
 	}
 
-	// if customStorageDataPath is not empty, do not add pvc.
-	shouldAddPVC := r.Spec.StorageDataPath == ""
-
 	storagePath := vlsingleDataDir
 	if r.Spec.StorageDataPath != "" {
 		storagePath = r.Spec.StorageDataPath
@@ -186,36 +183,18 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(r.Spec.Port).IntVal})
-	volumes := []corev1.Volume{}
-
-	storageSpec := r.Spec.Storage
-
-	if storageSpec == nil {
-		volumes = append(volumes, corev1.Volume{
-			Name: vlsingleDataVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-	} else if shouldAddPVC {
-		volumes = append(volumes, corev1.Volume{
-			Name: vlsingleDataVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: r.PrefixedName(),
-				},
-			},
-		})
-	}
+	var volumes []corev1.Volume
+	var vmMounts []corev1.VolumeMount
 	volumes = append(volumes, r.Spec.Volumes...)
-	vmMounts := []corev1.VolumeMount{
-		{
-			Name:      vlsingleDataVolumeName,
-			MountPath: storagePath,
-		},
-	}
-
 	vmMounts = append(vmMounts, r.Spec.VolumeMounts...)
+
+	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
+	if r.Spec.Storage != nil {
+		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: r.PrefixedName(),
+		}
+	}
+	volumes, vmMounts = build.StorageVolumeMountsTo(volumes, vmMounts, pvcSrc, vlsingleDataVolumeName, storagePath)
 
 	for _, s := range r.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{

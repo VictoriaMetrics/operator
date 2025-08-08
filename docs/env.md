@@ -1,8 +1,8 @@
 | Environment variables |
 | --- |
-| VM_METRICS_VERSION: `v1.122.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
-| VM_LOGS_VERSION: `v1.25.1` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
-| VM_ANOMALY_VERSION: `v1.24.1` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a> |
+| VM_METRICS_VERSION: `v1.123.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
+| VM_LOGS_VERSION: `v1.26.0` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
+| VM_ANOMALY_VERSION: `v1.25.2` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a> |
 | VM_USECUSTOMCONFIGRELOADER: `false` <a href="#variables-vm-usecustomconfigreloader" id="variables-vm-usecustomconfigreloader">#</a><br>enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |
 | VM_CUSTOMCONFIGRELOADERIMAGE: `victoriametrics/operator:config-reloader-v0.60.1` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a> |

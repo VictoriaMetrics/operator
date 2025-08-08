@@ -41,7 +41,7 @@ Also, you can check out the [examples](#examples) section.
 
 ## Version management
 
-To set `VLSingle` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
+To set `VLSingle` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaLogs/releases)
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1

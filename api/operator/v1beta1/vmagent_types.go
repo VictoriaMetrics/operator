@@ -730,6 +730,10 @@ func (cr *VMAgent) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
+func (cr *VMAgent) AsComponentURL(_ string) string {
+	return cr.AsURL()
+}
+
 // AsCRDOwner implements interface
 func (*VMAgent) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Agent)

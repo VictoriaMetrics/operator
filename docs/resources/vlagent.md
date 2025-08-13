@@ -77,7 +77,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/victoria-logs
-    tag: v1.26.0
+    tag: v1.28.0
     pullPolicy: Always
 ```
 
@@ -91,7 +91,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/victoria-logs
-    tag: v1.26.0
+    tag: v1.28.0
     pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* SECURITY: upgrade Go builder from Go1.25.6 to Go1.25.0. See [the list of changes in Go1.25.0](https://tip.golang.org/doc/go1.25#introduction).
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.123.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11230) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.28.0](https://docs.victoriametrics.com/victorialogs/changelog/#v1280).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.25.2](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1252) version

@@ -3,6 +3,7 @@ package vlcluster
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -151,6 +152,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
+	sort.Strings(args)
 	vmauthLBCnt := corev1.Container{
 		Name: "vmauth",
 		Ports: []corev1.ContainerPort{

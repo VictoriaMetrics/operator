@@ -1498,6 +1498,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
+	sort.Strings(args)
 	vmauthLBCnt := corev1.Container{
 		Name: "vmauth",
 		Ports: []corev1.ContainerPort{

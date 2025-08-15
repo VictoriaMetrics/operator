@@ -42,7 +42,7 @@ func TestDeployOk(t *testing.T) {
 		}
 
 		err := wait.PollUntilContextTimeout(ctx, time.Millisecond*50,
-			waitTimeout, false, func(ctx context.Context) (done bool, err error) {
+			waitTimeout, true, func(ctx context.Context) (done bool, err error) {
 				var createdDep appsv1.Deployment
 				if err := rclient.Get(ctx, types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, &createdDep); err != nil {
 					if k8serrors.IsNotFound(err) {

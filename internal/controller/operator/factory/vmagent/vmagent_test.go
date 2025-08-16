@@ -692,7 +692,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			if tt.statefulsetMode {
 				if tt.cr.Spec.ShardCount != nil {
 					for i := 0; i < *tt.cr.Spec.ShardCount; i++ {
-						err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, false, func(ctx context.Context) (done bool, err error) {
+						err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, true, func(ctx context.Context) (done bool, err error) {
 							var sts appsv1.StatefulSet
 							if err := fclient.Get(ctx, types.NamespacedName{
 								Namespace: "default",
@@ -716,7 +716,7 @@ func TestCreateOrUpdate(t *testing.T) {
 						}
 					}
 				} else {
-					err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, false, func(ctx context.Context) (done bool, err error) {
+					err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, true, func(ctx context.Context) (done bool, err error) {
 						var sts appsv1.StatefulSet
 						if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: fmt.Sprintf("vmagent-%s", tt.cr.Name)}, &sts); err != nil {
 							return false, nil

@@ -49,7 +49,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			err := CreateOrUpdate(ctx, cr, fclient)
 			errC <- err
 		}()
-		err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, false, func(ctx context.Context) (done bool, err error) {
+		err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, true, func(ctx context.Context) (done bool, err error) {
 			var sts appsv1.StatefulSet
 			if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: fmt.Sprintf("vlagent-%s", cr.Name)}, &sts); err != nil {
 				return false, nil

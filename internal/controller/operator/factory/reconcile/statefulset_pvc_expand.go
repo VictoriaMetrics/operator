@@ -304,7 +304,7 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 	nsn := types.NamespacedName{Name: oldStatefulSet.Name, Namespace: oldStatefulSet.Namespace}
 
 	// wait until sts disappears
-	if err := wait.PollUntilContextTimeout(ctx, time.Second, time.Second*30, false, func(_ context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, time.Second, time.Second*30, true, func(_ context.Context) (done bool, err error) {
 		err = rclient.Get(ctx, nsn, &appsv1.StatefulSet{})
 		if k8serrors.IsNotFound(err) {
 			return true, nil

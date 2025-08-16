@@ -20,6 +20,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.25.2](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1252) version
 
 * FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): support `spec.limit`, `spec.labels`, `spec.query_offset` and `spec.group[*].keep_firing_for` PrometheusRule properties conversion to VMRule. Related issue [#1485](https://github.com/VictoriaMetrics/operator/issues/1485).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): reduce reconcile latency. See this PR [#1510](https://github.com/VictoriaMetrics/operator/pull/1510) for details. Thanks to the @vrutkovs
 
 * BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): fixed config reloader command line arguments override. Related issue [#1378](https://github.com/VictoriaMetrics/operator/issues/1478).
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): sort requestsLoadBalancer `Deployment` `args` in order to prevent endless update loop if `extraArgs` are set.

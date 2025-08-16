@@ -29,10 +29,7 @@ func TestDeployOk(t *testing.T) {
 		createErr := make(chan error)
 		go func() {
 			err := Deployment(ctx, rclient, dep, nil, false)
-			select {
-			case createErr <- err:
-			default:
-			}
+			createErr <- err
 		}()
 		reloadDep := func() {
 			t.Helper()

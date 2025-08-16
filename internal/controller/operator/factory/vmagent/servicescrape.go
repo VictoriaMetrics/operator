@@ -16,10 +16,10 @@ func generateServiceScrapeConfig(
 	sc *vmv1beta1.VMServiceScrape,
 	ep vmv1beta1.Endpoint,
 	i int,
-	apiserverConfig *vmv1beta1.APIServerConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
+	apiserverConfig := cr.Spec.APIServerConfig
+	se := cr.Spec.VMAgentSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",

@@ -15,10 +15,10 @@ func generateProbeConfig(
 	cr *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMProbe,
 	i int,
-	apiserverConfig *vmv1beta1.APIServerConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
+	apiserverConfig := cr.Spec.APIServerConfig
+	se := cr.Spec.VMAgentSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",

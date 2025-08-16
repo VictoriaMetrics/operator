@@ -141,9 +141,15 @@ rules:
   - vlsingles
   - vlsingles/finalizers
   - vlsingles/status
-  - vlclusters
-  - vlclusters/finalizers
-  - vlclusters/status
+  - vtclusters
+  - vtclusters/finalizers
+  - vtclusters/status
+  - vtsingles
+  - vtsingles/finalizers
+  - vtsingles/status
+  - vtclusters
+  - vtclusters/finalizers
+  - vtclusters/status
   - vmagents
   - vmagents/finalizers
   - vmagents/status

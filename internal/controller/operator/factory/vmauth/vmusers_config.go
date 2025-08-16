@@ -424,6 +424,42 @@ func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache m
 		return nil, fmt.Errorf("cannot build unauthorized_user config section: %w", err)
 	}
 
+	var oidcCfg []yaml.MapSlice
+	for _, realm := range cr.Spec.OIDC {
+		if realm == nil {
+			continue
+		}
+		var oidcItem yaml.MapSlice
+		if realm.SkipDiscovery {
+			if len(realm.JWKsURL) > 0 {
+				oidcItem = append(oidcItem, yaml.MapItem{Key: "jwks_url", Value: realm.JWKsURL})
+			}
+			var publicKeyFiles []string
+			if len(realm.PublicKeyFiles) > 0 {
+				publicKeyFiles = append(publicKeyFiles, realm.PublicKeyFiles...)
+			}
+			for _, ref := range realm.PublicKeySecrets {
+				file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, ref)
+				if err != nil {
+					return nil, fmt.Errorf("cannot build jwt config section: %w", err)
+				}
+				publicKeyFiles = append(publicKeyFiles, file)
+			}
+			if len(publicKeyFiles) > 0 {
+				oidcItem = append(oidcItem, yaml.MapItem{Key: "public_key_files", Value: publicKeyFiles})
+			}
+		} else {
+			oidcItem = append(oidcItem, yaml.MapItem{Key: "issuer_url", Value: realm.IssuerURL})
+		}
+		if realm.EnforcePrefix {
+			oidcItem = append(oidcItem, yaml.MapItem{Key: "enforce_prefix", Value: realm.EnforcePrefix})
+		}
+		oidcCfg = append(oidcCfg, oidcItem)
+	}
+	if len(oidcCfg) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "oidc", Value: oidcCfg})
+	}
+
 	if len(unAuthorizedAccessValue) > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: unAuthorizedAccessValue})
 	}
@@ -789,7 +825,7 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1b
 	}
 
 	// generate user access config.
-	var name, username, password, token string
+	var name, username, password, token, clientID string
 	if user.Spec.Name != nil {
 		name = *user.Spec.Name
 	}
@@ -807,6 +843,9 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1b
 		password = *user.Spec.Password
 	}
 
+	if cr.Spec.License.IsProvided() && user.Spec.ClientID != nil {
+		clientID = *user.Spec.ClientID
+	}
 	if user.Spec.BearerToken != nil {
 		token = *user.Spec.BearerToken
 	}
@@ -829,6 +868,15 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1b
 		})
 		return r, nil
 	}
+
+	if clientID != "" {
+		r = append(r, yaml.MapItem{
+			Key:   "client_id",
+			Value: clientID,
+		})
+		return r, nil
+	}
+
 	// mutate vmuser
 	if username == "" {
 		username = user.Name

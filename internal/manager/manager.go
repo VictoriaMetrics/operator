@@ -148,7 +148,6 @@ func RunManager(ctx context.Context) error {
 	if err := managerFlags.Parse(os.Args[1:]); err != nil {
 		return fmt.Errorf("cannot parse provided flags: %w", err)
 	}
-
 	if *version {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", buildinfo.Version)
 		os.Exit(0)
@@ -209,6 +208,9 @@ func RunManager(ctx context.Context) error {
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt, clientQPSLimit)
 	mustAddRestClientMetrics(r)
+	flagsAsMetrics(r, managerFlags)
+	config.ConfigAsMetrics(r, baseConfig)
+
 	setupLog.Info("Registering Components.")
 	var watchNsCacheByName map[string]cache.Config
 	watchNss := config.MustGetWatchNamespaces()
@@ -568,4 +570,20 @@ func getMetricsServerMTLSOpts() ([]func(*tls.Config), error) {
 	})
 
 	return opts, nil
+}
+
+func flagsAsMetrics(registry metrics.RegistererGatherer, flagSet *flag.FlagSet) {
+	isSetMap := make(map[string]struct{})
+	flagSet.Visit(func(f *flag.Flag) {
+		isSetMap[f.Name] = struct{}{}
+	})
+	m := prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "flag", Help: "defines provided flags for the operator"}, []string{"name", "value", "is_set"})
+	flagSet.VisitAll(func(f *flag.Flag) {
+		isSetStr := "false"
+		if _, isSet := isSetMap[f.Name]; isSet {
+			isSetStr = "true"
+		}
+		m.WithLabelValues(f.Name, f.Value.String(), isSetStr).Set(1)
+	})
+	registry.MustRegister(m)
 }

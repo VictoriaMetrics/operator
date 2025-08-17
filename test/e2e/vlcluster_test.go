@@ -300,7 +300,9 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 
 						// vlselect must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLSelectName()}
-						Expect(k8sClient.Get(ctx, nsn, dep)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						Eventually(func() error {
+							return k8sClient.Get(ctx, nsn, dep)
+						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					},
 				},
 				testStep{
@@ -326,7 +328,9 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
 						// vlselect must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
-						Expect(k8sClient.Get(ctx, nsn, dep)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						Eventually(func() error {
+							return k8sClient.Get(ctx, nsn, dep)
+						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 					},
 				},
 				testStep{
@@ -354,8 +358,6 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
 						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(0)))
-
-						GinkgoWriter.Println("DEBUG DEBUG ", *cr.Spec.VLSelect.ReplicaCount)
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLSelectName()}
 						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(0)))

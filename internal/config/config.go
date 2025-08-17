@@ -34,10 +34,9 @@ var (
 	//
 	// DO NOT FORGET TO MODIFY VERSIONS IN BaseOperatorConf
 	defaultEnvs = map[string]string{
-		"VM_METRICS_VERSION":        "v1.123.0",
-		"VM_LOGS_VERSION":           "v1.28.0",
-		"VM_ANOMALY_VERSION":        "v1.25.2",
-		"CUSTOMCONFIGRELOADERIMAGE": "victoriametrics/operator:config-reloader-v0.60.1",
+		"VM_METRICS_VERSION": "v1.123.0",
+		"VM_LOGS_VERSION":    "v1.28.0",
+		"VM_ANOMALY_VERSION": "v1.25.2",
 	}
 )
 
@@ -112,7 +111,7 @@ type BaseOperatorConf struct {
 	UseCustomConfigReloader bool `default:"false" env:"USECUSTOMCONFIGRELOADER"`
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry                string `default:"" env:"CONTAINERREGISTRY"`
-	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.60.1" env:"CUSTOMCONFIGRELOADERIMAGE"`
+	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.62.0" env:"CUSTOMCONFIGRELOADERIMAGE"`
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false" env:"PSPAUTOCREATEENABLED"`
 

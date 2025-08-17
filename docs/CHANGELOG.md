@@ -13,12 +13,15 @@ aliases:
 
 ## tip
 
-* SECURITY: upgrade Go builder from Go1.25.6 to Go1.25.0. See [the list of changes in Go1.25.0](https://tip.golang.org/doc/go1.25#introduction).
+## [v0.62.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.62.0)
+
+**Release date:** 17 Aug 2025
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.123.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11230) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.28.0](https://docs.victoriametrics.com/victorialogs/changelog/#v1280).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.25.2](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1252) version
 
+* FEATURE: upgrade Go builder from Go1.24.6 to Go1.25.0. See [the list of changes in Go1.25.0](https://tip.golang.org/doc/go1.25#introduction).
 * FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): support `spec.limit`, `spec.labels`, `spec.query_offset` and `spec.group[*].keep_firing_for` PrometheusRule properties conversion to VMRule. Related issue [#1485](https://github.com/VictoriaMetrics/operator/issues/1485).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): reduce reconcile latency. See this PR [#1510](https://github.com/VictoriaMetrics/operator/pull/1510) for details. Thanks to the @vrutkovs
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): expose operator configuration as metrics. Add `flag` and `config_parameter` metrics with `name`, `is_set` and `value` labels. See this issue [#1469](https://github.com/VictoriaMetrics/operator/issues/1469) for details.

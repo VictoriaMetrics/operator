@@ -1,3 +1,9 @@
+---
+build:
+  list: never
+  publishResources: false
+  render: never
+---
 This documentation section describes the design and interaction between the custom resource definitions (CRD) that the Victoria
 Metrics Operator introduces.
 [Operator](https://docs.victoriametrics.com/operator/) introduces the following custom resources:

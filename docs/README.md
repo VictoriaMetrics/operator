@@ -1,3 +1,9 @@
+---
+build:
+  list: never
+  publishResources: false
+  render: never
+---
 Operator serves to make running VictoriaMetrics applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
 
 VictoriaMetrics Operator (`vmoperator`) is the classic kubernetes-operator for VictoriaMetrics with many [great features](#features-of-vmoperator).

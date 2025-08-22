@@ -141,9 +141,9 @@ rules:
   - vlsingles
   - vlsingles/finalizers
   - vlsingles/status
-  - vtclusters
-  - vtclusters/finalizers
-  - vtclusters/status
+  - vlclusters
+  - vlclusters/finalizers
+  - vlclusters/status
   - vtsingles
   - vtsingles/finalizers
   - vtsingles/status

@@ -89,10 +89,10 @@ spec:
 If these parameters are not specified, then,
 by default all `VTCluster` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
 
-- `VM_VTCLUSTERDEFAULT_STORAGE_RESOURCE_LIMIT_MEM:` - default memory limit for `VTCluster.storage` pods,
-- `VM_VTCLUSTERDEFAULT_STORAGE_RESOURCE_LIMIT_CPU` - default memory limit for `VTCluster.vtstorage` pods,
+- `VM_VTCLUSTERDEFAULT_STORAGE_RESOURCE_LIMIT_MEM` - default memory limit for `VTCluster.storage` pods,
+- `VM_VTCLUSTERDEFAULT_STORAGE_RESOURCE_LIMIT_CPU` - default cpu limit for `VTCluster.vtstorage` pods,
 - `VM_VTCLUSTERDEFAULT_STORAGE_RESOURCE_REQUEST_MEM` - default memory limit for `VTCluster.storage` pods,
-- `VM_VTCLUSTERDEFAULT_STORAGE_RESOURCE_REQUEST_CPU` - default memory limit for `VTCluster.storage` pods.
+- `VM_VTCLUSTERDEFAULT_STORAGE_RESOURCE_REQUEST_CPU` - default cpu limit for `VTCluster.storage` pods.
 
 These default parameters will be used if:
 

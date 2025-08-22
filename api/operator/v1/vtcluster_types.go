@@ -764,7 +764,7 @@ func (cr *VTCluster) SelectURL() string {
 	}
 	port := cr.Spec.Select.Port
 	if port == "" {
-		port = "10481"
+		port = "10471"
 	}
 	if cr.Spec.Select.ServiceSpec != nil && cr.Spec.Select.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.Select.ServiceSpec.Spec.Ports {
@@ -783,7 +783,7 @@ func (cr *VTCluster) InsertURL() string {
 	}
 	port := cr.Spec.Insert.Port
 	if port == "" {
-		port = "10480"
+		port = "10481"
 	}
 	if cr.Spec.Insert.ServiceSpec != nil && cr.Spec.Insert.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.Insert.ServiceSpec.Spec.Ports {
@@ -802,7 +802,7 @@ func (cr *VTCluster) StorageURL() string {
 	}
 	port := cr.Spec.Storage.Port
 	if port == "" {
-		port = "10482"
+		port = "10491"
 	}
 	if cr.Spec.Storage.ServiceSpec != nil && cr.Spec.Storage.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.Storage.ServiceSpec.Spec.Ports {

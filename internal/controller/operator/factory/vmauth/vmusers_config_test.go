@@ -947,7 +947,7 @@ func Test_buildConfig(t *testing.T) {
   - http://vlsingle-test.default.svc:9428
   bearer_token: bearer-token-3
 - url_prefix:
-  - http://vtselect-test.default.svc:10481
+  - http://vtselect-test.default.svc:10471
   bearer_token: bearer-token-4
 `,
 		},

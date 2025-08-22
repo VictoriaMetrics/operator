@@ -185,7 +185,7 @@ func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithU
 		}
 		return "", fmt.Errorf("cannot get object by given ref namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
 	}
-	return obj.AsComponentURL(component), nil
+	return objT.AsURL(), nil
 }
 
 func addAuthCredentialsBuildSecrets(sus *skipableVMUsers, ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
@@ -329,6 +329,10 @@ var crdNameToObject = map[string]objectWithURL{
 	"VLCluster/vlinsert":  newClusterWithURL("vlinsert"),
 	"VLCluster/vlstorage": newClusterWithURL("vlstorage"),
 	"VLAgent":             &vmv1.VLAgent{},
+	"VTSingle":            &vmv1.VTSingle{},
+	"VTCluster/vtselect":  newClusterWithURL("vtselect"),
+	"VTCluster/vtinsert":  newClusterWithURL("vtinsert"),
+	"VTCluster/vtstorage": newClusterWithURL("vtstorage"),
 }
 
 // helper interface to restore VMCluster type
@@ -338,13 +342,13 @@ type unwrapObject interface {
 
 var clusterComponentToURL = map[string]func(obj client.Object) string{
 	"vminsert": func(obj client.Object) string {
-		return obj.(*vmv1beta1.VMCluster).VMInsertURL()
+		return obj.(*vmv1beta1.VMCluster).InsertURL()
 	},
 	"vmselect": func(obj client.Object) string {
-		return obj.(*vmv1beta1.VMCluster).VMSelectURL()
+		return obj.(*vmv1beta1.VMCluster).SelectURL()
 	},
 	"vmstorage": func(obj client.Object) string {
-		return obj.(*vmv1beta1.VMCluster).VMStorageURL()
+		return obj.(*vmv1beta1.VMCluster).StorageURL()
 	},
 	"vlinsert": func(obj client.Object) string {
 		return obj.(*vmv1.VLCluster).InsertURL()
@@ -413,19 +417,13 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVM
 			if _, ok := crdCacheURLCache[ref.CRD.AsKey()]; ok {
 				continue
 			}
-			var component string
-			kind := ref.CRD.Kind
-			if idx := strings.Index(kind, "/"); idx >= 0 {
-				component = kind[idx+1:]
-				kind = kind[:idx]
-			}
-			crdObj, ok := crdNameToObject[kind]
+			crdObj, ok := crdNameToObject[ref.CRD.Kind]
 			if !ok {
-				user.Status.CurrentSyncError = fmt.Sprintf("unsupported kind for ref: %q at idx=%d", kind, j)
+				user.Status.CurrentSyncError = fmt.Sprintf("unsupported kind for ref: %q at idx=%d", ref.CRD.Kind, j)
 				return false
 			}
-			ref.CRD.AddRefToObj(crdObj)
-			url, err := getAsURLObject(ctx, rclient, crdObj, component)
+			ref.CRD.AddRefToObj(crdObj.(client.Object))
+			url, err := getAsURLObject(ctx, rclient, crdObj)
 			if err != nil {
 				if !build.IsNotFound(err) {
 					resultErr = fmt.Errorf("cannot get object as url: %w", err)

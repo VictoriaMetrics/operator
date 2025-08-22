@@ -471,10 +471,6 @@ func (cr *VMAlert) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
-func (cr *VMAlert) AsComponentURL(_ string) string {
-	return cr.AsURL()
-}
-
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAlert) IsUnmanaged() bool {
 	return !cr.Spec.SelectAllByDefault && cr.Spec.RuleSelector == nil && cr.Spec.RuleNamespaceSelector == nil

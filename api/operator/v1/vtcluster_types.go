@@ -814,18 +814,6 @@ func (cr *VTCluster) StorageURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.Storage.ExtraArgs), cr.GetVTStorageName(), cr.Namespace, port)
 }
 
-func (cr *VTCluster) AsComponentURL(component string) string {
-	switch component {
-	case "vtinsert":
-		return cr.InsertURL()
-	case "vtselect":
-		return cr.SelectURL()
-	case "vtstorage":
-		return cr.StorageURL()
-	}
-	return ""
-}
-
 // +kubebuilder:object:root=true
 
 // VTClusterList contains a list of VTCluster

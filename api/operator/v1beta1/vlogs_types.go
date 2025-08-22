@@ -324,10 +324,6 @@ func (cr *VLogs) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
-func (cr *VLogs) AsComponentURL(_ string) string {
-	return cr.AsURL()
-}
-
 // LastAppliedSpecAsPatch return last applied vlogs spec as patch annotation
 func (cr *VLogs) LastAppliedSpecAsPatch() (client.Patch, error) {
 	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)

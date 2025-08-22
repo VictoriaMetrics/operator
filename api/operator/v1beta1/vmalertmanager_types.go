@@ -385,10 +385,6 @@ func (cr *VMAlertmanager) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", cr.accessScheme(), cr.PrefixedName(), cr.Namespace, port)
 }
 
-func (cr *VMAlertmanager) AsComponentURL(_ string) string {
-	return cr.AsURL()
-}
-
 // returns fqdn for direct pod access
 func (cr *VMAlertmanager) asPodFQDN(idx int) string {
 	return fmt.Sprintf("%s://%s-%d.%s.%s.svc:%s", cr.accessScheme(), cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace, cr.Port())

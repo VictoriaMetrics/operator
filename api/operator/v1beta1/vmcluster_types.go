@@ -975,18 +975,6 @@ func (cr *VMCluster) StorageURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMStorage.ExtraArgs), cr.GetVMStorageName(), cr.Namespace, port)
 }
 
-func (cr *VMCluster) AsComponentURL(component string) string {
-	switch component {
-	case "vminsert":
-		return cr.InsertURL()
-	case "vmselect":
-		return cr.SelectURL()
-	case "vmstorage":
-		return cr.StorageURL()
-	}
-	return ""
-}
-
 func (cr *VMSelect) Probe() *EmbeddedProbes {
 	return cr.EmbeddedProbes
 }

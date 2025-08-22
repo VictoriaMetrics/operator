@@ -326,10 +326,6 @@ func (cr *VTSingle) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
-func (cr *VTSingle) AsComponentURL(_ string) string {
-	return cr.AsURL()
-}
-
 // LastAppliedSpecAsPatch return last applied vtsingle spec as patch annotation
 func (cr *VTSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
 	return vmv1beta1.LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)

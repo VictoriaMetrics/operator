@@ -921,7 +921,7 @@ func (cr *VMCluster) AsURL() string {
 	return "unknown"
 }
 
-func (cr *VMCluster) VMSelectURL() string {
+func (cr *VMCluster) SelectURL() string {
 	if cr.Spec.VMSelect == nil {
 		return ""
 	}
@@ -939,7 +939,7 @@ func (cr *VMCluster) VMSelectURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.GetVMSelectName(), cr.Namespace, port)
 }
 
-func (cr *VMCluster) VMInsertURL() string {
+func (cr *VMCluster) InsertURL() string {
 	if cr.Spec.VMInsert == nil {
 		return ""
 	}
@@ -957,7 +957,7 @@ func (cr *VMCluster) VMInsertURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.GetVMInsertName(), cr.Namespace, port)
 }
 
-func (cr *VMCluster) VMStorageURL() string {
+func (cr *VMCluster) StorageURL() string {
 	if cr.Spec.VMStorage == nil {
 		return ""
 	}
@@ -973,6 +973,18 @@ func (cr *VMCluster) VMStorageURL() string {
 		}
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMStorage.ExtraArgs), cr.GetVMStorageName(), cr.Namespace, port)
+}
+
+func (cr *VMCluster) AsComponentURL(component string) string {
+	switch component {
+	case "vminsert":
+		return cr.InsertURL()
+	case "vmselect":
+		return cr.SelectURL()
+	case "vmstorage":
+		return cr.StorageURL()
+	}
+	return ""
 }
 
 func (cr *VMSelect) Probe() *EmbeddedProbes {

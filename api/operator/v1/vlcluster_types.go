@@ -619,6 +619,7 @@ func (cr *VLCluster) GetVLStorageName() string {
 	return prefixedName(cr.Name, "vlstorage")
 }
 
+//nolint:dupl,lll
 func (cr *VLCluster) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
@@ -746,11 +747,11 @@ func (cr *VLCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	return result
 }
 
-var globalClusterLabels = map[string]string{"app.kubernetes.io/part-of": "vlcluster"}
+var globalVLClusterLabels = map[string]string{"app.kubernetes.io/part-of": "vlcluster"}
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr *VLCluster) FinalLabels(selectorLabels map[string]string) map[string]string {
-	baseLabels := labels.Merge(globalClusterLabels, selectorLabels)
+	baseLabels := labels.Merge(globalVLClusterLabels, selectorLabels)
 	if cr.Spec.ManagedMetadata == nil {
 		// fast path
 		return baseLabels
@@ -848,7 +849,7 @@ func (cr *VLCluster) SelectURL() string {
 	}
 	port := cr.Spec.VLSelect.Port
 	if port == "" {
-		port = "8481"
+		port = "9471"
 	}
 	if cr.Spec.VLSelect.ServiceSpec != nil && cr.Spec.VLSelect.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.VLSelect.ServiceSpec.Spec.Ports {
@@ -867,7 +868,7 @@ func (cr *VLCluster) InsertURL() string {
 	}
 	port := cr.Spec.VLInsert.Port
 	if port == "" {
-		port = "8480"
+		port = "9481"
 	}
 	if cr.Spec.VLInsert.ServiceSpec != nil && cr.Spec.VLInsert.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.VLInsert.ServiceSpec.Spec.Ports {
@@ -886,7 +887,7 @@ func (cr *VLCluster) StorageURL() string {
 	}
 	port := cr.Spec.VLStorage.Port
 	if port == "" {
-		port = "8482"
+		port = "9491"
 	}
 	if cr.Spec.VLStorage.ServiceSpec != nil && cr.Spec.VLStorage.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.VLStorage.ServiceSpec.Spec.Ports {
@@ -896,6 +897,18 @@ func (cr *VLCluster) StorageURL() string {
 		}
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.VLStorage.ExtraArgs), cr.GetVLStorageName(), cr.Namespace, port)
+}
+
+func (cr *VLCluster) AsComponentURL(component string) string {
+	switch component {
+	case "vlinsert":
+		return cr.InsertURL()
+	case "vlselect":
+		return cr.SelectURL()
+	case "vlstorage":
+		return cr.StorageURL()
+	}
+	return ""
 }
 
 // +kubebuilder:object:root=true

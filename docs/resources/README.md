@@ -3,6 +3,8 @@ build:
   list: never
   publishResources: false
   render: never
+sitemap:
+  disable: true
 ---
 This documentation section describes the design and interaction between the custom resource definitions (CRD) that the Victoria
 Metrics Operator introduces.

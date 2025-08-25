@@ -23651,6 +23651,69 @@ spec:
                   and v1.111.0 vmauth version
                   related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security
                 type: string
+              jwt:
+                description: |-
+                  IPFilters global access ip filters
+                  supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)
+                  will be added after removal of VMUserConfigOptions
+                  currently it has collision with inlined fields
+                  IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+                  OODC represents configuration section for OIDC authorization
+                items:
+                  description: VMAuthOIDCRealm defines OIDC realm parameters
+                  properties:
+                    enforce_prefix:
+                      description: 'EnforcePrefix requires JWT token to start with
+                        "Bearer: "'
+                      type: boolean
+                    issuer_url:
+                      description: IssuerURL is OpenID Connect issuer URL
+                      type: string
+                    jwks_url:
+                      description: JWKsURL is the OpenID Connect JWKS URL
+                      type: string
+                    public_key_files:
+                      description: |-
+                        PublicKeyFiles is a list of paths pointing to public key files in PEM format to use
+                        for verifying JWT tokens
+                      items:
+                        type: string
+                      type: array
+                    public_key_secrets:
+                      description: |-
+                        PublicKeySecrets is a list of k8s Secret selectors pointing to public key files in PEM format to use
+                        for verifying JWT tokens
+                      items:
+                        description: SecretKeySelector selects a key of a Secret.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      type: array
+                    skip_discovery:
+                      description: SkipDiscovery allows to skip OIDC discovery and
+                        use manually supplied Endpoints
+                      type: boolean
+                  type: object
+                type: array
               license:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
@@ -38810,6 +38873,9 @@ spec:
               bearerToken:
                 description: BearerToken Authorization header value for accessing
                   protected endpoint.
+                type: string
+              client_id:
+                description: ClientID extracted from JWT token
                 type: string
               default_url:
                 description: |-

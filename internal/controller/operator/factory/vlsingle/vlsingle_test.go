@@ -181,7 +181,7 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			err := CreateOrUpdate(context.TODO(), fclient, tt.args.cr)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVLogs() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 		})
@@ -269,12 +269,12 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := createOrUpdateService(context.TODO(), fclient, tt.args.cr, nil)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVLogsService() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdateService() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !reflect.DeepEqual(got.Name, tt.want.Name) {
-				t.Errorf("CreateOrUpdateVLogsService(): %s", cmp.Diff(got, tt.want))
+				t.Errorf("CreateOrUpdateService(): %s", cmp.Diff(got, tt.want))
 			}
 			if len(got.Spec.Ports) != tt.wantPortsLen {
 				t.Fatalf("unexpected number of ports: %d, want: %d", len(got.Spec.Ports), tt.wantPortsLen)

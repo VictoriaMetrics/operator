@@ -25,6 +25,11 @@ Metrics Operator introduces.
 - [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/)
 - [VMUser](https://docs.victoriametrics.com/operator/resources/vmuser/)
 - [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/)
+- [VLSingle](https://docs.victoriametrics.com/operator/resources/vlsingle/)
+- [VLAgent](https://docs.victoriametrics.com/operator/resources/vlagent/)
+- [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/)
+- [VTSingle](https://docs.victoriametrics.com/operator/resources/vtsingle/)
+- [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/)
 
 Here is the scheme of relations between the custom resources:
 

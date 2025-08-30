@@ -303,7 +303,7 @@ func (cr *VLAgent) AnnotationsFiltered() map[string]string {
 	return dst
 }
 
-// SelectorLabels returns selector labels for querieng any vlagent related resources
+// SelectorLabels returns selector labels for querying any vlagent related resources
 func (cr *VLAgent) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlagent",

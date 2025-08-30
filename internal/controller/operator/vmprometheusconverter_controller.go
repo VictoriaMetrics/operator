@@ -50,7 +50,7 @@ const (
 	// IgnoreConversionLabel this annotation disables updating of corresponding VMObject
 	// must be added to annotation of VMObject
 	// annotations:
-	//  operator.victoriametrics.com/ignore-prometheus-updates: enabled
+	// operator.victoriametrics.com/ignore-prometheus-updates: enabled
 	IgnoreConversionLabel = "operator.victoriametrics.com/ignore-prometheus-updates"
 	// IgnoreConversion - disables updates from prometheus api
 	IgnoreConversion = "enabled"

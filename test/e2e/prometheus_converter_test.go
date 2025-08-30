@@ -297,7 +297,7 @@ func getObject(ctx context.Context, obj client.Object) (client.Object, error) {
 	return obj, err
 }
 
-var _ = Describe("test  prometheusConverter Controller", func() {
+var _ = Describe("test prometheusConverter Controller", func() {
 	Context("e2e prome converter", func() {
 		for _, testCaseIt := range testCases {
 			testCase := testCaseIt

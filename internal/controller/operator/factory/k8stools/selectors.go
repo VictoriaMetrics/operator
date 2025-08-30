@@ -99,7 +99,7 @@ func discoverNamespaces(ctx context.Context, rclient client.Client, s *SelectorO
 		opts.LabelSelector = selector
 		l := &corev1.NamespaceList{}
 		if err := rclient.List(ctx, l, opts); err != nil {
-			return nil, fmt.Errorf("cannot select namespaces for  match: %w", err)
+			return nil, fmt.Errorf("cannot select namespaces for match: %w", err)
 		}
 		if len(l.Items) == 0 {
 			return nil, nil

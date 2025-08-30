@@ -149,7 +149,7 @@ type VMAnomalyHTTPClientSpec struct {
 // VMAnomalyReadersSpec defines reader configuration for VMAnomaly
 type VMAnomalyReadersSpec struct {
 	// DatasourceURL address
-	// datatasource must serve /api/v1/query and /api/v1/query_range APIs
+	// datasource must serve /api/v1/query and /api/v1/query_range APIs
 	DatasourceURL string `json:"datasourceURL" yaml:"datasource_url,omitempty"`
 	// Frequency of the points returned
 	SamplingPeriod string `json:"samplingPeriod" yaml:"sampling_period,omitempty"`
@@ -208,7 +208,7 @@ type VMAnomaly struct {
 	Status VMAnomalyStatus `json:"status,omitempty"`
 }
 
-// VMAnomalyMonitoringSpec defines configuration for VMAnomlay monitoring
+// VMAnomalyMonitoringSpec defines configuration for VMAnomaly monitoring
 // See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/
 type VMAnomalyMonitoringSpec struct {
 	Pull *VMAnomalyMonitoringPullSpec `json:"pull,omitempty" yaml:"pull,omitempty"`
@@ -230,7 +230,7 @@ type VMAnomalyMonitoringPullSpec struct {
 type VMAnomalyMonitoringPushSpec struct {
 	// defines target url for push requests
 	URL string `json:"url" yaml:"url"`
-	// PushFrequency defines push internval
+	// PushFrequency defines push interval
 	PushFrequency string `json:"pushFrequency,omitempty" yaml:"push_frequency,omitempty"`
 	// ExtraLabels defines a set of labels to attach to the pushed metrics
 	ExtraLabels             map[string]string `json:"extraLabels,omitempty" yaml:"extra_labels,omitempty"`

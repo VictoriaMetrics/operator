@@ -201,7 +201,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
-    - description: VMAlert  executes a list of given alerting or recording rules against
+    - description: VMAlert executes a list of given alerting or recording rules against
         configured address.
       displayName: VMAlert
       kind: VMAlert
@@ -352,7 +352,7 @@ spec:
       kind: VMServiceScrape
       name: vmservicescrapes.operator.victoriametrics.com
       version: v1beta1
-    - description: VMSingle  is fast, cost-effective and scalable time-series database.
+    - description: VMSingle is fast, cost-effective and scalable time-series database.
       displayName: VMSingle
       kind: VMSingle
       name: vmsingles.operator.victoriametrics.com
@@ -370,7 +370,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
-    - description: VMStaticScrape  defines static targets configuration for scraping.
+    - description: VMStaticScrape defines static targets configuration for scraping.
       displayName: VMStatic Scrape
       kind: VMStaticScrape
       name: vmstaticscrapes.operator.victoriametrics.com

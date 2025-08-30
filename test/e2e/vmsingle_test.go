@@ -22,7 +22,7 @@ import (
 )
 
 //nolint:dupl,lll
-var _ = Describe("test  vmsingle Controller", Label("vm", "single"), func() {
+var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 
 	licenseKey := os.Getenv("LICENSE_KEY")
 	Context("e2e vmsingle", func() {

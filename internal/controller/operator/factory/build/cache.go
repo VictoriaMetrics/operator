@@ -115,7 +115,7 @@ type ResourceCfg struct {
 	SecretName string
 }
 
-// NewAssetsCache returns a  new cache instance
+// NewAssetsCache returns a new cache instance
 func NewAssetsCache(ctx context.Context, client client.Client, cfg map[ResourceKind]*ResourceCfg) *AssetsCache {
 	ac := &AssetsCache{
 		cfg:        cfg,

@@ -589,7 +589,7 @@ func (cr *VLCluster) VMAuthLBPodAnnotations() map[string]string {
 	return cr.Spec.RequestsLoadBalancer.Spec.PodMetadata.Annotations
 }
 
-// GetVMAuthLBName returns prefixed name for the loadbalanacer components
+// GetVMAuthLBName returns prefixed name for the loadbalancer components
 func (cr *VLCluster) GetVMAuthLBName() string {
 	return fmt.Sprintf("vlclusterlb-%s", cr.Name)
 }
@@ -699,7 +699,7 @@ func (cr *VLCluster) VLInsertPodLabels() map[string]string {
 	return labels.Merge(cr.Spec.VLInsert.PodMetadata.Labels, selectorLabels)
 }
 
-// VLStorageSelectorLabels  returns pod labels for vlstorage cluster component
+// VLStorageSelectorLabels returns pod labels for vlstorage cluster component
 func (cr *VLCluster) VLStorageSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlstorage",

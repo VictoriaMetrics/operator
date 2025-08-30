@@ -196,7 +196,7 @@ func generateServiceScrapeConfig(
 		}
 	}
 
-	// By default, generate a safe job name from the service name.  We also keep
+	// By default, generate a safe job name from the service name. We also keep
 	// this around if a jobLabel is set in case the targets don't actually have a
 	// value for it. A single service may potentially have multiple metrics
 	// endpoints, therefore the endpoints labels is filled with the ports name or

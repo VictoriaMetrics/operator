@@ -47,7 +47,7 @@ func generateNodeScrapeConfig(
 
 	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "node", nodeSpec.Selector, skipRelabelSelectors)
-	// Add __address__ as internalIP  and pod and service labels into proper labels.
+	// Add __address__ as internalIP and pod and service labels into proper labels.
 	relabelings = append(relabelings, []yaml.MapSlice{
 		{
 			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_name"}},

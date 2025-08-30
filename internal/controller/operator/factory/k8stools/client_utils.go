@@ -150,7 +150,7 @@ type ObjectWatcherForNamespaces struct {
 	wg             sync.WaitGroup
 }
 
-// NewObjectWatcherForNamespaces returns a watcher for events at multiple namespaces  for given object
+// NewObjectWatcherForNamespaces returns a watcher for events at multiple namespaces for given object
 // in case of empty namespaces, performs cluster wide watch
 func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rclient client.WithWatch, crdTypeName string, namespaces []string) (watch.Interface, error) {
 	initMetrics.Do(func() {

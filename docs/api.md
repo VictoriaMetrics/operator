@@ -644,7 +644,7 @@ Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
 | bearer<a href="#vmanomalymonitoringpushspec-bearer" id="vmanomalymonitoringpushspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
 | extraLabels<a href="#vmanomalymonitoringpushspec-extralabels" id="vmanomalymonitoringpushspec-extralabels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>ExtraLabels defines a set of labels to attach to the pushed metrics |
 | healthPath<a href="#vmanomalymonitoringpushspec-healthpath" id="vmanomalymonitoringpushspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
-| pushFrequency<a href="#vmanomalymonitoringpushspec-pushfrequency" id="vmanomalymonitoringpushspec-pushfrequency">#</a><br/>_string_ | _(Required)_<br/>PushFrequency defines push internval |
+| pushFrequency<a href="#vmanomalymonitoringpushspec-pushfrequency" id="vmanomalymonitoringpushspec-pushfrequency">#</a><br/>_string_ | _(Required)_<br/>PushFrequency defines push interval |
 | tenantID<a href="#vmanomalymonitoringpushspec-tenantid" id="vmanomalymonitoringpushspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
 | timeout<a href="#vmanomalymonitoringpushspec-timeout" id="vmanomalymonitoringpushspec-timeout">#</a><br/>_string_ | _(Required)_<br/>Timeout for the requests, passed as a string |
 | tlsConfig<a href="#vmanomalymonitoringpushspec-tlsconfig" id="vmanomalymonitoringpushspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/>TLSConfig defines tls connection configuration |
@@ -655,7 +655,7 @@ Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
 
 
 
-VMAnomalyMonitoringSpec defines configuration for VMAnomlay monitoring
+VMAnomalyMonitoringSpec defines configuration for VMAnomaly monitoring
 See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/
 
 Appears in: [VMAnomalySpec](#vmanomalyspec)
@@ -679,7 +679,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | basicAuth<a href="#vmanomalyreadersspec-basicauth" id="vmanomalyreadersspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic authorization configuration |
 | bearer<a href="#vmanomalyreadersspec-bearer" id="vmanomalyreadersspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
 | dataRange<a href="#vmanomalyreadersspec-datarange" id="vmanomalyreadersspec-datarange">#</a><br/>_string array_ | _(Required)_<br/>Optional argumentallows defining valid data ranges for input of all the queries in queries |
-| datasourceURL<a href="#vmanomalyreadersspec-datasourceurl" id="vmanomalyreadersspec-datasourceurl">#</a><br/>_string_ | _(Required)_<br/>DatasourceURL address<br />datatasource must serve /api/v1/query and /api/v1/query_range APIs |
+| datasourceURL<a href="#vmanomalyreadersspec-datasourceurl" id="vmanomalyreadersspec-datasourceurl">#</a><br/>_string_ | _(Required)_<br/>DatasourceURL address<br />datasource must serve /api/v1/query and /api/v1/query_range APIs |
 | extraFilters<a href="#vmanomalyreadersspec-extrafilters" id="vmanomalyreadersspec-extrafilters">#</a><br/>_string array_ | _(Required)_<br/>List of strings with series selector. |
 | healthPath<a href="#vmanomalyreadersspec-healthpath" id="vmanomalyreadersspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
 | latencyOffset<a href="#vmanomalyreadersspec-latencyoffset" id="vmanomalyreadersspec-latencyoffset">#</a><br/>_string_ | _(Required)_<br/>It allows overriding the default -search.latencyOffsetflag of VictoriaMetrics |

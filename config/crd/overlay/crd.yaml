@@ -21218,7 +21218,7 @@ spec:
                           where to check availability of the remote webserver
                         type: string
                       pushFrequency:
-                        description: PushFrequency defines push internval
+                        description: PushFrequency defines push interval
                         type: string
                       tenantID:
                         description: TenantID defines for VictoriaMetrics Cluster
@@ -21597,7 +21597,7 @@ spec:
                   datasourceURL:
                     description: |-
                       DatasourceURL address
-                      datatasource must serve /api/v1/query and /api/v1/query_range APIs
+                      datasource must serve /api/v1/query and /api/v1/query_range APIs
                     type: string
                   extraFilters:
                     description: List of strings with series selector.

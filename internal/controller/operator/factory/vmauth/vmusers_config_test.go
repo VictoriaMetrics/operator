@@ -489,6 +489,83 @@ username: basic
 password: pass
 `,
 		},
+		{
+			name: "with vl crd refs",
+			args: args{
+				user: &vmv1beta1.VMUser{
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("secret-token"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLAgent",
+									Name:      "collector",
+									Namespace: "monitoring",
+								},
+								Paths: []string{
+									"/insert/jsonline",
+								},
+							},
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLSingle",
+									Namespace: "monitoring",
+									Name:      "db",
+								},
+							},
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLCluster/vlinsert",
+									Name:      "main-cluster",
+									Namespace: "monitoring",
+								},
+								Paths: []string{
+									"/insert/logstash",
+								},
+							},
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLCluster/vlinsert",
+									Name:      "main-cluster",
+									Namespace: "monitoring",
+								},
+								Paths: []string{
+									"/select/.*",
+								},
+							},
+						},
+					},
+				},
+				crdURLCache: map[string]string{
+					"VLAgent/monitoring/collector":                "http://vlagent-base.monitoring.svc:9429",
+					"VLSingle/monitoring/db":                      "http://vlsingle-db.monitoring.svc:9428",
+					"VLCluster/vlinsert/monitoring/main-cluster":  "http://vlinsert-main-cluster.monitoring.svc:9401",
+					"VLCluster/vlselect/monitoring/main-cluster":  "http://vlselect-main-cluster.monitoring.svc:9401",
+					"VLCluster/vlstorage/monitoring/main-cluster": "http://vlstorage-main-cluster.monitoring.svc:9401",
+				},
+			},
+			want: `url_map:
+- url_prefix:
+  - http://vlagent-base.monitoring.svc:9429
+  src_paths:
+  - /insert/jsonline
+- url_prefix:
+  - http://vlsingle-db.monitoring.svc:9428
+  src_paths:
+  - /.*
+- url_prefix:
+  - http://vlinsert-main-cluster.monitoring.svc:9401
+  src_paths:
+  - /insert/logstash
+- url_prefix:
+  - http://vlinsert-main-cluster.monitoring.svc:9401
+  src_paths:
+  - /select/.*
+name: user1
+bearer_token: secret-token
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

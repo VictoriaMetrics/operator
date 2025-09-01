@@ -16,6 +16,8 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.125.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11250) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.31.0](https://docs.victoriametrics.com/victorialogs/changelog/#v1310).
 
+* FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): add `VLSingle`, `VLAgent`,`VLCluster/vlinsert`,`VLCluster/vlselect` and `VLCluster/vlstorage` to the `targetRef.crd.kind`.
+
 ## [v0.62.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.62.0)
 
 **Release date:** 17 Aug 2025

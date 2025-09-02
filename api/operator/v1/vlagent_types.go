@@ -375,7 +375,7 @@ func (cr *VLAgent) IsOwnsServiceAccount() bool {
 func (cr *VLAgent) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {
-		port = "9428"
+		port = "9429"
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
 		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {

@@ -20,6 +20,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -171,7 +172,7 @@ type objectWithURL interface {
 
 func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithURL) (string, error) {
 	obj := objT.(client.Object)
-	// dirty hack to restore original type of vmcluster
+	// dirty hack to restore original type of vmcluster or vlcluster
 	// since cluster type erased by wrapping it into clusterWithURL
 	// we must restore it original type by unwrapping type
 	uw, ok := objT.(unwrapObject)
@@ -323,6 +324,11 @@ var crdNameToObject = map[string]objectWithURL{
 	"VMCluster/vmselect":  newClusterWithURL("vmselect"),
 	"VMCluster/vminsert":  newClusterWithURL("vminsert"),
 	"VMCluster/vmstorage": newClusterWithURL("vmstorage"),
+	"VLSingle":            &vmv1.VLSingle{},
+	"VLCluster/vlselect":  newClusterWithURL("vlselect"),
+	"VLCluster/vlinsert":  newClusterWithURL("vlinsert"),
+	"VLCluster/vlstorage": newClusterWithURL("vlstorage"),
+	"VLAgent":             &vmv1.VLAgent{},
 }
 
 // helper interface to restore VMCluster type
@@ -330,32 +336,57 @@ type unwrapObject interface {
 	origin() client.Object
 }
 
+var clusterComponentToURL = map[string]func(obj client.Object) string{
+	"vminsert": func(obj client.Object) string {
+		return obj.(*vmv1beta1.VMCluster).VMInsertURL()
+	},
+	"vmselect": func(obj client.Object) string {
+		return obj.(*vmv1beta1.VMCluster).VMSelectURL()
+	},
+	"vmstorage": func(obj client.Object) string {
+		return obj.(*vmv1beta1.VMCluster).VMStorageURL()
+	},
+	"vlinsert": func(obj client.Object) string {
+		return obj.(*vmv1.VLCluster).InsertURL()
+	},
+	"vlselect": func(obj client.Object) string {
+		return obj.(*vmv1.VLCluster).SelectURL()
+	},
+	"vlstorage": func(obj client.Object) string {
+		return obj.(*vmv1.VLCluster).StorageURL()
+	},
+}
+
 type clusterWithURL struct {
 	client.Object
-	vmc       *vmv1beta1.VMCluster
+	originObj client.Object
 	component string
 }
 
 func newClusterWithURL(component string) *clusterWithURL {
-	vmc := &vmv1beta1.VMCluster{}
-	return &clusterWithURL{vmc, vmc, component}
+	var clusterObj client.Object
+	switch {
+	case strings.HasPrefix(component, "vm"):
+		clusterObj = &vmv1beta1.VMCluster{}
+	case strings.HasPrefix(component, "vl"):
+		clusterObj = &vmv1.VLCluster{}
+	default:
+		panic(fmt.Sprintf("BUG: unexpected component name: %q", component))
+	}
+	return &clusterWithURL{clusterObj, clusterObj, component}
 }
 
 func (c *clusterWithURL) origin() client.Object {
-	return c.vmc
+	return c.originObj
 }
 
+// AsURL implements AsURL interface
 func (c *clusterWithURL) AsURL() string {
-	switch c.component {
-	case "vmselect":
-		return c.vmc.VMSelectURL()
-	case "vmstorage":
-		return c.vmc.VMStorageURL()
-	case "vminsert":
-		return c.vmc.VMInsertURL()
-	default:
+	builder, ok := clusterComponentToURL[c.component]
+	if !ok {
 		panic(fmt.Sprintf("BUG: not expected component=%q for clusterWithURL object", c.component))
 	}
+	return builder(c.Object)
 }
 
 // fetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name

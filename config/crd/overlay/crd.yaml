@@ -38953,7 +38953,7 @@ spec:
                         kind:
                           description: |-
                             Kind one of:
-                            VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert  or VMAlertManager
+                            VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage and VLAgent
                           enum:
                           - VMAgent
                           - VMAlert
@@ -38964,6 +38964,11 @@ spec:
                           - VMCluster/vmselect
                           - VMCluster/vmstorage
                           - VMCluster/vminsert
+                          - VLSingle
+                          - VLCluster/vlinsert
+                          - VLCluster/vlselect
+                          - VLCluster/vlstorage
+                          - VLAgent
                           type: string
                         name:
                           description: Name target CRD object name

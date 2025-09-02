@@ -1,0 +1,84 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: vmauth-sample
+spec:
+  selectAllByDefault: true
+  replicaCount: 1
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: logs-access-ro
+  namespace: default
+spec:
+  username: simple-user
+  password: simple-password
+  disable_secret_creation: true
+  targetRefs:
+    - crd:
+        kind: VLCluster/vlselect
+        name: main
+        namespace: default
+      paths: ["/select.*"]
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: logs-access-rw
+  namespace: default
+spec:
+  username: simple-user
+  password: simple-password-2
+  disable_secret_creation: true
+  targetRefs:
+    - crd:
+        kind: VLCluster/vlinsert
+        name: main
+        namespace: default
+      paths: ["/insert.*"]
+    - crd:
+        kind: VLCluster/vlselect
+        name: main
+        namespace: default
+      paths: [".*"]
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: logs-admin
+  namespace: default
+spec:
+  username: simple-user
+  password: simple-password-3
+  disable_secret_creation: true
+  targetRefs:
+    - crd:
+        kind: VLCluster/vlinsert
+        name: main
+        namespace: default
+      paths: ["/insert.*"]
+    - crd:
+        kind: VLCluster/vlstorage
+        name: main
+        namespace: default
+      paths: ["/internal.*"]
+    - crd:
+        kind: VLCluster/vlselect
+        name: main
+        namespace: default
+      paths: [".*"]
+---
+apiVersion: operator.victoriametrics.com/v1
+kind: VLCluster
+metadata:
+  name: main
+  namespace: default
+spec:
+  vlinsert:
+    replicaCount: 1
+  vlselect:
+    replicaCount: 1
+  vlstorage:
+    retentionPeriod: "4"
+    replicaCount: 1

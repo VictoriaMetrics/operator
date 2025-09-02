@@ -38953,7 +38953,7 @@ spec:
                         kind:
                           description: |-
                             Kind one of:
-                            VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert  or VMAlertManager
+                            VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage and VLAgent
                           enum:
                           - VMAgent
                           - VMAlert
@@ -38967,7 +38967,7 @@ spec:
                           - VLSingle
                           - VLCluster/vlinsert
                           - VLCluster/vlselect
-                          - VLCluster/vlinsert
+                          - VLCluster/vlstorage
                           - VLAgent
                           type: string
                         name:

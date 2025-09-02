@@ -172,7 +172,7 @@ type objectWithURL interface {
 
 func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithURL) (string, error) {
 	obj := objT.(client.Object)
-	// dirty hack to restore original type of vmcluster
+	// dirty hack to restore original type of vmcluster or vlcluster
 	// since cluster type erased by wrapping it into clusterWithURL
 	// we must restore it original type by unwrapping type
 	uw, ok := objT.(unwrapObject)
@@ -359,17 +359,25 @@ var clusterComponentToURL = map[string]func(obj client.Object) string{
 
 type clusterWithURL struct {
 	client.Object
-	vmc       *vmv1beta1.VMCluster
+	originObj client.Object
 	component string
 }
 
 func newClusterWithURL(component string) *clusterWithURL {
-	vmc := &vmv1beta1.VMCluster{}
-	return &clusterWithURL{vmc, vmc, component}
+	var clusterObj client.Object
+	switch {
+	case strings.HasPrefix(component, "vm"):
+		clusterObj = &vmv1beta1.VMCluster{}
+	case strings.HasPrefix(component, "vl"):
+		clusterObj = &vmv1.VLCluster{}
+	default:
+		panic(fmt.Sprintf("BUG: unexpected component name: %q", component))
+	}
+	return &clusterWithURL{clusterObj, clusterObj, component}
 }
 
 func (c *clusterWithURL) origin() client.Object {
-	return c.vmc
+	return c.originObj
 }
 
 // AsURL implements AsURL interface

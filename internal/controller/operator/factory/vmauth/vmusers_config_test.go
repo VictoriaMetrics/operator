@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -559,7 +560,7 @@ password: pass
   src_paths:
   - /insert/logstash
 - url_prefix:
-  - http://vlinsert-main-cluster.monitoring.svc:9401
+  - http://vlselect-main-cluster.monitoring.svc:9401
   src_paths:
   - /select/.*
 name: user1
@@ -2314,6 +2315,158 @@ unauthorized_user:
 - url_prefix:
   - http://some-static-3
   bearer_token: bearer-3
+`,
+		},
+		{
+			name: "with vlsingle and vlagent refs",
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "logs-refs",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("bearer"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLSingle",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-2",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-token-2"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1.VLAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+				&vmv1.VLSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+			},
+			want: `users:
+- url_prefix:
+  - http://vlsingle-test.default.svc:9428
+  name: user1
+  bearer_token: bearer
+- url_prefix:
+  - http://vlagent-test.default.svc:9429
+  bearer_token: bearer-token-2
+`,
+		},
+		{
+			name: "with vlcluster refs",
+			cr: &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "logs-cluster-refs",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					SelectAllByDefault: true,
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("bearer"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLCluster/vlinsert",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/insert.*"},
+							},
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLCluster/vlselect",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/select.*"},
+							},
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VLCluster/vlstorage",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/internal.*"},
+							},
+						},
+					},
+				},
+				&vmv1.VLCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: vmv1.VLClusterSpec{
+						VLInsert:  &vmv1.VLInsert{},
+						VLSelect:  &vmv1.VLSelect{},
+						VLStorage: &vmv1.VLStorage{},
+					},
+				},
+			},
+			want: `users:
+- url_map:
+  - url_prefix:
+    - http://vlinsert-test.default.svc:9481
+    src_paths:
+    - /insert.*
+  - url_prefix:
+    - http://vlselect-test.default.svc:9471
+    src_paths:
+    - /select.*
+  - url_prefix:
+    - http://vlstorage-test.default.svc:9491
+    src_paths:
+    - /internal.*
+  name: user1
+  bearer_token: bearer
 `,
 		},
 	}

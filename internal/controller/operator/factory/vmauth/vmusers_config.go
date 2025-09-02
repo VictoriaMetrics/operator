@@ -347,10 +347,10 @@ var clusterComponentToURL = map[string]func(obj client.Object) string{
 		return obj.(*vmv1beta1.VMCluster).VMStorageURL()
 	},
 	"vlinsert": func(obj client.Object) string {
-		return obj.(*vmv1.VLCluster).SelectURL()
+		return obj.(*vmv1.VLCluster).InsertURL()
 	},
 	"vlselect": func(obj client.Object) string {
-		return obj.(*vmv1.VLCluster).InsertURL()
+		return obj.(*vmv1.VLCluster).SelectURL()
 	},
 	"vlstorage": func(obj client.Object) string {
 		return obj.(*vmv1.VLCluster).StorageURL()

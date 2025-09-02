@@ -526,7 +526,7 @@ password: pass
 							},
 							{
 								CRD: &vmv1beta1.CRDRef{
-									Kind:      "VLCluster/vlinsert",
+									Kind:      "VLCluster/vlselect",
 									Name:      "main-cluster",
 									Namespace: "monitoring",
 								},

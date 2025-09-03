@@ -329,6 +329,10 @@ var crdNameToObject = map[string]objectWithURL{
 	"VLCluster/vlinsert":  newClusterWithURL("vlinsert"),
 	"VLCluster/vlstorage": newClusterWithURL("vlstorage"),
 	"VLAgent":             &vmv1.VLAgent{},
+	"VTSingle":            &vmv1.VTSingle{},
+	"VTCluster/vtselect":  newClusterWithURL("vtselect"),
+	"VTCluster/vtinsert":  newClusterWithURL("vtinsert"),
+	"VTCluster/vtstorage": newClusterWithURL("vtstorage"),
 }
 
 // helper interface to restore VMCluster type
@@ -338,13 +342,13 @@ type unwrapObject interface {
 
 var clusterComponentToURL = map[string]func(obj client.Object) string{
 	"vminsert": func(obj client.Object) string {
-		return obj.(*vmv1beta1.VMCluster).VMInsertURL()
+		return obj.(*vmv1beta1.VMCluster).InsertURL()
 	},
 	"vmselect": func(obj client.Object) string {
-		return obj.(*vmv1beta1.VMCluster).VMSelectURL()
+		return obj.(*vmv1beta1.VMCluster).SelectURL()
 	},
 	"vmstorage": func(obj client.Object) string {
-		return obj.(*vmv1beta1.VMCluster).VMStorageURL()
+		return obj.(*vmv1beta1.VMCluster).StorageURL()
 	},
 	"vlinsert": func(obj client.Object) string {
 		return obj.(*vmv1.VLCluster).InsertURL()
@@ -354,6 +358,15 @@ var clusterComponentToURL = map[string]func(obj client.Object) string{
 	},
 	"vlstorage": func(obj client.Object) string {
 		return obj.(*vmv1.VLCluster).StorageURL()
+	},
+	"vtinsert": func(obj client.Object) string {
+		return obj.(*vmv1.VTCluster).InsertURL()
+	},
+	"vtselect": func(obj client.Object) string {
+		return obj.(*vmv1.VTCluster).SelectURL()
+	},
+	"vtstorage": func(obj client.Object) string {
+		return obj.(*vmv1.VTCluster).StorageURL()
 	},
 }
 
@@ -370,6 +383,8 @@ func newClusterWithURL(component string) *clusterWithURL {
 		clusterObj = &vmv1beta1.VMCluster{}
 	case strings.HasPrefix(component, "vl"):
 		clusterObj = &vmv1.VLCluster{}
+	case strings.HasPrefix(component, "vt"):
+		clusterObj = &vmv1.VTCluster{}
 	default:
 		panic(fmt.Sprintf("BUG: unexpected component name: %q", component))
 	}
@@ -726,6 +741,23 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 
 	}
 
+	appendPaths := func(paths []string, tr *vmv1beta1.TargetRef) []string {
+		if tr.CRD != nil {
+			switch tr.CRD.Kind {
+			case "VMCluster/vminsert":
+				return addVMInsertPaths(paths)
+			case "VMCluster/vmselect":
+				return addVMSelectPaths(paths)
+			case "VLCluster/vlinsert", "VTCluster/vtinsert":
+				return append(paths, "/insert/.*")
+			case "VLCluster/vlselect", "VTCluster/vtselect":
+				return append(paths, "/select/.*")
+			}
+		}
+		return append(paths, "/.*")
+
+	}
+
 	for i := range refs {
 		var urlMap yaml.MapSlice
 		ref := refs[i]
@@ -742,14 +774,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 		case 0:
 			// special case for
 			// https://github.com/VictoriaMetrics/operator/issues/379
-			switch {
-			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vminsert":
-				paths = addVMInsertPaths(paths)
-			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vmselect":
-				paths = addVMSelectPaths(paths)
-			default:
-				paths = append(paths, "/.*")
-			}
+			paths = appendPaths(paths, &ref)
 
 		case 1:
 			switch paths[0] {

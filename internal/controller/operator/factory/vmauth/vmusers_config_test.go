@@ -115,6 +115,52 @@ bearer_token: secret-token
 `,
 		},
 		{
+			name: "with vmcluster crd",
+			args: args{
+				user: &vmv1beta1.VMUser{
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("secret-token"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VMCluster/vminsert",
+									Name:      "vminsert",
+									Namespace: "monitoring",
+								},
+								Paths:            []string{"/"},
+								TargetPathSuffix: "/insert/1",
+							},
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VMCluster/vmselect",
+									Namespace: "monitoring",
+									Name:      "vmselect",
+								},
+							},
+						},
+					},
+				},
+				crdURLCache: map[string]string{
+					"VMCluster/vminsert/monitoring/vminsert": "http://vminsert.monitoring.svc:8481",
+					"VMCluster/vmselect/monitoring/vmselect": "http://vmselect.monitoring.svc:8482",
+				},
+			},
+			want: `url_map:
+- url_prefix:
+  - http://vminsert.monitoring.svc:8481/insert/1
+  src_paths:
+  - /.*
+- url_prefix:
+  - http://vmselect.monitoring.svc:8482
+  src_paths:
+  - /select/.*
+  - /admin/.*
+name: user1
+bearer_token: secret-token
+`,
+		},
+		{
 			name: "with crd and custom suffix",
 			args: args{
 				user: &vmv1beta1.VMUser{
@@ -1850,38 +1896,14 @@ unauthorized_user:
   - url_prefix:
     - http://vmselect-main-cluster.default.svc:8481
     src_paths:
-    - /vmui.*
-    - /vmui/vmui
-    - /graph
-    - /prometheus/graph
-    - /prometheus/vmui.*
-    - /prometheus/api/v1/label.*
-    - /graphite.*
-    - /prometheus/api/v1/query.*
-    - /prometheus/api/v1/rules
-    - /prometheus/api/v1/alerts
-    - /prometheus/api/v1/metadata
-    - /prometheus/api/v1/rules
-    - /prometheus/api/v1/series.*
-    - /prometheus/api/v1/status.*
-    - /prometheus/api/v1/export.*
-    - /prometheus/federate
-    - /prometheus/api/v1/admin/tsdb/delete_series
-    - /admin/tenants
-    - /api/v1/status/.*
-    - /internal/resetRollupResultCache
-    - /prometheus/api/v1/admin/.*
+    - /select/.*
+    - /admin/.*
     headers:
     - 'Authorization: Basic c29tZS0xOnNvbWUtMg=='
   - url_prefix:
     - http://vminsert-main-cluster.default.svc:8480
     src_paths:
-    - /newrelic/.*
-    - /opentelemetry/.*
-    - /prometheus/api/v1/write
-    - /prometheus/api/v1/import.*
-    - /influx/.*
-    - /datadog/.*
+    - /insert/.*
     headers:
     - 'Authorization: Basic c29tZS0xOnNvbWUtMg=='
   name: user1

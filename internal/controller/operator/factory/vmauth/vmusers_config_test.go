@@ -1896,38 +1896,14 @@ unauthorized_user:
   - url_prefix:
     - http://vmselect-main-cluster.default.svc:8481
     src_paths:
-    - /vmui.*
-    - /vmui/vmui
-    - /graph
-    - /prometheus/graph
-    - /prometheus/vmui.*
-    - /prometheus/api/v1/label.*
-    - /graphite.*
-    - /prometheus/api/v1/query.*
-    - /prometheus/api/v1/rules
-    - /prometheus/api/v1/alerts
-    - /prometheus/api/v1/metadata
-    - /prometheus/api/v1/rules
-    - /prometheus/api/v1/series.*
-    - /prometheus/api/v1/status.*
-    - /prometheus/api/v1/export.*
-    - /prometheus/federate
-    - /prometheus/api/v1/admin/tsdb/delete_series
-    - /admin/tenants
-    - /api/v1/status/.*
-    - /internal/resetRollupResultCache
-    - /prometheus/api/v1/admin/.*
+    - /select/.*
+    - /admin/.*
     headers:
     - 'Authorization: Basic c29tZS0xOnNvbWUtMg=='
   - url_prefix:
     - http://vminsert-main-cluster.default.svc:8480
     src_paths:
-    - /newrelic/.*
-    - /opentelemetry/.*
-    - /prometheus/api/v1/write
-    - /prometheus/api/v1/import.*
-    - /influx/.*
-    - /datadog/.*
+    - /insert/.*
     headers:
     - 'Authorization: Basic c29tZS0xOnNvbWUtMg=='
   name: user1

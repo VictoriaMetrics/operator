@@ -18,6 +18,8 @@ aliases:
 
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): add `VLSingle`, `VLAgent`,`VLCluster/vlinsert`,`VLCluster/vlselect` and `VLCluster/vlstorage` to the `targetRef.crd.kind`.
 
+* BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): fix the default `src_paths` when using `VMCluster/vminsert` or `VMCluster/vmselect` as targetRefs.
+
 ## [v0.62.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.62.0)
 
 **Release date:** 17 Aug 2025

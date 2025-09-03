@@ -115,6 +115,52 @@ bearer_token: secret-token
 `,
 		},
 		{
+			name: "with vmcluster crd",
+			args: args{
+				user: &vmv1beta1.VMUser{
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("secret-token"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VMCluster/vminsert",
+									Name:      "vminsert",
+									Namespace: "monitoring",
+								},
+								Paths:            []string{"/"},
+								TargetPathSuffix: "/insert/1",
+							},
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VMCluster/vmselect",
+									Namespace: "monitoring",
+									Name:      "vmselect",
+								},
+							},
+						},
+					},
+				},
+				crdURLCache: map[string]string{
+					"VMCluster/vminsert/monitoring/vminsert": "http://vminsert.monitoring.svc:8481",
+					"VMCluster/vmselect/monitoring/vmselect": "http://vmselect.monitoring.svc:8482",
+				},
+			},
+			want: `url_map:
+- url_prefix:
+  - http://vminsert.monitoring.svc:8481/insert/1
+  src_paths:
+  - /.*
+- url_prefix:
+  - http://vmselect.monitoring.svc:8482
+  src_paths:
+  - /select/.*
+  - /admin/.*
+name: user1
+bearer_token: secret-token
+`,
+		},
+		{
 			name: "with crd and custom suffix",
 			args: args{
 				user: &vmv1beta1.VMUser{

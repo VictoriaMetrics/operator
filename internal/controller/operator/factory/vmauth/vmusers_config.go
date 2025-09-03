@@ -83,7 +83,6 @@ func (sus *skipableVMUsers) deduplicateBy(cb func(user *vmv1beta1.VMUser) (strin
 func (sus *skipableVMUsers) sort() {
 	// sort for consistency.
 	sort.Slice(sus.users, func(i, j int) bool {
-
 		if sus.users[i].Name != sus.users[j].Name {
 			return sus.users[i].Name < sus.users[j].Name
 		}
@@ -93,7 +92,6 @@ func (sus *skipableVMUsers) sort() {
 
 // builds vmauth config.
 func buildConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, sus *skipableVMUsers, ac *build.AssetsCache) ([]byte, error) {
-
 	// apply sort before making any changes to users
 	sus.sort()
 
@@ -966,35 +964,13 @@ func buildVMUserSecret(src *vmv1beta1.VMUser) (*corev1.Secret, error) {
 
 func addVMInsertPaths(src []string) []string {
 	return append(src,
-		"/newrelic/.*",
-		"/opentelemetry/.*",
-		"/prometheus/api/v1/write",
-		"/prometheus/api/v1/import.*",
-		"/influx/.*",
-		"/datadog/.*")
+		"/insert/.*",
+	)
 }
 
 func addVMSelectPaths(src []string) []string {
-	return append(src, "/vmui.*",
-		"/vmui/vmui",
-		"/graph",
-		"/prometheus/graph",
-		"/prometheus/vmui.*",
-		"/prometheus/api/v1/label.*",
-		"/graphite.*",
-		"/prometheus/api/v1/query.*",
-		"/prometheus/api/v1/rules",
-		"/prometheus/api/v1/alerts",
-		"/prometheus/api/v1/metadata",
-		"/prometheus/api/v1/rules",
-		"/prometheus/api/v1/series.*",
-		"/prometheus/api/v1/status.*",
-		"/prometheus/api/v1/export.*",
-		"/prometheus/federate",
-		"/prometheus/api/v1/admin/tsdb/delete_series",
-		"/admin/tenants",
-		"/api/v1/status/.*",
-		"/internal/resetRollupResultCache",
-		"/prometheus/api/v1/admin/.*",
+	return append(src,
+		"/select/.*",
+		"/admin/.*",
 	)
 }

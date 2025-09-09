@@ -22,7 +22,7 @@ To run in a cluster the operator needs certain permissions, you can see them in 
 - [`role.yaml` file](https://github.com/VictoriaMetrics/operator/blob/master/config/rbac/role.yaml) - basic set of cluster roles for launching an operator.
 - [`leader_election_role.yaml` file](https://github.com/VictoriaMetrics/operator/blob/master/config/rbac/leader_election_role.yaml) - set of roles with permissions to do leader election (is necessary to run the operator in several replicas for high availability).
 
-Also, you can use single-namespace mode with minimal permissions, see [this section](https://docs.victoriametrics.com/operator/configuration#namespaced-mode) for details.
+Also, you can use single-namespace mode with minimal permissions, see [this section](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode) for details.
 
 Also in [the same directory](https://github.com/VictoriaMetrics/operator/tree/master/config/rbac) are files with a set of separate permissions to view or edit [operator resources](https://docs.victoriametrics.com/operator/resources/) to organize fine-grained access:
 

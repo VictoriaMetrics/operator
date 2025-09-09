@@ -27,7 +27,7 @@ When there are two or more configured replicas the Operator runs the Alertmanage
 
 ## Specification
 
-You can see the full actual specification of the `VMAlertmanager` resource in the **[API docs -> VMAlertManager](https://docs.victoriametrics.com/operator/api#vmalertmanager)**.
+You can see the full actual specification of the `VMAlertmanager` resource in the **[API docs -> VMAlertManager](https://docs.victoriametrics.com/operator/api/#vmalertmanager)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](./#extra-arguments).
@@ -153,7 +153,7 @@ Here's a more visual and more detailed view:
 | *any*                     | undefined        | *any*                | **defined**       | all vmalertmanagerconfigs only at `VMAlertmanager`'s namespace                                                         |
 | *any*                     | **defined**      | *any*                | **defined**       | all vmalertmanagerconfigs only at `VMAlertmanager`'s namespace for given `configSelector` are matching                 |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration#namespaced-mode).
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
 
 Here are some examples of `VMAlertmanager` configuration with selectors:
 

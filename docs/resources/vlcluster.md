@@ -24,7 +24,7 @@ For each `VLCluster` resource components, the Operator adds `Service` and `VMSer
 
 ## Specification
 
-You can see the full actual specification of the `VLCluster` resource in the **[API docs -> VLCluster](https://docs.victoriametrics.com/operator/api#vlcluster)**.
+You can see the full actual specification of the `VLCluster` resource in the **[API docs -> VLCluster](https://docs.victoriametrics.com/operator/api/#vlcluster)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](./#extra-arguments).

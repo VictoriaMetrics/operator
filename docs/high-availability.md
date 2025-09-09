@@ -37,7 +37,7 @@ it uses a leader election mechanism to ensure that only one replica is active at
 If one of replicas of the operator will be failed, then another replica will be elected as a leader and will continue to work -
 operator replication affects how quickly this happens.
 
-[CRD validation](https://docs.victoriametrics.com/operator/configuration#crd-validation) workload is fully 
+[CRD validation](https://docs.victoriametrics.com/operator/configuration/#crd-validation) workload is fully 
 distributed among the available operator replicas.
 
 In addition, you can safely use for operator such features 

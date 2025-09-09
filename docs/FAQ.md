@@ -39,15 +39,15 @@ With Operator deployment:
 
 You can use `VM_CONTAINERREGISTRY` parameter for operator:
 
-- See details about tuning [operator settings here](https://docs.victoriametrics.com/operator/setup#settings).
+- See details about tuning [operator settings here](https://docs.victoriametrics.com/operator/setup/#settings).
 - See [available operator settings](https://docs.victoriametrics.com/operator/configuration/#environment-variables) here.
 
 ## How to set up automatic backups?
 
 You can read about backups:
 
-- for `VMSingle`: [Backup automation](https://docs.victoriametrics.com/operator/resources/vmsingle#backup-automation)
-- for `VMCluster`: [Backup automation](https://docs.victoriametrics.com/operator/resources/vmcluster#backup-automation)
+- for `VMSingle`: [Backup automation](https://docs.victoriametrics.com/operator/resources/vmsingle/#backup-automation)
+- for `VMCluster`: [Backup automation](https://docs.victoriametrics.com/operator/resources/vmcluster/#backup-automation)
 
 ## How to migrate from Prometheus-operator to VictoriaMetrics operator?
 
@@ -55,19 +55,19 @@ You can read about migration from prometheus operator on [this page](https://doc
 
 ## How to turn off conversion for prometheus resources
 
-You can read about it on [this page](https://docs.victoriametrics.com/operator/migration#objects-convesion).
+You can read about it on [this page](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion).
 
 ## My VM objects are not deleted/changed when I delete/change Prometheus objects
 
 You can read about it in following sections of "Migration from prometheus-operator" docs:
 
-- [Deletion synchronization](https://docs.victoriametrics.com/operator/migration#deletion-synchronization)
-- [Update synchronization](https://docs.victoriametrics.com/operator/migration#update-synchronization)
-- [Labels synchronization](https://docs.victoriametrics.com/operator/migration#labels-synchronization)
+- [Deletion synchronization](https://docs.victoriametrics.com/operator/integrations/prometheus/#deletion-synchronization)
+- [Update synchronization](https://docs.victoriametrics.com/operator/integrations/prometheus/)
+- [Labels synchronization](https://docs.victoriametrics.com/operator/integrations/prometheus/#labels-and-annotations-synchronization)
 
 ## What permissions does an operator need to run in a cluster?
 
-You can read about needed permissions for operator in [this document](https://docs.victoriametrics.com/operator/security#roles).
+You can read about needed permissions for operator in [this document](https://docs.victoriametrics.com/operator/security/#roles).
 
 ## How to know the version of VM components in the operator?
 
@@ -79,7 +79,7 @@ or [CHANGELOG](https://docs.victoriametrics.com/operator/changelog).
 
 ## How to run VictoriaMetrics operator with permissions for one namespace only?
 
-See this document for details: [Configuration -> Namespaced mode](https://docs.victoriametrics.com/operator/configuration#namespaced-mode).
+See this document for details: [Configuration -> Namespaced mode](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
 
 ## How to configure VMAgent and VMServiceScrape for using with [Istio Service Mesh](https://istio.io/) and its mTLS?
 

@@ -21004,7 +21004,7 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See [here](https://docs.victoriametrics.com/enterprise)
+                  See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
                   forceOffline:
                     description: Enforce offline verification of the license key.
@@ -24131,7 +24131,7 @@ spec:
                     description: |-
                       LoadBalancingPolicy defines load balancing policy to use for backend urls.
                       Supported policies: least_loaded, first_available.
-                      See [here](https://docs.victoriametrics.com/victoriametrics/vmauth#load-balancing) for more details (default "least_loaded")
+                      See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded")
                     enum:
                     - least_loaded
                     - first_available
@@ -29058,7 +29058,7 @@ spec:
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be reused.
-                      See https://docs.victoriametrics.com/victoriametrics/vmagent#scrape_config-enhancements
+                      See https://docs.victoriametrics.com/victoriametrics/vmagent/#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -29075,7 +29075,7 @@ spec:
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See feature description https://docs.victoriametrics.com/victoriametrics/vmagent#scraping-targets-via-a-proxy
+                      See feature description https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -30002,7 +30002,7 @@ spec:
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be reused.
-                            See https://docs.victoriametrics.com/victoriametrics/vmagent#scrape_config-enhancements
+                            See https://docs.victoriametrics.com/victoriametrics/vmagent/#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -30019,7 +30019,7 @@ spec:
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See feature description https://docs.victoriametrics.com/victoriametrics/vmagent#scraping-targets-via-a-proxy
+                            See feature description https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -31110,7 +31110,7 @@ spec:
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be reused.
-                      See https://docs.victoriametrics.com/victoriametrics/vmagent#scrape_config-enhancements
+                      See https://docs.victoriametrics.com/victoriametrics/vmagent/#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -31127,7 +31127,7 @@ spec:
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See feature description https://docs.victoriametrics.com/victoriametrics/vmagent#scraping-targets-via-a-proxy
+                      See feature description https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -31529,7 +31529,7 @@ spec:
                     tenant:
                       description: |-
                         Tenant id for group, can be used only with enterprise version of vmalert.
-                        See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert#multitenancy).
+                        See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy).
                       type: string
                     type:
                       description: |-
@@ -34737,7 +34737,7 @@ spec:
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be reused.
-                      See https://docs.victoriametrics.com/victoriametrics/vmagent#scrape_config-enhancements
+                      See https://docs.victoriametrics.com/victoriametrics/vmagent/#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -34754,7 +34754,7 @@ spec:
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See feature description https://docs.victoriametrics.com/victoriametrics/vmagent#scraping-targets-via-a-proxy
+                      See feature description https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -35662,7 +35662,7 @@ spec:
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be reused.
-                            See https://docs.victoriametrics.com/victoriametrics/vmagent#scrape_config-enhancements
+                            See https://docs.victoriametrics.com/victoriametrics/vmagent/#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -35679,7 +35679,7 @@ spec:
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See feature description https://docs.victoriametrics.com/victoriametrics/vmagent#scraping-targets-via-a-proxy
+                            See feature description https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -38548,7 +38548,7 @@ spec:
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be reused.
-                            See https://docs.victoriametrics.com/victoriametrics/vmagent#scrape_config-enhancements
+                            See https://docs.victoriametrics.com/victoriametrics/vmagent/#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -38565,7 +38565,7 @@ spec:
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See feature description https://docs.victoriametrics.com/victoriametrics/vmagent#scraping-targets-via-a-proxy
+                            See feature description https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -38872,7 +38872,7 @@ spec:
                 description: |-
                   LoadBalancingPolicy defines load balancing policy to use for backend urls.
                   Supported policies: least_loaded, first_available.
-                  See [here](https://docs.victoriametrics.com/victoriametrics/vmauth#load-balancing) for more details (default "least_loaded")
+                  See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded")
                 enum:
                 - least_loaded
                 - first_available

@@ -12,7 +12,7 @@ Comprehensive Kubernetes guides for deploying and using VictoriaMetrics alongsid
 How to migrate from [Prometheus](https://prometheus.io/) to VictoriaMetrics.
 
 * [Prometheus](https://docs.victoriametrics.com/operator/integrations/prometheus/).
-* [Grafana](https://docs.victoriametrics.com/operator/integrations/grafana).
-* [Istio](https://docs.victoriametrics.com/operator/integrations/istio).
+* [Grafana](https://docs.victoriametrics.com/operator/integrations/grafana/).
+* [Istio](https://docs.victoriametrics.com/operator/integrations/istio/).
 
 If you think the community would benefit from new integrations or detailed guides, please submit [a feature request on GitHub](https://github.com/VictoriaMetrics/operator/issues).

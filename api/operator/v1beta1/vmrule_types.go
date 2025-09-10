@@ -69,7 +69,7 @@ type RuleGroup struct {
 	// +optional
 	ExtraFilterLabels map[string]string `json:"extra_filter_labels,omitempty" yaml:"extra_filter_labels,omitempty"`
 	// Tenant id for group, can be used only with enterprise version of vmalert.
-	// See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert#multitenancy).
+	// See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy).
 	// +optional
 	Tenant string `json:"tenant,omitempty" yaml:"tenant,omitempty"`
 	// Params optional HTTP URL parameters added to each rule request

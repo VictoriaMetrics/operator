@@ -79,7 +79,7 @@ type TargetRef struct {
 }
 
 // VMUserIPFilters defines filters for IP addresses
-// supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth#ip-filters)
+// supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)
 type VMUserIPFilters struct {
 	DenyList  []string `json:"deny_list,omitempty"`
 	AllowList []string `json:"allow_list,omitempty"`

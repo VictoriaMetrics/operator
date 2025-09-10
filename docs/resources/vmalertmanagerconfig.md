@@ -24,7 +24,7 @@ Read [Usage](#usage) and [Special case](#special-case) before using.
 ## Specification
 
 You can see the full actual specification of the `VMAlertmanagerConfig` resource in
-the **[API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api#vmalertmanagerconfig)**.
+the **[API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api/#vmalertmanagerconfig)**.
 
 Also, you can check out the [examples](#examples) section.
 

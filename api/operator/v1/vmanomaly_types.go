@@ -96,7 +96,7 @@ type VMAnomalySpec struct {
 	Monitoring *VMAnomalyMonitoringSpec `json:"monitoring,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See [here](https://docs.victoriametrics.com/enterprise)
+	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 	// +optional
 	License *vmv1beta1.License `json:"license,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods

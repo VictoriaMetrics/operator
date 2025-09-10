@@ -29,7 +29,7 @@ With CRD (Custom Resource Definition) you can define application configuration a
 
  Operator simplifies VictoriaMetrics cluster installation, upgrading and managing.
 
- It has integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager.html) - advanced tools for making backups. Check [Backup automation for VMSingle](./docs/resources/vmsingle.md#backup-automation) or [Backup automation for VMCluster](./docs/resources/vmcluster.md#backup-automation).
+ It has integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager) - advanced tools for making backups. Check [Backup automation for VMSingle](./docs/resources/vmsingle.md#backup-automation) or [Backup automation for VMCluster](./docs/resources/vmcluster.md#backup-automation).
 
 ## Use cases
 
@@ -43,16 +43,16 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 
 ## Documentation
 
-- quick start [doc](https://docs.victoriametrics.com/operator/quick-start/?highlight=quickstart)
-- high availability [doc](https://docs.victoriametrics.com/operator/resources/vmalert/?highlight=highavailability#high-availability)
-- relabeling configuration [doc](https://docs.victoriametrics.com/operator/relabeling.html)
-- managing crd objects versions [doc](https://docs.victoriametrics.com/operator/managing-versions.html)
-- design and description of implementation [design](https://docs.victoriametrics.com/operator/design.html)
-- operator objects description [doc](https://docs.victoriametrics.com/operator/api.html)
-- backups [docs](https://docs.victoriametrics.com/operator/backups.html)
-- external access to cluster resources[doc](https://docs.victoriametrics.com/operator/auth.html)
-- security [doc](https://docs.victoriametrics.com/operator/security.html)
-- resource validation [doc](https://docs.victoriametrics.com/operator/resources-validation.html)
+- quick start [doc](https://docs.victoriametrics.com/operator/quick-start/)
+- high availability [doc](https://docs.victoriametrics.com/operator/resources/vmalert/#high-availability)
+- relabeling configuration [doc](https://docs.victoriametrics.com/operator/resources/vmagent/#relabeling)
+- managing crd objects versions [doc](https://docs.victoriametrics.com/operator/resources/#managing-versions-of-vm)
+- design and description of implementation [design](https://docs.victoriametrics.com/operator/design/)
+- operator objects description [doc](https://docs.victoriametrics.com/operator/api/)
+- backups [docs](https://docs.victoriametrics.com/operator/resources/vmsingle/#backup-automation)
+- external access to cluster resources[doc](https://docs.victoriametrics.com/operator/auth/)
+- security [doc](https://docs.victoriametrics.com/operator/security/)
+- resource validation [doc](https://docs.victoriametrics.com/operator/configuration/#crd-validation)
 
 ## Configuration
 

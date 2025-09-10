@@ -232,7 +232,7 @@ spec:
   image:
     tag: v1.110.13-enterprise
   # using enterprise features: ip filters for vmauth
-  # more details about ip filters you can read in https://docs.victoriametrics.com/victoriametrics/vmauth#ip-filters
+  # more details about ip filters you can read in https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters
   ip_filters:
     allow_list:
       - 10.0.0.0/24

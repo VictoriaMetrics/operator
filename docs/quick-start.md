@@ -50,7 +50,7 @@ kind create cluster --name=quick-start;
 # kubectl cluster-info --context kind-quick-start
 ```
 
-Please note that [certain permissions](https://docs.victoriametrics.com/operator/security#roles) may be required for the operator to function properly.
+Please note that [certain permissions](https://docs.victoriametrics.com/operator/security/#roles) may be required for the operator to function properly.
 
 If you are new to metrics and monitoring, we recommend reading the following articles first:
 - [Counters, Gauges, Histograms & Summaries](https://victoriametrics.com/blog/prometheus-monitoring-metrics-counters-gauges-histogram-summaries/)

@@ -692,8 +692,8 @@ spec:
     tag: v1.110.13-enterprise
   extraArgs:
     # using enterprise features: reading metrics from kafka
-    # more details about kafka integration you can read on https://docs.victoriametrics.com/victoriametrics/vmagent#kafka-integration
-    # more details about these and other flags you can read on https://docs.victoriametrics.com/victoriametrics/vmagent/#command-line-flags-for-kafka-consumer
+    # more details about kafka integration you can read on https://docs.victoriametrics.com/victoriametrics/integrations/kafka/
+    # more details about these and other flags you can read on https://docs.victoriametrics.com/victoriametrics/integrations/kafka/#consumer-command-line-flags
     kafka.consumer.topic.brokers: localhost:9092
     kafka.consumer.topic.format: influx
     kafka.consumer.topic: metrics-by-telegraf

@@ -48,7 +48,7 @@ Also, you can check out the [examples](#examples) section.
 
 ## Requests Load-Balancing
 
- Operator provides enhanced load-balancing mechanism for `vminsert` and `vmselect` clients. By default, operator uses built-in Kubernetes [service]() with `clusterIP` type for clients connection. It's good solution for short lived connections. But it acts poorly with long-lived TCP sessions and leads to the uneven resources utilization for `vmselect` and `vminsert` components.
+ Operator provides enhanced load-balancing mechanism for `vminsert` and `vmselect` clients. By default, operator uses built-in Kubernetes [service](https://kubernetes.io/docs/concepts/services-networking/service/) with `clusterIP` type for clients connection. It's good solution for short lived connections. But it acts poorly with long-lived TCP sessions and leads to the uneven resources utilization for `vmselect` and `vminsert` components.
 
  Consider the following example:
 

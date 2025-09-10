@@ -742,9 +742,17 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 			// https://github.com/VictoriaMetrics/operator/issues/379
 			switch {
 			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vminsert":
-				paths = addVMInsertPaths(paths)
+				if len(ref.TargetPathSuffix) == 0 {
+					paths = append(paths, "/insert/.*")
+				} else {
+					paths = addVMInsertPaths(paths)
+				}
 			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vmselect":
-				paths = addVMSelectPaths(paths)
+				if len(ref.TargetPathSuffix) == 0 {
+					paths = append(paths, "/select/.*", "/admin/.*")
+				} else {
+					paths = addVMSelectPaths(paths)
+				}
 			default:
 				paths = append(paths, "/.*")
 			}
@@ -964,13 +972,38 @@ func buildVMUserSecret(src *vmv1beta1.VMUser) (*corev1.Secret, error) {
 
 func addVMInsertPaths(src []string) []string {
 	return append(src,
-		"/insert/.*",
+		"/newrelic/.*",
+		"/opentelemetry/.*",
+		"/prometheus/api/v1/write",
+		"/prometheus/api/v1/import.*",
+		"/influx/.*",
+		"/datadog/.*",
 	)
 }
 
 func addVMSelectPaths(src []string) []string {
-	return append(src,
-		"/select/.*",
-		"/admin/.*",
+	return append(src, "/vmui.*",
+		"/vmui.*",
+		"/graph.*",
+		"/prometheus/graph.*",
+		"/prometheus/vmui.*",
+		"/prometheus/api/v1/label.*",
+		"/prometheus/api/v1/query.*",
+		"/prometheus/api/v1/rules",
+		"/prometheus/api/v1/alerts",
+		"/prometheus/api/v1/metadata",
+		"/prometheus/api/v1/series.*",
+		"/prometheus/api/v1/status.*",
+		"/prometheus/api/v1/export.*",
+		"/prometheus/federate",
+		"/admin/tenants",
+		"/api/v1/status/.*",
+		"/api/v1/rules",
+		"/internal/resetRollupResultCache",
+		"/prometheus/api/v1/admin/.*",
+		"/prometheus.*-debug",
+		"/prometheus/prettify-query",
+		"/prometheus/api/v1/notifiers",
+		"/prometheus/api/v1/query_exemplars",
 	)
 }

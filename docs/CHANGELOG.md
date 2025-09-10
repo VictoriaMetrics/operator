@@ -18,6 +18,8 @@ aliases:
 
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): add `VLSingle`, `VLAgent`,`VLCluster/vlinsert`,`VLCluster/vlselect` and `VLCluster/vlstorage` to the `targetRef.crd.kind`.
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly reconcile `Service` on value of `loadbalancerClass` change. Previously it produced error `may not change once set`. See PR []() for details.
+
 ## [v0.62.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.62.0)
 
 **Release date:** 17 Aug 2025

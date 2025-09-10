@@ -9,11 +9,85 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_reconcileServiceForCRD(t *testing.T) {
+
+	type opts struct {
+		serviceToReconcile *corev1.Service
+		predefinedObjects  []runtime.Object
+		validate           func(svc *corev1.Service) error
+	}
+	f := func(opts opts) {
+		t.Helper()
+		cl := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
+		ctx := context.Background()
+		err := Service(ctx, cl, opts.serviceToReconcile, nil)
+		if err != nil {
+			t.Fatalf("unexpected reconcileServiceForCRD() error = %s", err)
+		}
+		var gotSvc corev1.Service
+		if err := cl.Get(ctx, types.NamespacedName{Namespace: opts.serviceToReconcile.Namespace, Name: opts.serviceToReconcile.Name}, &gotSvc); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if err := opts.validate(&gotSvc); err != nil {
+			t.Errorf("unexpected result service error: %s", err)
+		}
+	}
+
+	f(opts{
+		serviceToReconcile: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "prefixed-1",
+				Namespace: "default",
+			},
+			Spec: corev1.ServiceSpec{
+				Type: corev1.ServiceTypeNodePort,
+			},
+		},
+		validate: func(svc *corev1.Service) error {
+			if svc.Name != "prefixed-1" {
+				return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
+			}
+			return nil
+		},
+	})
+
+	// update loadbalancer class
+	f(opts{
+		serviceToReconcile: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "prefixed-1",
+				Namespace: "default",
+			},
+			Spec: corev1.ServiceSpec{
+				Type:              corev1.ServiceTypeLoadBalancer,
+				LoadBalancerClass: ptr.To("some-class"),
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prefixed-1",
+					Namespace: "default",
+				},
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeLoadBalancer,
+				},
+			},
+		},
+		validate: func(svc *corev1.Service) error {
+			if *svc.Spec.LoadBalancerClass != "some-class" {
+				return fmt.Errorf("unexpected LoadBalancerClass: %s, want: some-classs", *svc.Spec.LoadBalancerClass)
+			}
+			return nil
+		},
+	})
+
+	// TODO: migrate other tests for f-test
 	type args struct {
 		ctx        context.Context
 		newService *corev1.Service
@@ -25,27 +99,7 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 		validate          func(svc *corev1.Service) error
 		wantErr           bool
 	}{
-		{
-			name: "create new svc",
-			args: args{
-				newService: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "prefixed-1",
-						Namespace: "default",
-					},
-					Spec: corev1.ServiceSpec{
-						Type: corev1.ServiceTypeNodePort,
-					},
-				},
-				ctx: context.TODO(),
-			},
-			validate: func(svc *corev1.Service) error {
-				if svc.Name != "prefixed-1" {
-					return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
-				}
-				return nil
-			},
-		},
+
 		{
 			name: "update svc from headless to clusterIP",
 			args: args{

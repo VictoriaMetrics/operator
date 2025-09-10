@@ -31,7 +31,7 @@ For each `VLSingle` resource, the Operator adds `Service` and `VMServiceScrape` 
 You can see the full actual specification of the `VLSingle` resource in the **[API docs -> VLSingle](https://docs.victoriametrics.com/operator/api/#vlsingle)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 

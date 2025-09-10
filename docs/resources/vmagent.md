@@ -671,7 +671,7 @@ For using Enterprise version of [vmagent](https://docs.victoriametrics.com/victo
  - change version of `vmagent` to version with `-enterprise` suffix using [Version management](#version-management).
 
 After that you can pass [Kafka integration](https://docs.victoriametrics.com/victoriametrics/vmagent/#kafka-integration)
-flags to `VMAgent` with [extraArgs](./#extra-arguments).
+flags to `VMAgent` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 ### Reading metrics from Kafka
 

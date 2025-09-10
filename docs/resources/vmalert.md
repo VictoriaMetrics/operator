@@ -35,7 +35,7 @@ name `<VMAlert-name>`.
 You can see the full actual specification of the `VMAlert` resource in the **[API docs -> VMAlert](https://docs.victoriametrics.com/operator/api/#vmalert)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -311,7 +311,7 @@ For using Enterprise version of [vmalert](https://docs.victoriametrics.com/victo
 ### Reading rules from object storage
 
 After that you can pass `-rule` command-line argument with `s3://` or `gs://`
-to `VMAlert` with [extraArgs](./#extra-arguments).
+to `VMAlert` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 More details about reading rules from object storage you can read in [vmalert docs](https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage).
 
@@ -344,7 +344,7 @@ After enabling enterprise version you can use [Multitenancy](https://docs.victor
 feature in `VMAlert`.
 
 For that you need to set `clusterMode` command-line flag 
-with [extraArgs](./#extra-arguments)
+with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments)
 and specify `tenant` field for groups 
 in [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/#enterprise-features):
 

@@ -29,7 +29,7 @@ For each `VMSingle` resource, the Operator adds `Service` and `VMServiceScrape` 
 You can see the full actual specification of the `VMSingle` resource in the **[API docs -> VMSingle](https://docs.victoriametrics.com/operator/api/#vmsingle)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -128,7 +128,7 @@ For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/vict
 ### Downsampling
 
 After that you can pass [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling)
-flag to `VMSingle` with [extraArgs](./#extra-arguments) too.
+flag to `VMSingle` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments) too.
 
 Here are complete example for [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling):
  

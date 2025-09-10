@@ -30,7 +30,7 @@ When there are two or more configured replicas the Operator runs the Alertmanage
 You can see the full actual specification of the `VMAlertmanager` resource in the **[API docs -> VMAlertManager](https://docs.victoriametrics.com/operator/api/#vmalertmanager)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 

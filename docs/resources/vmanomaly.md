@@ -73,7 +73,7 @@ spec:
 
 ### Reader, Writer and Monitoring
 
-While Anomaly Detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/), [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/schedulers/) and [settings](https://docs.victoriametrics.com/anomaly-detection/components/settings/) should be defined in `spec.configRawYaml` or `spec.configSecret`, [reader](https://docs.victoriametrics.com/anomaly-detection/components/reader/), [writer](https://docs.victoriametrics.com/anomaly-detection/components/writer/) and [monitoring](https://docs.victoriametrics.com/anomaly-detection/components/monitoring/) sections should defined at `spec.reader`, `spec.writer` and `spec.monitoring` respectively.
+While Anomaly Detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/), [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/) and [settings](https://docs.victoriametrics.com/anomaly-detection/components/settings/) should be defined in `spec.configRawYaml` or `spec.configSecret`, [reader](https://docs.victoriametrics.com/anomaly-detection/components/reader/), [writer](https://docs.victoriametrics.com/anomaly-detection/components/writer/) and [monitoring](https://docs.victoriametrics.com/anomaly-detection/components/monitoring/) sections should defined at `spec.reader`, `spec.writer` and `spec.monitoring` respectively.
 
 This was done to allow to use K8s secrets and configmaps as a source for TLS, basic and bearer secrets for reader, writer and monitoring endpoints. Also structure of this sections differ from Anomaly Detection configuration structure.
 

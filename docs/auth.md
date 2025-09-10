@@ -129,11 +129,15 @@ spec:
      kind: VMCluster/vminsert
      name: test-persistent
      namespace: default
+    paths:
+      - /
     target_path_suffix: "/insert/1"
   - crd:
      kind: VMCluster/vmselect
      name: test-persistent
      namespace: default
+    paths:
+      - /
     target_path_suffix: "/select/1"
   - static:
      url: http://vmselect-test-persistent.default.svc:8481/

@@ -83,7 +83,6 @@ func (sus *skipableVMUsers) deduplicateBy(cb func(user *vmv1beta1.VMUser) (strin
 func (sus *skipableVMUsers) sort() {
 	// sort for consistency.
 	sort.Slice(sus.users, func(i, j int) bool {
-
 		if sus.users[i].Name != sus.users[j].Name {
 			return sus.users[i].Name < sus.users[j].Name
 		}
@@ -93,7 +92,6 @@ func (sus *skipableVMUsers) sort() {
 
 // builds vmauth config.
 func buildConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, sus *skipableVMUsers, ac *build.AssetsCache) ([]byte, error) {
-
 	// apply sort before making any changes to users
 	sus.sort()
 
@@ -744,9 +742,17 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 			// https://github.com/VictoriaMetrics/operator/issues/379
 			switch {
 			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vminsert":
-				paths = addVMInsertPaths(paths)
+				if len(ref.TargetPathSuffix) == 0 {
+					paths = append(paths, "/insert/.*")
+				} else {
+					paths = addVMInsertPaths(paths)
+				}
 			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vmselect":
-				paths = addVMSelectPaths(paths)
+				if len(ref.TargetPathSuffix) == 0 {
+					paths = append(paths, "/select/.*", "/admin/.*")
+				} else {
+					paths = addVMSelectPaths(paths)
+				}
 			default:
 				paths = append(paths, "/.*")
 			}
@@ -971,30 +977,33 @@ func addVMInsertPaths(src []string) []string {
 		"/prometheus/api/v1/write",
 		"/prometheus/api/v1/import.*",
 		"/influx/.*",
-		"/datadog/.*")
+		"/datadog/.*",
+	)
 }
 
 func addVMSelectPaths(src []string) []string {
 	return append(src, "/vmui.*",
-		"/vmui/vmui",
-		"/graph",
-		"/prometheus/graph",
+		"/vmui.*",
+		"/graph.*",
+		"/prometheus/graph.*",
 		"/prometheus/vmui.*",
 		"/prometheus/api/v1/label.*",
-		"/graphite.*",
 		"/prometheus/api/v1/query.*",
 		"/prometheus/api/v1/rules",
 		"/prometheus/api/v1/alerts",
 		"/prometheus/api/v1/metadata",
-		"/prometheus/api/v1/rules",
 		"/prometheus/api/v1/series.*",
 		"/prometheus/api/v1/status.*",
 		"/prometheus/api/v1/export.*",
 		"/prometheus/federate",
-		"/prometheus/api/v1/admin/tsdb/delete_series",
 		"/admin/tenants",
 		"/api/v1/status/.*",
+		"/api/v1/rules",
 		"/internal/resetRollupResultCache",
 		"/prometheus/api/v1/admin/.*",
+		"/prometheus.*-debug",
+		"/prometheus/prettify-query",
+		"/prometheus/api/v1/notifiers",
+		"/prometheus/api/v1/query_exemplars",
 	)
 }

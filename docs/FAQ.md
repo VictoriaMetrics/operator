@@ -16,7 +16,7 @@ tags:
 ---
 ## How do you monitor the operator itself?
 
-You can read about vmoperator monitoring in [this document](https://docs.victoriametrics.com/operator/monitoring).
+You can read about vmoperator monitoring in [this document](https://docs.victoriametrics.com/operator/monitoring/).
 
 ## How to change VMStorage PVC storage class
 
@@ -51,7 +51,7 @@ You can read about backups:
 
 ## How to migrate from Prometheus-operator to VictoriaMetrics operator?
 
-You can read about migration from prometheus operator on [this page](https://docs.victoriametrics.com/operator/migration).
+You can read about migration from prometheus operator on [this page](https://docs.victoriametrics.com/operator/integrations/prometheus/).
 
 ## How to turn off conversion for prometheus resources
 
@@ -71,10 +71,10 @@ You can read about needed permissions for operator in [this document](https://do
 
 ## How to know the version of VM components in the operator?
 
-See [printDefaults mode](https://docs.victoriametrics.com/operator/configuration).
+See [printDefaults mode](https://docs.victoriametrics.com/operator/configuration/).
 
 In addition, you can use [Release notes](https://github.com/VictoriaMetrics/operator/releases) 
-or [CHANGELOG](https://docs.victoriametrics.com/operator/changelog).
+or [CHANGELOG](https://docs.victoriametrics.com/operator/changelog/).
 - that's where we describe default version of VictoriaMetrics components.
 
 ## How to run VictoriaMetrics operator with permissions for one namespace only?

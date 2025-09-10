@@ -107,7 +107,7 @@ If both `configSecret` and `configRawYaml` are defined, only configuration from 
 
 ### Using VMAlertmanagerConfig
 
-See details at [VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig).
+See details at [VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/).
 
 The CRD specifies which `VMAlertmanagerConfig`s should be covered by the deployed `VMAlertmanager` instances based on label selection.
 The Operator then generates a configuration based on the included `VMAlertmanagerConfig`s and updates the `Secret` containing
@@ -124,8 +124,8 @@ spec:
   configNamespaceSelector: {}
 ```
 
-[VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig) objects are
-generates part of [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager) configuration.
+[VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/) objects are
+generates part of [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/) configuration.
 
 For filtering rules `VMAlertmanager` uses selectors `configNamespaceSelector` and `configSelector`.
 It allows configuring rules access control across namespaces and different environments.
@@ -288,7 +288,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VMAlertManager` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
+by default all `VMAlertManager` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VMALERTMANAGER_RESOURCE_LIMIT_MEM` - default memory limit for `VMAlertManager` pods,
 - `VM_VMALERTMANAGER_RESOURCE_LIMIT_CPU` - default memory limit for `VMAlertManager` pods,

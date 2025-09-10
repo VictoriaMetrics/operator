@@ -11,7 +11,7 @@ tags:
   - metrics
 ---
 
-The page is deprecated. The content has been moved to [operator/integrations/prometheus](https://docs.victoriametrics.com/operator/integrations/prometheus).
+The page is deprecated. The content has been moved to [operator/integrations/prometheus](https://docs.victoriametrics.com/operator/integrations/prometheus/).
 
 ###### Objects conversion
 

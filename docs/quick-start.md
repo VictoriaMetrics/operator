@@ -15,7 +15,7 @@ tags:
 ---
 
 This guide walks you through the easiest way to install VictoriaMetrics in a [Kubernetes](https://kubernetes.io/) cluster using the VictoriaMetrics [operator](https://github.com/VictoriaMetrics/operator/).
-While other [installation methods](https://docs.victoriametrics.com/operator/setup) offer more flexibility, 
+While other [installation methods](https://docs.victoriametrics.com/operator/setup/) offer more flexibility, 
 this approach keeps things simple and helps you get up and running with minimal effort.
 
 By the end of this guide, you’ll have a fully functional setup that includes:
@@ -139,7 +139,7 @@ You can now proceed with installing the metrics storage `VMSingle`.
 
 ## Storage
 
-The easiest and production-ready way to run VictoriaMetrics storage in Kubernetes is by using the [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle) resource.
+The easiest and production-ready way to run VictoriaMetrics storage in Kubernetes is by using the [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/) resource.
 It deploys a [VictoriaMetrics single-node](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) instance.
 Although it runs as a single pod, the setup is recommended for production use.
 `VMSingle` can scale vertically and efficiently handle high volumes of metric ingestion and querying.

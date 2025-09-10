@@ -87,7 +87,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VLCluster` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
+by default all `VLCluster` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_LIMIT_MEM:` - default memory limit for `VLCluster.vlstorage` pods,
 - `VLSTORAGEDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VLCluster.vlstorage` pods,

@@ -17,15 +17,15 @@ tags:
 
 You can use one of the following official helm-charts with `vmoperator`:
 
-- [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoriametrics-operator)
-- [victoria-metrics-k8s-stack helm chart](https://docs.victoriametrics.com/helm/victoriametrics-k8s-stack)
+- [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoriametrics-operator/)
+- [victoria-metrics-k8s-stack helm chart](https://docs.victoriametrics.com/helm/victoriametrics-k8s-stack/)
   (includes the `victoria-metrics-operator` helm-chart and other components for full-fledged k8s monitoring, is an alternative for [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)).
 
 For installing VictoriaMetrics operator with helm-chart follow the instructions from README of the corresponding helm-chart
-([this](https://docs.victoriametrics.com/helm/victoriametrics-operator)
-or [this](https://docs.victoriametrics.com/helm/victoriametrics-k8s-stack)).
+([this](https://docs.victoriametrics.com/helm/victoriametrics-operator/)
+or [this](https://docs.victoriametrics.com/helm/victoriametrics-k8s-stack/)).
 
-in addition, you can use [quickstart guide](https://docs.victoriametrics.com/operator/quick-start) for
+in addition, you can use [quickstart guide](https://docs.victoriametrics.com/operator/quick-start/) for
 installing VictoriaMetrics operator with helm-chart.
 
 ## Installing by Manifest
@@ -166,4 +166,4 @@ There is no need in an additional configuration for ARM. Operator and VictoriaMe
 
 ## Configuring
 
-You can read detailed instructions about operator configuring in [this document](https://docs.victoriametrics.com/operator/configuration).
+You can read detailed instructions about operator configuring in [this document](https://docs.victoriametrics.com/operator/configuration/).

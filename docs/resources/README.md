@@ -184,7 +184,7 @@ Operator supports following [Enterprise features for VictoriaMetrics components]
     - [Advanced per-tenant statistic](https://docs.victoriametrics.com/operator/resources/vmcluster/#advanced-per-tenant-statistic)
     - [mTLS protection](https://docs.victoriametrics.com/operator/resources/vmcluster/#mtls-protection)
     - [Backup automation](https://docs.victoriametrics.com/operator/resources/vmcluster/#backup-automation)
-- [VMRule Enterprise features](https://docs.victoriametrics.com/operator/resources/vmrule#enterprise-features)
+- [VMRule Enterprise features](https://docs.victoriametrics.com/operator/resources/vmrule/#enterprise-features)
     - [Multitenancy](https://docs.victoriametrics.com/operator/resources/vmrule/#multitenancy)
 - [VMSingle Enterprise features](https://docs.victoriametrics.com/operator/resources/vmsingle/#enterprise-features)
     - [Downsampling](https://docs.victoriametrics.com/operator/resources/vmsingle/#downsampling)

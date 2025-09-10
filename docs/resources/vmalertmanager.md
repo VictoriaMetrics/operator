@@ -27,10 +27,10 @@ When there are two or more configured replicas the Operator runs the Alertmanage
 
 ## Specification
 
-You can see the full actual specification of the `VMAlertmanager` resource in the **[API docs -> VMAlertManager](https://docs.victoriametrics.com/operator/api#vmalertmanager)**.
+You can see the full actual specification of the `VMAlertmanager` resource in the **[API docs -> VMAlertManager](https://docs.victoriametrics.com/operator/api/#vmalertmanager)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -107,7 +107,7 @@ If both `configSecret` and `configRawYaml` are defined, only configuration from 
 
 ### Using VMAlertmanagerConfig
 
-See details at [VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig).
+See details at [VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/).
 
 The CRD specifies which `VMAlertmanagerConfig`s should be covered by the deployed `VMAlertmanager` instances based on label selection.
 The Operator then generates a configuration based on the included `VMAlertmanagerConfig`s and updates the `Secret` containing
@@ -124,8 +124,8 @@ spec:
   configNamespaceSelector: {}
 ```
 
-[VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig) objects are
-generates part of [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager) configuration.
+[VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/) objects are
+generates part of [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/) configuration.
 
 For filtering rules `VMAlertmanager` uses selectors `configNamespaceSelector` and `configSelector`.
 It allows configuring rules access control across namespaces and different environments.
@@ -153,7 +153,7 @@ Here's a more visual and more detailed view:
 | *any*                     | undefined        | *any*                | **defined**       | all vmalertmanagerconfigs only at `VMAlertmanager`'s namespace                                                         |
 | *any*                     | **defined**      | *any*                | **defined**       | all vmalertmanagerconfigs only at `VMAlertmanager`'s namespace for given `configSelector` are matching                 |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration#namespaced-mode).
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
 
 Here are some examples of `VMAlertmanager` configuration with selectors:
 
@@ -288,7 +288,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VMAlertManager` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
+by default all `VMAlertManager` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VMALERTMANAGER_RESOURCE_LIMIT_MEM` - default memory limit for `VMAlertManager` pods,
 - `VM_VMALERTMANAGER_RESOURCE_LIMIT_CPU` - default memory limit for `VMAlertManager` pods,

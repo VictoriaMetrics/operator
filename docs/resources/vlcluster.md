@@ -24,10 +24,10 @@ For each `VLCluster` resource components, the Operator adds `Service` and `VMSer
 
 ## Specification
 
-You can see the full actual specification of the `VLCluster` resource in the **[API docs -> VLCluster](https://docs.victoriametrics.com/operator/api#vlcluster)**.
+You can see the full actual specification of the `VLCluster` resource in the **[API docs -> VLCluster](https://docs.victoriametrics.com/operator/api/#vlcluster)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -87,7 +87,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VLCluster` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
+by default all `VLCluster` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_LIMIT_MEM:` - default memory limit for `VLCluster.vlstorage` pods,
 - `VLSTORAGEDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VLCluster.vlstorage` pods,
@@ -108,7 +108,7 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Requests Load-Balancing
 
- Operator provides enhanced load-balancing mechanism for `vlinsert` and `vlselect` clients. By default, operator uses built-in Kubernetes [service]() with `clusterIP` type for clients connection. It's good solution for short lived connections. But it acts poorly with long-lived TCP sessions and leads to the uneven resources utilization for `vlselect` and `vlinsert` components.
+ Operator provides enhanced load-balancing mechanism for `vlinsert` and `vlselect` clients. By default, operator uses built-in Kubernetes [service](https://kubernetes.io/docs/concepts/services-networking/service/) with `clusterIP` type for clients connection. It's good solution for short lived connections. But it acts poorly with long-lived TCP sessions and leads to the uneven resources utilization for `vlselect` and `vlinsert` components.
 
  Operator allows to tweak Kubernetes TCP-based load-balancing with enabled [requestsLoadBalancer](https://docs.victoriametrics.com/operator/api/#vmclusterspec-requestsloadbalancer):
 

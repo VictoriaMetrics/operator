@@ -15,7 +15,7 @@ tags:
 ---
 VictoriaMetrics operator exports internal metrics in Prometheus exposition format at `/metrics` page.
 
-These metrics can be scraped via [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent) or Prometheus.
+These metrics can be scraped via [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/) or Prometheus.
 
 ## Dashboard
 
@@ -39,7 +39,7 @@ This helm-chart also includes [official grafana dashboard for operator](#dashboa
 
 ### Helm-chart victoria-metrics-operator
 
-With [victoria-metrics-operator](https://docs.victoriametrics.com/helm/victoriametrics-operator) you can use following parameter in `values.yaml`:
+With [victoria-metrics-operator](https://docs.victoriametrics.com/helm/victoriametrics-operator/) you can use following parameter in `values.yaml`:
 
 ```yaml
 # values.yaml
@@ -75,7 +75,7 @@ spec:
       - monitoring
 ```
 
-See more info about object [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape).
+See more info about object [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/).
 
-You will also need a [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle) where the metrics will be collected.
+You will also need a [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/) where the metrics will be collected.
 

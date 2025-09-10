@@ -671,7 +671,7 @@ For using Enterprise version of [vmagent](https://docs.victoriametrics.com/victo
  - change version of `vmagent` to version with `-enterprise` suffix using [Version management](#version-management).
 
 After that you can pass [Kafka integration](https://docs.victoriametrics.com/victoriametrics/vmagent/#kafka-integration)
-flags to `VMAgent` with [extraArgs](./#extra-arguments).
+flags to `VMAgent` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 ### Reading metrics from Kafka
 
@@ -692,8 +692,8 @@ spec:
     tag: v1.110.13-enterprise
   extraArgs:
     # using enterprise features: reading metrics from kafka
-    # more details about kafka integration you can read on https://docs.victoriametrics.com/victoriametrics/vmagent#kafka-integration
-    # more details about these and other flags you can read on https://docs.victoriametrics.com/victoriametrics/vmagent/#command-line-flags-for-kafka-consumer
+    # more details about kafka integration you can read on https://docs.victoriametrics.com/victoriametrics/integrations/kafka/
+    # more details about these and other flags you can read on https://docs.victoriametrics.com/victoriametrics/integrations/kafka/#consumer-command-line-flags
     kafka.consumer.topic.brokers: localhost:9092
     kafka.consumer.topic.format: influx
     kafka.consumer.topic: metrics-by-telegraf

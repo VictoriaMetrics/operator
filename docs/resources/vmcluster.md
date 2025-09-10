@@ -42,13 +42,13 @@ The most important is `VM_PODWAITREADYTIMEOUT=80s` - it controls how long to wai
 You can see the full actual specification of the `VMCluster` resource in the **[API docs -> VMCluster](https://docs.victoriametrics.com/operator/api/#vmcluster)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
 ## Requests Load-Balancing
 
- Operator provides enhanced load-balancing mechanism for `vminsert` and `vmselect` clients. By default, operator uses built-in Kubernetes [service]() with `clusterIP` type for clients connection. It's good solution for short lived connections. But it acts poorly with long-lived TCP sessions and leads to the uneven resources utilization for `vmselect` and `vminsert` components.
+ Operator provides enhanced load-balancing mechanism for `vminsert` and `vmselect` clients. By default, operator uses built-in Kubernetes [service](https://kubernetes.io/docs/concepts/services-networking/service/) with `clusterIP` type for clients connection. It's good solution for short lived connections. But it acts poorly with long-lived TCP sessions and leads to the uneven resources utilization for `vmselect` and `vminsert` components.
 
  Consider the following example:
 
@@ -353,7 +353,7 @@ For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/vic
 ### Downsampling
 
 After that you can pass [Downsampling](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling)
-flag to `VMCluster/vmselect` and `VMCluster/vmstorage` with [extraArgs](./#extra-arguments) too.
+flag to `VMCluster/vmselect` and `VMCluster/vmstorage` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments) too.
 
 Here are complete example for [Downsampling](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling):
 
@@ -388,7 +388,7 @@ spec:
 ### Retention filters
 
 You can pass [Retention filters](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters)
-flag to  `VMCluster/vmstorage` with [extraArgs](./#extra-arguments).
+flag to  `VMCluster/vmstorage` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Here are complete example for [Retention filters](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters):
 
@@ -442,7 +442,7 @@ scrape [Advanced per-tenant statistic](https://docs.victoriametrics.com/victoria
 ### mTLS protection
 
 You can pass [mTLS protection](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#mtls-protection)
-flags to `VMCluster/vmstorage`, `VMCluster/vmselect` and `VMCluster/vminsert` with [extraArgs](./#extra-arguments) and mount secret files
+flags to `VMCluster/vmstorage`, `VMCluster/vmselect` and `VMCluster/vminsert` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments) and mount secret files
 with `extraVolumes` and `extraVolumeMounts` fields.
 
 Here are complete example for [mTLS protection](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#mtls-protection)

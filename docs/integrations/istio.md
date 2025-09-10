@@ -67,7 +67,7 @@ In this mode, Istio proxy sidecar will attempt to secure traffic when possible.
 However, scraping requests from VMAgent will still be sent as plain text.
 
 Here we just check that everything works as expected.
-If you followed the [prerequisites](https://docs.victoriametrics.com/operator/integrations/istio#prerequisites) steps, 
+If you followed the [prerequisites](https://docs.victoriametrics.com/operator/integrations/istio/#prerequisites) steps, 
 VictoriaMetrics and Istio should already be installed and running in your Kubernetes cluster.
 However, at this point, traffic is not yet flowing through the service mesh. 
 To enable the mesh, create a PeerAuthentication policy and ensure Istio sidecar injection is enabled in the namespaces `default` and `vm`:

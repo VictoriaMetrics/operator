@@ -28,10 +28,10 @@ For each `VLSingle` resource, the Operator adds `Service` and `VMServiceScrape` 
 
 ## Specification
 
-You can see the full actual specification of the `VLSingle` resource in the **[API docs -> VLSingle](https://docs.victoriametrics.com/operator/api#vlsingle)**.
+You can see the full actual specification of the `VLSingle` resource in the **[API docs -> VLSingle](https://docs.victoriametrics.com/operator/api/#vlsingle)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -95,7 +95,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VLSingle` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
+by default all `VLSingle` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VLSINGLEDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VLSingle` pods,
 - `VM_VLSINGLEDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VLSingle` pods,

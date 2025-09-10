@@ -14,7 +14,7 @@ tags:
   - metrics
   - logs
 ---
-The `VMAlertmanagerConfig` provides way to configure [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager)
+The `VMAlertmanagerConfig` provides way to configure [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/)
 configuration with CRD. It allows to define different configuration parts, which will be merged by operator into config.
 
 It behaves like other config parts - `VMServiceScrape` and etc.
@@ -24,7 +24,7 @@ Read [Usage](#usage) and [Special case](#special-case) before using.
 ## Specification
 
 You can see the full actual specification of the `VMAlertmanagerConfig` resource in
-the **[API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api#vmalertmanagerconfig)**.
+the **[API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api/#vmalertmanagerconfig)**.
 
 Also, you can check out the [examples](#examples) section.
 

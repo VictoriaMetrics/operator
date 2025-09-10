@@ -77,7 +77,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/victoria-logs
-    tag: v1.31.0
+    tag: v1.33.0
     pullPolicy: Always
 ```
 
@@ -91,7 +91,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/victoria-logs
-    tag: v1.31.0
+    tag: v1.33.0
     pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret
@@ -117,7 +117,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VLAgent` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
+by default all `VLAgent` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VLAGENTDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VLAgent` pods,
 - `VM_VLAGENTDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VLAgent` pods,

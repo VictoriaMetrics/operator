@@ -25,7 +25,7 @@ You can see the full actual specification of the `VMAuth` resource in
 the **[API docs -> VMAuth](https://docs.victoriametrics.com/operator/api/#vmauth)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -232,7 +232,7 @@ spec:
   image:
     tag: v1.110.13-enterprise
   # using enterprise features: ip filters for vmauth
-  # more details about ip filters you can read in https://docs.victoriametrics.com/victoriametrics/vmauth#ip-filters
+  # more details about ip filters you can read in https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters
   ip_filters:
     allow_list:
       - 10.0.0.0/24

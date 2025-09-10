@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -84,6 +85,8 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		return recreateService(currentService)
 	case newService.Spec.ClusterIP == "" && currentService.Spec.ClusterIP == "None":
 		// serviceType changes from headless to clusterIP
+		return recreateService(currentService)
+	case ptr.Deref(newService.Spec.LoadBalancerClass, "") != ptr.Deref(currentService.Spec.LoadBalancerClass, ""):
 		return recreateService(currentService)
 	}
 

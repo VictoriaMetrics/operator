@@ -208,26 +208,32 @@ func (cr *VTSingleSpec) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
+// Probe implements build.probeCRD interface
 func (cr *VTSingle) Probe() *vmv1beta1.EmbeddedProbes {
 	return cr.Spec.EmbeddedProbes
 }
 
+// ProbePath implements build.probeCRD interface
 func (cr *VTSingle) ProbePath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
+// ProbeScheme implements build.probeCRD interface
 func (cr *VTSingle) ProbeScheme() string {
 	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
 }
 
+// ProbePort implements build.probeCRD interface
 func (cr *VTSingle) ProbePort() string {
 	return cr.Spec.Port
 }
 
+// ProbeNeedLiveness implements build.probeCRD interface
 func (cr *VTSingle) ProbeNeedLiveness() bool {
 	return false
 }
 
+// AnnotationsFiltered returns global annotations to be applied for created objects
 func (cr *VTSingle) AnnotationsFiltered() map[string]string {
 	if cr.Spec.ManagedMetadata == nil {
 		return nil
@@ -269,6 +275,7 @@ func (cr *VTSingle) AllLabels() map[string]string {
 	return labels.Merge(selectorLabels, cr.Spec.ManagedMetadata.Labels)
 }
 
+// PrefixedName format name of the component with hard-coded prefix
 func (cr *VTSingle) PrefixedName() string {
 	return fmt.Sprintf("vtsingle-%s", cr.Name)
 }
@@ -299,6 +306,7 @@ func (cr *VTSingle) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
+// GetServiceAccountName returns service account name for components
 func (cr *VTSingle) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
@@ -306,10 +314,12 @@ func (cr *VTSingle) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// IsOwnsServiceAccount checks if ServiceAccountName is set explicitly
 func (cr *VTSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
+// AsURL returns URL for components access
 func (cr *VTSingle) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {

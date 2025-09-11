@@ -16,6 +16,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+// OnVTClusterDelete removes all child objects and releases finalizers
 func OnVTClusterDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
 
 	if cr.Spec.Insert != nil {

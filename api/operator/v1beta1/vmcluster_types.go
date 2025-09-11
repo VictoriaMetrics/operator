@@ -921,6 +921,7 @@ func (cr *VMCluster) AsURL() string {
 	return "unknown"
 }
 
+// SelectURL returns url to access VMSelect component
 func (cr *VMCluster) SelectURL() string {
 	if cr.Spec.VMSelect == nil {
 		return ""
@@ -939,6 +940,7 @@ func (cr *VMCluster) SelectURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMSelect.ExtraArgs), cr.GetVMSelectName(), cr.Namespace, port)
 }
 
+// InsertURL returns url to access VMInsert component
 func (cr *VMCluster) InsertURL() string {
 	if cr.Spec.VMInsert == nil {
 		return ""
@@ -957,6 +959,7 @@ func (cr *VMCluster) InsertURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.VMInsert.ExtraArgs), cr.GetVMInsertName(), cr.Namespace, port)
 }
 
+// StorageURL returns url to access VMStorage component
 func (cr *VMCluster) StorageURL() string {
 	if cr.Spec.VMStorage == nil {
 		return ""

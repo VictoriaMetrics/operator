@@ -519,6 +519,8 @@ type StreamAggrConfig struct {
 	// IgnoreFirstIntervals instructs to ignore first interval
 	// +optional
 	IgnoreFirstIntervals int `json:"ignoreFirstIntervals,omitempty"`
+	// IgnoreFirstSampleInterval sets interval for total and prometheus_total during which first samples will be ignored
+	IgnoreFirstSampleInterval string `json:"ignoreFirstSampleInterval,omitempty"`
 	// IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval.
 	// +optional
 	IgnoreOldSamples bool `json:"ignoreOldSamples,omitempty"`
@@ -612,6 +614,9 @@ type StreamAggrRule struct {
 	Without []string `json:"without,omitempty" yaml:"without,omitempty"`
 
 	IgnoreFirstIntervals *int `json:"ignore_first_intervals,omitempty" yaml:"ignore_first_intervals,omitempty"`
+
+	// IgnoreFirstSampleInterval sets interval for total and prometheus_total during which first samples will be ignored
+	IgnoreFirstSampleInterval string `json:"ignoreFirstSampleInterval,omitempty" yaml:"ignore_first_sample_interval,omitempty"`
 
 	// DropInputLabels is an optional list with labels, which must be dropped before further processing of input samples.
 	//

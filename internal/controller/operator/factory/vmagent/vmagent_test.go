@@ -1292,7 +1292,8 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 									Outputs: []string{"total", "avg"},
 								},
 							},
-							DedupInterval: "10s",
+							DedupInterval:             "10s",
+							IgnoreFirstSampleInterval: "10m",
 						},
 					},
 					{
@@ -1300,7 +1301,8 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 						StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
 							Rules: []vmv1beta1.StreamAggrRule{
 								{
-									Outputs: []string{"histogram_bucket"},
+									IgnoreFirstSampleInterval: "20m",
+									Outputs:                   []string{"histogram_bucket"},
 								},
 							},
 							KeepInput: true,
@@ -1312,6 +1314,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 				`-remoteWrite.maxDiskUsagePerURL=1073741824`,
 				`-remoteWrite.streamAggr.config=/etc/vm/stream-aggr/RWS_0-CM-STREAM-AGGR-CONF,/etc/vm/stream-aggr/RWS_1-CM-STREAM-AGGR-CONF`,
 				`-remoteWrite.streamAggr.dedupInterval=10s,`,
+				`-remoteWrite.streamAggr.ignoreFirstSampleInterval=10m,`,
 				`-remoteWrite.streamAggr.keepInput=false,true`,
 				`-remoteWrite.url=localhost:8429,localhost:8431`,
 				`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
@@ -2086,12 +2089,13 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 							URL: "localhost:8429",
 							StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
 								Rules: []vmv1beta1.StreamAggrRule{{
-									Match:             []string{`{__name__="count1"}`, `{__name__="count2"}`},
-									Interval:          "1m",
-									StalenessInterval: "2m",
-									Outputs:           []string{"total", "avg"},
-									By:                []string{"job", "instance"},
-									Without:           []string{"pod"},
+									Match:                     []string{`{__name__="count1"}`, `{__name__="count2"}`},
+									Interval:                  "1m",
+									StalenessInterval:         "2m",
+									IgnoreFirstSampleInterval: "20m",
+									Outputs:                   []string{"total", "avg"},
+									By:                        []string{"job", "instance"},
+									Without:                   []string{"pod"},
 									OutputRelabelConfigs: []vmv1beta1.RelabelConfig{{
 										SourceLabels: []string{"__name__"},
 										TargetLabel:  "metric",
@@ -2121,6 +2125,7 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
   - instance
   without:
   - pod
+  ignore_first_sample_interval: 20m
   output_relabel_configs:
   - regex:
     - vmagent

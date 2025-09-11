@@ -219,7 +219,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 15 Apr 2025
 
-![AppVersion: v1.115.0](https://img.shields.io/badge/v1.115.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11500)
+![AppVersion: v1.115.0](https://img.shields.io/badge/v1.115.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11500)
 ![AppVersion: v1.18.0](https://img.shields.io/badge/v1.18.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v180)
 
 **Update note 1: config-reloader container now longer uses `proxy-protocol` for internal web-server if `reload-use-proxy-protocol` is set.
@@ -243,7 +243,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 02 Apr 2025
 
-![AppVersion: v1.114.0](https://img.shields.io/badge/v1.114.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11400)
+![AppVersion: v1.114.0](https://img.shields.io/badge/v1.114.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11400)
 ![AppVersion: v1.17.0](https://img.shields.io/badge/v1.17.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v170)
 
 
@@ -278,7 +278,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 12 Mar 2025
 
-![AppVersion: v1.113.0](https://img.shields.io/badge/v1.113.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11300)
+![AppVersion: v1.113.0](https://img.shields.io/badge/v1.113.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11300)
 ![AppVersion: v1.15.0](https://img.shields.io/badge/v1.15.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v1150)
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): reduce operator memory usage. Memory usage increased at [v0.48.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.48.0). This change updates default value for `-controller.disableCacheFor=""` flag from empty to `configmap,secret` and disables go-client cache for `Secret` and `ConfigMap`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1245) for details.
@@ -288,7 +288,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 11 Mar 2025
 
-![AppVersion: v1.113.0](https://img.shields.io/badge/v1.113.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11300)
+![AppVersion: v1.113.0](https://img.shields.io/badge/v1.113.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11300)
 ![AppVersion: v1.15.0](https://img.shields.io/badge/v1.15.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v1150)
 
 **Update note 1: remove deprecated fields `Replicas`, `UpdateReplicas`, `AvailableReplicas` and `UnAvailableReplicas` from `vlogs`, `vmsingle`,`vmagent`, `vmalert`  objects `.status`.
@@ -316,7 +316,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 05 Feb 2025
 
-![AppVersion: v1.110.0](https://img.shields.io/badge/v1.110.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11100)
+![AppVersion: v1.110.0](https://img.shields.io/badge/v1.110.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11100)
 ![AppVersion: v1.6.1](https://img.shields.io/badge/v1.6.1-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v161)
 
 * SECURITY: upgrade Go builder from Go1.23.4 to Go1.23.5. See the list of issues addressed in [Go1.23.5](https://github.com/golang/go/issues?q=milestone%3AGo1.23.5+label%3ACherryPickApproved).
@@ -334,7 +334,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 21 Jan 2025
 
-![AppVersion: v1.109.1](https://img.shields.io/badge/v1.109.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11091)
+![AppVersion: v1.109.1](https://img.shields.io/badge/v1.109.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11091)
 ![AppVersion: v1.6.1](https://img.shields.io/badge/v1.6.1-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v161)
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to v1.109.1 version
@@ -356,7 +356,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 8 Jan 2025
 
-![AppVersion: v1.108.1](https://img.shields.io/badge/v1.108.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11070)
+![AppVersion: v1.108.1](https://img.shields.io/badge/v1.108.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11070)
 ![AppVersion: v1.3.2](https://img.shields.io/badge/v1.3.2-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v132)
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly route headless service traffic to vmagent `pods` with `statefulMode` and `shardCount` defined.
@@ -367,7 +367,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 23 Dec 2024
 
-![AppVersion: v1.108.1](https://img.shields.io/badge/v1.108.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11070)
+![AppVersion: v1.108.1](https://img.shields.io/badge/v1.108.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11070)
 ![AppVersion: v1.3.2](https://img.shields.io/badge/v1.3.2-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v132)
 
 * SECURITY: upgrade Go builder from Go1.23 to Go1.23.4. See the list of issues addressed in [Go1.23.2](https://github.com/golang/go/issues?q=milestone%3AGo1.23.2+label%3ACherryPickApproved) and [Go1.23.3](https://github.com/golang/go/issues?q=milestone%3AGo1.23.3+label%3ACherryPickApproved).
@@ -382,7 +382,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 19 Dec 2024
 
-![AppVersion: v1.108.1](https://img.shields.io/badge/v1.108.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11070)
+![AppVersion: v1.108.1](https://img.shields.io/badge/v1.108.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11070)
 ![AppVersion: v1.3.2](https://img.shields.io/badge/v1.3.2-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v132)
 
 **Update note 1: `labels` and `annotations` inheritance is deprecated and will be remove at upcoming `v0.52.0` release. It's recommend to move all needed labels and annotations to the `spec.managedMetadata` fields.
@@ -414,7 +414,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 22 Nov 2024
 
-![AppVersion: v1.106.1](https://img.shields.io/badge/v1.106.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11061)
+![AppVersion: v1.106.1](https://img.shields.io/badge/v1.106.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11061)
 ![AppVersion: v0.32.0](https://img.shields.io/badge/v0.32.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0320)
 
 - [vmoperator](https://docs.victoriametrics.com/operator/): add missing `container` labels to the metrics discovered with `VMServiceScrape` for `endpointslices` discovery role.
@@ -427,7 +427,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 11 Nov 2024
 
-![AppVersion: v1.106.1](https://img.shields.io/badge/v1.106.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11061)
+![AppVersion: v1.106.1](https://img.shields.io/badge/v1.106.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11061)
 ![AppVersion: v0.32.0](https://img.shields.io/badge/v0.32.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0320)
 
 - [vmrule](https://docs.victoriametrics.com/operator/resources/vmrule/): properly validate rules for [vlogs](https://docs.victoriametrics.com/victorialogs/vmalert/) group `type`.
@@ -439,7 +439,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 15 Oct 2024
 
-![AppVersion: v1.106.0](https://img.shields.io/badge/v1.106.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11060)
+![AppVersion: v1.106.0](https://img.shields.io/badge/v1.106.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11060)
 ![AppVersion: v0.32.0](https://img.shields.io/badge/v0.32.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0320)
 
 - [operator](https://docs.victoriametrics.com/operator/): properly apply `useStrictSecurity: true` to the `initContainers` for `VMAuth`, `VMAgent` and `VMAlertmanager`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1134) for details.
@@ -454,7 +454,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 15 Oct 2024
 
-![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11030)
+![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11030)
 ![AppVersion: v0.32.0](https://img.shields.io/badge/v0.32.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0320)
 
 - [api](https://docs.victoriametrics.com/operator/api/): adds new fields `maxDiskUsagePerUrl` and`forceVMProto` to the `VMagent` `remoteWriteSpec`
@@ -467,7 +467,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 29 Sep 2024
 
-![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11030)
+![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11030)
 ![AppVersion: v0.32.0](https://img.shields.io/badge/v0.32.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0320)
 
 - [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): properly apply global container registry from configuration. It was ignored for `VMCluster` since `v0.48.0` release. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1118) for details.
@@ -477,7 +477,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 27 Sep 2024
 
-![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11030)
+![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11030)
 ![AppVersion: v0.31.0](https://img.shields.io/badge/v0.31.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0310)
 
 - [operator](https://docs.victoriametrics.com/operator/): properly expose `vm_app_version` metric tag with `version` and `short_version` build info. It was broken since v0.46.0 release.
@@ -488,7 +488,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 26 Sep 2024
 
-![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11030)
+![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11030)
 ![AppVersion: v0.28.0](https://img.shields.io/badge/v0.28.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0280)
 
 - [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): properly build service, previously port by number instead of name was used. It produced `updating service` log messages.
@@ -498,7 +498,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 25 Sep 2024
 
-![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11030)
+![AppVersion: v1.103.0](https://img.shields.io/badge/v1.103.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11030)
 ![AppVersion: v0.32.0](https://img.shields.io/badge/v0.32.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0320)
 
 - [api](https://docs.victoriametrics.com/operator/api/): adds new fields `useVMConfigReloader`, `configReloaderImageTag`, `configReloaderResources` to to the `VMagent`, `VMAlert`, `VMAuth`, and `VMAlertmanager`.
@@ -522,7 +522,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 28 Aug 2024
 
-![AppVersion: v1.102.1](https://img.shields.io/badge/v1.102.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11021)
+![AppVersion: v1.102.1](https://img.shields.io/badge/v1.102.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11021)
 ![AppVersion: v0.28.0](https://img.shields.io/badge/v0.28.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0280)
 
 - [operator](https://docs.victoriametrics.com/operator/): fixes statefulset reconcile endless loop bug introduced at v0.47.0 version with [commit](https://github.com/VictoriaMetrics/operator/commit/57b65771b29ffd8b5d577e160aacddf0481295ee).
@@ -531,7 +531,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 26 Aug 2024
 
-![AppVersion: v1.102.1](https://img.shields.io/badge/v1.102.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11021)
+![AppVersion: v1.102.1](https://img.shields.io/badge/v1.102.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11021)
 ![AppVersion: v0.28.0](https://img.shields.io/badge/v0.28.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0280)
 
 - [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): allow to change webserver listen port with `spec.Port`. See this [PR](https://github.com/VictoriaMetrics/operator/pull/1082) for details.
@@ -544,7 +544,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 23 Aug 2024
 
-![AppVersion: v1.102.0](https://img.shields.io/badge/v1.102.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11020)
+![AppVersion: v1.102.0](https://img.shields.io/badge/v1.102.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11020)
 ![AppVersion: v0.28.0](https://img.shields.io/badge/v0.28.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0280)
 
 **It is recommended upgrading to [operator v0.47.2](https://docs.victoriametrics.com/operator/changelog/#v0471---23-aug-2024) because v0.47.1 contains a bug, which can lead to endless statefulset reconcile loop.**
@@ -558,7 +558,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 15 Aug 2024
 
-![AppVersion: v1.102.0](https://img.shields.io/badge/v1.102.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11020)
+![AppVersion: v1.102.0](https://img.shields.io/badge/v1.102.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11020)
 ![AppVersion: v0.28.0](https://img.shields.io/badge/v0.28.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%23v0280)
 
 ### Breaking changes
@@ -587,7 +587,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 9 Jul 2024
 
-![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11010)
+![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11010)
 
 ### Breaking changes
 
@@ -602,7 +602,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 5 Jul 2024
 
-![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11010)
+![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11010)
 
 - [operator](https://docs.victoriametrics.com/operator/): fixes `config-reloader` image tag name after 0.46.0 release. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1017) for details.
 - [prometheus-converter](https://docs.victoriametrics.com/operator/): fixes panic at `PodMonitor` conversion with configured `tlsConfig`. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1025) for details.
@@ -612,7 +612,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 3 Jul 2024
 
-![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11010)
+![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11010)
 
 ### Breaking changes
 
@@ -639,7 +639,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 10 Jun 2024
 
-![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11010)
+![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11010)
 
 - [operator](https://docs.victoriametrics.com/operator/): expose only command-line flags related to the operator. Remove all transitive dependency flags. See this [issue](https://github.com/VictoriaMetrics/operator/issues/963) for details.
 - [vmalertmanager](https://docs.victoriametrics.com/operator/api/#vmalertmanager): ignores content of `cr.spec.configSecret` if it's name clashes with secret used by operator for storing alertmanager config. See this [issue](https://github.com/VictoriaMetrics/operator/issues/954) for details.
@@ -654,7 +654,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 9 May 2024
 
-![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11010)
+![AppVersion: v1.101.0](https://img.shields.io/badge/v1.101.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11010)
 
 - [vmagent](https://docs.victoriametrics.com/operator/api/#vmagent): adds new fields into `streamAggrConfig`: `dedup_interval`, `ignore_old_samples`, `keep_metric_names`, `no_align_flush_to_interval`. It's only possible to use it with v1.100+ version of `vmagent`. See this [issue](https://github.com/VictoriaMetrics/operator/issues/936) for details.
 - [operator](https://docs.victoriametrics.com/operator/): use `Patch` for `finalizers` set/unset operations. It must fix possible issues with `CRD` objects mutations. See this [issue](https://github.com/VictoriaMetrics/operator/issues/946) for details.
@@ -669,7 +669,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 26 Apr 2024
 
-![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11001)
+![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11001)
 
 - Update VictoriaMetrics image tags to [v1.101.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.101.0).
 
@@ -677,7 +677,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 25 Apr 2024
 
-![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11001)
+![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11001)
 
 - [operator](https://docs.victoriametrics.com/operator/): properly set status to `expanding` for `VMCluster` during initial creation. Previously, it was always `operational`.
 - [operator](https://docs.victoriametrics.com/operator/): adds more context to `Deployment` and `Statefulset` watch ready functions. Now, it reports state of unhealthy pod. It allows to find issue with it faster.
@@ -686,7 +686,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 23 Apr 2024
 
-![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11001)
+![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11001)
 
 - [operator](https://docs.victoriametrics.com/operator/): fix conversion from `ServiceMonitor` to `VMServiceScrape`, `bearerTokenSecret` is dropped mistakenly since [v0.43.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.43.0). See [this issue](https://github.com/VictoriaMetrics/operator/issues/932).
 - [operator](https://docs.victoriametrics.com/operator/): fix selector match for config resources like VMUser, VMRule... , before it could be ignored when update resource labels.
@@ -695,7 +695,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 22 Apr 2024
 
-![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11001)
+![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11001)
 
 - [vmagent](https://docs.victoriametrics.com/operator/api/#vmagent): fixes bug with `ServiceAccount` not found with `ingestOnlyMode`.
 - [vmagent](https://docs.victoriametrics.com/operator/api/#vmagent): fixes `unknown long flag '--rules-dir'` for prometheus-config-reloader.
@@ -704,7 +704,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 18 Apr 2024
 
-![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11001)
+![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11001)
 
 - [operator](https://docs.victoriametrics.com/operator/): properly add `liveness` and `readiness` probes to `config-reloader`, if `VM_USECUSTOMCONFIGRELOADER=false`.
 
@@ -712,7 +712,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 18 Apr 2024
 
-![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11001)
+![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11001)
 
 **Update note: [vmcluster](https://docs.victoriametrics.com/operator/api/#vmcluster): remove fields `VMClusterSpec.VMInsert.Name`, `VMClusterSpec.VMStorage.Name`, `VMClusterSpec.VMSelect.Name`, they're marked as deprecated since v0.21.0. See [this pull request](https://github.com/VictoriaMetrics/operator/pull/907).**
 **Update note: PodSecurityPolicy supports was deleted. Operator no long creates PSP related objects since it's no longer supported by Kubernetes actual versions. See this [doc](https://kubernetes.io/blog/2021/04/08/kubernetes-1-21-release-announcement/#podsecuritypolicy-deprecation) for details.**
@@ -748,7 +748,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 12 Mar 2024
 
-![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v11001)
+![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11001)
 
 - [vmalert](https://docs.victoriametrics.com/operator/api/#vmalert): do not add `notifiers.*` flags in case `notifier.blackhole` is provided via `spec.extraArgs`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/894) for details.
 - [operator](https://docs.victoriametrics.com/operator/): properly build liveness probe scheme with enabled `tls`. Previously it has hard-coded `HTTP` scheme. See this [issue](https://github.com/VictoriaMetrics/operator/issues/896) for details.
@@ -759,7 +759,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 6 Mar 2024
 
-![AppVersion: v1.99.0](https://img.shields.io/badge/v1.99.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1990)
+![AppVersion: v1.99.0](https://img.shields.io/badge/v1.99.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1990)
 
 - [operator](https://docs.victoriametrics.com/operator/): fixes alertmanager args typo.
 - [prometheus-converter](https://docs.victoriametrics.com/operator/): adds new flag `controller.prometheusCRD.resyncPeriod` which allows to configure resync period of prometheus CRD objects. See this [issue](https://github.com/VictoriaMetrics/operator/issues/869) for details.
@@ -768,7 +768,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 5 Mar 2024
 
-![AppVersion: v1.99.0](https://img.shields.io/badge/v1.99.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1990)
+![AppVersion: v1.99.0](https://img.shields.io/badge/v1.99.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1990)
 
 - [operator](https://docs.victoriametrics.com/operator/): properly watch for prometheus CRD objects. See this [issue](https://github.com/VictoriaMetrics/operator/issues/892) for details.
 
@@ -776,7 +776,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 4 Mar 2024
 
-![AppVersion: v1.99.0](https://img.shields.io/badge/v1.99.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1990)
+![AppVersion: v1.99.0](https://img.shields.io/badge/v1.99.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1990)
 
 - [operator](https://docs.victoriametrics.com/operator/): adds more context to the log messages. It must greatly improve debugging process and log quality.
 - Update VictoriaMetrics image tags to [v1.99.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.99.0).
@@ -796,7 +796,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 21 Feb 2024
 
-![AppVersion: v1.98.0](https://img.shields.io/badge/v1.98.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1980)
+![AppVersion: v1.98.0](https://img.shields.io/badge/v1.98.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1980)
 
 - Remove deprecated autoscaling/v2beta1 HPA objects, previously operator still use it for k8s 1.25. See [this issue](https://github.com/VictoriaMetrics/operator/issues/864) for details.
 - Update VictoriaMetrics image tags to [v1.98.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.98.0).
@@ -805,7 +805,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 1 Feb 2024
 
-![AppVersion: v1.97.1](https://img.shields.io/badge/v1.97.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1971)
+![AppVersion: v1.97.1](https://img.shields.io/badge/v1.97.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1971)
 
 - update VictoriaMetrics image tags to [v1.97.1](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.97.1).
 
@@ -813,7 +813,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 31 Jan 2024
 
-![AppVersion: v1.97.0](https://img.shields.io/badge/v1.97.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1970)
+![AppVersion: v1.97.0](https://img.shields.io/badge/v1.97.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1970)
 
 - [vmauth](https://docs.victoriametrics.com/operator/api/#vmauth): add new fields for `unauthorized_user` like `src_hosts`, `headers`, `retry_status_codes` and `load_balancing_policy`. See [vmauth docs](https://docs.victoriametrics.com/victoriametrics/vmauth/) for more details.
 
@@ -821,7 +821,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 23 Jan 2024
 
-![AppVersion: v1.96.0](https://img.shields.io/badge/v1.96.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1960)
+![AppVersion: v1.96.0](https://img.shields.io/badge/v1.96.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1960)
 
 - [vmalertmanager](https://docs.victoriametrics.com/operator/api/#vmalertmanagerconfig): fix `VMAlertmanagerConfig` discovery according to [the docs](https://docs.victoriametrics.com/operator/resources/vmalertmanager/#using-vmalertmanagerconfig).
 - [vmoperator](https://docs.victoriametrics.com/operator/): add alerting rules for operator itself. See [this issue](https://github.com/VictoriaMetrics/operator/issues/526) for details.
@@ -834,7 +834,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 13 Dec 2023
 
-![AppVersion: v1.96.0](https://img.shields.io/badge/v1.96.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1960)
+![AppVersion: v1.96.0](https://img.shields.io/badge/v1.96.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1960)
 
 - [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/api/#vmalertmanagerconfig): add fields `entity`, `actions` and `update_alerts` for opsgenie_configs according to <https://prometheus.io/docs/alerting/latest/configuration/#opsgenie_config>.
 - [vmoperator](https://docs.victoriametrics.com/operator/): remove vmalert notifier null check, since `-notifier.url` is optional and is needed only if there are alerting rules.
@@ -843,7 +843,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 16 Nov 2023
 
-![AppVersion: v1.95.1](https://img.shields.io/badge/v1.95.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1951)
+![AppVersion: v1.95.1](https://img.shields.io/badge/v1.95.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1951)
 
 - update VictoriaMetrics image tags to [v1.95.1](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.95.1).
 
@@ -851,7 +851,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 15 Nov 2023
 
-![AppVersion: v1.95.0](https://img.shields.io/badge/v1.95.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1950)
+![AppVersion: v1.95.0](https://img.shields.io/badge/v1.95.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1950)
 
 ### Features
 
@@ -863,7 +863,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 1 Nov 2023
 
-![AppVersion: v1.94.0](https://img.shields.io/badge/v1.94.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1940)
+![AppVersion: v1.94.0](https://img.shields.io/badge/v1.94.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1940)
 
 - [vmuser](https://docs.victoriametrics.com/operator/api/#vmuser):  adds new paths for vminsert/vmselect routing with enabled dynamic discovery feature for `VMUser`. See [this PR](https://github.com/VictoriaMetrics/operator/pull/791) for details.
 - [vmcluster](https://docs.victoriametrics.com/operator/api/#vmcluster): from now on operator passes `-replicationFactor` (if it set in `vmcluster`) for `vmselect`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/778).
@@ -873,7 +873,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 4 Oct 2023
 
-![AppVersion: v1.94.0](https://img.shields.io/badge/v1.94.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1940)
+![AppVersion: v1.94.0](https://img.shields.io/badge/v1.94.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1940)
 
 ### Features
 
@@ -895,7 +895,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 11 Sep 2023
 
-![AppVersion: v1.93.4](https://img.shields.io/badge/v1.93.4-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1934)
+![AppVersion: v1.93.4](https://img.shields.io/badge/v1.93.4-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1934)
 
 ### Fixes
 
@@ -911,7 +911,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 02 Sep 2023
 
-![AppVersion: v1.93.3](https://img.shields.io/badge/v1.93.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1933)
+![AppVersion: v1.93.3](https://img.shields.io/badge/v1.93.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1933)
 
 ### Updates
 
@@ -921,7 +921,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 30 Aug 2023
 
-![AppVersion: v1.93.1](https://img.shields.io/badge/v1.93.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1931)
+![AppVersion: v1.93.1](https://img.shields.io/badge/v1.93.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1931)
 
 ### Fixes
 
@@ -935,7 +935,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 25 Aug 2023
 
-![AppVersion: v1.93.1](https://img.shields.io/badge/v1.93.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1931)
+![AppVersion: v1.93.1](https://img.shields.io/badge/v1.93.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1931)
 
 ### Fixes
 
@@ -947,7 +947,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 23 Aug 2023
 
-![AppVersion: v1.93.1](https://img.shields.io/badge/v1.93.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1931)
+![AppVersion: v1.93.1](https://img.shields.io/badge/v1.93.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1931)
 
 ### Breaking changes
 
@@ -993,7 +993,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 12 Jul 2023
 
-![AppVersion: v1.91.3](https://img.shields.io/badge/v1.91.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1913)
+![AppVersion: v1.91.3](https://img.shields.io/badge/v1.91.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1913)
 
 ### Fixes
 
@@ -1003,7 +1003,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 03 Jul 2023
 
-![AppVersion: v1.91.3](https://img.shields.io/badge/v1.91.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1913)
+![AppVersion: v1.91.3](https://img.shields.io/badge/v1.91.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1913)
 
 ### Fixes
 
@@ -1025,7 +1025,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 29 May 2023
 
-![AppVersion: v1.91.0](https://img.shields.io/badge/v1.91.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1910)
+![AppVersion: v1.91.0](https://img.shields.io/badge/v1.91.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1910)
 
 ### Fixes
 
@@ -1037,7 +1037,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 24 May 2023
 
-![AppVersion: v1.91.0](https://img.shields.io/badge/v1.91.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1910)
+![AppVersion: v1.91.0](https://img.shields.io/badge/v1.91.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1910)
 
 ### Breaking changes
 
@@ -1062,7 +1062,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 19 Apr 2023
 
-![AppVersion: v1.89.1](https://img.shields.io/badge/v1.89.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1891)
+![AppVersion: v1.89.1](https://img.shields.io/badge/v1.89.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1891)
 
 ### Fixes
 
@@ -1087,7 +1087,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 16 Mar 2023
 
-![AppVersion: v1.89.1](https://img.shields.io/badge/v1.89.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1891)
+![AppVersion: v1.89.1](https://img.shields.io/badge/v1.89.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1891)
 
 ### Fixes
 
@@ -1098,7 +1098,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 15 Mar 2023
 
-![AppVersion: v1.89.1](https://img.shields.io/badge/v1.89.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1891)
+![AppVersion: v1.89.1](https://img.shields.io/badge/v1.89.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1891)
 
 ### Fixes
 
@@ -1115,7 +1115,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 02 Mar 2023
 
-![AppVersion: v1.85.3](https://img.shields.io/badge/v1.85.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1853)
+![AppVersion: v1.85.3](https://img.shields.io/badge/v1.85.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1853)
 
 ### Fixes
 
@@ -1131,7 +1131,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 27 Jan 2023
 
-![AppVersion: v1.85.3](https://img.shields.io/badge/v1.85.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1853)
+![AppVersion: v1.85.3](https://img.shields.io/badge/v1.85.3-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1853)
 
 ### Fixes
 
@@ -1147,7 +1147,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 16 Jan 2023
 
-![AppVersion: v1.85.2](https://img.shields.io/badge/v1.85.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1852)
+![AppVersion: v1.85.2](https://img.shields.io/badge/v1.85.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1852)
 
 ### Fixes
 
@@ -1158,7 +1158,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 12 Jan 2023
 
-![AppVersion: v1.85.2](https://img.shields.io/badge/v1.85.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1852)
+![AppVersion: v1.85.2](https://img.shields.io/badge/v1.85.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1852)
 
 ### Upgrade notes
 
@@ -1172,7 +1172,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 09 Jan 2023
 
-![AppVersion: v1.85.2](https://img.shields.io/badge/v1.85.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1852)
+![AppVersion: v1.85.2](https://img.shields.io/badge/v1.85.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1852)
 
 ### Fixes
 
@@ -1192,7 +1192,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 29 Dec 2022
 
-![AppVersion: v1.85.2](https://img.shields.io/badge/v1.85.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1852)
+![AppVersion: v1.85.2](https://img.shields.io/badge/v1.85.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1852)
 
 ### Fixes
 
@@ -1214,7 +1214,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 17 Nov 2022
 
-![AppVersion: v1.83.1](https://img.shields.io/badge/v1.83.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1831)
+![AppVersion: v1.83.1](https://img.shields.io/badge/v1.83.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1831)
 
 ### Fixes
 
@@ -1225,7 +1225,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 14 Nov 2022
 
-![AppVersion: v1.83.1](https://img.shields.io/badge/v1.83.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1831)
+![AppVersion: v1.83.1](https://img.shields.io/badge/v1.83.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1831)
 
 ### Fixes
 
@@ -1243,7 +1243,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 24 Oct 2022
 
-![AppVersion: v1.82.1](https://img.shields.io/badge/v1.82.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1821)
+![AppVersion: v1.82.1](https://img.shields.io/badge/v1.82.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1821)
 
 ### Fixes
 
@@ -1268,7 +1268,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 13 Sep 2022
 
-![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1792)
+![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1792)
 
 ### Fixes
 
@@ -1286,7 +1286,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 12 Sep 2022
 
-![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1792)
+![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1792)
 
 ### Fixes
 
@@ -1304,7 +1304,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 02 Sep 2022
 
-![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1792)
+![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1792)
 
 ### Fixes
 
@@ -1315,7 +1315,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 01 Sep 2022
 
-![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1792)
+![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1792)
 
 ### Fixes
 
@@ -1326,7 +1326,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 31 Aug 2022
 
-![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1792)
+![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1792)
 
 ### Fixes
 
@@ -1336,7 +1336,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 30 Aug 2022
 
-![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1792)
+![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1792)
 
 ### Fixes
 
@@ -1353,7 +1353,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 22 Aug 2022
 
-![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1792)
+![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1792)
 
 ### Fixes
 
@@ -1364,7 +1364,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 17 Aug 2022
 
-![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1792)
+![AppVersion: v1.79.2](https://img.shields.io/badge/v1.79.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1792)
 
 ### Fixes
 
@@ -1378,7 +1378,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 16 Aug 2022
 
-![AppVersion: v1.79.0](https://img.shields.io/badge/v1.79.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1790)
+![AppVersion: v1.79.0](https://img.shields.io/badge/v1.79.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1790)
 
 ### Fixes
 
@@ -1402,7 +1402,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 26 Jul 2022
 
-![AppVersion: v1.79.0](https://img.shields.io/badge/v1.79.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1790)
+![AppVersion: v1.79.0](https://img.shields.io/badge/v1.79.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1790)
 
 ### Fixes
 
@@ -1413,7 +1413,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 25 Jul 2022
 
-![AppVersion: v1.79.0](https://img.shields.io/badge/v1.79.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1790)
+![AppVersion: v1.79.0](https://img.shields.io/badge/v1.79.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1790)
 
 ### Breaking changes
 
@@ -1452,7 +1452,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 20 May 2022
 
-![AppVersion: v1.77.1](https://img.shields.io/badge/v1.77.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1771)
+![AppVersion: v1.77.1](https://img.shields.io/badge/v1.77.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1771)
 
 ### Fixes
 

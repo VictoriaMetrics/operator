@@ -22,7 +22,7 @@ The `VMScrapeConfig` CRD allows to define a scrape config using [any of the serv
 You can see the full actual specification of the `VMScrapeConfig` resource in
 the **[API docs -> VMScrapeConfig](https://docs.victoriametrics.com/operator/api/#vmscrapeconfig)**.
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/#examples) section.
 
 ## Migration from Prometheus
 

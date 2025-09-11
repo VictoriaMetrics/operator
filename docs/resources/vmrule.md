@@ -32,7 +32,7 @@ See more details about rule configuration in [VMAlert docs](https://docs.victori
 You can see the full actual specification of the `VMRule` resource in
 the **[API docs -> VMRule](https://docs.victoriametrics.com/operator/api/#vmrule)**.
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmrule/#examples) section.
 
 ## Enterprise features
 

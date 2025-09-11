@@ -19,14 +19,14 @@ configuration with CRD. It allows to define different configuration parts, which
 
 It behaves like other config parts - `VMServiceScrape` and etc.
 
-Read [Usage](#usage) and [Special case](#special-case) before using.
+Read [Usage](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/#usage) and [Special case](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/#special-case) before using.
 
 ## Specification
 
 You can see the full actual specification of the `VMAlertmanagerConfig` resource in
 the **[API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api/#vmalertmanagerconfig)**.
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/#examples) section.
 
 ## Validation
 

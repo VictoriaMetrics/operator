@@ -63,7 +63,7 @@ More information about selectors you can find in [this doc](https://docs.victori
 You can see the full actual specification of the `VMServiceScrape` resource in
 the **[API docs -> VMServiceScrape](https://docs.victoriametrics.com/operator/api/#vmservicescrape)**.
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmservicescrape/#examples) section.
 
 ## Migration from Prometheus
 

@@ -30,7 +30,7 @@ More information about selectors you can find in [this doc](https://docs.victori
 You can see the full actual specification of the `VMNodeScrape` resource in
 the **[API docs -> VMNodeScrape](https://docs.victoriametrics.com/operator/api/#vmnodescrape)**.
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmnodescrape/#examples) section.
 
 ## Examples
 

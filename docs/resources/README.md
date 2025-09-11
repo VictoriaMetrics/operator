@@ -164,7 +164,7 @@ In addition, these CRD support common features, that can be used to increase hig
 - `nodeSelector` - to schedule pods on nodes with specific labels ([node selector in kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector)),
 - `topologySpreadConstraints` - to schedule pods on different nodes in the same topology ([topology spread constraints in kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints)).
 
-See details about these fields in the [Specification](#specification).
+See details about these fields in the [Specification](https://docs.victoriametrics.com/operator/resources/#specification).
 
 ## Enterprise features
 

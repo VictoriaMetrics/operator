@@ -8,20 +8,20 @@ sitemap:
 ---
 Operator serves to make running VictoriaMetrics applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
 
-VictoriaMetrics Operator (`vmoperator`) is the classic kubernetes-operator for VictoriaMetrics with many [great features](#features-of-vmoperator).
+VictoriaMetrics Operator (`vmoperator`) is the classic kubernetes-operator for VictoriaMetrics with many [great features](https://docs.victoriametrics.com/operator/#features-of-vmoperator).
 It allows you to manage Victoria Metrics components in Kubernetes or OpenShift clusters
 in a declarative style according to [GitOps](https://www.redhat.com/en/topics/devops/what-is-gitops)
 and [IaC](https://en.wikipedia.org/wiki/Infrastructure_as_code) concepts.
 
 VictoriaMetrics also provides [helm charts](https://docs.victoriametrics.com/helm/) without operator.
-Operator makes the same, simplifies it and provides [advanced features](#features-of-vmoperator).
+Operator makes the same, simplifies it and provides [advanced features](https://docs.victoriametrics.com/operator/#features-of-vmoperator).
 
-Learn more about [key concepts](#key-concepts) of `vmoperator` and follow the **[quick start guide](https://docs.victoriametrics.com/operator/quick-start/)** for a better experience.
+Learn more about [key concepts](https://docs.victoriametrics.com/operator/#key-concepts) of `vmoperator` and follow the **[quick start guide](https://docs.victoriametrics.com/operator/quick-start/)** for a better experience.
 
 ## Features of vmoperator
 
 - Deployment and management in a kubernetes clusters of any number of VictoriaMetrics applications (like vmsingle/vmcluster instances and another components like vmauth, vmagent, vmalert, etc...)
-- Seamless [migration from prometheus-operator](https://docs.victoriametrics.com/operator/integrations/prometheus/) with auto-conversion of prometheus [custom resources](#custom-resources)
+- Seamless [migration from prometheus-operator](https://docs.victoriametrics.com/operator/integrations/prometheus/) with auto-conversion of prometheus [custom resources](https://docs.victoriametrics.com/operator/resources/)
 - Simple VictoriaMetrics cluster installation, configuring, upgrading and managing with [crd-objects](https://docs.victoriametrics.com/operator/resources/).
 - Ability to delegate the configuration (parts of configuration) of applications monitoring to the end-users and managing access to different configurations or configuration sections.
 - Integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/) - advanced tools for making backups. Check [Backup automation for VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/#backup-automation) or [Backup automation for VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/#backup-automation).
@@ -33,7 +33,7 @@ Learn more about [key concepts](#key-concepts) of `vmoperator` and follow the **
 ### Kubernetes-operators
 
 [Kubernetes-operators](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) are software extensions
-for Kubernetes that make use of [custom resources](#custom-resources) to manage applications and their components.
+for Kubernetes that make use of [custom resources](https://docs.victoriametrics.com/operator/resources/) to manage applications and their components.
 Operators follow Kubernetes principles, notably the control loop.
 It can be said that operators are custom controllers for Kubernetes that allow you to create business logic for custom resources.
 
@@ -64,7 +64,7 @@ The basic workflow of working with the operator can be simplified as the followi
 ![operator workflow](./README_operator-workflow.webp)
 
 - Operator declares and owns [resources of Victoria Metrics](https://docs.victoriametrics.com/operator/resources/).
-- Kubernetes validates of the resource according to the specification from CRD (see more in [custom resources](#custom-resources)).
+- Kubernetes validates of the resource according to the specification from CRD (see more in [custom resources](https://docs.victoriametrics.com/operator/resources/)).
 - Operator subscribed to change events (`create`, `update`, `delete`) for related resources.
 - When an event occurs, the operator reacts and updates the state of the objects in the cluster.
 - For some objects in the cluster the reconciliation cycle is performed at a given interval, even without the occurrence of change events (see `VM_FORCERESYNCINTERVAL`).

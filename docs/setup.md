@@ -94,7 +94,7 @@ images:
 EOF
 ```
 
-You can change [operator configuration](#configuring), or use your custom namespace see [kustomize-example](https://github.com/YuriKravetc/yurikravetc.github.io/tree/main/Operator/kustomize-example).
+You can change [operator configuration](https://docs.victoriametrics.com/operator/setup/#configuring), or use your custom namespace see [kustomize-example](https://github.com/YuriKravetc/yurikravetc.github.io/tree/main/Operator/kustomize-example).
 
 Build template
 

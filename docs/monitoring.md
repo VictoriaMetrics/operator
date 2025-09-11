@@ -35,7 +35,7 @@ Alerting rules for VictoriaMetrics operator are available [here](https://github.
 
 In [victoria-metrics-k8s-stack](https://docs.victoriametrics.com/helm/victoriametrics-k8s-stack/) helm-chart operator self-scrapes metrics by default.
 
-This helm-chart also includes [official grafana dashboard for operator](#dashboard) and [official alerting rules for operator](#alerting-rules).
+This helm-chart also includes [official grafana dashboard for operator](https://docs.victoriametrics.com/operator/monitoring/#dashboard) and [official alerting rules for operator](https://docs.victoriametrics.com/operator/monitoring/#alerting-rules).
 
 ### Helm-chart victoria-metrics-operator
 

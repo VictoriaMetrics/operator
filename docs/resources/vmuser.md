@@ -25,11 +25,11 @@ operator queries kubernetes API, retrieves information about CRD and builds prop
 You can see the full actual specification of the `VMUser` resource in
 the **[API docs -> VMUser](https://docs.victoriametrics.com/operator/api/#vmuser)**.
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmuser/#examples) section.
 
 ## Authentication methods
 
-There are two authentication mechanisms: ["Bearer token"](#bearer-token) and ["Basic auth"](#basic-auth) with `username` and `password`. 
+There are two authentication mechanisms: ["Bearer token"](https://docs.victoriametrics.com/operator/resources/vmuser/#bearer-token) and ["Basic auth"](https://docs.victoriametrics.com/operator/resources/vmuser/#basic-auth) with `username` and `password`. 
 Only one of them can be used with `VMUser` at one time.
 
 Operator creates `Secret` for every `VMUser` with name - `vmuser-{VMUser.metadata.name}`.
@@ -40,7 +40,7 @@ It places `username` + `password` or `bearerToken` into `data` section.
 Bearer token is a way to authenticate user with `Authorization` header. 
 User defines `token` field in `auth` section.
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmuser/#examples) section.
 
 ### Basic auth
 
@@ -55,7 +55,7 @@ You can automatically generate `password` if:
 Operator generates random password for this `VMUser`, 
 this password will be added to the `Secret` for this `VMUser` at `data.password` field.
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmuser/#examples) section.
 
 ## Routing
 
@@ -89,7 +89,7 @@ Operator supports following kinds in `kind` field:
 - `VMSingle` for [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/)
 - `VMCluster/vmselect`, `VMCluster/vminsert` and `VMCluster/vmstorage` for [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/)
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmuser/#examples) section.
 
 Additional fields like `path` and `scheme` can be added to `CRDRef` config.
 

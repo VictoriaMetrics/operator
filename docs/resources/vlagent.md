@@ -63,7 +63,7 @@ You can see the full actual specification of the `VLAgent` resource in the **[AP
 If you can't find necessary field in the specification of the custom resource,
 see [extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
-Also, you can check out the [examples](#Examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vlagent/#examples) section.
 
 ## Version management
 

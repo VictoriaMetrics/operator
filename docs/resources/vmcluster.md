@@ -44,7 +44,7 @@ You can see the full actual specification of the `VMCluster` resource in the **[
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmcluster/#examples) section.
 
 ## Requests Load-Balancing
 
@@ -348,7 +348,7 @@ VMCluster doesn't support yet feature
 
 For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/) you need to:
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
- - change version of `vmcluster` to version with `-enterprise-cluster` suffix using [Version management](#version-management).
+ - change version of `vmcluster` to version with `-enterprise-cluster` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmcluster/#version-management).
 
 ### Downsampling
 
@@ -416,7 +416,7 @@ spec:
 ### Advanced per-tenant statistic
 
 For using [Advanced per-tenant statistic](https://docs.victoriametrics.com/victoriametrics/pertenantstatistic/)
-you only need to [enable Enterprise version of vmcluster components](#enterprise-features) 
+you only need to [enable Enterprise version of vmcluster components](https://docs.victoriametrics.com/operator/resources/vmcluster/#enterprise-features) 
 and operator will automatically create 
 [Scrape objects](https://docs.victoriametrics.com/operator/resources/vmagent/#scraping) for cluster components.
 

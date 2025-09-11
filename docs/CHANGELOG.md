@@ -1462,7 +1462,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 19 May 2022
 
-![AppVersion: v1.77.1](https://img.shields.io/badge/v1.77.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1771)
+![AppVersion: v1.77.1](https://img.shields.io/badge/v1.77.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1771)
 
 ### Breaking changes
 
@@ -1491,7 +1491,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 11 Apr 2022
 
-![AppVersion: v1.76.0](https://img.shields.io/badge/v1.76.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1760)
+![AppVersion: v1.76.0](https://img.shields.io/badge/v1.76.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1760)
 
 ### Fixes
 
@@ -1523,7 +1523,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 21 Feb 2022
 
-![AppVersion: v1.72.0](https://img.shields.io/badge/v1.72.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1720)
+![AppVersion: v1.72.0](https://img.shields.io/badge/v1.72.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1720)
 
 ### Fixes
 
@@ -1537,7 +1537,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 14 Feb 2022
 
-![AppVersion: v1.72.0](https://img.shields.io/badge/v1.72.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1720)
+![AppVersion: v1.72.0](https://img.shields.io/badge/v1.72.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1720)
 
 ### Fixes
 
@@ -1547,7 +1547,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 10 Feb 2022
 
-![AppVersion: v1.72.0](https://img.shields.io/badge/v1.72.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1720)
+![AppVersion: v1.72.0](https://img.shields.io/badge/v1.72.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1720)
 
 ### Fixes
 
@@ -1557,7 +1557,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 09 Feb 2022
 
-![AppVersion: v1.72.0](https://img.shields.io/badge/v1.72.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1720)
+![AppVersion: v1.72.0](https://img.shields.io/badge/v1.72.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1720)
 
 ### Breaking changes
 
@@ -1576,7 +1576,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 21 Jan 2022
 
-![AppVersion: v1.71.0](https://img.shields.io/badge/v1.71.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1710)
+![AppVersion: v1.71.0](https://img.shields.io/badge/v1.71.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1710)
 
 ### Fixes
 
@@ -1591,7 +1591,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 26 Dec 2021
 
-![AppVersion: v1.71.0](https://img.shields.io/badge/v1.71.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1710)
+![AppVersion: v1.71.0](https://img.shields.io/badge/v1.71.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1710)
 
 ### Fixes
 
@@ -1609,7 +1609,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 30 Nov 2021
 
-![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1680)
+![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1680)
 
 ### Breaking changes
 
@@ -1635,7 +1635,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 10 Nov 2021
 
-![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1680)
+![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1680)
 
 #### Fixes
 
@@ -1646,7 +1646,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 07 Nov 2021
 
-![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1680)
+![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1680)
 
 #### Fixes
 
@@ -1657,7 +1657,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 28 Oct 2021
 
-![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1680)
+![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1680)
 
 #### Fixes
 
@@ -1667,7 +1667,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 28 Oct 2021
 
-![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1680)
+![AppVersion: v1.68.0](https://img.shields.io/badge/v1.68.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1680)
 
 ### Breaking changes
 
@@ -1691,7 +1691,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 28 Sep 2021
 
-![AppVersion: v1.66.2](https://img.shields.io/badge/v1.66.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1662)
+![AppVersion: v1.66.2](https://img.shields.io/badge/v1.66.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1662)
 
 ### Fixes
 
@@ -1702,7 +1702,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 24 Sep 2021
 
-![AppVersion: v1.66.2](https://img.shields.io/badge/v1.66.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1662)
+![AppVersion: v1.66.2](https://img.shields.io/badge/v1.66.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1662)
 
 ### Features
 
@@ -1721,7 +1721,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 03 Sep 2021
 
-![AppVersion: v1.64.1](https://img.shields.io/badge/v1.64.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1641)
+![AppVersion: v1.64.1](https://img.shields.io/badge/v1.64.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1641)
 
 ### Fixes
 
@@ -1731,7 +1731,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 30 Aug 2021
 
-![AppVersion: v1.64.1](https://img.shields.io/badge/v1.64.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1641)
+![AppVersion: v1.64.1](https://img.shields.io/badge/v1.64.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1641)
 
 ### Fixes
 
@@ -1741,7 +1741,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 24 Aug 2021
 
-![AppVersion: v1.64.1](https://img.shields.io/badge/v1.64.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1641)
+![AppVersion: v1.64.1](https://img.shields.io/badge/v1.64.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1641)
 
 ### Deprecations
 
@@ -1770,7 +1770,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 31 Jul 2021
 
-![AppVersion: v1.63.0](https://img.shields.io/badge/v1.63.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1630)
+![AppVersion: v1.63.0](https://img.shields.io/badge/v1.63.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1630)
 
 ### Features
 
@@ -1787,7 +1787,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 28 Jul 2021
 
-![AppVersion: v1.63.0](https://img.shields.io/badge/v1.63.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1630)
+![AppVersion: v1.63.0](https://img.shields.io/badge/v1.63.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1630)
 
 ### Features
 
@@ -1798,7 +1798,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 27 Jul 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Features
 
@@ -1818,7 +1818,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 11 Jul 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Breaking Changes
 
@@ -1842,7 +1842,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 17 Jun 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Features
 
@@ -1854,7 +1854,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 16 Jun 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Fixes
 
@@ -1864,7 +1864,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 14 Jun 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Features
 
@@ -1884,7 +1884,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 26 Apr 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Fixes
 
@@ -1894,7 +1894,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 22 Apr 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Fixes
 
@@ -1904,7 +1904,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 22 Apr 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Fixes
 
@@ -1923,7 +1923,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 13 Apr 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Fixes
 
@@ -1934,7 +1934,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 09 Apr 2021
 
-![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1580)
+![AppVersion: v1.58.0](https://img.shields.io/badge/v1.58.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1580)
 
 ### Fixes
 
@@ -1950,7 +1950,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 31 Mar 2021
 
-![AppVersion: v1.56.0](https://img.shields.io/badge/v1.56.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1560)
+![AppVersion: v1.56.0](https://img.shields.io/badge/v1.56.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1560)
 
 ### Fixes
 
@@ -1960,7 +1960,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 30 Mar 2021
 
-![AppVersion: v1.56.0](https://img.shields.io/badge/v1.56.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1560)
+![AppVersion: v1.56.0](https://img.shields.io/badge/v1.56.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1560)
 
 ### Fixes
 
@@ -1971,7 +1971,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 29 Mar 2021
 
-![AppVersion: v1.56.0](https://img.shields.io/badge/v1.56.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1560)
+![AppVersion: v1.56.0](https://img.shields.io/badge/v1.56.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1560)
 
 ### Breaking changes
 
@@ -1994,7 +1994,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 22 Mar 2021
 
-![AppVersion: v1.56.0](https://img.shields.io/badge/v1.56.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1560)
+![AppVersion: v1.56.0](https://img.shields.io/badge/v1.56.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1560)
 
 ### Breaking changes
 
@@ -2013,7 +2013,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 14 Mar 2021
 
-![AppVersion: v1.53.1](https://img.shields.io/badge/v1.53.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1531)
+![AppVersion: v1.53.1](https://img.shields.io/badge/v1.53.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1531)
 
 ### Features
 
@@ -2033,7 +2033,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 22 Feb 2021
 
-![AppVersion: v1.53.1](https://img.shields.io/badge/v1.53.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1531)
+![AppVersion: v1.53.1](https://img.shields.io/badge/v1.53.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1531)
 
 ### Features
 
@@ -2047,7 +2047,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 21 Feb 2021
 
-![AppVersion: v1.53.1](https://img.shields.io/badge/v1.53.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1531)
+![AppVersion: v1.53.1](https://img.shields.io/badge/v1.53.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1531)
 
 ### Features
 
@@ -2062,7 +2062,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 09 Feb 2021
 
-![AppVersion: v1.53.1](https://img.shields.io/badge/v1.53.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1531)
+![AppVersion: v1.53.1](https://img.shields.io/badge/v1.53.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1531)
 
 ### Features
 
@@ -2078,7 +2078,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 25 Jan 2021
 
-![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1510)
+![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1510)
 
 ### Fixes
 
@@ -2088,7 +2088,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 20 Jan 2021
 
-![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1510)
+![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1510)
 
 ### Fixes
 
@@ -2098,7 +2098,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 17 Jan 2021
 
-![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1510)
+![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1510)
 
 ### Fixes
 
@@ -2109,7 +2109,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 01 Jan 2021
 
-![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1510)
+![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1510)
 
 ### Fixes
 
@@ -2123,7 +2123,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 30 Dec 2020
 
-![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1510)
+![AppVersion: v1.51.0](https://img.shields.io/badge/v1.51.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1510)
 
 ### Fixes
 
@@ -2142,7 +2142,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 16 Dec 2020
 
-![AppVersion: v1.50.1](https://img.shields.io/badge/v1.50.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1501)
+![AppVersion: v1.50.1](https://img.shields.io/badge/v1.50.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1501)
 
 ### Fixes
 
@@ -2153,7 +2153,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 15 Dec 2020
 
-![AppVersion: v1.50.1](https://img.shields.io/badge/v1.50.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1501)
+![AppVersion: v1.50.1](https://img.shields.io/badge/v1.50.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1501)
 
 ### Breaking changes
 
@@ -2175,7 +2175,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 04 Dec 2020
 
-![AppVersion: v1.48.0](https://img.shields.io/badge/v1.48.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1480)
+![AppVersion: v1.48.0](https://img.shields.io/badge/v1.48.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1480)
 
 ### Breaking changes
 
@@ -2204,7 +2204,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 15 Nov 2020
 
-![AppVersion: v1.46.0](https://img.shields.io/badge/v1.46.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1460)
+![AppVersion: v1.46.0](https://img.shields.io/badge/v1.46.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1460)
 
 - Adds `VMRules` de-duplication with annotation <https://github.com/VictoriaMetrics/operator/issues/99>
 - Adds Operator-Hub integration <https://github.com/VictoriaMetrics/operator/issues/33>
@@ -2218,7 +2218,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 29 Oct 2020
 
-![AppVersion: v1.43.0](https://img.shields.io/badge/v1.43.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1430)
+![AppVersion: v1.43.0](https://img.shields.io/badge/v1.43.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1430)
 
 - adds fast config update for `VMAlert` <https://github.com/VictoriaMetrics/operator/issues/86>
 - adds docker multiarch support
@@ -2231,7 +2231,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 28 Aug 2020
 
-![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1400)
+![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1400)
 
 - [#78](https://github.com/VictoriaMetrics/operator/issues/78) fixed bug with rbac - without access to vmsingles api resource, operator wasn't able to start reconciliation loop.
 - [#76](https://github.com/VictoriaMetrics/operator/issues/76) added path prefix support if extraArgs was specified.
@@ -2241,7 +2241,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 23 Aug 2020
 
-![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1400)
+![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1400)
 
 - Added VMProbe [#59](https://github.com/VictoriaMetrics/operator/issues/59)
 - Fixed various bug with prometheus api objects conversion.
@@ -2251,7 +2251,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 21 Aug 2020
 
-![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1400)
+![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1400)
 
 - [#66](https://github.com/VictoriaMetrics/operator/issues/66) added path replacement for `CAfile`, `Certfile`, `KeyFile`, `BearerTokenFile` at prometheus api converter.
 - [#65](https://github.com/VictoriaMetrics/operator/issues/65) fixed tlsConfig logic, now configuration file renders correctly, if empty value for Cert, Ca or KeySecret defined at tlsConf
@@ -2261,7 +2261,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 18 Aug 2020
 
-![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1400)
+![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1400)
 
 - fixed issues with crd patching for 1.18 kubernetes version
 - fixed issue with rbac roles
@@ -2272,7 +2272,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 12 Aug 2020
 
-![AppVersion: v1.39.2](https://img.shields.io/badge/v1.39.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1392)
+![AppVersion: v1.39.2](https://img.shields.io/badge/v1.39.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1392)
 
 Starting point of operator releases
 
@@ -2282,7 +2282,7 @@ Starting point of operator releases
 
 **Release date:** 26 Jul 2020
 
-![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1370)
+![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1370)
 
 - breaking changes to api (changed group name to operator.victoriametrics.com)
 - changed build and release process
@@ -2292,7 +2292,7 @@ Starting point of operator releases
 
 **Release date:** 12 Jun 2020
 
-![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1370)
+![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1370)
 
 - fixed panic at vmSingle update
 - added support for scraping tls targets with ServiceMonitor TLSConfig
@@ -2301,7 +2301,7 @@ Starting point of operator releases
 
 **Release date:** 06 Jun 2020
 
-![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%23v1370)
+![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1370)
 
 it contains basic api objects support:
 

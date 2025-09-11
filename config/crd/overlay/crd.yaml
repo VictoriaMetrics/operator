@@ -16429,6 +16429,11 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              customizedNamespaceKey:
+                description: |-
+                  CustomizeNamespaceMatcherKey defines the namespace label key for top route matcher for VMAlertmanagerConfig
+                  Default is "namespace"
+                type: string
               disableAutomountServiceAccountToken:
                 description: |-
                   DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
@@ -16439,7 +16444,7 @@ spec:
                 type: boolean
               disableNamespaceMatcher:
                 description: |-
-                  DisableNamespaceMatcher disables top route namespace label matcher for VMAlertmanagerConfig
+                  DisableNamespaceMatcher disables adding top route label matcher "namespace = <VMAlertmanagerConfig.namespace>" for VMAlertmanagerConfig
                   It may be useful if alert doesn't have namespace label for some reason
                 type: boolean
               disableRouteContinueEnforce:

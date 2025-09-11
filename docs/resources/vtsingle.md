@@ -29,9 +29,9 @@ For each `VTSingle` resource, the Operator adds `Service` and `VMServiceScrape` 
 You can see the full actual specification of the `VTSingle` resource in the **[API docs -> VTSingle](https://docs.victoriametrics.com/operator/api/#vtsingle)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vtsingle/#examples) section.
 
 ## High availability
 
@@ -93,7 +93,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VTSingle` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
+by default all `VTSingle` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VTSINGLEDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VTSingle` pods,
 - `VM_VTSINGLEDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VTSingle` pods,

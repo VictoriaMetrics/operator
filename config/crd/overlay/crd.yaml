@@ -9016,6 +9016,11 @@ spec:
                           description: IgnoreFirstIntervals instructs to ignore first
                             interval
                           type: integer
+                        ignoreFirstSampleInterval:
+                          description: IgnoreFirstSampleInterval sets interval for
+                            total and prometheus_total during which first samples
+                            will be ignored
+                          type: string
                         ignoreOldSamples:
                           description: IgnoreOldSamples instructs to ignore samples
                             with old timestamps outside the current aggregation interval.
@@ -9070,6 +9075,11 @@ spec:
                                   samples with old timestamps outside the current
                                   aggregation interval.
                                 type: boolean
+                              ignoreFirstSampleInterval:
+                                description: IgnoreFirstSampleInterval sets interval
+                                  for total and prometheus_total during which first
+                                  samples will be ignored
+                                type: string
                               input_relabel_configs:
                                 description: |-
                                   InputRelabelConfigs is an optional relabeling rules, which are applied on the input
@@ -10806,6 +10816,10 @@ spec:
                   ignoreFirstIntervals:
                     description: IgnoreFirstIntervals instructs to ignore first interval
                     type: integer
+                  ignoreFirstSampleInterval:
+                    description: IgnoreFirstSampleInterval sets interval for total
+                      and prometheus_total during which first samples will be ignored
+                    type: string
                   ignoreOldSamples:
                     description: IgnoreOldSamples instructs to ignore samples with
                       old timestamps outside the current aggregation interval.
@@ -10858,6 +10872,11 @@ spec:
                           description: IgnoreOldSamples instructs to ignore samples
                             with old timestamps outside the current aggregation interval.
                           type: boolean
+                        ignoreFirstSampleInterval:
+                          description: IgnoreFirstSampleInterval sets interval for
+                            total and prometheus_total during which first samples
+                            will be ignored
+                          type: string
                         input_relabel_configs:
                           description: |-
                             InputRelabelConfigs is an optional relabeling rules, which are applied on the input
@@ -36912,6 +36931,10 @@ spec:
                   ignoreFirstIntervals:
                     description: IgnoreFirstIntervals instructs to ignore first interval
                     type: integer
+                  ignoreFirstSampleInterval:
+                    description: IgnoreFirstSampleInterval sets interval for total
+                      and prometheus_total during which first samples will be ignored
+                    type: string
                   ignoreOldSamples:
                     description: IgnoreOldSamples instructs to ignore samples with
                       old timestamps outside the current aggregation interval.
@@ -36964,6 +36987,11 @@ spec:
                           description: IgnoreOldSamples instructs to ignore samples
                             with old timestamps outside the current aggregation interval.
                           type: boolean
+                        ignoreFirstSampleInterval:
+                          description: IgnoreFirstSampleInterval sets interval for
+                            total and prometheus_total during which first samples
+                            will be ignored
+                          type: string
                         input_relabel_configs:
                           description: |-
                             InputRelabelConfigs is an optional relabeling rules, which are applied on the input

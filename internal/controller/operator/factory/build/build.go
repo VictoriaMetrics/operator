@@ -153,6 +153,7 @@ func StreamAggrArgsTo(args []string, prefix string, keys []string, cs ...*vmv1be
 	keepInputFlag := NewFlag(fmt.Sprintf("-%s.keepInput", prefix), "false")
 	dropInputFlag := NewFlag(fmt.Sprintf("-%s.dropInput", prefix), "false")
 	ignoreFirstIntervalsFlag := NewFlag(fmt.Sprintf("-%s.ignoreFirstIntervals", prefix), "0")
+	ignoreFirstSampleIntervalFlag := NewFlag(fmt.Sprintf("-%s.ignoreFirstSampleInterval", prefix), "")
 	ignoreOldSamplesFlag := NewFlag(fmt.Sprintf("-%s.ignoreOldSamples", prefix), "false")
 	enableWindowsFlag := NewFlag(fmt.Sprintf("-%s.enableWindows", prefix), "false")
 	dedupIntervalFlag := NewFlag(fmt.Sprintf("-%s.dedupInterval", prefix), "")
@@ -167,6 +168,7 @@ func StreamAggrArgsTo(args []string, prefix string, keys []string, cs ...*vmv1be
 			keepInputFlag.Add(strconv.FormatBool(c.KeepInput), i)
 			dropInputFlag.Add(strconv.FormatBool(c.DropInput), i)
 			ignoreFirstIntervalsFlag.Add(strconv.Itoa(c.IgnoreFirstIntervals), i)
+			ignoreFirstSampleIntervalFlag.Add(c.IgnoreFirstSampleInterval, i)
 			ignoreOldSamplesFlag.Add(strconv.FormatBool(c.IgnoreOldSamples), i)
 			enableWindowsFlag.Add(strconv.FormatBool(c.EnableWindows), i)
 		}
@@ -174,7 +176,7 @@ func StreamAggrArgsTo(args []string, prefix string, keys []string, cs ...*vmv1be
 		dedupIntervalFlag.Add(c.DedupInterval, i)
 		dropInputLabelsFlag.Add(strings.Join(c.DropInputLabels, ","), i)
 	}
-	args = AppendFlagsToArgs(args, len(cs), configFlag, keepInputFlag, dropInputFlag, ignoreFirstIntervalsFlag, ignoreOldSamplesFlag, enableWindowsFlag)
+	args = AppendFlagsToArgs(args, len(cs), configFlag, keepInputFlag, dropInputFlag, ignoreFirstIntervalsFlag, ignoreFirstSampleIntervalFlag, ignoreOldSamplesFlag, enableWindowsFlag)
 	args = AppendFlagsToArgs(args, len(cs), dedupIntervalFlag, dropInputLabelsFlag)
 	return args
 }

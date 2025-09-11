@@ -9,8 +9,6 @@ menu:
 aliases:
   - /operator/resources/vlsingle/
   - /operator/resources/vlsingle/index.html
-  - /operator/resources/vlogs/
-  - /operator/resources/vlogs/index.html
 tags:
   - kubernetes
   - metrics

@@ -1,8 +1,9 @@
 ---
-build:
-  list: never
-  publishResources: false
-  render: never
+title: VLogs (deprecated)
+sort: -1 # hide page from menu
+aliases:
+  - /operator/resources/vlogs/
+  - /operator/resources/vlogs/index.html
 sitemap:
   disable: true
 ---

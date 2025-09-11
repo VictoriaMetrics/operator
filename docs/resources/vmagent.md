@@ -43,7 +43,7 @@ You can see the full actual specification of the `VMAgent` resource in the **[AP
 If you can't find necessary field in the specification of the custom resource, 
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/vmagent/#extra-arguments).
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmagent/#examples) section.
 
 ## Scraping
 
@@ -308,8 +308,8 @@ AdditionalScrapeConfigs is an additional way to add scrape targets in `VMAgent` 
 
 There are two options for adding targets into `VMAgent`:
 
-- [inline configuration into CRD](#inline-additional-scrape-configuration-in-vmagent-crd),
-- [defining it as a Kubernetes Secret](#define-additional-scrape-configuration-as-a-kubernetes-secret).
+- [inline configuration into CRD](https://docs.victoriametrics.com/operator/resources/vmagent/#inline-additional-scrape-configuration-in-vmagent-crd),
+- [defining it as a Kubernetes Secret](https://docs.victoriametrics.com/operator/resources/vmagent/#define-additional-scrape-configuration-as-a-kubernetes-secret).
 
 No validation happens during the creation of configuration. However, you must validate job specs, and it must follow job spec configuration.
 Please check [scrape_configs documentation](https://docs.victoriametrics.com/victoriametrics/sd_configs/#scrape_configs) as references.
@@ -393,8 +393,8 @@ spec:
     clusterid: some_cluster
 ```
 
-`VMAgent` CR supports relabeling with [custom configMap](#relabeling-config-in-configmap) 
-or [inline defined at CRD](#inline-relabeling-config).
+`VMAgent` CR supports relabeling with [custom configMap](https://docs.victoriametrics.com/operator/resources/vmagent/#relabeling-config-in-configmap) 
+or [inline defined at CRD](https://docs.victoriametrics.com/operator/resources/vmagent/#inline-relabeling-config).
 
 ### Relabeling config in Configmap
 
@@ -668,7 +668,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametri
 
 For using Enterprise version of [vmagent](https://docs.victoriametrics.com/victoriametrics/vmagent/) you need to:
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
- - change version of `vmagent` to version with `-enterprise` suffix using [Version management](#version-management).
+ - change version of `vmagent` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmagent/#version-management).
 
 After that you can pass [Kafka integration](https://docs.victoriametrics.com/victoriametrics/vmagent/#kafka-integration)
 flags to `VMAgent` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments).

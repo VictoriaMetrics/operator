@@ -35,12 +35,12 @@ The default behavior of the operator is as follows:
 
 With this configuration removing prometheus-operator API objects wouldn't delete any converted objects. So you can safely migrate or run two operators at the same time.
 
-You can change default behavior with operator configuration - [see details below](#objects-conversion).
+You can change default behavior with operator configuration - [see details below](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion).
 
 ## Objects conversion
 
 By default, the vmoperator converts all existing [prometheus-operator](https://github.com/prometheus-operator/prometheus-operator)
-API objects into corresponding VictoriaMetrics Operator objects ([see above](#migration-from-prometheus-operator)), 
+API objects into corresponding VictoriaMetrics Operator objects, 
 i.e. creates resources of VictoriaMetrics similar to Prometheus resources in the same namespace.
 
 You can control this behaviour by setting env variable for operator:

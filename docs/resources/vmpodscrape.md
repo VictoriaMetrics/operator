@@ -52,7 +52,7 @@ More information about selectors you can find in [this doc](https://docs.victori
 You can see the full actual specification of the `VMPodScrape` resource in
 the **[API docs -> VMPodScrape](https://docs.victoriametrics.com/operator/api/#vmpodscrape)**.
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmpodscrape/#examples) section.
 
 ## Migration from Prometheus
 

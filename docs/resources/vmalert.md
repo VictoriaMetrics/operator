@@ -37,7 +37,7 @@ You can see the full actual specification of the `VMAlert` resource in the **[AP
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmalert/#examples) section.
 
 ## Rules
 
@@ -306,7 +306,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametri
 
 For using Enterprise version of [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) you need to
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
- - change version of `vmalert` to version with `-enterprise` suffix using [Version management](#version-management).
+ - change version of `vmalert` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmalert/#version-management).
 
 ### Reading rules from object storage
 

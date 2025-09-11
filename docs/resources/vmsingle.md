@@ -31,7 +31,7 @@ You can see the full actual specification of the `VMSingle` resource in the **[A
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmsingle/#examples) section.
 
 ## High availability
 
@@ -123,7 +123,7 @@ VMSingle supports features from [VictoriaMetrics Enterprise](https://docs.victor
 
 For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) you need to:
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
- - change version of `vmsingle` to version with `-enterprise` suffix using [Version management](#version-management).
+ - change version of `vmsingle` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmsingle/#version-management).
 
 ### Downsampling
 

@@ -24,18 +24,18 @@ So you can use familiar CRD objects: `ServiceMonitor`, `PodMonitor`, `Prometheus
 - `VMProbe` - defines a probing configuration for targets with blackbox exporter.
 - `VMScrapeConfig` - define a scrape config using any of the service discovery options supported in victoriametrics.
 
-Besides, operator allows you to manage VictoriaMetrics applications inside kubernetes cluster and simplifies this process [quick-start](./docs/quick-start.md)
-With CRD (Custom Resource Definition) you can define application configuration and apply it to your cluster [crd-objects](./docs/api.md).
+Besides, operator allows you to manage VictoriaMetrics applications inside kubernetes cluster and simplifies this process [quick-start](https://docs.victoriametrics.com/operator/quick-start/)
+With CRD (Custom Resource Definition) you can define application configuration and apply it to your cluster [crd-objects](https://docs.victoriametrics.com/operator/api/).
 
  Operator simplifies VictoriaMetrics cluster installation, upgrading and managing.
 
- It has integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/) - advanced tools for making backups. Check [Backup automation for VMSingle](./docs/resources/vmsingle.md#backup-automation) or [Backup automation for VMCluster](./docs/resources/vmcluster.md#backup-automation).
+ It has integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/) - advanced tools for making backups. Check [Backup automation for VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/#backup-automation) or [Backup automation for VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/#backup-automation).
 
 ## Use cases
 
  For kubernetes-cluster administrators, it simplifies installation, configuration, management for `VictoriaMetrics` application. And the main feature of operator -  is ability to delegate applications monitoring configuration to the end-users.
 
- For applications developers, its great possibility for managing observability of applications. You can define metrics scraping and alerting configuration for your application and manage it with an application deployment process. Just define app_deployment.yaml, app_vmpodscrape.yaml and app_vmrule.yaml. That's it, you can apply it to a kubernetes cluster. Check [quick-start](./docs/quick-start.md) for an example.
+ For applications developers, its great possibility for managing observability of applications. You can define metrics scraping and alerting configuration for your application and manage it with an application deployment process. Just define app_deployment.yaml, app_vmpodscrape.yaml and app_vmrule.yaml. That's it, you can apply it to a kubernetes cluster. Check [quick-start](https://docs.victoriametrics.com/operator/quick-start/) for an example.
 
 ## Operator vs helm-chart
 

@@ -32,7 +32,7 @@ You can see the full actual specification of the `VMAlertmanager` resource in th
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
-Also, you can check out the [examples](#examples) section.
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmalertmanager/#examples) section.
 
 ## Configuration
 

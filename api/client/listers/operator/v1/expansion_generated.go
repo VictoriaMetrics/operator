@@ -48,3 +48,19 @@ type VMAnomalyListerExpansion interface{}
 // VMAnomalyNamespaceListerExpansion allows custom methods to be added to
 // VMAnomalyNamespaceLister.
 type VMAnomalyNamespaceListerExpansion interface{}
+
+// VTClusterListerExpansion allows custom methods to be added to
+// VTClusterLister.
+type VTClusterListerExpansion interface{}
+
+// VTClusterNamespaceListerExpansion allows custom methods to be added to
+// VTClusterNamespaceLister.
+type VTClusterNamespaceListerExpansion interface{}
+
+// VTSingleListerExpansion allows custom methods to be added to
+// VTSingleLister.
+type VTSingleListerExpansion interface{}
+
+// VTSingleNamespaceListerExpansion allows custom methods to be added to
+// VTSingleNamespaceLister.
+type VTSingleNamespaceListerExpansion interface{}

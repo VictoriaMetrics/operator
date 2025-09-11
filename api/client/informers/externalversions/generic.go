@@ -61,6 +61,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1().VLSingles().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("vmanomalies"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1().VMAnomalies().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("vtclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1().VTClusters().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("vtsingles"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1().VTSingles().Informer()}, nil
 
 		// Group=operator, Version=v1beta1
 	case v1beta1.SchemeGroupVersion.WithResource("vlogs"):

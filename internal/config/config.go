@@ -37,6 +37,7 @@ var (
 		"VM_METRICS_VERSION": "v1.125.0",
 		"VM_LOGS_VERSION":    "v1.33.0",
 		"VM_ANOMALY_VERSION": "v1.25.2",
+		"VM_TRACES_VERSION":  "v0.1.0",
 	}
 )
 
@@ -183,6 +184,26 @@ type BaseOperatorConf struct {
 		ConfigReloaderCPU    string `env:"-"`
 		ConfigReloaderMemory string `env:"-"`
 	} `prefix:"VLSINGLEDEFAULT_"`
+
+	VTSingleDefault struct {
+		Image               string `default:"victoriametrics/victoria-traces"`
+		Version             string `env:",expand" default:"${VM_TRACES_VERSION}"`
+		ConfigReloadImage   string `env:"-"`
+		Port                string `default:"10428"`
+		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
+		Resource            struct {
+			Limit struct {
+				Mem string `default:"1500Mi"`
+				Cpu string `default:"1200m"`
+			} `prefix:"LIMIT_"`
+			Request struct {
+				Mem string `default:"500Mi"`
+				Cpu string `default:"150m"`
+			} `prefix:"REQUEST_"`
+		} `prefix:"RESOURCE_"`
+		ConfigReloaderCPU    string `env:"-"`
+		ConfigReloaderMemory string `env:"-"`
+	} `prefix:"VTSINGLEDEFAULT_"`
 
 	VMAlertDefault struct {
 		Image               string `default:"victoriametrics/vmalert"`
@@ -437,6 +458,55 @@ type BaseOperatorConf struct {
 		} `prefix:"VLINSERTDEFAULT_"`
 	} `prefix:"VLCLUSTERDEFAULT_"`
 
+	VTClusterDefault struct {
+		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
+		SelectDefault       struct {
+			Image    string `default:"victoriametrics/victoria-traces"`
+			Version  string `env:",expand" default:"${VM_TRACES_VERSION}"`
+			Port     string `default:"10471"`
+			Resource struct {
+				Limit struct {
+					Mem string `default:"1024Mi"`
+					Cpu string `default:"1000m"`
+				} `prefix:"LIMIT_"`
+				Request struct {
+					Mem string `default:"256Mi"`
+					Cpu string `default:"100m"`
+				} `prefix:"REQUEST_"`
+			} `prefix:"RESOURCE_"`
+		} `prefix:"SELECT_"`
+		StorageDefault struct {
+			Image    string `default:"victoriametrics/victoria-traces"`
+			Version  string `env:",expand" default:"${VM_TRACES_VERSION}"`
+			Port     string `default:"10491"`
+			Resource struct {
+				Limit struct {
+					Mem string `default:"2048Mi"`
+					Cpu string `default:"1000m"`
+				} `prefix:"LIMIT_"`
+				Request struct {
+					Mem string `default:"512Mi"`
+					Cpu string `default:"200m"`
+				} `prefix:"REQUEST_"`
+			} `prefix:"RESOURCE_"`
+		} `prefix:"STORAGE_"`
+		InsertDefault struct {
+			Image    string `default:"victoriametrics/victoria-traces"`
+			Version  string `env:",expand" default:"${VM_TRACES_VERSION}"`
+			Port     string `default:"10481"`
+			Resource struct {
+				Limit struct {
+					Mem string `default:"1024Mi"`
+					Cpu string `default:"1000m"`
+				} `prefix:"LIMIT_"`
+				Request struct {
+					Mem string `default:"256Mi"`
+					Cpu string `default:"100m"`
+				} `prefix:"REQUEST_"`
+			} `prefix:"RESOURCE_"`
+		} `prefix:"INSERT_"`
+	} `prefix:"VTCLUSTERDEFAULT_"`
+
 	EnabledPrometheusConverter struct {
 		PodMonitor         bool `default:"true" env:"PODMONITOR"`
 		ServiceScrape      bool `default:"true" env:"SERVICESCRAPE"`
@@ -600,7 +670,6 @@ func (boc BaseOperatorConf) Validate() error {
 	if err := validateResource("vmstorage", Resource(boc.VMClusterDefault.VMStorageDefault.Resource)); err != nil {
 		return err
 	}
-
 	if err := validateResource("vmsingle", Resource(boc.VMSingleDefault.Resource)); err != nil {
 		return err
 	}
@@ -614,6 +683,30 @@ func (boc BaseOperatorConf) Validate() error {
 		return err
 	}
 	if err := validateResource("vmanomaly", Resource(boc.VMAnomalyDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vlsingle", Resource(boc.VLSingleDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vlselect", Resource(boc.VLClusterDefault.VLSelectDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vlinsert", Resource(boc.VLClusterDefault.VLInsertDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vlstorage", Resource(boc.VLClusterDefault.VLStorageDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vtsingle", Resource(boc.VTSingleDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vtselect", Resource(boc.VTClusterDefault.SelectDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vtinsert", Resource(boc.VTClusterDefault.InsertDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vtstorage", Resource(boc.VTClusterDefault.StorageDefault.Resource)); err != nil {
 		return err
 	}
 

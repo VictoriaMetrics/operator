@@ -15,6 +15,9 @@ type VMUserSpec struct {
 	// Name of the VMUser object.
 	// +optional
 	Name *string `json:"name,omitempty"`
+	// ClientID extracted from JWT token
+	// +optional
+	ClientID *string `json:"client_id,omitempty"`
 	// UserName basic auth user name for accessing protected endpoint,
 	// will be replaced with metadata.name of VMUser if omitted.
 	// +optional

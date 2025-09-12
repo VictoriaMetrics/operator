@@ -22,6 +22,7 @@ aliases:
 * FEATURE: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): add mutually exclusive checks for notifier configs in admission webhook validation. See [#1511](https://github.com/VictoriaMetrics/operator/issues/1511).
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): add `enforcedNamespaceLabel` field to allow changing the top route namespace matcher key for VMAlertmanagerConfig. See [#1480](https://github.com/VictoriaMetrics/operator/issues/1480).
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly release `finalizer` on `VMAlert` delete. See this issue [#1527](https://github.com/VictoriaMetrics/operator/issues/1527) for details.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly reconcile `Service` on value of `loadbalancerClass` change. Previously it produced error `may not change once set`. See PR [#1522](https://github.com/VictoriaMetrics/operator/pull/1522) for details.
 * BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): simplify path based routing for  `src_paths` when using `VMCluster/vminsert` or `VMCluster/vmselect` as targetRefs. See this PR [#1519](https://github.com/VictoriaMetrics/operator/pull/1519) for details.
 

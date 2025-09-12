@@ -22,6 +22,9 @@ func OnVMAlertDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
+	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, build.ResourceName(build.SecretConfigResourceKind, cr), cr.Namespace); err != nil {
+		return err
+	}
 	var cmList corev1.ConfigMapList
 	if err := rclient.List(ctx, &cmList, cr.RulesConfigMapSelector()); err != nil {
 		return err

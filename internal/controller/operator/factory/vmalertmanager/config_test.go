@@ -40,7 +40,7 @@ func TestBuildConfig(t *testing.T) {
 			args: args{
 				cr: &vmv1beta1.VMAlertmanager{
 					Spec: vmv1beta1.VMAlertmanagerSpec{
-						CustomizeNamespaceMatcherKey: "alert-namespace",
+						EnforcedNamespaceLabel: "alert-namespace",
 					},
 				},
 				baseCfg: []byte(`global:

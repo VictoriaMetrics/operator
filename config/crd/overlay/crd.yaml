@@ -16429,11 +16429,6 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
-              customizedNamespaceKey:
-                description: |-
-                  CustomizeNamespaceMatcherKey defines the namespace label key for top route matcher for VMAlertmanagerConfig
-                  Default is "namespace"
-                type: string
               disableAutomountServiceAccountToken:
                 description: |-
                   DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
@@ -16507,6 +16502,11 @@ spec:
                 type: object
               dnsPolicy:
                 description: DNSPolicy sets DNS policy for the pod
+                type: string
+              enforcedNamespaceLabel:
+                description: |-
+                  EnforcedNamespaceLabel defines the namespace label key for top route matcher for VMAlertmanagerConfig
+                  Default is "namespace"
                 type: string
               enforcedTopRouteMatchers:
                 description: |-

@@ -230,8 +230,8 @@ func buildRoute(cr *vmv1beta1.VMAlertmanagerConfig, cfgRoute *vmv1beta1.Route, t
 			continueSetting = true
 		}
 		if !alertmanagerCR.Spec.DisableNamespaceMatcher {
-			if alertmanagerCR.Spec.CustomizeNamespaceMatcherKey != "" {
-				matchers = append(matchers, fmt.Sprintf("%s = %q", alertmanagerCR.Spec.CustomizeNamespaceMatcherKey, cr.Namespace))
+			if alertmanagerCR.Spec.EnforcedNamespaceLabel != "" {
+				matchers = append(matchers, fmt.Sprintf("%s = %q", alertmanagerCR.Spec.EnforcedNamespaceLabel, cr.Namespace))
 			} else {
 				matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
 			}

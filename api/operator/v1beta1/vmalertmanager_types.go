@@ -168,10 +168,10 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	DisableNamespaceMatcher bool `json:"disableNamespaceMatcher,omitempty"`
 
-	// CustomizeNamespaceMatcherKey defines the namespace label key for top route matcher for VMAlertmanagerConfig
+	// EnforcedNamespaceLabel defines the namespace label key for top route matcher for VMAlertmanagerConfig
 	// Default is "namespace"
 	// +optional
-	CustomizeNamespaceMatcherKey string `json:"customizedNamespaceKey,omitempty"`
+	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
 
 	// DisableRouteContinueEnforce cancel the behavior for VMAlertmanagerConfig that always enforce first-level route continue to true
 	// +optional
@@ -557,8 +557,8 @@ func (cr *VMAlertmanager) Validate() error {
 			}
 		}
 	}
-	if cr.Spec.DisableNamespaceMatcher && cr.Spec.CustomizeNamespaceMatcherKey != "" {
-		return fmt.Errorf("cannot use both disableNamespaceMatcher and customizedNamespaceKey at the same time")
+	if cr.Spec.DisableNamespaceMatcher && cr.Spec.EnforcedNamespaceLabel != "" {
+		return fmt.Errorf("cannot use both disableNamespaceMatcher and enforcedNamespaceLabel at the same time")
 	}
 	return nil
 }

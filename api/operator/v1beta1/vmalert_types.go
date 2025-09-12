@@ -366,6 +366,9 @@ func (cr *VMAlert) Validate() error {
 		if cr.Spec.Notifier.URL == "" && cr.Spec.Notifier.Selector == nil {
 			return fmt.Errorf("spec.notifier.url and spec.notifier.selector cannot be empty at the same time, provide at least one setting")
 		}
+		if cr.Spec.NotifierConfigRef != nil {
+			return fmt.Errorf("only one of spec.notifier or spec.notifierConfigRef could be used")
+		}
 	}
 	for idx, nt := range cr.Spec.Notifiers {
 		if nt.URL == "" && nt.Selector == nil {
@@ -375,6 +378,9 @@ func (cr *VMAlert) Validate() error {
 	if _, ok := cr.Spec.ExtraArgs["notifier.blackhole"]; !ok {
 		if cr.Spec.Notifier == nil && len(cr.Spec.Notifiers) == 0 && cr.Spec.NotifierConfigRef == nil {
 			return fmt.Errorf("vmalert should have at least one notifier.url or enable `-notifier.blackhole`")
+		}
+		if cr.Spec.NotifierConfigRef != nil {
+			return fmt.Errorf("only one of spec.notifiers or spec.notifierConfigRef could be used")
 		}
 	}
 	return nil

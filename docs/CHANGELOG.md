@@ -19,6 +19,7 @@ aliases:
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): add `VLSingle`, `VLAgent`,`VLCluster/vlinsert`,`VLCluster/vlselect`, `VLCluster/vlstorage`, `VTSingle`, `VTCluster/vtinsert`,`VTCluster/vtselect`, `VTCluster/vtstorage` to the `targetRef.crd.kind`.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/api/): introduce new resources `VLSingle` and `VTCluster`. See [#1498](https://github.com/VictoriaMetrics/operator/issues/1498) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support stream aggregation `ignore_first_sample_interval` property. See [#1518](https://github.com/VictoriaMetrics/operator/issues/1518).
+* FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): add `enforcedNamespaceLabel` field to allow changing the top route namespace matcher key for VMAlertmanagerConfig. See [#1480](https://github.com/VictoriaMetrics/operator/issues/1480).
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly reconcile `Service` on value of `loadbalancerClass` change. Previously it produced error `may not change once set`. See PR [#1522](https://github.com/VictoriaMetrics/operator/pull/1522) for details.
 * BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): simplify path based routing for  `src_paths` when using `VMCluster/vminsert` or `VMCluster/vmselect` as targetRefs. See this PR [#1519](https://github.com/VictoriaMetrics/operator/pull/1519) for details.

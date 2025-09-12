@@ -36,10 +36,80 @@ func TestBuildConfig(t *testing.T) {
 		wantErr           bool
 	}{
 		{
+			name: "override the top namespace matcher",
+			args: args{
+				cr: &vmv1beta1.VMAlertmanager{
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						EnforcedNamespaceLabel: "alert-namespace",
+					},
+				},
+				baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+`),
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []vmv1beta1.Receiver{
+								{
+									Name: "email",
+									EmailConfigs: []vmv1beta1.EmailConfig{
+										{
+											SendResolved: ptr.To(true),
+											From:         "some-sender",
+											To:           "some-dst-1",
+											Text:         "some-text",
+											Smarthost:    "some:443",
+											TLSConfig: &vmv1beta1.TLSConfig{
+												CertFile: "some_cert_path",
+											},
+										},
+									},
+								},
+							},
+							Route: &vmv1beta1.Route{
+								Receiver:  "email",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			want: `global:
+  smtp_smarthost: some:443
+  time_out: 1min
+route:
+  receiver: blackhole
+  routes:
+  - matchers:
+    - alert-namespace = "default"
+    group_wait: 1min
+    receiver: default-base-email
+    continue: true
+receivers:
+- name: blackhole
+- name: default-base-email
+  email_configs:
+  - tls_config:
+      cert_file: some_cert_path
+    from: some-sender
+    text: some-text
+    to: some-dst-1
+    smarthost: some:443
+    send_resolved: true
+templates: []
+`,
+		},
+		{
 			name: "with complex routing and enforced matchers",
 			args: args{
 				cr: &vmv1beta1.VMAlertmanager{
 					Spec: vmv1beta1.VMAlertmanagerSpec{
+						DisableNamespaceMatcher: true,
 						EnforcedTopRouteMatchers: []string{
 							`env=~{"dev|prod"}`,
 							`pod!=""`,
@@ -130,7 +200,6 @@ route:
       receiver: default-base-email-sub-1
       continue: false
     matchers:
-    - namespace = "default"
     - env=~{"dev|prod"}
     - pod!=""
     group_wait: 1min
@@ -948,7 +1017,6 @@ templates: []
 									Name: "jira-dc",
 									JiraConfigs: []vmv1beta1.JiraConfig{
 										{
-
 											SendResolved: ptr.To(true),
 											HTTPConfig: &vmv1beta1.HTTPConfig{
 												Authorization: &vmv1beta1.Authorization{
@@ -978,7 +1046,6 @@ templates: []
 									Name: "jira-cloud",
 									JiraConfigs: []vmv1beta1.JiraConfig{
 										{
-
 											SendResolved: ptr.To(true),
 											HTTPConfig: &vmv1beta1.HTTPConfig{
 												BasicAuth: &vmv1beta1.BasicAuth{

@@ -230,7 +230,11 @@ func buildRoute(cr *vmv1beta1.VMAlertmanagerConfig, cfgRoute *vmv1beta1.Route, t
 			continueSetting = true
 		}
 		if !alertmanagerCR.Spec.DisableNamespaceMatcher {
-			matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
+			if alertmanagerCR.Spec.EnforcedNamespaceLabel != "" {
+				matchers = append(matchers, fmt.Sprintf("%s = %q", alertmanagerCR.Spec.EnforcedNamespaceLabel, cr.Namespace))
+			} else {
+				matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
+			}
 		}
 		if len(alertmanagerCR.Spec.EnforcedTopRouteMatchers) > 0 {
 			matchers = append(matchers, alertmanagerCR.Spec.EnforcedTopRouteMatchers...)
@@ -870,7 +874,6 @@ func (cb *configBuilder) buildRocketchat(rc vmv1beta1.RocketchatConfig) error {
 
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
-
 }
 
 func (cb *configBuilder) buildTelegram(tg vmv1beta1.TelegramConfig) error {

@@ -163,10 +163,15 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
 
-	// DisableNamespaceMatcher disables top route namespace label matcher for VMAlertmanagerConfig
+	// DisableNamespaceMatcher disables adding top route label matcher "namespace = <VMAlertmanagerConfig.namespace>" for VMAlertmanagerConfig
 	// It may be useful if alert doesn't have namespace label for some reason
 	// +optional
 	DisableNamespaceMatcher bool `json:"disableNamespaceMatcher,omitempty"`
+
+	// EnforcedNamespaceLabel defines the namespace label key for top route matcher for VMAlertmanagerConfig
+	// Default is "namespace"
+	// +optional
+	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
 
 	// DisableRouteContinueEnforce cancel the behavior for VMAlertmanagerConfig that always enforce first-level route continue to true
 	// +optional
@@ -551,6 +556,9 @@ func (cr *VMAlertmanager) Validate() error {
 				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_client_config")
 			}
 		}
+	}
+	if cr.Spec.DisableNamespaceMatcher && cr.Spec.EnforcedNamespaceLabel != "" {
+		return fmt.Errorf("cannot use both disableNamespaceMatcher and enforcedNamespaceLabel at the same time")
 	}
 	return nil
 }

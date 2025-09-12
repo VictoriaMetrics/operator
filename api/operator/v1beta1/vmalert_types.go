@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -204,6 +205,20 @@ type VMAlertNotifierSpec struct {
 	HTTPAuth `json:",inline,omitempty"`
 }
 
+func (ns *VMAlertNotifierSpec) validate() error {
+	if ns.URL == "" && ns.Selector == nil {
+		return fmt.Errorf("notifier.url and notifier.selector cannot be empty at the same time, provide at least one setting")
+	}
+	if len(ns.URL) > 0 {
+		if _, err := url.Parse(ns.URL); err != nil {
+			return fmt.Errorf("incorrect notifier.url syntax: %q: %s", ns.URL, err)
+		}
+	}
+	ns.OAuth2.validate()
+
+	return nil
+}
+
 // VMAlertRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
 // +k8s:openapi-gen=true
 type VMAlertRemoteReadSpec struct {
@@ -362,20 +377,32 @@ func (cr *VMAlert) Validate() error {
 	if cr.Spec.Datasource.URL == "" {
 		return fmt.Errorf("spec.datasource.url cannot be empty")
 	}
-	if cr.Spec.Notifier != nil {
-		if cr.Spec.Notifier.URL == "" && cr.Spec.Notifier.Selector == nil {
-			return fmt.Errorf("spec.notifier.url and spec.notifier.selector cannot be empty at the same time, provide at least one setting")
+
+	validateNotifierConfigs := func() error {
+		_, hasNotifierBlackhole := cr.Spec.ExtraArgs["notifier.blackhole"]
+		// check configuration based on vmalert validation logic:
+		// https://github.com/VictoriaMetrics/VictoriaMetrics/blob/5a80d4c5520045cd1f8202a33a91f0bf77f4ca24/app/vmalert/notifier/init.go#L140
+		if hasNotifierBlackhole && (cr.Spec.Notifier != nil || len(cr.Spec.Notifiers) > 0 || cr.Spec.NotifierConfigRef != nil) {
+			return fmt.Errorf("notifier.blackhole and spec.notifier or spec.notifiers or spec.notifier.notifierConfigRef cannot be used at the same time, provide at most one setting")
 		}
+		if (cr.Spec.Notifier != nil || len(cr.Spec.Notifiers) > 0) && cr.Spec.NotifierConfigRef != nil {
+			return fmt.Errorf("spec.notifiers and spec.notifier.notifierConfigRef cannot be used at the same time, provide at most one setting")
+		}
+
+		if cr.Spec.Notifier != nil {
+			if err := cr.Spec.Notifier.validate(); err != nil {
+				return fmt.Errorf("incorrect cr.spec.notifier syntax: %w", err)
+			}
+		}
+		for idx, nt := range cr.Spec.Notifiers {
+			if err := nt.validate(); err != nil {
+				return fmt.Errorf("incorrect cr.spec.notifiers idx=%d syntax: %w", idx, err)
+			}
+		}
+		return nil
 	}
-	for idx, nt := range cr.Spec.Notifiers {
-		if nt.URL == "" && nt.Selector == nil {
-			return fmt.Errorf("notifier.url is empty and selector is not set, provide at least once for spec.notifiers at idx: %d", idx)
-		}
-	}
-	if _, ok := cr.Spec.ExtraArgs["notifier.blackhole"]; !ok {
-		if cr.Spec.Notifier == nil && len(cr.Spec.Notifiers) == 0 && cr.Spec.NotifierConfigRef == nil {
-			return fmt.Errorf("vmalert should have at least one notifier.url or enable `-notifier.blackhole`")
-		}
+	if err := validateNotifierConfigs(); err != nil {
+		return err
 	}
 	return nil
 }

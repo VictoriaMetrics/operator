@@ -152,7 +152,7 @@ schedulers:
 			wantErr: false,
 			validate: func(set *appsv1.StatefulSet) error {
 				if len(set.Spec.Template.Spec.Containers) != 1 {
-					return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(set.Spec.Template.Spec.Containers), 2)
+					return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(set.Spec.Template.Spec.Containers), 1)
 				}
 				container := set.Spec.Template.Spec.Containers[0]
 				if container.Name != "vmanomaly" {
@@ -330,7 +330,7 @@ schedulers:
 			}
 			ctx := context.TODO()
 			ac := build.NewAssetsCache(ctx, fclient, cfg)
-			if _, err := createOrUpdateConfig(ctx, fclient, tt.cr, nil, ac); (err != nil) != tt.wantErr {
+			if _, err := createOrUpdateConfig(ctx, fclient, tt.cr, nil, nil, ac); (err != nil) != tt.wantErr {
 				t.Fatalf("createOrUpdateConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantErr {

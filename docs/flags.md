@@ -1,4 +1,13 @@
-```
+---
+build:
+  list: never
+  publishResources: false
+  render: never
+sitemap:
+  disable: true
+---
+<!-- The file is automatically updated by make docs command -->
+```shellhelp
 Usage of bin/operator:
   -client.burst int
     	defines K8s client burst (default 100)

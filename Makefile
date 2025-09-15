@@ -42,6 +42,20 @@ CONTAINER_TOOL ?= docker
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+define FLAGS_HEADER
+---
+build:
+  list: never
+  publishResources: false
+  render: never
+sitemap:
+  disable: true
+---
+<!-- The file is automatically updated by make docs command -->
+```shellhelp
+endef
+export FLAGS_HEADER
+
 include docs/Makefile
 include codespell/Makefile
 
@@ -116,7 +130,7 @@ docs: build crd-ref-docs manifests
 	bin/$(REPO) \
 		-printDefaults \
 		-printFormat markdown > docs/env.md
-	echo '```' > docs/flags.md
+	echo "$$FLAGS_HEADER" > docs/flags.md
 	bin/$(REPO) --help >> docs/flags.md 2>&1
 	echo '```' >> docs/flags.md
 

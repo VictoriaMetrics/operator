@@ -16,7 +16,7 @@ jobs:
       name: docs
     steps:
       - name: Check out operator code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: VictoriaMetrics/operator
           ref: master
@@ -24,7 +24,7 @@ jobs:
           path: __vm-operator-repo
 
       - name: Check out VM code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: VictoriaMetrics/helm-charts
           ref: master
@@ -44,7 +44,10 @@ jobs:
       - name: Update crd yaml in chart repo
         id: update
         run: |
-          cp ../__vm-operator-repo/config/crd/overlay/crd.yaml charts/victoria-metrics-operator/crd.yaml
+          cp ../__vm-operator-repo/config/crd/overlay/crd.yaml charts/victoria-metrics-operator/charts/crds/crds/crd.yaml
+          cp ../__vm-operator-repo/config/crd/overlay/crd.specless.yaml charts/victoria-metrics-operator/crd.yaml
+          bzip2 -k charts/victoria-metrics-operator/charts/crds/crds/crd.yaml
+          mv charts/victoria-metrics-operator/charts/crds/crds/crd.yaml.bz2 charts/victoria-metrics-operator/charts/crds/files/crd.yaml.bz2
           echo "BUILDTIME=$(date +%s)" >> $GITHUB_OUTPUT
           echo "SHORT_SHA=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
         working-directory: __vm-charts-repo

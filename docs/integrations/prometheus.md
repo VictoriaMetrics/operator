@@ -54,7 +54,7 @@ VM_ENABLEDPROMETHEUSCONVERTER_PROBE=false
 VM_ENABLEDPROMETHEUSCONVERTER_SCRAPECONFIG=false
 ```
 
-For [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoriametrics-operator/) you can use following way:
+For [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoria-metrics-operator/) you can use following way:
 
 ```yaml
 # values.yaml
@@ -81,7 +81,7 @@ configure adding `OwnerReferences` to converted objects with following [operator
 VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES=true
 ```
 
-For [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoriametrics-operator/) you can use following way:
+For [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoria-metrics-operator/) you can use following way:
 
 ```yaml
 # values.yaml

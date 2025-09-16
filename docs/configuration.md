@@ -237,7 +237,7 @@ In [Helm charts](https://docs.victoriametrics.com/helm/) some important configur
 
 ### victoria-metrics-k8s-stack
 
-For possible values refer to [parameters](https://docs.victoriametrics.com/helm/victoriametrics-k8s-stack/#parameters).
+For possible values refer to [parameters](https://docs.victoriametrics.com/helm/victoria-metrics-k8s-stack/#parameters).
 
 Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) to configure operator behaviour.
 ENV variables can be set in the `victoria-metrics-operator.env` section.
@@ -312,7 +312,7 @@ victoria-metrics-operator:
 
 ### victoria-metrics-operator
 
-For possible values refer to [parameters](https://docs.victoriametrics.com/helm/victoriametrics-operator/#parameters).
+For possible values refer to [parameters](https://docs.victoriametrics.com/helm/victoria-metrics-operator/#parameters).
 
 Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) to configure operator behaviour.
 ENV variables can be set in the `env` section.

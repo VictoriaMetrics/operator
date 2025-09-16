@@ -25,7 +25,7 @@ Learn more about [key concepts](https://docs.victoriametrics.com/operator/#key-c
 - Simple VictoriaMetrics cluster installation, configuring, upgrading and managing with [crd-objects](https://docs.victoriametrics.com/operator/resources/).
 - Ability to delegate the configuration (parts of configuration) of applications monitoring to the end-users and managing access to different configurations or configuration sections.
 - Integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/) - advanced tools for making backups. Check [Backup automation for VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/#backup-automation) or [Backup automation for VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/#backup-automation).
-- Everything you need for monitoring out of the box in [k8s-stack helm chart](https://docs.victoriametrics.com/helm/victoriametrics-k8s-stack/) with ready-made usecases and solutions.
+- Everything you need for monitoring out of the box in [k8s-stack helm chart](https://docs.victoriametrics.com/helm/victoria-metrics-k8s-stack/) with ready-made usecases and solutions.
 - Ability to template your own deployment scenarios.
 
 ## Key Concepts

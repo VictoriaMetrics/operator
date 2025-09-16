@@ -85,4 +85,5 @@ tags
 vendor
 vmdocs/
 config/crd/bases/*
+config/crd/overlay/crd.tpl
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode

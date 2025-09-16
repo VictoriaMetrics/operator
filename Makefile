@@ -82,9 +82,12 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: manifests
-manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+manifests: yq controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
+	echo '{{- define "vm-operator.crds" -}}' > config/crd/overlay/crd.tpl
+	cat config/crd/overlay/crd.yaml | $(YQ) '[{"names": .spec.names, "group": .spec.group, "versions": [.spec.versions[].name]}]' | yq '{"crds": .}' >> config/crd/overlay/crd.tpl
+	echo '{{- end -}}' >> config/crd/overlay/crd.tpl
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.

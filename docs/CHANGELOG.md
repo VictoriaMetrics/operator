@@ -15,6 +15,8 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.126.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.126.0) version
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix an issue where the return value from a couple of controllers was always `nil`. See [#1532](https://github.com/VictoriaMetrics/operator/pull/1532) for details.
+
 ## [v0.63.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.63.0)
 
 **Release date:** 12 Sep 2025

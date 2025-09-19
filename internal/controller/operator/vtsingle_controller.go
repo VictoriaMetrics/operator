@@ -93,7 +93,7 @@ func (r *VTSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 
 	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 
-	return ctrl.Result{}, nil
+	return
 }
 
 // SetupWithManager sets up the controller with the Manager.

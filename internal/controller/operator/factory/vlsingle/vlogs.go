@@ -54,7 +54,7 @@ func newVLogsPVC(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 	return pvcObject
 }
 
-// CreateOrUpdate performs an update for vlsingle resource
+// CreateOrUpdate performs an update for vlogs resource
 func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VLogs) error {
 	var prevCR *vmv1beta1.VLogs
 	if cr.ParsedLastAppliedSpec != nil {

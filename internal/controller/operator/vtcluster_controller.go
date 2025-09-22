@@ -92,7 +92,7 @@ func (r *VTClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 
-	return ctrl.Result{}, nil
+	return
 }
 
 // SetupWithManager sets up the controller with the Manager.

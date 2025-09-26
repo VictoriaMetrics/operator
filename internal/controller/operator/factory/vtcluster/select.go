@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path"
 	"sort"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -209,13 +208,19 @@ func buildVTSelectPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 
 	if cr.Spec.Storage != nil && cr.Spec.Storage.ReplicaCount != nil {
 		// TODO: check TLS
-		storageArg := "-storageNode="
-		for _, i := range cr.AvailableStorageNodeIDs("select") {
-			storageArg += build.PodDNSAddress(cr.GetVTStorageName(), i, cr.Namespace, cr.Spec.Storage.Port, cr.Spec.ClusterDomainName)
+		storageNodeFlag := build.NewFlag("-storageNode", "")
+		storageNodeIds := cr.AvailableStorageNodeIDs("select")
+		for idx, i := range storageNodeIds {
+			storageNodeFlag.Add(build.PodDNSAddress(cr.GetVTStorageName(), i, cr.Namespace, cr.Spec.Storage.Port, cr.Spec.ClusterDomainName), idx)
 		}
-		storageArg = strings.TrimSuffix(storageArg, ",")
-		args = append(args, storageArg)
-
+		if len(cr.Spec.Select.ExtraStorageNodes) > 0 {
+			for i, node := range cr.Spec.Select.ExtraStorageNodes {
+				idx := i + len(storageNodeIds)
+				storageNodeFlag.Add(node.Addr, idx)
+			}
+		}
+		totalNodes := len(cr.Spec.Select.ExtraStorageNodes) + len(storageNodeIds)
+		args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 	}
 
 	if len(cr.Spec.Select.ExtraEnvs) > 0 || len(cr.Spec.Select.ExtraEnvsFrom) > 0 {

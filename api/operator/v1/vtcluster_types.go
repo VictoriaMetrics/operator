@@ -189,6 +189,12 @@ func (cr *VTInsert) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return cr.ServiceSpec
 }
 
+// VTStorageNode defines slice of additional vtstorage nodes
+type VTStorageNode struct {
+	// Addr defines storage node address
+	Addr string `json:"addr"`
+}
+
 // VTSelect defines vtselect component configuration at victoria-traces cluster
 type VTSelect struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VTSelect pods.
@@ -224,6 +230,9 @@ type VTSelect struct {
 	// RollingUpdate - overrides deployment update params.
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+
+	// ExtraStorageNodes - defines additional storage nodes to VTSelect
+	ExtraStorageNodes []VTStorageNode `json:"extraStorageNodes,omitempty"`
 
 	vmv1beta1.CommonDefaultableParams           `json:",inline"`
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`

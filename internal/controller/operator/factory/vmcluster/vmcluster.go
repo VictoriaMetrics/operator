@@ -566,25 +566,23 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 
 	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil {
-
-		storageArg := "-storageNode="
-		for _, i := range cr.AvailableStorageNodeIDs("select") {
-			storageArg += build.PodDNSAddress(cr.GetVMStorageName(), i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName)
+		storageNodeFlag := build.NewFlag("-storageNode", "")
+		storageNodeIds := cr.AvailableStorageNodeIDs("select")
+		for idx, i := range storageNodeIds {
+			storageNodeFlag.Add(build.PodDNSAddress(cr.GetVMStorageName(), i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName), idx)
 		}
-		storageArg = strings.TrimSuffix(storageArg, ",")
-		args = append(args, storageArg)
-
+		totalNodes := len(storageNodeIds)
+		args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 	}
 	// selectNode arg add for deployments without HPA
 	// HPA leads to rolling restart for vmselect statefulset in case of replicas count changes
 	if cr.Spec.VMSelect.HPA == nil && cr.Spec.VMSelect.ReplicaCount != nil {
-		selectArg := "-selectNode="
+		selectNodeFlag := build.NewFlag("-selectNode", "")
 		vmselectCount := *cr.Spec.VMSelect.ReplicaCount
-		for i := int32(0); i < vmselectCount; i++ {
-			selectArg += build.PodDNSAddress(cr.GetVMSelectName(), i, cr.Namespace, cr.Spec.VMSelect.Port, cr.Spec.ClusterDomainName)
+		for idx := int32(0); idx < vmselectCount; idx++ {
+			selectNodeFlag.Add(build.PodDNSAddress(cr.GetVMSelectName(), idx, cr.Namespace, cr.Spec.VMSelect.Port, cr.Spec.ClusterDomainName), int(idx))
 		}
-		selectArg = strings.TrimSuffix(selectArg, ",")
-		args = append(args, selectArg)
+		args = build.AppendFlagsToArgs(args, int(vmselectCount), selectNodeFlag)
 	}
 
 	if len(cr.Spec.VMSelect.ExtraEnvs) > 0 || len(cr.Spec.VMSelect.ExtraEnvsFrom) > 0 {
@@ -768,15 +766,15 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 
 	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil {
-		storageArg := "-storageNode="
-		for _, i := range cr.AvailableStorageNodeIDs("insert") {
-			storageArg += build.PodDNSAddress(cr.GetVMStorageName(), i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName)
+		storageNodeFlag := build.NewFlag("-storageNode", "")
+		storageNodeIds := cr.AvailableStorageNodeIDs("insert")
+		for idx, i := range storageNodeIds {
+			storageNodeFlag.Add(build.PodDNSAddress(cr.GetVMStorageName(), i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName), idx)
 		}
-		storageArg = strings.TrimSuffix(storageArg, ",")
-
-		args = append(args, storageArg)
-
+		totalNodes := len(storageNodeIds)
+		args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 	}
+
 	if cr.Spec.ReplicationFactor != nil {
 		args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 	}

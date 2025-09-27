@@ -37,9 +37,9 @@ type builderOpts interface {
 func PodDNSAddress(baseName string, podIndex int32, namespace string, portName string, domain string) string {
 	// The default DNS search path is .svc.<cluster domain>
 	if domain == "" {
-		return fmt.Sprintf("%s-%d.%s.%s:%s,", baseName, podIndex, baseName, namespace, portName)
+		return fmt.Sprintf("%s-%d.%s.%s:%s", baseName, podIndex, baseName, namespace, portName)
 	}
-	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s,", baseName, podIndex, baseName, namespace, domain, portName)
+	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s", baseName, podIndex, baseName, namespace, domain, portName)
 }
 
 // LicenseArgsTo conditionally adds license commandline args into given args

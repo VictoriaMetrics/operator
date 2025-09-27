@@ -1,0 +1,8 @@
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/x-kubernetes-preserve-unknown-fields
+  value: true
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties
+  value: null
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties

@@ -160,9 +160,15 @@ oc get pods -n vm
 It's possible to build and run OLM package locally on Kind K8s cluster using `make deploy-kind-olm`.
 Command builds operator image, bundle and index images, runs Kind with a local registry and deploys OLM package to Kind.
 
-## Installing to ARM
+## CPU architectures
 
-There is no need in an additional configuration for ARM. Operator and VictoriaMetrics have full support for it.
+Both operator and VictoriaMetrics have full support for the following architectures:
+* amd64
+* arm64 (aarch64)
+* ppc64le
+* s390x
+
+No additional configuration is required for non-standard CPU architectures.
 
 ## Configuring
 

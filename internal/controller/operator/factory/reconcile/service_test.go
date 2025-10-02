@@ -306,6 +306,46 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				return nil
 			},
 		},
+		{
+			name: "keep custom labels on svc",
+			args: args{
+				newService: &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "prefixed-1",
+						Namespace: "default",
+					},
+					Spec: corev1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+				},
+				ctx: context.TODO(),
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "prefixed-1",
+						Namespace: "default",
+						Labels:    map[string]string{"custom": "label"},
+					},
+					Spec: corev1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+				},
+			},
+			validate: func(svc *corev1.Service) error {
+				if svc.Name != "prefixed-1" {
+					return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
+				}
+				l, ok := svc.Labels["custom"]
+				if !ok {
+					return fmt.Errorf("missing 'custom' label on svc")
+				}
+				if l != "label" {
+					return fmt.Errorf("unexpected value of 'custom' label on svc, got: %v, want: 'value'", l)
+				}
+				return nil
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

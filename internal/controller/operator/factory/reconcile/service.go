@@ -114,6 +114,11 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		prevAnnotations = prevService.Annotations
 	}
 
+	var prevLabels map[string]string
+	if prevService != nil {
+		prevLabels = prevService.Labels
+	}
+
 	rclient.Scheme().Default(newService)
 	isEqual := equality.Semantic.DeepDerivative(newService.Spec, currentService.Spec)
 	if isEqual &&
@@ -125,6 +130,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 
 	vmv1beta1.AddFinalizer(newService, currentService)
 	newService.Annotations = mergeAnnotations(currentService.Annotations, newService.Annotations, prevAnnotations)
+	newService.Labels = mergeAnnotations(currentService.Labels, newService.Labels, prevLabels)
 	cloneSignificantMetadata(newService, currentService)
 
 	logMsg := fmt.Sprintf("updating service %s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",

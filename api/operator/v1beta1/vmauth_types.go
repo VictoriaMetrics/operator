@@ -7,7 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	v12 "k8s.io/api/networking/v1"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -84,6 +85,9 @@ type VMAuthSpec struct {
 	// will be added after removal of VMUserConfigOptions
 	// currently it has collision with inlined fields
 	// IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+	// OODC represents configuration section for OIDC authorization
+	// +optional
+	OIDC []*VMAuthOIDCRealm `json:"jwt,omitempty"`
 	// will be removed at v1.0 release
 	// +deprecated
 	// +kubebuilder:validation:Schemaless
@@ -123,6 +127,28 @@ type VMAuthSpec struct {
 	// UseProxyProtocol enables proxy protocol for vmauth
 	// https://www.haproxy.org/download/2.3/doc/proxy-protocol.txt
 	UseProxyProtocol bool `json:"useProxyProtocol,omitempty"`
+}
+
+// VMAuthOIDCRealm defines OIDC realm parameters
+type VMAuthOIDCRealm struct {
+	// EnforcePrefix requires JWT token to start with "Bearer: "
+	// +optional
+	EnforcePrefix bool `json:"enforce_prefix,omitempty"`
+	// IssuerURL is OpenID Connect issuer URL
+	// +optional
+	IssuerURL string `json:"issuer_url,omitempty"`
+	// JWKsURL is the OpenID Connect JWKS URL
+	// +optional
+	JWKsURL string `json:"jwks_url,omitempty"`
+	// SkipDiscovery allows to skip OIDC discovery and use manually supplied Endpoints
+	// +optional
+	SkipDiscovery bool `json:"skip_discovery,omitempty"`
+	// PublicKeyFiles is a list of paths pointing to public key files in PEM format to use
+	// for verifying JWT tokens
+	PublicKeyFiles []string `json:"public_key_files,omitempty"`
+	// PublicKeySecrets is a list of k8s Secret selectors pointing to public key files in PEM format to use
+	// for verifying JWT tokens
+	PublicKeySecrets []*corev1.SecretKeySelector `json:"public_key_secrets,omitempty"`
 }
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
@@ -425,7 +451,9 @@ func (cr *VMAuth) Validate() error {
 			return fmt.Errorf("incorrect cr.spec UnauthorizedAccessConfig options: %w", err)
 		}
 	}
-
+	if len(cr.Spec.OIDC) > 0 && !cr.Spec.License.IsProvided() {
+		return fmt.Errorf("spec.jwt is only allowed in enterprise mode, but no license provided")
+	}
 	if cr.Spec.UnauthorizedUserAccessSpec != nil {
 		if err := cr.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec.UnauthorizedUserAccess syntax: %w", err)
@@ -461,11 +489,11 @@ type EmbeddedIngress struct {
 	// ExtraRules - additional rules for ingress,
 	// must be checked for correctness by user.
 	// +optional
-	ExtraRules []v12.IngressRule `json:"extraRules,omitempty" yaml:"extraRules,omitempty"`
+	ExtraRules []networkingv1.IngressRule `json:"extraRules,omitempty" yaml:"extraRules,omitempty"`
 	// ExtraTLS - additional TLS configuration for ingress
 	// must be checked for correctness by user.
 	// +optional
-	ExtraTLS []v12.IngressTLS `json:"extraTls,omitempty" yaml:"extraTls,omitempty"`
+	ExtraTLS []networkingv1.IngressTLS `json:"extraTls,omitempty" yaml:"extraTls,omitempty"`
 	// Host defines ingress host parameter for default rule
 	// It will be used, only if TlsHosts is empty
 	// +optional

@@ -45,6 +45,14 @@ func (s *scheduler) MarshalYAML() (any, error) {
 	return s.validatable, nil
 }
 
+type noopScheduler struct {
+	Class string `yaml:"class"`
+}
+
+func (s *noopScheduler) validate() error {
+	return nil
+}
+
 type periodicScheduler struct {
 	Class      string        `yaml:"class"`
 	FitEvery   *duration     `yaml:"fit_every,omitempty"`

@@ -21123,9 +21123,6 @@ spec:
                       VMAnomalyMonitoringPullSpec defines pull monitoring configuration
                       which is enabled by default and served at POD_IP:8490/metrics
                     properties:
-                      addr:
-                        description: Addr changes listen addr, default is 0.0.0.0
-                        type: string
                       port:
                         description: Port defines a port for metrics scrape
                         type: string

@@ -40,10 +40,20 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 		args = append(args, fmt.Sprintf("--loggerLevel=%s", strings.ToUpper(cr.Spec.LogLevel)))
 	}
 
+	monitoringPort, err := strconv.ParseInt(cr.Spec.Monitoring.Pull.Port, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("cannot reconcile vmanomaly: failed to parse monitoring port: %w", err)
+	}
+
 	ports := []corev1.ContainerPort{
 		{
 			Name:          "http",
 			ContainerPort: int32(port),
+			Protocol:      corev1.ProtocolTCP,
+		},
+		{
+			Name:          "monitoring-http",
+			ContainerPort: int32(monitoringPort),
 			Protocol:      corev1.ProtocolTCP,
 		},
 	}

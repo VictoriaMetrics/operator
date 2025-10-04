@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,7 +24,10 @@ type reader struct {
 }
 
 func (r *reader) validate() error {
-	if r.Class != "reader.vm.VmReader" && r.Class != "vm" && r.Class != "reader.synthetic.SyntheticVmReader" && r.Class != "synthetic_vm" {
+	if strings.ToLower(r.Class) == "noop" {
+		return nil
+	}
+	if !slices.Contains([]string{"reader.vm.VmReader", "vm", "reader.synthetic.SyntheticVmReader", "synthetic_vm", "vlogs", "reader.vlogs.VLogsReader"}, r.Class) {
 		return fmt.Errorf("anomaly reader class=%q is not supported", r.Class)
 	}
 	if len(r.Queries) == 0 {

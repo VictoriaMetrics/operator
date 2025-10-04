@@ -281,7 +281,7 @@ func addVMAnomalyDefaults(objI any) {
 	if cr.Spec.Monitoring == nil {
 		cr.Spec.Monitoring = &vmv1.VMAnomalyMonitoringSpec{
 			Pull: &vmv1.VMAnomalyMonitoringPullSpec{
-				Port: cr.Port(),
+				Port: "8080",
 			},
 		}
 	}

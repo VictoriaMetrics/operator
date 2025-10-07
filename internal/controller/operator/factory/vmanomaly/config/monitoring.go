@@ -1,7 +1,7 @@
 package config
 
 type monitoring struct {
-	Pull *pullMonitoring `yaml:"pull,omitempty"`
+	Pull *server         `yaml:"pull,omitempty"`
 	Push *pushMonitoring `yaml:"push,omitempty"`
 }
 
@@ -9,7 +9,7 @@ func (m *monitoring) validate() error {
 	return nil
 }
 
-type pullMonitoring struct {
+type server struct {
 	Addr string `yaml:"addr,omitempty"`
 	Port string `yaml:"port,omitempty"`
 }

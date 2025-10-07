@@ -16,6 +16,8 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.126.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.126.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.35.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.35.0).
 
+* FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): support ui preset mode, support `vlogs` reader type. See [#1532](https://github.com/VictoriaMetrics/operator/issues/1538).
+
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix an issue where the return value from a couple of controllers was always `nil`. See [#1532](https://github.com/VictoriaMetrics/operator/pull/1532) for details.
 
 ## [v0.63.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.63.0)

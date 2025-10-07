@@ -218,8 +218,6 @@ type VMAnomalyMonitoringSpec struct {
 // VMAnomalyMonitoringPullSpec defines pull monitoring configuration
 // which is enabled by default and served at POD_IP:8490/metrics
 type VMAnomalyMonitoringPullSpec struct {
-	// Addr changes listen addr, default is 0.0.0.0
-	Addr string `json:"addr,omitempty" yaml:"addr,omitempty"`
 	// Port defines a port for metrics scrape
 	Port string `json:"port"`
 }
@@ -365,7 +363,7 @@ func (cr *VMAnomaly) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.Spec.ServiceScrapeSpec
 }
 
-// Port returns port for accessing anomaly
+// Port returns port for accessing anomaly UI
 func (cr *VMAnomaly) Port() string {
 	return cr.Spec.Port
 }

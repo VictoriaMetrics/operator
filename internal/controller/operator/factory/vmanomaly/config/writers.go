@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -14,7 +15,10 @@ type writer struct {
 }
 
 func (w *writer) validate() error {
-	if w.Class != "writer.vm.VmReader" && w.Class != "vm" {
+	if strings.ToLower(w.Class) == "noop" {
+		return nil
+	}
+	if !slices.Contains([]string{"writer.vm.VmWriter", "vm"}, w.Class) {
 		return fmt.Errorf("anomaly writer class=%q is not supported", w.Class)
 	}
 	if w.MetricFormat != nil {

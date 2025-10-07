@@ -29,6 +29,7 @@ type config struct {
 	Monitoring *monitoring           `yaml:"monitoring,omitempty"`
 	Preset     string                `yaml:"preset,omitempty"`
 	Settings   *settings             `yaml:"settings,omitempty"`
+	Server     *server               `yaml:"server,omitempty"`
 }
 
 type settings struct {
@@ -38,6 +39,43 @@ type settings struct {
 }
 
 func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
+	c.Preset = strings.ToLower(c.Preset)
+	if strings.HasPrefix(c.Preset, "ui:") {
+		c.Reader = &reader{
+			Class: "noop",
+		}
+		c.Writer = &writer{
+			Class: "noop",
+		}
+		c.Schedulers = map[string]*scheduler{
+			"noop": {
+				validatable: &noopScheduler{
+					Class: "noop",
+				},
+			},
+		}
+		c.Models = map[string]*model{
+			"placeholder": {
+				anomalyModel: &zScoreModel{
+					commonModelParams: commonModelParams{
+						Class:      "zscore",
+						Schedulers: []string{"noop"},
+					},
+				},
+			},
+		}
+		c.Server = &server{
+			Addr: "0.0.0.0",
+			Port: cr.Port(),
+		}
+		c.Monitoring = &monitoring{
+			Pull: &server{
+				Addr: "0.0.0.0",
+				Port: cr.Spec.Monitoring.Pull.Port,
+			},
+		}
+		return nil
+	}
 	if cr.Spec.Reader == nil {
 		return fmt.Errorf("reader is required for anomaly name=%s/%s", cr.Namespace, cr.Name)
 	}
@@ -171,6 +209,12 @@ func (c *config) marshal() yaml.MapSlice {
 	}
 	if c.Settings != nil {
 		output = append(output, yaml.MapItem{Key: "settings", Value: c.Settings})
+	}
+	if c.Server != nil {
+		output = append(output, yaml.MapItem{Key: "server", Value: c.Server})
+	}
+	if c.Preset != "" {
+		output = append(output, yaml.MapItem{Key: "preset", Value: c.Preset})
 	}
 	return output
 }

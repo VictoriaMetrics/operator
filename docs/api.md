@@ -625,7 +625,6 @@ Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
 
 | Field | Description |
 | --- | --- |
-| addr<a href="#vmanomalymonitoringpullspec-addr" id="vmanomalymonitoringpullspec-addr">#</a><br/>_string_ | _(Required)_<br/>Addr changes listen addr, default is 0.0.0.0 |
 | port<a href="#vmanomalymonitoringpullspec-port" id="vmanomalymonitoringpullspec-port">#</a><br/>_string_ | _(Required)_<br/>Port defines a port for metrics scrape |
 
 

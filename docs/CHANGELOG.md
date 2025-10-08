@@ -13,7 +13,7 @@ aliases:
 
 ## tip
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.35.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.35.0).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.36.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.1).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.127.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.127.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.3.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.3.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.26.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1261) version

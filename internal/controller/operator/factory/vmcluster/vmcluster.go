@@ -1579,6 +1579,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	var prevSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Enabled {
 		t.VMCluster = prevCR
+		t.finalLabels = prevCR.FinalLabels(lbls)
 		t.additionalService = prevCR.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec
 		prevSvc = build.Service(t, prevCR.Spec.RequestsLoadBalancer.Spec.Port, nil)
 	}

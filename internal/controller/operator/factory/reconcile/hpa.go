@@ -29,19 +29,14 @@ func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.Horizon
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentHPA); err != nil {
 			return err
 		}
-		var prevAnnotations map[string]string
-		if prevHPA != nil {
-			prevAnnotations = prevHPA.Annotations
-		}
 
 		if equality.Semantic.DeepEqual(newHPA.Spec, currentHPA.Spec) &&
 			equality.Semantic.DeepEqual(newHPA.Labels, currentHPA.Labels) &&
-			isAnnotationsEqual(currentHPA.Annotations, newHPA.Annotations, prevAnnotations) {
+			isObjectMetaEqual(&currentHPA, newHPA, prevHPA) {
 			return nil
 		}
 
-		newHPA.Annotations = mergeAnnotations(currentHPA.Annotations, newHPA.Annotations, prevAnnotations)
-		cloneSignificantMetadata(newHPA, &currentHPA)
+		mergeObjectMetadataIntoNew(&currentHPA, newHPA, prevHPA)
 		newHPA.Status = currentHPA.Status
 
 		logMsg := fmt.Sprintf("updating HPA %s configuration spec_diff: %s", newHPA.Name, diffDeepDerivative(newHPA.Spec, currentHPA.Spec))

@@ -3,6 +3,7 @@ package reconcile
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,30 +50,41 @@ func mergeAnnotations(currentA, newA, prevA map[string]string) map[string]string
 	return dst
 }
 
-// isAnnotationsEqual properly track changes at object annotations
+// isObjectMetaEqual properly track changes at object annotations
 // it preserves 3rd party annotations
-func isAnnotationsEqual(currentA, newA, prevA map[string]string) bool {
-	for k, v := range newA {
-		cv, ok := currentA[k]
-		if !ok {
-			return false
+func isObjectMetaEqual(currObj, newObj, prevObj client.Object) bool {
+	isMapsEqual := func(currentA, newA, prevA map[string]string) bool {
+		for k, v := range newA {
+			cv, ok := currentA[k]
+			if !ok {
+				return false
+			}
+			if v != cv {
+				return false
+			}
 		}
-		if v != cv {
-			return false
+		for k := range prevA {
+			_, nok := newA[k]
+			_, cok := currentA[k]
+			// case for annotations delete
+			if nok != cok {
+				return false
+			}
 		}
+		return true
 	}
-	for k := range prevA {
-		_, nok := newA[k]
-		_, cok := currentA[k]
-		// case for annotations delete
-		if nok != cok {
-			return false
-		}
+	var prevLabels, prevAnnotations map[string]string
+	if prevObj != nil && !reflect.ValueOf(prevObj).IsNil() {
+		prevLabels = prevObj.GetLabels()
+		prevAnnotations = prevObj.GetAnnotations()
 	}
-	return true
+	annotationsEqual := isMapsEqual(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
+	labelsEqual := isMapsEqual(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
+
+	return annotationsEqual && labelsEqual
 }
 
-func cloneSignificantMetadata(newObj, currObj client.Object) {
+func mergeObjectMetadataIntoNew(currObj, newObj, prevObj client.Object) {
 	// empty ResourceVersion for some resources produces the following error
 	// is invalid: metadata.resourceVersion: Invalid value: 0x0: must be specified for an update
 	// so keep it from current resource
@@ -83,6 +95,17 @@ func cloneSignificantMetadata(newObj, currObj client.Object) {
 	newObj.SetCreationTimestamp(currObj.GetCreationTimestamp())
 	newObj.SetUID(currObj.GetUID())
 	newObj.SetSelfLink(currObj.GetSelfLink())
+
+	var prevLabels, prevAnnotations map[string]string
+	if prevObj != nil && !reflect.ValueOf(prevObj).IsNil() {
+		prevLabels = prevObj.GetLabels()
+		prevAnnotations = prevObj.GetAnnotations()
+	}
+	annotations := mergeAnnotations(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
+	labels := mergeAnnotations(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
+
+	newObj.SetAnnotations(annotations)
+	newObj.SetLabels(labels)
 }
 
 // IsErrorWaitTimeout determines if the err is an error which indicates that timeout for app

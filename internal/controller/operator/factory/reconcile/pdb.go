@@ -31,23 +31,17 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 			return err
 		}
 
-		var prevAnnotations map[string]string
-		if prevPDB != nil {
-			prevAnnotations = prevPDB.Annotations
-		}
-
 		if equality.Semantic.DeepEqual(newPDB.Spec, currentPdb.Spec) &&
 			equality.Semantic.DeepEqual(newPDB.Labels, currentPdb.Labels) &&
-			isAnnotationsEqual(currentPdb.Annotations, newPDB.Annotations, prevAnnotations) {
+			isObjectMetaEqual(currentPdb, newPDB, prevPDB) {
 			return nil
 		}
 		logMsg := fmt.Sprintf("updating PDB %s configuration spec_diff: %s", newPDB.Name, diffDeep(newPDB.Spec, currentPdb.Spec))
 		logger.WithContext(ctx).Info(logMsg)
 
-		cloneSignificantMetadata(newPDB, currentPdb)
+		mergeObjectMetadataIntoNew(currentPdb, newPDB, prevPDB)
 		// for some reason Status is not marked as status sub-resource at PDB CRD
 		newPDB.Status = currentPdb.Status
-		newPDB.Annotations = mergeAnnotations(currentPdb.Annotations, newPDB.Annotations, prevAnnotations)
 
 		return rclient.Update(ctx, newPDB)
 	})

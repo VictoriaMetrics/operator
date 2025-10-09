@@ -109,29 +109,17 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		}
 	}
 
-	var prevAnnotations map[string]string
-	if prevService != nil {
-		prevAnnotations = prevService.Annotations
-	}
-
-	var prevLabels map[string]string
-	if prevService != nil {
-		prevLabels = prevService.Labels
-	}
-
 	rclient.Scheme().Default(newService)
 	isEqual := equality.Semantic.DeepDerivative(newService.Spec, currentService.Spec)
 	if isEqual &&
 		isPrevServiceEqual &&
 		equality.Semantic.DeepEqual(newService.Labels, currentService.Labels) &&
-		isAnnotationsEqual(currentService.Annotations, newService.Annotations, prevAnnotations) {
+		isObjectMetaEqual(currentService, newService, prevService) {
 		return nil
 	}
 
 	vmv1beta1.AddFinalizer(newService, currentService)
-	newService.Annotations = mergeAnnotations(currentService.Annotations, newService.Annotations, prevAnnotations)
-	newService.Labels = mergeAnnotations(currentService.Labels, newService.Labels, prevLabels)
-	cloneSignificantMetadata(newService, currentService)
+	mergeObjectMetadataIntoNew(currentService, newService, prevService)
 
 	logMsg := fmt.Sprintf("updating service %s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
 		newService.Name, isEqual, isPrevServiceEqual, prevService == nil)

@@ -29,27 +29,16 @@ func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbac
 		return err
 	}
 
-	var prevAnnotations map[string]string
-	if prevRB != nil {
-		prevAnnotations = prevRB.Annotations
-	}
-
 	if equality.Semantic.DeepEqual(newRB.Subjects, currentRB.Subjects) &&
 		equality.Semantic.DeepEqual(newRB.RoleRef, currentRB.RoleRef) &&
-		equality.Semantic.DeepEqual(newRB.Labels, currentRB.Labels) &&
-		isAnnotationsEqual(currentRB.Annotations, newRB.Annotations, prevAnnotations) {
+		isObjectMetaEqual(&currentRB, newRB, prevRB) {
 		return nil
 	}
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating RoleBinding %s configuration", newRB.Name))
+	mergeObjectMetadataIntoNew(&currentRB, newRB, prevRB)
+	vmv1beta1.AddFinalizer(newRB, &currentRB)
 
-	currentRB.Annotations = mergeAnnotations(currentRB.Annotations, newRB.Annotations, prevAnnotations)
-	currentRB.Labels = newRB.Labels
-	currentRB.Subjects = newRB.Subjects
-	currentRB.RoleRef = newRB.RoleRef
-	currentRB.OwnerReferences = newRB.OwnerReferences
-	vmv1beta1.AddFinalizer(&currentRB, &currentRB)
-
-	return rclient.Update(ctx, &currentRB)
+	return rclient.Update(ctx, newRB)
 }
 
 // Role reconciles role object
@@ -65,25 +54,16 @@ func Role(ctx context.Context, rclient client.Client, newRL, prevRL *rbacv1.Role
 	if err := finalize.FreeIfNeeded(ctx, rclient, &currentRL); err != nil {
 		return err
 	}
-	var prevAnnotations map[string]string
-	if prevRL != nil {
-		prevAnnotations = prevRL.Annotations
-	}
 
 	if equality.Semantic.DeepEqual(newRL.Rules, currentRL.Rules) &&
-		equality.Semantic.DeepEqual(newRL.Labels, currentRL.Labels) &&
-		isAnnotationsEqual(currentRL.Annotations, newRL.Annotations, prevAnnotations) {
+		isObjectMetaEqual(&currentRL, newRL, prevRL) {
 		return nil
 	}
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating Role %s configuration", newRL.Name))
+	mergeObjectMetadataIntoNew(&currentRL, newRL, prevRL)
+	vmv1beta1.AddFinalizer(newRL, &currentRL)
 
-	currentRL.Annotations = mergeAnnotations(currentRL.Annotations, newRL.Annotations, prevAnnotations)
-	currentRL.Labels = newRL.Labels
-	currentRL.Rules = newRL.Rules
-	currentRL.OwnerReferences = newRL.OwnerReferences
-	vmv1beta1.AddFinalizer(&currentRL, &currentRL)
-
-	return rclient.Update(ctx, &currentRL)
+	return rclient.Update(ctx, newRL)
 }
 
 // ClusterRoleBinding reconciles cluster role binding object
@@ -101,26 +81,17 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newCRB, prev
 		return err
 	}
 
-	var prevAnnotations map[string]string
-	if prevCRB != nil {
-		prevAnnotations = prevCRB.Annotations
-	}
 	// fast path
 	if equality.Semantic.DeepEqual(newCRB.Subjects, currentCRB.Subjects) &&
 		equality.Semantic.DeepEqual(newCRB.RoleRef, currentCRB.RoleRef) &&
-		equality.Semantic.DeepEqual(newCRB.Labels, currentCRB.Labels) &&
-		isAnnotationsEqual(currentCRB.Annotations, newCRB.Annotations, prevAnnotations) {
+		isObjectMetaEqual(&currentCRB, newCRB, prevCRB) {
 		return nil
 	}
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRoleBinding %s", newCRB.Name))
+	mergeObjectMetadataIntoNew(&currentCRB, newCRB, prevCRB)
+	vmv1beta1.AddFinalizer(newCRB, &currentCRB)
 
-	currentCRB.OwnerReferences = newCRB.OwnerReferences
-	currentCRB.Labels = newCRB.Labels
-	currentCRB.Annotations = mergeAnnotations(currentCRB.Annotations, newCRB.Annotations, prevAnnotations)
-	currentCRB.Subjects = newCRB.Subjects
-	currentCRB.RoleRef = newCRB.RoleRef
-	vmv1beta1.AddFinalizer(&currentCRB, &currentCRB)
-	return rclient.Update(ctx, &currentCRB)
+	return rclient.Update(ctx, newCRB)
 
 }
 
@@ -138,22 +109,14 @@ func ClusterRole(ctx context.Context, rclient client.Client, newClusterRole, pre
 	if err := finalize.FreeIfNeeded(ctx, rclient, &currentClusterRole); err != nil {
 		return err
 	}
-	var prevAnnotations map[string]string
-	if prevClusterRole != nil {
-		prevAnnotations = prevClusterRole.Annotations
-	}
 	// fast path
 	if equality.Semantic.DeepEqual(newClusterRole.Rules, currentClusterRole.Rules) &&
-		equality.Semantic.DeepEqual(newClusterRole.Labels, currentClusterRole.Labels) &&
-		isAnnotationsEqual(currentClusterRole.Annotations, newClusterRole.Annotations, prevAnnotations) {
+		isObjectMetaEqual(&currentClusterRole, newClusterRole, prevClusterRole) {
 		return nil
 	}
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRole %s", newClusterRole.Name))
 
-	currentClusterRole.OwnerReferences = newClusterRole.OwnerReferences
-	currentClusterRole.Labels = newClusterRole.Labels
-	currentClusterRole.Annotations = mergeAnnotations(currentClusterRole.Annotations, newClusterRole.Annotations, prevAnnotations)
-	currentClusterRole.Rules = newClusterRole.Rules
-	vmv1beta1.AddFinalizer(&currentClusterRole, &currentClusterRole)
-	return rclient.Update(ctx, &currentClusterRole)
+	mergeObjectMetadataIntoNew(&currentClusterRole, newClusterRole, prevClusterRole)
+	vmv1beta1.AddFinalizer(newClusterRole, &currentClusterRole)
+	return rclient.Update(ctx, newClusterRole)
 }

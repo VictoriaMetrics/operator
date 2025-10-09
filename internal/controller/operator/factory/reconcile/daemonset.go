@@ -48,23 +48,22 @@ func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1
 			return err
 		}
 		newDs.Status = currentDs.Status
-		var prevAnnotations, prevTemplateAnnotations map[string]string
-		if prevDs != nil {
-			prevAnnotations = prevDs.Annotations
-			prevTemplateAnnotations = prevDs.Spec.Template.Annotations
-		}
+
 		isEqual := equality.Semantic.DeepDerivative(newDs.Spec, currentDs.Spec)
 		if isEqual &&
 			isPrevEqual &&
 			equality.Semantic.DeepEqual(newDs.Labels, currentDs.Labels) &&
-			isAnnotationsEqual(currentDs.Annotations, newDs.Annotations, prevAnnotations) {
+			isObjectMetaEqual(&currentDs, newDs, prevDs) {
 			return waitDaemonSetReady(ctx, rclient, newDs, appWaitReadyDeadline)
+		}
+		var prevTemplateAnnotations map[string]string
+		if prevDs != nil {
+			prevTemplateAnnotations = prevDs.Annotations
 		}
 
 		vmv1beta1.AddFinalizer(newDs, &currentDs)
-		newDs.Annotations = mergeAnnotations(currentDs.Annotations, newDs.Annotations, prevAnnotations)
 		newDs.Spec.Template.Annotations = mergeAnnotations(currentDs.Spec.Template.Annotations, newDs.Spec.Template.Annotations, prevTemplateAnnotations)
-		cloneSignificantMetadata(newDs, &currentDs)
+		mergeObjectMetadataIntoNew(&currentDs, newDs, prevDs)
 
 		logMsg := fmt.Sprintf("updating DaemonSet %s configuration"+
 			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",

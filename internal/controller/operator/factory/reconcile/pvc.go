@@ -42,15 +42,11 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 	}
 	newSize := newPVC.Spec.Resources.Requests.Storage()
 	oldSize := currentPVC.Spec.Resources.Requests.Storage()
-	var prevAnnotations map[string]string
-	if prevPVC != nil {
-		prevAnnotations = prevPVC.Annotations
-	}
 
 	isResizeNeeded := mayGrow(ctx, newPVC, newSize, oldSize)
 	if !isResizeNeeded &&
 		equality.Semantic.DeepEqual(newPVC.Labels, currentPVC.Labels) &&
-		isAnnotationsEqual(currentPVC.Annotations, newPVC.Annotations, prevAnnotations) {
+		isObjectMetaEqual(currentPVC, newPVC, prevPVC) {
 		return nil
 	}
 	if isResizeNeeded {
@@ -72,8 +68,7 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 	newPVC.Spec.Resources = *newResources
 
 	vmv1beta1.AddFinalizer(newPVC, currentPVC)
-	newPVC.Annotations = mergeAnnotations(currentPVC.Annotations, newPVC.Annotations, prevAnnotations)
-	cloneSignificantMetadata(newPVC, currentPVC)
+	mergeObjectMetadataIntoNew(currentPVC, newPVC, prevPVC)
 
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating PVC %s configuration", newPVC.Name))
 

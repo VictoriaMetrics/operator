@@ -29,19 +29,21 @@ func Secret(ctx context.Context, rclient client.Client, newS *corev1.Secret, pre
 	if err := finalize.FreeIfNeeded(ctx, rclient, &currentS); err != nil {
 		return err
 	}
-	var prevAnnotations map[string]string
+
+	var prevS *corev1.Secret
 	if prevMeta != nil {
-		prevAnnotations = prevMeta.Annotations
+		prevS = &corev1.Secret{
+			ObjectMeta: *prevMeta,
+		}
 	}
 
 	if equality.Semantic.DeepEqual(newS.Data, currentS.Data) &&
 		equality.Semantic.DeepEqual(newS.Labels, currentS.Labels) &&
-		isAnnotationsEqual(currentS.Annotations, newS.Annotations, prevAnnotations) {
+		isObjectMetaEqual(&currentS, newS, prevS) {
 		return nil
 	}
 
-	newS.Annotations = mergeAnnotations(currentS.Annotations, newS.Annotations, prevAnnotations)
-	cloneSignificantMetadata(newS, &currentS)
+	mergeObjectMetadataIntoNew(&currentS, newS, prevS)
 
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating configuration Secret %s", newS.Name))
 

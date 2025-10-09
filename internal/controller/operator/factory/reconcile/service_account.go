@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
@@ -30,20 +29,17 @@ func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *c
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSA); err != nil {
 			return err
 		}
-		var prevAnnotations map[string]string
-		if prevSA != nil {
-			prevAnnotations = prevSA.Annotations
-		}
-		if equality.Semantic.DeepEqual(newSA.Labels, currentSA.Labels) &&
-			isAnnotationsEqual(currentSA.Annotations, newSA.Annotations, prevAnnotations) {
+		if isObjectMetaEqual(&currentSA, newSA, prevSA) {
 			return nil
 		}
-		currentSA.Labels = newSA.Labels
-		currentSA.Annotations = mergeAnnotations(currentSA.Annotations, newSA.Annotations, prevAnnotations)
-		vmv1beta1.AddFinalizer(&currentSA, &currentSA)
-
+		mergeObjectMetadataIntoNew(&currentSA, newSA, prevSA)
+		vmv1beta1.AddFinalizer(newSA, &currentSA)
+		// keep significant fields
+		newSA.Secrets = currentSA.Secrets
+		newSA.AutomountServiceAccountToken = currentSA.AutomountServiceAccountToken
+		newSA.ImagePullSecrets = currentSA.ImagePullSecrets
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount %s metadata", newSA.Name))
 
-		return rclient.Update(ctx, &currentSA)
+		return rclient.Update(ctx, newSA)
 	})
 }

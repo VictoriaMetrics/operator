@@ -24,19 +24,19 @@ func ConfigMap(ctx context.Context, rclient client.Client, newCM *corev1.ConfigM
 			return rclient.Create(ctx, newCM)
 		}
 	}
-	var prevAnnotations map[string]string
+	var prevCM *corev1.ConfigMap
 	if prevCMMEta != nil {
-		prevAnnotations = prevCMMEta.Annotations
+		prevCM = &corev1.ConfigMap{
+			ObjectMeta: *prevCMMEta,
+		}
 	}
 	if equality.Semantic.DeepEqual(newCM.Data, currentCM.Data) &&
-		equality.Semantic.DeepEqual(newCM.Labels, currentCM.Labels) &&
-		isAnnotationsEqual(currentCM.Annotations, newCM.Annotations, prevAnnotations) {
+		isObjectMetaEqual(&currentCM, newCM, prevCM) {
 		return nil
 	}
 
 	vmv1beta1.AddFinalizer(newCM, &currentCM)
-	cloneSignificantMetadata(newCM, &currentCM)
-	newCM.Annotations = mergeAnnotations(currentCM.Annotations, newCM.Annotations, prevAnnotations)
+	mergeObjectMetadataIntoNew(newCM, &currentCM, prevCM)
 
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s configuration", newCM.Name))
 

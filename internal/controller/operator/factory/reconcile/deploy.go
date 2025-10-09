@@ -53,23 +53,21 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			newDeploy.Spec.Replicas = currentDeploy.Spec.Replicas
 		}
 		newDeploy.Status = currentDeploy.Status
-		var prevAnnotations, prevTemplateAnnotations map[string]string
+		var prevTemplateAnnotations map[string]string
 		if prevDeploy != nil {
-			prevAnnotations = prevDeploy.Annotations
 			prevTemplateAnnotations = prevDeploy.Spec.Template.Annotations
 		}
 		isEqual := equality.Semantic.DeepDerivative(newDeploy.Spec, currentDeploy.Spec)
 		if isEqual &&
 			isPrevEqual &&
 			equality.Semantic.DeepEqual(newDeploy.Labels, currentDeploy.Labels) &&
-			isAnnotationsEqual(currentDeploy.Annotations, newDeploy.Annotations, prevAnnotations) {
+			isObjectMetaEqual(&currentDeploy, newDeploy, prevDeploy) {
 			return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 		}
 
 		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
-		newDeploy.Annotations = mergeAnnotations(currentDeploy.Annotations, newDeploy.Annotations, prevAnnotations)
 		newDeploy.Spec.Template.Annotations = mergeAnnotations(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations, prevTemplateAnnotations)
-		cloneSignificantMetadata(newDeploy, &currentDeploy)
+		mergeObjectMetadataIntoNew(&currentDeploy, newDeploy, prevDeploy)
 
 		logMsg := fmt.Sprintf("updating Deployment %s configuration"+
 			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",

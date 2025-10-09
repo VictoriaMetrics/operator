@@ -19,6 +19,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.26.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1261) version
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): support ui preset mode, support `vlogs` reader type. See [#1532](https://github.com/VictoriaMetrics/operator/issues/1538).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `unhealthyPodEvictionPolicy` to the `podDisruptionBudget` specification. See this issue [#1534](https://github.com/VictoriaMetrics/operator/issues/1534) for details.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): preserve 3rd party `labels` on object during `reconcile`. Previously, operator allowed to keep only `managedMetadata.labels`. See this issue [#1533](https://github.com/VictoriaMetrics/operator/issues/1533). Thanks to the @lllamnyp
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix an issue where the return value from a couple of controllers was always `nil`. See [#1532](https://github.com/VictoriaMetrics/operator/pull/1532) for details.

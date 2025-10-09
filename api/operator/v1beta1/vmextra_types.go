@@ -426,6 +426,16 @@ type EmbeddedPodDisruptionBudgetSpec struct {
 	// it's useful when you need to create custom budget
 	// +optional
 	SelectorLabels map[string]string `json:"selectorLabels,omitempty"`
+
+	// UnhealthyPodEvictionPolicy defines the criteria for when unhealthy pods
+	//
+	// Valid policies are IfHealthyBudget and AlwaysAllow.
+	// If no policy is specified, the default behavior will be used,
+	// which corresponds to the IfHealthyBudget policy.
+	// Available from operator v0.64.0
+	// +optional
+	// +kubebuilder:validation:Enum=IfHealthyBudget;AlwaysAllow
+	UnhealthyPodEvictionPolicy string `json:"unhealthyPodEvictionPolicy,omitempty"`
 }
 
 // SelectorLabelsWithDefaults return defaultSelector or replaced selector defined by user

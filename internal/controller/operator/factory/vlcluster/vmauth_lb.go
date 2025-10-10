@@ -181,6 +181,10 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
 	}
+	strategyType := appsv1.RollingUpdateDeploymentStrategyType
+	if cr.Spec.RequestsLoadBalancer.Spec.UpdateStrategy != nil {
+		strategyType = *cr.Spec.RequestsLoadBalancer.Spec.UpdateStrategy
+	}
 	lbDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
@@ -192,6 +196,10 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VMAuthLBSelectorLabels(),
+			},
+			Strategy: appsv1.DeploymentStrategy{
+				Type:          strategyType,
+				RollingUpdate: cr.Spec.RequestsLoadBalancer.Spec.RollingUpdate,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{

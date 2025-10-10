@@ -118,6 +118,10 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 		return nil, err
 	}
 
+	strategyType := appsv1.RollingUpdateDeploymentStrategyType
+	if cr.Spec.UpdateStrategy != nil {
+		strategyType = *cr.Spec.UpdateStrategy
+	}
 	depSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -131,7 +135,8 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 				MatchLabels: cr.SelectorLabels(),
 			},
 			Strategy: appsv1.DeploymentStrategy{
-				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				Type:          strategyType,
+				RollingUpdate: cr.Spec.RollingUpdate,
 			},
 			Template: *podSpec,
 		},

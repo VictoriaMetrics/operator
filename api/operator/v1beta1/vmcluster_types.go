@@ -1071,6 +1071,16 @@ type VMAuthLoadBalancerSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+
+	// UpdateStrategy - overrides default update strategy.
+	// Available from operator v0.64.0
+	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
+	// +optional
+	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
+	// RollingUpdate - overrides deployment update params.
+	// Available from operator v0.64.0
+	// +optional
+	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 }
 
 // ProbePath returns path for probe requests

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -123,6 +124,16 @@ type VMAuthSpec struct {
 	// UseProxyProtocol enables proxy protocol for vmauth
 	// https://www.haproxy.org/download/2.3/doc/proxy-protocol.txt
 	UseProxyProtocol bool `json:"useProxyProtocol,omitempty"`
+
+	// UpdateStrategy - overrides default update strategy.
+	// Available from operator v0.64.0
+	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
+	// +optional
+	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
+	// RollingUpdate - overrides deployment update params.
+	// Available from operator v0.64.0
+	// +optional
+	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 }
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth

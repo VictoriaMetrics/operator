@@ -25790,7 +25790,7 @@ spec:
                                   type: boolean
                                 persistentVolume:
                                   description: |-
-                                    Storage - add persistent volume for cacheMountPath
+                                    PersistentVolume - add persistent volume for cacheMountPath
                                     its useful for persistent cache
                                     use storage instead of persistentVolume.
                                   properties:

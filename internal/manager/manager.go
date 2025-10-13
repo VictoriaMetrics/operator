@@ -488,6 +488,7 @@ var controllersByName = map[string]crdController{
 	"VMNodeScrape":         &vmcontroller.VMNodeScrapeReconciler{},
 	"VMStaticScrape":       &vmcontroller.VMStaticScrapeReconciler{},
 	"VMScrapeConfig":       &vmcontroller.VMScrapeConfigReconciler{},
+	"VMDistributedCluster": &vmcontroller.VMDistributedClusterReconciler{},
 }
 
 func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorConf) error {

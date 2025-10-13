@@ -18,40 +18,89 @@ package operator
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	operatorv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributedcluster"
+	"github.com/go-logr/logr"
 )
 
 // VMDistributedClusterReconciler reconciles a VMDistributedCluster object
 type VMDistributedClusterReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	BaseConf     *config.BaseOperatorConf
+	Log          logr.Logger
+	OriginScheme *runtime.Scheme
+}
+
+// Init implements crdController interface
+func (r *VMDistributedClusterReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.Client = rclient
+	r.Log = l.WithName("controller.VMDistributedClusterReconciler")
+	r.OriginScheme = sc
+	r.BaseConf = cf
 }
 
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributedClusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributedClusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributedClusters/finalizers,verbs=update
+func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+	l := r.Log.WithValues("vmdistributed", req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
+	instance := &vmv1alpha1.VMDistributedCluster{}
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the VMDistributedCluster object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.22.1/pkg/reconcile
-func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
+	// Handle reconcile errors
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+	}()
 
-	// TODO(user): your logic here
+	// Fetch VMDistributedCluster instance
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+		return result, &getError{err, "vmdistributed", req}
+	}
 
-	return ctrl.Result{}, nil
+	// Register metrics
+	RegisterObjectStat(instance, "vmauth")
+
+	// Check if the instance is being deleted
+	// TODO[vrutkovs]: Implement deletion logic or remove it
+	if !instance.DeletionTimestamp.IsZero() {
+		if err := finalize.OnVMDistributedClusterDelete(ctx, r, instance); err != nil {
+			return result, fmt.Errorf("cannot remove finalizer from vmdistributed: %w", err)
+		}
+		return result, nil
+	}
+	// Check parsing error
+	if instance.Spec.ParsingError != "" {
+		return result, &parsingError{instance.Spec.ParsingError, "vmdistributed"}
+	}
+
+	// Add finalizer if necessary
+	// TODO[vrutkovs]: Implement finalizer logic or remove it
+	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
+		return result, err
+	}
+	r.Client.Scheme().Default(instance)
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
+		if err := vmdistributedcluster.CreateOrUpdate(ctx, instance, r); err != nil {
+			return result, fmt.Errorf("cannot create or update vmdistributedcluster deploy: %w", err)
+		}
+
+		return result, nil
+	})
+	if err != nil {
+		return
+	}
+	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
+	return
 }
 
 // SetupWithManager sets up the controller with the Manager.

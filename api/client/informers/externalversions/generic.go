@@ -21,6 +21,7 @@ import (
 	fmt "fmt"
 
 	v1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	v1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	v1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -65,6 +66,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1().VTClusters().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("vtsingles"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1().VTSingles().Informer()}, nil
+
+		// Group=operator, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("vmdistributedclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().VMDistributedClusters().Informer()}, nil
 
 		// Group=operator, Version=v1beta1
 	case v1beta1.SchemeGroupVersion.WithResource("vlogs"):

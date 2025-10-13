@@ -64,7 +64,7 @@ type VMClusterGenerationPair struct {
 // +kubebuilder:object:root=true
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=VMDistributedClusters,scope=Namespaced
+// +kubebuilder:resource:path=vmdistributedclusters,scope=Namespaced
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="current status of update rollout"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // VMDistributedClusterSpec is progressively rolling out updates to multiple VMClusters.

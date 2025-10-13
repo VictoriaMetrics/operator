@@ -49,9 +49,9 @@ func (r *VMDistributedClusterReconciler) Init(rclient client.Client, l logr.Logg
 	r.BaseConf = cf
 }
 
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributedClusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributedClusters/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributedClusters/finalizers,verbs=update
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributedclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributedclusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributedclusters/finalizers,verbs=update
 func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmdistributed", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)

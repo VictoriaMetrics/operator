@@ -293,6 +293,14 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 		$(KUBECTL) create ns $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -,)
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 
+.PHONY: install-slim
+install-slim: manifests kustomize ## Strip descriptions from CRDs and install them into the K8s cluster specified in ~/.kube/config.
+	$(if $(NAMESPACE), \
+		$(KUBECTL) create ns $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -,)
+	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
+	yq -r 'del(.. | .description?)' -i config/crd/overlay/crd.yaml
+	$(KUBECTL) apply --server-side -f config/crd/overlay/crd.yaml
+
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -

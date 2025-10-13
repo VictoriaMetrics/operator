@@ -105,6 +105,7 @@ api-gen: client-gen lister-gen informer-gen
 		--output-pkg github.com/VictoriaMetrics/operator/api/client \
 		--output-dir ./api/client \
 		--go-header-file hack/boilerplate.go.txt \
+		--input github.com/VictoriaMetrics/operator/api/operator/v1alpha1 \
 		--input github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
 		--input github.com/VictoriaMetrics/operator/api/operator/v1
 	@echo ">> generating with lister-gen"

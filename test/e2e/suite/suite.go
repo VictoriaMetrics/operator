@@ -27,6 +27,7 @@ import (
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/manager"
@@ -39,7 +40,9 @@ var stopped = make(chan struct{})
 
 // GetClient returns kubernetes client for cluster connection
 func GetClient() client.Client {
-	err := vmv1beta1.AddToScheme(scheme.Scheme)
+	err := vmv1alpha1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+	err = vmv1beta1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	err = vmv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())

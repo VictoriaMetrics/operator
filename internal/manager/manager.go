@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	vmcontroller "github.com/VictoriaMetrics/operator/internal/controller/operator"
@@ -120,6 +121,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(vmv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(vmv1beta1.AddToScheme(scheme))
 	utilruntime.Must(vmv1.AddToScheme(scheme))
 	utilruntime.Must(metav1.AddToScheme(scheme))

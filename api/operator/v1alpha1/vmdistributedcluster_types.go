@@ -17,6 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,8 +54,8 @@ type VMDistributedClusterStatus struct {
 // +k8s:openapi-gen=true
 // VMClusterGenerationPair is a pair of VMCluster and its generation
 type VMClusterGenerationPair struct {
-	VMCluster  vmv1beta1.VMCluster `json:"vmCluster"`
-	Generation int64               `json:"generation"`
+	VMClusterName string `json:"vmClusterName"`
+	Generation    int64  `json:"generation"`
 }
 
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMDistributedCluster App"
@@ -127,4 +130,14 @@ func (cr *VMDistributedCluster) HasSpecChanges() (bool, error) {
 // Paused checks if resource reconcile should be paused
 func (cr *VMDistributedCluster) Paused() bool {
 	return cr.Spec.Paused
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMDistributedClusterSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMDistributedClusterSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse vmdistributedcluster spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }

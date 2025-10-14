@@ -23,15 +23,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 
-	// Exit early if loadbalancer vmauth is not managed
-	if cr.Spec.VMAuth.IsUnmanaged() {
-		return errors.New("global loadbalancing vmauth is not managed")
-	}
-
 	// Fetch global loadbalancing vmauth
 	vmauthObj, err := fetchVMAuth(ctx, rclient, cr.Spec.VMAuth)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch global loadbalancing vmauth: %w", err)
+	}
+	if vmauthObj == nil || vmauthObj.IsUnmanaged() {
+		return errors.New("global loadbalancing vmauth is not managed")
 	}
 
 	// Fetch VMCLuster statuses by name

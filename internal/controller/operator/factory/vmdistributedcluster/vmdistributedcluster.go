@@ -64,6 +64,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		// Disable this VMCluster in vmauth
 		setVMClusterStatusInVMAuth(ctx, rclient, vmauthObj, &vmClusterObj, false)
 		// Wait for VMCluster's vmagent metrics to show no queue
+		// TODO[vrutkovs]: Do this only if VMCluster has VMAgent associated
 		waitForVMClusterVMAgentMetrics(ctx, rclient, &vmClusterObj)
 		// Change VMCluster version and wait for it to be ready
 		if err := changeVMClusterVersion(ctx, rclient, &vmClusterObj, cr.Spec.ClusterVersion); err != nil {

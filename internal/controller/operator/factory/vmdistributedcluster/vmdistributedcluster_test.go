@@ -14,6 +14,40 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type action struct {
+	Method string
+	Object client.Object
+}
+
+type trackingClient struct {
+	client.Client
+	Actions []action
+}
+
+func (tc *trackingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	tc.Actions = append(tc.Actions, action{Method: "Get", Object: obj.DeepCopyObject().(client.Object)})
+	return tc.Client.Get(ctx, key, obj, opts...)
+}
+
+func (tc *trackingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	tc.Actions = append(tc.Actions, action{Method: "Update", Object: obj.DeepCopyObject().(client.Object)})
+	return tc.Client.Update(ctx, obj, opts...)
+}
+
+func (tc *trackingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	tc.Actions = append(tc.Actions, action{Method: "Create", Object: obj.DeepCopyObject().(client.Object)})
+	return tc.Client.Create(ctx, obj, opts...)
+}
+
+func (tc *trackingClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	tc.Actions = append(tc.Actions, action{Method: "Delete", Object: obj.DeepCopyObject().(client.Object)})
+	return tc.Client.Delete(ctx, obj, opts...)
+}
+
+func (tc *trackingClient) Status() client.StatusWriter {
+	return tc.Client.Status()
+}
+
 // Helper to create a basic VMAuth object
 func newVMAuth(name, namespace string) *vmv1beta1.VMAuth {
 	return &vmv1beta1.VMAuth{
@@ -42,11 +76,11 @@ func newVMCluster(name, namespace, version string, generation int64) *vmv1beta1.
 }
 
 type testData struct {
-	vmauth     *vmv1beta1.VMAuth
-	vmcluster1 *vmv1beta1.VMCluster
-	vmcluster2 *vmv1beta1.VMCluster
-	cr         *vmv1alpha1.VMDistributedCluster
-	fakeClient client.Client
+	vmauth         *vmv1beta1.VMAuth
+	vmcluster1     *vmv1beta1.VMCluster
+	vmcluster2     *vmv1beta1.VMCluster
+	cr             *vmv1alpha1.VMDistributedCluster
+	trackingClient trackingClient
 }
 
 func beforeEach() testData {
@@ -79,15 +113,17 @@ func beforeEach() testData {
 		},
 	}
 
+	baseFake := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(vmauth, vmcluster1, vmcluster2).
+		Build()
+
 	return testData{
-		vmauth:     vmauth,
-		vmcluster1: vmcluster1,
-		vmcluster2: vmcluster2,
-		cr:         cr,
-		fakeClient: fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(vmauth, vmcluster1, vmcluster2).
-			Build(),
+		vmauth:         vmauth,
+		vmcluster1:     vmcluster1,
+		vmcluster2:     vmcluster2,
+		cr:             cr,
+		trackingClient: trackingClient{baseFake, []action{}},
 	}
 
 }
@@ -97,8 +133,9 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 
 	t.Run("Successful reconciliation", func(t *testing.T) {
 		td := beforeEach()
-		err := CreateOrUpdate(ctx, td.cr, td.fakeClient)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when all resources are present")
+		assert.Len(t, td.trackingClient.Actions, 5, "Should perform five actions")
 	})
 
 	t.Run("VMAuth is unmanaged", func(t *testing.T) {
@@ -106,10 +143,13 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 
 		// Make VMAuth unmanaged by setting SelectAllByDefault to false
 		td.vmauth.Spec.SelectAllByDefault = false
-		err := td.fakeClient.Update(ctx, td.vmauth)
+		err := td.trackingClient.Update(ctx, td.vmauth)
 		assert.NoError(t, err)
-		err = CreateOrUpdate(ctx, td.cr, td.fakeClient)
+		td.trackingClient.Actions = []action{}
+
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient)
 		assert.Error(t, err, "CreateOrUpdate should error if VMAuth is unmanaged")
+		assert.Len(t, td.trackingClient.Actions, 1, "Should perform one action")
 	})
 
 	t.Run("VMCluster missing", func(t *testing.T) {
@@ -125,34 +165,44 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 				},
 			},
 		}
-		err := CreateOrUpdate(ctx, td.cr, td.fakeClient)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient)
 		assert.Error(t, err, "CreateOrUpdate should error if VMCluster is missing")
+		assert.Len(t, td.trackingClient.Actions, 2, "Should perform two actions")
 	})
 
 	t.Run("Generations change triggers status update", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Status.VMClusterGenerations[0].Generation = 2 // update generation
-		err := CreateOrUpdate(ctx, td.cr, td.fakeClient)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient)
 		assert.Error(t, err, "CreateOrUpdate should error if generations change detected")
+		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
 	})
 
-	t.Run("Cluster version update", func(t *testing.T) {
+	t.Run("Partial cluster version update", func(t *testing.T) {
 		td := beforeEach()
 		td.vmcluster1.Spec.ClusterVersion = "v1.1.0"
-		err := td.fakeClient.Update(ctx, td.vmcluster1)
+		err := td.trackingClient.Update(ctx, td.vmcluster1)
 		assert.NoError(t, err)
-		err = CreateOrUpdate(ctx, td.cr, td.fakeClient)
+		td.trackingClient.Actions = []action{}
+
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when cluster version matches")
+		assert.Len(t, td.trackingClient.Actions, 4, "Should perform four actions")
 	})
 
 	t.Run("No update required", func(t *testing.T) {
 		td := beforeEach()
 		td.vmcluster1.Spec.ClusterVersion = "v1.1.0"
 		td.vmcluster2.Spec.ClusterVersion = "v1.1.0"
-		err := td.fakeClient.Update(ctx, td.vmcluster1)
+		err := td.trackingClient.Update(ctx, td.vmcluster1)
 		assert.NoError(t, err)
-		err = CreateOrUpdate(ctx, td.cr, td.fakeClient)
+		err = td.trackingClient.Update(ctx, td.vmcluster2)
+		assert.NoError(t, err)
+		td.trackingClient.Actions = []action{}
+
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when no update required")
+		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
 	})
 }
 

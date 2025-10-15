@@ -4,11 +4,16 @@ metadata:
   labels:
     app.kubernetes.io/name: victoriametrics-operator
     app.kubernetes.io/managed-by: kustomize
-  name: VMDistributedCluster-sample
+  name: vmdistributedcluster-sample
 spec:
-  vmAuth: vmauth-sample
+  vmAuth:
+    name: vmauth-sample
+    namespace: default
   vmClusters:
-    - vmcluster-us-east-1
-    - vmcluster-us-west-2
-    - vmcluster-eu-west-1
+    - name: vmcluster-us-east-1
+      namespace: us-east-1
+    - name: vmcluster-us-west-2
+      namespace: us-west-2
+    - name: vmcluster-eu-west-1
+      namespace: eu-west-1
   clusterVersion: 1.127.0

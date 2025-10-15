@@ -9,8 +9,9 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"k8s.io/apimachinery/pkg/types"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -24,16 +25,19 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Fetch global loadbalancing vmauth
-	vmauthObj, err := fetchVMAuth(ctx, rclient, cr.Spec.VMAuth)
+	if cr.Spec.VMAuth.Name == "" {
+		return errors.New("global loadbalancing vmauth is not specified")
+	}
+	vmauthObj, err := fetchVMAuth(ctx, rclient, cr.Namespace, cr.Spec.VMAuth)
 	if err != nil {
 		return fmt.Errorf("failed to fetch global loadbalancing vmauth: %w", err)
 	}
-	if vmauthObj == nil || vmauthObj.IsUnmanaged() {
+	if vmauthObj.IsUnmanaged() {
 		return errors.New("global loadbalancing vmauth is not managed")
 	}
 
 	// Fetch VMCLuster statuses by name
-	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Spec.VMClusters)
+	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.VMClusters)
 	if err != nil {
 		return err
 	}
@@ -76,12 +80,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	return nil
 }
 
-func fetchVMClusters(ctx context.Context, rclient client.Client, vmClusterSpecs []vmv1beta1.VMCluster) (vmClusters []vmv1beta1.VMCluster, err error) {
-	vmClusters = make([]vmv1beta1.VMCluster, len(vmClusterSpecs))
+func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []corev1.LocalObjectReference) (vmClusters []vmv1beta1.VMCluster, err error) {
+	vmClusters = make([]vmv1beta1.VMCluster, len(refs))
 	var vmClusterObj *vmv1beta1.VMCluster
-	for i, vmCluster := range vmClusterSpecs {
+	for i, vmCluster := range refs {
 		vmClusterObj = &vmv1beta1.VMCluster{}
-		if err := rclient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}, vmClusterObj); err != nil {
+		namespacedName := types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}
+		if err := rclient.Get(ctx, namespacedName, vmClusterObj); err != nil {
 			return nil, fmt.Errorf("failed to get VMCluster %s: %w", vmCluster.Name, err)
 		}
 		vmClusters[i] = *vmClusterObj
@@ -89,11 +94,13 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, vmClusterSpecs 
 	return vmClusters, nil
 }
 
-func fetchVMAuth(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth) (*vmv1beta1.VMAuth, error) {
-	if err := rclient.Get(ctx, types.NamespacedName{Name: vmauth.Name, Namespace: vmauth.Namespace}, vmauth); err != nil {
-		return nil, fmt.Errorf("failed to get VMAuth %s: %w", vmauth.Name, err)
+func fetchVMAuth(ctx context.Context, rclient client.Client, namespace string, ref corev1.LocalObjectReference) (*vmv1beta1.VMAuth, error) {
+	vmAuthObj := &vmv1beta1.VMAuth{}
+	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+	if err := rclient.Get(ctx, namespacedName, vmAuthObj); err != nil {
+		return nil, fmt.Errorf("failed to get VMAuth %s: %w", ref.Name, err)
 	}
-	return vmauth, nil
+	return vmAuthObj, nil
 }
 
 func getGenerationsFromStatus(status vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {

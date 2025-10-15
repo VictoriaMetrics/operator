@@ -3,6 +3,7 @@ package vmdistributedcluster
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +16,10 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+)
+
+const (
+	vmclusterWaitReadyDeadline = 500 * time.Millisecond
 )
 
 type action struct {
@@ -145,14 +150,32 @@ func beforeEach() testData {
 
 }
 
+type alwaysReadyClient struct {
+	client.Client
+}
+
+func (c *alwaysReadyClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	err := c.Client.Get(ctx, key, obj, opts...)
+	if err != nil {
+		return err
+	}
+	// Patch status to always be ready
+	if cluster, ok := obj.(*vmv1beta1.VMCluster); ok {
+		cluster.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+	}
+	return nil
+}
+
 func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Successful reconciliation", func(t *testing.T) {
 		td := beforeEach()
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient)
+		// Patch: use alwaysReadyClient for VMCluster readiness
+		td.trackingClient.Client = &alwaysReadyClient{Client: td.trackingClient.Client}
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when all resources are present")
-		assert.Len(t, td.trackingClient.Actions, 7, "Should perform seven actions")
+		assert.Len(t, td.trackingClient.Actions, 9, "Should perform nine actions")
 	})
 
 	t.Run("VMAuth is unmanaged", func(t *testing.T) {
@@ -164,7 +187,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		assert.NoError(t, err)
 		td.trackingClient.Actions = []action{}
 
-		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient)
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
 		assert.Error(t, err, "CreateOrUpdate should error if VMAuth is unmanaged")
 		assert.Len(t, td.trackingClient.Actions, 1, "Should perform one action")
 	})
@@ -175,7 +198,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		td.cr.Spec.VMClusters = []corev1.LocalObjectReference{
 			{Name: "missing-cluster"},
 		}
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
 		assert.Error(t, err, "CreateOrUpdate should error if VMCluster is missing")
 		assert.Len(t, td.trackingClient.Actions, 2, "Should perform two actions")
 	})
@@ -183,7 +206,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 	t.Run("Generations change triggers status update", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Status.VMClusterGenerations[0].Generation = 2 // update generation
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
 		assert.Error(t, err, "CreateOrUpdate should error if generations change detected")
 		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
 	})
@@ -195,9 +218,11 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		assert.NoError(t, err)
 		td.trackingClient.Actions = []action{}
 
-		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient)
+		// Patch: use alwaysReadyClient for VMCluster readiness
+		td.trackingClient.Client = &alwaysReadyClient{Client: td.trackingClient.Client}
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when cluster version matches")
-		assert.Len(t, td.trackingClient.Actions, 5, "Should perform five actions")
+		assert.Len(t, td.trackingClient.Actions, 6, "Should perform six actions")
 	})
 
 	t.Run("No update required", func(t *testing.T) {
@@ -210,9 +235,69 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		assert.NoError(t, err)
 		td.trackingClient.Actions = []action{}
 
-		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient)
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when no update required")
 		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
+	})
+}
+
+func TestWaitForVMClusterReady(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	namespace := "default"
+	name := "vmcluster-ready"
+
+	// Ready cluster
+	readyCluster := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Status: vmv1beta1.VMClusterStatus{
+			LegacyStatus: vmv1beta1.UpdateStatusOperational,
+		},
+	}
+
+	// Not ready cluster
+	notReadyCluster := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "vmcluster-not-ready",
+		},
+		Status: vmv1beta1.VMClusterStatus{
+			LegacyStatus: vmv1beta1.UpdateStatusExpanding,
+		},
+	}
+
+	client := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(readyCluster, notReadyCluster).
+		Build()
+
+	t.Run("returns nil when cluster is ready", func(t *testing.T) {
+		arc := &alwaysReadyClient{Client: client}
+		err := waitForVMClusterReady(ctx, arc, readyCluster, 500*time.Millisecond)
+		assert.NoError(t, err)
+	})
+
+	t.Run("returns error when cluster is not ready", func(t *testing.T) {
+		err := waitForVMClusterReady(ctx, client, notReadyCluster, vmclusterWaitReadyDeadline)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to wait for VMCluster")
+	})
+
+	t.Run("returns error when cluster is missing", func(t *testing.T) {
+		missing := &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      "missing-cluster",
+			},
+		}
+		err := waitForVMClusterReady(ctx, client, missing, vmclusterWaitReadyDeadline)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VMCluster not found")
 	})
 }
 

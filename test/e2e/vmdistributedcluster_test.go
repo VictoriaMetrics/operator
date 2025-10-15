@@ -173,6 +173,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	It("should delete VMDistributedCluster and remove it from the cluster", func() {
 		name := "delete-test"
 		namespacedName.Name = name
+
+		k8sClient.Delete(ctx, globalVMAuth)
+		Expect(k8sClient.Create(ctx, globalVMAuth)).To(Succeed())
 		cr := &vmv1alpha1.VMDistributedCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: namespace,

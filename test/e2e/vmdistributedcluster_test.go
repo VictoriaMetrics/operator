@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,10 +22,21 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	namespacedName := types.NamespacedName{
 		Namespace: namespace,
 	}
+	globalVMAuth := &vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "vm-auth",
+		},
+		Spec: vmv1beta1.VMAuthSpec{
+			SelectAllByDefault: true,
+		},
+	}
 
 	Context("create", func() {
 		JustBeforeEach(func() {
 			ctx = context.Background()
+			k8sClient.Delete(ctx, globalVMAuth)
+			Expect(k8sClient.Create(ctx, globalVMAuth)).To(Succeed())
 		})
 
 		AfterEach(func() {
@@ -44,11 +56,20 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				}
 				return fmt.Errorf("want NotFound error, got: %w", err)
 			}, eventualDeletionTimeout, 1).WithContext(ctx).Should(Succeed())
+			Expect(k8sClient.Delete(ctx, globalVMAuth)).To(Succeed(), "must delete vm-auth after test")
 		})
 
-		DescribeTable("should create vmdistributedcluster", func(name string, cr *vmv1alpha1.VMDistributedCluster, verify func(cr *vmv1alpha1.VMDistributedCluster)) {
-			namespacedName.Name = name
-			cr.Name = name
+		DescribeTable("should create vmdistributedcluster", func(cr *vmv1alpha1.VMDistributedCluster, vmclusters []vmv1beta1.VMCluster, verify func(cr *vmv1alpha1.VMDistributedCluster)) {
+			for _, vmcluster := range vmclusters {
+				Expect(k8sClient.Create(ctx, &vmcluster)).To(Succeed())
+			}
+			DeferCleanup(func() {
+				for _, vmcluster := range vmclusters {
+					Expect(k8sClient.Delete(ctx, &vmcluster)).To(Succeed())
+				}
+			})
+
+			namespacedName.Name = cr.Name
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
@@ -59,25 +80,30 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				verify(&createdCluster)
 			}
 		},
-			Entry("with a single VMCluster", "single-cluster", &vmv1alpha1.VMDistributedCluster{
+			Entry("with a single VMCluster", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "single-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1beta1.VMCluster{
+					VMClusters: []corev1.LocalObjectReference{
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Namespace: namespace,
-								Name:      "vmcluster-1",
-							},
-							Spec: vmv1beta1.VMClusterSpec{
-								RetentionPeriod: "1",
-								VMStorage: &vmv1beta1.VMStorage{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									},
-								},
+							Name: "vmcluster-1",
+						},
+					},
+					VMAuth: corev1.LocalObjectReference{Name: globalVMAuth.Name},
+				},
+			}, []vmv1beta1.VMCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      "vmcluster-1",
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 					},
@@ -87,39 +113,47 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				Expect(len(cr.Status.VMClusterGenerations)).To(Equal(1))
 				Expect(cr.Status.VMClusterGenerations[0].VMClusterName).To(Equal("vmcluster-1"))
 			}),
-			Entry("with multiple VMClusters", "multi-cluster", &vmv1alpha1.VMDistributedCluster{
+			Entry("with multiple VMClusters", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "multi-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1beta1.VMCluster{
+					VMClusters: []corev1.LocalObjectReference{
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Namespace: namespace,
-								Name:      "vmcluster-1",
-							},
-							Spec: vmv1beta1.VMClusterSpec{
-								RetentionPeriod: "1",
-								VMStorage: &vmv1beta1.VMStorage{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									},
-								},
-							},
+							Name: "vmcluster-1",
 						},
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Namespace: namespace,
-								Name:      "vmcluster-2",
+							Name: "vmcluster-2",
+						},
+					},
+					VMAuth: corev1.LocalObjectReference{Name: globalVMAuth.Name},
+				},
+			}, []vmv1beta1.VMCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      "vmcluster-1",
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
 							},
-							Spec: vmv1beta1.VMClusterSpec{
-								RetentionPeriod: "2",
-								VMStorage: &vmv1beta1.VMStorage{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](2),
-									},
-								},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      "vmcluster-2",
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 					},

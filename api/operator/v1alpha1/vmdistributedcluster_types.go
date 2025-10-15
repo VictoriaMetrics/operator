@@ -20,10 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 // VMAgentSpec defines the desired state of VMAgent
@@ -32,9 +34,9 @@ type VMDistributedClusterSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
 	// VMAuth points to the VMAuth object controlling traffic distribution between multiple VMClusters
-	VMAuth *vmv1beta1.VMAuth `json:"vmAuth,omitempty"`
+	VMAuth corev1.LocalObjectReference `json:"vmAuth,omitempty"`
 	// VMClusters is a list of VMCluster instances to update
-	VMClusters []vmv1beta1.VMCluster `json:"vmClusters"`
+	VMClusters []corev1.LocalObjectReference `json:"vmClusters"`
 	// ClusterVersion defines expected image tag for all components.
 	ClusterVersion string `json:"clusterVersion,omitempty"`
 	// Paused If set to true all actions on the underlying managed objects are not

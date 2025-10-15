@@ -6,8 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -212,6 +214,41 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		assert.NoError(t, err, "CreateOrUpdate should succeed when no update required")
 		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
 	})
+}
+
+func TestVMDistributedClusterDelete(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	_ = vmv1alpha1.AddToScheme(scheme)
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	namespace := "default"
+	name := "delete-unit-test"
+	cr := &vmv1alpha1.VMDistributedCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Spec: vmv1alpha1.VMDistributedClusterSpec{
+			VMClusters: []corev1.LocalObjectReference{},
+			VMAuth:     corev1.LocalObjectReference{Name: "fake"},
+		},
+	}
+
+	client := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(cr).
+		Build()
+
+	// Delete the resource
+	err := client.Delete(ctx, cr)
+	assert.NoError(t, err, "Delete should succeed")
+
+	// Try to get the resource
+	var deleted vmv1alpha1.VMDistributedCluster
+	err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &deleted)
+	assert.Error(t, err, "Get should return error after delete")
+	assert.True(t, k8serrors.IsNotFound(err), "Error should be IsNotFound")
 }
 
 func TestFetchVMClusters(t *testing.T) {

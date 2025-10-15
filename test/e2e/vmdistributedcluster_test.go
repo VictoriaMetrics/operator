@@ -169,4 +169,36 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}),
 		)
 	})
+
+	It("should delete VMDistributedCluster and remove it from the cluster", func() {
+		name := "delete-test"
+		namespacedName.Name = name
+		cr := &vmv1alpha1.VMDistributedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      name,
+			},
+			Spec: vmv1alpha1.VMDistributedClusterSpec{
+				VMClusters: []corev1.LocalObjectReference{
+					{
+						Name: "vmcluster-1",
+					},
+				},
+				VMAuth: corev1.LocalObjectReference{Name: globalVMAuth.Name},
+			},
+		}
+		Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+		Eventually(func() error {
+			return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+		}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+
+		Expect(k8sClient.Delete(ctx, cr)).To(Succeed())
+		Eventually(func() error {
+			err := k8sClient.Get(ctx, namespacedName, &vmv1alpha1.VMDistributedCluster{})
+			if k8serrors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("want NotFound error, got: %w", err)
+		}, eventualDeletionTimeout, 1).WithContext(ctx).Should(Succeed())
+	})
 })

@@ -152,7 +152,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		td := beforeEach()
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when all resources are present")
-		assert.Len(t, td.trackingClient.Actions, 5, "Should perform five actions")
+		assert.Len(t, td.trackingClient.Actions, 7, "Should perform seven actions")
 	})
 
 	t.Run("VMAuth is unmanaged", func(t *testing.T) {
@@ -197,7 +197,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 
 		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when cluster version matches")
-		assert.Len(t, td.trackingClient.Actions, 4, "Should perform four actions")
+		assert.Len(t, td.trackingClient.Actions, 5, "Should perform five actions")
 	})
 
 	t.Run("No update required", func(t *testing.T) {

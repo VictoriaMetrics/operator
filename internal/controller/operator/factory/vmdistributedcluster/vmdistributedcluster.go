@@ -11,6 +11,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -72,7 +73,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		waitForVMClusterVMAgentMetrics(ctx, rclient, &vmClusterObj)
 		// Change VMCluster version and wait for it to be ready
 		if err := changeVMClusterVersion(ctx, rclient, &vmClusterObj, cr.Spec.ClusterVersion); err != nil {
-			return fmt.Errorf("failed to change VMCluster %s version: %w", vmClusterObj.Name, err)
+			return fmt.Errorf("failed to change VMCluster %s/%s version: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 		// Enable this VMCluster in vmauth
 		setVMClusterStatusInVMAuth(ctx, rclient, vmauthObj, &vmClusterObj, true)
@@ -87,7 +88,7 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 		vmClusterObj = &vmv1beta1.VMCluster{}
 		namespacedName := types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}
 		if err := rclient.Get(ctx, namespacedName, vmClusterObj); err != nil {
-			return nil, fmt.Errorf("failed to get VMCluster %s: %w", vmCluster.Name, err)
+			return nil, fmt.Errorf("failed to get VMCluster %s/%s: %w", namespace, vmCluster.Name, err)
 		}
 		vmClusters[i] = *vmClusterObj
 	}
@@ -98,7 +99,7 @@ func fetchVMAuth(ctx context.Context, rclient client.Client, namespace string, r
 	vmAuthObj := &vmv1beta1.VMAuth{}
 	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
 	if err := rclient.Get(ctx, namespacedName, vmAuthObj); err != nil {
-		return nil, fmt.Errorf("failed to get VMAuth %s: %w", ref.Name, err)
+		return nil, fmt.Errorf("failed to get VMAuth %s/%s: %w", namespace, ref.Name, err)
 	}
 	return vmAuthObj, nil
 }
@@ -136,9 +137,16 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, rclient client.Client, 
 }
 
 func changeVMClusterVersion(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, version string) error {
+	// Fetch VMCluster again as it might have been updated by another controller
+	if err := rclient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}, vmCluster); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return fmt.Errorf("VMCluster not found")
+		}
+		return fmt.Errorf("failed to fetch VMCluster %s/%s: %w", vmCluster.Namespace, vmCluster.Name, err)
+	}
 	vmCluster.Spec.ClusterVersion = version
 	if err := rclient.Update(ctx, vmCluster); err != nil {
-		return fmt.Errorf("failed to update VMCluster version: %w", err)
+		return fmt.Errorf("failed to update VMCluster %s/%s: %w", vmCluster.Namespace, vmCluster.Name, err)
 	}
 	time.Sleep(time.Second)
 	return nil

@@ -13,11 +13,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // CreateOrUpdate - handles VM deployment reconciliation.
-func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client) error {
+func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, deadline time.Duration) error {
 	// Store the previous CR for comparison
 	var prevCR *vmv1alpha1.VMDistributedCluster
 	if cr.ParsedLastAppliedSpec != nil {
@@ -74,6 +75,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		// Change VMCluster version and wait for it to be ready
 		if err := changeVMClusterVersion(ctx, rclient, &vmClusterObj, cr.Spec.ClusterVersion); err != nil {
 			return fmt.Errorf("failed to change VMCluster %s/%s version: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
+		}
+		// Wait for VMCluster to be ready
+		if err := waitForVMClusterReady(ctx, rclient, &vmClusterObj, deadline); err != nil {
+			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 		// Enable this VMCluster in vmauth
 		setVMClusterStatusInVMAuth(ctx, rclient, vmauthObj, &vmClusterObj, true)
@@ -148,6 +153,24 @@ func changeVMClusterVersion(ctx context.Context, rclient client.Client, vmCluste
 	if err := rclient.Update(ctx, vmCluster); err != nil {
 		return fmt.Errorf("failed to update VMCluster %s/%s: %w", vmCluster.Namespace, vmCluster.Name, err)
 	}
-	time.Sleep(time.Second)
+	return nil
+}
+
+func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration) error {
+	var lastStatus vmv1beta1.UpdateStatus
+	// Fetch VMCluster in a loop until it has UpdateStatusOperational status
+	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
+		if err := rclient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}, vmCluster); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return false, fmt.Errorf("VMCluster not found")
+			}
+			return false, fmt.Errorf("failed to fetch VMCluster %s/%s: %w", vmCluster.Namespace, vmCluster.Name, err)
+		}
+		lastStatus = vmCluster.Status.UpdateStatus
+		return vmCluster.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w, current status: %s", vmCluster.Namespace, vmCluster.Name, err, lastStatus)
+	}
 	return nil
 }

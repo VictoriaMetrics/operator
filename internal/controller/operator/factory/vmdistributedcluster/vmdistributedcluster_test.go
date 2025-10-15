@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type action struct {
@@ -25,22 +26,30 @@ type trackingClient struct {
 }
 
 func (tc *trackingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	tc.Actions = append(tc.Actions, action{Method: "Get", Object: obj.DeepCopyObject().(client.Object)})
+	if obj != nil && obj.DeepCopyObject() != nil {
+		tc.Actions = append(tc.Actions, action{Method: "Get", Object: obj.DeepCopyObject().(client.Object)})
+	}
 	return tc.Client.Get(ctx, key, obj, opts...)
 }
 
 func (tc *trackingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	tc.Actions = append(tc.Actions, action{Method: "Update", Object: obj.DeepCopyObject().(client.Object)})
+	if obj != nil && obj.DeepCopyObject() != nil {
+		tc.Actions = append(tc.Actions, action{Method: "Update", Object: obj.DeepCopyObject().(client.Object)})
+	}
 	return tc.Client.Update(ctx, obj, opts...)
 }
 
 func (tc *trackingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-	tc.Actions = append(tc.Actions, action{Method: "Create", Object: obj.DeepCopyObject().(client.Object)})
+	if obj != nil && obj.DeepCopyObject() != nil {
+		tc.Actions = append(tc.Actions, action{Method: "Create", Object: obj.DeepCopyObject().(client.Object)})
+	}
 	return tc.Client.Create(ctx, obj, opts...)
 }
 
 func (tc *trackingClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	tc.Actions = append(tc.Actions, action{Method: "Delete", Object: obj.DeepCopyObject().(client.Object)})
+	if obj != nil && obj.DeepCopyObject() != nil {
+		tc.Actions = append(tc.Actions, action{Method: "Delete", Object: obj.DeepCopyObject().(client.Object)})
+	}
 	return tc.Client.Delete(ctx, obj, opts...)
 }
 
@@ -89,9 +98,15 @@ func beforeEach() testData {
 	_ = vmv1alpha1.AddToScheme(scheme)
 	_ = vmv1beta1.AddToScheme(scheme)
 
-	vmauth := newVMAuth("test-vmauth", "default")
-	vmcluster1 := newVMCluster("cluster-1", "default", "v1.0.0", 1)
-	vmcluster2 := newVMCluster("cluster-2", "default", "v1.0.0", 1)
+	vmauthName := "test-vmauth"
+	vmauth := newVMAuth(vmauthName, "default")
+
+	vmcluster1Name := "cluster-1"
+	vmcluster1 := newVMCluster(vmcluster1Name, "default", "v1.0.0", 1)
+
+	vmcluster2Name := "cluster-2"
+	vmcluster2 := newVMCluster(vmcluster2Name, "default", "v1.0.0", 1)
+
 	cr := &vmv1alpha1.VMDistributedCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "distributed-1",
@@ -99,10 +114,10 @@ func beforeEach() testData {
 		},
 		Spec: vmv1alpha1.VMDistributedClusterSpec{
 			ClusterVersion: "v1.1.0",
-			VMAuth:         vmauth,
-			VMClusters: []vmv1beta1.VMCluster{
-				*vmcluster1,
-				*vmcluster2,
+			VMAuth:         corev1.LocalObjectReference{Name: vmauthName},
+			VMClusters: []corev1.LocalObjectReference{
+				{Name: vmcluster1Name},
+				{Name: vmcluster2Name},
 			},
 		},
 		Status: vmv1alpha1.VMDistributedClusterStatus{
@@ -154,16 +169,9 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 
 	t.Run("VMCluster missing", func(t *testing.T) {
 		td := beforeEach()
-		td.cr.Spec.VMClusters = []vmv1beta1.VMCluster{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "missing-cluster",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: "v1.0.0",
-				},
-			},
+
+		td.cr.Spec.VMClusters = []corev1.LocalObjectReference{
+			{Name: "missing-cluster"},
 		}
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient)
 		assert.Error(t, err, "CreateOrUpdate should error if VMCluster is missing")
@@ -212,37 +220,33 @@ func TestFetchVMClusters(t *testing.T) {
 	_ = vmv1beta1.AddToScheme(scheme)
 
 	vmcluster := newVMCluster("cluster-1", "default", "v1.0.0", 1)
+
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(scheme).
 		WithObjects(vmcluster).
 		Build()
-
-	specs := []vmv1beta1.VMCluster{
+	clusters, err := fetchVMClusters(ctx, fakeClient, vmcluster.Namespace, []corev1.LocalObjectReference{
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cluster-1",
-				Namespace: "default",
-			},
+			Name: vmcluster.Name,
 		},
-	}
-	clusters, err := fetchVMClusters(ctx, fakeClient, specs)
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(clusters))
 	assert.Equal(t, "cluster-1", clusters[0].Name)
 }
-
 func TestFetchVMAuth(t *testing.T) {
 	ctx := context.Background()
 	scheme := runtime.NewScheme()
 	_ = vmv1beta1.AddToScheme(scheme)
 
 	vmauth := newVMAuth("test-vmauth", "default")
+
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(scheme).
 		WithObjects(vmauth).
 		Build()
 
-	auth, err := fetchVMAuth(ctx, fakeClient, vmauth)
+	auth, err := fetchVMAuth(ctx, fakeClient, vmauth.Namespace, corev1.LocalObjectReference{Name: vmauth.Name})
 	assert.NoError(t, err)
 	assert.Equal(t, "test-vmauth", auth.Name)
 }

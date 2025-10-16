@@ -172,5 +172,6 @@ func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster
 	if err != nil {
 		return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w, current status: %s", vmCluster.Namespace, vmCluster.Name, err, lastStatus)
 	}
+
 	return nil
 }

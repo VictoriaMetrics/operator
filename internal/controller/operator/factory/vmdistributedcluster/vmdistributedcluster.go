@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -44,7 +45,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 
 	//Ensure that all vmuser has a read rule for vmcluster
 	for _, vmcluster := range vmClusters {
-		if err := findVMUserReadRuleForVMCluster(ctx, rclient, vmUserObj, &vmcluster); err != nil {
+		if _, err := findVMUserReadRuleForVMCluster(vmUserObj, &vmcluster); err != nil {
 			return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmcluster.Name, err)
 		}
 	}
@@ -143,8 +144,25 @@ func recordGenerations(ctx context.Context, rclient client.Client, cr *vmv1alpha
 	return nil
 }
 
-func findVMUserReadRuleForVMCluster(ctx context.Context, rclient client.Client, vmUserObj *vmv1beta1.VMUser, vmCluster *v1beta1.VMCluster) error {
-	return nil
+func findVMUserReadRuleForVMCluster(vmUserObj *vmv1beta1.VMUser, vmCluster *v1beta1.VMCluster) (*vmv1beta1.TargetRef, error) {
+	// 1. Match spec.crd to vmcluster
+	var found *vmv1beta1.TargetRef
+	for _, ref := range vmUserObj.Spec.TargetRefs {
+		if ref.CRD == nil || ref.CRD.Kind != "VMCluster" || ref.CRD.Name != vmCluster.Name || ref.CRD.Namespace != vmCluster.Namespace {
+			continue
+		}
+		// Check that target_path_suffix
+		if strings.HasPrefix(ref.TargetPathSuffix, "/select/") {
+			found = &ref
+			break
+		}
+	}
+	if found != nil {
+		return found, nil
+	}
+	// 2. Match static url to vmselect service
+	// TODO[vrutkovs]: match static url to vmselect service
+	return nil, fmt.Errorf("vmuser %s has no target refs", vmUserObj.Name)
 
 	// Extract vmselect service name and ensure it exists
 	// svcName := vmCluster.GetVMSelectName()

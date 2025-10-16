@@ -234,6 +234,102 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
 			}),
 		)
+		It("should wait for VMCluster upgrade completion", func() {
+			beforeEach()
+			DeferCleanup(afterEach)
+
+			vmCluster1 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-1",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-2",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "2",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, vmCluster1)).To(Succeed())
+			Expect(k8sClient.Create(ctx, vmCluster2)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmCluster1)).To(Succeed())
+				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmCluster2)).To(Succeed())
+			})
+
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace})
+			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, types.NamespacedName{Name: vmCluster2.Name, Namespace: namespace})
+			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+
+			namespacedName.Name = "distributed-upgrade"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      namespacedName.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMClusters: []corev1.LocalObjectReference{
+						{Name: vmCluster1.Name},
+						{Name: vmCluster2.Name},
+					},
+					VMAuth: corev1.LocalObjectReference{Name: managedVMAuthName.Name},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+
+			// Start upgrade by changing ClusterVersion
+			Eventually(func() error {
+				var obj vmv1alpha1.VMDistributedCluster
+				if err := k8sClient.Get(ctx, namespacedName, &obj); err != nil {
+					return err
+				}
+				obj.Spec.ClusterVersion = "v1.1.0"
+				return k8sClient.Update(ctx, &obj)
+			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+
+			// Wait for VMDistributedCluster to become operational after its own upgrade
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+
+			// Verify VMDistributedCluster status reflects both clusters are upgraded/operational
+			var upgradedCluster vmv1alpha1.VMDistributedCluster
+			Expect(k8sClient.Get(ctx, namespacedName, &upgradedCluster)).To(Succeed())
+			Expect(len(upgradedCluster.Status.VMClusterGenerations)).To(Equal(2))
+			names := []string{
+				upgradedCluster.Status.VMClusterGenerations[0].VMClusterName,
+				upgradedCluster.Status.VMClusterGenerations[1].VMClusterName,
+			}
+			Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
+
+			// Verify both clusters have desired version set
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, vmCluster1)).To(Succeed())
+			Expect(vmCluster1.Spec.ClusterVersion).To(Equal("v1.1.0"))
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster2.Name, Namespace: namespace}, vmCluster2)).To(Succeed())
+			Expect(vmCluster2.Spec.ClusterVersion).To(Equal("v1.1.0"))
+		})
 	})
 
 	Context("fail", func() {

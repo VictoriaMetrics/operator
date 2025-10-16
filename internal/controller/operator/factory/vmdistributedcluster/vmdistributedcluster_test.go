@@ -61,6 +61,128 @@ func (tc *trackingClient) Delete(ctx context.Context, obj client.Object, opts ..
 	return tc.Client.Delete(ctx, obj, opts...)
 }
 
+func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
+	clusterName := "vmcluster-1"
+	clusterNamespace := "test-ns"
+	vmCluster := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName,
+			Namespace: clusterNamespace,
+		},
+	}
+
+	// Case 1: Matching TargetRef with correct Kind, Name, Namespace, and TargetPathSuffix
+	vmUser := &vmv1beta1.VMUser{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "user1",
+		},
+		Spec: vmv1beta1.VMUserSpec{
+			TargetRefs: []vmv1beta1.TargetRef{
+				{
+					CRD: &vmv1beta1.CRDRef{
+						Kind:      "VMCluster",
+						Name:      clusterName,
+						Namespace: clusterNamespace,
+					},
+					TargetPathSuffix: "/select/api",
+				},
+			},
+		},
+	}
+	ref, err := findVMUserReadRuleForVMCluster(vmUser, vmCluster)
+	assert.NoError(t, err)
+	assert.NotNil(t, ref)
+	assert.Equal(t, "/select/api", ref.TargetPathSuffix)
+
+	// Case 2: No matching TargetRef (wrong Kind)
+	vmUserWrongKind := &vmv1beta1.VMUser{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "user2",
+		},
+		Spec: vmv1beta1.VMUserSpec{
+			TargetRefs: []vmv1beta1.TargetRef{
+				{
+					CRD: &vmv1beta1.CRDRef{
+						Kind:      "OtherKind",
+						Name:      clusterName,
+						Namespace: clusterNamespace,
+					},
+					TargetPathSuffix: "/select/api",
+				},
+			},
+		},
+	}
+	ref, err = findVMUserReadRuleForVMCluster(vmUserWrongKind, vmCluster)
+	assert.Error(t, err)
+	assert.Nil(t, ref)
+
+	// Case 3: No matching TargetRef (wrong Name)
+	vmUserWrongName := &vmv1beta1.VMUser{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "user3",
+		},
+		Spec: vmv1beta1.VMUserSpec{
+			TargetRefs: []vmv1beta1.TargetRef{
+				{
+					CRD: &vmv1beta1.CRDRef{
+						Kind:      "VMCluster",
+						Name:      "other-cluster",
+						Namespace: clusterNamespace,
+					},
+					TargetPathSuffix: "/select/api",
+				},
+			},
+		},
+	}
+	ref, err = findVMUserReadRuleForVMCluster(vmUserWrongName, vmCluster)
+	assert.Error(t, err)
+	assert.Nil(t, ref)
+
+	// Case 4: No matching TargetRef (wrong Namespace)
+	vmUserWrongNS := &vmv1beta1.VMUser{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "user4",
+		},
+		Spec: vmv1beta1.VMUserSpec{
+			TargetRefs: []vmv1beta1.TargetRef{
+				{
+					CRD: &vmv1beta1.CRDRef{
+						Kind:      "VMCluster",
+						Name:      clusterName,
+						Namespace: "other-ns",
+					},
+					TargetPathSuffix: "/select/api",
+				},
+			},
+		},
+	}
+	ref, err = findVMUserReadRuleForVMCluster(vmUserWrongNS, vmCluster)
+	assert.Error(t, err)
+	assert.Nil(t, ref)
+
+	// Case 5: No matching TargetRef (wrong TargetPathSuffix)
+	vmUserWrongSuffix := &vmv1beta1.VMUser{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "user5",
+		},
+		Spec: vmv1beta1.VMUserSpec{
+			TargetRefs: []vmv1beta1.TargetRef{
+				{
+					CRD: &vmv1beta1.CRDRef{
+						Kind:      "VMCluster",
+						Name:      clusterName,
+						Namespace: clusterNamespace,
+					},
+					TargetPathSuffix: "/insert/api",
+				},
+			},
+		},
+	}
+	ref, err = findVMUserReadRuleForVMCluster(vmUserWrongSuffix, vmCluster)
+	assert.Error(t, err)
+	assert.Nil(t, ref)
+}
+
 func (tc *trackingClient) Status() client.StatusWriter {
 	return tc.Client.Status()
 }
@@ -72,7 +194,26 @@ func newVMUser(name, namespace string) *vmv1beta1.VMUser {
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: vmv1beta1.VMUserSpec{},
+		Spec: vmv1beta1.VMUserSpec{
+			TargetRefs: []vmv1beta1.TargetRef{
+				{
+					CRD: &vmv1beta1.CRDRef{
+						Kind:      "VMCluster",
+						Name:      "cluster-1",
+						Namespace: namespace,
+					},
+					TargetPathSuffix: "/select/1",
+				},
+				{
+					CRD: &vmv1beta1.CRDRef{
+						Kind:      "VMCluster",
+						Name:      "cluster-2",
+						Namespace: namespace,
+					},
+					TargetPathSuffix: "/select/1",
+				},
+			},
+		},
 	}
 }
 

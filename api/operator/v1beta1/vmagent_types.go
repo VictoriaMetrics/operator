@@ -181,6 +181,12 @@ type VMAgentSpec struct {
 	// Works in combination with NamespaceSelector.
 	// +optional
 	ScrapeConfigSelector *metav1.LabelSelector `json:"scrapeConfigSelector,omitempty"`
+	// ScrapeClasses defines the list of scrape classes to expose to scraping objects such as
+	// PodScrapes, ServiceScrapes, Probes and ScrapeConfigs.
+	// +listType=map
+	// +listMapKey=name
+	// +optional
+	ScrapeClasses []ScrapeClass `json:"scrapeClasses,omitempty"`
 	// ScrapeConfigNamespaceSelector defines Namespaces to be selected for VMScrapeConfig discovery.
 	// Works in combination with Selector.
 	// NamespaceSelector nil - only objects at VMAgent namespace.
@@ -383,6 +389,34 @@ func (cr *VMAgent) Validate() error {
 			return fmt.Errorf("enableKubernetesAPISelectors cannot be used with daemonSetMode")
 		}
 	}
+	scrapeClassNames := make(map[string]struct{})
+	defaultScrapeClass := false
+	for _, sc := range cr.Spec.ScrapeClasses {
+		if _, ok := scrapeClassNames[sc.Name]; ok {
+			return fmt.Errorf("duplicate scrape class name %q", sc.Name)
+		}
+		if ptr.Deref(sc.Default, false) {
+			if defaultScrapeClass {
+				return fmt.Errorf("multiple default scrape classes defined")
+			}
+			defaultScrapeClass = true
+		}
+		if sc.TLSConfig != nil {
+			if err := sc.TLSConfig.Validate(); err != nil {
+				return fmt.Errorf("bad tlsConfig for scrape class %q: %w", sc.Name, err)
+			}
+		}
+		if len(sc.Relabelings) > 0 {
+			if err := checkRelabelConfigs(sc.Relabelings); err != nil {
+				return fmt.Errorf("bad relabelings for scrape class %q: %w", sc.Name, err)
+			}
+		}
+		if len(sc.MetricRelabelings) > 0 {
+			if err := checkRelabelConfigs(sc.MetricRelabelings); err != nil {
+				return fmt.Errorf("bad metricRelabelings for scrape class %q: %w", sc.Name, err)
+			}
+		}
+	}
 	return nil
 }
 
@@ -444,6 +478,50 @@ type VMAgentRemoteWriteSettings struct {
 	// it's global setting and affects all remote storage configurations
 	// +optional
 	UseMultiTenantMode bool `json:"useMultiTenantMode,omitempty"`
+}
+
+type ScrapeClass struct {
+	// name of the scrape class.
+	//
+	// +kubebuilder:validation:MinLength=1
+	// +required
+	Name string `json:"name"`
+
+	// default defines that the scrape applies to all scrape objects that
+	// don't configure an explicit scrape class name.
+	//
+	// Only one scrape class can be set as the default.
+	//
+	// +optional
+	Default *bool `json:"default,omitempty"`
+
+	// tlsConfig defines the TLS settings to use for the scrape. When the
+	// scrape objects define their own CA, certificate and/or key, they take
+	// precedence over the corresponding scrape class fields.
+	//
+	// For now only the `caFile`, `certFile` and `keyFile` fields are supported.
+	//
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+
+	// authorization section for the ScrapeClass.
+	// It will only apply if the scrape resource doesn't specify any Authorization.
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
+
+	// Relabelings defines the relabeling rules to apply to all scrape targets.
+	// +optional
+	Relabelings []*RelabelConfig `json:"relabelings,omitempty"`
+
+	// MetricRelabelings defines the relabeling rules to apply to all samples before ingestion.
+	// +optional
+	MetricRelabelings []*RelabelConfig `json:"metricRelabelings,omitempty"`
+
+	// AttachMetadata defines additional metadata to the discovered targets.
+	// When the scrape object defines its own configuration, it takes
+	// precedence over the scrape class configuration.
+	// +optional
+	AttachMetadata *AttachMetadata `json:"attachMetadata,omitempty"`
 }
 
 // AWS defines AWS cloud auth specific params

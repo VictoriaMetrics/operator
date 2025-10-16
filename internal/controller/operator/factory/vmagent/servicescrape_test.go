@@ -1267,6 +1267,712 @@ relabel_configs:
   replacement: "8080"
 `,
 		},
+
+		{
+			name: "relabelings in scrapeClass and in endpoint",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						ScrapeClasses: []vmv1beta1.ScrapeClass{
+							{
+								Name:    "default",
+								Default: ptr.To(true),
+								Relabelings: []*vmv1beta1.RelabelConfig{
+									{
+										Action:       "replace",
+										SourceLabels: []string{"__meta_kubernetes_pod_app_name"},
+										TargetLabel:  "app",
+									},
+								},
+							},
+							{
+								Name: "not-default",
+								Relabelings: []*vmv1beta1.RelabelConfig{
+									{
+										Action:       "replace",
+										SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
+										TargetLabel:  "node",
+									},
+								},
+							},
+						},
+					},
+				},
+				sc: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+								EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+									RelabelConfigs: []*vmv1beta1.RelabelConfig{
+										{
+											Action:       "replace",
+											SourceLabels: []string{"__meta_kubernetes_namespace"},
+											TargetLabel:  "namespace",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					AttachMetadata: vmv1beta1.AttachMetadata{
+						Node: ptr.To(true),
+					},
+					Port: "8080",
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{
+							{
+								Action:       "replace",
+								SourceLabels: []string{"__meta_kubernetes_namespace"},
+								TargetLabel:  "namespace",
+							},
+						},
+					},
+				},
+				i:               0,
+				apiserverConfig: nil,
+				se: vmv1beta1.VMAgentSecurityEnforcements{
+					OverrideHonorLabels:      false,
+					OverrideHonorTimestamps:  false,
+					IgnoreNamespaceSelectors: false,
+					EnforcedNamespaceLabel:   "",
+				},
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: endpoints
+  attach_metadata:
+    node: true
+  namespaces:
+    names:
+    - default
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+  action: replace
+- source_labels:
+  - __meta_kubernetes_pod_app_name
+  target_label: app
+  action: replace
+`,
+		},
+		{
+			name: "scrapeClass with TLS and relabel config inheritance",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						ScrapeClasses: []vmv1beta1.ScrapeClass{
+							{
+								Name:    "custom-class",
+								Default: ptr.To(false),
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CAFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+									Cert: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "cert",
+										},
+									},
+								},
+								Relabelings: []*vmv1beta1.RelabelConfig{
+									{
+										SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
+										TargetLabel:  "node",
+										Action:       "replace",
+									},
+								},
+							},
+						},
+					},
+				},
+				sc: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						ScrapeClassName: ptr.To("custom-class"),
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+								EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+									RelabelConfigs: []*vmv1beta1.RelabelConfig{
+										{
+											SourceLabels: []string{"__meta_kubernetes_pod_container_name"},
+											TargetLabel:  "container",
+											Action:       "replace",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					Port: "8080",
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{
+							{
+								SourceLabels: []string{"__meta_kubernetes_pod_container_name"},
+								TargetLabel:  "container",
+								Action:       "replace",
+							},
+						},
+					},
+				},
+				i: 0,
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"cert": []byte("cert-value"),
+					},
+				},
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: endpoints
+  namespaces:
+    names:
+    - default
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+  action: replace
+- source_labels:
+  - __meta_kubernetes_pod_node_name
+  target_label: node
+  action: replace
+tls_config:
+  ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  cert_file: /etc/vmagent-tls/certs/default_tls-secret_cert
+`,
+		},
+		{
+			name: "default scrapeClass with attachMetadata",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						ScrapeClasses: []vmv1beta1.ScrapeClass{
+							{
+								Name:    "default",
+								Default: ptr.To(true),
+								AttachMetadata: &vmv1beta1.AttachMetadata{
+									Node: ptr.To(true),
+								},
+							},
+						},
+					},
+				},
+				sc: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+							},
+						},
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					Port: "8080",
+				},
+				i: 0,
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: endpoints
+  attach_metadata:
+    node: true
+  namespaces:
+    names:
+    - default
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+`,
+		},
+		{
+			name: "scrapeClass with authorization and TLS config inheritance",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						ScrapeClasses: []vmv1beta1.ScrapeClass{
+							{
+								Name:    "secure-class",
+								Default: ptr.To(false),
+								Authorization: &vmv1beta1.Authorization{
+									Credentials: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "auth-secret",
+										},
+										Key: "token",
+									},
+									Type: "Bearer",
+								},
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CAFile:             "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+									InsecureSkipVerify: false,
+								},
+							},
+						},
+					},
+				},
+				sc: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						ScrapeClassName: ptr.To("secure-class"),
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8443",
+							},
+						},
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					Port: "8443",
+				},
+				i: 0,
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "auth-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"token": []byte("secret-token-value"),
+					},
+				},
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: endpoints
+  namespaces:
+    names:
+    - default
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8443"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8443"
+tls_config:
+  ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+authorization:
+  credentials: secret-token-value
+  type: Bearer
+`,
+		},
+		{
+			name: "scrapeClass with multiple metric relabelings merge",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						ScrapeClasses: []vmv1beta1.ScrapeClass{
+							{
+								Name:    "metrics-class",
+								Default: ptr.To(true),
+								MetricRelabelings: []*vmv1beta1.RelabelConfig{
+									{
+										SourceLabels: []string{"__name__"},
+										Regex:        vmv1beta1.StringOrArray{"go_.*"},
+										Action:       "keep",
+									},
+									{
+										TargetLabel: "scrape_class",
+										Replacement: ptr.To("metrics-class"),
+										Action:      "replace",
+									},
+								},
+							},
+						},
+					},
+				},
+				sc: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "9090",
+								EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+									MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+										{
+											SourceLabels: []string{"instance"},
+											TargetLabel:  "endpoint_instance",
+											Action:       "replace",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					Port: "9090",
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+							{
+								SourceLabels: []string{"instance"},
+								TargetLabel:  "endpoint_instance",
+								Action:       "replace",
+							},
+						},
+					},
+				},
+				i: 0,
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: endpoints
+  namespaces:
+    names:
+    - default
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "9090"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "9090"
+metric_relabel_configs:
+- source_labels:
+  - instance
+  target_label: endpoint_instance
+  action: replace
+- source_labels:
+  - __name__
+  regex: go_.*
+  action: keep
+- target_label: scrape_class
+  replacement: metrics-class
+  action: replace
+`,
+		},
+		{
+			name: "no default scrapeclass and no scrapeclass specified",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "thedefault-vmagent",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						ScrapeClasses: []vmv1beta1.ScrapeClass{
+							{
+								Name: "non-default-class",
+								Relabelings: []*vmv1beta1.RelabelConfig{
+									{
+										SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
+										TargetLabel:  "node",
+										Action:       "replace",
+									},
+								},
+							},
+						},
+					},
+				},
+				sc: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+								EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+									RelabelConfigs: []*vmv1beta1.RelabelConfig{
+										{
+											SourceLabels: []string{"__meta_kubernetes_pod_container_name"},
+											TargetLabel:  "container",
+											Action:       "replace",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					Port: "8080",
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{
+							{
+								SourceLabels: []string{"__meta_kubernetes_pod_container_name"},
+								TargetLabel:  "container",
+								Action:       "replace",
+							},
+						},
+					},
+				},
+				i: 0,
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: endpoints
+  namespaces:
+    names:
+    - default
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+  action: replace
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

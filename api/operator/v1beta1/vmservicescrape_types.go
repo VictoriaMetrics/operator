@@ -52,6 +52,9 @@ type VMServiceScrapeSpec struct {
 	// AttachMetadata configures metadata attaching from service discovery
 	// +optional
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
+	// ScrapeClass defined scrape class to apply
+	// +optional
+	ScrapeClassName *string `json:"scrapeClass,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

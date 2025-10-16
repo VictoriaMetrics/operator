@@ -243,28 +243,14 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Namespace: namespace,
 					Name:      "vmcluster-1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "1",
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
-				},
+				Spec: vmv1beta1.VMClusterSpec{},
 			}
 			vmCluster2 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "vmcluster-2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "2",
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
-				},
+				Spec: vmv1beta1.VMClusterSpec{},
 			}
 			Expect(k8sClient.Create(ctx, vmCluster1)).To(Succeed())
 			Expect(k8sClient.Create(ctx, vmCluster2)).To(Succeed())

@@ -25,8 +25,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	namespacedName := types.NamespacedName{
 		Namespace: namespace,
 	}
-	managedVMAuthName := types.NamespacedName{Name: "managed-vm-auth", Namespace: namespace}
-	unmanagedVMAuthName := types.NamespacedName{Name: "unmanaged-vm-auth", Namespace: namespace}
+	validVMUserName := types.NamespacedName{Name: "valid-vm-user", Namespace: namespace}
+	invalidVMUserName := types.NamespacedName{Name: "invalid-vm-user", Namespace: namespace}
 
 	// makeClusterReady := func(nsn types.NamespacedName) {
 	// 	time.Sleep(100 * time.Millisecond)
@@ -43,42 +43,46 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	beforeEach := func() {
 		ctx = context.Background()
 
-		var managedVMAuth vmv1beta1.VMAuth
-		var unmanagedVMAuth vmv1beta1.VMAuth
+		var validVMUser vmv1beta1.VMUser
+		var invalidVMUser vmv1beta1.VMUser
 
-		err := k8sClient.Get(ctx, managedVMAuthName, &managedVMAuth)
+		err := k8sClient.Get(ctx, validVMUserName, &validVMUser)
 		if k8serrors.IsNotFound(err) {
-			managedVMAuth = vmv1beta1.VMAuth{
+			validVMUser = vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "managed-vm-auth",
+					Name:      "valid-vm-user",
 					Namespace: namespace,
 				},
-				Spec: vmv1beta1.VMAuthSpec{
-					SelectAllByDefault: true,
+				Spec: vmv1beta1.VMUserSpec{
+					TargetRefs: []vmv1beta1.TargetRef{
+						{},
+					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, &managedVMAuth)).To(Succeed(), "must create managed vm-auth before test")
+			Expect(k8sClient.Create(ctx, &validVMUser)).To(Succeed(), "must create managed vm-user before test")
 			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, managedVMAuthName)
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMUser{}, validVMUserName)
 			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 		} else {
 			Expect(err).ToNot(HaveOccurred())
 		}
 
-		err = k8sClient.Get(ctx, unmanagedVMAuthName, &unmanagedVMAuth)
+		err = k8sClient.Get(ctx, invalidVMUserName, &invalidVMUser)
 		if k8serrors.IsNotFound(err) {
-			unmanagedVMAuth = vmv1beta1.VMAuth{
+			invalidVMUser = vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "unmanaged-vm-auth",
+					Name:      "invalid-vm-user",
 					Namespace: namespace,
 				},
-				Spec: vmv1beta1.VMAuthSpec{
-					SelectAllByDefault: false,
+				Spec: vmv1beta1.VMUserSpec{
+					TargetRefs: []vmv1beta1.TargetRef{
+						{},
+					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, &unmanagedVMAuth)).To(Succeed(), "must create unmanaged vm-auth before test")
+			Expect(k8sClient.Create(ctx, &invalidVMUser)).To(Succeed(), "must create unmanaged vm-user before test")
 			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, unmanagedVMAuthName)
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMUser{}, invalidVMUserName)
 			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 		} else {
 			Expect(err).ToNot(HaveOccurred())
@@ -103,16 +107,16 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			return fmt.Errorf("want NotFound error, got: %w", err)
 		}, eventualDeletionTimeout, 1).WithContext(ctx).Should(Succeed())
 
-		var vmAuth vmv1beta1.VMAuth
-		for _, vmauthName := range []types.NamespacedName{managedVMAuthName, managedVMAuthName} {
-			err := k8sClient.Get(ctx, vmauthName, &vmAuth)
+		var vmUser vmv1beta1.VMUser
+		for _, vmuserName := range []types.NamespacedName{validVMUserName, validVMUserName} {
+			err := k8sClient.Get(ctx, vmuserName, &vmUser)
 			if k8serrors.IsNotFound(err) {
 				continue
 			}
-			Expect(err).To(Succeed(), "must get vm-auth after test")
-			Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmAuth)).To(Succeed(), "must delete vm-auth after test")
+			Expect(err).To(Succeed(), "must get vm-user after test")
+			Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmUser)).To(Succeed(), "must delete vm-user after test")
 			Eventually(func() error {
-				return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMAuth{})
+				return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMUser{})
 			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		}
 	}
@@ -158,7 +162,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							Name: "vmcluster-1",
 						},
 					},
-					VMAuth: corev1.LocalObjectReference{Name: managedVMAuthName.Name},
+					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -194,7 +198,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							Name: "vmcluster-2",
 						},
 					},
-					VMAuth: corev1.LocalObjectReference{Name: managedVMAuthName.Name},
+					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -277,7 +281,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						{Name: vmCluster1.Name},
 						{Name: vmCluster2.Name},
 					},
-					VMAuth: corev1.LocalObjectReference{Name: managedVMAuthName.Name},
+					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
@@ -340,24 +344,24 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				return suite.ExpectObjectStatus(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName, vmv1beta1.UpdateStatusFailed)
 			}, eventualDeletionTimeout).Should(Succeed())
 		},
-			Entry("with invalid VMAuth", &vmv1alpha1.VMDistributedCluster{
+			Entry("with no VMUser set", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "no-vmauth-set",
+					Name:      "no-vmuser-set",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMClusters: []corev1.LocalObjectReference{},
-					VMAuth:     corev1.LocalObjectReference{Name: "missing-vmauth"},
+					VMUser:     corev1.LocalObjectReference{Name: "missing-vmuser"},
 				},
 			}, []vmv1beta1.VMCluster{}),
-			Entry("with unmanaged VMAuth", &vmv1alpha1.VMDistributedCluster{
+			Entry("with invalid VMUser", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "unmanaged-vmauth",
+					Name:      "invalid-vmuser",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMClusters: []corev1.LocalObjectReference{},
-					VMAuth:     corev1.LocalObjectReference{Name: unmanagedVMAuthName.Name},
+					VMUser:     corev1.LocalObjectReference{Name: invalidVMUserName.Name},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with invalid VMCluster", &vmv1alpha1.VMDistributedCluster{
@@ -371,7 +375,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							Name: "vmcluster-missing",
 						},
 					},
-					VMAuth: corev1.LocalObjectReference{Name: managedVMAuthName.Name},
+					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
 			}, []vmv1beta1.VMCluster{}),
 		)
@@ -404,7 +408,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						Name: vmCluster.Name,
 					},
 				},
-				VMAuth: corev1.LocalObjectReference{Name: managedVMAuthName.Name},
+				VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 			},
 		}
 		Expect(k8sClient.Create(ctx, cr)).To(Succeed())

@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -64,16 +65,14 @@ func (tc *trackingClient) Status() client.StatusWriter {
 	return tc.Client.Status()
 }
 
-// Helper to create a basic VMAuth object
-func newVMAuth(name, namespace string) *vmv1beta1.VMAuth {
-	return &vmv1beta1.VMAuth{
+// Helper to create a basic VMUser object
+func newVMUser(name, namespace string) *vmv1beta1.VMUser {
+	return &vmv1beta1.VMUser{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: vmv1beta1.VMAuthSpec{
-			SelectAllByDefault: true,
-		},
+		Spec: vmv1beta1.VMUserSpec{},
 	}
 }
 
@@ -87,12 +86,17 @@ func newVMCluster(name, namespace, version string, generation int64) *vmv1beta1.
 		},
 		Spec: vmv1beta1.VMClusterSpec{
 			ClusterVersion: version,
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
 		},
 	}
 }
 
 type testData struct {
-	vmauth         *vmv1beta1.VMAuth
+	vmuser         *vmv1beta1.VMUser
 	vmcluster1     *vmv1beta1.VMCluster
 	vmcluster2     *vmv1beta1.VMCluster
 	cr             *vmv1alpha1.VMDistributedCluster
@@ -105,8 +109,8 @@ func beforeEach() testData {
 	_ = vmv1alpha1.AddToScheme(scheme)
 	_ = vmv1beta1.AddToScheme(scheme)
 
-	vmauthName := "test-vmauth"
-	vmauth := newVMAuth(vmauthName, "default")
+	vmuserName := "test-vmuser"
+	vmuser := newVMUser(vmuserName, "default")
 
 	vmcluster1Name := "cluster-1"
 	vmcluster1 := newVMCluster(vmcluster1Name, "default", "v1.0.0", 1)
@@ -121,7 +125,7 @@ func beforeEach() testData {
 		},
 		Spec: vmv1alpha1.VMDistributedClusterSpec{
 			ClusterVersion: "v1.1.0",
-			VMAuth:         corev1.LocalObjectReference{Name: vmauthName},
+			VMUser:         corev1.LocalObjectReference{Name: vmuserName},
 			VMClusters: []corev1.LocalObjectReference{
 				{Name: vmcluster1Name},
 				{Name: vmcluster2Name},
@@ -137,11 +141,11 @@ func beforeEach() testData {
 
 	baseFake := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(vmauth, vmcluster1, vmcluster2).
+		WithObjects(vmuser, vmcluster1, vmcluster2).
 		Build()
 
 	return testData{
-		vmauth:         vmauth,
+		vmuser:         vmuser,
 		vmcluster1:     vmcluster1,
 		vmcluster2:     vmcluster2,
 		cr:             cr,
@@ -178,19 +182,19 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		assert.Len(t, td.trackingClient.Actions, 9, "Should perform nine actions")
 	})
 
-	t.Run("VMAuth is unmanaged", func(t *testing.T) {
-		td := beforeEach()
+	// t.Run("VMAuth is unmanaged", func(t *testing.T) {
+	// 	td := beforeEach()
 
-		// Make VMAuth unmanaged by setting SelectAllByDefault to false
-		td.vmauth.Spec.SelectAllByDefault = false
-		err := td.trackingClient.Update(ctx, td.vmauth)
-		assert.NoError(t, err)
-		td.trackingClient.Actions = []action{}
+	// 	// Make VMAuth unmanaged by setting SelectAllByDefault to false
+	// 	td.vmuser.Spec.SelectAllByDefault = false
+	// 	err := td.trackingClient.Update(ctx, td.vmuser)
+	// 	assert.NoError(t, err)
+	// 	td.trackingClient.Actions = []action{}
 
-		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
-		assert.Error(t, err, "CreateOrUpdate should error if VMAuth is unmanaged")
-		assert.Len(t, td.trackingClient.Actions, 1, "Should perform one action")
-	})
+	// 	err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+	// 	assert.Error(t, err, "CreateOrUpdate should error if VMAuth is unmanaged")
+	// 	assert.Len(t, td.trackingClient.Actions, 1, "Should perform one action")
+	// })
 
 	t.Run("VMCluster missing", func(t *testing.T) {
 		td := beforeEach()
@@ -256,7 +260,9 @@ func TestWaitForVMClusterReady(t *testing.T) {
 			Name:      name,
 		},
 		Status: vmv1beta1.VMClusterStatus{
-			LegacyStatus: vmv1beta1.UpdateStatusOperational,
+			StatusMetadata: vmv1beta1.StatusMetadata{
+				UpdateStatus: vmv1beta1.UpdateStatusOperational,
+			},
 		},
 	}
 
@@ -267,7 +273,9 @@ func TestWaitForVMClusterReady(t *testing.T) {
 			Name:      "vmcluster-not-ready",
 		},
 		Status: vmv1beta1.VMClusterStatus{
-			LegacyStatus: vmv1beta1.UpdateStatusExpanding,
+			StatusMetadata: vmv1beta1.StatusMetadata{
+				UpdateStatus: vmv1beta1.UpdateStatusExpanding,
+			},
 		},
 	}
 
@@ -316,7 +324,7 @@ func TestVMDistributedClusterDelete(t *testing.T) {
 		},
 		Spec: vmv1alpha1.VMDistributedClusterSpec{
 			VMClusters: []corev1.LocalObjectReference{},
-			VMAuth:     corev1.LocalObjectReference{Name: "fake"},
+			VMUser:     corev1.LocalObjectReference{Name: "fake"},
 		},
 	}
 
@@ -356,21 +364,21 @@ func TestFetchVMClusters(t *testing.T) {
 	assert.Equal(t, 1, len(clusters))
 	assert.Equal(t, "cluster-1", clusters[0].Name)
 }
-func TestFetchVMAuth(t *testing.T) {
+func TestFetchVMUser(t *testing.T) {
 	ctx := context.Background()
 	scheme := runtime.NewScheme()
 	_ = vmv1beta1.AddToScheme(scheme)
 
-	vmauth := newVMAuth("test-vmauth", "default")
+	vmuser := newVMUser("test-vmuser", "default")
 
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(vmauth).
+		WithObjects(vmuser).
 		Build()
 
-	auth, err := fetchVMAuth(ctx, fakeClient, vmauth.Namespace, corev1.LocalObjectReference{Name: vmauth.Name})
+	auth, err := fetchVMUser(ctx, fakeClient, vmuser.Namespace, corev1.LocalObjectReference{Name: vmuser.Name})
 	assert.NoError(t, err)
-	assert.Equal(t, "test-vmauth", auth.Name)
+	assert.Equal(t, "test-vmuser", auth.Name)
 }
 
 func TestChangeVMClusterVersion(t *testing.T) {

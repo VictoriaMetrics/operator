@@ -33,8 +33,8 @@ import (
 type VMDistributedClusterSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
-	// VMAuth points to the VMAuth object controlling traffic distribution between multiple VMClusters
-	VMAuth corev1.LocalObjectReference `json:"vmAuth,omitempty"`
+	// VMUser points to the VMUser object controlling traffic distribution between multiple VMClusters
+	VMUser corev1.LocalObjectReference `json:"vmAuth,omitempty"`
 	// VMClusters is a list of VMCluster instances to update
 	VMClusters []corev1.LocalObjectReference `json:"vmClusters"`
 	// ClusterVersion defines expected image tag for all components.

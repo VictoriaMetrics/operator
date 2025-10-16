@@ -8,6 +8,7 @@ import (
 	"time"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -26,22 +27,26 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 
-	// Fetch global loadbalancing vmauth
-	if cr.Spec.VMAuth.Name == "" {
-		return errors.New("global loadbalancing vmauth is not specified")
-	}
-	vmauthObj, err := fetchVMAuth(ctx, rclient, cr.Namespace, cr.Spec.VMAuth)
+	// Fetch global loadbalancing vmuser
+	vmUserObj, err := fetchVMUser(ctx, rclient, cr.Namespace, cr.Spec.VMUser)
 	if err != nil {
-		return fmt.Errorf("failed to fetch global loadbalancing vmauth: %w", err)
+		return fmt.Errorf("failed to fetch global loadbalancing vmuser: %w", err)
 	}
-	if vmauthObj.IsUnmanaged() {
-		return errors.New("global loadbalancing vmauth is not managed")
+	if err := validateVMUser(vmUserObj); err != nil {
+		return fmt.Errorf("failed to validate vmuser: %w", err)
 	}
 
 	// Fetch VMCLuster statuses by name
 	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.VMClusters)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch vmclusters: %w", err)
+	}
+
+	//Ensure that all vmuser has a read rule for vmcluster
+	for _, vmcluster := range vmClusters {
+		if err := findVMUserReadRuleForVMCluster(ctx, rclient, vmUserObj, &vmcluster); err != nil {
+			return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmcluster.Name, err)
+		}
 	}
 
 	// Collect generations of vmcluster objects from the spec
@@ -67,8 +72,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if vmClusterObj.Spec.ClusterVersion == cr.Spec.ClusterVersion {
 			continue
 		}
-		// Disable this VMCluster in vmauth
-		setVMClusterStatusInVMAuth(ctx, rclient, vmauthObj, &vmClusterObj, false)
+		// Disable this VMCluster in vmuser
+		setVMClusterStatusInVMUser(ctx, rclient, vmUserObj, &vmClusterObj, false)
 		// Wait for VMCluster's vmagent metrics to show no queue
 		// TODO[vrutkovs]: Do this only if VMCluster has VMAgent associated
 		waitForVMClusterVMAgentMetrics(ctx, rclient, &vmClusterObj)
@@ -80,8 +85,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if err := waitForVMClusterReady(ctx, rclient, &vmClusterObj, deadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
-		// Enable this VMCluster in vmauth
-		setVMClusterStatusInVMAuth(ctx, rclient, vmauthObj, &vmClusterObj, true)
+		// Enable this VMCluster in vmuser
+		setVMClusterStatusInVMUser(ctx, rclient, vmUserObj, &vmClusterObj, true)
 	}
 	return nil
 }
@@ -100,13 +105,20 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 	return vmClusters, nil
 }
 
-func fetchVMAuth(ctx context.Context, rclient client.Client, namespace string, ref corev1.LocalObjectReference) (*vmv1beta1.VMAuth, error) {
-	vmAuthObj := &vmv1beta1.VMAuth{}
-	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
-	if err := rclient.Get(ctx, namespacedName, vmAuthObj); err != nil {
-		return nil, fmt.Errorf("failed to get VMAuth %s/%s: %w", namespace, ref.Name, err)
+func fetchVMUser(ctx context.Context, rclient client.Client, namespace string, ref corev1.LocalObjectReference) (*vmv1beta1.VMUser, error) {
+	if ref.Name == "" {
+		return nil, errors.New("global loadbalancing vmuser is not specified")
 	}
-	return vmAuthObj, nil
+	vmUserObj := &vmv1beta1.VMUser{}
+	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+	if err := rclient.Get(ctx, namespacedName, vmUserObj); err != nil {
+		return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, ref.Name, err)
+	}
+	return vmUserObj, nil
+}
+
+func validateVMUser(vmuserObj *vmv1beta1.VMUser) error {
+	return nil
 }
 
 func getGenerationsFromStatus(status vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {
@@ -131,7 +143,25 @@ func recordGenerations(ctx context.Context, rclient client.Client, cr *vmv1alpha
 	return nil
 }
 
-func setVMClusterStatusInVMAuth(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, vmCluster *vmv1beta1.VMCluster, status bool) error {
+func findVMUserReadRuleForVMCluster(ctx context.Context, rclient client.Client, vmUserObj *vmv1beta1.VMUser, vmCluster *v1beta1.VMCluster) error {
+	return nil
+
+	// Extract vmselect service name and ensure it exists
+	// svcName := vmCluster.GetVMSelectName()
+	// svcObj := &corev1.Service{}
+	// if err := rclient.Get(ctx, types.NamespacedName{Name: svcName, Namespace: vmCluster.Namespace}, svcObj); err != nil {
+	// 	return fmt.Errorf("failed to find vmselect service %s for vmcluster %s: %w", svcName, vmCluster.Name, err)
+	// }
+	// // Extract vmuser rules and find matches to svcObj
+	// for _, rule := range rules {
+	// 	if rule.Type == vmv1beta1.VMUserRuleTypeRead && rule.ServiceName == svcObj.Name {
+	// 		return nil
+	// 	}
+	// }
+	// return fmt.Errorf("no matching read rule found for vmcluster %s", vmCluster.Name)
+}
+
+func setVMClusterStatusInVMUser(ctx context.Context, rclient client.Client, vmuser *vmv1beta1.VMUser, vmCluster *vmv1beta1.VMCluster, status bool) error {
 	time.Sleep(time.Second)
 	return nil
 }

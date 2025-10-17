@@ -60,7 +60,7 @@ func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 		warnings = append(warnings, "deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
-	if r.Spec.VMSelect != nil && r.Spec.VMSelect.StorageSpec != nil {
+	if r.Spec.VMSelect != nil && r.Spec.VMSelect.PersistentVolume != nil {
 		warnings = append(warnings, "deprecated property is defined `spec.vmselect.persistentVolume`, use `storage` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmselect.persistentVolume`, use `storage` instead.")
 	}
@@ -85,7 +85,7 @@ func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj r
 		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
-	if r.Spec.VMSelect != nil && r.Spec.VMSelect.StorageSpec != nil {
+	if r.Spec.VMSelect != nil && r.Spec.VMSelect.PersistentVolume != nil {
 		warnings = append(warnings, "deprecated property is defined `vmcluster.spec.vmselect.persistentVolume`, use `storage` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `vmcluster.spec.vmselect.persistentVolume`, use `storage` instead.")
 	}

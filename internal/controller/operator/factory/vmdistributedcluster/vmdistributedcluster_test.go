@@ -437,10 +437,68 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
 		assert.Error(t, err, "CreateOrUpdate should error if VMCluster is missing")
 		assert.Len(t, td.trackingClient.Actions, 2, "Should perform two actions")
+	})
+
+	t.Run("VMUser not specified", func(t *testing.T) {
+		td := beforeEach()
+		td.cr.Spec.VMUser.Name = "" // Simulate missing VMUser reference
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		assert.Error(t, err, "CreateOrUpdate should error if VMUser is not specified")
+		assert.Contains(t, err.Error(), "global loadbalancing vmuser is not specified")
+		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions")
+	})
+
+	t.Run("VMUser not found", func(t *testing.T) {
+		td := beforeEach()
+		td.cr.Spec.VMUser.Name = "non-existent-vmuser" // Simulate non-existent VMUser
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		assert.Error(t, err, "CreateOrUpdate should error if VMUser is not found")
+		assert.Contains(t, err.Error(), "failed to get VMUser default/non-existent-vmuser")
+		assert.Len(t, td.trackingClient.Actions, 1, "Should perform one action (Get VMUser)")
+	})
+
+	t.Run("VMClusters fetch error", func(t *testing.T) {
+		td := beforeEach()
+		td.cr.Spec.VMClusters = []corev1.LocalObjectReference{
+			{Name: "vmcluster-1"},
+			{Name: "non-existent-cluster"}, // Simulate one missing VMCluster
+		}
+		// Since alwaysReadyClient is used, we need to ensure the fake client itself returns not found for "non-existent-cluster"
+		// The beforeEach already sets up the client with existing clusters, so removing the non-existent one from there
+		// or using a new fake client without the non-existent cluster would achieve this.
+		// For simplicity, let's just make sure "non-existent-cluster" is not in the initial fake client objects.
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		assert.Error(t, err, "CreateOrUpdate should error if VMCluster fetch fails")
+		assert.Contains(t, err.Error(), "failed to get VMCluster default/vmcluster-1")
+		assert.Len(t, td.trackingClient.Actions, 2, "Should perform two actions")
+	})
+
+	t.Run("findVMUserReadRuleForVMCluster error", func(t *testing.T) {
+		td := beforeEach()
+		// Modify vmuser so findVMUserReadRuleForVMCluster returns an error
+		td.vmuser.Spec.TargetRefs = []vmv1beta1.TargetRef{
+			{
+				CRD: &vmv1beta1.CRDRef{
+					Kind:      "OtherKind", // This will cause a mismatch in findVMUserReadRuleForVMCluster
+					Name:      td.vmcluster1.Name,
+					Namespace: td.vmcluster1.Namespace,
+				},
+				TargetPathSuffix: "/select/1",
+			},
+		}
+		err := td.trackingClient.Update(ctx, td.vmuser)
+		assert.NoError(t, err)
+		td.trackingClient.Actions = []action{} // Clear actions after setup update
+
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		assert.Error(t, err, "CreateOrUpdate should error if findVMUserReadRuleForVMCluster fails")
+		assert.Contains(t, err.Error(), "failed to find the rule for vmcluster cluster-1")
+		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
 
 		expectedActions := []action{
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: "missing-cluster", Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: "cluster-1", Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: "cluster-2", Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
 		}
 		compareExpectedActions(t, expectedActions, td.trackingClient.Actions)
 	})

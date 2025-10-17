@@ -522,7 +522,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 	}
 	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false), &cr.Spec.VMSelect.CommonApplicationDeploymentParams)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
-		storageSpec := cr.Spec.VMSelect.Storage
+		storageSpec := cr.Spec.VMSelect.PersistentVolume
 		// hack, storage is deprecated.
 		if storageSpec == nil && cr.Spec.VMSelect.StorageSpec != nil {
 			storageSpec = cr.Spec.VMSelect.StorageSpec

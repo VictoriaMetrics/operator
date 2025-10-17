@@ -273,9 +273,9 @@ func beforeEach() testData {
 			},
 		},
 		Status: vmv1alpha1.VMDistributedClusterStatus{
-			VMClusterGenerations: []vmv1alpha1.VMClusterGenerationPair{
-				{VMClusterName: "cluster-1", Generation: 1},
-				{VMClusterName: "cluster-2", Generation: 1},
+			VMClusterGenerations: []vmv1alpha1.VMClusterStatus{
+				{VMClusterName: "cluster-1", Generation: 1, TargetRef: vmv1beta1.TargetRef{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}},
+				{VMClusterName: "cluster-2", Generation: 1, TargetRef: vmv1beta1.TargetRef{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster", Name: "cluster-2", Namespace: "default"}, TargetPathSuffix: "/select/1"}},
 			},
 		},
 	}

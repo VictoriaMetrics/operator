@@ -137,7 +137,7 @@ func findVMUserReadRuleForVMCluster(vmUserObj *vmv1beta1.VMUser, vmCluster *v1be
 	// 1. Match spec.crd to vmcluster
 	var found *vmv1beta1.TargetRef
 	for _, ref := range vmUserObj.Spec.TargetRefs {
-		if ref.CRD == nil || ref.CRD.Kind != "VMCluster" || ref.CRD.Name != vmCluster.Name || ref.CRD.Namespace != vmCluster.Namespace {
+		if ref.CRD == nil || ref.CRD.Kind != "VMCluster/vmselect" || ref.CRD.Name != vmCluster.Name || ref.CRD.Namespace != vmCluster.Namespace {
 			continue
 		}
 		// Check that target_path_suffix

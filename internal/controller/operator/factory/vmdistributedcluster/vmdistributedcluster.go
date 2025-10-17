@@ -37,32 +37,35 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("failed to validate vmuser: %w", err)
 	}
 
+	// Store current CR status
+	currentCRStatus := cr.Status.DeepCopy()
+	cr.Status = vmv1alpha1.VMDistributedClusterStatus{}
+
 	// Fetch VMCLuster statuses by name
 	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.VMClusters)
 	if err != nil {
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
 
-	//Ensure that all vmuser has a read rule for vmcluster
-	for _, vmcluster := range vmClusters {
-		if _, err := findVMUserReadRuleForVMCluster(vmUserObj, &vmcluster); err != nil {
-			return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmcluster.Name, err)
+	// Ensure that all vmuser has a read rule for vmcluster and record current generations
+	cr.Status.VMClusterGenerations = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
+	for i, vmCluster := range vmClusters {
+		ref, err := findVMUserReadRuleForVMCluster(vmUserObj, &vmCluster)
+		if err != nil {
+			return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmCluster.Name, err)
+		}
+		cr.Status.VMClusterGenerations[i] = vmv1alpha1.VMClusterStatus{
+			VMClusterName: vmCluster.Name,
+			Generation:    vmCluster.Generation,
+			TargetRef:     *ref.DeepCopy(),
 		}
 	}
-
-	// Collect generations of vmcluster objects from the spec
-	generations := make(map[string]int64, len(vmClusters))
-	for _, vmCluster := range vmClusters {
-		generations[vmCluster.Name] = vmCluster.Generation
-	}
-
 	// Compare generations of vmcluster objects from the spec with the previous CR
-	if !reflect.DeepEqual(generations, getGenerationsFromStatus(cr.Status)) {
-		if err := recordGenerations(ctx, rclient, cr, generations); err != nil {
-			return err
+	if !reflect.DeepEqual(getGenerationsFromStatus(currentCRStatus), getGenerationsFromStatus(&cr.Status)) {
+		// Record new generations but exit early if generations change is detected
+		if err := rclient.Status().Update(ctx, cr); err != nil {
+			return fmt.Errorf("failed to update status: %w", err)
 		}
-		// Exit early if generations change is detected
-		// TODO[vrutkovs]: wrap error
 		return fmt.Errorf("unexpected generations change detected: %w", errors.New("unexpected generations change detected"))
 	}
 
@@ -122,26 +125,12 @@ func validateVMUser(vmuserObj *vmv1beta1.VMUser) error {
 	return nil
 }
 
-func getGenerationsFromStatus(status vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {
+func getGenerationsFromStatus(status *vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {
 	generations := make(map[string]int64, len(status.VMClusterGenerations))
 	for _, vmClusterPair := range status.VMClusterGenerations {
 		generations[vmClusterPair.VMClusterName] = vmClusterPair.Generation
 	}
 	return generations
-}
-
-func recordGenerations(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, generations map[string]int64) error {
-	cr.Status.VMClusterGenerations = make([]vmv1alpha1.VMClusterGenerationPair, 0, len(generations))
-	for name, generation := range generations {
-		cr.Status.VMClusterGenerations = append(cr.Status.VMClusterGenerations, vmv1alpha1.VMClusterGenerationPair{
-			VMClusterName: name,
-			Generation:    generation,
-		})
-	}
-	if err := rclient.Status().Update(ctx, cr); err != nil {
-		return fmt.Errorf("failed to update status: %w", err)
-	}
-	return nil
 }
 
 func findVMUserReadRuleForVMCluster(vmUserObj *vmv1beta1.VMUser, vmCluster *v1beta1.VMCluster) (*vmv1beta1.TargetRef, error) {

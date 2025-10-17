@@ -24,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -50,14 +49,15 @@ type VMDistributedClusterSpec struct {
 type VMDistributedClusterStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
 	// VMClusterGenerations is a list of VMCluster-generation pairs
-	VMClusterGenerations []VMClusterGenerationPair `json:"vmClusterGenerations,omitempty"`
+	VMClusterGenerations []VMClusterStatus `json:"vmClusterGenerations,omitempty"`
 }
 
 // +k8s:openapi-gen=true
-// VMClusterGenerationPair is a pair of VMCluster and its generation
-type VMClusterGenerationPair struct {
-	VMClusterName string `json:"vmClusterName"`
-	Generation    int64  `json:"generation"`
+// VMClusterStatus is a pair of VMCluster and its generation
+type VMClusterStatus struct {
+	VMClusterName string              `json:"vmClusterName"`
+	TargetRef     vmv1beta1.TargetRef `json:"targetRef"`
+	Generation    int64               `json:"generation"`
 }
 
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMDistributedCluster App"
@@ -115,7 +115,7 @@ func (cr *VMDistributedCluster) DefaultStatusFields(vs *VMDistributedClusterStat
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMDistributedClusterStatus) GetStatusMetadata() *v1beta1.StatusMetadata {
+func (cr *VMDistributedClusterStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
 	return &cr.StatusMetadata
 }
 

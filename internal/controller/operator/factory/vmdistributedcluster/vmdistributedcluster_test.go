@@ -81,7 +81,7 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 			TargetRefs: []vmv1beta1.TargetRef{
 				{
 					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster",
+						Kind:      "VMCluster/vmselect",
 						Name:      clusterName,
 						Namespace: clusterNamespace,
 					},
@@ -104,7 +104,7 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 			TargetRefs: []vmv1beta1.TargetRef{
 				{
 					CRD: &vmv1beta1.CRDRef{
-						Kind:      "OtherKind",
+						Kind:      "VMCluster/vminsert",
 						Name:      clusterName,
 						Namespace: clusterNamespace,
 					},
@@ -126,7 +126,7 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 			TargetRefs: []vmv1beta1.TargetRef{
 				{
 					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster",
+						Kind:      "VMCluster/vmselect",
 						Name:      "other-cluster",
 						Namespace: clusterNamespace,
 					},
@@ -148,7 +148,7 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 			TargetRefs: []vmv1beta1.TargetRef{
 				{
 					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster",
+						Kind:      "VMCluster/vmselect",
 						Name:      clusterName,
 						Namespace: "other-ns",
 					},
@@ -170,7 +170,7 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 			TargetRefs: []vmv1beta1.TargetRef{
 				{
 					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster",
+						Kind:      "VMCluster/vmselect",
 						Name:      clusterName,
 						Namespace: clusterNamespace,
 					},
@@ -239,7 +239,7 @@ func beforeEach() testData {
 	vmuser := newVMUser(vmuserName, "default", []vmv1beta1.TargetRef{
 		{
 			CRD: &vmv1beta1.CRDRef{
-				Kind:      "VMCluster",
+				Kind:      "VMCluster/vmselect",
 				Name:      "cluster-1",
 				Namespace: "default",
 			},
@@ -247,7 +247,7 @@ func beforeEach() testData {
 		},
 		{
 			CRD: &vmv1beta1.CRDRef{
-				Kind:      "VMCluster",
+				Kind:      "VMCluster/vmselect",
 				Name:      "cluster-2",
 				Namespace: "default",
 			},
@@ -262,8 +262,8 @@ func beforeEach() testData {
 	vmcluster2 := newVMCluster(vmcluster2Name, "default", "v1.0.0", 1)
 
 	cr := newVMDistributedCluster("distributed-1", "default", "v1.1.0", vmuserName, []string{vmcluster1Name, vmcluster2Name}, []vmv1alpha1.VMClusterStatus{
-		{VMClusterName: "cluster-1", Generation: 1, TargetRef: vmv1beta1.TargetRef{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}},
-		{VMClusterName: "cluster-2", Generation: 1, TargetRef: vmv1beta1.TargetRef{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster", Name: "cluster-2", Namespace: "default"}, TargetPathSuffix: "/select/1"}},
+		{VMClusterName: "cluster-1", Generation: 1, TargetRef: vmv1beta1.TargetRef{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}},
+		{VMClusterName: "cluster-2", Generation: 1, TargetRef: vmv1beta1.TargetRef{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-2", Namespace: "default"}, TargetPathSuffix: "/select/1"}},
 	})
 
 	baseFake := fake.NewClientBuilder().
@@ -558,7 +558,7 @@ func TestSetVMClusterStatusInVMUser(t *testing.T) {
 	// Define the target ref that will be added/removed
 	targetRef := vmv1beta1.TargetRef{
 		CRD: &vmv1beta1.CRDRef{
-			Kind:      "VMCluster",
+			Kind:      "VMCluster/vmselect",
 			Name:      clusterName,
 			Namespace: namespace,
 		},

@@ -48,8 +48,8 @@ type VMDistributedClusterSpec struct {
 // VMDistributedClusterStatus defines the observed state of VMDistributedClusterStatus
 type VMDistributedClusterStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
-	// VMClusterGenerations is a list of VMCluster-generation pairs
-	VMClusterGenerations []VMClusterStatus `json:"vmClusterGenerations,omitempty"`
+	// VMClusterInfo is a list of VMCluster-generation pairs
+	VMClusterInfo []VMClusterStatus `json:"vmClusterGenerations,omitempty"`
 }
 
 // +k8s:openapi-gen=true

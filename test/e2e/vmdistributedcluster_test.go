@@ -194,8 +194,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 			}, func(cr *vmv1alpha1.VMDistributedCluster) {
 				// Verify that the status contains expected generations
-				Expect(len(cr.Status.VMClusterGenerations)).To(Equal(1))
-				Expect(cr.Status.VMClusterGenerations[0].VMClusterName).To(Equal("vmcluster-1"))
+				Expect(len(cr.Status.VMClusterInfo)).To(Equal(1))
+				Expect(cr.Status.VMClusterInfo[0].VMClusterName).To(Equal("vmcluster-1"))
 			}),
 			Entry("with multiple VMClusters", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -243,10 +243,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}, func(cr *vmv1alpha1.VMDistributedCluster) {
-				Expect(len(cr.Status.VMClusterGenerations)).To(Equal(2))
+				Expect(len(cr.Status.VMClusterInfo)).To(Equal(2))
 				names := []string{
-					cr.Status.VMClusterGenerations[0].VMClusterName,
-					cr.Status.VMClusterGenerations[1].VMClusterName,
+					cr.Status.VMClusterInfo[0].VMClusterName,
+					cr.Status.VMClusterInfo[1].VMClusterName,
 				}
 				Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
 			}),
@@ -320,10 +320,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			// Verify VMDistributedCluster status reflects both clusters are upgraded/operational
 			var upgradedCluster vmv1alpha1.VMDistributedCluster
 			Expect(k8sClient.Get(ctx, namespacedName, &upgradedCluster)).To(Succeed())
-			Expect(len(upgradedCluster.Status.VMClusterGenerations)).To(Equal(2))
+			Expect(len(upgradedCluster.Status.VMClusterInfo)).To(Equal(2))
 			names := []string{
-				upgradedCluster.Status.VMClusterGenerations[0].VMClusterName,
-				upgradedCluster.Status.VMClusterGenerations[1].VMClusterName,
+				upgradedCluster.Status.VMClusterInfo[0].VMClusterName,
+				upgradedCluster.Status.VMClusterInfo[1].VMClusterName,
 			}
 			Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
 

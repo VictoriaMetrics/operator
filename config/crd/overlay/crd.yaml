@@ -31970,8 +31970,7 @@ spec:
                 description: UpdateStatus defines a status for update rollout
                 type: string
               vmClusterGenerations:
-                description: VMClusterGenerations is a list of VMCluster-generation
-                  pairs
+                description: VMClusterInfo is a list of VMCluster-generation pairs
                 items:
                   description: VMClusterStatus is a pair of VMCluster and its generation
                   properties:

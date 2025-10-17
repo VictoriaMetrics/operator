@@ -260,19 +260,36 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			beforeEach()
 			DeferCleanup(afterEach)
 
+			initialVersion := "v1.126.0-cluster"
+			updateVersion := "v1.127.0-cluster"
+
 			vmCluster1 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "vmcluster-1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: initialVersion,
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
 			}
 			vmCluster2 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "vmcluster-2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: initialVersion,
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
 			}
 			vmclusters := []vmv1beta1.VMCluster{*vmCluster1, *vmCluster2}
 			DeferCleanup(func() {
@@ -308,7 +325,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				if err := k8sClient.Get(ctx, namespacedName, &obj); err != nil {
 					return err
 				}
-				obj.Spec.ClusterVersion = "v1.1.0"
+				obj.Spec.ClusterVersion = updateVersion
 				return k8sClient.Update(ctx, &obj)
 			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
@@ -329,9 +346,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			// Verify both clusters have desired version set
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, vmCluster1)).To(Succeed())
-			Expect(vmCluster1.Spec.ClusterVersion).To(Equal("v1.1.0"))
+			Expect(vmCluster1.Spec.ClusterVersion).To(Equal(updateVersion))
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster2.Name, Namespace: namespace}, vmCluster2)).To(Succeed())
-			Expect(vmCluster2.Spec.ClusterVersion).To(Equal("v1.1.0"))
+			Expect(vmCluster2.Spec.ClusterVersion).To(Equal(updateVersion))
 		})
 	})
 

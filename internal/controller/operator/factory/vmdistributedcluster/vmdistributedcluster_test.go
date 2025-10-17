@@ -636,58 +636,60 @@ func TestChangeVMClusterVersion(t *testing.T) {
 	assert.Equal(t, "v1.1.0", vmcluster.Spec.ClusterVersion)
 }
 
-// func TestWaitForVMClusterReadyWithDelay(t *testing.T) {
-// 	ctx := context.Background()
-// 	scheme := runtime.NewScheme()
-// 	_ = vmv1beta1.AddToScheme(scheme)
+func TestWaitForVMClusterReadyWithDelay(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
 
-// 	namespace := "default"
-// 	name := "vmcluster-delayed-ready"
+	namespace := "default"
+	name := "vmcluster-delayed-ready"
 
-// 	// Initial state: VMCluster is not ready
-// 	vmcluster := &vmv1beta1.VMCluster{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Namespace: namespace,
-// 			Name:      name,
-// 		},
-// 		Status: vmv1beta1.VMClusterStatus{
-// 			StatusMetadata: vmv1beta1.StatusMetadata{
-// 				UpdateStatus: vmv1beta1.UpdateStatusExpanding,
-// 			},
-// 		},
-// 	}
+	// Initial state: VMCluster is expanding
+	vmcluster := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Status: vmv1beta1.VMClusterStatus{
+			StatusMetadata: vmv1beta1.StatusMetadata{
+				UpdateStatus: vmv1beta1.UpdateStatusExpanding,
+			},
+		},
+	}
 
-// 	client := fake.NewClientBuilder().
-// 		WithScheme(scheme).
-// 		WithObjects(vmcluster).
-// 		Build()
+	t.Run("returns nil when cluster becomes ready after delay", func(t *testing.T) {
+		baseFake := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(vmcluster).
+			WithStatusSubresource(&vmv1beta1.VMCluster{}).
+			Build()
+		fakeClient := trackingClient{baseFake, []action{}}
 
-// 	// Goroutine to update status to Operational after a delay
-// 	go func() {
-// 		time.Sleep(50 * time.Millisecond) // Simulate delay
-// 		var obj vmv1beta1.VMCluster
-// 		if err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &obj); err != nil {
-// 			t.Errorf("Failed to get VMCluster in goroutine: %v", err)
-// 			return
-// 		}
-// 		obj.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-// 		if err := client.Status().Update(ctx, &obj); err != nil {
-// 			t.Errorf("Failed to update VMCluster status in goroutine: %v", err)
-// 		}
-// 	}()
+		// Goroutine to update status to Operational after a delay
+		go func() {
+			time.Sleep(3 * time.Second) // Simulate delay
+			var obj vmv1beta1.VMCluster
+			if err := fakeClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &obj); err != nil {
+				t.Errorf("Failed to get VMCluster in goroutine: %v", err)
+				return
+			}
+			vmcluster.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			if err := fakeClient.Status().Update(ctx, vmcluster); err != nil {
+				t.Errorf("Failed to update VMCluster status in goroutine: %v", err)
+			}
+		}()
 
-// 	t.Run("returns nil when cluster becomes ready after delay", func(t *testing.T) {
-// 		// Set a deadline longer than the simulated delay
-// 		err := waitForVMClusterReady(ctx, client, vmcluster, 10*time.Second)
-// 		assert.NoError(t, err)
+		// Set a deadline longer than the simulated delay
+		err := waitForVMClusterReady(ctx, &fakeClient, vmcluster, 5*time.Second)
+		assert.NoError(t, err)
 
-// 		// Verify the cluster is indeed operational
-// 		var updatedVMCluster vmv1beta1.VMCluster
-// 		err = client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &updatedVMCluster)
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, vmv1beta1.UpdateStatusOperational, updatedVMCluster.Status.UpdateStatus)
-// 	})
-// }
+		// Verify the cluster is indeed operational
+		var updatedVMCluster vmv1beta1.VMCluster
+		err = fakeClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &updatedVMCluster)
+		assert.NoError(t, err)
+		assert.Equal(t, vmv1beta1.UpdateStatusOperational, updatedVMCluster.Status.UpdateStatus)
+	})
+}
 
 func TestSetVMClusterStatusInVMUser(t *testing.T) {
 	ctx := context.Background()

@@ -47,14 +47,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
 
-	// Ensure that all vmuser has a read rule for vmcluster and record current generations
-	cr.Status.VMClusterGenerations = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
+	// Ensure that all vmuser has a read rule for vmcluster and record vmcluster info
+	cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
 	for i, vmCluster := range vmClusters {
-		ref, err := findVMUserReadRuleForVMCluster(vmUserObj, &vmCluster)
+		ref, err := findVMUserReadRuleForVMCluster(vmUserObj, vmCluster)
 		if err != nil {
 			return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmCluster.Name, err)
 		}
-		cr.Status.VMClusterGenerations[i] = vmv1alpha1.VMClusterStatus{
+		cr.Status.VMClusterInfo[i] = vmv1alpha1.VMClusterStatus{
 			VMClusterName: vmCluster.Name,
 			Generation:    vmCluster.Generation,
 			TargetRef:     *ref.DeepCopy(),
@@ -77,26 +77,26 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			continue
 		}
 		// Disable this VMCluster in vmuser
-		setVMClusterStatusInVMUser(ctx, rclient, vmUserObj, &vmClusterObj, false)
+		setVMClusterStatusInVMUser(ctx, rclient, cr, vmClusterObj, vmUserObj, false)
 		// Wait for VMCluster's vmagent metrics to show no queue
 		// TODO[vrutkovs]: Do this only if VMCluster has VMAgent associated
-		waitForVMClusterVMAgentMetrics(ctx, rclient, &vmClusterObj)
+		waitForVMClusterVMAgentMetrics(ctx, rclient, vmClusterObj)
 		// Change VMCluster version and wait for it to be ready
-		if err := changeVMClusterVersion(ctx, rclient, &vmClusterObj, cr.Spec.ClusterVersion); err != nil {
+		if err := changeVMClusterVersion(ctx, rclient, vmClusterObj, cr.Spec.ClusterVersion); err != nil {
 			return fmt.Errorf("failed to change VMCluster %s/%s version: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 		// Wait for VMCluster to be ready
-		if err := waitForVMClusterReady(ctx, rclient, &vmClusterObj, deadline); err != nil {
+		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, deadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 		// Enable this VMCluster in vmuser
-		setVMClusterStatusInVMUser(ctx, rclient, vmUserObj, &vmClusterObj, true)
+		setVMClusterStatusInVMUser(ctx, rclient, cr, vmClusterObj, vmUserObj, true)
 	}
 	return nil
 }
 
-func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []corev1.LocalObjectReference) (vmClusters []vmv1beta1.VMCluster, err error) {
-	vmClusters = make([]vmv1beta1.VMCluster, len(refs))
+func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []corev1.LocalObjectReference) (vmClusters []*vmv1beta1.VMCluster, err error) {
+	vmClusters = make([]*vmv1beta1.VMCluster, len(refs))
 	var vmClusterObj *vmv1beta1.VMCluster
 	for i, vmCluster := range refs {
 		vmClusterObj = &vmv1beta1.VMCluster{}
@@ -104,7 +104,7 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 		if err := rclient.Get(ctx, namespacedName, vmClusterObj); err != nil {
 			return nil, fmt.Errorf("failed to get VMCluster %s/%s: %w", namespace, vmCluster.Name, err)
 		}
-		vmClusters[i] = *vmClusterObj
+		vmClusters[i] = vmClusterObj
 	}
 	return vmClusters, nil
 }
@@ -126,8 +126,8 @@ func validateVMUser(vmuserObj *vmv1beta1.VMUser) error {
 }
 
 func getGenerationsFromStatus(status *vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {
-	generations := make(map[string]int64, len(status.VMClusterGenerations))
-	for _, vmClusterPair := range status.VMClusterGenerations {
+	generations := make(map[string]int64, len(status.VMClusterInfo))
+	for _, vmClusterPair := range status.VMClusterInfo {
 		generations[vmClusterPair.VMClusterName] = vmClusterPair.Generation
 	}
 	return generations
@@ -168,8 +168,44 @@ func findVMUserReadRuleForVMCluster(vmUserObj *vmv1beta1.VMUser, vmCluster *v1be
 	// return fmt.Errorf("no matching read rule found for vmcluster %s", vmCluster.Name)
 }
 
-func setVMClusterStatusInVMUser(ctx context.Context, rclient client.Client, vmuser *vmv1beta1.VMUser, vmCluster *vmv1beta1.VMCluster, status bool) error {
-	time.Sleep(time.Second)
+func setVMClusterStatusInVMUser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, vmCluster *vmv1beta1.VMCluster, vmUserObj *vmv1beta1.VMUser, status bool) error {
+	// Find matching rule in the vmdistributed status
+	var found *vmv1beta1.TargetRef
+	for _, vmClusterInfo := range cr.Status.VMClusterInfo {
+		if vmClusterInfo.VMClusterName == vmCluster.Name {
+			found = &vmClusterInfo.TargetRef
+			break
+		}
+	}
+	if found == nil {
+		return fmt.Errorf("no matching rule found for vmcluster %s in status of vmdistributedcluster %s", vmCluster.Name, cr.Name)
+	}
+
+	// Fetch fresh copy of vmuser
+	if err := rclient.Get(ctx, types.NamespacedName{Name: vmUserObj.Name, Namespace: vmUserObj.Namespace}, vmUserObj); err != nil {
+		return fmt.Errorf("failed to fetch vmuser %s: %w", vmUserObj.Name, err)
+	}
+
+	// Prepare new target references list
+	newTargetRefs := make([]vmv1beta1.TargetRef, 0)
+	if status {
+		newTargetRefs = append(newTargetRefs, vmUserObj.Spec.TargetRefs...)
+		newTargetRefs = append(newTargetRefs, *found)
+	} else {
+		for _, targetRef := range vmUserObj.Spec.TargetRefs {
+			if reflect.DeepEqual(targetRef.CRD, found.CRD) && targetRef.TargetPathSuffix == found.TargetPathSuffix {
+				continue
+			}
+			newTargetRefs = append(newTargetRefs, targetRef)
+		}
+	}
+
+	// Update vmuser with new target references
+	vmUserObj.Spec.TargetRefs = newTargetRefs
+	if err := rclient.Update(ctx, vmUserObj); err != nil {
+		return fmt.Errorf("failed to update vmuser %s: %w", vmUserObj.Name, err)
+	}
+
 	return nil
 }
 

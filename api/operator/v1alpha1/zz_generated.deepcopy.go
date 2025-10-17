@@ -130,8 +130,8 @@ func (in *VMDistributedClusterSpec) DeepCopy() *VMDistributedClusterSpec {
 func (in *VMDistributedClusterStatus) DeepCopyInto(out *VMDistributedClusterStatus) {
 	*out = *in
 	in.StatusMetadata.DeepCopyInto(&out.StatusMetadata)
-	if in.VMClusterGenerations != nil {
-		in, out := &in.VMClusterGenerations, &out.VMClusterGenerations
+	if in.VMClusterInfo != nil {
+		in, out := &in.VMClusterInfo, &out.VMClusterInfo
 		*out = make([]VMClusterStatus, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

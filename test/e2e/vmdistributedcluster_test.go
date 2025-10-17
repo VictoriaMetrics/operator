@@ -133,11 +133,24 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				}
 				afterEach()
 			})
+
+			var validVMUser vmv1beta1.VMUser
 			for _, vmcluster := range vmclusters {
 				Expect(k8sClient.Create(ctx, &vmcluster)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, types.NamespacedName{Name: vmcluster.Name, Namespace: namespace})
 				}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+
+				Expect(k8sClient.Get(ctx, invalidVMUserName, &validVMUser)).To(Succeed())
+				validVMUser.Spec.TargetRefs = append(validVMUser.Spec.TargetRefs, vmv1beta1.TargetRef{
+					CRD: &vmv1beta1.CRDRef{
+						Kind:      "VMCluster",
+						Name:      vmcluster.Name,
+						Namespace: namespace,
+					},
+					TargetPathSuffix: "/select/1",
+				})
+				Expect(k8sClient.Update(ctx, &validVMUser)).To(Succeed())
 			}
 
 			namespacedName.Name = cr.Name

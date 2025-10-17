@@ -47,6 +47,9 @@ func (so *scrapeObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 				}
 			}
 		}
+		if err := validateScrapeClassExists(ss.Spec.ScrapeClassName, cr); err != nil {
+			return err
+		}
 		if err := ss.Validate(); err != nil {
 			return err
 		}
@@ -1205,4 +1208,97 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		},
 	}
 	return build.NewAssetsCache(ctx, rclient, cfg)
+}
+func validateScrapeClassExists(scrapeClassName *string, cr *vmv1beta1.VMAgent) error {
+	if scrapeClassName == nil {
+		return nil
+	}
+	for _, sc := range cr.Spec.ScrapeClasses {
+		if sc.Name == *scrapeClassName {
+			return nil
+		}
+	}
+	return fmt.Errorf("scrape class %q not found in VMAgent %s/%s", *scrapeClassName, cr.Namespace, cr.Name)
+}
+func mergeAuthorizationWithScrapeClass(authz *vmv1beta1.Authorization, scrapeClass vmv1beta1.ScrapeClass) *vmv1beta1.Authorization {
+	if authz == nil {
+		return scrapeClass.Authorization
+	}
+	if scrapeClass.Authorization == nil {
+		return authz
+	}
+
+	if authz.Credentials == nil {
+		authz.Credentials = scrapeClass.Authorization.Credentials
+	}
+
+	if authz.Credentials == nil && authz.CredentialsFile == "" {
+		authz.Credentials = scrapeClass.Authorization.Credentials
+		authz.CredentialsFile = scrapeClass.Authorization.CredentialsFile
+	}
+
+	return authz
+}
+func mergeAttachMetadataWithScrapeClass(am vmv1beta1.AttachMetadata, scrapeClass vmv1beta1.ScrapeClass) vmv1beta1.AttachMetadata {
+	if scrapeClass.AttachMetadata == nil {
+		return am
+	}
+
+	if am.Node == nil {
+		am.Node = scrapeClass.AttachMetadata.Node
+	}
+
+	return am
+}
+func mergeRelabelConfigsWithScrapeClass(rcs []*vmv1beta1.RelabelConfig, scrapeClass vmv1beta1.ScrapeClass) []*vmv1beta1.RelabelConfig {
+	if len(scrapeClass.Relabelings) == 0 {
+		return rcs
+	}
+	return append(rcs, scrapeClass.Relabelings...)
+}
+func mergeMetricRelabelConfigsWithScrapeClass(mrcs []*vmv1beta1.RelabelConfig, scrapeClass vmv1beta1.ScrapeClass) []*vmv1beta1.RelabelConfig {
+	if len(scrapeClass.MetricRelabelings) == 0 {
+		return mrcs
+	}
+	return append(mrcs, scrapeClass.MetricRelabelings...)
+}
+func mergeTLSConfigWithScrapeClass(tlsConfig *vmv1beta1.TLSConfig, scrapeClass vmv1beta1.ScrapeClass) *vmv1beta1.TLSConfig {
+	if tlsConfig == nil {
+		return scrapeClass.TLSConfig
+	}
+
+	if scrapeClass.TLSConfig == nil {
+		return tlsConfig
+	}
+
+	if tlsConfig.CAFile == "" && tlsConfig.CA == (vmv1beta1.SecretOrConfigMap{}) {
+		tlsConfig.CAFile = scrapeClass.TLSConfig.CAFile
+	}
+
+	if tlsConfig.CertFile == "" && tlsConfig.Cert == (vmv1beta1.SecretOrConfigMap{}) {
+		tlsConfig.CertFile = scrapeClass.TLSConfig.CertFile
+	}
+
+	if tlsConfig.KeyFile == "" && tlsConfig.KeySecret == nil {
+		tlsConfig.KeyFile = scrapeClass.TLSConfig.KeyFile
+	}
+
+	return tlsConfig
+}
+
+func getScrapeClassOrDefault(name *string, vmagent *vmv1beta1.VMAgent) vmv1beta1.ScrapeClass {
+	if name != nil {
+		for _, scrapeClass := range vmagent.Spec.ScrapeClasses {
+			if scrapeClass.Name == *name {
+				return scrapeClass
+			}
+		}
+	}
+
+	for _, scrapeClass := range vmagent.Spec.ScrapeClasses {
+		if ptr.Deref(scrapeClass.Default, false) {
+			return scrapeClass
+		}
+	}
+	return vmv1beta1.ScrapeClass{}
 }

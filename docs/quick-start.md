@@ -295,9 +295,6 @@ spec:
       containers:
         - name: main
           image: docker.io/victoriametrics/demo-app:1.2
-          ports:
-            - name: http
-              containerPort: 8080
 ---
 apiVersion: v1
 kind: Service

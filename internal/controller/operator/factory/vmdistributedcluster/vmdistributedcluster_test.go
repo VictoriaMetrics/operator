@@ -421,6 +421,62 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		}
 		compareExpectedActions(t, expectedActions, td.trackingClient.Actions)
 	})
+
+	t.Run("Paused - no actions performed", func(t *testing.T) {
+		td := beforeEach()
+		td.cr.Spec.Paused = true
+
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused")
+		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions when paused")
+
+		// Verify that cluster versions were not changed
+		unchangedVMCluster1 := &vmv1beta1.VMCluster{}
+		err = td.trackingClient.Get(ctx, types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.vmcluster1.Namespace}, unchangedVMCluster1)
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.0.0", unchangedVMCluster1.Spec.ClusterVersion, "VMCluster1 version should remain unchanged when paused")
+
+		unchangedVMCluster2 := &vmv1beta1.VMCluster{}
+		err = td.trackingClient.Get(ctx, types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster2.Namespace}, unchangedVMCluster2)
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.0.0", unchangedVMCluster2.Spec.ClusterVersion, "VMCluster2 version should remain unchanged when paused")
+	})
+
+	t.Run("Paused - ignores missing VMUser", func(t *testing.T) {
+		td := beforeEach()
+		td.cr.Spec.Paused = true
+		td.cr.Spec.VMUser.Name = "non-existent-vmuser"
+
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused, even with missing VMUser")
+		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions when paused")
+	})
+
+	t.Run("Paused - ignores missing VMClusters", func(t *testing.T) {
+		td := beforeEach()
+		td.cr.Spec.Paused = true
+		td.cr.Spec.VMClusters = []vmv1alpha1.VMClusterAgentPair{{LocalObjectReference: corev1.LocalObjectReference{Name: "missing-cluster"}}}
+
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused, even with missing VMClusters")
+		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions when paused")
+	})
+
+	t.Run("Paused - ignores version mismatch", func(t *testing.T) {
+		td := beforeEach()
+		td.cr.Spec.Paused = true
+		td.cr.Spec.ClusterVersion = "v2.0.0" // Different version than clusters
+
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused, even with version mismatch")
+		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions when paused")
+
+		// Verify versions were not updated
+		unchangedVMCluster1 := &vmv1beta1.VMCluster{}
+		err = td.trackingClient.Get(ctx, types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.vmcluster1.Namespace}, unchangedVMCluster1)
+		assert.NoError(t, err)
+		assert.Equal(t, "v1.0.0", unchangedVMCluster1.Spec.ClusterVersion, "VMCluster1 version should remain unchanged when paused")
+	})
 }
 
 func TestWaitForVMClusterReady(t *testing.T) {

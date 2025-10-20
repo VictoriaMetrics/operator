@@ -277,6 +277,12 @@ func (sf *FieldsListString) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
+// VLStorageNode defines slice of additional vlstorage nodes
+type VLStorageNode struct {
+	// Addr defines storage node address
+	Addr string `json:"addr"`
+}
+
 // VLSelect defines vlselect component configuration at victoria-logs cluster
 type VLSelect struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VLSelect pods.
@@ -312,6 +318,9 @@ type VLSelect struct {
 	// RollingUpdate - overrides deployment update params.
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+
+	// ExtraStorageNodes - defines additional storage nodes to VLSelect
+	ExtraStorageNodes []VLStorageNode `json:"extraStorageNodes,omitempty"`
 
 	vmv1beta1.CommonDefaultableParams           `json:",inline"`
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`

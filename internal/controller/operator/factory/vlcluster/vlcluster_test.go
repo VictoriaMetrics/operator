@@ -237,7 +237,48 @@ func TestCreateOrUpdate(t *testing.T) {
 		return nil
 	}
 
-	// base cluster
+	f(cr, validate, nil)
+
+	// with extra read-only storages
+	cr = &vmv1.VLCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "read-only",
+			Namespace: "default",
+		},
+		Spec: vmv1.VLClusterSpec{
+			VLSelect: &vmv1.VLSelect{
+				ExtraStorageNodes: []vmv1.VLStorageNode{
+					{
+						Addr: "localhost:10101",
+					},
+				},
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+			VLStorage: &vmv1.VLStorage{
+				RetentionPeriod: "1w",
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
+	}
+	validate = func(ctx context.Context, rclient client.Client) error {
+
+		// check select
+		var d appsv1.Deployment
+		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLSelectName(), Namespace: cr.Namespace}, &d))
+		assert.Len(t, d.Spec.Template.Spec.Containers, 1)
+		cnt := d.Spec.Template.Spec.Containers[0]
+		assert.Equal(t, cnt.Args, []string{
+			"-httpListenAddr=:9471",
+			"-internalinsert.disable=true",
+			"-storageNode=vlstorage-read-only-0.vlstorage-read-only.default:9491,localhost:10101",
+		})
+		return nil
+	}
+
 	f(cr, validate, nil)
 
 }

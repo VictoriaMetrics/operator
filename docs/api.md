@@ -393,6 +393,7 @@ Appears in: [VLClusterSpec](#vlclusterspec)
 | extraArgs<a href="#vlselect-extraargs" id="vlselect-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | extraEnvs<a href="#vlselect-extraenvs" id="vlselect-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
 | extraEnvsFrom<a href="#vlselect-extraenvsfrom" id="vlselect-extraenvsfrom">#</a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
+| extraStorageNodes<a href="#vlselect-extrastoragenodes" id="vlselect-extrastoragenodes">#</a><br/>_[VLStorageNode](#vlstoragenode) array_ | _(Required)_<br/>ExtraStorageNodes - defines additional storage nodes to VLSelect |
 | hostAliases<a href="#vlselect-hostaliases" id="vlselect-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | hostNetwork<a href="#vlselect-hostnetwork" id="vlselect-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | host_aliases<a href="#vlselect-host_aliases" id="vlselect-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -578,6 +579,19 @@ Appears in: [VLClusterSpec](#vlclusterspec)
 | useStrictSecurity<a href="#vlstorage-usestrictsecurity" id="vlstorage-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vlstorage-volumemounts" id="vlstorage-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vlstorage-volumes" id="vlstorage-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+
+
+#### VLStorageNode
+
+
+
+VLStorageNode defines slice of additional vlstorage nodes
+
+Appears in: [VLSelect](#vlselect)
+
+| Field | Description |
+| --- | --- |
+| addr<a href="#vlstoragenode-addr" id="vlstoragenode-addr">#</a><br/>_string_ | _(Required)_<br/>Addr defines storage node address |
 
 
 #### VMAnomaly
@@ -914,6 +928,7 @@ Appears in: [VTClusterSpec](#vtclusterspec)
 | extraArgs<a href="#vtselect-extraargs" id="vtselect-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | extraEnvs<a href="#vtselect-extraenvs" id="vtselect-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
 | extraEnvsFrom<a href="#vtselect-extraenvsfrom" id="vtselect-extraenvsfrom">#</a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
+| extraStorageNodes<a href="#vtselect-extrastoragenodes" id="vtselect-extrastoragenodes">#</a><br/>_[VTStorageNode](#vtstoragenode) array_ | _(Required)_<br/>ExtraStorageNodes - defines additional storage nodes to VTSelect |
 | hostAliases<a href="#vtselect-hostaliases" id="vtselect-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | hostNetwork<a href="#vtselect-hostnetwork" id="vtselect-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | host_aliases<a href="#vtselect-host_aliases" id="vtselect-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -1098,6 +1113,19 @@ Appears in: [VTClusterSpec](#vtclusterspec)
 | useStrictSecurity<a href="#vtstorage-usestrictsecurity" id="vtstorage-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vtstorage-volumemounts" id="vtstorage-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vtstorage-volumes" id="vtstorage-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+
+
+#### VTStorageNode
+
+
+
+VTStorageNode defines slice of additional vtstorage nodes
+
+Appears in: [VTSelect](#vtselect)
+
+| Field | Description |
+| --- | --- |
+| addr<a href="#vtstoragenode-addr" id="vtstoragenode-addr">#</a><br/>_string_ | _(Required)_<br/>Addr defines storage node address |
 
 
 

@@ -3481,6 +3481,20 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     type: array
+                  extraStorageNodes:
+                    description: ExtraStorageNodes - defines additional storage nodes
+                      to VLSelect
+                    items:
+                      description: VLStorageNode defines slice of additional vlstorage
+                        nodes
+                      properties:
+                        addr:
+                          description: Addr defines storage node address
+                          type: string
+                      required:
+                      - addr
+                      type: object
+                    type: array
                   host_aliases:
                     description: |-
                       HostAliasesUnderScore provides mapping for ip and hostname,
@@ -40708,6 +40722,20 @@ spec:
                               type: boolean
                           type: object
                           x-kubernetes-map-type: atomic
+                      type: object
+                    type: array
+                  extraStorageNodes:
+                    description: ExtraStorageNodes - defines additional storage nodes
+                      to VTSelect
+                    items:
+                      description: VTStorageNode defines slice of additional vtstorage
+                        nodes
+                      properties:
+                        addr:
+                          description: Addr defines storage node address
+                          type: string
+                      required:
+                      - addr
                       type: object
                     type: array
                   host_aliases:

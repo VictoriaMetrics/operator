@@ -23,6 +23,7 @@ import (
 
 const (
 	vmclusterWaitReadyDeadline = 500 * time.Millisecond
+	httpTimeout                = 500 * time.Millisecond
 )
 
 // trackingClient records actions performed by the client
@@ -239,7 +240,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 	t.Run("Successful reconciliation", func(t *testing.T) {
 		td := beforeEach()
 		td.trackingClient.Client = &alwaysReadyClient{Client: td.trackingClient.Client}
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when all resources are present")
 		assert.Len(t, td.trackingClient.Actions, 17, "Should perform 17 actions")
 
@@ -291,7 +292,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 				LocalObjectReference: corev1.LocalObjectReference{Name: "missing-cluster"},
 			},
 		}
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err, "CreateOrUpdate should error if VMCluster is missing")
 		assert.Len(t, td.trackingClient.Actions, 2, "Should perform two actions")
 	})
@@ -299,7 +300,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 	t.Run("VMUser not specified", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.VMUser.Name = ""
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err, "CreateOrUpdate should error if VMUser is not specified")
 		assert.Contains(t, err.Error(), "global loadbalancing vmuser is not specified")
 		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions")
@@ -308,7 +309,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 	t.Run("VMUser not found", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.VMUser.Name = "non-existent-vmuser"
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err, "CreateOrUpdate should error if VMUser is not found")
 		assert.Contains(t, err.Error(), "failed to get VMUser default/non-existent-vmuser")
 		assert.Len(t, td.trackingClient.Actions, 1, "Should perform one action (Get VMUser)")
@@ -323,7 +324,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 				LocalObjectReference: corev1.LocalObjectReference{Name: "non-existent-cluster"},
 			},
 		}
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err, "CreateOrUpdate should error if VMCluster fetch fails")
 		assert.Contains(t, err.Error(), "failed to get VMCluster default/vmcluster-1")
 		assert.Len(t, td.trackingClient.Actions, 2, "Should perform two actions")
@@ -345,7 +346,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		assert.NoError(t, err)
 		td.trackingClient.Actions = []action{}
 
-		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err, "CreateOrUpdate should error if findVMUserReadRuleForVMCluster fails")
 		assert.Contains(t, err.Error(), "failed to find the rule for vmcluster cluster-1")
 		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
@@ -361,7 +362,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 	t.Run("Generations change triggers status update", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Status.VMClusterInfo[0].Generation = 2
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err, "CreateOrUpdate should error if generations change detected")
 		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
 
@@ -381,7 +382,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		td.trackingClient.Actions = []action{}
 
 		td.trackingClient.Client = &alwaysReadyClient{Client: td.trackingClient.Client}
-		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when cluster version matches")
 		assert.Len(t, td.trackingClient.Actions, 10, "Should perform ten actions")
 
@@ -410,7 +411,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		assert.NoError(t, err)
 		td.trackingClient.Actions = []action{}
 
-		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when no update required")
 		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
 
@@ -426,7 +427,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.Paused = true
 
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused")
 		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions when paused")
 
@@ -447,7 +448,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		td.cr.Spec.Paused = true
 		td.cr.Spec.VMUser.Name = "non-existent-vmuser"
 
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused, even with missing VMUser")
 		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions when paused")
 	})
@@ -457,7 +458,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		td.cr.Spec.Paused = true
 		td.cr.Spec.VMClusters = []vmv1alpha1.VMClusterAgentPair{{LocalObjectReference: corev1.LocalObjectReference{Name: "missing-cluster"}}}
 
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused, even with missing VMClusters")
 		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions when paused")
 	})
@@ -467,7 +468,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 		td.cr.Spec.Paused = true
 		td.cr.Spec.ClusterVersion = "v2.0.0" // Different version than clusters
 
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
+		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused, even with version mismatch")
 		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions when paused")
 
@@ -748,8 +749,8 @@ func TestFetchVMClusters(t *testing.T) {
 		result, err := fetchVMClusters(ctx, fakeClient, "default", refs)
 		assert.NoError(t, err)
 		assert.Len(t, result, 2)
-		assert.Equal(t, "cluster-1", result[0].Name)
-		assert.Equal(t, "cluster-2", result[1].Name)
+		assert.Equal(t, "cluster-1", result[0].VMCluster.Name)
+		assert.Equal(t, "cluster-2", result[1].VMCluster.Name)
 	})
 
 	t.Run("Empty refs list", func(t *testing.T) {
@@ -771,25 +772,6 @@ func TestFetchVMClusters(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "failed to get VMCluster default/nonexistent")
-	})
-}
-
-func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
-	ctx := context.Background()
-	scheme := runtime.NewScheme()
-	_ = vmv1beta1.AddToScheme(scheme)
-
-	t.Run("Successful wait", func(t *testing.T) {
-		cluster := newVMCluster("test-cluster", "default", "v1.0.0", 1, nil)
-		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-
-		start := time.Now()
-		err := waitForVMClusterVMAgentMetrics(ctx, fakeClient, cluster)
-		duration := time.Since(start)
-
-		assert.NoError(t, err)
-		assert.GreaterOrEqual(t, duration, time.Second)
-		assert.Less(t, duration, 2*time.Second)
 	})
 }
 

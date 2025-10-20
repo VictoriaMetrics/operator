@@ -1653,8 +1653,6 @@ spec:
             type: object
           spec:
             description: spec defines the desired state of VMDistributedCluster
-            required:
-            - vmClusters
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:

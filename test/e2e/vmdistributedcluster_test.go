@@ -175,10 +175,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "single-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []corev1.LocalObjectReference{
-						{
+					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+						{LocalObjectReference: corev1.LocalObjectReference{
 							Name: "vmcluster-1",
-						},
+						}},
 					},
 					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
@@ -208,12 +208,14 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "multi-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []corev1.LocalObjectReference{
-						{
+					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+						{LocalObjectReference: corev1.LocalObjectReference{
 							Name: "vmcluster-1",
-						},
+						}},
 						{
-							Name: "vmcluster-2",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "vmcluster-2",
+							},
 						},
 					},
 					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
@@ -307,9 +309,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []corev1.LocalObjectReference{
-						{Name: vmCluster1.Name},
-						{Name: vmCluster2.Name},
+					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+						{LocalObjectReference: corev1.LocalObjectReference{
+							Name: vmCluster1.Name,
+						}},
+						{LocalObjectReference: corev1.LocalObjectReference{
+							Name: vmCluster2.Name,
+						}},
 					},
 					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
@@ -380,7 +386,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "no-vmuser-set",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []corev1.LocalObjectReference{},
+					VMClusters: []vmv1alpha1.VMClusterAgentPair{},
 					VMUser:     corev1.LocalObjectReference{Name: "missing-vmuser"},
 				},
 			}, []vmv1beta1.VMCluster{}),
@@ -390,10 +396,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "invalid-vmuser",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []corev1.LocalObjectReference{
-						{
+					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+						{LocalObjectReference: corev1.LocalObjectReference{
 							Name: "vmcluster-1",
-						},
+						}},
 					},
 					VMUser: corev1.LocalObjectReference{Name: invalidVMUserName.Name},
 				},
@@ -419,10 +425,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "missing-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []corev1.LocalObjectReference{
-						{
+					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+						{LocalObjectReference: corev1.LocalObjectReference{
 							Name: "vmcluster-missing",
-						},
+						}},
 					},
 					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
@@ -454,10 +460,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				Name:      namespacedName.Name,
 			},
 			Spec: vmv1alpha1.VMDistributedClusterSpec{
-				VMClusters: []corev1.LocalObjectReference{
-					{
+				VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					{LocalObjectReference: corev1.LocalObjectReference{
 						Name: vmCluster.Name,
-					},
+					}},
 				},
 				VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 			},

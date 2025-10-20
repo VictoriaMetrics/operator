@@ -28,13 +28,15 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 
+	// No actions performed if CR is paused
+	if cr.Paused() {
+		return nil
+	}
+
 	// Fetch global loadbalancing vmuser
 	vmUserObj, err := fetchVMUser(ctx, rclient, cr.Namespace, cr.Spec.VMUser)
 	if err != nil {
 		return fmt.Errorf("failed to fetch global loadbalancing vmuser: %w", err)
-	}
-	if err := validateVMUser(vmUserObj); err != nil {
-		return fmt.Errorf("failed to validate vmuser: %w", err)
 	}
 
 	// Store current CR status
@@ -95,7 +97,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	return nil
 }
 
-func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []corev1.LocalObjectReference) (vmClusters []*vmv1beta1.VMCluster, err error) {
+func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []vmv1alpha1.VMClusterAgentPair) (vmClusters []*vmv1beta1.VMCluster, err error) {
 	vmClusters = make([]*vmv1beta1.VMCluster, len(refs))
 	var vmClusterObj *vmv1beta1.VMCluster
 	for i, vmCluster := range refs {
@@ -119,10 +121,6 @@ func fetchVMUser(ctx context.Context, rclient client.Client, namespace string, r
 		return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, ref.Name, err)
 	}
 	return vmUserObj, nil
-}
-
-func validateVMUser(vmuserObj *vmv1beta1.VMUser) error {
-	return nil
 }
 
 func getGenerationsFromStatus(status *vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {

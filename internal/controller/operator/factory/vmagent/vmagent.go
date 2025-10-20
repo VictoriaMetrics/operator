@@ -718,6 +718,42 @@ func patchShardContainers(containers []corev1.Container, num *int, shardCount in
 	}
 }
 
+func patchStatefulSetShard(deploy *appsv1.StatefulSet, num *int, shardCount int) error {
+	if num == nil || deploy == nil {
+		return nil
+	}
+	placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(*num)}
+	deploy.Name = fmt.Sprintf("%s-%d", deploy.Name, *num)
+	// need to mutate selectors ?
+	deploy.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(*num)
+	deploy.Spec.Template.Labels["shard-num"] = strconv.Itoa(*num)
+	var err error
+	deploy, err = k8stools.RenderPlaceholders(deploy, placeholders)
+	if err != nil {
+		return fmt.Errorf("cannot fill placeholders for statefulset sharded vmagent(%d): %w", *num, err)
+	}
+	patchShardContainers(deploy.Spec.Template.Spec.Containers, num, shardCount)
+	return nil
+}
+
+func patchDeploymentShard(deploy *appsv1.Deployment, num *int, shardCount int) error {
+	if num == nil || deploy == nil {
+		return nil
+	}
+	placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(*num)}
+	deploy.Name = fmt.Sprintf("%s-%d", deploy.Name, *num)
+	// need to mutate selectors ?
+	deploy.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(*num)
+	deploy.Spec.Template.Labels["shard-num"] = strconv.Itoa(*num)
+	var err error
+	deploy, err = k8stools.RenderPlaceholders(deploy, placeholders)
+	if err != nil {
+		return fmt.Errorf("cannot fill placeholders for deployment sharded vmagent(%d): %w", *num, err)
+	}
+	patchShardContainers(deploy.Spec.Template.Spec.Containers, num, shardCount)
+	return nil
+}
+
 func buildRelabelingsAssetsMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Namespace:       cr.Namespace,

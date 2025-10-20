@@ -99,7 +99,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		// Disable this VMCluster in vmuser
 		setVMClusterStatusInVMUser(ctx, rclient, cr, vmClusterObj, vmUserObj, false)
 		// Wait for VMCluster's vmagent metrics to show no queue
-		waitForVMClusterVMAgentMetrics(ctx, httpClient, &vmClusterAgentPair, deadline)
+		var vmAgent VMAgentWithStatus
+		if vmClusterAgentPair.VMAgent != nil {
+			vmAgent = &vmAgentAdapter{VMAgent: vmClusterAgentPair.VMAgent}
+		}
+		waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, deadline)
 		// Change VMCluster version and wait for it to be ready
 		if err := changeVMClusterVersion(ctx, rclient, vmClusterObj, cr.Spec.ClusterVersion); err != nil {
 			return fmt.Errorf("failed to change VMCluster %s/%s version: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
@@ -281,18 +285,43 @@ func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster
 	return nil
 }
 
-func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmClusterAgentPair *VMClusterInfo, deadline time.Duration) error {
-	if vmClusterAgentPair.VMAgent == nil {
+// VMAgentMetrics defines the interface for VMAgent objects that can provide metrics URLs
+type VMAgentMetrics interface {
+	AsURL() string
+	GetMetricPath() string
+}
+
+// VMAgentWithStatus extends VMAgentMetrics to include status checking
+type VMAgentWithStatus interface {
+	VMAgentMetrics
+	GetReplicas() int32
+	GetNamespace() string
+	GetName() string
+}
+
+// vmAgentAdapter wraps VMAgent to implement VMAgentWithStatus interface
+type vmAgentAdapter struct {
+	*vmv1beta1.VMAgent
+}
+
+func (v *vmAgentAdapter) GetReplicas() int32 {
+	return v.Status.Replicas
+}
+
+// GetName and GetNamespace are inherited from vmv1beta1.VMAgent
+
+func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmAgent VMAgentWithStatus, deadline time.Duration) error {
+	if vmAgent == nil {
 		// Don't throw error if VMAgent is nil, just exit early
 		return nil
 	}
 
-	if vmClusterAgentPair.VMAgent.Status.Replicas == 0 {
-		return fmt.Errorf("VMAgent %s/%s is not ready", vmClusterAgentPair.VMAgent.Namespace, vmClusterAgentPair.VMAgent.Name)
+	if vmAgent.GetReplicas() == 0 {
+		return fmt.Errorf("VMAgent %s/%s is not ready", vmAgent.GetNamespace(), vmAgent.GetName())
 	}
 
-	parts := []string{vmClusterAgentPair.VMAgent.AsURL(), vmClusterAgentPair.VMAgent.GetMetricPath()}
-	vmAgentPath := strings.Join(parts, "/")
+	parts := []string{vmAgent.AsURL(), vmAgent.GetMetricPath()}
+	vmAgentPath := strings.Join(parts, "")
 
 	// Loop until VMAgent metrics show that disk buffer is empty
 	err := wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {

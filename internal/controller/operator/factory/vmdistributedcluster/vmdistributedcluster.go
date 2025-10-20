@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,8 +22,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	VMAgentBufferMetricName = "vmagent_remotewrite_pending_data_bytes"
+)
+
+type VMClusterInfo struct {
+	VMCluster *vmv1beta1.VMCluster
+	VMAgent   *vmv1beta1.VMAgent
+}
+
 // CreateOrUpdate - handles VM deployment reconciliation.
-func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, deadline time.Duration) error {
+func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, deadline, httpTimeout time.Duration) error {
 	// Store the previous CR for comparison
 	var prevCR *vmv1alpha1.VMDistributedCluster
 	if cr.ParsedLastAppliedSpec != nil {
@@ -51,7 +63,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 
 	// Ensure that all vmuser has a read rule for vmcluster and record vmcluster info
 	cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
-	for i, vmCluster := range vmClusters {
+	for i, vmClusterAgentPair := range vmClusters {
+		vmCluster := vmClusterAgentPair.VMCluster
 		ref, err := findVMUserReadRuleForVMCluster(vmUserObj, vmCluster)
 		if err != nil {
 			return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmCluster.Name, err)
@@ -71,9 +84,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("unexpected generations change detected: %w", errors.New("unexpected generations change detected"))
 	}
 
+	httpClient := &http.Client{
+		Timeout: httpTimeout,
+	}
+
 	// TODO[vrutkovs]: Mark all VMClusters as paused?
 	// This would prevent other reconciliation loops from changing them
-	for _, vmClusterObj := range vmClusters {
+	for _, vmClusterAgentPair := range vmClusters {
+		vmClusterObj := vmClusterAgentPair.VMCluster
 		// Check if VMCluster is already up-to-date
 		if vmClusterObj.Spec.ClusterVersion == cr.Spec.ClusterVersion {
 			continue
@@ -81,8 +99,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		// Disable this VMCluster in vmuser
 		setVMClusterStatusInVMUser(ctx, rclient, cr, vmClusterObj, vmUserObj, false)
 		// Wait for VMCluster's vmagent metrics to show no queue
-		// TODO[vrutkovs]: Do this only if VMCluster has VMAgent associated
-		waitForVMClusterVMAgentMetrics(ctx, rclient, vmClusterObj)
+		waitForVMClusterVMAgentMetrics(ctx, httpClient, &vmClusterAgentPair, deadline)
 		// Change VMCluster version and wait for it to be ready
 		if err := changeVMClusterVersion(ctx, rclient, vmClusterObj, cr.Spec.ClusterVersion); err != nil {
 			return fmt.Errorf("failed to change VMCluster %s/%s version: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
@@ -97,16 +114,26 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	return nil
 }
 
-func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []vmv1alpha1.VMClusterAgentPair) (vmClusters []*vmv1beta1.VMCluster, err error) {
-	vmClusters = make([]*vmv1beta1.VMCluster, len(refs))
+func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []vmv1alpha1.VMClusterAgentPair) (vmClusters []VMClusterInfo, err error) {
+	vmClusters = make([]VMClusterInfo, len(refs))
 	var vmClusterObj *vmv1beta1.VMCluster
-	for i, vmCluster := range refs {
+	for i, vmClusterAgentPair := range refs {
 		vmClusterObj = &vmv1beta1.VMCluster{}
-		namespacedName := types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}
+		namespacedName := types.NamespacedName{Name: vmClusterAgentPair.Name, Namespace: namespace}
 		if err := rclient.Get(ctx, namespacedName, vmClusterObj); err != nil {
-			return nil, fmt.Errorf("failed to get VMCluster %s/%s: %w", namespace, vmCluster.Name, err)
+			return nil, fmt.Errorf("failed to get VMCluster %s/%s: %w", namespace, vmClusterAgentPair.Name, err)
 		}
-		vmClusters[i] = vmClusterObj
+		vmClusterInfo := VMClusterInfo{
+			VMCluster: vmClusterObj,
+		}
+		if vmClusterAgentPair.VMAgent != nil {
+			vmAgent, err := fetchVMAgent(ctx, rclient, namespace, *vmClusterAgentPair.VMAgent)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch VMAgent %s/%s for VMCluster %s/%s: %w", vmClusterObj.Namespace, vmClusterObj.Name, vmClusterObj.Namespace, vmClusterObj.Name, err)
+			}
+			vmClusterInfo.VMAgent = vmAgent
+		}
+		vmClusters[i] = vmClusterInfo
 	}
 	return vmClusters, nil
 }
@@ -121,6 +148,18 @@ func fetchVMUser(ctx context.Context, rclient client.Client, namespace string, r
 		return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, ref.Name, err)
 	}
 	return vmUserObj, nil
+}
+
+func fetchVMAgent(ctx context.Context, rclient client.Client, namespace string, ref corev1.LocalObjectReference) (*vmv1beta1.VMAgent, error) {
+	if ref.Name == "" {
+		return nil, errors.New("vmagent name is not specified")
+	}
+	vmAgentObj := &vmv1beta1.VMAgent{}
+	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+	if err := rclient.Get(ctx, namespacedName, vmAgentObj); err != nil {
+		return nil, fmt.Errorf("failed to get VMAgent %s/%s: %w", namespace, ref.Name, err)
+	}
+	return vmAgentObj, nil
 }
 
 func getGenerationsFromStatus(status *vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {
@@ -207,11 +246,6 @@ func setVMClusterStatusInVMUser(ctx context.Context, rclient client.Client, cr *
 	return nil
 }
 
-func waitForVMClusterVMAgentMetrics(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster) error {
-	time.Sleep(time.Second)
-	return nil
-}
-
 func changeVMClusterVersion(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, version string) error {
 	// Fetch VMCluster again as it might have been updated by another controller
 	if err := rclient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}, vmCluster); err != nil {
@@ -245,4 +279,60 @@ func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster
 	}
 
 	return nil
+}
+
+func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmClusterAgentPair *VMClusterInfo, deadline time.Duration) error {
+	if vmClusterAgentPair.VMAgent == nil {
+		// Don't throw error if VMAgent is nil, just exit early
+		return nil
+	}
+
+	if vmClusterAgentPair.VMAgent.Status.Replicas == 0 {
+		return fmt.Errorf("VMAgent %s/%s is not ready", vmClusterAgentPair.VMAgent.Namespace, vmClusterAgentPair.VMAgent.Name)
+	}
+
+	parts := []string{vmClusterAgentPair.VMAgent.AsURL(), vmClusterAgentPair.VMAgent.GetMetricPath()}
+	vmAgentPath := strings.Join(parts, "/")
+
+	// Loop until VMAgent metrics show that disk buffer is empty
+	err := wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
+		metricValue, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, vmAgentPath)
+		if err != nil {
+			return false, err
+		}
+		return metricValue == 0, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait for VMAgent metrics: %w", err)
+	}
+	return nil
+}
+
+func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, metricsPath string) (int64, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, metricsPath, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create request for VMAgent at %s: %w", metricsPath, err)
+	}
+	resp, err := httpClient.Do(request)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch metrics from VMAgent at %s: %w", metricsPath, err)
+	}
+	defer resp.Body.Close()
+	metricBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read VMAgent metrics at %s: %w", metricsPath, err)
+	}
+	metrics := string(metricBytes)
+	for _, metric := range strings.Split(metrics, "\n") {
+		value, found := strings.CutPrefix(metric, VMAgentBufferMetricName)
+		if found {
+			value = strings.Trim(value, " ")
+			res, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				return 0, fmt.Errorf("could not parse metric value %s: %w", metric, err)
+			}
+			return int64(res), nil
+		}
+	}
+	return 0, fmt.Errorf("metric %s not found", VMAgentBufferMetricName)
 }

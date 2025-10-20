@@ -3,8 +3,9 @@ package finalize
 import (
 	"context"
 
-	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -14,64 +15,49 @@ type orphanedCRD interface {
 }
 
 // RemoveOrphanedDeployments removes deployments detached from given object
-func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr orphanedCRD, keepDeployments map[string]struct{}) error {
-	deployToRemove, err := discoverDeploymentsByLabels(ctx, rclient, cr.GetNamespace(), cr.SelectorLabels())
-	if err != nil {
-		return err
+func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "Deployment",
 	}
-	for i := range deployToRemove {
-		dep := deployToRemove[i]
-		if _, ok := keepDeployments[dep.Name]; !ok {
-			// need to remove
-			if err := RemoveFinalizer(ctx, rclient, dep); err != nil {
-				return err
-			}
-			if err := SafeDelete(ctx, rclient, dep); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// discoverDeploymentsByLabels - returns deployments with given args.
-func discoverDeploymentsByLabels(ctx context.Context, rclient client.Client, ns string, selector map[string]string) ([]*appsv1.Deployment, error) {
-	var deps appsv1.DeploymentList
-	opts := client.ListOptions{
-		Namespace:     ns,
-		LabelSelector: labels.SelectorFromSet(selector),
-	}
-	if err := rclient.List(ctx, &deps, &opts); err != nil {
-		return nil, err
-	}
-	resp := make([]*appsv1.Deployment, 0, len(deps.Items))
-	for i := range deps.Items {
-		resp = append(resp, &deps.Items[i])
-	}
-	return resp, nil
-}
-
-// RemoveSvcArgs defines interface for service deletion
-type RemoveSvcArgs struct {
-	PrefixedName   func() string
-	SelectorLabels func() map[string]string
-	GetNameSpace   func() string
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
 }
 
 // RemoveOrphanedSTSs removes deployments detached from given object
-func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepSTSNames map[string]struct{}) error {
-	deployToRemove, err := discoverSTSsByLabels(ctx, rclient, cr.GetNamespace(), cr.SelectorLabels())
+func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "StatefulSet",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
+// RemoveOrphanedPDBs removes PDBs detached from given object
+func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "policy",
+		Version: "v1",
+		Kind:    "PodDisruptionBudget",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
+// removeOrphaned removes orphaned resources
+func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, gvk schema.GroupVersionKind, keepNames map[string]struct{}) error {
+	toRemove, err := getOrphaned(ctx, rclient, gvk, cr)
 	if err != nil {
 		return err
 	}
-	for i := range deployToRemove {
-		dep := deployToRemove[i]
-		if _, ok := keepSTSNames[dep.Name]; !ok {
+	for i := range toRemove {
+		item := toRemove[i]
+		if _, ok := keepNames[item.GetName()]; !ok {
 			// need to remove
-			if err := RemoveFinalizer(ctx, rclient, dep); err != nil {
+			if err := RemoveFinalizer(ctx, rclient, item); err != nil {
 				return err
 			}
-			if err := SafeDelete(ctx, rclient, dep); err != nil {
+			if err := SafeDelete(ctx, rclient, item); err != nil {
 				return err
 			}
 		}
@@ -79,19 +65,21 @@ func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedC
 	return nil
 }
 
-// discoverDeploymentsByLabels - returns deployments with given args.
-func discoverSTSsByLabels(ctx context.Context, rclient client.Client, ns string, selector map[string]string) ([]*appsv1.StatefulSet, error) {
-	var deps appsv1.StatefulSetList
+// getOrphaned - returns resources by orphaned CR selector.
+func getOrphaned(ctx context.Context, rclient client.Client, gvk schema.GroupVersionKind, cr orphanedCRD) ([]client.Object, error) {
+	var l unstructured.UnstructuredList
+	l.SetGroupVersionKind(gvk)
 	opts := client.ListOptions{
-		Namespace:     ns,
-		LabelSelector: labels.SelectorFromSet(selector),
+		Namespace:     cr.GetNamespace(),
+		LabelSelector: labels.SelectorFromSet(cr.SelectorLabels()),
 	}
-	if err := rclient.List(ctx, &deps, &opts); err != nil {
+	if err := rclient.List(ctx, &l, &opts); err != nil {
 		return nil, err
 	}
-	resp := make([]*appsv1.StatefulSet, 0, len(deps.Items))
-	for i := range deps.Items {
-		resp = append(resp, &deps.Items[i])
+	resp := make([]client.Object, 0, len(l.Items))
+	for i := range l.Items {
+		item := &l.Items[i]
+		resp = append(resp, item)
 	}
 	return resp, nil
 }

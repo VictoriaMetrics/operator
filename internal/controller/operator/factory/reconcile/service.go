@@ -31,14 +31,6 @@ func Service(ctx context.Context, rclient client.Client, newService, prevService
 }
 
 func reconcileService(ctx context.Context, rclient client.Client, newService, prevService *corev1.Service) error {
-	var isPrevServiceEqual bool
-	var prevSpecDiff string
-	if prevService != nil {
-		isPrevServiceEqual = equality.Semantic.DeepDerivative(prevService, newService)
-		if !isPrevServiceEqual {
-			prevSpecDiff = diffDeepDerivative(prevService, newService)
-		}
-	}
 	// helper for proper service deletion.
 	recreateService := func(svc *corev1.Service) error {
 		if err := finalize.RemoveFinalizer(ctx, rclient, svc); err != nil {
@@ -68,6 +60,19 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, currentService); err != nil {
 		return err
+	}
+	var isPrevServiceEqual bool
+	var prevSpecDiff string
+	if prevService != nil {
+		isPrevServiceEqual = equality.Semantic.DeepDerivative(prevService, newService)
+		if !isPrevServiceEqual {
+			prevSpecDiff = diffDeepDerivative(prevService, newService)
+		}
+		// keep LoadBalancerClass assigned by cloud-controller
+		// See https://github.com/VictoriaMetrics/operator/issues/1550
+		if prevService.Spec.LoadBalancerClass == nil && newService.Spec.LoadBalancerClass == nil {
+			newService.Spec.LoadBalancerClass = currentService.Spec.LoadBalancerClass
+		}
 	}
 	// invariants
 	switch {

@@ -27,21 +27,29 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// VMAgentSpec defines the desired state of VMAgent
+// VMDistributedClusterSpec defines the desired state of VMDistributedClusterSpec
 // +k8s:openapi-gen=true
 type VMDistributedClusterSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
 	// VMUser points to the VMUser object controlling traffic distribution between multiple VMClusters
 	VMUser corev1.LocalObjectReference `json:"vmAuth,omitempty"`
-	// VMClusters is a list of VMCluster instances to update
-	VMClusters []corev1.LocalObjectReference `json:"vmClusters"`
+	// VMClusters is a list of VMCluster instances to update, optionally paired with VMAgent
+	VMClusters []VMClusterAgentPair `json:"vmClusters,omitempty"`
 	// ClusterVersion defines expected image tag for all components.
 	ClusterVersion string `json:"clusterVersion,omitempty"`
 	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// VMClusterAgentPair is a pair of VMCluster and its generation
+type VMClusterAgentPair struct {
+	corev1.LocalObjectReference `json:",inline"`
+	// +optional
+	VMAgent *corev1.LocalObjectReference `json:"vmAgent,omitempty"`
 }
 
 // +k8s:openapi-gen=true

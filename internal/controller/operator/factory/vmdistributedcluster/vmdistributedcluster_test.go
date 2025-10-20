@@ -3,6 +3,9 @@ package vmdistributedcluster
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -37,29 +40,34 @@ type action struct {
 type trackingClient struct {
 	client.Client
 	Actions []action
+	mu      sync.Mutex
 }
 
 func (tc *trackingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	tc.mu.Lock()
+	defer tc.mu.Unlock()
 	tc.Actions = append(tc.Actions, action{Method: "Get", ObjectKey: key, Object: obj.DeepCopyObject().(client.Object)})
 	return tc.Client.Get(ctx, key, obj, opts...)
 }
 
 func (tc *trackingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	tc.mu.Lock()
+	defer tc.mu.Unlock()
 	tc.Actions = append(tc.Actions, action{Method: "Update", Object: obj.DeepCopyObject().(client.Object)})
 	return tc.Client.Update(ctx, obj, opts...)
 }
 
 func (tc *trackingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-	if obj != nil && obj.DeepCopyObject() != nil {
-		tc.Actions = append(tc.Actions, action{Method: "Create", Object: obj.DeepCopyObject().(client.Object)})
-	}
+	tc.mu.Lock()
+	defer tc.mu.Unlock()
+	tc.Actions = append(tc.Actions, action{Method: "Create", Object: obj.DeepCopyObject().(client.Object)})
 	return tc.Client.Create(ctx, obj, opts...)
 }
 
 func (tc *trackingClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	if obj != nil && obj.DeepCopyObject() != nil {
-		tc.Actions = append(tc.Actions, action{Method: "Delete", Object: obj.DeepCopyObject().(client.Object)})
-	}
+	tc.mu.Lock()
+	defer tc.mu.Unlock()
+	tc.Actions = append(tc.Actions, action{Method: "Delete", Object: obj.DeepCopyObject().(client.Object)})
 	return tc.Client.Delete(ctx, obj, opts...)
 }
 
@@ -230,7 +238,7 @@ func beforeEach() testData {
 		vmcluster1:     vmcluster1,
 		vmcluster2:     vmcluster2,
 		cr:             cr,
-		trackingClient: trackingClient{baseFake, []action{}},
+		trackingClient: trackingClient{Client: baseFake, Actions: []action{}},
 	}
 }
 
@@ -563,12 +571,14 @@ func TestWaitForVMClusterReadyWithDelay(t *testing.T) {
 	}
 
 	t.Run("returns nil when cluster becomes ready after delay", func(t *testing.T) {
+		// Create a deep copy for this test to avoid shared state
+		vmclusterCopy := vmcluster.DeepCopy()
 		baseFake := fake.NewClientBuilder().
 			WithScheme(scheme).
-			WithObjects(vmcluster).
+			WithObjects(vmclusterCopy).
 			WithStatusSubresource(&vmv1beta1.VMCluster{}).
 			Build()
-		fakeClient := trackingClient{baseFake, []action{}}
+		fakeClient := trackingClient{Client: baseFake, Actions: []action{}}
 
 		go func() {
 			time.Sleep(3 * time.Second)
@@ -577,13 +587,15 @@ func TestWaitForVMClusterReadyWithDelay(t *testing.T) {
 				t.Errorf("Failed to get VMCluster in goroutine: %v", err)
 				return
 			}
-			vmcluster.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-			if err := fakeClient.Status().Update(ctx, vmcluster); err != nil {
+			obj.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			if err := fakeClient.Status().Update(ctx, &obj); err != nil {
 				t.Errorf("Failed to update VMCluster status in goroutine: %v", err)
 			}
 		}()
 
-		err := waitForVMClusterReady(ctx, &fakeClient, vmcluster, 5*time.Second)
+		// Use a separate copy for the main goroutine to avoid race conditions
+		vmclusterForWait := vmclusterCopy.DeepCopy()
+		err := waitForVMClusterReady(ctx, &fakeClient, vmclusterForWait, 5*time.Second)
 		assert.NoError(t, err)
 
 		var updatedVMCluster vmv1beta1.VMCluster
@@ -624,10 +636,10 @@ func TestSetVMClusterStatusInVMUser(t *testing.T) {
 
 	t.Run("Enable cluster - add target ref", func(t *testing.T) {
 		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{})
-		fakeClient := trackingClient{fake.NewClientBuilder().
+		fakeClient := trackingClient{Client: fake.NewClientBuilder().
 			WithScheme(scheme).
 			WithObjects(crWithRule, initialVMUser, vmClusterToManage).
-			Build(), []action{}}
+			Build(), Actions: []action{}}
 
 		err := setVMClusterStatusInVMUser(ctx, &fakeClient, crWithRule, vmClusterToManage, initialVMUser, true)
 		assert.NoError(t, err)
@@ -641,10 +653,10 @@ func TestSetVMClusterStatusInVMUser(t *testing.T) {
 
 	t.Run("Disable cluster - remove target ref", func(t *testing.T) {
 		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{targetRef})
-		fakeClient := trackingClient{fake.NewClientBuilder().
+		fakeClient := trackingClient{Client: fake.NewClientBuilder().
 			WithScheme(scheme).
 			WithObjects(crWithRule, initialVMUser, vmClusterToManage).
-			Build(), []action{}}
+			Build(), Actions: []action{}}
 
 		err := setVMClusterStatusInVMUser(ctx, &fakeClient, crWithRule, vmClusterToManage, initialVMUser, false)
 		assert.NoError(t, err)
@@ -658,10 +670,10 @@ func TestSetVMClusterStatusInVMUser(t *testing.T) {
 	t.Run("No matching rule in VMDistributedCluster status", func(t *testing.T) {
 		crWithoutRule := newVMDistributedCluster("dist-cluster-no-rule", namespace, "v1.0.0", vmuserName, []string{}, []vmv1alpha1.VMClusterStatus{})
 		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{})
-		fakeClient := trackingClient{fake.NewClientBuilder().
+		fakeClient := trackingClient{Client: fake.NewClientBuilder().
 			WithScheme(scheme).
 			WithObjects(crWithRule, initialVMUser, vmClusterToManage).
-			Build(), []action{}}
+			Build(), Actions: []action{}}
 
 		err := setVMClusterStatusInVMUser(ctx, &fakeClient, crWithoutRule, vmClusterToManage, initialVMUser, true)
 		assert.Error(t, err)
@@ -775,6 +787,317 @@ func TestFetchVMClusters(t *testing.T) {
 	})
 }
 
+// mockVMAgent implements the VMAgentWithStatus interface for testing
+type mockVMAgent struct {
+	url      string
+	replicas int32
+}
+
+func (m *mockVMAgent) AsURL() string {
+	return m.url
+}
+
+func (m *mockVMAgent) GetMetricPath() string {
+	return "/metrics"
+}
+
+func (m *mockVMAgent) GetReplicas() int32 {
+	return m.replicas
+}
+
+func (m *mockVMAgent) GetNamespace() string {
+	return "default"
+}
+
+func (m *mockVMAgent) GetName() string {
+	return "test-vmagent"
+}
+
+func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
+	ctx := context.Background()
+	httpClient := &http.Client{}
+
+	t.Run("Returns nil when VMAgent is nil", func(t *testing.T) {
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, nil, 5*time.Second)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Returns error when VMAgent has zero replicas", func(t *testing.T) {
+		vmAgent := &mockVMAgent{
+			replicas: 0,
+		}
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 5*time.Second)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VMAgent default/test-vmagent is not ready")
+	})
+
+	t.Run("Successfully waits for metrics to become zero", func(t *testing.T) {
+		callCount := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callCount++
+			if callCount <= 2 {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 1024\n")
+			} else {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 0\n")
+			}
+		}))
+		defer server.Close()
+
+		// Create a mock VMAgent that implements our interface
+		vmAgent := &mockVMAgent{
+			url:      server.URL,
+			replicas: 1,
+		}
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 5*time.Second)
+
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, callCount, 3, "Should have made at least 3 calls to the metrics endpoint")
+	})
+
+	t.Run("Times out when metrics never become zero", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 1024\n")
+		}))
+		defer server.Close()
+
+		// Create a mock VMAgent that implements our interface
+		vmAgent := &mockVMAgent{
+			url:      server.URL,
+			replicas: 1,
+		}
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
+	})
+
+	t.Run("Returns error when HTTP server returns error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Internal Server Error")
+		}))
+		defer server.Close()
+
+		vmAgent := &mockVMAgent{
+			url:      server.URL,
+			replicas: 1,
+		}
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
+	})
+
+	t.Run("Returns error when metrics endpoint is unreachable", func(t *testing.T) {
+		// Create a mock VMAgent with an invalid URL
+		vmAgent := &mockVMAgent{
+			url:      "http://invalid-host-that-does-not-exist.local:8080",
+			replicas: 1,
+		}
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
+	})
+
+	t.Run("Returns error when metric is missing from response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "some_other_metric 123\nanother_metric 456\n")
+		}))
+		defer server.Close()
+
+		vmAgent := &mockVMAgent{
+			url:      server.URL,
+			replicas: 1,
+		}
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
+	})
+
+	t.Run("Returns error when metric value is invalid", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes invalid_value\n")
+		}))
+		defer server.Close()
+
+		vmAgent := &mockVMAgent{
+			url:      server.URL,
+			replicas: 1,
+		}
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
+	})
+
+	t.Run("Successfully handles metrics with additional whitespace", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes   0  \n")
+		}))
+		defer server.Close()
+
+		vmAgent := &mockVMAgent{
+			url:      server.URL,
+			replicas: 1,
+		}
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Successfully handles metrics with comments and empty lines", func(t *testing.T) {
+		callCount := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callCount++
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			if callCount == 1 {
+				fmt.Fprintf(w, "# HELP vmagent_remotewrite_pending_data_bytes Pending data bytes\n")
+				fmt.Fprintf(w, "# TYPE vmagent_remotewrite_pending_data_bytes gauge\n")
+				fmt.Fprintf(w, "\n")
+				fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 1024\n")
+				fmt.Fprintf(w, "\n")
+				fmt.Fprintf(w, "# Some other metric\n")
+			} else {
+				fmt.Fprintf(w, "# HELP vmagent_remotewrite_pending_data_bytes Pending data bytes\n")
+				fmt.Fprintf(w, "# TYPE vmagent_remotewrite_pending_data_bytes gauge\n")
+				fmt.Fprintf(w, "\n")
+				fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 0\n")
+				fmt.Fprintf(w, "\n")
+			}
+		}))
+		defer server.Close()
+
+		vmAgent := &mockVMAgent{
+			url:      server.URL,
+			replicas: 1,
+		}
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, callCount, 2, "Should have made at least 2 calls")
+	})
+
+	t.Run("Respects context cancellation", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 1024\n")
+		}))
+		defer server.Close()
+
+		vmAgent := &mockVMAgent{
+			url:      server.URL,
+			replicas: 1,
+		}
+
+		// Create a context that will be cancelled after 1 second
+		ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+		defer cancel()
+
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 5*time.Second)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
+	})
+}
+
+func TestFetchVMAgentDiskBufferMetric(t *testing.T) {
+	ctx := context.Background()
+	httpClient := &http.Client{}
+
+	t.Run("Successfully parses valid metric", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 1024\n")
+		}))
+		defer server.Close()
+
+		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(1024), value)
+	})
+
+	t.Run("Returns error when metric not found", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "some_other_metric 123\n")
+		}))
+		defer server.Close()
+
+		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "metric vmagent_remotewrite_pending_data_bytes not found")
+		assert.Equal(t, int64(0), value)
+	})
+
+	t.Run("Returns error when metric value is invalid", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes invalid_value\n")
+		}))
+		defer server.Close()
+
+		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "could not parse metric value")
+		assert.Equal(t, int64(0), value)
+	})
+
+	t.Run("Returns error when HTTP request fails", func(t *testing.T) {
+		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, "http://invalid-host.local:8080")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to fetch metrics from VMAgent")
+		assert.Equal(t, int64(0), value)
+	})
+
+	t.Run("Successfully handles multiple metrics and finds the correct one", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "metric1 100\n")
+			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 2048\n")
+			fmt.Fprintf(w, "metric2 300\n")
+		}))
+		defer server.Close()
+
+		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(2048), value)
+	})
+
+	t.Run("Successfully handles zero metric value", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 0\n")
+		}))
+		defer server.Close()
+
+		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), value)
+	})
+}
+
 func TestChangeVMClusterVersion(t *testing.T) {
 	ctx := context.Background()
 	scheme := runtime.NewScheme()
@@ -785,7 +1108,7 @@ func TestChangeVMClusterVersion(t *testing.T) {
 		WithScheme(scheme).
 		WithObjects(vmcluster).
 		Build()
-	fakeClient := trackingClient{baseFake, []action{}}
+	fakeClient := trackingClient{Client: baseFake, Actions: []action{}}
 
 	err := changeVMClusterVersion(ctx, &fakeClient, vmcluster, "v1.1.0")
 	assert.NoError(t, err)

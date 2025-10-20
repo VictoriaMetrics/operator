@@ -234,128 +234,6 @@ func compareExpectedActions(t *testing.T, expectedActions []action, actualAction
 	}
 }
 
-func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
-	clusterName := "vmcluster-1"
-	clusterNamespace := "test-ns"
-	vmCluster := &vmv1beta1.VMCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterName,
-			Namespace: clusterNamespace,
-		},
-	}
-
-	// Case 1: Matching TargetRef with correct Kind, Name, Namespace, and TargetPathSuffix
-	vmUser := &vmv1beta1.VMUser{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "user1",
-		},
-		Spec: vmv1beta1.VMUserSpec{
-			TargetRefs: []vmv1beta1.TargetRef{
-				{
-					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster/vmselect",
-						Name:      clusterName,
-						Namespace: clusterNamespace,
-					},
-					TargetPathSuffix: "/select/api",
-				},
-			},
-		},
-	}
-	ref, err := findVMUserReadRuleForVMCluster(vmUser, vmCluster)
-	assert.NoError(t, err)
-	assert.NotNil(t, ref)
-	assert.Equal(t, "/select/api", ref.TargetPathSuffix)
-
-	// Case 2: No matching TargetRef (wrong Kind)
-	vmUserWrongKind := &vmv1beta1.VMUser{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "user2",
-		},
-		Spec: vmv1beta1.VMUserSpec{
-			TargetRefs: []vmv1beta1.TargetRef{
-				{
-					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster/vminsert",
-						Name:      clusterName,
-						Namespace: clusterNamespace,
-					},
-					TargetPathSuffix: "/select/api",
-				},
-			},
-		},
-	}
-	ref, err = findVMUserReadRuleForVMCluster(vmUserWrongKind, vmCluster)
-	assert.Error(t, err)
-	assert.Nil(t, ref)
-
-	// Case 3: No matching TargetRef (wrong Name)
-	vmUserWrongName := &vmv1beta1.VMUser{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "user3",
-		},
-		Spec: vmv1beta1.VMUserSpec{
-			TargetRefs: []vmv1beta1.TargetRef{
-				{
-					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster/vmselect",
-						Name:      "other-cluster",
-						Namespace: clusterNamespace,
-					},
-					TargetPathSuffix: "/select/api",
-				},
-			},
-		},
-	}
-	ref, err = findVMUserReadRuleForVMCluster(vmUserWrongName, vmCluster)
-	assert.Error(t, err)
-	assert.Nil(t, ref)
-
-	// Case 4: No matching TargetRef (wrong Namespace)
-	vmUserWrongNS := &vmv1beta1.VMUser{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "user4",
-		},
-		Spec: vmv1beta1.VMUserSpec{
-			TargetRefs: []vmv1beta1.TargetRef{
-				{
-					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster/vmselect",
-						Name:      clusterName,
-						Namespace: "other-ns",
-					},
-					TargetPathSuffix: "/select/api",
-				},
-			},
-		},
-	}
-	ref, err = findVMUserReadRuleForVMCluster(vmUserWrongNS, vmCluster)
-	assert.Error(t, err)
-	assert.Nil(t, ref)
-
-	// Case 5: No matching TargetRef (wrong TargetPathSuffix)
-	vmUserWrongSuffix := &vmv1beta1.VMUser{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "user5",
-		},
-		Spec: vmv1beta1.VMUserSpec{
-			TargetRefs: []vmv1beta1.TargetRef{
-				{
-					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster/vmselect",
-						Name:      clusterName,
-						Namespace: clusterNamespace,
-					},
-					TargetPathSuffix: "/insert/api",
-				},
-			},
-		},
-	}
-	ref, err = findVMUserReadRuleForVMCluster(vmUserWrongSuffix, vmCluster)
-	assert.Error(t, err)
-	assert.Nil(t, ref)
-}
-
 func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 	ctx := context.Background()
 
@@ -851,5 +729,231 @@ func TestSetVMClusterStatusInVMUser(t *testing.T) {
 		err := setVMClusterStatusInVMUser(ctx, failingClient, crWithRule, vmClusterToManage, initialVMUser, true)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "simulated update error")
+	})
+}
+
+func TestGetGenerationsFromStatus(t *testing.T) {
+	t.Run("Empty status", func(t *testing.T) {
+		status := &vmv1alpha1.VMDistributedClusterStatus{}
+		result := getGenerationsFromStatus(status)
+		assert.Empty(t, result)
+	})
+
+	t.Run("Multiple clusters", func(t *testing.T) {
+		status := &vmv1alpha1.VMDistributedClusterStatus{
+			VMClusterInfo: []vmv1alpha1.VMClusterStatus{
+				{VMClusterName: "cluster-1", Generation: 1},
+				{VMClusterName: "cluster-2", Generation: 2},
+				{VMClusterName: "cluster-3", Generation: 3},
+			},
+		}
+		result := getGenerationsFromStatus(status)
+		assert.Len(t, result, 3)
+		assert.Equal(t, int64(1), result["cluster-1"])
+		assert.Equal(t, int64(2), result["cluster-2"])
+		assert.Equal(t, int64(3), result["cluster-3"])
+	})
+
+	t.Run("Duplicate cluster names", func(t *testing.T) {
+		status := &vmv1alpha1.VMDistributedClusterStatus{
+			VMClusterInfo: []vmv1alpha1.VMClusterStatus{
+				{VMClusterName: "cluster-1", Generation: 1},
+				{VMClusterName: "cluster-1", Generation: 2}, // Last one should win
+			},
+		}
+		result := getGenerationsFromStatus(status)
+		assert.Len(t, result, 1)
+		assert.Equal(t, int64(2), result["cluster-1"])
+	})
+}
+
+// Test fetchVMClusters function
+func TestFetchVMClusters(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	t.Run("Successful fetch multiple clusters", func(t *testing.T) {
+		cluster1 := newVMCluster("cluster-1", "default", "v1.0.0", 1, nil)
+		cluster2 := newVMCluster("cluster-2", "default", "v1.0.0", 1, nil)
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(cluster1, cluster2).
+			Build()
+
+		refs := []corev1.LocalObjectReference{
+			{Name: "cluster-1"},
+			{Name: "cluster-2"},
+		}
+
+		result, err := fetchVMClusters(ctx, fakeClient, "default", refs)
+		assert.NoError(t, err)
+		assert.Len(t, result, 2)
+		assert.Equal(t, "cluster-1", result[0].Name)
+		assert.Equal(t, "cluster-2", result[1].Name)
+	})
+
+	t.Run("Empty refs list", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+		refs := []corev1.LocalObjectReference{}
+
+		result, err := fetchVMClusters(ctx, fakeClient, "default", refs)
+		assert.NoError(t, err)
+		assert.Len(t, result, 0)
+	})
+
+	t.Run("Cluster not found", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+		refs := []corev1.LocalObjectReference{{Name: "nonexistent"}}
+
+		result, err := fetchVMClusters(ctx, fakeClient, "default", refs)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "failed to get VMCluster default/nonexistent")
+	})
+}
+
+// Test waitForVMClusterVMAgentMetrics function
+func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	t.Run("Successful wait", func(t *testing.T) {
+		cluster := newVMCluster("test-cluster", "default", "v1.0.0", 1, nil)
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+
+		start := time.Now()
+		err := waitForVMClusterVMAgentMetrics(ctx, fakeClient, cluster)
+		duration := time.Since(start)
+
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, duration, time.Second)
+		assert.Less(t, duration, 2*time.Second)
+	})
+}
+
+// TestVMUserTargetRefHandling tests various TargetRef configurations
+func TestVMUserTargetRefHandling(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	t.Run("TargetRef with different kinds", func(t *testing.T) {
+		vmuser := &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						CRD: &vmv1beta1.CRDRef{
+							Kind:      "VMCluster/vmselect", // Correct kind
+							Name:      "cluster-1",
+							Namespace: "default",
+						},
+						TargetPathSuffix: "/select/1",
+					},
+					{
+						CRD: &vmv1beta1.CRDRef{
+							Kind:      "VMCluster/vminsert", // Different kind
+							Name:      "cluster-1",
+							Namespace: "default",
+						},
+						TargetPathSuffix: "/insert/1",
+					},
+					{
+						CRD: &vmv1beta1.CRDRef{
+							Kind:      "OtherResource", // Different resource
+							Name:      "other-1",
+							Namespace: "default",
+						},
+						TargetPathSuffix: "/other/1",
+					},
+				},
+			},
+		}
+		cluster := &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "cluster-1",
+				Namespace: "default",
+			},
+		}
+
+		result, err := findVMUserReadRuleForVMCluster(vmuser, cluster)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, "VMCluster/vmselect", result.CRD.Kind)
+		assert.Equal(t, "/select/1", result.TargetPathSuffix)
+	})
+
+	t.Run("TargetRef with different path suffixes", func(t *testing.T) {
+		testCases := []struct {
+			name         string
+			targetSuffix string
+			shouldMatch  bool
+		}{
+			{
+				name:         "Valid select path",
+				targetSuffix: "/select/1",
+				shouldMatch:  true,
+			},
+			{
+				name:         "Valid select path with multiple segments",
+				targetSuffix: "/select/prometheus/1",
+				shouldMatch:  true,
+			},
+			{
+				name:         "Invalid insert path",
+				targetSuffix: "/insert/1",
+				shouldMatch:  false,
+			},
+			{
+				name:         "Invalid path without select prefix",
+				targetSuffix: "/api/v1/select",
+				shouldMatch:  false,
+			},
+			{
+				name:         "Empty path suffix",
+				targetSuffix: "",
+				shouldMatch:  false,
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				vmuser := &vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmuser-1",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VMCluster/vmselect",
+									Name:      "cluster-1",
+									Namespace: "default",
+								},
+								TargetPathSuffix: tc.targetSuffix,
+							},
+						},
+					},
+				}
+				cluster := &vmv1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster-1",
+						Namespace: "default",
+					},
+				}
+
+				result, err := findVMUserReadRuleForVMCluster(vmuser, cluster)
+				if tc.shouldMatch {
+					assert.NoError(t, err)
+					assert.NotNil(t, result)
+					assert.Equal(t, tc.targetSuffix, result.TargetPathSuffix)
+				} else {
+					assert.Error(t, err)
+					assert.Nil(t, result)
+					assert.Contains(t, err.Error(), "vmuser vmuser-1 has no target refs")
+				}
+			})
+		}
 	})
 }

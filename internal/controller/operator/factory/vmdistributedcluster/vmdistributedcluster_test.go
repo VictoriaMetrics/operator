@@ -153,9 +153,11 @@ func newVMCluster(name, namespace, version string, generation int64, status *vmv
 }
 
 func newVMDistributedCluster(name, namespace, clusterVersion, vmuserName string, vmclusterNames []string, vmClusterInfo []vmv1alpha1.VMClusterStatus) *vmv1alpha1.VMDistributedCluster {
-	vmClustersRefs := make([]corev1.LocalObjectReference, len(vmclusterNames))
+	vmClustersRefs := make([]vmv1alpha1.VMClusterAgentPair, len(vmclusterNames))
 	for i, name := range vmclusterNames {
-		vmClustersRefs[i] = corev1.LocalObjectReference{Name: name}
+		vmClustersRefs[i] = vmv1alpha1.VMClusterAgentPair{
+			LocalObjectReference: corev1.LocalObjectReference{Name: name},
+		}
 	}
 	return &vmv1alpha1.VMDistributedCluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -284,7 +286,11 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 
 	t.Run("VMCluster missing", func(t *testing.T) {
 		td := beforeEach()
-		td.cr.Spec.VMClusters = []corev1.LocalObjectReference{{Name: "missing-cluster"}}
+		td.cr.Spec.VMClusters = []vmv1alpha1.VMClusterAgentPair{
+			{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "missing-cluster"},
+			},
+		}
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
 		assert.Error(t, err, "CreateOrUpdate should error if VMCluster is missing")
 		assert.Len(t, td.trackingClient.Actions, 2, "Should perform two actions")
@@ -310,7 +316,13 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 
 	t.Run("VMClusters fetch error", func(t *testing.T) {
 		td := beforeEach()
-		td.cr.Spec.VMClusters = []corev1.LocalObjectReference{{Name: "vmcluster-1"}, {Name: "non-existent-cluster"}}
+		td.cr.Spec.VMClusters = []vmv1alpha1.VMClusterAgentPair{
+			{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "vmcluster-1"},
+			}, {
+				LocalObjectReference: corev1.LocalObjectReference{Name: "non-existent-cluster"},
+			},
+		}
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline)
 		assert.Error(t, err, "CreateOrUpdate should error if VMCluster fetch fails")
 		assert.Contains(t, err.Error(), "failed to get VMCluster default/vmcluster-1")
@@ -672,9 +684,9 @@ func TestFetchVMClusters(t *testing.T) {
 			WithObjects(cluster1, cluster2).
 			Build()
 
-		refs := []corev1.LocalObjectReference{
-			{Name: "cluster-1"},
-			{Name: "cluster-2"},
+		refs := []vmv1alpha1.VMClusterAgentPair{
+			{LocalObjectReference: corev1.LocalObjectReference{Name: "cluster-1"}},
+			{LocalObjectReference: corev1.LocalObjectReference{Name: "cluster-2"}},
 		}
 
 		result, err := fetchVMClusters(ctx, fakeClient, "default", refs)
@@ -686,7 +698,7 @@ func TestFetchVMClusters(t *testing.T) {
 
 	t.Run("Empty refs list", func(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-		refs := []corev1.LocalObjectReference{}
+		refs := []vmv1alpha1.VMClusterAgentPair{}
 
 		result, err := fetchVMClusters(ctx, fakeClient, "default", refs)
 		assert.NoError(t, err)
@@ -695,7 +707,9 @@ func TestFetchVMClusters(t *testing.T) {
 
 	t.Run("Cluster not found", func(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-		refs := []corev1.LocalObjectReference{{Name: "nonexistent"}}
+		refs := []vmv1alpha1.VMClusterAgentPair{
+			{LocalObjectReference: corev1.LocalObjectReference{Name: "nonexistent"}},
+		}
 
 		result, err := fetchVMClusters(ctx, fakeClient, "default", refs)
 		assert.Error(t, err)
@@ -878,7 +892,7 @@ func TestVMDistributedClusterDelete(t *testing.T) {
 			Name:      name,
 		},
 		Spec: vmv1alpha1.VMDistributedClusterSpec{
-			VMClusters: []corev1.LocalObjectReference{},
+			VMClusters: []vmv1alpha1.VMClusterAgentPair{},
 			VMUser:     corev1.LocalObjectReference{Name: "fake"},
 		},
 	}

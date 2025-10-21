@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	operatorv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
@@ -111,7 +110,7 @@ func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl
 // SetupWithManager sets up the controller with the Manager.
 func (r *VMDistributedClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&operatorv1alpha1.VMDistributedCluster{}).
+		For(&vmv1alpha1.VMDistributedCluster{}).
 		Named("operator-VMDistributedCluster").
 		Complete(r)
 }

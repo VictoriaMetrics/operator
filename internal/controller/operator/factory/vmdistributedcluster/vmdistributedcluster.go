@@ -12,7 +12,6 @@ import (
 	"time"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
-	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -173,7 +172,7 @@ func getGenerationsFromStatus(status *vmv1alpha1.VMDistributedClusterStatus) map
 	return generations
 }
 
-func findVMUserReadRuleForVMCluster(vmUserObj *vmv1beta1.VMUser, vmCluster *v1beta1.VMCluster) (*vmv1beta1.TargetRef, error) {
+func findVMUserReadRuleForVMCluster(vmUserObj *vmv1beta1.VMUser, vmCluster *vmv1beta1.VMCluster) (*vmv1beta1.TargetRef, error) {
 	// 1. Match spec.crd to vmcluster
 	var found *vmv1beta1.TargetRef
 	for _, ref := range vmUserObj.Spec.TargetRefs {

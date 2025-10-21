@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
-	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -259,14 +258,14 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
 			{Method: "Update", Object: newVMUser(td.vmuser.Name, td.vmuser.Namespace, []vmv1beta1.TargetRef{{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-2", Namespace: "default"}, TargetPathSuffix: "/select/1"}})},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
-			{Method: "Update", Object: newVMCluster(td.vmcluster1.Name, td.vmcluster1.Namespace, td.cr.Spec.ClusterVersion, td.vmcluster1.Generation, ptr.To(v1beta1.UpdateStatusOperational))},
+			{Method: "Update", Object: newVMCluster(td.vmcluster1.Name, td.vmcluster1.Namespace, td.cr.Spec.ClusterVersion, td.vmcluster1.Generation, ptr.To(vmv1beta1.UpdateStatusOperational))},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
 			{Method: "Update", Object: newVMUser(td.vmuser.Name, td.vmuser.Namespace, []vmv1beta1.TargetRef{{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-2", Namespace: "default"}, TargetPathSuffix: "/select/1"}, {CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}})},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
 			{Method: "Update", Object: newVMUser(td.vmuser.Name, td.vmuser.Namespace, []vmv1beta1.TargetRef{{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}})},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster2.Namespace}, Object: &vmv1beta1.VMCluster{}},
-			{Method: "Update", Object: newVMCluster(td.vmcluster2.Name, td.vmcluster2.Namespace, td.cr.Spec.ClusterVersion, td.vmcluster2.Generation, ptr.To(v1beta1.UpdateStatusOperational))},
+			{Method: "Update", Object: newVMCluster(td.vmcluster2.Name, td.vmcluster2.Namespace, td.cr.Spec.ClusterVersion, td.vmcluster2.Generation, ptr.To(vmv1beta1.UpdateStatusOperational))},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster2.Namespace}, Object: &vmv1beta1.VMCluster{}},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
 			{Method: "Update", Object: newVMUser(td.vmuser.Name, td.vmuser.Namespace, []vmv1beta1.TargetRef{{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}, {CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-2", Namespace: "default"}, TargetPathSuffix: "/select/1"}})},
@@ -401,7 +400,7 @@ func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
 			{Method: "Update", Object: newVMUser(td.vmuser.Name, td.vmuser.Namespace, []vmv1beta1.TargetRef{{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}})},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster2.Namespace}, Object: &vmv1beta1.VMCluster{}},
-			{Method: "Update", Object: newVMCluster(td.vmcluster2.Name, td.vmcluster2.Namespace, td.cr.Spec.ClusterVersion, td.vmcluster2.Generation, ptr.To(v1beta1.UpdateStatusOperational))},
+			{Method: "Update", Object: newVMCluster(td.vmcluster2.Name, td.vmcluster2.Namespace, td.cr.Spec.ClusterVersion, td.vmcluster2.Generation, ptr.To(vmv1beta1.UpdateStatusOperational))},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster2.Namespace}, Object: &vmv1beta1.VMCluster{}},
 			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
 			{Method: "Update", Object: newVMUser(td.vmuser.Name, td.vmuser.Namespace, []vmv1beta1.TargetRef{{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}, {CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-2", Namespace: "default"}, TargetPathSuffix: "/select/1"}})},

@@ -19,10 +19,10 @@ package operator
 import (
 	"context"
 
-	operatorv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -36,15 +36,15 @@ var _ = Describe("VMDistributedCluster Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
-		VMDistributedCluster := &operatorv1alpha1.VMDistributedCluster{}
+		VMDistributedCluster := &vmv1alpha1.VMDistributedCluster{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind VMDistributedCluster")
 			err := k8sClient.Get(ctx, typeNamespacedName, VMDistributedCluster)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &operatorv1alpha1.VMDistributedCluster{
+			if err != nil && k8serrors.IsNotFound(err) {
+				resource := &vmv1alpha1.VMDistributedCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -56,8 +56,7 @@ var _ = Describe("VMDistributedCluster Controller", func() {
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &operatorv1alpha1.VMDistributedCluster{}
+			resource := &vmv1alpha1.VMDistributedCluster{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -75,8 +74,6 @@ var _ = Describe("VMDistributedCluster Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
 		})
 	})
 })

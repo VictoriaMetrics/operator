@@ -198,5 +198,8 @@ rules:
   - vmanomalies
   - vmanomalies/finalizers
   - vmanomalies/status
+  - vmdistributedclusters
+  - vmdistributedclusters/finalizers
+  - vmdistributedclusters/status
   verbs:
   - '*'

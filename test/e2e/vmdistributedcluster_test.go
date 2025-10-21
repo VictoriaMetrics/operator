@@ -187,7 +187,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 			}, func(cr *vmv1alpha1.VMDistributedCluster) {
 				// Verify that the status contains expected generations
-				Expect(len(cr.Status.VMClusterInfo)).To(Equal(1))
+				Expect(cr.Status.VMClusterInfo).To(HaveLen(1))
 				Expect(cr.Status.VMClusterInfo[0].VMClusterName).To(Equal("vmcluster-1"))
 			}),
 			Entry("with multiple VMClusters", &vmv1alpha1.VMDistributedCluster{
@@ -238,7 +238,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}, func(cr *vmv1alpha1.VMDistributedCluster) {
-				Expect(len(cr.Status.VMClusterInfo)).To(Equal(2))
+				Expect(cr.Status.VMClusterInfo).To(HaveLen(2))
 				names := []string{
 					cr.Status.VMClusterInfo[0].VMClusterName,
 					cr.Status.VMClusterInfo[1].VMClusterName,
@@ -331,7 +331,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			// Verify VMDistributedCluster status reflects both clusters are upgraded/operational
 			var upgradedCluster vmv1alpha1.VMDistributedCluster
 			Expect(k8sClient.Get(ctx, namespacedName, &upgradedCluster)).To(Succeed())
-			Expect(len(upgradedCluster.Status.VMClusterInfo)).To(Equal(2))
+			Expect(upgradedCluster.Status.VMClusterInfo).To(HaveLen(2))
 			names := []string{
 				upgradedCluster.Status.VMClusterInfo[0].VMClusterName,
 				upgradedCluster.Status.VMClusterInfo[1].VMClusterName,
@@ -582,7 +582,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}, func(cr *vmv1alpha1.VMDistributedCluster) {
-				Expect(len(cr.Status.VMClusterInfo)).To(Equal(1))
+				Expect(cr.Status.VMClusterInfo).To(HaveLen(1))
 				Expect(cr.Status.VMClusterInfo[0].VMClusterName).To(Equal("vmcluster-1"))
 			}),
 			Entry("with multiple VMClusters and VMAgent pairs", &vmv1alpha1.VMDistributedCluster{
@@ -670,7 +670,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}, func(cr *vmv1alpha1.VMDistributedCluster) {
-				Expect(len(cr.Status.VMClusterInfo)).To(Equal(2))
+				Expect(cr.Status.VMClusterInfo).To(HaveLen(2))
 				names := []string{
 					cr.Status.VMClusterInfo[0].VMClusterName,
 					cr.Status.VMClusterInfo[1].VMClusterName,
@@ -746,7 +746,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}, func(cr *vmv1alpha1.VMDistributedCluster) {
-				Expect(len(cr.Status.VMClusterInfo)).To(Equal(2))
+				Expect(cr.Status.VMClusterInfo).To(HaveLen(2))
 				names := []string{
 					cr.Status.VMClusterInfo[0].VMClusterName,
 					cr.Status.VMClusterInfo[1].VMClusterName,
@@ -854,7 +854,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			// Verify both clusters are configured correctly
 			var updatedCluster vmv1alpha1.VMDistributedCluster
 			Expect(k8sClient.Get(ctx, namespacedName, &updatedCluster)).To(Succeed())
-			Expect(len(updatedCluster.Spec.VMClusters)).To(Equal(2))
+			Expect(updatedCluster.Spec.VMClusters).To(HaveLen(2))
 			Expect(updatedCluster.Spec.VMClusters[0].VMAgent.Name).To(Equal(vmAgent1.Name))
 			Expect(updatedCluster.Spec.VMClusters[1].VMAgent.Name).To(Equal(vmAgent2.Name))
 		})

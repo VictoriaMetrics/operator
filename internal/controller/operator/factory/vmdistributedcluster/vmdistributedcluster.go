@@ -11,13 +11,14 @@ import (
 	"strings"
 	"time"
 
-	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 const (

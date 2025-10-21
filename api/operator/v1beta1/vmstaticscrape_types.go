@@ -24,6 +24,9 @@ type VMStaticScrapeSpec struct {
 	// a single target can expose during all the scrapes on the time window of 24h.
 	// +optional
 	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
+	// ScrapeClass defined scrape class to apply
+	// +optional
+	ScrapeClassName *string `json:"scrapeClass,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

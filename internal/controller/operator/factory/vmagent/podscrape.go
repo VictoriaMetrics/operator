@@ -27,6 +27,13 @@ func generatePodScrapeConfig(
 		},
 	}
 
+	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, cr)
+	if scrapeClass != nil {
+		mergeEndPointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
+		mergeEndpointRelabelingsWithScrapeClass(&ep.EndpointRelabelings, scrapeClass)
+		mergeAttachMetadataWithScrapeClass(&ep.AttachMetadata, scrapeClass)
+	}
+
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
 	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
 		ep.AttachMetadata = sc.Spec.AttachMetadata

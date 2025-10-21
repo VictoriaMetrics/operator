@@ -32,6 +32,9 @@ type VMNodeScrapeSpec struct {
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:selector:"
 	// +optional
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
+	// ScrapeClass defined scrape class to apply
+	// +optional
+	ScrapeClassName *string `json:"scrapeClass,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

@@ -1281,21 +1281,25 @@ relabel_configs:
 							{
 								Name:    "default",
 								Default: ptr.To(true),
-								Relabelings: []*vmv1beta1.RelabelConfig{
-									{
-										Action:       "replace",
-										SourceLabels: []string{"__meta_kubernetes_pod_app_name"},
-										TargetLabel:  "app",
+								EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+									RelabelConfigs: []*vmv1beta1.RelabelConfig{
+										{
+											Action:       "replace",
+											SourceLabels: []string{"__meta_kubernetes_pod_app_name"},
+											TargetLabel:  "app",
+										},
 									},
 								},
 							},
 							{
 								Name: "not-default",
-								Relabelings: []*vmv1beta1.RelabelConfig{
-									{
-										Action:       "replace",
-										SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
-										TargetLabel:  "node",
+								EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+									MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+										{
+											Action:       "replace",
+											SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
+											TargetLabel:  "node",
+										},
 									},
 								},
 							},
@@ -1417,22 +1421,26 @@ relabel_configs:
 							{
 								Name:    "custom-class",
 								Default: ptr.To(false),
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CAFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CAFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+										Cert: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "cert",
 											},
-											Key: "cert",
 										},
 									},
 								},
-								Relabelings: []*vmv1beta1.RelabelConfig{
-									{
-										SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
-										TargetLabel:  "node",
-										Action:       "replace",
+								EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+									RelabelConfigs: []*vmv1beta1.RelabelConfig{
+										{
+											SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
+											TargetLabel:  "node",
+											Action:       "replace",
+										},
 									},
 								},
 							},
@@ -1643,18 +1651,20 @@ relabel_configs:
 							{
 								Name:    "secure-class",
 								Default: ptr.To(false),
-								Authorization: &vmv1beta1.Authorization{
-									Credentials: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "auth-secret",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									Authorization: &vmv1beta1.Authorization{
+										Credentials: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "auth-secret",
+											},
+											Key: "token",
 										},
-										Key: "token",
+										Type: "Bearer",
 									},
-									Type: "Bearer",
-								},
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CAFile:             "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
-									InsecureSkipVerify: false,
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CAFile:             "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+										InsecureSkipVerify: false,
+									},
 								},
 							},
 						},
@@ -1754,16 +1764,18 @@ authorization:
 							{
 								Name:    "metrics-class",
 								Default: ptr.To(true),
-								MetricRelabelings: []*vmv1beta1.RelabelConfig{
-									{
-										SourceLabels: []string{"__name__"},
-										Regex:        vmv1beta1.StringOrArray{"go_.*"},
-										Action:       "keep",
-									},
-									{
-										TargetLabel: "scrape_class",
-										Replacement: ptr.To("metrics-class"),
-										Action:      "replace",
+								EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+									MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+										{
+											SourceLabels: []string{"__name__"},
+											Regex:        vmv1beta1.StringOrArray{"go_.*"},
+											Action:       "keep",
+										},
+										{
+											TargetLabel: "scrape_class",
+											Replacement: ptr.To("metrics-class"),
+											Action:      "replace",
+										},
 									},
 								},
 							},
@@ -1876,11 +1888,13 @@ metric_relabel_configs:
 						ScrapeClasses: []vmv1beta1.ScrapeClass{
 							{
 								Name: "non-default-class",
-								Relabelings: []*vmv1beta1.RelabelConfig{
-									{
-										SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
-										TargetLabel:  "node",
-										Action:       "replace",
+								EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+									RelabelConfigs: []*vmv1beta1.RelabelConfig{
+										{
+											SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
+											TargetLabel:  "node",
+											Action:       "replace",
+										},
 									},
 								},
 							},
@@ -1971,6 +1985,148 @@ relabel_configs:
   - __meta_kubernetes_pod_container_name
   target_label: container
   action: replace
+`,
+		},
+		{
+			name: "oauth2 in scrapeClass and in endpoint",
+			args: args{
+
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-vmagent",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						ScrapeClasses: []vmv1beta1.ScrapeClass{
+							{
+								Name:    "default",
+								Default: ptr.To(true),
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									OAuth2: &vmv1beta1.OAuth2{
+										ProxyURL: "http://some",
+										Scopes:   []string{"1", "2"},
+									},
+								},
+							},
+							{
+								Name: "not-default",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									OAuth2: &vmv1beta1.OAuth2{
+										ProxyURL:         "http://some",
+										Scopes:           []string{"1", "2"},
+										ClientSecretFile: "/path/to/file",
+										EndpointParams:   map[string]string{"param": "value"},
+									},
+								},
+							},
+						},
+					},
+				},
+				sc: &vmv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMServiceScrapeSpec{
+						ScrapeClassName: ptr.To("not-default"),
+						Endpoints: []vmv1beta1.Endpoint{
+							{
+								Port: "8080",
+							},
+						},
+					},
+				},
+				ep: vmv1beta1.Endpoint{
+					AttachMetadata: vmv1beta1.AttachMetadata{
+						Node: ptr.To(true),
+					},
+					Port: "8080",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						OAuth2: &vmv1beta1.OAuth2{
+							ProxyURL: "http://expected",
+							ClientID: vmv1beta1.SecretOrConfigMap{
+								ConfigMap: &corev1.ConfigMapKeySelector{
+									Key:                  "some",
+									LocalObjectReference: corev1.LocalObjectReference{Name: "cm"},
+								},
+							},
+						},
+					},
+				},
+				i:               0,
+				apiserverConfig: nil,
+
+				se: vmv1beta1.VMAgentSecurityEnforcements{
+					OverrideHonorLabels:      false,
+					OverrideHonorTimestamps:  false,
+					IgnoreNamespaceSelectors: false,
+					EnforcedNamespaceLabel:   "",
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cm",
+						Namespace: "default",
+					},
+					Data: map[string]string{"some": "value"},
+				},
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+kubernetes_sd_configs:
+- role: endpoints
+  attach_metadata:
+    node: true
+  namespaces:
+    names:
+    - default
+honor_labels: false
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+oauth2:
+  client_id: value
+  client_secret_file: /path/to/file
+  scopes:
+  - "1"
+  - "2"
+  endpoint_params:
+    param: value
+  proxy_url: http://expected
 `,
 		},
 	}

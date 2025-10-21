@@ -47,6 +47,9 @@ type VMProbeSpec struct {
 
 	EndpointAuth         `json:",inline"`
 	EndpointScrapeParams `json:",inline"`
+	// ScrapeClass defined scrape class to apply
+	// +optional
+	ScrapeClassName *string `json:"scrapeClass,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

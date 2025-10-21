@@ -24,6 +24,7 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): preserve 3rd party `labels` on object during `reconcile`. Previously, operator allowed to keep only `managedMetadata.labels`. See this issue [#1533](https://github.com/VictoriaMetrics/operator/issues/1533). Thanks to the @lllamnyp
 * FEATURE: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): added `spec.vlselect.extraStorageNodes` to specify list of additional storage nodes, that are available for select only.
 * FEATURE: [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): added `spec.vtselect.extraStorageNodes` to specify list of additional storage nodes, that are available for select only.
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): add `scrapeClass` spec definition and `scrapeClassName` reference to the `VMServiceScrape`, `VMPodScrape`, `VMProbe`, `VMScrapeConfig`, `VMStaticScrape` and `VMNodeScrape`. See this issue [#1531](https://github.com/VictoriaMetrics/operator/issues/1531) for details. Thanks to the @endesapt.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix an issue where the return value from a couple of controllers was always `nil`. See [#1532](https://github.com/VictoriaMetrics/operator/pull/1532) for details.
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): emit warning if `vmcluster.spec.vmselect.persistentVolume` is set, previously it was emitted for `vmcluster.spec.vmselect.storage`.

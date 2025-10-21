@@ -1326,7 +1326,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1831,7 +1831,7 @@ Appears in: [VMServiceScrapeSpec](#vmservicescrapespec)
 
 EndpointAuth defines target endpoint authorization options for scrapping
 
-Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1849,7 +1849,7 @@ Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [T
 
 EndpointRelabelings defines service discovery and metrics relabeling configuration for endpoints
 
-Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -2251,7 +2251,7 @@ Appears in: [DiscoverySelector](#discoveryselector), [ProbeTargetIngress](#probe
 
 OAuth2 defines OAuth2 configuration
 
-Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -2667,12 +2667,16 @@ Appears in: [VMAgentSpec](#vmagentspec)
 | Field | Description |
 | --- | --- |
 | attachMetadata<a href="#scrapeclass-attachmetadata" id="scrapeclass-attachmetadata">#</a><br/>_[AttachMetadata](#attachmetadata)_ | _(Optional)_<br/>AttachMetadata defines additional metadata to the discovered targets.<br />When the scrape object defines its own configuration, it takes<br />precedence over the scrape class configuration. |
-| authorization<a href="#scrapeclass-authorization" id="scrapeclass-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>authorization section for the ScrapeClass.<br />It will only apply if the scrape resource doesn't specify any Authorization. |
+| authorization<a href="#scrapeclass-authorization" id="scrapeclass-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization with http header Authorization |
+| basicAuth<a href="#scrapeclass-basicauth" id="scrapeclass-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication |
+| bearerTokenFile<a href="#scrapeclass-bearertokenfile" id="scrapeclass-bearertokenfile">#</a><br/>_string_ | _(Optional)_<br/>File to read bearer token for scraping targets. |
+| bearerTokenSecret<a href="#scrapeclass-bearertokensecret" id="scrapeclass-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. |
 | default<a href="#scrapeclass-default" id="scrapeclass-default">#</a><br/>_boolean_ | _(Optional)_<br/>default defines that the scrape applies to all scrape objects that<br />don't configure an explicit scrape class name.<br /><br />Only one scrape class can be set as the default. |
-| metricRelabelings<a href="#scrapeclass-metricrelabelings" id="scrapeclass-metricrelabelings">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>MetricRelabelings defines the relabeling rules to apply to all samples before ingestion. |
+| metricRelabelConfigs<a href="#scrapeclass-metricrelabelconfigs" id="scrapeclass-metricrelabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>MetricRelabelConfigs to apply to samples after scrapping. |
 | name<a href="#scrapeclass-name" id="scrapeclass-name">#</a><br/>_string_ | _(Required)_<br/>name of the scrape class. |
-| relabelings<a href="#scrapeclass-relabelings" id="scrapeclass-relabelings">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>Relabelings defines the relabeling rules to apply to all scrape targets. |
-| tlsConfig<a href="#scrapeclass-tlsconfig" id="scrapeclass-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>tlsConfig defines the TLS settings to use for the scrape. When the<br />scrape objects define their own CA, certificate and/or key, they take<br />precedence over the corresponding scrape class fields.<br /><br />For now only the `caFile`, `certFile` and `keyFile` fields are supported. |
+| oauth2<a href="#scrapeclass-oauth2" id="scrapeclass-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| relabelConfigs<a href="#scrapeclass-relabelconfigs" id="scrapeclass-relabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>RelabelConfigs to apply to samples during service discovery. |
+| tlsConfig<a href="#scrapeclass-tlsconfig" id="scrapeclass-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
 
 
 
@@ -4204,6 +4208,7 @@ Appears in: [VMNodeScrape](#vmnodescrape)
 | relabelConfigs<a href="#vmnodescrapespec-relabelconfigs" id="vmnodescrapespec-relabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>RelabelConfigs to apply to samples during service discovery. |
 | sampleLimit<a href="#vmnodescrapespec-samplelimit" id="vmnodescrapespec-samplelimit">#</a><br/>_integer_ | _(Optional)_<br/>SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. |
 | scheme<a href="#vmnodescrapespec-scheme" id="vmnodescrapespec-scheme">#</a><br/>_string_ | _(Optional)_<br/>HTTP scheme to use for scraping. |
+| scrapeClass<a href="#vmnodescrapespec-scrapeclass" id="vmnodescrapespec-scrapeclass">#</a><br/>_string_ | _(Optional)_<br/>ScrapeClass defined scrape class to apply |
 | scrapeTimeout<a href="#vmnodescrapespec-scrapetimeout" id="vmnodescrapespec-scrapetimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout after which the scrape is ended |
 | scrape_interval<a href="#vmnodescrapespec-scrape_interval" id="vmnodescrapespec-scrape_interval">#</a><br/>_string_ | _(Optional)_<br/>ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used |
 | selector<a href="#vmnodescrapespec-selector" id="vmnodescrapespec-selector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>Selector to select kubernetes Nodes. |
@@ -4247,6 +4252,7 @@ Appears in: [VMPodScrape](#vmpodscrape)
 | podMetricsEndpoints<a href="#vmpodscrapespec-podmetricsendpoints" id="vmpodscrapespec-podmetricsendpoints">#</a><br/>_[PodMetricsEndpoint](#podmetricsendpoint) array_ | _(Required)_<br/>A list of endpoints allowed as part of this PodMonitor. |
 | podTargetLabels<a href="#vmpodscrapespec-podtargetlabels" id="vmpodscrapespec-podtargetlabels">#</a><br/>_string array_ | _(Optional)_<br/>PodTargetLabels transfers labels on the Kubernetes Pod onto the target. |
 | sampleLimit<a href="#vmpodscrapespec-samplelimit" id="vmpodscrapespec-samplelimit">#</a><br/>_integer_ | _(Optional)_<br/>SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. |
+| scrapeClass<a href="#vmpodscrapespec-scrapeclass" id="vmpodscrapespec-scrapeclass">#</a><br/>_string_ | _(Optional)_<br/>ScrapeClass defined scrape class to apply |
 | selector<a href="#vmpodscrapespec-selector" id="vmpodscrapespec-selector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>Selector to select Pod objects. |
 | seriesLimit<a href="#vmpodscrapespec-serieslimit" id="vmpodscrapespec-serieslimit">#</a><br/>_integer_ | _(Optional)_<br/>SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. |
 
@@ -4297,6 +4303,7 @@ Appears in: [VMProbe](#vmprobe)
 | proxyURL<a href="#vmprobespec-proxyurl" id="vmprobespec-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
 | sampleLimit<a href="#vmprobespec-samplelimit" id="vmprobespec-samplelimit">#</a><br/>_integer_ | _(Optional)_<br/>SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. |
 | scheme<a href="#vmprobespec-scheme" id="vmprobespec-scheme">#</a><br/>_string_ | _(Optional)_<br/>HTTP scheme to use for scraping. |
+| scrapeClass<a href="#vmprobespec-scrapeclass" id="vmprobespec-scrapeclass">#</a><br/>_string_ | _(Optional)_<br/>ScrapeClass defined scrape class to apply |
 | scrapeTimeout<a href="#vmprobespec-scrapetimeout" id="vmprobespec-scrapetimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout after which the scrape is ended |
 | scrape_interval<a href="#vmprobespec-scrape_interval" id="vmprobespec-scrape_interval">#</a><br/>_string_ | _(Optional)_<br/>ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used |
 | seriesLimit<a href="#vmprobespec-serieslimit" id="vmprobespec-serieslimit">#</a><br/>_integer_ | _(Optional)_<br/>SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. |
@@ -4460,6 +4467,7 @@ Appears in: [VMScrapeConfig](#vmscrapeconfig)
 | relabelConfigs<a href="#vmscrapeconfigspec-relabelconfigs" id="vmscrapeconfigspec-relabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>RelabelConfigs to apply to samples during service discovery. |
 | sampleLimit<a href="#vmscrapeconfigspec-samplelimit" id="vmscrapeconfigspec-samplelimit">#</a><br/>_integer_ | _(Optional)_<br/>SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. |
 | scheme<a href="#vmscrapeconfigspec-scheme" id="vmscrapeconfigspec-scheme">#</a><br/>_string_ | _(Optional)_<br/>HTTP scheme to use for scraping. |
+| scrapeClass<a href="#vmscrapeconfigspec-scrapeclass" id="vmscrapeconfigspec-scrapeclass">#</a><br/>_string_ | _(Optional)_<br/>ScrapeClass defined scrape class to apply |
 | scrapeTimeout<a href="#vmscrapeconfigspec-scrapetimeout" id="vmscrapeconfigspec-scrapetimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout after which the scrape is ended |
 | scrape_interval<a href="#vmscrapeconfigspec-scrape_interval" id="vmscrapeconfigspec-scrape_interval">#</a><br/>_string_ | _(Optional)_<br/>ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used |
 | seriesLimit<a href="#vmscrapeconfigspec-serieslimit" id="vmscrapeconfigspec-serieslimit">#</a><br/>_integer_ | _(Optional)_<br/>SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. |
@@ -4704,6 +4712,7 @@ Appears in: [VMStaticScrape](#vmstaticscrape)
 | --- | --- |
 | jobName<a href="#vmstaticscrapespec-jobname" id="vmstaticscrapespec-jobname">#</a><br/>_string_ | _(Required)_<br/>JobName name of job. |
 | sampleLimit<a href="#vmstaticscrapespec-samplelimit" id="vmstaticscrapespec-samplelimit">#</a><br/>_integer_ | _(Optional)_<br/>SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. |
+| scrapeClass<a href="#vmstaticscrapespec-scrapeclass" id="vmstaticscrapespec-scrapeclass">#</a><br/>_string_ | _(Optional)_<br/>ScrapeClass defined scrape class to apply |
 | seriesLimit<a href="#vmstaticscrapespec-serieslimit" id="vmstaticscrapespec-serieslimit">#</a><br/>_integer_ | _(Optional)_<br/>SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. |
 | targetEndpoints<a href="#vmstaticscrapespec-targetendpoints" id="vmstaticscrapespec-targetendpoints">#</a><br/>_[TargetEndpoint](#targetendpoint) array_ | _(Required)_<br/>A list of target endpoints to scrape metrics from. |
 

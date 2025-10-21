@@ -26,6 +26,12 @@ func generateStaticScrapeConfig(
 		},
 	}
 
+	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, cr)
+	if scrapeClass != nil {
+		mergeEndPointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
+		mergeEndpointRelabelingsWithScrapeClass(&ep.EndpointRelabelings, scrapeClass)
+	}
+
 	tgs := yaml.MapSlice{{Key: "targets", Value: ep.Targets}}
 	if ep.Labels != nil {
 		tgs = append(tgs, yaml.MapItem{Key: "labels", Value: ep.Labels})

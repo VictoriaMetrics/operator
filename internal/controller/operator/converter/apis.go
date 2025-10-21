@@ -397,6 +397,7 @@ func ConvertPodMonitor(podMon *promv1.PodMonitor, conf *config.BaseOperatorConf)
 				MatchNames: podMon.Spec.NamespaceSelector.MatchNames,
 			},
 			PodMetricsEndpoints: convertPodEndpoints(podMon.Spec.PodMetricsEndpoints),
+			ScrapeClassName:     podMon.Spec.ScrapeClassName,
 		},
 	}
 	if podMon.Spec.SampleLimit != nil {
@@ -481,6 +482,7 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 				OAuth2:            ConvertOAuth(probe.Spec.OAuth2),
 				Authorization:     ConvertAuthorization(probe.Spec.Authorization, nil),
 			},
+			ScrapeClassName: probe.Spec.ScrapeClassName,
 		},
 	}
 	if probe.Spec.ProberSpec.ProxyURL != nil {

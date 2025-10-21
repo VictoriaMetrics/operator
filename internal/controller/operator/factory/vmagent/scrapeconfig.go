@@ -26,6 +26,12 @@ func generateScrapeConfig(
 		},
 	}
 
+	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, cr)
+	if scrapeClass != nil {
+		mergeEndPointAuthWithScrapeClass(&sc.Spec.EndpointAuth, scrapeClass)
+		mergeEndpointRelabelingsWithScrapeClass(&sc.Spec.EndpointRelabelings, scrapeClass)
+	}
+
 	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, cr)
 
 	cfg = addCommonScrapeParamsTo(cfg, sc.Spec.EndpointScrapeParams, se)

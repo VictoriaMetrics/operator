@@ -20,12 +20,12 @@ func generateServiceScrapeConfig(
 	ac *build.AssetsCache,
 	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
-	scrapeClass := getScrapeClassOrDefault(sc.Spec.ScrapeClassName, cr)
-	ep.Authorization = mergeAuthorizationWithScrapeClass(ep.Authorization, scrapeClass)
-	ep.AttachMetadata = mergeAttachMetadataWithScrapeClass(ep.AttachMetadata, scrapeClass)
-	ep.RelabelConfigs = mergeRelabelConfigsWithScrapeClass(ep.RelabelConfigs, scrapeClass)
-	ep.MetricRelabelConfigs = mergeMetricRelabelConfigsWithScrapeClass(ep.MetricRelabelConfigs, scrapeClass)
-	ep.TLSConfig = mergeTLSConfigWithScrapeClass(ep.TLSConfig, scrapeClass)
+	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, cr)
+	if scrapeClass != nil {
+		mergeEndPointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
+		mergeEndpointRelabelingsWithScrapeClass(&ep.EndpointRelabelings, scrapeClass)
+		mergeAttachMetadataWithScrapeClass(&ep.AttachMetadata, scrapeClass)
+	}
 
 	cfg := yaml.MapSlice{
 		{

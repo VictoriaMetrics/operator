@@ -83,6 +83,9 @@ type VMScrapeConfigSpec struct {
 	EndpointScrapeParams  `json:",inline"`
 	EndpointRelabelings   `json:",inline"`
 	EndpointAuth          `json:",inline"`
+	// ScrapeClass defined scrape class to apply
+	// +optional
+	ScrapeClassName *string `json:"scrapeClass,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

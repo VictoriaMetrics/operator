@@ -26,6 +26,12 @@ func generateNodeScrapeConfig(
 		},
 	}
 
+	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, cr)
+	if scrapeClass != nil {
+		mergeEndPointAuthWithScrapeClass(&sc.Spec.EndpointAuth, scrapeClass)
+		mergeEndpointRelabelingsWithScrapeClass(&sc.Spec.EndpointRelabelings, scrapeClass)
+	}
+
 	setScrapeIntervalToWithLimit(ctx, &nodeSpec.EndpointScrapeParams, cr)
 
 	k8sSDOpts := generateK8SSDConfigOptions{

@@ -26,6 +26,11 @@ func generateProbeConfig(
 		},
 	}
 
+	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, cr)
+	if scrapeClass != nil {
+		mergeEndPointAuthWithScrapeClass(&sc.Spec.EndpointAuth, scrapeClass)
+	}
+
 	// add defaults
 	if sc.Spec.VMProberSpec.Path == "" {
 		sc.Spec.VMProberSpec.Path = "/probe"

@@ -1777,6 +1777,283 @@ scrape_configs: []
 scrape_configs: []
 `,
 		},
+
+		{
+			name: "with scrape classes",
+
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "scrape-classes",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{URL: "http://some"},
+					},
+					SelectAllByDefault: true,
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name:    "default",
+							Default: ptr.To(true),
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CA:         vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "CA", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-default"}}},
+									ServerName: "my-server",
+								},
+							},
+							AttachMetadata: &vmv1beta1.AttachMetadata{Node: ptr.To(true)},
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{},
+								RelabelConfigs:       []*vmv1beta1.RelabelConfig{},
+							},
+						},
+
+						{
+							Name: "with-oauth2",
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								OAuth2: &vmv1beta1.OAuth2{
+									TokenURL:         "http://some-other",
+									ClientSecretFile: "/path/to/file",
+									ClientID: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key:                  "CLIENT_ID",
+											LocalObjectReference: corev1.LocalObjectReference{Name: "oauth2-access"},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name: "with-basic-auth",
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								BasicAuth: &vmv1beta1.BasicAuth{
+									Username: corev1.SecretKeySelector{
+										Key:                  "username",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "basic-auth"},
+									},
+									PasswordFile: "/path/to/file",
+								},
+							},
+						},
+						{
+							Name: "with-oauth2-tls",
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								OAuth2: &vmv1beta1.OAuth2{
+									TokenURL:         "http://some",
+									ClientSecretFile: "/path/to/file",
+									ClientID: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key:                  "CLIENT_ID",
+											LocalObjectReference: corev1.LocalObjectReference{Name: "oauth2-access"},
+										},
+									},
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA:        vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "CA", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-default"}}},
+										Cert:      vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "CERT", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-auth"}}},
+										KeySecret: &corev1.SecretKeySelector{Key: "CERT", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-auth"}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "class",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{
+						ScrapeClassName:     ptr.To("default"),
+						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{{Port: ptr.To("some")}},
+					},
+				},
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "class-oauth2-tls",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{
+						ScrapeClassName:     ptr.To("with-oauth2-tls"),
+						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{{Port: ptr.To("some-other")}},
+					},
+				},
+				&vmv1beta1.VMNodeScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "class-oauth2",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMNodeScrapeSpec{
+						ScrapeClassName: ptr.To("with-basic-auth"),
+						Port:            "8035",
+					},
+				},
+				&vmv1beta1.VMStaticScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "class-oauth2",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMStaticScrapeSpec{
+						ScrapeClassName: ptr.To("with-oauth2"),
+						TargetEndpoints: []*vmv1beta1.TargetEndpoint{
+							{
+								Targets: []string{"host-1", "host-2"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMScrapeConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "with-own",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMScrapeConfigSpec{
+						ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{
+							{
+								Server: "some",
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CAFile:     "/some/other/path",
+									CertFile:   "/some/other/cert",
+									KeyFile:    "/some/other/key",
+									ServerName: "my-name",
+								},
+							},
+						},
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-default",
+						Namespace: "default",
+					},
+					Data: map[string]string{
+						"CA": "ca data",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-auth",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"CERT":       []byte(`cert data`),
+						"SECRET_KEY": []byte(`key data`),
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "oauth2-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"CLIENT_ID":     []byte(`data`),
+						"CLIENT_SECRET": []byte(`data`),
+					},
+				},
+			},
+			wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/scrape-classes
+scrape_configs:
+- job_name: podScrape/default/class/0
+  kubernetes_sd_configs:
+  - role: pod
+    attach_metadata:
+      node: true
+    namespaces:
+      names:
+      - default
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: some
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/class
+  - target_label: endpoint
+    replacement: some
+  tls_config:
+    ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+    server_name: my-server
+- job_name: podScrape/default/class-oauth2-tls/0
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: some-other
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/class-oauth2-tls
+  - target_label: endpoint
+    replacement: some-other
+  oauth2:
+    client_id: data
+    client_secret_file: /path/to/file
+    token_url: http://some
+    tls_config:
+      ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+      cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
+      key_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
+- job_name: staticScrape/default/class-oauth2/0
+  static_configs:
+  - targets:
+    - host-1
+    - host-2
+  honor_labels: false
+  relabel_configs: []
+  oauth2:
+    client_id: data
+    client_secret_file: /path/to/file
+    token_url: http://some-other
+- job_name: scrapeConfig/default/with-own
+  honor_labels: false
+  relabel_configs: []
+  tls_config:
+    ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+    server_name: my-server
+  consul_sd_configs:
+  - server: some
+    tls_config:
+      ca_file: /some/other/path
+      cert_file: /some/other/cert
+      key_file: /some/other/key
+      server_name: my-name
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1969,5 +2246,32 @@ scrape_configs: []
 			},
 		},
 	})
+
+	// missing scrapeClass
+	f(&vmv1beta1.VMServiceScrape{
+		ObjectMeta: commonMeta,
+		Spec: vmv1beta1.VMServiceScrapeSpec{
+			ScrapeClassName: ptr.To("non-exist"),
+			Endpoints: []vmv1beta1.Endpoint{
+				{
+					Port: "9090",
+				},
+			},
+		},
+	})
+
+	// missing scrapeClass
+	f(&vmv1beta1.VMPodScrape{
+		ObjectMeta: commonMeta,
+		Spec: vmv1beta1.VMPodScrapeSpec{
+			ScrapeClassName: ptr.To("non-exist"),
+			PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+				{
+					Port: ptr.To("9090"),
+				},
+			},
+		},
+	},
+	)
 
 }

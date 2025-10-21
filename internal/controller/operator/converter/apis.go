@@ -118,6 +118,7 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 				Any:        serviceMon.Spec.NamespaceSelector.Any,
 				MatchNames: serviceMon.Spec.NamespaceSelector.MatchNames,
 			},
+			ScrapeClassName: serviceMon.Spec.ScrapeClassName,
 		},
 	}
 	if serviceMon.Spec.SampleLimit != nil {

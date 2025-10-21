@@ -25,7 +25,7 @@ func createVMClustersAndUpdateTargetRefs(
 	clusters []vmv1beta1.VMCluster,
 	ns string,
 	vmUserName types.NamespacedName,
-) []vmv1beta1.TargetRef {
+) {
 	refs := make([]vmv1beta1.TargetRef, len(clusters))
 	for i, vmcluster := range clusters {
 		Expect(k8sClient.Create(ctx, &vmcluster)).To(Succeed())
@@ -47,7 +47,6 @@ func createVMClustersAndUpdateTargetRefs(
 	Expect(k8sClient.Get(ctx, vmUserName, &validVMUser)).To(Succeed())
 	validVMUser.Spec.TargetRefs = refs
 	Expect(k8sClient.Update(ctx, &validVMUser)).To(Succeed())
-	return refs
 }
 
 var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster"), func() {

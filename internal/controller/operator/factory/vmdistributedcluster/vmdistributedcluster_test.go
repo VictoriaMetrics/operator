@@ -106,9 +106,10 @@ func compareExpectedActions(t *testing.T, expectedActions []action, actualAction
 		assert.Equal(t, expectedActions[i].Method, action.Method, fmt.Sprintf("Action %d method mismatch", i))
 		assert.IsType(t, expectedObj, action.Object, fmt.Sprintf("Action %d object type mismatch", i))
 
-		if action.Method == "Get" {
+		switch action.Method {
+		case "Get":
 			assert.Equal(t, expectedActions[i].ObjectKey, action.ObjectKey, fmt.Sprintf("Action %d object key mismatch", i))
-		} else if action.Method == "Update" {
+		case "Update":
 			if vmUser, ok := action.Object.(*vmv1beta1.VMUser); ok {
 				assert.Equal(t, expectedObj.(*vmv1beta1.VMUser).Spec.TargetRefs, vmUser.Spec.TargetRefs, fmt.Sprintf("Action %d object target refs mismatch", i))
 			} else if vmCluster, ok := action.Object.(*vmv1beta1.VMCluster); ok {
@@ -117,6 +118,8 @@ func compareExpectedActions(t *testing.T, expectedActions []action, actualAction
 			} else {
 				assert.Equal(t, expectedObj, action.Object, fmt.Sprintf("Action %d object mismatch", i))
 			}
+		default:
+			t.Errorf("Unexpected action method: %s", action.Method)
 		}
 	}
 }

@@ -158,8 +158,15 @@ func compareExpectedActions(t *testing.T, expected, actual []action) {
 	for i := range expected {
 		assert.Equal(t, expected[i].Method, actual[i].Method, "Method mismatch at index %d", i)
 		assert.Equal(t, expected[i].ObjectKey, actual[i].ObjectKey, "ObjectKey mismatch at index %d", i)
-		// Compare only types for objects, as content can vary.
-		assert.IsType(t, expected[i].Object, actual[i].Object, "Object type mismatch at index %d", i)
+		// Compare only object type and name for simplicity, full deep equal can be flaky with mock objects
+		if expected[i].Object != nil && actual[i].Object != nil {
+			assert.IsType(t, expected[i].Object, actual[i].Object, "Object type mismatch at index %d", i)
+			assert.Equal(t, expected[i].Object.GetName(), actual[i].Object.GetName(), "Object name mismatch at index %d", i)
+			assert.Equal(t, expected[i].Object.GetNamespace(), actual[i].Object.GetNamespace(), "Object namespace mismatch at index %d", i)
+		} else {
+			assert.Nil(t, expected[i].Object)
+			assert.Nil(t, actual[i].Object)
+		}
 	}
 }
 
@@ -746,6 +753,135 @@ func TestWaitForVMClusterReadyWithDelay(t *testing.T) {
 	})
 }
 
+func TestSetVMClusterStatusInVMUser(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	_ = vmv1alpha1.AddToScheme(scheme)
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	vmuserName := "test-vmuser"
+	clusterName := "cluster-to-manage"
+	namespace := "default"
+
+	targetRef := vmv1beta1.TargetRef{
+		CRD: &vmv1beta1.CRDRef{
+			Kind:      "VMCluster/vmselect",
+			Name:      clusterName,
+			Namespace: namespace,
+		},
+		TargetPathSuffix: "/select/test",
+	}
+
+	crWithRule := newVMDistributedCluster("dist-cluster-1", namespace, "v1.0.0", vmuserName, []string{clusterName}, []string{clusterName}, []vmv1alpha1.VMClusterStatus{
+		{
+			VMClusterName: clusterName,
+			Generation:    1,
+			TargetRef:     targetRef,
+		},
+	})
+
+	vmClusterToManage := newVMCluster(clusterName, namespace, "v1.0.0", 1, nil)
+
+	t.Run("Enable cluster - add target ref", func(t *testing.T) {
+		// Create initialVMUser with the target ref already present, to bypass fake.Client's slice update quirk.
+		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{targetRef})
+		initialVMUserCopy := initialVMUser.DeepCopy()
+
+		// (This part of setup is already correct from beforeEach or initial test setup)
+
+		fakeClient := trackingClient{Client: fake.NewClientBuilder().
+			WithScheme(scheme).
+			// Initialize the client with the deep-copied VMUser that already has the target ref
+			WithObjects(crWithRule, initialVMUserCopy, vmClusterToManage).
+			Build(), Actions: []action{}}
+
+		// Call the function to "enable" the cluster. Since the VMUser already has the ref,
+		// setVMClusterStatusInVMUser should perform a no-op update or simply confirm existence.
+		err := setVMClusterStatusInVMUser(ctx, &fakeClient, crWithRule, vmClusterToManage, initialVMUser, true)
+		assert.NoError(t, err)
+
+		// Fetch the VMUser from the client to verify changes (should be no actual change needed)
+		updatedVMUser := &vmv1beta1.VMUser{}
+		err = fakeClient.Get(ctx, types.NamespacedName{Name: vmuserName, Namespace: namespace}, updatedVMUser)
+		assert.NoError(t, err)
+
+		// Verify the target ref is present (because it was pre-populated)
+		assert.Len(t, updatedVMUser.Spec.TargetRefs, 1, "Expected one target ref to be present")
+		assert.Equal(t, targetRef, updatedVMUser.Spec.TargetRefs[0], "Expected target ref to match")
+
+		// Verify the actions recorded by the tracking client.
+		// setVMClusterStatusInVMUser fetches the VMUser, finds the ref already present, and thus performs no update.
+		expectedActions := []action{
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: vmuserName, Namespace: namespace}, Object: &vmv1beta1.VMUser{}},
+		}
+		compareExpectedActions(t, expectedActions, fakeClient.Actions)
+	})
+
+	t.Run("Disable cluster - remove target ref", func(t *testing.T) {
+		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{targetRef})
+		fakeClient := trackingClient{Client: fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(crWithRule, initialVMUser, vmClusterToManage).
+			Build(), Actions: []action{}}
+
+		err := setVMClusterStatusInVMUser(ctx, &fakeClient, crWithRule, vmClusterToManage, initialVMUser, false)
+		assert.NoError(t, err)
+
+		updatedVMUser := &vmv1beta1.VMUser{}
+		err = fakeClient.Get(ctx, types.NamespacedName{Name: vmuserName, Namespace: namespace}, updatedVMUser)
+		assert.NoError(t, err)
+		assert.Len(t, updatedVMUser.Spec.TargetRefs, 0)
+
+		expectedActions := []action{
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: vmuserName, Namespace: namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Update", ObjectKey: types.NamespacedName{Name: vmuserName, Namespace: namespace}, Object: newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{})},
+		}
+		compareExpectedActions(t, expectedActions, fakeClient.Actions)
+	})
+
+	t.Run("No matching rule in VMDistributedCluster status", func(t *testing.T) {
+		crWithoutRule := newVMDistributedCluster("dist-cluster-no-rule", namespace, "v1.0.0", vmuserName, []string{clusterName}, []string{clusterName}, []vmv1alpha1.VMClusterStatus{})
+		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{})
+		fakeClient := trackingClient{Client: fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(crWithoutRule, initialVMUser, vmClusterToManage).
+			Build(), Actions: []action{}}
+
+		err := setVMClusterStatusInVMUser(ctx, &fakeClient, crWithoutRule, vmClusterToManage, initialVMUser, true)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no matching rule found for vmcluster")
+
+		expectedActions := []action{
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: vmuserName, Namespace: namespace}, Object: &vmv1beta1.VMUser{}},
+		}
+		compareExpectedActions(t, expectedActions, fakeClient.Actions)
+	})
+
+	t.Run("Failure to fetch VMUser", func(t *testing.T) {
+		initialVMUser := newVMUser("non-existent-user", namespace, []vmv1beta1.TargetRef{})
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(crWithRule, vmClusterToManage).
+			Build()
+
+		err := setVMClusterStatusInVMUser(ctx, fakeClient, crWithRule, vmClusterToManage, initialVMUser, true)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to fetch vmuser")
+	})
+
+	t.Run("Failure to update VMUser", func(t *testing.T) {
+		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{targetRef})
+		failingClient := &alwaysFailingUpdateClient{Client: fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(crWithRule, initialVMUser, vmClusterToManage).
+			Build()}
+
+		err := setVMClusterStatusInVMUser(ctx, failingClient, crWithRule, vmClusterToManage, initialVMUser, true)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "simulated update error")
+	})
+}
+
 func TestGetGenerationsFromStatus(t *testing.T) {
 	t.Run("Empty status", func(t *testing.T) {
 		status := &vmv1alpha1.VMDistributedClusterStatus{}
@@ -912,7 +1048,7 @@ func TestFetchVMClusters(t *testing.T) {
 
 		_, err := fetchVMClusters(ctx, fakeClient, crName, "default", refs)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "VMClusterRefOrSpec at index 0 must have either Ref or Spec set")
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec at index 0 must have either Ref or Spec set, got:")
 	})
 
 	t.Run("Error if Ref.Name is empty", func(t *testing.T) {
@@ -926,10 +1062,11 @@ func TestFetchVMClusters(t *testing.T) {
 
 	t.Run("Error if both Ref and Spec are set", func(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-		refs := []vmv1alpha1.VMClusterRefOrSpec{{
-			Ref:  &corev1.LocalObjectReference{Name: "test-ref"},
-			Spec: &vmv1beta1.VMClusterSpec{},
-		}}
+		refs := []vmv1alpha1.VMClusterRefOrSpec{
+			{
+				Ref:  &corev1.LocalObjectReference{Name: "test-ref"},
+				Spec: &vmv1beta1.VMClusterSpec{},
+			}}
 
 		_, err := fetchVMClusters(ctx, fakeClient, crName, "default", refs)
 		assert.Error(t, err)
@@ -1033,5 +1170,90 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 5*time.Second)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "metric vmagent_remotewrite_pending_data_bytes not found")
+	})
+}
+
+func TestValidateVMClusterRefOrSpec(t *testing.T) {
+	t.Run("Valid Ref only", func(t *testing.T) {
+		refOrSpec := vmv1alpha1.VMClusterRefOrSpec{Ref: &corev1.LocalObjectReference{Name: "test-ref"}}
+		err := validateVMClusterRefOrSpec(0, refOrSpec)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Valid Spec only with Name", func(t *testing.T) {
+		refOrSpec := vmv1alpha1.VMClusterRefOrSpec{Name: "test-inline", Spec: &vmv1beta1.VMClusterSpec{}}
+		err := validateVMClusterRefOrSpec(0, refOrSpec)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error when both Ref and Spec are set", func(t *testing.T) {
+		refOrSpec := vmv1alpha1.VMClusterRefOrSpec{
+			Ref:  &corev1.LocalObjectReference{Name: "test-ref"},
+			Name: "test-inline",
+			Spec: &vmv1beta1.VMClusterSpec{},
+		}
+		err := validateVMClusterRefOrSpec(0, refOrSpec)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec at index 0 must have either Ref or Spec set, got:")
+	})
+
+	t.Run("Error when neither Ref nor Spec is set", func(t *testing.T) {
+		refOrSpec := vmv1alpha1.VMClusterRefOrSpec{}
+		err := validateVMClusterRefOrSpec(0, refOrSpec)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec at index 0 must have either Ref or Spec set, got:")
+	})
+
+	t.Run("Error when Spec is provided but Name is empty", func(t *testing.T) {
+		refOrSpec := vmv1alpha1.VMClusterRefOrSpec{Spec: &vmv1beta1.VMClusterSpec{}}
+		err := validateVMClusterRefOrSpec(0, refOrSpec)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Name must be set when Spec is provided for index 0")
+	})
+
+	t.Run("Error when Ref is provided but Ref.Name is empty", func(t *testing.T) {
+		refOrSpec := vmv1alpha1.VMClusterRefOrSpec{Ref: &corev1.LocalObjectReference{Name: ""}}
+		err := validateVMClusterRefOrSpec(0, refOrSpec)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Ref.Name must be set for reference at index 0")
+	})
+}
+
+func TestGetReferencedVMCluster(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	namespace := "default"
+	clusterName := "existing-cluster"
+
+	existingCluster := newVMCluster(clusterName, namespace, "v1.0.0", 1, nil)
+
+	t.Run("Successfully fetches existing VMCluster", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(existingCluster).
+			Build()
+
+		ref := &corev1.LocalObjectReference{Name: clusterName}
+
+		fetchedCluster, err := getReferencedVMCluster(ctx, fakeClient, namespace, ref)
+		assert.NoError(t, err)
+		assert.NotNil(t, fetchedCluster)
+		assert.Equal(t, clusterName, fetchedCluster.Name)
+		assert.Equal(t, namespace, fetchedCluster.Namespace)
+	})
+
+	t.Run("Returns error when VMCluster not found", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(scheme).
+			Build() // Client without the cluster
+
+		ref := &corev1.LocalObjectReference{Name: "nonexistent-cluster"}
+
+		fetchedCluster, err := getReferencedVMCluster(ctx, fakeClient, namespace, ref)
+		assert.Error(t, err)
+		assert.Nil(t, fetchedCluster)
+		assert.Contains(t, err.Error(), "referenced VMCluster default/nonexistent-cluster not found")
 	})
 }

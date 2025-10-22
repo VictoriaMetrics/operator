@@ -25,11 +25,6 @@ const (
 	VMAgentBufferMetricName = "vmagent_remotewrite_pending_data_bytes"
 )
 
-type VMClusterInfo struct {
-	VMCluster *vmv1beta1.VMCluster
-	VMAgent   *vmv1beta1.VMAgent
-}
-
 // CreateOrUpdate - handles VM deployment reconciliation.
 func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, deadline, httpTimeout time.Duration) error {
 	// Store the previous CR for comparison
@@ -44,10 +39,16 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return nil
 	}
 
-	// Fetch global loadbalancing vmuser
-	vmUserObj, err := fetchVMUser(ctx, rclient, cr.Namespace, cr.Spec.VMUser)
+	// Fetch global vmagent
+	vmAgentObj, err := fetchVMAgent(ctx, rclient, cr.Namespace, cr.Spec.VMAgent)
 	if err != nil {
-		return fmt.Errorf("failed to fetch global loadbalancing vmuser: %w", err)
+		return fmt.Errorf("failed to fetch global vmagent: %w", err)
+	}
+
+	// Fetch all vmusers
+	vmUserObjs, err := fetchVMUsers(ctx, rclient, cr.Namespace, cr.Spec.VMUsers)
+	if err != nil {
+		return fmt.Errorf("failed to fetch vmusers: %w", err)
 	}
 
 	// Store current CR status
@@ -60,11 +61,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
 
-	// Ensure that all vmuser has a read rule for vmcluster and record vmcluster info
+	// Ensure that all vmusers have a read rule for vmcluster and record vmcluster info
 	cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
-	for i, vmClusterAgentPair := range vmClusters {
-		vmCluster := vmClusterAgentPair.VMCluster
-		ref, err := findVMUserReadRuleForVMCluster(vmUserObj, vmCluster)
+	for i, vmCluster := range vmClusters {
+		ref, err := findVMUserReadRuleForVMCluster(vmUserObjs, vmCluster)
 		if err != nil {
 			return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmCluster.Name, err)
 		}
@@ -89,19 +89,15 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 
 	// TODO[vrutkovs]: Mark all VMClusters as paused?
 	// This would prevent other reconciliation loops from changing them
-	for _, vmClusterAgentPair := range vmClusters {
-		vmClusterObj := vmClusterAgentPair.VMCluster
+	for _, vmClusterObj := range vmClusters {
 		// Check if VMCluster is already up-to-date
 		if vmClusterObj.Spec.ClusterVersion == cr.Spec.ClusterVersion {
 			continue
 		}
-		// Disable this VMCluster in vmuser
-		setVMClusterStatusInVMUser(ctx, rclient, cr, vmClusterObj, vmUserObj, false)
-		// Wait for VMCluster's vmagent metrics to show no queue
-		var vmAgent VMAgentWithStatus
-		if vmClusterAgentPair.VMAgent != nil {
-			vmAgent = &vmAgentAdapter{VMAgent: vmClusterAgentPair.VMAgent}
-		}
+		// Disable this VMCluster in vmusers
+		setVMClusterStatusInVMUsers(ctx, rclient, cr, vmClusterObj, vmUserObjs, false)
+		// Wait for VMAgent metrics to show no queue
+		vmAgent := &vmAgentAdapter{VMAgent: vmAgentObj}
 		waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, deadline)
 		// Change VMCluster version and wait for it to be ready
 		if err := changeVMClusterVersion(ctx, rclient, vmClusterObj, cr.Spec.ClusterVersion); err != nil {
@@ -111,56 +107,49 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, deadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
-		// Enable this VMCluster in vmuser
-		setVMClusterStatusInVMUser(ctx, rclient, cr, vmClusterObj, vmUserObj, true)
+		// Enable this VMCluster in vmusers
+		setVMClusterStatusInVMUsers(ctx, rclient, cr, vmClusterObj, vmUserObjs, true)
 	}
 	return nil
 }
 
-func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []vmv1alpha1.VMClusterAgentPair) (vmClusters []VMClusterInfo, err error) {
-	vmClusters = make([]VMClusterInfo, len(refs))
-	var vmClusterObj *vmv1beta1.VMCluster
-	for i, vmClusterAgentPair := range refs {
-		vmClusterObj = &vmv1beta1.VMCluster{}
-		namespacedName := types.NamespacedName{Name: vmClusterAgentPair.Name, Namespace: namespace}
+func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []vmv1alpha1.VMClusterRefOrSpec) ([]*vmv1beta1.VMCluster, error) {
+	vmClusters := make([]*vmv1beta1.VMCluster, len(refs))
+	for i, vmClusterObjOrRef := range refs {
+		vmClusterObj := &vmv1beta1.VMCluster{}
+		namespacedName := types.NamespacedName{Name: vmClusterObjOrRef.Name, Namespace: namespace}
 		if err := rclient.Get(ctx, namespacedName, vmClusterObj); err != nil {
-			return nil, fmt.Errorf("failed to get VMCluster %s/%s: %w", namespace, vmClusterAgentPair.Name, err)
+			return nil, fmt.Errorf("failed to get VMCluster %s/%s: %w", namespace, vmClusterObjOrRef.Name, err)
 		}
-		vmClusterInfo := VMClusterInfo{
-			VMCluster: vmClusterObj,
-		}
-		if vmClusterAgentPair.VMAgent != nil {
-			vmAgent, err := fetchVMAgent(ctx, rclient, namespace, *vmClusterAgentPair.VMAgent)
-			if err != nil {
-				return nil, fmt.Errorf("failed to fetch VMAgent %s/%s for VMCluster %s/%s: %w", vmClusterObj.Namespace, vmClusterObj.Name, vmClusterObj.Namespace, vmClusterObj.Name, err)
-			}
-			vmClusterInfo.VMAgent = vmAgent
-		}
-		vmClusters[i] = vmClusterInfo
+		vmClusters[i] = vmClusterObj
 	}
 	return vmClusters, nil
 }
 
-func fetchVMUser(ctx context.Context, rclient client.Client, namespace string, ref corev1.LocalObjectReference) (*vmv1beta1.VMUser, error) {
-	if ref.Name == "" {
-		return nil, errors.New("global loadbalancing vmuser is not specified")
+func fetchVMUsers(ctx context.Context, rclient client.Client, namespace string, refs []corev1.LocalObjectReference) ([]*vmv1beta1.VMUser, error) {
+	vmUsers := make([]*vmv1beta1.VMUser, len(refs))
+	for i, ref := range refs {
+		if ref.Name == "" {
+			return nil, errors.New("vmuser name is not specified")
+		}
+		vmUserObj := &vmv1beta1.VMUser{}
+		namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+		if err := rclient.Get(ctx, namespacedName, vmUserObj); err != nil {
+			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, ref.Name, err)
+		}
+		vmUsers[i] = vmUserObj
 	}
-	vmUserObj := &vmv1beta1.VMUser{}
-	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
-	if err := rclient.Get(ctx, namespacedName, vmUserObj); err != nil {
-		return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, ref.Name, err)
-	}
-	return vmUserObj, nil
+	return vmUsers, nil
 }
 
 func fetchVMAgent(ctx context.Context, rclient client.Client, namespace string, ref corev1.LocalObjectReference) (*vmv1beta1.VMAgent, error) {
 	if ref.Name == "" {
-		return nil, errors.New("vmagent name is not specified")
+		return nil, errors.New("global vmagent name is not specified")
 	}
 	vmAgentObj := &vmv1beta1.VMAgent{}
 	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
 	if err := rclient.Get(ctx, namespacedName, vmAgentObj); err != nil {
-		return nil, fmt.Errorf("failed to get VMAgent %s/%s: %w", namespace, ref.Name, err)
+		return nil, fmt.Errorf("failed to get global VMAgent %s/%s: %w", namespace, ref.Name, err)
 	}
 	return vmAgentObj, nil
 }
@@ -173,25 +162,28 @@ func getGenerationsFromStatus(status *vmv1alpha1.VMDistributedClusterStatus) map
 	return generations
 }
 
-func findVMUserReadRuleForVMCluster(vmUserObj *vmv1beta1.VMUser, vmCluster *vmv1beta1.VMCluster) (*vmv1beta1.TargetRef, error) {
-	// 1. Match spec.crd to vmcluster
-	var found *vmv1beta1.TargetRef
-	for _, ref := range vmUserObj.Spec.TargetRefs {
-		if ref.CRD == nil || ref.CRD.Kind != "VMCluster/vmselect" || ref.CRD.Name != vmCluster.Name || ref.CRD.Namespace != vmCluster.Namespace {
-			continue
+func findVMUserReadRuleForVMCluster(vmUserObjs []*vmv1beta1.VMUser, vmCluster *vmv1beta1.VMCluster) (*vmv1beta1.TargetRef, error) {
+	// Search through all vmusers for a matching rule
+	for _, vmUserObj := range vmUserObjs {
+		// 1. Match spec.crd to vmcluster
+		var found *vmv1beta1.TargetRef
+		for _, ref := range vmUserObj.Spec.TargetRefs {
+			if ref.CRD == nil || ref.CRD.Kind != "VMCluster/vmselect" || ref.CRD.Name != vmCluster.Name || ref.CRD.Namespace != vmCluster.Namespace {
+				continue
+			}
+			// Check that target_path_suffix
+			if strings.HasPrefix(ref.TargetPathSuffix, "/select/") {
+				found = &ref
+				break
+			}
 		}
-		// Check that target_path_suffix
-		if strings.HasPrefix(ref.TargetPathSuffix, "/select/") {
-			found = &ref
-			break
+		if found != nil {
+			return found, nil
 		}
-	}
-	if found != nil {
-		return found, nil
 	}
 	// 2. Match static url to vmselect service
 	// TODO[vrutkovs]: match static url to vmselect service
-	return nil, fmt.Errorf("vmuser %s has no target refs", vmUserObj.Name)
+	return nil, fmt.Errorf("no vmuser has target refs for vmcluster %s", vmCluster.Name)
 
 	// Extract vmselect service name and ensure it exists
 	// svcName := vmCluster.GetVMSelectName()
@@ -208,7 +200,7 @@ func findVMUserReadRuleForVMCluster(vmUserObj *vmv1beta1.VMUser, vmCluster *vmv1
 	// return fmt.Errorf("no matching read rule found for vmcluster %s", vmCluster.Name)
 }
 
-func setVMClusterStatusInVMUser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, vmCluster *vmv1beta1.VMCluster, vmUserObj *vmv1beta1.VMUser, status bool) error {
+func setVMClusterStatusInVMUsers(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, vmCluster *vmv1beta1.VMCluster, vmUserObjs []*vmv1beta1.VMUser, status bool) error {
 	// Find matching rule in the vmdistributed status
 	var found *vmv1beta1.TargetRef
 	for _, vmClusterInfo := range cr.Status.VMClusterInfo {
@@ -221,29 +213,56 @@ func setVMClusterStatusInVMUser(ctx context.Context, rclient client.Client, cr *
 		return fmt.Errorf("no matching rule found for vmcluster %s in status of vmdistributedcluster %s", vmCluster.Name, cr.Name)
 	}
 
-	// Fetch fresh copy of vmuser
-	if err := rclient.Get(ctx, types.NamespacedName{Name: vmUserObj.Name, Namespace: vmUserObj.Namespace}, vmUserObj); err != nil {
-		return fmt.Errorf("failed to fetch vmuser %s: %w", vmUserObj.Name, err)
-	}
-
-	// Prepare new target references list
-	newTargetRefs := make([]vmv1beta1.TargetRef, 0)
-	if status {
-		newTargetRefs = append(newTargetRefs, vmUserObj.Spec.TargetRefs...)
-		newTargetRefs = append(newTargetRefs, *found)
-	} else {
-		for _, targetRef := range vmUserObj.Spec.TargetRefs {
-			if reflect.DeepEqual(targetRef.CRD, found.CRD) && targetRef.TargetPathSuffix == found.TargetPathSuffix {
-				continue
-			}
-			newTargetRefs = append(newTargetRefs, targetRef)
+	// Update all vmusers with the matching rule
+	for _, vmUserObj := range vmUserObjs {
+		// Fetch fresh copy of vmuser
+		freshVMUserObj := &vmv1beta1.VMUser{}
+		if err := rclient.Get(ctx, types.NamespacedName{Name: vmUserObj.Name, Namespace: vmUserObj.Namespace}, freshVMUserObj); err != nil {
+			return fmt.Errorf("failed to fetch vmuser %s: %w", vmUserObj.Name, err)
 		}
-	}
 
-	// Update vmuser with new target references
-	vmUserObj.Spec.TargetRefs = newTargetRefs
-	if err := rclient.Update(ctx, vmUserObj); err != nil {
-		return fmt.Errorf("failed to update vmuser %s: %w", vmUserObj.Name, err)
+		// Check if this vmuser has the matching rule
+		hasMatchingRule := false
+		for _, ref := range freshVMUserObj.Spec.TargetRefs {
+			if reflect.DeepEqual(ref.CRD, found.CRD) && ref.TargetPathSuffix == found.TargetPathSuffix {
+				hasMatchingRule = true
+				break
+			}
+		}
+
+		if !hasMatchingRule {
+			continue // Skip vmusers that don't have this rule
+		}
+
+		// Prepare new target references list
+		newTargetRefs := make([]vmv1beta1.TargetRef, 0)
+		if status {
+			newTargetRefs = append(newTargetRefs, freshVMUserObj.Spec.TargetRefs...)
+			// Only add if not already present
+			alreadyExists := false
+			for _, ref := range newTargetRefs {
+				if reflect.DeepEqual(ref.CRD, found.CRD) && ref.TargetPathSuffix == found.TargetPathSuffix {
+					alreadyExists = true
+					break
+				}
+			}
+			if !alreadyExists {
+				newTargetRefs = append(newTargetRefs, *found)
+			}
+		} else {
+			for _, targetRef := range freshVMUserObj.Spec.TargetRefs {
+				if reflect.DeepEqual(targetRef.CRD, found.CRD) && targetRef.TargetPathSuffix == found.TargetPathSuffix {
+					continue
+				}
+				newTargetRefs = append(newTargetRefs, targetRef)
+			}
+		}
+
+		// Update vmuser with new target references
+		freshVMUserObj.Spec.TargetRefs = newTargetRefs
+		if err := rclient.Update(ctx, freshVMUserObj); err != nil {
+			return fmt.Errorf("failed to update vmuser %s: %w", freshVMUserObj.Name, err)
+		}
 	}
 
 	return nil

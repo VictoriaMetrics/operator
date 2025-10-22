@@ -32,10 +32,12 @@ import (
 type VMDistributedClusterSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
-	// VMUser points to the VMUser object controlling traffic distribution between multiple VMClusters
-	VMUser corev1.LocalObjectReference `json:"vmAuth,omitempty"`
-	// VMClusters is a list of VMCluster instances to update, optionally paired with VMAgent
-	VMClusters []VMClusterAgentPair `json:"vmClusters,omitempty"`
+	// VMAgent points to the VMAgent object for collecting metrics from multiple VMClusters
+	VMAgent corev1.LocalObjectReference `json:"vmAgent,omitempty"`
+	// VMUsers is a list of VMUser objects controlling traffic distribution between multiple VMClusters
+	VMUsers []corev1.LocalObjectReference `json:"vmUsers,omitempty"`
+	// VMClusters is a list of VMCluster instances to update
+	VMClusters []VMClusterRefOrSpec `json:"vmClusters,omitempty"`
 	// ClusterVersion defines expected image tag for all components.
 	ClusterVersion string `json:"clusterVersion,omitempty"`
 	// Paused If set to true all actions on the underlying managed objects are not
@@ -45,11 +47,9 @@ type VMDistributedClusterSpec struct {
 }
 
 // +k8s:openapi-gen=true
-// VMClusterAgentPair is a pair of VMCluster and its generation
-type VMClusterAgentPair struct {
+// VMClusterRefOrSpec is a pair of VMCluster and its generation
+type VMClusterRefOrSpec struct {
 	corev1.LocalObjectReference `json:",inline"`
-	// +optional
-	VMAgent *corev1.LocalObjectReference `json:"vmAgent,omitempty"`
 }
 
 // +k8s:openapi-gen=true

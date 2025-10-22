@@ -6,8 +6,12 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: vmdistributedcluster-sample
 spec:
-  vmAuth:
-    name: vmauth-sample
+  vmAgent:
+    name: vmagent-sample
+  vmUsers:
+    - name: vmuser-us-east-1
+    - name: vmuser-us-west-2
+    - name: vmuser-eu-west-1
   vmClusters:
     - name: vmcluster-us-east-1
     - name: vmcluster-us-west-2

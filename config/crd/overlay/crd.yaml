@@ -31854,9 +31854,9 @@ spec:
                   Paused If set to true all actions on the underlying managed objects are not
                   going to be performed, except for delete actions.
                 type: boolean
-              vmAuth:
-                description: VMUser points to the VMUser object controlling traffic
-                  distribution between multiple VMClusters
+              vmAgent:
+                description: VMAgent points to the VMAgent object for collecting metrics
+                  from multiple VMClusters
                 properties:
                   name:
                     default: ""
@@ -31870,10 +31870,9 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               vmClusters:
-                description: VMClusters is a list of VMCluster instances to update,
-                  optionally paired with VMAgent
+                description: VMClusters is a list of VMCluster instances to update
                 items:
-                  description: VMClusterAgentPair is a pair of VMCluster and its generation
+                  description: VMClusterRefOrSpec is a pair of VMCluster and its generation
                   properties:
                     name:
                       default: ""
@@ -31884,22 +31883,26 @@ spec:
                         almost certainly wrong.
                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                       type: string
-                    vmAgent:
+                  type: object
+                  x-kubernetes-map-type: atomic
+                type: array
+              vmUsers:
+                description: VMUsers is a list of VMUser objects controlling traffic
+                  distribution between multiple VMClusters
+                items:
+                  description: |-
+                    LocalObjectReference contains enough information to let you locate the
+                    referenced object inside the same namespace.
+                  properties:
+                    name:
+                      default: ""
                       description: |-
-                        LocalObjectReference contains enough information to let you locate the
-                        referenced object inside the same namespace.
-                      properties:
-                        name:
-                          default: ""
-                          description: |-
-                            Name of the referent.
-                            This field is effectively required, but due to backwards compatibility is
-                            allowed to be empty. Instances of this type with an empty value here are
-                            almost certainly wrong.
-                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          type: string
-                      type: object
-                      x-kubernetes-map-type: atomic
+                        Name of the referent.
+                        This field is effectively required, but due to backwards compatibility is
+                        allowed to be empty. Instances of this type with an empty value here are
+                        almost certainly wrong.
+                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      type: string
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array

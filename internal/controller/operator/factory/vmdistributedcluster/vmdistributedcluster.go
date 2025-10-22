@@ -126,70 +126,92 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	return nil
 }
 
+// validateVMClusterRefOrSpec checks for mutual exclusivity and required fields for VMClusterRefOrSpec.
+func validateVMClusterRefOrSpec(i int, refOrSpec vmv1alpha1.VMClusterRefOrSpec) error {
+	if refOrSpec.Spec != nil && refOrSpec.Ref != nil {
+		return fmt.Errorf("VMClusterRefOrSpec at index %d must have either Ref or Spec set, got: %+v", i, refOrSpec)
+	}
+	if refOrSpec.Spec == nil && refOrSpec.Ref == nil {
+		return fmt.Errorf("VMClusterRefOrSpec at index %d must have either Ref or Spec set, got: %+v", i, refOrSpec)
+	}
+	if refOrSpec.Spec != nil && refOrSpec.Name == "" {
+		return fmt.Errorf("VMClusterRefOrSpec.Name must be set when Spec is provided for index %d", i)
+	}
+	if refOrSpec.Ref != nil && refOrSpec.Ref.Name == "" {
+		return fmt.Errorf("VMClusterRefOrSpec.Ref.Name must be set for reference at index %d", i)
+	}
+	return nil
+}
+
+// getReferencedVMCluster fetches an existing VMCluster based on its reference.
+func getReferencedVMCluster(ctx context.Context, rclient client.Client, namespace string, ref *corev1.LocalObjectReference) (*vmv1beta1.VMCluster, error) {
+	vmClusterObj := &vmv1beta1.VMCluster{}
+	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+	if err := rclient.Get(ctx, namespacedName, vmClusterObj); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, fmt.Errorf("referenced VMCluster %s/%s not found: %w", namespace, ref.Name, err)
+		}
+		return nil, fmt.Errorf("failed to get referenced VMCluster %s/%s: %w", namespace, ref.Name, err)
+	}
+	return vmClusterObj, nil
+}
+
+// reconcileInlineVMCluster manages the creation or update logic for inline VMCluster specs.
+func reconcileInlineVMCluster(ctx context.Context, rclient client.Client, crName, namespace string, index int, refOrSpec vmv1alpha1.VMClusterRefOrSpec) (*vmv1beta1.VMCluster, error) {
+	generatedName := fmt.Sprintf("%s-%s", crName, refOrSpec.Name)
+	namespacedName := types.NamespacedName{Name: generatedName, Namespace: namespace}
+
+	vmClusterObj := &vmv1beta1.VMCluster{}
+	err := rclient.Get(ctx, namespacedName, vmClusterObj)
+
+	if err != nil && !k8serrors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get VMCluster %s/%s for inline spec: %w", namespace, generatedName, err)
+	}
+
+	if err != nil && k8serrors.IsNotFound(err) {
+		// VMCluster not found, so create it
+		vmClusterObj.ObjectMeta = metav1.ObjectMeta{
+			Name:      generatedName,
+			Namespace: namespace,
+		}
+		vmClusterObj.Spec = *refOrSpec.Spec
+		if createErr := rclient.Create(ctx, vmClusterObj); createErr != nil {
+			return nil, fmt.Errorf("failed to create VMCluster from inline spec at index %d: %w", index, createErr)
+		}
+	} else {
+		// VMCluster exists, so update it if spec differs
+		if !reflect.DeepEqual(vmClusterObj.Spec, *refOrSpec.Spec) {
+			vmClusterObj.Spec = *refOrSpec.Spec
+			if updateErr := rclient.Update(ctx, vmClusterObj); updateErr != nil {
+				return nil, fmt.Errorf("failed to update VMCluster %s/%s from inline spec: %w", namespace, generatedName, updateErr)
+			}
+		}
+	}
+	return vmClusterObj, nil
+}
+
 func fetchVMClusters(ctx context.Context, rclient client.Client, crName, namespace string, refs []vmv1alpha1.VMClusterRefOrSpec) ([]*vmv1beta1.VMCluster, error) {
 	vmClusters := make([]*vmv1beta1.VMCluster, len(refs))
 	for i, vmClusterObjOrRef := range refs {
-		// First, check for mutual exclusivity of Ref and Spec
-		if vmClusterObjOrRef.Spec != nil && vmClusterObjOrRef.Ref != nil {
-			return nil, fmt.Errorf("VMClusterRefOrSpec at index %d must have either Ref or Spec set, got: %+v", i, vmClusterObjOrRef)
-		}
-		if vmClusterObjOrRef.Spec == nil && vmClusterObjOrRef.Ref == nil {
-			return nil, fmt.Errorf("VMClusterRefOrSpec at index %d must have either Ref or Spec set, got: %+v", i, vmClusterObjOrRef)
+		if err := validateVMClusterRefOrSpec(i, vmClusterObjOrRef); err != nil {
+			return nil, err
 		}
 
-		vmClusterObj := &vmv1beta1.VMCluster{}
-		var namespacedName types.NamespacedName
+		var currentVMCluster *vmv1beta1.VMCluster
+		var err error
 
 		if vmClusterObjOrRef.Ref != nil {
-			// Case 1: Reference to an existing VMCluster
-			if vmClusterObjOrRef.Ref.Name == "" {
-				return nil, fmt.Errorf("VMClusterRefOrSpec.Ref.Name must be set for reference at index %d", i)
+			currentVMCluster, err = getReferencedVMCluster(ctx, rclient, namespace, vmClusterObjOrRef.Ref)
+			if err != nil {
+				return nil, err
 			}
-			namespacedName = types.NamespacedName{Name: vmClusterObjOrRef.Ref.Name, Namespace: namespace}
-			if err := rclient.Get(ctx, namespacedName, vmClusterObj); err != nil {
-				if k8serrors.IsNotFound(err) {
-					return nil, fmt.Errorf("referenced VMCluster %s/%s not found: %w", namespace, vmClusterObjOrRef.Ref.Name, err)
-				}
-				return nil, fmt.Errorf("failed to get referenced VMCluster %s/%s: %w", namespace, vmClusterObjOrRef.Ref.Name, err)
-			}
-		} else { // vmClusterObjOrRef.Spec != nil must be true here due to earlier validation
-			// Case 2: Inline VMCluster spec - create or update
-			if vmClusterObjOrRef.Name == "" {
-				return nil, fmt.Errorf("VMClusterRefOrSpec.Name must be set when Spec is provided for index %d", i)
-			}
-			generatedName := fmt.Sprintf("%s-%s", crName, vmClusterObjOrRef.Name)
-			namespacedName = types.NamespacedName{Name: generatedName, Namespace: namespace}
-
-			// Attempt to get the VMCluster first
-			existingVMCluster := &vmv1beta1.VMCluster{}
-			err := rclient.Get(ctx, namespacedName, existingVMCluster)
-
-			if err != nil && !k8serrors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to get VMCluster %s/%s for inline spec: %w", namespace, generatedName, err)
-			}
-
-			if err != nil && k8serrors.IsNotFound(err) {
-				// VMCluster not found, so create it
-				vmClusterObj.ObjectMeta = metav1.ObjectMeta{
-					Name:      generatedName,
-					Namespace: namespace,
-				}
-				vmClusterObj.Spec = *vmClusterObjOrRef.Spec
-				if createErr := rclient.Create(ctx, vmClusterObj); createErr != nil {
-					return nil, fmt.Errorf("failed to create VMCluster from inline spec at index %d: %w", i, createErr)
-				}
-			} else {
-				// VMCluster exists, so update it if spec differs
-				vmClusterObj = existingVMCluster.DeepCopy()
-				if !reflect.DeepEqual(vmClusterObj.Spec, *vmClusterObjOrRef.Spec) {
-					vmClusterObj.Spec = *vmClusterObjOrRef.Spec
-					if updateErr := rclient.Update(ctx, vmClusterObj); updateErr != nil {
-						return nil, fmt.Errorf("failed to update VMCluster %s/%s from inline spec: %w", namespace, generatedName, updateErr)
-					}
-				}
+		} else { // vmClusterObjOrRef.Spec != nil
+			currentVMCluster, err = reconcileInlineVMCluster(ctx, rclient, crName, namespace, i, vmClusterObjOrRef)
+			if err != nil {
+				return nil, err
 			}
 		}
-		vmClusters[i] = vmClusterObj
+		vmClusters[i] = currentVMCluster
 	}
 	return vmClusters, nil
 }

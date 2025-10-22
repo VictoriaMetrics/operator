@@ -67,7 +67,7 @@ spec:
   interval: 2s 
 ```
 
-After adding target to `VMAgent` configuration it starts probing itself throw blackbox exporter.
+After adding target to `VMAgent` configuration it starts probing itself through blackbox exporter.
 
 ### Ingress targets
 

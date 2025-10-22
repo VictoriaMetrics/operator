@@ -3,6 +3,7 @@ package finalize
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -213,5 +214,28 @@ func FreeIfNeeded(ctx context.Context, rclient client.Client, object client.Obje
 	if err := RemoveFinalizer(ctx, rclient, object); err != nil {
 		return fmt.Errorf("cannot remove finalizer from object=%s/%s, kind=%q: %w", object.GetNamespace(), object.GetName(), object.GetObjectKind().GroupVersionKind(), err)
 	}
-	return fmt.Errorf("deletionTimestamp is not zero=%q for object=%s/%s kind=%s, recreating it at next reconcile loop. Warning never delete object manually", object.GetDeletionTimestamp(), object.GetNamespace(), object.GetName(), object.GetObjectKind().GroupVersionKind())
+	return &ErrWaitReady{
+		Err: fmt.Errorf("deletionTimestamp is not zero=%q for object=%s/%s kind=%s, recreating it at next reconcile loop. Warning never delete object manually", object.GetDeletionTimestamp(), object.GetNamespace(), object.GetName(), object.GetObjectKind().GroupVersionKind()),
+	}
+}
+
+// IsErrorWaitTimeout determines if the err is an error which indicates that timeout for app
+// transition into Ready state reached and should be continued at the next reconcile loop
+func IsErrorWaitTimeout(err error) bool {
+	var et *ErrWaitReady
+	return errors.As(err, &et)
+}
+
+type ErrWaitReady struct {
+	Err error
+}
+
+// Error implements errors.Error interface
+func (err *ErrWaitReady) Error() string {
+	return fmt.Sprintf(": %q", err.Err)
+}
+
+// Unwrap implements error.Unwrap interface
+func (err *ErrWaitReady) Unwrap() error {
+	return err.Err
 }

@@ -25,6 +25,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -396,7 +397,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 			return
 		}
 		desiredStatus := vmv1beta1.UpdateStatusFailed
-		if reconcile.IsErrorWaitTimeout(err) {
+		if finalize.IsErrorWaitTimeout(err) {
 			desiredStatus = vmv1beta1.UpdateStatusExpanding
 			err = nil
 		}

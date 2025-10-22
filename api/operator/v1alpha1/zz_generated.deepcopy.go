@@ -140,8 +140,8 @@ func (in *VMDistributedClusterSpec) DeepCopyInto(out *VMDistributedClusterSpec) 
 		*out = make([]v1.LocalObjectReference, len(*in))
 		copy(*out, *in)
 	}
-	if in.VMClusters != nil {
-		in, out := &in.VMClusters, &out.VMClusters
+	if in.Zones != nil {
+		in, out := &in.Zones, &out.Zones
 		*out = make([]VMClusterRefOrSpec, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

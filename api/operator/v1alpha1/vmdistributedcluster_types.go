@@ -36,8 +36,8 @@ type VMDistributedClusterSpec struct {
 	VMAgent corev1.LocalObjectReference `json:"vmAgent,omitempty"`
 	// VMUsers is a list of VMUser objects controlling traffic distribution between multiple VMClusters
 	VMUsers []corev1.LocalObjectReference `json:"vmUsers,omitempty"`
-	// VMClusters is a list of VMCluster instances to update
-	VMClusters []VMClusterRefOrSpec `json:"vmClusters,omitempty"`
+	// Zones is a list of VMCluster instances to update. Each VMCluster in the list represents a "zone" within the distributed cluster.
+	Zones []VMClusterRefOrSpec `json:"zones,omitempty"`
 	// ClusterVersion defines expected image tag for all components.
 	ClusterVersion string `json:"clusterVersion,omitempty"`
 	// Paused If set to true all actions on the underlying managed objects are not
@@ -50,6 +50,10 @@ type VMDistributedClusterSpec struct {
 // VMClusterRefOrSpec is either a reference to existing VMCluster or a specification of a new VMCluster.
 // +kubebuilder:validation:Xor=Ref,Spec
 type VMClusterRefOrSpec struct {
+	// Name specifies the static name to be used for the VMCluster when Spec is provided.
+	// If Ref is used, this field is ignored.
+	// +optional
+	Name string `json:"name,omitempty"`
 	// Ref points to the VMCluster object.
 	// +optional
 	Ref *corev1.LocalObjectReference `json:"ref,omitempty"`

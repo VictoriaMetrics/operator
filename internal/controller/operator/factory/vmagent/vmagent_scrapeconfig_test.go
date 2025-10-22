@@ -2054,6 +2054,115 @@ scrape_configs:
       server_name: my-name
 `,
 		},
+
+		{
+			name: "oauth2 with partial fields set",
+			cr: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "with-oauth2",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAgentSpec{SelectAllByDefault: true},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "with-oauth2-simple",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMPodScrapeSpec{
+						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+							{
+								Port: ptr.To("8085"),
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									OAuth2: &vmv1beta1.OAuth2{
+										TokenURL: "http://some-url",
+									},
+								},
+							},
+							{
+								Port: ptr.To("8085"),
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									OAuth2: &vmv1beta1.OAuth2{
+										TokenURL:         "http://some-other",
+										ClientSecretFile: "/path/to/file",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/with-oauth2
+scrape_configs:
+- job_name: podScrape/default/with-oauth2-simple/0
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: "8085"
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/with-oauth2-simple
+  - target_label: endpoint
+    replacement: "8085"
+  oauth2:
+    token_url: http://some-url
+- job_name: podScrape/default/with-oauth2-simple/1
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: "8085"
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/with-oauth2-simple
+  - target_label: endpoint
+    replacement: "8085"
+  oauth2:
+    client_secret_file: /path/to/file
+    token_url: http://some-other
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -28,6 +28,7 @@ aliases:
 * FEATURE: [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): added `spec.vtselect.extraStorageNodes` to specify list of additional storage nodes, that are available for select only.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): add `scrapeClass` spec definition and `scrapeClassName` reference to the `VMServiceScrape`, `VMPodScrape`, `VMProbe`, `VMScrapeConfig`, `VMStaticScrape` and `VMNodeScrape`. See this issue [#1531](https://github.com/VictoriaMetrics/operator/issues/1531) for details. Thanks to the @endesapt.
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly generate `oauth2` configuration with missing `clientID`. Previously, it could break whole config generation. See this PR []() for details.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix an issue where the return value from a couple of controllers was always `nil`. See [#1532](https://github.com/VictoriaMetrics/operator/pull/1532) for details.
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): emit warning if `vmcluster.spec.vmselect.persistentVolume` is set, previously it was emitted for `vmcluster.spec.vmselect.storage`.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): Prevent endless Service reconcile loop by correctly track changes to Service.spec.LoadBalancerClass. See this issue [#1550](https://github.com/VictoriaMetrics/operator/issues/1550) for details.

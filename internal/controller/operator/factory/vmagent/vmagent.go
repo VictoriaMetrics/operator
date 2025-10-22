@@ -1137,11 +1137,13 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 					}
 					oauth2ClientSecretFile.Add(oaSecretKeyFile, i)
 				}
-				secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rw.OAuth2.ClientID)
-				if err != nil {
-					return nil, err
+				if len(rw.OAuth2.ClientID.PrefixedName()) > 0 {
+					secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rw.OAuth2.ClientID)
+					if err != nil {
+						return nil, err
+					}
+					oauth2ClientID.Add(secret, i)
 				}
-				oauth2ClientID.Add(secret, i)
 			}
 			if rw.AWS != nil {
 				awsEC2Endpoint.Add(rw.AWS.EC2Endpoint, i)

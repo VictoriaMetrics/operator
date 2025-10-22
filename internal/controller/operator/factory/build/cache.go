@@ -361,11 +361,14 @@ func (ac *AssetsCache) fetchOAuth2Creds(ns string, cfg *vmv1beta1.OAuth2) (*oaut
 		}
 		creds.ClientSecret = s
 	}
-	s, err := ac.LoadKeyFromSecretOrConfigMap(ns, &cfg.ClientID)
-	if err != nil {
-		return nil, fmt.Errorf("cannot load oauth2 secret, err: %w", err)
+
+	if len(cfg.ClientID.PrefixedName()) > 0 {
+		s, err := ac.LoadKeyFromSecretOrConfigMap(ns, &cfg.ClientID)
+		if err != nil {
+			return nil, fmt.Errorf("cannot load oauth2 secret, err: %w", err)
+		}
+		creds.ClientID = s
 	}
-	creds.ClientID = s
 	return creds, nil
 }
 
@@ -460,6 +463,8 @@ func (ac *AssetsCache) LoadSecret(ns, name string) (*corev1.Secret, error) {
 
 // LoadPathFromSecretOrConfigMap fetches content of the configmap by given selector and namespace
 // returns path to the configmap content file mounted on pod volume
+//
+// Caller must check SecretOrConfigMap PrefixedName to be non-empty
 func (ac *AssetsCache) LoadPathFromSecretOrConfigMap(kind ResourceKind, ns string, soc *vmv1beta1.SecretOrConfigMap) (string, error) {
 	secret, err := ac.LoadKeyFromSecretOrConfigMap(ns, soc)
 	if err != nil {
@@ -472,20 +477,18 @@ func (ac *AssetsCache) LoadPathFromSecretOrConfigMap(kind ResourceKind, ns strin
 // LoadKeyFromSecretOrConfigMap fetches content of secret or configmap by given selector and namespace
 // returns plain text value
 func (ac *AssetsCache) LoadKeyFromSecretOrConfigMap(ns string, soc *vmv1beta1.SecretOrConfigMap) (string, error) {
-	var value string
 	if soc.Secret != nil {
 		return ac.LoadKeyFromSecret(ns, soc.Secret)
 	}
 	if soc.ConfigMap != nil {
 		return ac.LoadKeyFromConfigMap(ns, soc.ConfigMap)
 	}
-	if len(value) == 0 {
-		return "", fmt.Errorf("cannot find secret or configmap in ns=%q", ns)
-	}
-	return value, nil
+	panic("BUG: both Secret and ConfigMap cannot be empty, caller must perform PrefixedName check")
 }
 
 // LoadKeyFromConfigMap fetches content of configmap by given selector and namespace
+//
+// Caller must check SecretOrConfigMap PrefixedName to be non-empty
 func (ac *AssetsCache) LoadKeyFromConfigMap(ns string, cs *corev1.ConfigMapKeySelector) (string, error) {
 	if cs == nil {
 		return "", fmt.Errorf("BUG, configmap key selector must be non nil in ns=%q", ns)

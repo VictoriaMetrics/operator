@@ -422,11 +422,13 @@ func buildAuthArgs(args []string, namespace, flagPrefix string, cfg vmv1beta1.HT
 		if len(cfg.OAuth2.ClientSecretFile) > 0 {
 			args = append(args, fmt.Sprintf("-%s.oauth2.clientSecretFile=%s", flagPrefix, cfg.OAuth2.ClientSecretFile))
 		}
-		secret, err := ac.LoadKeyFromSecretOrConfigMap(namespace, &cfg.OAuth2.ClientID)
-		if err != nil {
-			return nil, err
+		if len(cfg.OAuth2.ClientID.PrefixedName()) > 0 {
+			secret, err := ac.LoadKeyFromSecretOrConfigMap(namespace, &cfg.OAuth2.ClientID)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, fmt.Sprintf("-%s.oauth2.clientID=%s", flagPrefix, secret))
 		}
-		args = append(args, fmt.Sprintf("-%s.oauth2.clientID=%s", flagPrefix, secret))
 		args = append(args, fmt.Sprintf("-%s.oauth2.tokenUrl=%s", flagPrefix, cfg.OAuth2.TokenURL))
 		args = append(args, fmt.Sprintf("-%s.oauth2.scopes=%s", flagPrefix, strings.Join(cfg.OAuth2.Scopes, ",")))
 	}
@@ -632,11 +634,13 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 			if len(nt.OAuth2.TokenURL) > 0 {
 				oauth2TokenURL.Add(nt.OAuth2.TokenURL, i)
 			}
-			secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &nt.OAuth2.ClientID)
-			if err != nil {
-				return nil, err
+			if len(nt.OAuth2.ClientID.PrefixedName()) > 0 {
+				secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &nt.OAuth2.ClientID)
+				if err != nil {
+					return nil, err
+				}
+				oauth2ClientID.Add(secret, i)
 			}
-			oauth2ClientID.Add(secret, i)
 		}
 	}
 	if !url.IsSet() {

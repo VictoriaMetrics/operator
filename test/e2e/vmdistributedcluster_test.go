@@ -24,7 +24,7 @@ func createVMClustersAndUpdateTargetRefs(
 	k8sClient client.Client,
 	clusters []vmv1beta1.VMCluster,
 	ns string,
-	vmUserName types.NamespacedName,
+	vmUserNames []types.NamespacedName,
 ) {
 	refs := make([]vmv1beta1.TargetRef, len(clusters))
 	for i, vmcluster := range clusters {
@@ -43,10 +43,13 @@ func createVMClustersAndUpdateTargetRefs(
 		}
 	}
 
-	var validVMUser vmv1beta1.VMUser
-	Expect(k8sClient.Get(ctx, vmUserName, &validVMUser)).To(Succeed())
-	validVMUser.Spec.TargetRefs = refs
-	Expect(k8sClient.Update(ctx, &validVMUser)).To(Succeed())
+	// Update all VMUsers with the target refs
+	for _, vmUserName := range vmUserNames {
+		var validVMUser vmv1beta1.VMUser
+		Expect(k8sClient.Get(ctx, vmUserName, &validVMUser)).To(Succeed())
+		validVMUser.Spec.TargetRefs = refs
+		Expect(k8sClient.Update(ctx, &validVMUser)).To(Succeed())
+	}
 }
 
 var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster"), func() {
@@ -56,32 +59,41 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	namespacedName := types.NamespacedName{
 		Namespace: namespace,
 	}
-	validVMUserName := types.NamespacedName{Name: "valid-vm-user", Namespace: namespace}
+	validVMUserNames := []types.NamespacedName{
+		{Name: "valid-vm-user-1", Namespace: namespace},
+		{Name: "valid-vm-user-2", Namespace: namespace},
+	}
 	invalidVMUserName := types.NamespacedName{Name: "invalid-vm-user", Namespace: namespace}
+	validVMAgentName := types.NamespacedName{Name: "valid-vm-agent", Namespace: namespace}
 
 	beforeEach := func() {
 		ctx = context.Background()
 
 		var validVMUser vmv1beta1.VMUser
 		var invalidVMUser vmv1beta1.VMUser
+		var validVMAgent vmv1beta1.VMAgent
 
-		err := k8sClient.Get(ctx, validVMUserName, &validVMUser)
-		if k8serrors.IsNotFound(err) {
-			validVMUser = vmv1beta1.VMUser{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-vm-user",
-					Namespace: namespace,
-				},
-				Spec: vmv1beta1.VMUserSpec{
-					TargetRefs: []vmv1beta1.TargetRef{},
-				},
+		// Create valid VMUsers
+		for _, validVMUserName := range validVMUserNames {
+			err := k8sClient.Get(ctx, validVMUserName, &validVMUser)
+			if k8serrors.IsNotFound(err) {
+				validVMUser = vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      validVMUserName.Name,
+						Namespace: namespace,
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						TargetRefs: []vmv1beta1.TargetRef{},
+					},
+				}
+				Expect(k8sClient.Create(ctx, &validVMUser)).To(Succeed(), "must create managed vm-user before test")
+			} else {
+				Expect(err).ToNot(HaveOccurred())
 			}
-			Expect(k8sClient.Create(ctx, &validVMUser)).To(Succeed(), "must create managed vm-user before test")
-		} else {
-			Expect(err).ToNot(HaveOccurred())
 		}
 
-		err = k8sClient.Get(ctx, invalidVMUserName, &invalidVMUser)
+		// Create invalid VMUser
+		err := k8sClient.Get(ctx, invalidVMUserName, &invalidVMUser)
 		if k8serrors.IsNotFound(err) {
 			invalidVMUser = vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
@@ -93,6 +105,23 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 			}
 			Expect(k8sClient.Create(ctx, &invalidVMUser)).To(Succeed(), "must create unmanaged vm-user before test")
+		} else {
+			Expect(err).ToNot(HaveOccurred())
+		}
+
+		// Create valid VMAgent
+		err = k8sClient.Get(ctx, validVMAgentName, &validVMAgent)
+		if k8serrors.IsNotFound(err) {
+			validVMAgent = vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      validVMAgentName.Name,
+					Namespace: namespace,
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					// Basic VMAgent configuration
+				},
+			}
+			Expect(k8sClient.Create(ctx, &validVMAgent)).To(Succeed(), "must create managed vm-agent before test")
 		} else {
 			Expect(err).ToNot(HaveOccurred())
 		}
@@ -117,7 +146,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		}, eventualDeletionTimeout, 1).WithContext(ctx).Should(Succeed())
 
 		var vmUser vmv1beta1.VMUser
-		for _, vmuserName := range []types.NamespacedName{validVMUserName, validVMUserName} {
+		for _, vmuserName := range validVMUserNames {
 			err := k8sClient.Get(ctx, vmuserName, &vmUser)
 			if k8serrors.IsNotFound(err) {
 				continue
@@ -125,9 +154,21 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Expect(err).To(Succeed(), "must get vm-user after test")
 			Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmUser)).To(Succeed(), "must delete vm-user after test")
 			Eventually(func() error {
-				return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMUser{})
+				return k8sClient.Get(ctx, vmuserName, &vmv1beta1.VMUser{})
 			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		}
+
+		// Clean up VMAgent
+		var vmAgent vmv1beta1.VMAgent
+		err := k8sClient.Get(ctx, validVMAgentName, &vmAgent)
+		if k8serrors.IsNotFound(err) {
+			return
+		}
+		Expect(err).To(Succeed(), "must get vm-agent after test")
+		Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmAgent)).To(Succeed(), "must delete vm-agent after test")
+		Eventually(func() error {
+			return k8sClient.Get(ctx, validVMAgentName, &vmv1beta1.VMAgent{})
+		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 	}
 
 	Context("create", func() {
@@ -143,7 +184,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				afterEach()
 			})
 
-			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserName)
+			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
 			namespacedName.Name = cr.Name
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
@@ -162,12 +203,16 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "single-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+						{Name: validVMUserNames[1].Name},
+					},
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{LocalObjectReference: corev1.LocalObjectReference{
 							Name: "vmcluster-1",
 						}},
 					},
-					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -185,6 +230,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}, func(cr *vmv1alpha1.VMDistributedCluster) {
+				Expect(cr.Spec.VMAgent.Name).To(Equal(validVMAgentName.Name))
+				Expect(cr.Spec.VMUsers).To(HaveLen(2))
+				Expect(cr.Spec.VMUsers[0].Name).To(Equal(validVMUserNames[0].Name))
+				Expect(cr.Spec.VMUsers[1].Name).To(Equal(validVMUserNames[1].Name))
 				// Verify that the status contains expected generations
 				Expect(cr.Status.VMClusterInfo).To(HaveLen(1))
 				Expect(cr.Status.VMClusterInfo[0].VMClusterName).To(Equal("vmcluster-1"))
@@ -195,7 +244,12 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "multi-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+						{Name: validVMUserNames[1].Name},
+					},
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{LocalObjectReference: corev1.LocalObjectReference{
 							Name: "vmcluster-1",
 						}},
@@ -205,7 +259,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							},
 						},
 					},
-					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -237,6 +290,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}, func(cr *vmv1alpha1.VMDistributedCluster) {
+				Expect(cr.Spec.VMAgent.Name).To(Equal(validVMAgentName.Name))
+				Expect(cr.Spec.VMUsers).To(HaveLen(2))
+				Expect(cr.Spec.VMUsers[0].Name).To(Equal(validVMUserNames[0].Name))
+				Expect(cr.Spec.VMUsers[1].Name).To(Equal(validVMUserNames[1].Name))
 				Expect(cr.Status.VMClusterInfo).To(HaveLen(2))
 				names := []string{
 					cr.Status.VMClusterInfo[0].VMClusterName,
@@ -287,7 +344,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				}
 			})
 
-			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserName)
+			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
 			namespacedName.Name = "distributed-upgrade"
 			cr := &vmv1alpha1.VMDistributedCluster{
@@ -296,7 +353,12 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+						{Name: validVMUserNames[1].Name},
+					},
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{LocalObjectReference: corev1.LocalObjectReference{
 							Name: vmCluster1.Name,
 						}},
@@ -304,7 +366,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							Name: vmCluster2.Name,
 						}},
 					},
-					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
@@ -367,28 +428,32 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				return suite.ExpectObjectStatus(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName, vmv1beta1.UpdateStatusFailed)
 			}, eventualDeletionTimeout).Should(Succeed())
 		},
-			Entry("with no VMUser set", &vmv1alpha1.VMDistributedCluster{
+			Entry("with no VMAgent set", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "no-vmuser-set",
+					Name:      "no-vmagent-set",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{},
-					VMUser:     corev1.LocalObjectReference{Name: "missing-vmuser"},
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{},
+					VMAgent:    corev1.LocalObjectReference{Name: "missing-vmagent"},
 				},
 			}, []vmv1beta1.VMCluster{}),
-			Entry("with invalid VMUser", &vmv1alpha1.VMDistributedCluster{
+			Entry("with invalid VMAgent", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "invalid-vmuser",
+					Name:      "invalid-vmagent",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					VMAgent: corev1.LocalObjectReference{Name: "missing-vmagent"},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+						{Name: validVMUserNames[1].Name},
+					},
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{LocalObjectReference: corev1.LocalObjectReference{
 							Name: "vmcluster-1",
 						}},
 					},
-					VMUser: corev1.LocalObjectReference{Name: invalidVMUserName.Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -406,18 +471,46 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}),
+			Entry("with no VMUsers set", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "no-vmusers-set",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent:    corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers:    []corev1.LocalObjectReference{},
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{},
+				},
+			}, []vmv1beta1.VMCluster{}),
+			Entry("with invalid VMUser", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "invalid-vmuser",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: "missing-vmuser"},
+					},
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{},
+				},
+			}, []vmv1beta1.VMCluster{}),
 			Entry("with invalid VMCluster", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "missing-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+						{Name: validVMUserNames[1].Name},
+					},
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{LocalObjectReference: corev1.LocalObjectReference{
-							Name: "vmcluster-missing",
+							Name: "missing-cluster",
 						}},
 					},
-					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
 			}, []vmv1beta1.VMCluster{}),
 		)
@@ -438,7 +531,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		DeferCleanup(func() {
 			Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmCluster)).To(Succeed())
 		})
-		createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserName)
+		createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
 		namespacedName.Name = "vmcluster"
 		cr := &vmv1alpha1.VMDistributedCluster{
@@ -447,12 +540,16 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				Name:      namespacedName.Name,
 			},
 			Spec: vmv1alpha1.VMDistributedClusterSpec{
-				VMClusters: []vmv1alpha1.VMClusterAgentPair{
+				VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+				VMUsers: []corev1.LocalObjectReference{
+					{Name: validVMUserNames[0].Name},
+					{Name: validVMUserNames[1].Name},
+				},
+				VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 					{LocalObjectReference: corev1.LocalObjectReference{
 						Name: vmCluster.Name,
 					}},
 				},
-				VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 			},
 		}
 		Expect(k8sClient.Create(ctx, cr)).To(Succeed())
@@ -511,7 +608,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				afterEach()
 			})
 
-			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserName)
+			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
 			// Create VMAgents
 			for _, vmagent := range vmagents {
@@ -532,23 +629,24 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				verify(&createdCluster)
 			}
 		},
-			Entry("with single VMCluster and VMAgent pair", &vmv1alpha1.VMDistributedCluster{
+			Entry("with single VMCluster", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "single-cluster-agent",
+					Name:      "single-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+						{Name: validVMUserNames[1].Name},
+					},
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "vmcluster-1",
 							},
-							VMAgent: &corev1.LocalObjectReference{
-								Name: "vmagent-1",
-							},
 						},
 					},
-					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -590,25 +688,19 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "multi-cluster-agent",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "vmcluster-1",
-							},
-							VMAgent: &corev1.LocalObjectReference{
-								Name: "vmagent-1",
 							},
 						},
 						{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "vmcluster-2",
 							},
-							VMAgent: &corev1.LocalObjectReference{
-								Name: "vmagent-2",
-							},
 						},
 					},
-					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -682,13 +774,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "mixed-cluster-agent",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "vmcluster-1",
-							},
-							VMAgent: &corev1.LocalObjectReference{
-								Name: "vmagent-1",
 							},
 						},
 						{
@@ -698,7 +787,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							// No VMAgent specified
 						},
 					},
-					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -800,7 +889,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmAgent2)).To(Succeed())
 			})
 
-			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserName)
+			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
 			namespacedName.Name = "distributed-agent-upgrade"
 			cr := &vmv1alpha1.VMDistributedCluster{
@@ -809,13 +898,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMClusters: []vmv1alpha1.VMClusterAgentPair{
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: vmCluster1.Name,
-							},
-							VMAgent: &corev1.LocalObjectReference{
-								Name: vmAgent1.Name,
 							},
 						},
 						{
@@ -825,7 +911,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							// No VMAgent initially
 						},
 					},
-					VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
@@ -839,9 +925,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				if err := k8sClient.Get(ctx, namespacedName, &obj); err != nil {
 					return err
 				}
-				obj.Spec.VMClusters[1].VMAgent = &corev1.LocalObjectReference{
-					Name: vmAgent2.Name,
-				}
+
 				return k8sClient.Update(ctx, &obj)
 			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
@@ -854,8 +938,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			var updatedCluster vmv1alpha1.VMDistributedCluster
 			Expect(k8sClient.Get(ctx, namespacedName, &updatedCluster)).To(Succeed())
 			Expect(updatedCluster.Spec.VMClusters).To(HaveLen(2))
-			Expect(updatedCluster.Spec.VMClusters[0].VMAgent.Name).To(Equal(vmAgent1.Name))
-			Expect(updatedCluster.Spec.VMClusters[1].VMAgent.Name).To(Equal(vmAgent2.Name))
+
 		})
 
 		Context("fail scenarios with VMAgent", func() {
@@ -886,17 +969,14 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						Name:      "invalid-vmagent-set",
 					},
 					Spec: vmv1alpha1.VMDistributedClusterSpec{
-						VMClusters: []vmv1alpha1.VMClusterAgentPair{
+						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 							{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "vmcluster-1",
 								},
-								VMAgent: &corev1.LocalObjectReference{
-									Name: "no-such-vmagent",
-								},
 							},
 						},
-						VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
+						VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
 					},
 				}, []vmv1beta1.VMCluster{
 					{
@@ -944,7 +1024,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmAgent)).To(Succeed())
 				})
 
-				createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserName)
+				createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
 				namespacedName.Name = "vmcluster-agent-delete"
 				cr := &vmv1alpha1.VMDistributedCluster{
@@ -953,17 +1033,14 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						Name:      namespacedName.Name,
 					},
 					Spec: vmv1alpha1.VMDistributedClusterSpec{
-						VMClusters: []vmv1alpha1.VMClusterAgentPair{
+						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 							{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: vmCluster.Name,
 								},
-								VMAgent: &corev1.LocalObjectReference{
-									Name: vmAgent.Name,
-								},
 							},
 						},
-						VMUser: corev1.LocalObjectReference{Name: validVMUserName.Name},
+						VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
 					},
 				}
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())

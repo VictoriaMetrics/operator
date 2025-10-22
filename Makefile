@@ -11,7 +11,7 @@ VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.0,$(TAG:v%=%))
 DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
 OVERLAY ?= config/manager
-E2E_TESTS_CONCURRENCY ?= 5
+E2E_TESTS_CONCURRENCY ?= $(shell getconf _NPROCESSORS_ONLN)
 FIPS_VERSION=v1.0.0
 
 BUILDINFO="operator-$(DATEINFO_TAG)-$(TAG)"

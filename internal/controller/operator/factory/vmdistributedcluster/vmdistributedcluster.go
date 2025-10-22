@@ -117,9 +117,12 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 	vmClusters := make([]*vmv1beta1.VMCluster, len(refs))
 	for i, vmClusterObjOrRef := range refs {
 		vmClusterObj := &vmv1beta1.VMCluster{}
-		namespacedName := types.NamespacedName{Name: vmClusterObjOrRef.Name, Namespace: namespace}
+		if vmClusterObjOrRef.Ref == nil {
+			return nil, fmt.Errorf("VMClusterRefOrSpec must have Ref set to fetch existing cluster, got: %+v", vmClusterObjOrRef)
+		}
+		namespacedName := types.NamespacedName{Name: vmClusterObjOrRef.Ref.Name, Namespace: namespace}
 		if err := rclient.Get(ctx, namespacedName, vmClusterObj); err != nil {
-			return nil, fmt.Errorf("failed to get VMCluster %s/%s: %w", namespace, vmClusterObjOrRef.Name, err)
+			return nil, fmt.Errorf("failed to get VMCluster %s/%s: %w", namespace, vmClusterObjOrRef.Ref.Name, err)
 		}
 		vmClusters[i] = vmClusterObj
 	}

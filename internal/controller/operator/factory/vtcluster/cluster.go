@@ -66,72 +66,75 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		// fast path
 		return nil
 	}
-	vmst := cr.Spec.Storage
-	vmse := cr.Spec.Select
-	vmis := cr.Spec.Insert
 	prevSpec := prevCR.Spec
-	prevSt := prevSpec.Storage
-	prevSe := prevSpec.Select
-	prevIs := prevSpec.Insert
+
+	newStorage := cr.Spec.Storage
+	newSelect := cr.Spec.Select
+	newInsert := cr.Spec.Insert
+	prevStorage := prevSpec.Storage
+	prevSelect := prevSpec.Select
+	prevInsert := prevSpec.Insert
 
 	newLB := cr.Spec.RequestsLoadBalancer
 	prevLB := prevCR.Spec.RequestsLoadBalancer
 
-	if prevSt != nil {
-		if vmst == nil {
-			if err := finalize.OnVTStorageDelete(ctx, rclient, cr, prevSt); err != nil {
+	if prevStorage != nil {
+		if newStorage == nil {
+			if err := finalize.OnVTStorageDelete(ctx, rclient, cr, prevStorage); err != nil {
 				return fmt.Errorf("cannot remove storage from prev state: %w", err)
 			}
 		} else {
 			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: cr.GetVTStorageName()}
-			if vmst.PodDisruptionBudget == nil && prevSt.PodDisruptionBudget != nil {
+			if newStorage.PodDisruptionBudget == nil && prevStorage.PodDisruptionBudget != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev storage: %w", err)
 				}
 			}
-			if ptr.Deref(vmst.DisableSelfServiceScrape, false) && !ptr.Deref(prevSt.DisableSelfServiceScrape, false) {
+			if ptr.Deref(newStorage.DisableSelfServiceScrape, false) && !ptr.Deref(prevStorage.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev storage: %w", err)
 				}
 			}
-			prevSvc, currSvc := prevSt.ServiceSpec, vmst.ServiceSpec
+			prevSvc, currSvc := prevStorage.ServiceSpec, newStorage.ServiceSpec
 			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetVTStorageName(), cr.Namespace, prevSvc, currSvc); err != nil {
 				return fmt.Errorf("cannot remove storage additional service: %w", err)
 			}
 		}
 	}
 
-	if prevSe != nil {
-		if vmse == nil {
-			if err := finalize.OnVTSelectDelete(ctx, rclient, cr, prevSe); err != nil {
+	if prevSelect != nil {
+		if newSelect == nil {
+			if err := finalize.OnVTSelectDelete(ctx, rclient, cr, prevSelect); err != nil {
 				return fmt.Errorf("cannot remove select from prev state: %w", err)
 			}
 		} else {
 			commonObjMeta := metav1.ObjectMeta{
 				Namespace: cr.Namespace, Name: cr.GetVTSelectName()}
-			if vmse.PodDisruptionBudget == nil && prevSe.PodDisruptionBudget != nil {
+			if newSelect.PodDisruptionBudget == nil && prevSelect.PodDisruptionBudget != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev select: %w", err)
 				}
 			}
-			if vmse.HPA == nil && prevSe.HPA != nil {
+			if newSelect.HPA == nil && prevSelect.HPA != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove HPA from prev select: %w", err)
 				}
 			}
-			if ptr.Deref(vmse.DisableSelfServiceScrape, false) && !ptr.Deref(prevSe.DisableSelfServiceScrape, false) {
+			if ptr.Deref(newSelect.DisableSelfServiceScrape, false) && !ptr.Deref(prevSelect.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev select: %w", err)
 				}
 			}
-			prevSvc, currSvc := prevSe.ServiceSpec, vmse.ServiceSpec
+			prevSvc, currSvc := prevSelect.ServiceSpec, newSelect.ServiceSpec
 			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetVTSelectName(), cr.Namespace, prevSvc, currSvc); err != nil {
 				return fmt.Errorf("cannot remove select additional service: %w", err)
 			}
 		}
 		// transition to load-balancer state
 		// have to remove prev service scrape
-		if newLB.Enabled && !newLB.DisableSelectBalancing && (!prevLB.Enabled || prevLB.DisableSelectBalancing) {
+		newDisableBalancing := newLB.DisableSelectBalancing || newSelect == nil
+		prevDisableBalancing := prevLB.DisableSelectBalancing
+		if newLB.Enabled && !newDisableBalancing && (!prevLB.Enabled || prevDisableBalancing) {
 			// remove service scrape because service was renamed
 			if !ptr.Deref(cr.Spec.Select.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
@@ -143,7 +146,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 		// disabled loadbalancer only for component
 		// transit to the k8s service balancing mode
-		if prevLB.Enabled && !prevLB.DisableSelectBalancing && (!newLB.Enabled || newLB.DisableSelectBalancing) {
+		if prevLB.Enabled && !prevDisableBalancing && (!newLB.Enabled || newDisableBalancing) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 				Name:      cr.GetVTSelectLBName(),
 				Namespace: cr.Namespace,
@@ -160,37 +163,39 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 	}
 
-	if prevIs != nil {
-		if vmis == nil {
-			if err := finalize.OnVTInsertDelete(ctx, rclient, cr, prevIs); err != nil {
+	if prevInsert != nil {
+		if newInsert == nil {
+			if err := finalize.OnVTInsertDelete(ctx, rclient, cr, prevInsert); err != nil {
 				return fmt.Errorf("cannot remove insert from prev state: %w", err)
 			}
 		} else {
 
 			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: cr.GetVTInsertName()}
-			if vmis.PodDisruptionBudget == nil && prevIs.PodDisruptionBudget != nil {
+			if newInsert.PodDisruptionBudget == nil && prevInsert.PodDisruptionBudget != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev insert: %w", err)
 				}
 			}
-			if vmis.HPA == nil && prevIs.HPA != nil {
+			if newInsert.HPA == nil && prevInsert.HPA != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove HPA from prev insert: %w", err)
 				}
 			}
-			if ptr.Deref(vmis.DisableSelfServiceScrape, false) && !ptr.Deref(prevIs.DisableSelfServiceScrape, false) {
+			if ptr.Deref(newInsert.DisableSelfServiceScrape, false) && !ptr.Deref(prevInsert.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev insert: %w", err)
 				}
 			}
-			prevSvc, currSvc := prevIs.ServiceSpec, vmis.ServiceSpec
+			prevSvc, currSvc := prevInsert.ServiceSpec, newInsert.ServiceSpec
 			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetVTInsertName(), cr.Namespace, prevSvc, currSvc); err != nil {
 				return fmt.Errorf("cannot remove insert additional service: %w", err)
 			}
 		}
 		// transition to load-balancer state
 		// have to remove prev service scrape
-		if newLB.Enabled && !newLB.DisableInsertBalancing && (!prevLB.Enabled || prevLB.DisableInsertBalancing) {
+		newDisableBalancing := newLB.DisableInsertBalancing || newInsert == nil
+		prevDisableBalancing := prevLB.DisableInsertBalancing
+		if newLB.Enabled && !newDisableBalancing && (!prevLB.Enabled || prevDisableBalancing) {
 			// remove service scrape because service was renamed
 			if !ptr.Deref(cr.Spec.Insert.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
@@ -202,7 +207,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 		// disabled loadbalancer only for component
 		// transit to the k8s service balancing mode
-		if prevLB.Enabled && !prevLB.DisableInsertBalancing && (!newLB.Enabled || newLB.DisableInsertBalancing) {
+		if prevLB.Enabled && !prevDisableBalancing && (!newLB.Enabled || newDisableBalancing) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 				Name:      cr.GetVTInsertLBName(),
 				Namespace: cr.Namespace,

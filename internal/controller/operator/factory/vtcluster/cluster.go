@@ -73,6 +73,10 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 	prevSt := prevSpec.Storage
 	prevSe := prevSpec.Select
 	prevIs := prevSpec.Insert
+
+	newLB := cr.Spec.RequestsLoadBalancer
+	prevLB := prevCR.Spec.RequestsLoadBalancer
+
 	if prevSt != nil {
 		if vmst == nil {
 			if err := finalize.OnVTStorageDelete(ctx, rclient, cr, prevSt); err != nil {
@@ -127,12 +131,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 		// transition to load-balancer state
 		// have to remove prev service scrape
-		if (!prevSpec.RequestsLoadBalancer.Enabled &&
-			cr.Spec.RequestsLoadBalancer.Enabled &&
-			!cr.Spec.RequestsLoadBalancer.DisableSelectBalancing) ||
-			// second case load balancer was enabled, but disabled for select component
-			(prevSpec.RequestsLoadBalancer.DisableInsertBalancing &&
-				!cr.Spec.RequestsLoadBalancer.DisableInsertBalancing) {
+		if newLB.Enabled && !newLB.DisableSelectBalancing && (!prevLB.Enabled || prevLB.DisableSelectBalancing) {
 			// remove service scrape because service was renamed
 			if !ptr.Deref(cr.Spec.Select.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
@@ -144,9 +143,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 		// disabled loadbalancer only for component
 		// transit to the k8s service balancing mode
-		if prevSpec.RequestsLoadBalancer.Enabled &&
-			!prevSpec.RequestsLoadBalancer.DisableSelectBalancing &&
-			cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
+		if prevLB.Enabled && !prevLB.DisableSelectBalancing && (!newLB.Enabled || newLB.DisableSelectBalancing) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 				Name:      cr.GetVTSelectLBName(),
 				Namespace: cr.Namespace,
@@ -193,12 +190,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 		// transition to load-balancer state
 		// have to remove prev service scrape
-		if (!prevSpec.RequestsLoadBalancer.Enabled &&
-			cr.Spec.RequestsLoadBalancer.Enabled &&
-			!cr.Spec.RequestsLoadBalancer.DisableInsertBalancing) ||
-			// second case load balancer was enabled, but disabled for insert component
-			(prevSpec.RequestsLoadBalancer.DisableInsertBalancing &&
-				!cr.Spec.RequestsLoadBalancer.DisableInsertBalancing) {
+		if newLB.Enabled && !newLB.DisableInsertBalancing && (!prevLB.Enabled || prevLB.DisableInsertBalancing) {
 			// remove service scrape because service was renamed
 			if !ptr.Deref(cr.Spec.Insert.DisableSelfServiceScrape, false) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
@@ -210,9 +202,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 		// disabled loadbalancer only for component
 		// transit to the k8s service balancing mode
-		if prevSpec.RequestsLoadBalancer.Enabled &&
-			!prevSpec.RequestsLoadBalancer.DisableInsertBalancing &&
-			cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
+		if prevLB.Enabled && !prevLB.DisableInsertBalancing && (!newLB.Enabled || newLB.DisableInsertBalancing) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 				Name:      cr.GetVTInsertLBName(),
 				Namespace: cr.Namespace,
@@ -229,16 +219,14 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 	}
 
-	if prevSpec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.Enabled {
+	if prevLB.Enabled && !newLB.Enabled {
 		if err := finalize.OnVTClusterLoadBalancerDelete(ctx, rclient, prevCR); err != nil {
 			return fmt.Errorf("failed to remove loadbalancer components enabled at prev state: %w", err)
 		}
 	}
-	if cr.Spec.RequestsLoadBalancer.Enabled {
+	if newLB.Enabled {
 		// case for child objects
-		prevLBSpec := prevSpec.RequestsLoadBalancer.Spec
-		lbSpec := cr.Spec.RequestsLoadBalancer.Spec
-		if prevLBSpec.PodDisruptionBudget != nil && lbSpec.PodDisruptionBudget == nil {
+		if prevLB.Spec.PodDisruptionBudget != nil && newLB.Spec.PodDisruptionBudget == nil {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      cr.GetVMAuthLBName(),

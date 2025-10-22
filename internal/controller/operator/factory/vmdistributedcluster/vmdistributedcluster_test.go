@@ -3,20 +3,22 @@ package vmdistributedcluster
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
 
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 const (
@@ -24,50 +26,55 @@ const (
 	httpTimeout                = 500 * time.Millisecond
 )
 
-// trackingClient records actions performed by the client
-// so that their order and objects can be verified in tests
+// action stores information about a client action for tracking.
 type action struct {
 	Method    string
-	ObjectKey client.ObjectKey
+	ObjectKey types.NamespacedName
 	Object    client.Object
 }
 
+// trackingClient wraps a client.Client and records all actions.
 type trackingClient struct {
 	client.Client
 	Actions []action
 	mu      sync.Mutex
 }
 
-func (tc *trackingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+// trackingStatusWriter wraps a trackingClient and records status updates.
+type trackingStatusWriter struct {
+	*trackingClient
+}
+
+func (tc *trackingClient) Status() client.StatusWriter {
+	return &trackingStatusWriter{tc}
+}
+
+func (tc *trackingClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 	tc.mu.Lock()
-	defer tc.mu.Unlock()
-	tc.Actions = append(tc.Actions, action{Method: "Get", ObjectKey: key, Object: obj.DeepCopyObject().(client.Object)})
-	return tc.Client.Get(ctx, key, obj, opts...)
+	tc.Actions = append(tc.Actions, action{Method: "Get", ObjectKey: key, Object: obj})
+	tc.mu.Unlock()
+	return tc.Client.Get(ctx, key, obj)
 }
 
 func (tc *trackingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	tc.mu.Lock()
-	defer tc.mu.Unlock()
-	tc.Actions = append(tc.Actions, action{Method: "Update", Object: obj.DeepCopyObject().(client.Object)})
+	tc.Actions = append(tc.Actions, action{Method: "Update", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
+	tc.mu.Unlock()
 	return tc.Client.Update(ctx, obj, opts...)
 }
 
 func (tc *trackingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	tc.mu.Lock()
-	defer tc.mu.Unlock()
-	tc.Actions = append(tc.Actions, action{Method: "Create", Object: obj.DeepCopyObject().(client.Object)})
+	tc.Actions = append(tc.Actions, action{Method: "Create", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
+	tc.mu.Unlock()
 	return tc.Client.Create(ctx, obj, opts...)
 }
 
 func (tc *trackingClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	tc.mu.Lock()
-	defer tc.mu.Unlock()
-	tc.Actions = append(tc.Actions, action{Method: "Delete", Object: obj.DeepCopyObject().(client.Object)})
+	tc.Actions = append(tc.Actions, action{Method: "Delete", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
+	tc.mu.Unlock()
 	return tc.Client.Delete(ctx, obj, opts...)
-}
-
-func (tc *trackingClient) Status() client.StatusWriter {
-	return tc.Client.Status()
 }
 
 // alwaysReadyClient is a client which always returns Ready update status.
@@ -75,16 +82,43 @@ type alwaysReadyClient struct {
 	client.Client
 }
 
-func (c *alwaysReadyClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	err := c.Client.Get(ctx, key, obj, opts...)
+func (c *alwaysReadyClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+	err := c.Client.Get(ctx, key, obj)
 	if err != nil {
 		return err
 	}
-	if cluster, ok := obj.(*vmv1beta1.VMCluster); ok {
-		cluster.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+	if v, ok := obj.(*vmv1beta1.VMCluster); ok {
+		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 	}
 	return nil
 }
+
+// Status returns a StatusWriter that always succeeds for updates.
+func (c *alwaysReadyClient) Status() client.StatusWriter {
+	return &alwaysReadyStatusWriter{c}
+}
+
+// alwaysReadyStatusWriter is a StatusWriter that always succeeds updates.
+type alwaysReadyStatusWriter struct {
+	*alwaysReadyClient
+}
+
+func (arsw *alwaysReadyStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	return arsw.Client.Status().Create(ctx, obj, subResource, opts...)
+}
+
+func (arsw *alwaysReadyStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	// Simulate a successful status update
+	return arsw.Client.Status().Update(ctx, obj, opts...)
+}
+
+func (arsw *alwaysReadyStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	// Simulate a successful status patch
+	return arsw.Client.Status().Patch(ctx, obj, patch, opts...)
+}
+
+// Ensure alwaysReadyStatusWriter implements client.SubResourceWriter
+var _ client.SubResourceWriter = &alwaysReadyStatusWriter{}
 
 // alwaysFailingUpdateClient is a client which always returns an error on Update
 type alwaysFailingUpdateClient struct {
@@ -95,29 +129,64 @@ func (f *alwaysFailingUpdateClient) Update(ctx context.Context, obj client.Objec
 	return fmt.Errorf("simulated update error")
 }
 
-// Custom function to compare expected actions with actual actions
-func compareExpectedActions(t *testing.T, expectedActions []action, actualActions []action) {
-	for i, action := range actualActions {
-		expectedObj := expectedActions[i].Object
-		assert.Equal(t, expectedActions[i].Method, action.Method, fmt.Sprintf("Action %d method mismatch", i))
-		assert.IsType(t, expectedObj, action.Object, fmt.Sprintf("Action %d object type mismatch", i))
+func (tsw *trackingStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	tsw.mu.Lock()
+	tsw.Actions = append(tsw.Actions, action{Method: "CreateStatus", ObjectKey: client.ObjectKeyFromObject(obj), Object: subResource})
+	tsw.mu.Unlock()
+	return tsw.Client.Status().Create(ctx, obj, subResource, opts...)
+}
 
-		switch action.Method {
-		case "Get":
-			assert.Equal(t, expectedActions[i].ObjectKey, action.ObjectKey, fmt.Sprintf("Action %d object key mismatch", i))
-		case "Update":
-			if vmUser, ok := action.Object.(*vmv1beta1.VMUser); ok {
-				assert.Equal(t, expectedObj.(*vmv1beta1.VMUser).Spec.TargetRefs, vmUser.Spec.TargetRefs, fmt.Sprintf("Action %d object target refs mismatch", i))
-			} else if vmCluster, ok := action.Object.(*vmv1beta1.VMCluster); ok {
-				assert.Equal(t, expectedObj.(*vmv1beta1.VMCluster).Spec, vmCluster.Spec, fmt.Sprintf("Action %d object Specs mismatch", i))
-				assert.Equal(t, expectedObj.(*vmv1beta1.VMCluster).Status, vmCluster.Status, fmt.Sprintf("Action %d object Status mismatch", i))
-			} else {
-				assert.Equal(t, expectedObj, action.Object, fmt.Sprintf("Action %d object mismatch", i))
-			}
-		default:
-			t.Errorf("Unexpected action method: %s", action.Method)
-		}
+func (tsw *trackingStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	tsw.mu.Lock()
+	tsw.Actions = append(tsw.Actions, action{Method: "UpdateStatus", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
+	tsw.mu.Unlock()
+	return tsw.Client.Status().Update(ctx, obj, opts...)
+}
+
+func (tsw *trackingStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	tsw.mu.Lock()
+	tsw.Actions = append(tsw.Actions, action{Method: "PatchStatus", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
+	tsw.mu.Unlock()
+	return tsw.Client.Status().Patch(ctx, obj, patch, opts...)
+}
+
+// Ensure trackingStatusWriter implements client.StatusWriter
+var _ client.StatusWriter = &trackingStatusWriter{}
+
+func compareExpectedActions(t *testing.T, expected, actual []action) {
+	assert.Equal(t, len(expected), len(actual), "number of actions mismatch")
+	for i := range expected {
+		assert.Equal(t, expected[i].Method, actual[i].Method, "Method mismatch at index %d", i)
+		assert.Equal(t, expected[i].ObjectKey, actual[i].ObjectKey, "ObjectKey mismatch at index %d", i)
+		// Compare only types for objects, as content can vary.
+		assert.IsType(t, expected[i].Object, actual[i].Object, "Object type mismatch at index %d", i)
 	}
+}
+
+// mockVMAgent implements the VMAgentWithStatus interface for testing
+type mockVMAgent struct {
+	url      string
+	replicas int32
+}
+
+func (m *mockVMAgent) AsURL() string {
+	return m.url
+}
+
+func (m *mockVMAgent) GetMetricPath() string {
+	return "/metrics"
+}
+
+func (m *mockVMAgent) GetReplicas() int32 {
+	return m.replicas
+}
+
+func (m *mockVMAgent) GetNamespace() string {
+	return "default"
+}
+
+func (m *mockVMAgent) GetName() string {
+	return "test-vmagent"
 }
 
 // Helper functions to create new objects
@@ -143,6 +212,16 @@ func newVMCluster(name, namespace, version string, generation int64, status *vmv
 		Spec: vmv1beta1.VMClusterSpec{
 			ClusterVersion: version,
 			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+			VMStorage: &vmv1beta1.VMStorage{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
@@ -267,12 +346,15 @@ func beforeEach() testData {
 	}
 }
 
-func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
+func TestCreateOrUpdate_DistributedCluster(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("Successful reconciliation with new API", func(t *testing.T) {
+	t.Run("Successful reconciliation", func(t *testing.T) {
 		td := beforeEach()
+		// Replace client with a mock that always reports operational status for VMClusters
+		// This avoids waiting for actual cluster deployment in unit tests
 		td.trackingClient.Client = &alwaysReadyClient{Client: td.trackingClient.Client}
+
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when all resources are present")
 
@@ -283,18 +365,27 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 	})
 }
 
-/*
-	// Old tests that need to be updated for new API structure
+func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("VMCluster missing", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.Zones = []vmv1alpha1.VMClusterRefOrSpec{
 			{
-				Ref: corev1.LocalObjectReference{Name: "missing-cluster"},
+				Ref: &corev1.LocalObjectReference{Name: "missing-cluster"},
 			},
 		}
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err, "CreateOrUpdate should error if VMCluster is missing")
-		assert.Len(t, td.trackingClient.Actions, 2, "Should perform two actions")
+		assert.Contains(t, err.Error(), "failed to fetch vmclusters: referenced VMCluster default/missing-cluster not found: vmclusters.operator.victoriametrics.com \"missing-cluster\" not found")
+
+		expectedActions := []action{
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.cr.Spec.VMAgent.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMAgent{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[0].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[1].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: "missing-cluster", Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+		}
+		compareExpectedActions(t, expectedActions, td.trackingClient.Actions)
 	})
 
 	t.Run("VMAgent not specified", func(t *testing.T) {
@@ -302,8 +393,8 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 		td.cr.Spec.VMAgent.Name = ""
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err, "CreateOrUpdate should error if VMAgent is not specified")
-		assert.Contains(t, err.Error(), "global vmagent is not specified")
-		assert.Len(t, td.trackingClient.Actions, 0, "Should perform no actions")
+		assert.Contains(t, err.Error(), "failed to fetch global vmagent: global vmagent name is not specified")
+		compareExpectedActions(t, []action{}, td.trackingClient.Actions)
 	})
 
 	t.Run("VMAgent not found", func(t *testing.T) {
@@ -312,76 +403,112 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err, "CreateOrUpdate should error if VMAgent is not found")
 		assert.Contains(t, err.Error(), "failed to get global VMAgent default/non-existent-vmagent")
-		assert.Len(t, td.trackingClient.Actions, 1, "Should perform one action (Get VMAgent)")
+
+		expectedActions := []action{
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: "non-existent-vmagent", Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMAgent{}},
+		}
+		compareExpectedActions(t, expectedActions, td.trackingClient.Actions)
 	})
 
 	t.Run("Zones fetch error", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.Zones = []vmv1alpha1.VMClusterRefOrSpec{
 			{
-				Ref: corev1.LocalObjectReference{Name: "vmcluster-1"},
-			}, {
-				LocalObjectReference: corev1.LocalObjectReference{Name: "non-existent-cluster"},
+				Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"},
 			},
 		}
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
-		assert.Error(t, err, "CreateOrUpdate should error if VMCluster fetch fails")
-		assert.Contains(t, err.Error(), "failed to get VMCluster default/vmcluster-1")
-		assert.Len(t, td.trackingClient.Actions, 2, "Should perform two actions")
-	})
-*/
-
-/*
-	t.Run("No matching rule found", func(t *testing.T) {
-		td := beforeEach()
-		// TODO: Update this test for new API structure
-		// td.vmuser.Spec.TargetRefs = []vmv1beta1.TargetRef{
-		// 	{
-		// 		CRD: &vmv1beta1.CRDRef{
-		// 			Kind:      "OtherKind",
-		// 			Name:      td.vmcluster1.Name,
-		// 			Namespace: td.vmcluster1.Namespace,
-		// 		},
-		// 		TargetPathSuffix: "/select/1",
-		// 	},
-		// }
-		// err := td.trackingClient.Update(ctx, td.vmuser)
-		// assert.NoError(t, err)
-		// td.trackingClient.Actions = []action{}
-
-		// err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
-		// assert.Error(t, err, "CreateOrUpdate should error if findVMUserReadRuleForVMCluster fails")
-		// assert.Contains(t, err.Error(), "failed to find the rule for vmcluster cluster-1")
-		// assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
-
-		// expectedActions := []action{
-		// 	{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
-		// 	{Method: "Get", ObjectKey: types.NamespacedName{Name: "cluster-1", Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
-		// 	{Method: "Get", ObjectKey: types.NamespacedName{Name: "cluster-2", Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
-		// }
-		// compareExpectedActions(t, expectedActions, td.trackingClient.Actions)
-	})
-*/
-
-/*
-	t.Run("Generations change triggers status update", func(t *testing.T) {
-		td := beforeEach()
-		td.cr.Status.VMClusterInfo[0].Generation = 2
-		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
-		assert.Error(t, err, "CreateOrUpdate should error if generations change detected")
-		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
+		assert.Error(t, err, "CreateOrUpdate should error if VMCluster is not found")
+		assert.Contains(t, err.Error(), "failed to fetch vmclusters: referenced VMCluster default/vmcluster-1 not found: vmclusters.operator.victoriametrics.com \"vmcluster-1\" not found")
 
 		expectedActions := []action{
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[0].Name, Namespace: td.vmusers[0].Namespace}, Object: &vmv1beta1.VMUser{}},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.cr.Spec.VMAgent.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMAgent{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[0].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[1].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: "vmcluster-1", Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
 		}
 		compareExpectedActions(t, expectedActions, td.trackingClient.Actions)
 	})
-*/
 
-// TODO: Update remaining tests for new API structure
-/*
+	t.Run("No matching rule found", func(t *testing.T) {
+		td := beforeEach()
+
+		// Create VMUsers, both with no target refs for cluster-1
+		vmuserNoRules1 := newVMUser(td.vmusers[0].Name, td.vmusers[0].Namespace, []vmv1beta1.TargetRef{}) // No rules for test-vmuser-1
+		vmuserNoRules2 := newVMUser(td.vmusers[1].Name, td.vmusers[1].Namespace, []vmv1beta1.TargetRef{}) // No rules for test-vmuser-2
+
+		// Create a new trackingClient with the modified VMUsers
+		scheme := runtime.NewScheme()
+		_ = vmv1alpha1.AddToScheme(scheme)
+		_ = vmv1beta1.AddToScheme(scheme)
+
+		baseFake := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(td.vmagent, td.vmcluster1, td.vmcluster2, td.cr, vmuserNoRules1, vmuserNoRules2).
+			Build()
+
+		// Update td.cr's VMUsers to reference these specific VMUsers for this test
+		td.cr.Spec.VMUsers = []corev1.LocalObjectReference{{Name: vmuserNoRules1.Name}, {Name: vmuserNoRules2.Name}}
+
+		testTrackingClient := trackingClient{Client: baseFake, Actions: []action{}}
+
+		err := CreateOrUpdate(ctx, td.cr, &testTrackingClient, vmclusterWaitReadyDeadline, httpTimeout)
+		assert.Error(t, err, "CreateOrUpdate should error if findVMUserReadRuleForVMCluster fails")
+		assert.Contains(t, err.Error(), "failed to find the rule for vmcluster cluster-1")
+
+		expectedActions := []action{
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.cr.Spec.VMAgent.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMAgent{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: vmuserNoRules1.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: vmuserNoRules2.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+		}
+		compareExpectedActions(t, expectedActions, testTrackingClient.Actions)
+	})
+
+	t.Run("Generations change triggers status update", func(t *testing.T) {
+		td := beforeEach()
+
+		// Create a new trackingClient for this test to ensure status updates are handled
+		scheme := runtime.NewScheme()
+		_ = vmv1alpha1.AddToScheme(scheme)
+		_ = vmv1beta1.AddToScheme(scheme)
+
+		objects := []client.Object{td.vmagent, td.vmcluster1, td.vmcluster2, td.cr}
+		for _, vmuser := range td.vmusers {
+			objects = append(objects, vmuser)
+		}
+
+		baseFake := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(objects...).
+			WithStatusSubresource(&vmv1alpha1.VMDistributedCluster{}). // Ensure status subresource is enabled for VMDistributedCluster
+			Build()
+
+		testTrackingClient := trackingClient{Client: baseFake, Actions: []action{}}
+
+		td.cr.Status.VMClusterInfo[0].Generation = 2 // Simulate a generation change
+
+		err := CreateOrUpdate(ctx, td.cr, &testTrackingClient, vmclusterWaitReadyDeadline, httpTimeout)
+		assert.Error(t, err, "CreateOrUpdate should error if generations change detected")
+		assert.Contains(t, err.Error(), "unexpected generations change detected")
+		// Expected actions: Get VMAgent (1), Get all VMUsers (2), Get all VMClusters (2) + Update status (1)
+		// Total: 1 + 2 + 2 + 1 = 6 actions
+		expectedActions := []action{
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.cr.Spec.VMAgent.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMAgent{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[0].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[1].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			// Expect a status update action
+			{Method: "UpdateStatus", ObjectKey: types.NamespacedName{Name: td.cr.Name, Namespace: td.cr.Namespace}, Object: &vmv1alpha1.VMDistributedCluster{}},
+		}
+		compareExpectedActions(t, expectedActions, testTrackingClient.Actions)
+	})
+}
+
+func TestCreateOrUpdate_PartialUpdate(t *testing.T) {
+	ctx := context.Background()
 	t.Run("Partial cluster version update", func(t *testing.T) {
 		td := beforeEach()
 		td.vmcluster1.Spec.ClusterVersion = "v1.1.0"
@@ -392,19 +519,31 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 		td.trackingClient.Client = &alwaysReadyClient{Client: td.trackingClient.Client}
 		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when cluster version matches")
-		assert.Len(t, td.trackingClient.Actions, 10, "Should perform ten actions")
+		// Expected actions: Get VMAgent (1), Get all VMUsers (2), Get all VMClusters (2)
+		// Disable VMCluster (Get 2 VMUsers, Update 2 VMUsers) = 4
+		// Change VMCluster version (Get 1 VMCluster, Update 1 VMCluster) = 2
+		// Wait for VMCluster ready (Get 1 VMCluster) = 1
+		// Enable VMCluster (Get 2 VMUsers) = 2
+		// Total: 1 + 2 + 2 + 4 + 2 + 1 + 2 = 14 actions
+		assert.Len(t, td.trackingClient.Actions, 14, "Should perform fourteen actions")
+
+		expectedDisabledVMUserRef := []vmv1beta1.TargetRef{{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}}
 
 		expectedActions := []action{
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster2.Namespace}, Object: &vmv1beta1.VMCluster{}},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
-			{Method: "Update", Object: newVMUser(td.vmuser.Name, td.vmuser.Namespace, []vmv1beta1.TargetRef{{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}})},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster2.Namespace}, Object: &vmv1beta1.VMCluster{}},
-			{Method: "Update", Object: newVMCluster(td.vmcluster2.Name, td.vmcluster2.Namespace, td.cr.Spec.ClusterVersion, td.vmcluster2.Generation, ptr.To(vmv1beta1.UpdateStatusOperational))},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster2.Namespace}, Object: &vmv1beta1.VMCluster{}},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
-			{Method: "Update", Object: newVMUser(td.vmuser.Name, td.vmuser.Namespace, []vmv1beta1.TargetRef{{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-1", Namespace: "default"}, TargetPathSuffix: "/select/1"}, {CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "cluster-2", Namespace: "default"}, TargetPathSuffix: "/select/1"}})},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.cr.Spec.VMAgent.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMAgent{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[0].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[1].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[0].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Update", ObjectKey: types.NamespacedName{Name: td.vmusers[0].Name, Namespace: td.cr.Namespace}, Object: newVMUser(td.vmusers[0].Name, td.vmusers[0].Namespace, expectedDisabledVMUserRef)},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[1].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Update", ObjectKey: types.NamespacedName{Name: td.vmusers[1].Name, Namespace: td.cr.Namespace}, Object: newVMUser(td.vmusers[1].Name, td.vmusers[1].Namespace, expectedDisabledVMUserRef)},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Update", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.cr.Namespace}, Object: newVMCluster(td.vmcluster2.Name, td.vmcluster2.Namespace, td.cr.Spec.ClusterVersion, td.vmcluster2.Generation, ptr.To(vmv1beta1.UpdateStatusOperational))},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[0].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[1].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
 		}
 		compareExpectedActions(t, expectedActions, td.trackingClient.Actions)
 	})
@@ -421,12 +560,15 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 
 		err = CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed when no update required")
-		assert.Len(t, td.trackingClient.Actions, 3, "Should perform three actions")
+		// Expected actions: Get VMAgent (1), Get all VMUsers (2), Get all VMClusters (2) = 5 actions
+		assert.Len(t, td.trackingClient.Actions, 5, "Should perform five actions")
 
 		expectedActions := []action{
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmuser.Name, Namespace: td.vmuser.Namespace}, Object: &vmv1beta1.VMUser{}},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
-			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster1.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.cr.Spec.VMAgent.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMAgent{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[0].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmusers[1].Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMUser{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
+			{Method: "Get", ObjectKey: types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.cr.Namespace}, Object: &vmv1beta1.VMCluster{}},
 		}
 		compareExpectedActions(t, expectedActions, td.trackingClient.Actions)
 	})
@@ -441,12 +583,12 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 
 		// Verify that cluster versions were not changed
 		unchangedVMCluster1 := &vmv1beta1.VMCluster{}
-		err = td.trackingClient.Get(ctx, types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.vmcluster1.Namespace}, unchangedVMCluster1)
+		err = td.trackingClient.Get(ctx, types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.cr.Namespace}, unchangedVMCluster1)
 		assert.NoError(t, err)
 		assert.Equal(t, "v1.0.0", unchangedVMCluster1.Spec.ClusterVersion, "VMCluster1 version should remain unchanged when paused")
 
 		unchangedVMCluster2 := &vmv1beta1.VMCluster{}
-		err = td.trackingClient.Get(ctx, types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.vmcluster2.Namespace}, unchangedVMCluster2)
+		err = td.trackingClient.Get(ctx, types.NamespacedName{Name: td.vmcluster2.Name, Namespace: td.cr.Namespace}, unchangedVMCluster2)
 		assert.NoError(t, err)
 		assert.Equal(t, "v1.0.0", unchangedVMCluster2.Spec.ClusterVersion, "VMCluster2 version should remain unchanged when paused")
 	})
@@ -454,7 +596,7 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 	t.Run("Paused - ignores missing VMUser", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.Paused = true
-		td.cr.Spec.VMUser.Name = "non-existent-vmuser"
+		td.cr.Spec.VMAgent.Name = "non-existent-vmuser"
 
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused, even with missing VMUser")
@@ -464,7 +606,7 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 	t.Run("Paused - ignores missing Zones", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.Paused = true
-		td.cr.Spec.Zones = []vmv1alpha1.VMClusterRefOrSpec{{Ref: corev1.LocalObjectReference{Name: "missing-cluster"}}}
+		td.cr.Spec.Zones = []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "missing-cluster"}}}
 
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused, even with missing Zones")
@@ -482,7 +624,7 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 
 		// Verify versions were not updated
 		unchangedVMCluster1 := &vmv1beta1.VMCluster{}
-		err = td.trackingClient.Get(ctx, types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.vmcluster1.Namespace}, unchangedVMCluster1)
+		err = td.trackingClient.Get(ctx, types.NamespacedName{Name: td.vmcluster1.Name, Namespace: td.cr.Namespace}, unchangedVMCluster1)
 		assert.NoError(t, err)
 		assert.Equal(t, "v1.0.0", unchangedVMCluster1.Spec.ClusterVersion, "VMCluster1 version should remain unchanged when paused")
 	})
@@ -599,109 +741,8 @@ func TestWaitForVMClusterReadyWithDelay(t *testing.T) {
 		assert.NoError(t, err)
 
 		var updatedVMCluster vmv1beta1.VMCluster
-		err = fakeClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &updatedVMCluster)
-		assert.NoError(t, err)
+		assert.NoError(t, fakeClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &updatedVMCluster))
 		assert.Equal(t, vmv1beta1.UpdateStatusOperational, updatedVMCluster.Status.UpdateStatus)
-	})
-}
-
-func TestSetVMClusterStatusInVMUser(t *testing.T) {
-	ctx := context.Background()
-	scheme := runtime.NewScheme()
-	_ = vmv1alpha1.AddToScheme(scheme)
-	_ = vmv1beta1.AddToScheme(scheme)
-
-	vmuserName := "test-vmuser"
-	clusterName := "cluster-to-manage"
-	namespace := "default"
-
-	targetRef := vmv1beta1.TargetRef{
-		CRD: &vmv1beta1.CRDRef{
-			Kind:      "VMCluster/vmselect",
-			Name:      clusterName,
-			Namespace: namespace,
-		},
-		TargetPathSuffix: "/select/test",
-	}
-
-	crWithRule := newVMDistributedCluster("dist-cluster-1", namespace, "v1.0.0", vmuserName, []string{clusterName}, []string{clusterName}, []vmv1alpha1.VMClusterStatus{
-		{
-			VMClusterName: clusterName,
-			Generation:    1,
-			TargetRef:     targetRef,
-		},
-	})
-
-	vmClusterToManage := newVMCluster(clusterName, namespace, "v1.0.0", 1, nil)
-
-	t.Run("Enable cluster - add target ref", func(t *testing.T) {
-		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{})
-		fakeClient := trackingClient{Client: fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(crWithRule, initialVMUser, vmClusterToManage).
-			Build(), Actions: []action{}}
-
-		err := setVMClusterStatusInVMUser(ctx, &fakeClient, crWithRule, vmClusterToManage, initialVMUser, true)
-		assert.NoError(t, err)
-
-		updatedVMUser := &vmv1beta1.VMUser{}
-		err = fakeClient.Get(ctx, types.NamespacedName{Name: vmuserName, Namespace: namespace}, updatedVMUser)
-		assert.NoError(t, err)
-		assert.Len(t, updatedVMUser.Spec.TargetRefs, 1)
-		assert.Equal(t, targetRef, updatedVMUser.Spec.TargetRefs[0])
-	})
-
-	t.Run("Disable cluster - remove target ref", func(t *testing.T) {
-		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{targetRef})
-		fakeClient := trackingClient{Client: fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(crWithRule, initialVMUser, vmClusterToManage).
-			Build(), Actions: []action{}}
-
-		err := setVMClusterStatusInVMUser(ctx, &fakeClient, crWithRule, vmClusterToManage, initialVMUser, false)
-		assert.NoError(t, err)
-
-		updatedVMUser := &vmv1beta1.VMUser{}
-		err = fakeClient.Get(ctx, types.NamespacedName{Name: vmuserName, Namespace: namespace}, updatedVMUser)
-		assert.NoError(t, err)
-		assert.Len(t, updatedVMUser.Spec.TargetRefs, 0)
-	})
-
-	t.Run("No matching rule in VMDistributedCluster status", func(t *testing.T) {
-		crWithoutRule := newVMDistributedCluster("dist-cluster-no-rule", namespace, "v1.0.0", vmuserName, []string{}, []string{}, []vmv1alpha1.VMClusterStatus{})
-		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{})
-		fakeClient := trackingClient{Client: fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(crWithRule, initialVMUser, vmClusterToManage).
-			Build(), Actions: []action{}}
-
-		err := setVMClusterStatusInVMUser(ctx, &fakeClient, crWithoutRule, vmClusterToManage, initialVMUser, true)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "no matching rule found for vmcluster")
-	})
-
-	t.Run("Failure to fetch VMUser", func(t *testing.T) {
-		initialVMUser := newVMUser("non-existent-user", namespace, []vmv1beta1.TargetRef{})
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(crWithRule, vmClusterToManage).
-			Build()
-
-		err := setVMClusterStatusInVMUser(ctx, fakeClient, crWithRule, vmClusterToManage, initialVMUser, true)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to fetch vmuser")
-	})
-
-	t.Run("Failure to update VMUser", func(t *testing.T) {
-		initialVMUser := newVMUser(vmuserName, namespace, []vmv1beta1.TargetRef{})
-		failingClient := &alwaysFailingUpdateClient{Client: fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(crWithRule, initialVMUser, vmClusterToManage).
-			Build()}
-
-		err := setVMClusterStatusInVMUser(ctx, failingClient, crWithRule, vmClusterToManage, initialVMUser, true)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "simulated update error")
 	})
 }
 
@@ -783,7 +824,7 @@ func TestFetchVMClusters(t *testing.T) {
 
 		_, err := fetchVMClusters(ctx, fakeClient, crName, "default", refs)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "referenced VMCluster nonexistent not found")
+		assert.Contains(t, err.Error(), "referenced VMCluster default/nonexistent not found: vmclusters.operator.victoriametrics.com \"nonexistent\" not found")
 	})
 
 	t.Run("Successfully creates inline cluster with provided name", func(t *testing.T) {
@@ -882,32 +923,18 @@ func TestFetchVMClusters(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Ref.Name must be set for reference at index 0")
 	})
-}
 
-// mockVMAgent implements the VMAgentWithStatus interface for testing
-type mockVMAgent struct {
-	url      string
-	replicas int32
-}
+	t.Run("Error if both Ref and Spec are set", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+		refs := []vmv1alpha1.VMClusterRefOrSpec{{
+			Ref:  &corev1.LocalObjectReference{Name: "test-ref"},
+			Spec: &vmv1beta1.VMClusterSpec{},
+		}}
 
-func (m *mockVMAgent) AsURL() string {
-	return m.url
-}
-
-func (m *mockVMAgent) GetMetricPath() string {
-	return "/metrics"
-}
-
-func (m *mockVMAgent) GetReplicas() int32 {
-	return m.replicas
-}
-
-func (m *mockVMAgent) GetNamespace() string {
-	return "default"
-}
-
-func (m *mockVMAgent) GetName() string {
-	return "test-vmagent"
+		_, err := fetchVMClusters(ctx, fakeClient, crName, "default", refs)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec at index 0 must have either Ref or Spec set, got: {Name: Ref:&LocalObjectReference{Name:test-ref,} Spec:")
+	})
 }
 
 func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
@@ -945,7 +972,6 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		}))
 		defer server.Close()
 
-		// Create a mock VMAgent that implements our interface
 		vmAgent := &mockVMAgent{
 			url:      server.URL,
 			replicas: 1,
@@ -954,32 +980,30 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 5*time.Second)
 
 		assert.NoError(t, err)
-		assert.GreaterOrEqual(t, callCount, 3, "Should have made at least 3 calls to the metrics endpoint")
+		assert.True(t, callCount > 2, "Expected multiple calls to metrics endpoint")
 	})
 
-	t.Run("Times out when metrics never become zero", func(t *testing.T) {
+	t.Run("Returns error on http request failure", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Simulate a server error
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		server.Close() // Close the server immediately to force connection error
+		vmAgent := &mockVMAgent{
+			url:      server.URL,
+			replicas: 1,
+		}
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 5*time.Second)
+		assert.Error(
+			t, err)
+		assert.Contains(t, err.Error(), "failed to fetch metrics from VMAgent")
+	})
+
+	t.Run("Returns error on invalid metric value", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 1024\n")
-		}))
-		defer server.Close()
-
-		// Create a mock VMAgent that implements our interface
-		vmAgent := &mockVMAgent{
-			url:      server.URL,
-			replicas: 1,
-		}
-
-		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
-	})
-
-	t.Run("Returns error when HTTP server returns error", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Internal Server Error")
+			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes invalid\n")
 		}))
 		defer server.Close()
 
@@ -988,24 +1012,12 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 			replicas: 1,
 		}
 
-		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
+		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 5*time.Second)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
+		assert.Contains(t, err.Error(), "could not parse metric value")
 	})
 
-	t.Run("Returns error when metrics endpoint is unreachable", func(t *testing.T) {
-		// Create a mock VMAgent with an invalid URL
-		vmAgent := &mockVMAgent{
-			url:      "http://invalid-host-that-does-not-exist.local:8080",
-			replicas: 1,
-		}
-
-		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
-	})
-
-	t.Run("Returns error when metric is missing from response", func(t *testing.T) {
+	t.Run("Returns error on metric not found", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
@@ -1018,405 +1030,8 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 			replicas: 1,
 		}
 
-		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
-	})
-
-	t.Run("Returns error when metric value is invalid", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes invalid_value\n")
-		}))
-		defer server.Close()
-
-		vmAgent := &mockVMAgent{
-			url:      server.URL,
-			replicas: 1,
-		}
-
-		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
-	})
-
-	t.Run("Successfully handles metrics with additional whitespace", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes   0  \n")
-		}))
-		defer server.Close()
-
-		vmAgent := &mockVMAgent{
-			url:      server.URL,
-			replicas: 1,
-		}
-
-		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
-		assert.NoError(t, err)
-	})
-
-	t.Run("Successfully handles metrics with comments and empty lines", func(t *testing.T) {
-		callCount := 0
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			callCount++
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			if callCount == 1 {
-				fmt.Fprintf(w, "# HELP vmagent_remotewrite_pending_data_bytes Pending data bytes\n")
-				fmt.Fprintf(w, "# TYPE vmagent_remotewrite_pending_data_bytes gauge\n")
-				fmt.Fprintf(w, "\n")
-				fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 1024\n")
-				fmt.Fprintf(w, "\n")
-				fmt.Fprintf(w, "# Some other metric\n")
-			} else {
-				fmt.Fprintf(w, "# HELP vmagent_remotewrite_pending_data_bytes Pending data bytes\n")
-				fmt.Fprintf(w, "# TYPE vmagent_remotewrite_pending_data_bytes gauge\n")
-				fmt.Fprintf(w, "\n")
-				fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 0\n")
-				fmt.Fprintf(w, "\n")
-			}
-		}))
-		defer server.Close()
-
-		vmAgent := &mockVMAgent{
-			url:      server.URL,
-			replicas: 1,
-		}
-
-		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 2*time.Second)
-		assert.NoError(t, err)
-		assert.GreaterOrEqual(t, callCount, 2, "Should have made at least 2 calls")
-	})
-
-	t.Run("Respects context cancellation", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 1024\n")
-		}))
-		defer server.Close()
-
-		vmAgent := &mockVMAgent{
-			url:      server.URL,
-			replicas: 1,
-		}
-
-		// Create a context that will be cancelled after 1 second
-		ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
-		defer cancel()
-
 		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, 5*time.Second)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
-	})
-}
-
-func TestFetchVMAgentDiskBufferMetric(t *testing.T) {
-	ctx := context.Background()
-	httpClient := &http.Client{}
-
-	t.Run("Successfully parses valid metric", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 1024\n")
-		}))
-		defer server.Close()
-
-		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
-		assert.NoError(t, err)
-		assert.Equal(t, int64(1024), value)
-	})
-
-	t.Run("Returns error when metric not found", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "some_other_metric 123\n")
-		}))
-		defer server.Close()
-
-		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
-		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "metric vmagent_remotewrite_pending_data_bytes not found")
-		assert.Equal(t, int64(0), value)
 	})
-
-	t.Run("Returns error when metric value is invalid", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes invalid_value\n")
-		}))
-		defer server.Close()
-
-		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "could not parse metric value")
-		assert.Equal(t, int64(0), value)
-	})
-
-	t.Run("Returns error when HTTP request fails", func(t *testing.T) {
-		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, "http://invalid-host.local:8080")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to fetch metrics from VMAgent")
-		assert.Equal(t, int64(0), value)
-	})
-
-	t.Run("Successfully handles multiple metrics and finds the correct one", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "metric1 100\n")
-			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 2048\n")
-			fmt.Fprintf(w, "metric2 300\n")
-		}))
-		defer server.Close()
-
-		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
-		assert.NoError(t, err)
-		assert.Equal(t, int64(2048), value)
-	})
-
-	t.Run("Successfully handles zero metric value", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "vmagent_remotewrite_pending_data_bytes 0\n")
-		}))
-		defer server.Close()
-
-		value, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, server.URL)
-		assert.NoError(t, err)
-		assert.Equal(t, int64(0), value)
-	})
-}
-
-func TestChangeVMClusterVersion(t *testing.T) {
-	ctx := context.Background()
-	scheme := runtime.NewScheme()
-	_ = vmv1beta1.AddToScheme(scheme)
-
-	vmcluster := newVMCluster("cluster-1", "default", "v1.0.0", 1, nil)
-	baseFake := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(vmcluster).
-		Build()
-	fakeClient := trackingClient{Client: baseFake, Actions: []action{}}
-
-	err := changeVMClusterVersion(ctx, &fakeClient, vmcluster, "v1.1.0")
-	assert.NoError(t, err)
-	assert.Equal(t, "v1.1.0", vmcluster.Spec.ClusterVersion)
-}
-
-func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
-	scheme := runtime.NewScheme()
-	_ = vmv1beta1.AddToScheme(scheme)
-
-	t.Run("TargetRef with different kinds", func(t *testing.T) {
-		vmuser := &vmv1beta1.VMUser{
-			Spec: vmv1beta1.VMUserSpec{
-				TargetRefs: []vmv1beta1.TargetRef{
-					{
-						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMCluster/vmselect",
-							Name:      "cluster-1",
-							Namespace: "default",
-						},
-						TargetPathSuffix: "/select/1",
-					},
-					{
-						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMCluster/vminsert",
-							Name:      "cluster-1",
-							Namespace: "default",
-						},
-						TargetPathSuffix: "/insert/1",
-					},
-					{
-						CRD: &vmv1beta1.CRDRef{
-							Kind:      "OtherResource",
-							Name:      "other-1",
-							Namespace: "default",
-						},
-						TargetPathSuffix: "/other/1",
-					},
-				},
-			},
-		}
-		cluster := &vmv1beta1.VMCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cluster-1",
-				Namespace: "default",
-			},
-		}
-
-		result, err := findVMUserReadRuleForVMCluster(vmuser, cluster)
-		assert.NoError(t, err)
-		assert.NotNil(t, result)
-		assert.Equal(t, "VMCluster/vmselect", result.CRD.Kind)
-		assert.Equal(t, "/select/1", result.TargetPathSuffix)
-	})
-
-	t.Run("TargetRef with different path suffixes", func(t *testing.T) {
-		testCases := []struct {
-			name         string
-			targetSuffix string
-			shouldMatch  bool
-		}{
-			{
-				name:         "Valid select path",
-				targetSuffix: "/select/1",
-				shouldMatch:  true,
-			},
-			{
-				name:         "Valid select path with multiple segments",
-				targetSuffix: "/select/prometheus/1",
-				shouldMatch:  true,
-			},
-			{
-				name:         "Invalid insert path",
-				targetSuffix: "/insert/1",
-				shouldMatch:  false,
-			},
-			{
-				name:         "Invalid path without select prefix",
-				targetSuffix: "/api/v1/select",
-				shouldMatch:  false,
-			},
-			{
-				name:         "Empty path suffix",
-				targetSuffix: "",
-				shouldMatch:  false,
-			},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				vmuser := &vmv1beta1.VMUser{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmuser-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								CRD: &vmv1beta1.CRDRef{
-									Kind:      "VMCluster/vmselect",
-									Name:      "cluster-1",
-									Namespace: "default",
-								},
-								TargetPathSuffix: tc.targetSuffix,
-							},
-						},
-					},
-				}
-				cluster := &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "cluster-1",
-						Namespace: "default",
-					},
-				}
-
-				result, err := findVMUserReadRuleForVMCluster(vmuser, cluster)
-				if tc.shouldMatch {
-					assert.NoError(t, err)
-					assert.NotNil(t, result)
-					assert.Equal(t, tc.targetSuffix, result.TargetPathSuffix)
-				} else {
-					assert.Error(t, err)
-					assert.Nil(t, result)
-					assert.Contains(t, err.Error(), "vmuser vmuser-1 has no target refs")
-				}
-			})
-		}
-	})
-}
-
-func TestVMDistributedClusterDelete(t *testing.T) {
-	ctx := context.Background()
-	scheme := runtime.NewScheme()
-	_ = vmv1alpha1.AddToScheme(scheme)
-	_ = vmv1beta1.AddToScheme(scheme)
-
-	namespace := "default"
-	name := "delete-unit-test"
-	cr := &vmv1alpha1.VMDistributedCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
-		},
-		Spec: vmv1alpha1.VMDistributedClusterSpec{
-			VMClusters: []vmv1alpha1.VMClusterRefOrSpec{},
-			VMUser:     corev1.LocalObjectReference{Name: "fake"},
-		},
-	}
-
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(cr).
-		Build()
-
-	err := client.Delete(ctx, cr)
-	assert.NoError(t, err, "Delete should succeed")
-
-	var deleted vmv1alpha1.VMDistributedCluster
-	err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &deleted)
-	assert.Error(t, err, "Get should return error after delete")
-	assert.True(t, k8serrors.IsNotFound(err), "Error should be IsNotFound")
-}
-*/
-
-func TestVMClusterRefOrSpec_Validation(t *testing.T) {
-	tests := []struct {
-		name      string
-		spec      vmv1alpha1.VMClusterRefOrSpec
-		expectErr bool
-	}{
-		{
-			name:      "neither Ref nor Spec set",
-			spec:      vmv1alpha1.VMClusterRefOrSpec{},
-			expectErr: false,
-		},
-		{
-			name: "only Ref set",
-			spec: vmv1alpha1.VMClusterRefOrSpec{
-				Ref: &corev1.LocalObjectReference{Name: "test-ref"},
-			},
-			expectErr: false,
-		},
-		{
-			name: "only Spec set",
-			spec: vmv1alpha1.VMClusterRefOrSpec{
-				Spec: &vmv1beta1.VMClusterSpec{
-					ClusterVersion: "test-image",
-				},
-			},
-			expectErr: false,
-		},
-		{
-			name: "both Ref and Spec set",
-			spec: vmv1alpha1.VMClusterRefOrSpec{
-				Ref:  &corev1.LocalObjectReference{Name: "test-ref"},
-				Spec: &vmv1beta1.VMClusterSpec{ClusterVersion: "test-version"},
-			},
-			expectErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// The Xor validation is handled by the Kubernetes API server admission controller (webhook).
-			// In a unit test, we manually check the condition that would cause an Xor violation.
-			isBothSet := (tt.spec.Ref != nil && tt.spec.Ref.Name != "") && (tt.spec.Spec != nil)
-			if isBothSet && !tt.expectErr {
-				t.Errorf("expected no error for scenario 'both Ref and Spec set', but logic indicates an XOR violation")
-			} else if !isBothSet && tt.expectErr {
-				t.Errorf("expected an error, but neither Ref nor Spec are both set.")
-			}
-		})
-	}
 }

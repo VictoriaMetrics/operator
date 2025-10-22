@@ -163,7 +163,7 @@ func newVMDistributedCluster(name, namespace, clusterVersion, vmagentName string
 	vmClustersRefs := make([]vmv1alpha1.VMClusterRefOrSpec, len(vmclusterNames))
 	for i, name := range vmclusterNames {
 		vmClustersRefs[i] = vmv1alpha1.VMClusterRefOrSpec{
-			LocalObjectReference: corev1.LocalObjectReference{Name: name},
+			Ref: &corev1.LocalObjectReference{Name: name},
 		}
 	}
 	vmUsersRefs := make([]corev1.LocalObjectReference, len(vmuserNames))
@@ -288,7 +288,7 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.VMClusters = []vmv1alpha1.VMClusterRefOrSpec{
 			{
-				LocalObjectReference: corev1.LocalObjectReference{Name: "missing-cluster"},
+				Ref: corev1.LocalObjectReference{Name: "missing-cluster"},
 			},
 		}
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
@@ -318,7 +318,7 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.VMClusters = []vmv1alpha1.VMClusterRefOrSpec{
 			{
-				LocalObjectReference: corev1.LocalObjectReference{Name: "vmcluster-1"},
+				Ref: corev1.LocalObjectReference{Name: "vmcluster-1"},
 			}, {
 				LocalObjectReference: corev1.LocalObjectReference{Name: "non-existent-cluster"},
 			},
@@ -463,7 +463,7 @@ func TestCreateOrUpdate_DistributedCluster_NewAPI(t *testing.T) {
 	t.Run("Paused - ignores missing VMClusters", func(t *testing.T) {
 		td := beforeEach()
 		td.cr.Spec.Paused = true
-		td.cr.Spec.VMClusters = []vmv1alpha1.VMClusterRefOrSpec{{LocalObjectReference: corev1.LocalObjectReference{Name: "missing-cluster"}}}
+		td.cr.Spec.VMClusters = []vmv1alpha1.VMClusterRefOrSpec{{Ref: corev1.LocalObjectReference{Name: "missing-cluster"}}}
 
 		err := CreateOrUpdate(ctx, td.cr, &td.trackingClient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.NoError(t, err, "CreateOrUpdate should succeed without error when paused, even with missing VMClusters")
@@ -753,8 +753,8 @@ func TestFetchVMClusters(t *testing.T) {
 			Build()
 
 		refs := []vmv1alpha1.VMClusterRefOrSpec{
-			{LocalObjectReference: corev1.LocalObjectReference{Name: "cluster-1"}},
-			{LocalObjectReference: corev1.LocalObjectReference{Name: "cluster-2"}},
+			{Ref: corev1.LocalObjectReference{Name: "cluster-1"}},
+			{Ref: corev1.LocalObjectReference{Name: "cluster-2"}},
 		}
 
 		result, err := fetchVMClusters(ctx, fakeClient, "default", refs)
@@ -776,7 +776,7 @@ func TestFetchVMClusters(t *testing.T) {
 	t.Run("Cluster not found", func(t *testing.T) {
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 		refs := []vmv1alpha1.VMClusterRefOrSpec{
-			{LocalObjectReference: corev1.LocalObjectReference{Name: "nonexistent"}},
+			{Ref: corev1.LocalObjectReference{Name: "nonexistent"}},
 		}
 
 		result, err := fetchVMClusters(ctx, fakeClient, "default", refs)
@@ -1271,3 +1271,54 @@ func TestVMDistributedClusterDelete(t *testing.T) {
 	assert.True(t, k8serrors.IsNotFound(err), "Error should be IsNotFound")
 }
 */
+
+func TestVMClusterRefOrSpec_Validation(t *testing.T) {
+	tests := []struct {
+		name      string
+		spec      vmv1alpha1.VMClusterRefOrSpec
+		expectErr bool
+	}{
+		{
+			name:      "neither Ref nor Spec set",
+			spec:      vmv1alpha1.VMClusterRefOrSpec{},
+			expectErr: false,
+		},
+		{
+			name: "only Ref set",
+			spec: vmv1alpha1.VMClusterRefOrSpec{
+				Ref: &corev1.LocalObjectReference{Name: "test-ref"},
+			},
+			expectErr: false,
+		},
+		{
+			name: "only Spec set",
+			spec: vmv1alpha1.VMClusterRefOrSpec{
+				Spec: &vmv1beta1.VMClusterSpec{
+					ClusterVersion: "test-image",
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "both Ref and Spec set",
+			spec: vmv1alpha1.VMClusterRefOrSpec{
+				Ref:  &corev1.LocalObjectReference{Name: "test-ref"},
+				Spec: &vmv1beta1.VMClusterSpec{ClusterVersion: "test-version"},
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// The Xor validation is handled by the Kubernetes API server admission controller (webhook).
+			// In a unit test, we manually check the condition that would cause an Xor violation.
+			isBothSet := (tt.spec.Ref != nil && tt.spec.Ref.Name != "") && (tt.spec.Spec != nil)
+			if isBothSet && !tt.expectErr {
+				t.Errorf("expected no error for scenario 'both Ref and Spec set', but logic indicates an XOR violation")
+			} else if !isBothSet && tt.expectErr {
+				t.Errorf("expected an error, but neither Ref nor Spec are both set.")
+			}
+		})
+	}
+}

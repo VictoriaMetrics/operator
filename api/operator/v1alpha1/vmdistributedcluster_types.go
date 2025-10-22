@@ -47,9 +47,15 @@ type VMDistributedClusterSpec struct {
 }
 
 // +k8s:openapi-gen=true
-// VMClusterRefOrSpec is a pair of VMCluster and its generation
+// VMClusterRefOrSpec is either a reference to existing VMCluster or a specification of a new VMCluster.
+// +kubebuilder:validation:Xor=Ref,Spec
 type VMClusterRefOrSpec struct {
-	corev1.LocalObjectReference `json:",inline"`
+	// Ref points to the VMCluster object.
+	// +optional
+	Ref *corev1.LocalObjectReference `json:"ref,omitempty"`
+	// Spec defines the desired state of a new VMCluster.
+	// +optional
+	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true

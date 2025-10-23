@@ -277,6 +277,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 							UseStrictSecurity: ptr.To(true),
 						},
+						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+							UseVMConfigReloader: ptr.To(false),
+						},
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,

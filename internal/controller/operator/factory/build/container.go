@@ -208,11 +208,13 @@ func formatContainerImage(globalRepo string, containerImage string) string {
 	if !strings.HasSuffix(globalRepo, "/") {
 		globalRepo += "/"
 	}
-	// operator has built-in images hosted at quay, check for it.
-	if !strings.HasPrefix(containerImage, "quay.io/") {
-		return globalRepo + containerImage
+	// operator has built-in images hosted at quay.io, docker.io and ghcr.io, check for them.
+	for _, registry := range []string{"docker.io/", "quay.io/", "ghcr.io/"} {
+		if strings.HasPrefix(containerImage, registry) {
+			return globalRepo + containerImage[len(registry):]
+		}
 	}
-	return globalRepo + containerImage[len("quay.io/"):]
+	return globalRepo + containerImage
 }
 
 // AppendInsertPorts conditionally adds ingestPorts to the given ports slice

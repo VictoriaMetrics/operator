@@ -208,7 +208,7 @@ type BaseOperatorConf struct {
 	VMAlertDefault struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `default:"jimmidyson/configmap-reload:v0.3.0" env:"CONFIGRELOADIMAGE"`
+		ConfigReloadImage   string `default:"ghcr.io/jimmidyson/configmap-reload:v0.15.0" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8080"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -349,7 +349,7 @@ type BaseOperatorConf struct {
 	} `prefix:"VMCLUSTERDEFAULT_"`
 
 	VMAlertManager struct {
-		ConfigReloaderImage string `default:"jimmidyson/configmap-reload:v0.3.0" env:"CONFIGRELOADERIMAGE"`
+		ConfigReloaderImage string `default:"ghcr.io/jimmidyson/configmap-reload:v0.15.0" env:"CONFIGRELOADERIMAGE"`
 		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
 		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
 		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead

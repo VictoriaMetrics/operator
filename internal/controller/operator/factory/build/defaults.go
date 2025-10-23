@@ -591,6 +591,7 @@ func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 		} else {
 			common.ConfigReloaderImageTag = appDefaults.ConfigReloadImage
 		}
+		common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
 	}
 
 	cpuValue := appDefaults.ConfigReloaderCPU
@@ -601,7 +602,6 @@ func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 	if len(c.ConfigReloaderRequestMemory) > 0 {
 		memoryValue = c.ConfigReloaderRequestMemory
 	}
-	common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
 	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource{
 		Limit: struct {
 			Mem string

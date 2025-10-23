@@ -76,6 +76,9 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 						Namespace: namespace,
 					},
 					Spec: vmv1beta1.VMAlertmanagerSpec{
+						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+							ConfigReloaderImageTag: "ghcr.io/jimmidyson/configmap-reload:v0.15.0",
+						},
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
@@ -158,6 +161,9 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 				Namespace: namespacedName.Namespace,
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImageTag: "ghcr.io/jimmidyson/configmap-reload:v0.15.0",
+				},
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 					ReplicaCount: ptr.To[int32](1),
 				},

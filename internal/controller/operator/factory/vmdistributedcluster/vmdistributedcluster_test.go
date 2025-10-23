@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/VictoriaMetrics/operator/api/client/versioned/scheme"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 
@@ -36,11 +37,13 @@ type action struct {
 	Object    client.Object
 }
 
-// trackingClient wraps a fake client to record actions
+var _ client.Client = (*trackingClient)(nil)
+
 type trackingClient struct {
-	client.Client
-	Actions []action
-	mu      sync.Mutex
+	client.Client // The embedded fake client
+	Actions       []action
+	objects       map[client.ObjectKey]client.Object // Store created/updated objects
+	mu            sync.Mutex
 }
 
 type trackingStatusWriter struct {
@@ -56,13 +59,27 @@ func (tc *trackingClient) Get(ctx context.Context, key client.ObjectKey, obj cli
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
 	tc.Actions = append(tc.Actions, action{Method: "Get", ObjectKey: key, Object: obj})
+
+	// Try to get from our internal map first
+	if storedObj, found := tc.objects[key]; found {
+		// Use scheme.Scheme.Convert to safely copy the stored object into the provided empty shell
+		if err := scheme.Scheme.Convert(storedObj, obj, nil); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Fallback to the underlying fake client
 	return tc.Client.Get(ctx, key, obj, opts...)
 }
 
 func (tc *trackingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
-	tc.Actions = append(tc.Actions, action{Method: "Update", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
+	tc.Actions = append(tc.Actions, action{Method: "update", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
+	// Update the object in our internal map as well
+	objCopy := obj.DeepCopyObject().(client.Object)
+	tc.objects[client.ObjectKeyFromObject(objCopy)] = objCopy
 	return tc.Client.Update(ctx, obj, opts...)
 }
 
@@ -70,6 +87,12 @@ func (tc *trackingClient) Create(ctx context.Context, obj client.Object, opts ..
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
 	tc.Actions = append(tc.Actions, action{Method: "Create", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
+
+	// Store a deep copy of the created object in our internal map
+	// This makes it available for subsequent Get calls
+	objCopy := obj.DeepCopyObject().(client.Object)
+	tc.objects[client.ObjectKeyFromObject(objCopy)] = objCopy
+
 	return tc.Client.Create(ctx, obj, opts...)
 }
 
@@ -211,7 +234,7 @@ type testData struct {
 	trackingClient *trackingClient
 }
 
-func beforeEach(t *testing.T) testData {
+func beforeEach(t *testing.T, initialObjs ...runtime.Object) testData {
 	scheme := runtime.NewScheme()
 	_ = vmv1alpha1.AddToScheme(scheme)
 	_ = vmv1beta1.AddToScheme(scheme)
@@ -250,14 +273,34 @@ func beforeEach(t *testing.T) testData {
 	}
 	cr := newVMDistributedCluster("test-vdc", "default", zones, vmAgentRef, vmUserRefs)
 
-	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+	// Create a new trackingClient
+	tc := &trackingClient{
+		Client:  fake.NewClientBuilder().WithScheme(scheme).WithObjects(vmagent, vmuser1, vmuser2, vmcluster1, vmcluster2).WithRuntimeObjects(initialObjs...).Build(),
+		Actions: []action{},
+		objects: make(map[client.ObjectKey]client.Object),
+	}
+
+	// Populate the trackingClient's internal objects map with initial objects
+	for _, obj := range initialObjs {
+		if co, ok := obj.(client.Object); ok {
+			tc.objects[client.ObjectKeyFromObject(co)] = co.DeepCopyObject().(client.Object)
+		}
+	}
+
+	builder := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
 		vmagent,
 		vmuser1,
 		vmuser2,
 		vmcluster1,
 		vmcluster2,
 		cr,
-	).Build()
+	)
+
+	var clientObjs []client.Object
+	for _, obj := range initialObjs {
+		clientObjs = append(clientObjs, obj.(client.Object))
+	}
+	rclient := builder.WithObjects(clientObjs...).Build()
 
 	trackingClient := &trackingClient{Client: rclient}
 

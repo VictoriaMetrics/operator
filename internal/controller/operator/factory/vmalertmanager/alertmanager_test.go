@@ -194,7 +194,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 
 				foundTemplatesDir := false
 				for _, arg := range set.Spec.Template.Spec.Containers[1].Args {
-					if arg == "-volume-dir=/etc/vm/templates/test-am" {
+					if arg == "--watched-dir=/etc/vm/templates/test-am" {
 						foundTemplatesDir = true
 					}
 				}

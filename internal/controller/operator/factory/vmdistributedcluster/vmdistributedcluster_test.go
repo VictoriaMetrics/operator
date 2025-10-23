@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -187,17 +188,16 @@ func newVMCluster(name, namespace, version string, replicas int32) *vmv1beta1.VM
 	}
 }
 
-func newVMDistributedCluster(name, namespace, clusterVersion string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgentRef corev1.LocalObjectReference, vmUserRefs []corev1.LocalObjectReference) *vmv1alpha1.VMDistributedCluster {
+func newVMDistributedCluster(name, namespace string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgentRef corev1.LocalObjectReference, vmUserRefs []corev1.LocalObjectReference) *vmv1alpha1.VMDistributedCluster {
 	return &vmv1alpha1.VMDistributedCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
 		Spec: vmv1alpha1.VMDistributedClusterSpec{
-			ClusterVersion: clusterVersion,
-			Zones:          zones,
-			VMAgent:        vmAgentRef,
-			VMUsers:        vmUserRefs,
+			Zones:   zones,
+			VMAgent: vmAgentRef,
+			VMUsers: vmUserRefs,
 		},
 	}
 }
@@ -248,7 +248,7 @@ func beforeEach(t *testing.T) testData {
 		{Name: vmuser1.Name},
 		{Name: vmuser2.Name},
 	}
-	cr := newVMDistributedCluster("test-vdc", "default", "v1.0.0", zones, vmAgentRef, vmUserRefs)
+	cr := newVMDistributedCluster("test-vdc", "default", zones, vmAgentRef, vmUserRefs)
 
 	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
 		vmagent,
@@ -377,11 +377,12 @@ func TestFetchVMClusters(t *testing.T) {
 	crName := "test-vdc"
 
 	vmcluster1 := newVMCluster("ref-cluster-1", namespace, "v1.0.0", 1)
-	vmcluster2 := newVMCluster("inline-cluster-2", namespace, "v1.0.0", 1) // Will be created inline
+	// vmcluster2 will be an in-memory representation for an inline cluster
+	vmcluster2 := newVMCluster("inline-cluster-2", namespace, "v1.0.0", 1)
 
 	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(vmcluster1).Build()
 
-	t.Run("Fetch existing and create inline clusters", func(t *testing.T) {
+	t.Run("Fetch existing and create in-memory inline clusters", func(t *testing.T) {
 		zones := []vmv1alpha1.VMClusterRefOrSpec{
 			{Ref: &corev1.LocalObjectReference{Name: "ref-cluster-1"}},
 			{Name: "inline-cluster-2", Spec: &vmcluster2.Spec},
@@ -391,36 +392,14 @@ func TestFetchVMClusters(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, fetchedClusters, 2)
 		assert.Equal(t, vmcluster1.Name, fetchedClusters[0].Name)
-		assert.Equal(t, fmt.Sprintf("%s-%s", crName, vmcluster2.Name), fetchedClusters[1].Name) // Inline cluster gets CR name prefix
+		// Inline cluster gets CR name prefix, and it's an in-memory object, not created in fake client yet.
+		assert.Equal(t, fmt.Sprintf("%s-%d", crName, 1), fetchedClusters[1].Name)
+		assert.Equal(t, vmcluster2.Spec, fetchedClusters[1].Spec)
 
-		// Verify inline cluster was actually created
+		// Verify inline cluster was NOT actually created in the fake client
 		createdInline := &vmv1beta1.VMCluster{}
-		err = rclient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%s", crName, vmcluster2.Name), Namespace: namespace}, createdInline)
-		assert.NoError(t, err)
-		assert.Equal(t, vmcluster2.Spec, createdInline.Spec)
-	})
-
-	t.Run("Handle override spec for referenced cluster", func(t *testing.T) {
-		overrideSpecVMClusterSpec := vmv1beta1.VMClusterSpec{ClusterVersion: "v1.1.0"}
-		overrideSpecJSON, err := json.Marshal(overrideSpecVMClusterSpec)
-		assert.NoError(t, err)
-		overrideSpec := &apiextensionsv1.JSON{Raw: overrideSpecJSON}
-
-		zones := []vmv1alpha1.VMClusterRefOrSpec{
-			{Ref: &corev1.LocalObjectReference{Name: "ref-cluster-1"}, OverrideSpec: overrideSpec},
-		}
-
-		fetchedClusters, err := fetchVMClusters(ctx, rclient, crName, namespace, zones)
-		assert.NoError(t, err)
-		assert.Len(t, fetchedClusters, 1)
-		assert.Equal(t, "ref-cluster-1", fetchedClusters[0].Name)
-		assert.Equal(t, "v1.1.0", fetchedClusters[0].Spec.ClusterVersion)
-
-		// Verify that the original ref-cluster-1 was updated
-		updatedRefCluster := &vmv1beta1.VMCluster{}
-		err = rclient.Get(ctx, client.ObjectKey{Name: "ref-cluster-1", Namespace: namespace}, updatedRefCluster)
-		assert.NoError(t, err)
-		assert.Equal(t, "v1.1.0", updatedRefCluster.Spec.ClusterVersion)
+		err = rclient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%d", crName, 1), Namespace: namespace}, createdInline)
+		assert.True(t, k8serrors.IsNotFound(err))
 	})
 
 	t.Run("Error when referenced cluster not found", func(t *testing.T) {
@@ -434,7 +413,7 @@ func TestFetchVMClusters(t *testing.T) {
 
 	t.Run("Error when inline spec is invalid (e.g., missing name)", func(t *testing.T) {
 		zones := []vmv1alpha1.VMClusterRefOrSpec{
-			{Spec: &vmv1beta1.VMClusterSpec{}}, // Missing name for inline spec
+			{Spec: &vmv1beta1.VMClusterSpec{}}, // Missing name for inline spec is caught by validateVMClusterRefOrSpec
 		}
 		_, err := fetchVMClusters(ctx, rclient, crName, namespace, zones)
 		assert.Error(t, err)

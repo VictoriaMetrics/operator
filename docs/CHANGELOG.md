@@ -13,6 +13,11 @@ aliases:
 
 ## tip
 
+**Update Note 1:** This release deprecates 3rd party config-reloader containers - `jimmidyson/configmap-reload` and `quay.io/prometheus-operator/prometheus-config-reloader` in favor of own implementation - 
+[victoriametrics/operator:config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader).
+This change could be reverted by providing env variable `VM_USECUSTOMCONFIGRELOADER=false` to the operator binary.
+
+
 * SECURITY: upgrade Go builder from Go1.25.0 to Go1.25.3. See [the list of issues addressed in Go1.25.3](https://github.com/golang/go/issues?q=milestone%3AGo1.25.3+label%3ACherryPickApproved).
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.36.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.1).
@@ -21,6 +26,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.26.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1261) version
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/anomaly-detection/): support ui preset mode, support `vlogs` reader type. See [#1532](https://github.com/VictoriaMetrics/operator/issues/1538).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): change default value of env variable `VM_USECUSTOMCONFIGRELOADER` to `true`, which instructs operator to use own [config-reloader](https://github.com/VictoriaMetrics/operator/blob/master/cmd/config-reloader/README.md) implementation by default.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `unhealthyPodEvictionPolicy` to the `podDisruptionBudget` specification. See this issue [#1534](https://github.com/VictoriaMetrics/operator/issues/1534) for details.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `rollingUpdate` and `updateStrategy` fields to `VMAuth.spec`, `VMCluster.spec.requestsLoadBalancer.spec`, `VLCluster.spec.requestsLoadBalancer.spec` and `VTCluster.spec.requestsLoadBalancer.spec`. See this issue [#1540](https://github.com/VictoriaMetrics/operator/issues/1540) for details.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): preserve 3rd party `labels` on object during `reconcile`. Previously, operator allowed to keep only `managedMetadata.labels`. See this issue [#1533](https://github.com/VictoriaMetrics/operator/issues/1533). Thanks to the @lllamnyp

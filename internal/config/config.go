@@ -109,7 +109,7 @@ type BaseOperatorConf struct {
 
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
-	UseCustomConfigReloader bool `default:"false" env:"USECUSTOMCONFIGRELOADER"`
+	UseCustomConfigReloader bool `default:"true" env:"USECUSTOMCONFIGRELOADER"`
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry                string `default:"" env:"CONTAINERREGISTRY"`
 	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.62.0" env:"CUSTOMCONFIGRELOADERIMAGE"`

@@ -225,7 +225,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				func(cr *vmv1.VMAnomaly) {
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					}, anomalyReadyTimeout, 1).Should(BeEmpty())
 					Expect(finalize.SafeDelete(
 						ctx,
 						k8sClient,
@@ -272,7 +272,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				}, nil, func(cr *vmv1.VMAnomaly) {
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					}, anomalyReadyTimeout, 1).Should(BeEmpty())
 					var dep appsv1.StatefulSet
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Name: cr.PrefixedName(), Namespace: namespace,

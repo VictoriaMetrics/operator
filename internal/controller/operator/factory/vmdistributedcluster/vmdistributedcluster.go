@@ -44,7 +44,7 @@ const (
 	VMAgentBufferMetricName = "vmagent_remotewrite_pending_data_bytes"
 )
 
-// CreateOrUpdate - handles VM deployment reconciliation.
+// CreateOrUpdate handles VM deployment reconciliation.
 func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, vmclusterWaitReadyDeadline, httpTimeout time.Duration) error {
 	// Store the previous CR for comparison
 	var prevCR *vmv1alpha1.VMDistributedCluster
@@ -56,6 +56,19 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	// No actions performed if CR is paused
 	if cr.Paused() {
 		return nil
+	}
+
+	// Validate zones, exit early if invalid
+	for i, zone := range cr.Spec.Zones {
+		if zone.Spec != nil && zone.Name == "" {
+			return fmt.Errorf("VMClusterRefOrSpec.Name must be set when Spec is provided for zone at index %d", i)
+		}
+		if zone.Spec == nil && zone.Ref == nil {
+			return fmt.Errorf("VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
+		}
+		if zone.Spec != nil && zone.Ref != nil {
+			return fmt.Errorf("Either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
+		}
 	}
 
 	// Fetch global vmagent
@@ -70,29 +83,17 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("failed to fetch vmusers: %w", err)
 	}
 
-	// Store current CR status
-	currentCRStatus := cr.Status.DeepCopy()
-	cr.Status = vmv1alpha1.VMDistributedClusterStatus{}
-
-	for i, zone := range cr.Spec.Zones {
-		if zone.Spec != nil && zone.Name == "" {
-			return fmt.Errorf("VMClusterRefOrSpec.Name must be set when Spec is provided for zone at index %d", i)
-		}
-		if zone.Spec == nil && zone.Ref == nil {
-			return fmt.Errorf("VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
-		}
-		if zone.Spec != nil && zone.Ref != nil {
-			return fmt.Errorf("Either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
-		}
-	}
-
 	// Fetch VMCLuster statuses by name
 	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Name, cr.Namespace, cr.Spec.Zones)
 	if err != nil {
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
 
-	// Ensure that all vmusers have a read rule for vmcluster and record vmcluster info
+	// Store current CR status
+	currentCRStatus := cr.Status.DeepCopy()
+	cr.Status = vmv1alpha1.VMDistributedClusterStatus{}
+
+	// Ensure that all vmusers have a read rule for vmcluster and record vmcluster info in VMDistributedCluster status
 	cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
 	for i, vmCluster := range vmClusters {
 		ref, err := findVMUserReadRuleForVMCluster(vmUserObjs, vmCluster)
@@ -105,35 +106,59 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			TargetRef:     *ref.DeepCopy(),
 		}
 	}
-	// Compare generations of vmcluster objects from the spec with the previous CR
+	cr.Status.Zones = cr.Spec.Zones
+
+	// Compare generations of vmcluster objects from the spec with the previous CR and Zones configuration
 	if !reflect.DeepEqual(getGenerationsFromStatus(currentCRStatus), getGenerationsFromStatus(&cr.Status)) {
-		// Record new generations but exit early if generations change is detected
+		// Record new generations and zones config, then exit early if a change is detected
 		if err := rclient.Status().Update(ctx, cr); err != nil {
 			return fmt.Errorf("failed to update status: %w", err)
 		}
-		return fmt.Errorf("unexpected generations change detected: %w", errors.New("unexpected generations change detected"))
-	}
-
-	httpClient := &http.Client{
-		Timeout: httpTimeout,
+		return fmt.Errorf("unexpected generations or zones config change detected: %w", errors.New("unexpected generations or zones config change detected"))
 	}
 
 	// TODO[vrutkovs]: Mark all VMClusters as paused?
 	// This would prevent other reconciliation loops from changing them
-	for _, vmClusterObj := range vmClusters {
-		// Check if VMCluster is already up-to-date
-		if vmClusterObj.Spec.ClusterVersion == cr.Spec.ClusterVersion {
+
+	// Disable VMClusters one by one if overrideSpec needs to be applied
+	httpClient := &http.Client{
+		Timeout: httpTimeout,
+	}
+	for i, vmClusterObj := range vmClusters {
+		zoneRefOrSpec := cr.Spec.Zones[i]
+
+		needsToBeCreated := false
+		// Get vmClusterObj in case it doesn't exist or has changed
+		if err = rclient.Get(ctx, types.NamespacedName{Name: vmClusterObj.Name, Namespace: vmClusterObj.Namespace}, vmClusterObj); k8serrors.IsNotFound(err) {
+			needsToBeCreated = true
+		}
+		mergedSpec, modified, err := ApplyOverrideSpec(vmClusterObj.Spec, zoneRefOrSpec.OverrideSpec)
+		if err != nil {
+			return fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+		}
+		if !needsToBeCreated && !modified {
 			continue
 		}
+
+		vmClusterObj.Spec = mergedSpec
+		if needsToBeCreated {
+			if err := rclient.Create(ctx, vmClusterObj); err != nil {
+				return fmt.Errorf("failed to create vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
+			}
+			// No further action needed after creation
+			continue
+		}
+		// Apply the updated spec
+		if err := rclient.Update(ctx, vmClusterObj); err != nil {
+			return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
+		}
+
+		// Perform rollout steps for the (now reconciled/updated) VMCluster
 		// Disable this VMCluster in vmusers
 		setVMClusterStatusInVMUsers(ctx, rclient, cr, vmClusterObj, vmUserObjs, false)
 		// Wait for VMAgent metrics to show no queue
 		vmAgent := &vmAgentAdapter{VMAgent: vmAgentObj}
 		waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, vmclusterWaitReadyDeadline)
-		// Change VMCluster version and wait for it to be ready
-		if err := changeVMClusterVersion(ctx, rclient, vmClusterObj, cr.Spec.ClusterVersion); err != nil {
-			return fmt.Errorf("failed to change VMCluster %s/%s version: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
-		}
 		// Wait for VMCluster to be ready
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
@@ -212,42 +237,30 @@ func reconcileInlineVMCluster(ctx context.Context, rclient client.Client, crName
 }
 
 func fetchVMClusters(ctx context.Context, rclient client.Client, crName, namespace string, refs []vmv1alpha1.VMClusterRefOrSpec) ([]*vmv1beta1.VMCluster, error) {
+	var err error
 	vmClusters := make([]*vmv1beta1.VMCluster, len(refs))
 	for i, vmClusterObjOrRef := range refs {
-		if err := validateVMClusterRefOrSpec(i, vmClusterObjOrRef); err != nil {
+		if err = validateVMClusterRefOrSpec(i, vmClusterObjOrRef); err != nil {
 			return nil, err
 		}
 
-		var currentVMCluster *vmv1beta1.VMCluster
-		var err error
-
 		if vmClusterObjOrRef.Ref != nil {
-			currentVMCluster, err = getReferencedVMCluster(ctx, rclient, namespace, vmClusterObjOrRef.Ref)
+			vmClusters[i], err = getReferencedVMCluster(ctx, rclient, namespace, vmClusterObjOrRef.Ref)
 			if err != nil {
 				return nil, fmt.Errorf("failed to fetch vmclusters: %w", err)
 			}
-			// Apply OverrideSpec if provided when Ref is used
-			if vmClusterObjOrRef.OverrideSpec != nil {
-				mergedSpec, modified, err := ApplyOverrideSpec(currentVMCluster.Spec, vmClusterObjOrRef.OverrideSpec)
-				if err != nil {
-					return nil, fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", currentVMCluster.Name, i, err)
-				}
-				if modified {
-					currentVMCluster.Spec = mergedSpec
-					if err := rclient.Update(ctx, currentVMCluster); err != nil {
-						return nil, fmt.Errorf("failed to update vmcluster %s at index %d: %w", currentVMCluster.Name, i, err)
-					}
-				}
-			}
 		} else if vmClusterObjOrRef.Spec != nil {
-			currentVMCluster, err = reconcileInlineVMCluster(ctx, rclient, crName, namespace, i, vmClusterObjOrRef)
-			if err != nil {
-				return nil, fmt.Errorf("failed to reconcile inline vmcluster at index %d: %w", i, err)
+			// Create an in-memory VMCluster object, it will be reconciled in the main loop.
+			vmClusters[i] = &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%d", crName, i),
+					Namespace: namespace,
+				},
+				Spec: *vmClusterObjOrRef.Spec.DeepCopy(),
 			}
 		} else {
 			return nil, fmt.Errorf("invalid VMClusterRefOrSpec at index %d: neither Ref nor Spec is set", i)
 		}
-		vmClusters[i] = currentVMCluster
 	}
 	return vmClusters, nil
 }

@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -364,7 +365,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				if err := k8sClient.Get(ctx, namespacedName, &obj); err != nil {
 					return err
 				}
-				obj.Spec.ClusterVersion = updateVersion
+				// Apply spec update
+				obj.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
+					Raw: []byte(`{"clusterVersion": "v1.2.3"}`),
+				}
 				return k8sClient.Update(ctx, &obj)
 			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 

@@ -40,7 +40,7 @@ type VMDistributedClusterSpec struct {
 	// Zones is a list of VMCluster instances to update. Each VMCluster in the list represents a "zone" within the distributed cluster.
 	Zones []VMClusterRefOrSpec `json:"zones,omitempty"`
 	// ClusterVersion defines expected image tag for all components.
-	ClusterVersion string `json:"clusterVersion,omitempty"`
+
 	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
@@ -76,6 +76,9 @@ type VMDistributedClusterStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
 	// VMClusterInfo is a list of VMCluster-generation pairs
 	VMClusterInfo []VMClusterStatus `json:"vmClusterGenerations,omitempty"`
+	// Zones is a list of VMClusterRefOrSpec instances from the spec.
+	// It's used to detect changes in zones configuration for rolling updates.
+	Zones []VMClusterRefOrSpec `json:"zones,omitempty"`
 }
 
 // +k8s:openapi-gen=true

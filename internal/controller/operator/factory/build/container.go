@@ -134,11 +134,11 @@ func Resources(crdResources corev1.ResourceRequirements, defaultResources config
 	}
 
 	if !cpuResourceIsSet && useDefault {
-		if defaultResources.Request.Cpu != config.UnLimitedResource {
-			crdResources.Requests[corev1.ResourceCPU] = resource.MustParse(defaultResources.Request.Cpu)
+		if defaultResources.Request.CPU != config.UnLimitedResource {
+			crdResources.Requests[corev1.ResourceCPU] = resource.MustParse(defaultResources.Request.CPU)
 		}
-		if defaultResources.Limit.Cpu != config.UnLimitedResource {
-			crdResources.Limits[corev1.ResourceCPU] = resource.MustParse(defaultResources.Limit.Cpu)
+		if defaultResources.Limit.CPU != config.UnLimitedResource {
+			crdResources.Limits[corev1.ResourceCPU] = resource.MustParse(defaultResources.Limit.CPU)
 		}
 	}
 	if !memResourceIsSet && useDefault {
@@ -209,10 +209,12 @@ func formatContainerImage(globalRepo string, containerImage string) string {
 		globalRepo += "/"
 	}
 	// operator has built-in images hosted at quay, check for it.
-	if !strings.HasPrefix(containerImage, "quay.io/") {
-		return globalRepo + containerImage
+	for _, registry := range []string{"docker.io/", "quay.io/", "ghcr.io/"} {
+		if strings.HasPrefix(containerImage, registry) {
+			return globalRepo + containerImage[len(registry):]
+		}
 	}
-	return globalRepo + containerImage[len("quay.io/"):]
+	return globalRepo + containerImage
 }
 
 // AppendInsertPorts conditionally adds ingestPorts to the given ports slice

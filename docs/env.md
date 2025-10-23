@@ -45,38 +45,37 @@
 | VM_VTSINGLEDEFAULT_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vtsingledefault-resource-request-cpu" id="variables-vm-vtsingledefault-resource-request-cpu">#</a> |
 | VM_VMALERTDEFAULT_IMAGE: `victoriametrics/vmalert` <a href="#variables-vm-vmalertdefault-image" id="variables-vm-vmalertdefault-image">#</a> |
 | VM_VMALERTDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmalertdefault-version" id="variables-vm-vmalertdefault-version">#</a> |
-| VM_VMALERTDEFAULT_CONFIGRELOADIMAGE: `jimmidyson/configmap-reload:v0.3.0` <a href="#variables-vm-vmalertdefault-configreloadimage" id="variables-vm-vmalertdefault-configreloadimage">#</a> |
 | VM_VMALERTDEFAULT_PORT: `8080` <a href="#variables-vm-vmalertdefault-port" id="variables-vm-vmalertdefault-port">#</a> |
 | VM_VMALERTDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmalertdefault-usedefaultresources" id="variables-vm-vmalertdefault-usedefaultresources">#</a> |
 | VM_VMALERTDEFAULT_RESOURCE_LIMIT_MEM: `500Mi` <a href="#variables-vm-vmalertdefault-resource-limit-mem" id="variables-vm-vmalertdefault-resource-limit-mem">#</a> |
 | VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmalertdefault-resource-limit-cpu" id="variables-vm-vmalertdefault-resource-limit-cpu">#</a> |
 | VM_VMALERTDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmalertdefault-resource-request-mem" id="variables-vm-vmalertdefault-resource-request-mem">#</a> |
 | VM_VMALERTDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmalertdefault-resource-request-cpu" id="variables-vm-vmalertdefault-resource-request-cpu">#</a> |
+| VM_VMALERTDEFAULT_CONFIGRELOADIMAGE: `ghcr.io/jimmidyson/configmap-reload:v0.15.0` <a href="#variables-vm-vmalertdefault-configreloadimage" id="variables-vm-vmalertdefault-configreloadimage">#</a> |
+| VM_VMALERTDEFAULT_CONFIGRELOADER_PRESERVE_REGISTRY: `true` <a href="#variables-vm-vmalertdefault-configreloader-preserve-registry" id="variables-vm-vmalertdefault-configreloader-preserve-registry">#</a> |
 | VM_VMALERTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertdefault-configreloadercpu" id="variables-vm-vmalertdefault-configreloadercpu">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
 | VM_VMALERTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertdefault-configreloadermemory" id="variables-vm-vmalertdefault-configreloadermemory">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMSERVICESCRAPEDEFAULT_ENFORCEENDPOINTSLICES: `false` <a href="#variables-vm-vmservicescrapedefault-enforceendpointslices" id="variables-vm-vmservicescrapedefault-enforceendpointslices">#</a><br>Use endpointslices instead of endpoints as discovery role for vmservicescrape when generate scrape config for vmagent. |
 | VM_VMAGENTDEFAULT_IMAGE: `victoriametrics/vmagent` <a href="#variables-vm-vmagentdefault-image" id="variables-vm-vmagentdefault-image">#</a> |
 | VM_VMAGENTDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmagentdefault-version" id="variables-vm-vmagentdefault-version">#</a> |
-| VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE: `quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1` <a href="#variables-vm-vmagentdefault-configreloadimage" id="variables-vm-vmagentdefault-configreloadimage">#</a> |
 | VM_VMAGENTDEFAULT_PORT: `8429` <a href="#variables-vm-vmagentdefault-port" id="variables-vm-vmagentdefault-port">#</a> |
 | VM_VMAGENTDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmagentdefault-usedefaultresources" id="variables-vm-vmagentdefault-usedefaultresources">#</a> |
 | VM_VMAGENTDEFAULT_RESOURCE_LIMIT_MEM: `500Mi` <a href="#variables-vm-vmagentdefault-resource-limit-mem" id="variables-vm-vmagentdefault-resource-limit-mem">#</a> |
 | VM_VMAGENTDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmagentdefault-resource-limit-cpu" id="variables-vm-vmagentdefault-resource-limit-cpu">#</a> |
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmagentdefault-resource-request-mem" id="variables-vm-vmagentdefault-resource-request-mem">#</a> |
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmagentdefault-resource-request-cpu" id="variables-vm-vmagentdefault-resource-request-cpu">#</a> |
-| VM_VMAGENTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmagentdefault-configreloadercpu" id="variables-vm-vmagentdefault-configreloadercpu">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmagentdefault-configreloadermemory" id="variables-vm-vmagentdefault-configreloadermemory">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
+| VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE: `quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1` <a href="#variables-vm-vmagentdefault-configreloadimage" id="variables-vm-vmagentdefault-configreloadimage">#</a> |
+| VM_VMAGENTDEFAULT_CONFIGRELOADER_PRESERVE_REGISTRY: `false` <a href="#variables-vm-vmagentdefault-configreloader-preserve-registry" id="variables-vm-vmagentdefault-configreloader-preserve-registry">#</a> |
+| VM_VMAGENTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmagentdefault-configreloadercpu" id="variables-vm-vmagentdefault-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmagentdefault-configreloadermemory" id="variables-vm-vmagentdefault-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMANOMALYDEFAULT_IMAGE: `victoriametrics/vmanomaly` <a href="#variables-vm-vmanomalydefault-image" id="variables-vm-vmanomalydefault-image">#</a> |
 | VM_VMANOMALYDEFAULT_VERSION: `${VM_ANOMALY_VERSION}` <a href="#variables-vm-vmanomalydefault-version" id="variables-vm-vmanomalydefault-version">#</a> |
-| VM_VMANOMALYDEFAULT_CONFIGRELOADIMAGE: `quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1` <a href="#variables-vm-vmanomalydefault-configreloadimage" id="variables-vm-vmanomalydefault-configreloadimage">#</a> |
 | VM_VMANOMALYDEFAULT_PORT: `8490` <a href="#variables-vm-vmanomalydefault-port" id="variables-vm-vmanomalydefault-port">#</a> |
 | VM_VMANOMALYDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmanomalydefault-usedefaultresources" id="variables-vm-vmanomalydefault-usedefaultresources">#</a> |
 | VM_VMANOMALYDEFAULT_RESOURCE_LIMIT_MEM: `500Mi` <a href="#variables-vm-vmanomalydefault-resource-limit-mem" id="variables-vm-vmanomalydefault-resource-limit-mem">#</a> |
 | VM_VMANOMALYDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmanomalydefault-resource-limit-cpu" id="variables-vm-vmanomalydefault-resource-limit-cpu">#</a> |
 | VM_VMANOMALYDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmanomalydefault-resource-request-mem" id="variables-vm-vmanomalydefault-resource-request-mem">#</a> |
 | VM_VMANOMALYDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmanomalydefault-resource-request-cpu" id="variables-vm-vmanomalydefault-resource-request-cpu">#</a> |
-| VM_VMANOMALYDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmanomalydefault-configreloadercpu" id="variables-vm-vmanomalydefault-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VMANOMALYDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmanomalydefault-configreloadermemory" id="variables-vm-vmanomalydefault-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMSINGLEDEFAULT_IMAGE: `victoriametrics/victoria-metrics` <a href="#variables-vm-vmsingledefault-image" id="variables-vm-vmsingledefault-image">#</a> |
 | VM_VMSINGLEDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmsingledefault-version" id="variables-vm-vmsingledefault-version">#</a> |
 | VM_VMSINGLEDEFAULT_PORT: `8429` <a href="#variables-vm-vmsingledefault-port" id="variables-vm-vmsingledefault-port">#</a> |
@@ -109,9 +108,6 @@
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_LIMIT_CPU: `500m` <a href="#variables-vm-vmclusterdefault-vminsertdefault-resource-limit-cpu" id="variables-vm-vmclusterdefault-vminsertdefault-resource-limit-cpu">#</a> |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmclusterdefault-vminsertdefault-resource-request-mem" id="variables-vm-vmclusterdefault-vminsertdefault-resource-request-mem">#</a> |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vmclusterdefault-vminsertdefault-resource-request-cpu" id="variables-vm-vmclusterdefault-vminsertdefault-resource-request-cpu">#</a> |
-| VM_VMALERTMANAGER_CONFIGRELOADERIMAGE: `jimmidyson/configmap-reload:v0.3.0` <a href="#variables-vm-vmalertmanager-configreloaderimage" id="variables-vm-vmalertmanager-configreloaderimage">#</a> |
-| VM_VMALERTMANAGER_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertmanager-configreloadercpu" id="variables-vm-vmalertmanager-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VMALERTMANAGER_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertmanager-configreloadermemory" id="variables-vm-vmalertmanager-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE: `prom/alertmanager` <a href="#variables-vm-vmalertmanager-alertmanagerdefaultbaseimage" id="variables-vm-vmalertmanager-alertmanagerdefaultbaseimage">#</a> |
 | VM_VMALERTMANAGER_ALERTMANAGERVERSION: `v0.28.1` <a href="#variables-vm-vmalertmanager-alertmanagerversion" id="variables-vm-vmalertmanager-alertmanagerversion">#</a> |
 | VM_VMALERTMANAGER_LOCALHOST: `127.0.0.1` <a href="#variables-vm-vmalertmanager-localhost" id="variables-vm-vmalertmanager-localhost">#</a> |
@@ -120,6 +116,10 @@
 | VM_VMALERTMANAGER_RESOURCE_LIMIT_CPU: `100m` <a href="#variables-vm-vmalertmanager-resource-limit-cpu" id="variables-vm-vmalertmanager-resource-limit-cpu">#</a> |
 | VM_VMALERTMANAGER_RESOURCE_REQUEST_MEM: `56Mi` <a href="#variables-vm-vmalertmanager-resource-request-mem" id="variables-vm-vmalertmanager-resource-request-mem">#</a> |
 | VM_VMALERTMANAGER_RESOURCE_REQUEST_CPU: `30m` <a href="#variables-vm-vmalertmanager-resource-request-cpu" id="variables-vm-vmalertmanager-resource-request-cpu">#</a> |
+| VM_VMALERTMANAGER_CONFIGRELOADIMAGE: `ghcr.io/jimmidyson/configmap-reload:v0.15.0` <a href="#variables-vm-vmalertmanager-configreloadimage" id="variables-vm-vmalertmanager-configreloadimage">#</a> |
+| VM_VMALERTMANAGER_CONFIGRELOADER_PRESERVE_REGISTRY: `true` <a href="#variables-vm-vmalertmanager-configreloader-preserve-registry" id="variables-vm-vmalertmanager-configreloader-preserve-registry">#</a> |
+| VM_VMALERTMANAGER_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertmanager-configreloadercpu" id="variables-vm-vmalertmanager-configreloadercpu">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMALERTMANAGER_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertmanager-configreloadermemory" id="variables-vm-vmalertmanager-configreloadermemory">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_DISABLESELFSERVICESCRAPECREATION: `false` <a href="#variables-vm-disableselfservicescrapecreation" id="variables-vm-disableselfservicescrapecreation">#</a> |
 | VM_VMBACKUP_IMAGE: `victoriametrics/vmbackupmanager` <a href="#variables-vm-vmbackup-image" id="variables-vm-vmbackup-image">#</a> |
 | VM_VMBACKUP_VERSION: `${VM_METRICS_VERSION}-enterprise` <a href="#variables-vm-vmbackup-version" id="variables-vm-vmbackup-version">#</a> |
@@ -131,13 +131,14 @@
 | VM_VMBACKUP_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vmbackup-resource-request-cpu" id="variables-vm-vmbackup-resource-request-cpu">#</a> |
 | VM_VMAUTHDEFAULT_IMAGE: `victoriametrics/vmauth` <a href="#variables-vm-vmauthdefault-image" id="variables-vm-vmauthdefault-image">#</a> |
 | VM_VMAUTHDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmauthdefault-version" id="variables-vm-vmauthdefault-version">#</a> |
-| VM_VMAUTHDEFAULT_CONFIGRELOADIMAGE: `quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1` <a href="#variables-vm-vmauthdefault-configreloadimage" id="variables-vm-vmauthdefault-configreloadimage">#</a> |
 | VM_VMAUTHDEFAULT_PORT: `8427` <a href="#variables-vm-vmauthdefault-port" id="variables-vm-vmauthdefault-port">#</a> |
 | VM_VMAUTHDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmauthdefault-usedefaultresources" id="variables-vm-vmauthdefault-usedefaultresources">#</a> |
 | VM_VMAUTHDEFAULT_RESOURCE_LIMIT_MEM: `300Mi` <a href="#variables-vm-vmauthdefault-resource-limit-mem" id="variables-vm-vmauthdefault-resource-limit-mem">#</a> |
 | VM_VMAUTHDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmauthdefault-resource-limit-cpu" id="variables-vm-vmauthdefault-resource-limit-cpu">#</a> |
 | VM_VMAUTHDEFAULT_RESOURCE_REQUEST_MEM: `100Mi` <a href="#variables-vm-vmauthdefault-resource-request-mem" id="variables-vm-vmauthdefault-resource-request-mem">#</a> |
 | VM_VMAUTHDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmauthdefault-resource-request-cpu" id="variables-vm-vmauthdefault-resource-request-cpu">#</a> |
+| VM_VMAUTHDEFAULT_CONFIGRELOADIMAGE: `quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1` <a href="#variables-vm-vmauthdefault-configreloadimage" id="variables-vm-vmauthdefault-configreloadimage">#</a> |
+| VM_VMAUTHDEFAULT_CONFIGRELOADER_PRESERVE_REGISTRY: `false` <a href="#variables-vm-vmauthdefault-configreloader-preserve-registry" id="variables-vm-vmauthdefault-configreloader-preserve-registry">#</a> |
 | VM_VMAUTHDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmauthdefault-configreloadercpu" id="variables-vm-vmauthdefault-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
 | VM_VMAUTHDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmauthdefault-configreloadermemory" id="variables-vm-vmauthdefault-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VLCLUSTERDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vlclusterdefault-usedefaultresources" id="variables-vm-vlclusterdefault-usedefaultresources">#</a> |

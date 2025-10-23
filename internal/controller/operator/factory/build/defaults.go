@@ -239,11 +239,11 @@ func addVMSingleDefaults(objI any) {
 		Resource: struct {
 			Limit struct {
 				Mem string
-				Cpu string
+				CPU string
 			}
 			Request struct {
 				Mem string
-				Cpu string
+				CPU string
 			}
 		}(c.VMBackup.Resource),
 	}
@@ -317,16 +317,19 @@ func addVMAlertmanagerDefaults(objI any) {
 		Resource: struct {
 			Limit struct {
 				Mem string
-				Cpu string
+				CPU string
 			}
 			Request struct {
 				Mem string
-				Cpu string
+				CPU string
 			}
 		}(amcd.Resource),
-		ConfigReloadImage:    amcd.ConfigReloaderImage,
-		ConfigReloaderMemory: amcd.ConfigReloaderMemory,
-		ConfigReloaderCPU:    amcd.ConfigReloaderCPU,
+		ConfigReloader: struct {
+			Image            string
+			PreserveRegistry bool
+			CPU              string
+			Mem              string
+		}(amcd.ConfigReloader),
 	}
 	if cr.Spec.ReplicaCount == nil {
 		cr.Spec.ReplicaCount = ptr.To[int32](1)
@@ -384,11 +387,11 @@ func addVMClusterDefaults(objI any) {
 			Resource: struct {
 				Limit struct {
 					Mem string
-					Cpu string
+					CPU string
 				}
 				Request struct {
 					Mem string
-					Cpu string
+					CPU string
 				}
 			}(c.VMBackup.Resource),
 		}
@@ -587,34 +590,38 @@ func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 	}
 	if common.ConfigReloaderImageTag == "" {
 		if ptr.Deref(common.UseVMConfigReloader, false) {
-			common.ConfigReloaderImageTag = c.CustomConfigReloaderImage
+			common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
 		} else {
-			common.ConfigReloaderImageTag = appDefaults.ConfigReloadImage
+			common.ConfigReloaderImageTag = appDefaults.ConfigReloader.Image
+			if !appDefaults.ConfigReloader.PreserveRegistry {
+				common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
+			}
 		}
+	} else {
+		common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
 	}
 
-	cpuValue := appDefaults.ConfigReloaderCPU
+	cpuValue := appDefaults.ConfigReloader.CPU
 	if len(c.ConfigReloaderRequestCPU) > 0 {
 		cpuValue = c.ConfigReloaderRequestCPU
 	}
-	memoryValue := appDefaults.ConfigReloaderMemory
+	memoryValue := appDefaults.ConfigReloader.Mem
 	if len(c.ConfigReloaderRequestMemory) > 0 {
 		memoryValue = c.ConfigReloaderRequestMemory
 	}
-	common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
 	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource{
 		Limit: struct {
 			Mem string
-			Cpu string
+			CPU string
 		}{
-			Cpu: c.ConfigReloaderLimitCPU,
+			CPU: c.ConfigReloaderLimitCPU,
 			Mem: c.ConfigReloaderLimitMemory,
 		},
 		Request: struct {
 			Mem string
-			Cpu string
+			CPU string
 		}{
-			Cpu: cpuValue,
+			CPU: cpuValue,
 			Mem: memoryValue,
 		},
 	}, useDefaultResources)

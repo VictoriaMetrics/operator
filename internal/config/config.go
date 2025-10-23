@@ -67,21 +67,24 @@ var WatchNamespaceEnvVar = "WATCH_NAMESPACE"
 type ApplicationDefaults struct {
 	Image               string
 	Version             string
-	ConfigReloadImage   string
 	Port                string
 	UseDefaultResources bool
 	Resource            struct {
 		Limit struct {
 			Mem string
-			Cpu string
+			CPU string
 		}
 		Request struct {
 			Mem string
-			Cpu string
+			CPU string
 		}
 	}
-	ConfigReloaderCPU    string
-	ConfigReloaderMemory string
+	ConfigReloader struct {
+		Image            string
+		PreserveRegistry bool
+		CPU              string
+		Mem              string
+	}
 }
 
 // Resource is useful for generic resource building
@@ -89,11 +92,11 @@ type ApplicationDefaults struct {
 type Resource struct {
 	Limit struct {
 		Mem string
-		Cpu string
+		CPU string
 	}
 	Request struct {
 		Mem string
-		Cpu string
+		CPU string
 	}
 }
 
@@ -128,103 +131,118 @@ type BaseOperatorConf struct {
 	VLogsDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9428"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"1500Mi"`
-				Cpu string `default:"1200m"`
+				CPU string `default:"1200m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"500Mi"`
-				Cpu string `default:"150m"`
+				CPU string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
+		ConfigReloader struct {
+			Image            string `env:"-"`
+			PreserveRegistry bool   `env:"-"`
+			CPU              string `env:"-"`
+			Mem              string `env:"-"`
+		}
 	} `prefix:"VLOGSDEFAULT_"`
 
 	VLAgentDefault struct {
 		Image               string `default:"victoriametrics/vlagent"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9429"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
-				Cpu string `default:"200m"`
+				CPU string `default:"200m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"200Mi"`
-				Cpu string `default:"50m"`
+				CPU string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
+		ConfigReloader struct {
+			Image            string `env:"-"`
+			PreserveRegistry bool   `env:"-"`
+			CPU              string `env:"-"`
+			Mem              string `env:"-"`
+		}
 	} `prefix:"VLAGENTDEFAULT_"`
 
 	VLSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9428"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"1500Mi"`
-				Cpu string `default:"1200m"`
+				CPU string `default:"1200m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"500Mi"`
-				Cpu string `default:"150m"`
+				CPU string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
+		ConfigReloader struct {
+			Image            string `env:"-"`
+			PreserveRegistry bool   `env:"-"`
+			CPU              string `env:"-"`
+			Mem              string `env:"-"`
+		}
 	} `prefix:"VLSINGLEDEFAULT_"`
 
 	VTSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-traces"`
 		Version             string `env:",expand" default:"${VM_TRACES_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"10428"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"1500Mi"`
-				Cpu string `default:"1200m"`
+				CPU string `default:"1200m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"500Mi"`
-				Cpu string `default:"150m"`
+				CPU string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
+		ConfigReloader struct {
+			Image            string `env:"-"`
+			PreserveRegistry bool   `env:"-"`
+			CPU              string `env:"-"`
+			Mem              string `env:"-"`
+		}
 	} `prefix:"VTSINGLEDEFAULT_"`
 
 	VMAlertDefault struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `default:"jimmidyson/configmap-reload:v0.3.0" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8080"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
-				Cpu string `default:"200m"`
+				CPU string `default:"200m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"200Mi"`
-				Cpu string `default:"50m"`
+				CPU string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+		ConfigReloader struct {
+			Image            string `default:"ghcr.io/jimmidyson/configmap-reload:v0.15.0" env:"CONFIGRELOADIMAGE"`
+			PreserveRegistry bool   `default:"true" env:"CONFIGRELOADER_PRESERVE_REGISTRY"`
+			// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead
+			CPU string `default:"10m" env:"CONFIGRELOADERCPU"`
+			// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+			Mem string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+		} `prefix:""`
 	} `prefix:"VMALERTDEFAULT_"`
 
 	VMServiceScrapeDefault struct {
@@ -236,65 +254,72 @@ type BaseOperatorConf struct {
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
-				Cpu string `default:"200m"`
+				CPU string `default:"200m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"200Mi"`
-				Cpu string `default:"50m"`
+				CPU string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+		ConfigReloader struct {
+			Image            string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
+			PreserveRegistry bool   `default:"false" env:"CONFIGRELOADER_PRESERVE_REGISTRY"`
+			// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
+			CPU string `default:"10m" env:"CONFIGRELOADERCPU"`
+			// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+			Mem string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+		} `prefix:""`
 	} `prefix:"VMAGENTDEFAULT_"`
 
 	VMAnomalyDefault struct {
 		Image               string `default:"victoriametrics/vmanomaly"`
 		Version             string `env:",expand" default:"${VM_ANOMALY_VERSION}"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8490"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
-				Cpu string `default:"200m"`
+				CPU string `default:"200m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"200Mi"`
-				Cpu string `default:"50m"`
+				CPU string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+		ConfigReloader struct {
+			Image            string `env:"-"`
+			PreserveRegistry bool   `env:"-"`
+			CPU              string `env:"-"`
+			Mem              string `env:"-"`
+		}
 	} `prefix:"VMANOMALYDEFAULT_"`
 
 	VMSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-metrics"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"1500Mi"`
-				Cpu string `default:"1200m"`
+				CPU string `default:"1200m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"500Mi"`
-				Cpu string `default:"150m"`
+				CPU string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
+		ConfigReloader struct {
+			Image            string `env:"-"`
+			PreserveRegistry bool   `env:"-"`
+			CPU              string `env:"-"`
+			Mem              string `env:"-"`
+		}
 	} `prefix:"VMSINGLEDEFAULT_"`
 
 	VMClusterDefault struct {
@@ -306,11 +331,11 @@ type BaseOperatorConf struct {
 			Resource struct {
 				Limit struct {
 					Mem string `default:"1000Mi"`
-					Cpu string `default:"500m"`
+					CPU string `default:"500m"`
 				} `prefix:"LIMIT_"`
 				Request struct {
 					Mem string `default:"500Mi"`
-					Cpu string `default:"100m"`
+					CPU string `default:"100m"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VMSELECTDEFAULT_"`
@@ -323,11 +348,11 @@ type BaseOperatorConf struct {
 			Resource     struct {
 				Limit struct {
 					Mem string `default:"1500Mi"`
-					Cpu string `default:"1000m"`
+					CPU string `default:"1000m"`
 				} `prefix:"LIMIT_"`
 				Request struct {
 					Mem string `default:"500Mi"`
-					Cpu string `default:"250m"`
+					CPU string `default:"250m"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VMSTORAGEDEFAULT_"`
@@ -338,22 +363,17 @@ type BaseOperatorConf struct {
 			Resource struct {
 				Limit struct {
 					Mem string `default:"500Mi"`
-					Cpu string `default:"500m"`
+					CPU string `default:"500m"`
 				} `prefix:"LIMIT_"`
 				Request struct {
 					Mem string `default:"200Mi"`
-					Cpu string `default:"150m"`
+					CPU string `default:"150m"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VMINSERTDEFAULT_"`
 	} `prefix:"VMCLUSTERDEFAULT_"`
 
 	VMAlertManager struct {
-		ConfigReloaderImage string `default:"jimmidyson/configmap-reload:v0.3.0" env:"CONFIGRELOADERIMAGE"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory         string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
 		AlertManagerVersion          string `default:"v0.28.1" env:"ALERTMANAGERVERSION"`
 		LocalHost                    string `default:"127.0.0.1" env:"LOCALHOST"`
@@ -361,13 +381,21 @@ type BaseOperatorConf struct {
 		Resource                     struct {
 			Limit struct {
 				Mem string `default:"256Mi"`
-				Cpu string `default:"100m"`
+				CPU string `default:"100m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"56Mi"`
-				Cpu string `default:"30m"`
+				CPU string `default:"30m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		ConfigReloader struct {
+			Image            string `default:"ghcr.io/jimmidyson/configmap-reload:v0.15.0" env:"CONFIGRELOADIMAGE"`
+			PreserveRegistry bool   `default:"true" env:"CONFIGRELOADER_PRESERVE_REGISTRY"`
+			// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead
+			CPU string `default:"10m" env:"CONFIGRELOADERCPU"`
+			// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+			Mem string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+		} `prefix:""`
 	} `prefix:"VMALERTMANAGER_"`
 
 	DisableSelfServiceScrapeCreation bool `default:"false" env:"DISABLESELFSERVICESCRAPECREATION"`
@@ -379,34 +407,37 @@ type BaseOperatorConf struct {
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
-				Cpu string `default:"500m"`
+				CPU string `default:"500m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"200Mi"`
-				Cpu string `default:"150m"`
+				CPU string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VMBACKUP_"`
 	VMAuthDefault struct {
 		Image               string `default:"victoriametrics/vmauth"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8427"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
 				Mem string `default:"300Mi"`
-				Cpu string `default:"200m"`
+				CPU string `default:"200m"`
 			} `prefix:"LIMIT_"`
 			Request struct {
 				Mem string `default:"100Mi"`
-				Cpu string `default:"50m"`
+				CPU string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+		ConfigReloader struct {
+			Image            string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
+			PreserveRegistry bool   `default:"false" env:"CONFIGRELOADER_PRESERVE_REGISTRY"`
+			// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
+			CPU string `default:"10m" env:"CONFIGRELOADERCPU"`
+			// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+			Mem string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
+		} `prefix:""`
 	} `prefix:"VMAUTHDEFAULT_"`
 
 	VLClusterDefault struct {
@@ -418,11 +449,11 @@ type BaseOperatorConf struct {
 			Resource struct {
 				Limit struct {
 					Mem string `default:"1024Mi"`
-					Cpu string `default:"1000m"`
+					CPU string `default:"1000m"`
 				} `prefix:"LIMIT_"`
 				Request struct {
 					Mem string `default:"256Mi"`
-					Cpu string `default:"100m"`
+					CPU string `default:"100m"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VLSELECTDEFAULT_"`
@@ -433,11 +464,11 @@ type BaseOperatorConf struct {
 			Resource struct {
 				Limit struct {
 					Mem string `default:"2048Mi"`
-					Cpu string `default:"1000m"`
+					CPU string `default:"1000m"`
 				} `prefix:"LIMIT_"`
 				Request struct {
 					Mem string `default:"512Mi"`
-					Cpu string `default:"200m"`
+					CPU string `default:"200m"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VLSTORAGEDEFAULT_"`
@@ -448,11 +479,11 @@ type BaseOperatorConf struct {
 			Resource struct {
 				Limit struct {
 					Mem string `default:"1024Mi"`
-					Cpu string `default:"1000m"`
+					CPU string `default:"1000m"`
 				} `prefix:"LIMIT_"`
 				Request struct {
 					Mem string `default:"256Mi"`
-					Cpu string `default:"100m"`
+					CPU string `default:"100m"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VLINSERTDEFAULT_"`
@@ -467,11 +498,11 @@ type BaseOperatorConf struct {
 			Resource struct {
 				Limit struct {
 					Mem string `default:"1024Mi"`
-					Cpu string `default:"1000m"`
+					CPU string `default:"1000m"`
 				} `prefix:"LIMIT_"`
 				Request struct {
 					Mem string `default:"256Mi"`
-					Cpu string `default:"100m"`
+					CPU string `default:"100m"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"SELECT_"`
@@ -482,11 +513,11 @@ type BaseOperatorConf struct {
 			Resource struct {
 				Limit struct {
 					Mem string `default:"2048Mi"`
-					Cpu string `default:"1000m"`
+					CPU string `default:"1000m"`
 				} `prefix:"LIMIT_"`
 				Request struct {
 					Mem string `default:"512Mi"`
-					Cpu string `default:"200m"`
+					CPU string `default:"200m"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"STORAGE_"`
@@ -497,11 +528,11 @@ type BaseOperatorConf struct {
 			Resource struct {
 				Limit struct {
 					Mem string `default:"1024Mi"`
-					Cpu string `default:"1000m"`
+					CPU string `default:"1000m"`
 				} `prefix:"LIMIT_"`
 				Request struct {
 					Mem string `default:"256Mi"`
-					Cpu string `default:"100m"`
+					CPU string `default:"100m"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"INSERT_"`
@@ -612,8 +643,8 @@ func (boc BaseOperatorConf) Validate() error {
 				return fmt.Errorf("cannot parse resource request memory for %q, err :%w", name, err)
 			}
 		}
-		if res.Request.Cpu != UnLimitedResource {
-			if _, err := resource.ParseQuantity(res.Request.Cpu); err != nil {
+		if res.Request.CPU != UnLimitedResource {
+			if _, err := resource.ParseQuantity(res.Request.CPU); err != nil {
 				return fmt.Errorf("cannot parse resource request cpu for %q, err :%w", name, err)
 			}
 		}
@@ -622,8 +653,8 @@ func (boc BaseOperatorConf) Validate() error {
 				return fmt.Errorf("cannot parse resource limit memory for %q, err :%w", name, err)
 			}
 		}
-		if res.Limit.Cpu != UnLimitedResource {
-			if _, err := resource.ParseQuantity(res.Limit.Cpu); err != nil {
+		if res.Limit.CPU != UnLimitedResource {
+			if _, err := resource.ParseQuantity(res.Limit.CPU); err != nil {
 				return fmt.Errorf("cannot parse resource limit cpu for %q, err :%w", name, err)
 			}
 		}

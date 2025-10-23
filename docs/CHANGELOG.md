@@ -27,6 +27,7 @@ aliases:
 * FEATURE: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): added `spec.vlselect.extraStorageNodes` to specify list of additional storage nodes, that are available for select only.
 * FEATURE: [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): added `spec.vtselect.extraStorageNodes` to specify list of additional storage nodes, that are available for select only.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): add `scrapeClass` spec definition and `scrapeClassName` reference to the `VMServiceScrape`, `VMPodScrape`, `VMProbe`, `VMScrapeConfig`, `VMStaticScrape` and `VMNodeScrape`. See this issue [#1531](https://github.com/VictoriaMetrics/operator/issues/1531) for details. Thanks to the @endesapt.
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): upgraded jimmidyson/configmap-reload images and added ability for default configreloader images to preserve original registry using `<PREFIX>_PRESERVE_REGISTRY` env variable.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly generate `oauth2` configuration with missing `clientID`. Previously, it could break whole config generation. See this PR [#1563](https://github.com/VictoriaMetrics/operator/pull/1563) for details.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix an issue where the return value from a couple of controllers was always `nil`. See [#1532](https://github.com/VictoriaMetrics/operator/pull/1532) for details.

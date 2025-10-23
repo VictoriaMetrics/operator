@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -60,6 +61,13 @@ type VMClusterRefOrSpec struct {
 	// Spec defines the desired state of a new VMCluster.
 	// +optional
 	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
+	// OverrideSpec specifies an override to the VMClusterSpec of the referenced object.
+	// This field is ignored if `Spec` is specified.
+	// This override is applied to the referenced object if `Ref` is specified.
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:XPreserveUnknownFields
+	// +optional
+	OverrideSpec *apiextensionsv1.JSON `json:"overrideSpec,omitempty"`
 }
 
 // +k8s:openapi-gen=true

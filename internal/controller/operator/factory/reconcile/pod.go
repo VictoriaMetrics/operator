@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -31,8 +30,8 @@ func reportFirstNotReadyPodOnError(ctx context.Context, rclient client.Client, o
 		}
 		return podStatusesToError(origin, &dp)
 	}
-	return &finalize.ErrWaitReady{
-		Err: fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events, origin err: %w", selector.String(), origin),
+	return &errWaitReady{
+		origin: fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events, origin err: %w", selector.String(), origin),
 	}
 }
 
@@ -85,7 +84,7 @@ func podStatusesToError(origin error, pod *corev1.Pod) error {
 	if hasCrashedContainers {
 		return err
 	}
-	return &finalize.ErrWaitReady{Err: err}
+	return &errWaitReady{origin: err}
 }
 
 func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.NamespacedName, desiredRevision string, minReadySeconds int32) error {

@@ -152,7 +152,6 @@ test: manifests generate fmt vet envtest ## Run tests.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
 test-e2e: load-kind ginkgo
 	$(GINKGO_BIN) \
-		-vv \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-timeout=30m \
 		-junit-report=report.xml ./test/e2e/...

@@ -23,6 +23,7 @@ package v1alpha1
 import (
 	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -37,6 +38,11 @@ func (in *VMClusterRefOrSpec) DeepCopyInto(out *VMClusterRefOrSpec) {
 	if in.Spec != nil {
 		in, out := &in.Spec, &out.Spec
 		*out = new(v1beta1.VMClusterSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.OverrideSpec != nil {
+		in, out := &in.OverrideSpec, &out.OverrideSpec
+		*out = new(apiextensionsv1.JSON)
 		(*in).DeepCopyInto(*out)
 	}
 }

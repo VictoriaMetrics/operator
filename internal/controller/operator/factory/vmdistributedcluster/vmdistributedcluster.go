@@ -1,7 +1,24 @@
+/*
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package vmdistributedcluster
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +29,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -27,7 +45,7 @@ const (
 )
 
 // CreateOrUpdate - handles VM deployment reconciliation.
-func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, deadline, httpTimeout time.Duration) error {
+func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, vmclusterWaitReadyDeadline, httpTimeout time.Duration) error {
 	// Store the previous CR for comparison
 	var prevCR *vmv1alpha1.VMDistributedCluster
 	if cr.ParsedLastAppliedSpec != nil {
@@ -111,13 +129,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		setVMClusterStatusInVMUsers(ctx, rclient, cr, vmClusterObj, vmUserObjs, false)
 		// Wait for VMAgent metrics to show no queue
 		vmAgent := &vmAgentAdapter{VMAgent: vmAgentObj}
-		waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, deadline)
+		waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, vmclusterWaitReadyDeadline)
 		// Change VMCluster version and wait for it to be ready
 		if err := changeVMClusterVersion(ctx, rclient, vmClusterObj, cr.Spec.ClusterVersion); err != nil {
 			return fmt.Errorf("failed to change VMCluster %s/%s version: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 		// Wait for VMCluster to be ready
-		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, deadline); err != nil {
+		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 		// Enable this VMCluster in vmusers
@@ -139,6 +157,9 @@ func validateVMClusterRefOrSpec(i int, refOrSpec vmv1alpha1.VMClusterRefOrSpec) 
 	}
 	if refOrSpec.Ref != nil && refOrSpec.Ref.Name == "" {
 		return fmt.Errorf("VMClusterRefOrSpec.Ref.Name must be set for reference at index %d", i)
+	}
+	if refOrSpec.Spec != nil && refOrSpec.OverrideSpec != nil {
+		return fmt.Errorf("VMClusterRefOrSpec at index %d cannot have both Spec and OverrideSpec set, got: %+v", i, refOrSpec)
 	}
 	return nil
 }
@@ -203,17 +224,113 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, crName, namespa
 		if vmClusterObjOrRef.Ref != nil {
 			currentVMCluster, err = getReferencedVMCluster(ctx, rclient, namespace, vmClusterObjOrRef.Ref)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to fetch vmclusters: %w", err)
 			}
-		} else { // vmClusterObjOrRef.Spec != nil
+			// Apply OverrideSpec if provided when Ref is used
+			if vmClusterObjOrRef.OverrideSpec != nil {
+				mergedSpec, modified, err := ApplyOverrideSpec(currentVMCluster.Spec, vmClusterObjOrRef.OverrideSpec)
+				if err != nil {
+					return nil, fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", currentVMCluster.Name, i, err)
+				}
+				if modified {
+					currentVMCluster.Spec = mergedSpec
+					if err := rclient.Update(ctx, currentVMCluster); err != nil {
+						return nil, fmt.Errorf("failed to update vmcluster %s at index %d: %w", currentVMCluster.Name, i, err)
+					}
+				}
+			}
+		} else if vmClusterObjOrRef.Spec != nil {
 			currentVMCluster, err = reconcileInlineVMCluster(ctx, rclient, crName, namespace, i, vmClusterObjOrRef)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to reconcile inline vmcluster at index %d: %w", i, err)
 			}
+		} else {
+			return nil, fmt.Errorf("invalid VMClusterRefOrSpec at index %d: neither Ref nor Spec is set", i)
 		}
 		vmClusters[i] = currentVMCluster
 	}
 	return vmClusters, nil
+}
+
+// ApplyOverrideSpec merges an override VMClusterSpec into a base VMClusterSpec.
+// Fields present in the overrideSpec (and not nil) will overwrite corresponding fields in the baseSpec.
+func ApplyOverrideSpec(baseSpec vmv1beta1.VMClusterSpec, overrideSpec *apiextensionsv1.JSON) (vmv1beta1.VMClusterSpec, bool, error) {
+	if overrideSpec == nil || overrideSpec.Raw == nil || len(overrideSpec.Raw) == 0 {
+		return baseSpec, false, nil
+	}
+
+	baseSpecJSON, err := json.Marshal(baseSpec)
+	if err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to marshal base VMClusterSpec: %w", err)
+	}
+
+	var baseMap map[string]interface{}
+	if err := json.Unmarshal(baseSpecJSON, &baseMap); err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to unmarshal base VMClusterSpec to map: %w", err)
+	}
+	var overrideMap map[string]interface{}
+	if err := json.Unmarshal(overrideSpec.Raw, &overrideMap); err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to unmarshal override VMClusterSpec to map: %w", err)
+	}
+
+	// Perform a deep merge: fields from overrideMap recursively overwrite corresponding fields in baseMap.
+	// If an override value is explicitly nil, it signifies the removal or nullification of that field.
+	modified := mergeMapsRecursive(baseMap, overrideMap)
+
+	mergedSpecJSON, err := json.Marshal(baseMap)
+	if err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to marshal merged VMClusterSpec map: %w", err)
+	}
+
+	mergedSpec := vmv1beta1.VMClusterSpec{}
+	if err := json.Unmarshal(mergedSpecJSON, &mergedSpec); err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to unmarshal merged VMClusterSpec JSON: %w", err)
+	}
+
+	return mergedSpec, modified, nil
+}
+
+// TODO[vrutkovs]: Pretty sure an existing function can be reused for merging maps.
+// mergeMapsRecursive deeply merges overrideMap into baseMap.
+// It handles nested maps (which correspond to nested structs after JSON unmarshal).
+// Values from overrideMap overwrite values in baseMap.
+// If an override value is nil, it explicitly clears the corresponding field in baseMap.
+// It returns a boolean indicating if the baseMap was modified.
+func mergeMapsRecursive(baseMap, overrideMap map[string]interface{}) bool {
+	modified := false
+	for key, overrideValue := range overrideMap {
+		if overrideValue == nil {
+			if _, ok := baseMap[key]; ok {
+				// If override explicitly sets a field to nil and it existed in base, delete it.
+				delete(baseMap, key)
+				modified = true
+			}
+			continue
+		}
+
+		if baseVal, ok := baseMap[key]; ok {
+			if baseMapNested, isBaseMap := baseVal.(map[string]interface{}); isBaseMap {
+				if overrideMapNested, isOverrideMap := overrideValue.(map[string]interface{}); isOverrideMap {
+					// Both are nested maps, recurse
+					if mergeMapsRecursive(baseMapNested, overrideMapNested) {
+						modified = true
+					}
+					continue
+				}
+			}
+		}
+
+		// For all other cases (scalar values, or when types for nested maps don't match),
+		// override the baseMap value. This handles explicit zero values and ensures
+		// overrides take precedence.
+		// We assign first, then check if it was a modification.
+		oldValue, exists := baseMap[key]
+		baseMap[key] = overrideValue // Force the overwrite for this key
+		if !exists || !reflect.DeepEqual(oldValue, overrideValue) {
+			modified = true
+		}
+	}
+	return modified
 }
 
 func fetchVMUsers(ctx context.Context, rclient client.Client, namespace string, refs []corev1.LocalObjectReference) ([]*vmv1beta1.VMUser, error) {

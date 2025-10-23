@@ -305,11 +305,16 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 
 	// wait until sts disappears
 	if err := wait.PollUntilContextTimeout(ctx, time.Second, time.Second*30, true, func(_ context.Context) (done bool, err error) {
-		err = rclient.Get(ctx, nsn, &appsv1.StatefulSet{})
-		if k8serrors.IsNotFound(err) {
-			return true, nil
+		if err := rclient.Get(ctx, nsn, &appsv1.StatefulSet{}); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, fmt.Errorf("unexpected error for polling, want notFound, got: %w", err)
 		}
-		return false, fmt.Errorf("unexpected error for polling, want notFound, got: %w", err)
+		err = &errWaitReady{
+			origin: fmt.Errorf("sts wasn't yet removed"),
+		}
+		return
 	}); err != nil {
 		return fmt.Errorf("cannot wait for sts to be deleted: %w", err)
 	}

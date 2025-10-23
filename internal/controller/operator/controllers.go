@@ -398,6 +398,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		desiredStatus := vmv1beta1.UpdateStatusFailed
 		if reconcile.IsErrorWaitTimeout(err) {
 			desiredStatus = vmv1beta1.UpdateStatusExpanding
+			err = nil
 		}
 		if updateErr := reconcile.UpdateObjectStatus(ctx, c, object, desiredStatus, err); updateErr != nil {
 			resultErr = fmt.Errorf("failed to update object status: %q, origin err: %w", updateErr, err)

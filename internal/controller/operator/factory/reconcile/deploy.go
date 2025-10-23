@@ -160,5 +160,7 @@ func reportFirstNotReadyPodOnError(ctx context.Context, rclient client.Client, o
 		}
 		return podStatusesToError(origin, &dp)
 	}
-	return fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events, origin err: %w", selector.String(), origin)
+	return &errWaitReady{
+		origin: fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events, origin err: %w", selector.String(), origin),
+	}
 }

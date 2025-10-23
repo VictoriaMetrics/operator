@@ -92,13 +92,12 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		if err := vmauth.CreateOrUpdate(ctx, instance, r); err != nil {
 			return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
 		}
-
 		return result, nil
 	})
-	if err != nil {
-		return
+
+	if err == nil {
+		result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 	}
-	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 
 	return
 }

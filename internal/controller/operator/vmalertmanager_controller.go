@@ -93,18 +93,16 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if err := vmalertmanager.CreateOrUpdateConfig(ctx, r.Client, instance, nil); err != nil {
 			return result, err
 		}
-
 		if err := vmalertmanager.CreateOrUpdateAlertManager(ctx, instance, r); err != nil {
 			return result, err
 		}
-
 		return result, nil
 	})
-	if err != nil {
-		return
+
+	if err == nil {
+		result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 	}
 
-	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 	return
 }
 

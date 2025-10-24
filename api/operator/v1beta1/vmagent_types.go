@@ -435,6 +435,14 @@ func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
+// GetShardCount returns shard count for vmagent
+func (cr *VMAgent) GetShardCount() int {
+	if cr == nil || cr.Spec.ShardCount == nil {
+		return 0
+	}
+	return *cr.Spec.ShardCount
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAgentSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMAgentSpec

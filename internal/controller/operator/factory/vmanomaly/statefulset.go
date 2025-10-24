@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"iter"
 	"strconv"
 	"sync"
 
@@ -20,7 +19,6 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
@@ -52,58 +50,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, cfg)
-
-	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, ac)
-	if err != nil {
-		return err
-	}
-
-	if cr.Spec.PodDisruptionBudget != nil {
-		var prevPDB *policyv1.PodDisruptionBudget
-		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
-			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
-		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
-			return err
-		}
-	}
-
-	var prevStatefulSet *appsv1.StatefulSet
-
-	if prevCR != nil {
-		var err error
-		prevStatefulSet, err = newStatefulSet(prevCR, configHash, ac)
-		if err != nil {
-			return fmt.Errorf("cannot build prev statefulSet for vmanomaly: %w", err)
-		}
-	}
-	newStatefulSet, err := newStatefulSet(cr, configHash, ac)
-	if err != nil {
-		return fmt.Errorf("cannot build new statefulSet for vmanomaly: %w", err)
-	}
-
-	if cr.GetShardCount() > 1 {
-		return createOrUpdateShardedStatefulSet(ctx, rclient, cr, prevCR, newStatefulSet, prevStatefulSet)
-	}
-	return createOrUpdateStatefulSet(ctx, rclient, cr, newStatefulSet, prevStatefulSet)
+	ac := getAssetsCache(ctx, rclient, cr)
+	return createOrUpdateApp(ctx, rclient, cr, prevCR, ac)
 }
 
-func shardMutator(cr *vmv1.VMAnomaly, app *appsv1.StatefulSet, shardNum int) {
-	if cr == nil || cr.Spec.ShardCount == nil {
+func patchShardContainers(containers []corev1.Container, num *int, shardCount int) {
+	if num == nil {
 		return
 	}
-	shardCount := *cr.Spec.ShardCount
-	var containers = app.Spec.Template.Spec.Containers
-	app.Name = fmt.Sprintf("%s-%d", app.Name, shardNum)
-	app.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
-	app.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
 	for i := range containers {
 		container := &containers[i]
 		if container.Name != "vmanomaly" {
@@ -123,22 +77,23 @@ func shardMutator(cr *vmv1.VMAnomaly, app *appsv1.StatefulSet, shardNum int) {
 			},
 			{
 				Name:  "VMANOMALY_MEMBER_NUM",
-				Value: strconv.Itoa(shardNum),
+				Value: strconv.Itoa(*num),
 			},
 		}...)
 		container.Env = envs
 	}
 }
 
-// newStatefulSet builds vmanomaly statefulSet
-func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*appsv1.StatefulSet, error) {
+// newK8sApp builds vmanomaly k8s app
+func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*appsv1.StatefulSet, error) {
 	podSpec, err := newPodSpec(cr, ac)
 	if err != nil {
 		return nil, err
 	}
+	shardCount := cr.GetShardCount()
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 	podAnnotations := cr.PodAnnotations()
-	if len(configHash) > 0 {
+	if len(configHash) > 0 && !reloadSupported(cr) {
 		podAnnotations = labels.Merge(podAnnotations, map[string]string{
 			"checksum/config": configHash,
 		})
@@ -146,7 +101,7 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 
 	app := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(),
+			Name:            build.ShardName(cr.PrefixedName(), shardCount),
 			Namespace:       cr.GetNamespace(),
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
@@ -155,7 +110,7 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(),
+				MatchLabels: build.ShardLabels(cr.SelectorLabels(), shardCount),
 			},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: cr.Spec.RollingUpdateStrategy,
@@ -163,7 +118,7 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      cr.PodLabels(),
+					Labels:      build.ShardLabels(cr.PodLabels(), shardCount),
 					Annotations: podAnnotations,
 				},
 				Spec: *podSpec,
@@ -185,166 +140,137 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		return nil
 	}
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil && prevCR.Spec.PodDisruptionBudget != nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
-			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
-		}
-	}
 	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove podScrape: %w", err)
 		}
 	}
-
 	return nil
 }
 
-const (
-	shardNumPlaceholder = "%SHARD_NUM%"
-)
+func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, ac *build.AssetsCache) error {
+	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, nil, ac)
+	if err != nil {
+		return err
+	}
 
-// To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
-var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
+	var prevAppTpl *appsv1.StatefulSet
 
-func createOrUpdateShardedStatefulSet(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, newStatefulSet, prevStatefulSet *appsv1.StatefulSet) error {
-	statefulSetNames := make(map[string]struct{})
+	if prevCR != nil {
+		var err error
+		prevAppTpl, err = newK8sApp(prevCR, configHash, ac)
+		if err != nil {
+			return fmt.Errorf("cannot build prev statefulSet for vmanomaly: %w", err)
+		}
+	}
+	newAppTpl, err := newK8sApp(cr, configHash, ac)
+	if err != nil {
+		return fmt.Errorf("cannot build new statefulSet for vmanomaly: %w", err)
+	}
+
+	stsToKeep := make(map[string]struct{})
+	pdbToKeep := make(map[string]struct{})
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
 	logger.WithContext(ctx).Info(fmt.Sprintf("using cluster version of %T with shards count=%d", cr, shardCount))
 
 	isUpscaling := false
-	if prevShardCount > 0 {
-		if prevShardCount < shardCount {
-			logger.WithContext(ctx).Info(fmt.Sprintf("%T shard upscaling from=%d to=%d", cr, prevShardCount, shardCount))
-			isUpscaling = true
-		}
+	if prevShardCount > 1 && prevShardCount < shardCount {
+		logger.WithContext(ctx).Info(fmt.Sprintf("%T shard upscaling from=%d to=%d", cr, prevShardCount, shardCount))
+		isUpscaling = true
 	}
 	var wg sync.WaitGroup
-	type shardResult struct {
+	type returnValue struct {
 		name string
 		err  error
 	}
-	resultChan := make(chan *shardResult)
+	rtCh := make(chan *returnValue)
 	shardCtx, cancel := context.WithCancel(ctx)
-	updateShard := func(num int) {
-		defer wg.Done()
-		newShardedApp, err := getShard(cr, newStatefulSet, num)
-		if err != nil {
-			resultChan <- &shardResult{
-				err: fmt.Errorf("failed to get new StatefulSet: %w", err),
+	updateShard := func(num *int) {
+		var rv returnValue
+		defer func() {
+			rtCh <- &rv
+			wg.Done()
+		}()
+		if cr.Spec.PodDisruptionBudget != nil {
+			pdb := build.PodDisruptionBudgetSharded(cr, cr.Spec.PodDisruptionBudget, num)
+			var prevPDB *policyv1.PodDisruptionBudget
+			if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
+				prevPDB = build.PodDisruptionBudgetSharded(prevCR, prevCR.Spec.PodDisruptionBudget, num)
 			}
+			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB); err != nil {
+				rv.err = err
+				return
+			}
+		}
+
+		newApp, err := build.RenderShard(newAppTpl, nil, num)
+		if err != nil {
+			rv.err = fmt.Errorf("failed to render new StatefulSet: %w", err)
 			return
 		}
-		prevShardedApp, err := getShard(prevCR, prevStatefulSet, num)
-		if err != nil {
-			resultChan <- &shardResult{
-				err: fmt.Errorf("failed to get prev StatefulSet: %w", err),
+		patchShardContainers(newApp.Spec.Template.Spec.Containers, num, shardCount)
+		var prevApp *appsv1.StatefulSet
+		if prevAppTpl != nil {
+			prevApp, err = build.RenderShard(prevAppTpl, nil, num)
+			if err != nil {
+				rv.err = fmt.Errorf("failed to get prev StatefulSet: %w", err)
+				return
 			}
-			return
+			patchShardContainers(prevApp.Spec.Template.Spec.Containers, num, shardCount)
 		}
 		statefulSetOpts := reconcile.STSOptions{
-			HasClaim: len(newShardedApp.Spec.VolumeClaimTemplates) > 0,
+			HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
 			SelectorLabels: func() map[string]string {
-				selectorLabels := cr.SelectorLabels()
-				selectorLabels["shard-num"] = strconv.Itoa(num)
-				return selectorLabels
+				return newApp.Spec.Selector.MatchLabels
 			},
 		}
-		if err := reconcile.HandleSTSUpdate(shardCtx, rclient, statefulSetOpts, newShardedApp, prevShardedApp); err != nil {
-			resultChan <- &shardResult{
-				err: err,
-			}
+		if err := reconcile.HandleSTSUpdate(shardCtx, rclient, statefulSetOpts, newApp, prevApp); err != nil {
+			rv.err = err
 			return
 		}
-		resultChan <- &shardResult{
-			name: newShardedApp.Name,
-		}
+		rv.name = newApp.Name
 	}
-	for shardNum := range shardNumIter(isUpscaling, shardCount) {
+	for shardNum := range build.ShardNumIter(isUpscaling, shardCount) {
 		wg.Add(1)
 		go updateShard(shardNum)
 	}
 	go func() {
 		wg.Wait()
-		close(resultChan)
+		close(rtCh)
 		cancel()
 	}()
 	var errs []error
-	for r := range resultChan {
+	for r := range rtCh {
 		if r.err != nil {
 			cancel()
 			errs = append(errs, r.err)
 		}
 		if r.name != "" {
-			statefulSetNames[r.name] = struct{}{}
+			stsToKeep[r.name] = struct{}{}
+			if cr.Spec.PodDisruptionBudget != nil {
+				pdbToKeep[r.name] = struct{}{}
+			}
 		}
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
-	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, statefulSetNames); err != nil {
+	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep); err != nil {
+		return err
+	}
+	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep); err != nil {
 		return err
 	}
 	return nil
 }
 
-func getShard(cr *vmv1.VMAnomaly, app *appsv1.StatefulSet, num int) (*appsv1.StatefulSet, error) {
-	if app == nil {
-		return nil, nil
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
 	}
-	shardedApp := app.DeepCopyObject().(*appsv1.StatefulSet)
-	shardMutator(cr, shardedApp, num)
-	placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(num)}
-	shardedApp, err := k8stools.RenderPlaceholders(shardedApp, placeholders)
-	if err != nil {
-		return nil, fmt.Errorf("cannot fill placeholders for StatefulSet in sharded %T: %w", cr, err)
-	}
-	return shardedApp, nil
-}
-
-func shardNumIter(backward bool, shardCount int) iter.Seq[int] {
-	if backward {
-		return func(yield func(int) bool) {
-			for shardCount > 0 {
-				shardCount--
-				if !yield(shardCount) {
-					return
-				}
-			}
-		}
-	}
-	return func(yield func(int) bool) {
-		for i := 0; i < shardCount; i++ {
-			if !yield(i) {
-				return
-			}
-		}
-	}
-}
-
-func createOrUpdateStatefulSet(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, newStatefulSet, prevObjectSpec *appsv1.StatefulSet) error {
-	var err error
-	statefulSetNames := make(map[string]struct{})
-	if prevObjectSpec != nil {
-		prevObjectSpec, err = k8stools.RenderPlaceholders(prevObjectSpec, defaultPlaceholders)
-		if err != nil {
-			return fmt.Errorf("cannot fill placeholders for prev StatefulSet: %w", err)
-		}
-	}
-	newStatefulSet, err = k8stools.RenderPlaceholders(newStatefulSet, defaultPlaceholders)
-	if err != nil {
-		return fmt.Errorf("cannot fill placeholders for StatefulSet: %w", err)
-	}
-	opts := reconcile.STSOptions{
-		HasClaim:       len(newStatefulSet.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: cr.SelectorLabels,
-	}
-	if err := reconcile.HandleSTSUpdate(ctx, rclient, opts, newStatefulSet, prevObjectSpec); err != nil {
-		return err
-	}
-	statefulSetNames[newStatefulSet.Name] = struct{}{}
-	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, statefulSetNames); err != nil {
-		return err
-	}
-	return nil
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }

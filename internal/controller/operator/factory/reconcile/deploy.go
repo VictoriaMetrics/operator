@@ -6,7 +6,6 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -143,24 +142,4 @@ func getDeploymentCondition(status appsv1.DeploymentStatus, condType appsv1.Depl
 		}
 	}
 	return nil
-}
-
-func reportFirstNotReadyPodOnError(ctx context.Context, rclient client.Client, origin error, ns string, selector labels.Selector, minReadySeconds int32) error {
-	// list pods and join statuses
-	var podList corev1.PodList
-	if err := rclient.List(ctx, &podList, &client.ListOptions{
-		LabelSelector: selector,
-		Namespace:     ns,
-	}); err != nil {
-		return fmt.Errorf("cannot list pods for selector=%q: %w", selector.String(), err)
-	}
-	for _, dp := range podList.Items {
-		if PodIsReady(&dp, minReadySeconds) {
-			continue
-		}
-		return podStatusesToError(origin, &dp)
-	}
-	return &errWaitReady{
-		origin: fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events, origin err: %w", selector.String(), origin),
-	}
 }

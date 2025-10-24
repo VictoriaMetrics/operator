@@ -321,7 +321,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						dep := &appsv1.Deployment{}
 						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
-						// vlselect must be removed
+						// vlinsert must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
 						waitResourceDeleted(ctx, k8sClient, nsn, dep)
 					},

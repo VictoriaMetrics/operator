@@ -156,13 +156,15 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		// Perform rollout steps for the (now reconciled/updated) VMCluster
 		// Disable this VMCluster in vmusers
 		setVMClusterStatusInVMUsers(ctx, rclient, cr, vmClusterObj, vmUserObjs, false)
-		// Wait for VMAgent metrics to show no queue
-		vmAgent := &vmAgentAdapter{VMAgent: vmAgentObj}
-		waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, vmclusterWaitReadyDeadline)
 		// Wait for VMCluster to be ready
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
+
+		// Wait for VMAgent metrics to show no pending queue
+		vmAgent := &vmAgentAdapter{VMAgent: vmAgentObj}
+		waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, vmclusterWaitReadyDeadline)
+
 		// Enable this VMCluster in vmusers
 		setVMClusterStatusInVMUsers(ctx, rclient, cr, vmClusterObj, vmUserObjs, true)
 	}

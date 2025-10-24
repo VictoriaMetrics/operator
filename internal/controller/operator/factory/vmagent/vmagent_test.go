@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -16,10 +15,12 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
@@ -27,27 +28,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
-
-func TestShardNumIter(t *testing.T) {
-	f := func(backward bool, upperBound int) {
-		output := slices.Collect(shardNumIter(backward, upperBound))
-		if len(output) != upperBound {
-			t.Errorf("invalid shardNumIter() items count, want: %d, got: %d", upperBound, len(output))
-		}
-		var lowerBound int
-		if backward {
-			lowerBound = upperBound - 1
-			upperBound = 0
-		} else {
-			upperBound--
-		}
-		if output[0] != lowerBound || output[len(output)-1] != upperBound {
-			t.Errorf("invalid shardNumIter() bounds, want: [%d, %d], got: [%d, %d]", lowerBound, upperBound, output[0], output[len(output)-1])
-		}
-	}
-	f(true, 9)
-	f(false, 5)
-}
 
 func TestCreateOrUpdate(t *testing.T) {
 	tests := []struct {
@@ -460,6 +440,9 @@ func TestCreateOrUpdate(t *testing.T) {
 						ReplicaCount: ptr.To[int32](2),
 					},
 					ShardCount: ptr.To(3),
+					PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
+						MinAvailable: ptr.To(intstr.FromInt(1)),
+					},
 					StatefulStorage: &vmv1beta1.StorageSpec{
 						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 							Spec: corev1.PersistentVolumeClaimSpec{
@@ -713,6 +696,23 @@ func TestCreateOrUpdate(t *testing.T) {
 						})
 						if err != nil {
 							t.Errorf("cannot wait sts ready: %s", err)
+						}
+
+						if tt.cr.Spec.PodDisruptionBudget != nil {
+							err = wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, true, func(ctx context.Context) (done bool, err error) {
+								var pdb policyv1.PodDisruptionBudget
+								if err := fclient.Get(ctx, types.NamespacedName{
+									Namespace: "default",
+									Name:      fmt.Sprintf("vmagent-%s-%d", tt.cr.Name, i),
+								}, &pdb); err != nil {
+
+									return false, nil
+								}
+								return true, nil
+							})
+							if err != nil {
+								t.Errorf("pdb vmagent-%s-%d didn't get created: %s", tt.cr.Name, i, err)
+							}
 						}
 					}
 				} else {

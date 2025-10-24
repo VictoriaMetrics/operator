@@ -21,7 +21,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
@@ -85,8 +84,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
-		if err := discoverNotifierIfNeeded(ctx, rclient, prevCR); err != nil {
-			logger.WithContext(ctx).Error(err, "cannot discover notifiers for prev spec")
+		if err := discoverNotifiersIfNeeded(ctx, rclient, prevCR); err != nil {
+			return fmt.Errorf("cannot discover notifiers for prev spec: %w", err)
 		}
 
 	}
@@ -102,8 +101,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
-	if err := discoverNotifierIfNeeded(ctx, rclient, cr); err != nil {
-		return fmt.Errorf("cannot discover additional notifiers: %w", err)
+	if err := discoverNotifiersIfNeeded(ctx, rclient, cr); err != nil {
+		return fmt.Errorf("cannot discover notifiers for new spec: %w", err)
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
@@ -710,7 +709,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []st
 	return configReloaderContainer
 }
 
-func discoverNotifierIfNeeded(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
+func discoverNotifiersIfNeeded(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
 	var additionalNotifiers []vmv1beta1.VMAlertNotifierSpec
 
 	if cr.Spec.Notifier != nil {
@@ -727,23 +726,19 @@ func discoverNotifierIfNeeded(ctx context.Context, rclient client.Client, cr *vm
 			continue
 		}
 		// discover alertmanagers
-		var ams vmv1beta1.VMAlertmanagerList
-		amListOpts, err := n.Selector.AsListOptions()
+		o, err := n.Selector.AsListOptions()
 		if err != nil {
 			return fmt.Errorf("cannot convert notifier selector as ListOptions: %w", err)
 		}
-		if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(objects *vmv1beta1.VMAlertmanagerList) {
-			ams.Items = append(ams.Items, objects.Items...)
-		}, amListOpts); err != nil {
-			return fmt.Errorf("cannot list alertmanager with discovery selector: %w", err)
-		}
-
-		for _, item := range ams.Items {
-			if !item.DeletionTimestamp.IsZero() || (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
-				continue
+		if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(l *vmv1beta1.VMAlertmanagerList) {
+			for _, item := range l.Items {
+				if !item.DeletionTimestamp.IsZero() || (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
+					continue
+				}
+				additionalNotifiers = append(additionalNotifiers, item.AsNotifiers()...)
 			}
-			dsc := item.AsNotifiers()
-			additionalNotifiers = append(additionalNotifiers, dsc...)
+		}, o); err != nil {
+			return fmt.Errorf("cannot list alertmanager with discovery selector: %w", err)
 		}
 	}
 	cr.Spec.Notifiers = cr.Spec.Notifiers[:cnt]

@@ -105,25 +105,25 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						cr.Spec.UseStrictSecurity = ptr.To(true)
 					},
 					verify: func(cr *vmv1.VTCluster) {
-						nsss := []types.NamespacedName{
+						nsns := []types.NamespacedName{
 							{Namespace: namespace, Name: cr.GetVTStorageName()},
 						}
 						expectedAnnotations := map[string]string{"added-annotation": "some-value"}
-						for _, nss := range nsss {
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.StatefulSet{}, &corev1.Service{}}, expectedAnnotations)
+						for _, nsn := range nsns {
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.StatefulSet{}, &corev1.Service{}}, expectedAnnotations)
 						}
-						for _, nss := range nsss {
+						for _, nsn := range nsns {
 							sts := &appsv1.StatefulSet{}
-							Expect(k8sClient.Get(ctx, nss, sts)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
 							assertStrictSecurity(sts.Spec.Template.Spec)
 						}
-						nsss = []types.NamespacedName{
+						nsns = []types.NamespacedName{
 							{Namespace: namespace, Name: cr.GetVTInsertName()},
 							{Namespace: namespace, Name: cr.GetVTSelectName()},
 						}
-						for _, nss := range nsss {
+						for _, nsn := range nsns {
 							sts := &appsv1.Deployment{}
-							Expect(k8sClient.Get(ctx, nss, sts)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
 							assertStrictSecurity(sts.Spec.Template.Spec)
 						}
 					},
@@ -133,19 +133,19 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						delete(cr.Spec.ManagedMetadata.Annotations, "added-annotation")
 					},
 					verify: func(cr *vmv1.VTCluster) {
-						nsss := []types.NamespacedName{
+						nsns := []types.NamespacedName{
 							{Namespace: namespace, Name: cr.GetVTStorageName()},
 						}
 						expectedAnnotations := map[string]string{"added-annotation": ""}
-						for _, nss := range nsss {
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.StatefulSet{}, &corev1.Service{}}, expectedAnnotations)
+						for _, nsn := range nsns {
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.StatefulSet{}, &corev1.Service{}}, expectedAnnotations)
 						}
-						nsss = []types.NamespacedName{
+						nsns = []types.NamespacedName{
 							{Namespace: namespace, Name: cr.GetVTInsertName()},
 							{Namespace: namespace, Name: cr.GetVTSelectName()},
 						}
-						for _, nss := range nsss {
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.Service{}}, expectedAnnotations)
+						for _, nsn := range nsns {
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.Deployment{}, &corev1.Service{}}, expectedAnnotations)
 						}
 
 					},

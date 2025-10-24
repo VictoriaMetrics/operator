@@ -471,15 +471,15 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						nss := types.NamespacedName{
+						nsn := types.NamespacedName{
 							Namespace: namespace,
 							Name:      cr.GetVMStorageName(),
 						}
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
 						Expect(svc.Spec.Ports).To(HaveLen(4))
 						var vss vmv1beta1.VMServiceScrape
-						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &vss)).To(Succeed())
 						Expect(vss.Spec.Endpoints).To(HaveLen(2))
 					},
 				},
@@ -621,13 +621,13 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 						cr.Spec.VMSelect = nil
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						nss := types.NamespacedName{
+						nsn := types.NamespacedName{
 							Name:      cr.GetVMSelectName(),
 							Namespace: namespace,
 						}
-						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.StatefulSet{})
-						waitResourceDeleted(ctx, k8sClient, nss, &corev1.Service{})
-						waitResourceDeleted(ctx, k8sClient, nss, &vmv1beta1.VMServiceScrape{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.StatefulSet{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &corev1.Service{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMServiceScrape{})
 					},
 				},
 				testStep{
@@ -685,16 +685,16 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 						}
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						nss := types.NamespacedName{
+						nsn := types.NamespacedName{
 							Namespace: namespace,
 							Name:      cr.GetVMStorageName(),
 						}
-						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.StatefulSet{})
-						waitResourceDeleted(ctx, k8sClient, nss, &corev1.Service{})
-						waitResourceDeleted(ctx, k8sClient, nss, &vmv1beta1.VMServiceScrape{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.StatefulSet{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &corev1.Service{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMServiceScrape{})
 
-						nss.Name = cr.GetVMInsertName()
-						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.Deployment{})
+						nsn.Name = cr.GetVMInsertName()
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
 					},
 				},
 				testStep{
@@ -779,11 +779,11 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 						cr.Spec.VMStorage.ServiceSpec.Name = ""
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						nss := types.NamespacedName{
+						nsn := types.NamespacedName{
 							Namespace: namespace,
 							Name:      cr.GetVMSelectName() + "-additional-service",
 						}
-						waitResourceDeleted(ctx, k8sClient, nss, &corev1.Service{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &corev1.Service{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name + "-additional-service"}, &corev1.Service{})).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
 							Namespace: namespace,
@@ -861,8 +861,8 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
 						var sts appsv1.StatefulSet
-						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMStorageName()}
-						Expect(k8sClient.Get(ctx, nss, &sts)).To(Succeed())
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVMStorageName()}
+						Expect(k8sClient.Get(ctx, nsn, &sts)).To(Succeed())
 						Expect(sts.Spec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
 						Expect(k8sClient.Delete(ctx,
 							&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "test-pull-secret", Namespace: namespace}})).
@@ -912,16 +912,16 @@ up{baz="bar"} 123
 					verify: func(cr *vmv1beta1.VMCluster) {
 						By("switching enabling loadbalanacer")
 						var lbDep appsv1.Deployment
-						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
-						Expect(k8sClient.Get(ctx, nss, &lbDep)).To(Succeed())
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
+						Expect(k8sClient.Get(ctx, nsn, &lbDep)).To(Succeed())
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
 						var vss vmv1beta1.VMServiceScrape
-						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
@@ -950,10 +950,10 @@ up{baz="bar"} 123
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
 						By("disabling loadbalancer")
-						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
-						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.Deployment{})
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
 						var svc corev1.Service
-						waitResourceDeleted(ctx, k8sClient, nss, &svc)
+						waitResourceDeleted(ctx, k8sClient, nsn, &svc)
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
 							Namespace: namespace,
 							Name:      cr.GetVMInsertLBName(),
@@ -965,7 +965,7 @@ up{baz="bar"} 123
 						}, &svc)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
 						var vss vmv1beta1.VMServiceScrape
-						waitResourceDeleted(ctx, k8sClient, nss, &vss)
+						waitResourceDeleted(ctx, k8sClient, nsn, &vss)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)
@@ -1024,16 +1024,16 @@ up{baz="bar"} 123
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.GetVMSelectName(), namespace),
 						})
 						var lbDep appsv1.Deployment
-						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
-						Expect(k8sClient.Get(ctx, nss, &lbDep)).To(Succeed())
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
+						Expect(k8sClient.Get(ctx, nsn, &lbDep)).To(Succeed())
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &svc)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
 						var vss vmv1beta1.VMServiceScrape
-						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &vss)).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)
@@ -1049,17 +1049,17 @@ up{baz="bar"} 123
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
 						var lbDep appsv1.Deployment
-						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
-						Expect(k8sClient.Get(ctx, nss, &lbDep)).To(Succeed())
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
+						Expect(k8sClient.Get(ctx, nsn, &lbDep)).To(Succeed())
 						Expect(*lbDep.Spec.Replicas).To(BeEquivalentTo(int32(2)))
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
 						var vss vmv1beta1.VMServiceScrape
-						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)
@@ -1086,17 +1086,17 @@ up{baz="bar"} 123
 					verify: func(cr *vmv1beta1.VMCluster) {
 						By("disabling select loadbalancing")
 						var lbDep appsv1.Deployment
-						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
-						Expect(k8sClient.Get(ctx, nss, &lbDep)).To(Succeed())
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
+						Expect(k8sClient.Get(ctx, nsn, &lbDep)).To(Succeed())
 						Expect(*lbDep.Spec.Replicas).To(BeEquivalentTo(int32(2)))
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
 						var vss vmv1beta1.VMServiceScrape
-						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)).To(Succeed())
@@ -1168,26 +1168,26 @@ up{baz="bar"} 123
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.GetVMSelectName(), namespace),
 						})
 						var lbDep appsv1.Deployment
-						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
-						Expect(k8sClient.Get(ctx, nss, &lbDep)).To(Succeed())
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
+						Expect(k8sClient.Get(ctx, nsn, &lbDep)).To(Succeed())
 						Expect(*lbDep.Spec.Replicas).To(Equal(int32(2)))
 						Expect(lbDep.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
 						Expect(lbDep.Spec.Template.Spec.SecurityContext.RunAsUser).NotTo(BeNil())
 						Expect(lbDep.Spec.Template.Spec.SecurityContext.RunAsGroup).NotTo(BeNil())
 
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
 						Expect(svc.Spec.ClusterIP).To(Equal(corev1.ClusterIPNone))
 						Expect(svc.Spec.Ports).To(HaveLen(1))
 						Expect(svc.Spec.Ports[0].TargetPort).To(Equal(intstr.Parse("8431")))
 						var vss vmv1beta1.VMServiceScrape
-						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)
 						var pdb policyv1.PodDisruptionBudget
-						Expect(k8sClient.Get(ctx, nss, &pdb)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &pdb)).To(Succeed())
 					},
 				},
 				testStep{
@@ -1210,16 +1210,16 @@ up{baz="bar"} 123
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.GetVMSelectName(), namespace),
 						})
 						var lbDep appsv1.Deployment
-						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
-						Expect(k8sClient.Get(ctx, nss, &lbDep)).To(Succeed())
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
+						Expect(k8sClient.Get(ctx, nsn, &lbDep)).To(Succeed())
 						Expect(*lbDep.Spec.Replicas).To(Equal(int32(1)))
 						Expect(lbDep.Spec.Template.Spec.SecurityContext.RunAsUser).To(BeNil())
 						Expect(lbDep.Spec.Template.Spec.SecurityContext.RunAsGroup).To(BeNil())
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
 						Expect(svc.Spec.ClusterIP).NotTo(Equal(corev1.ClusterIPNone))
 						Expect(svc.Spec.Ports[0].TargetPort).To(Equal(intstr.Parse("8427")))
-						waitResourceDeleted(ctx, k8sClient, nss, &policyv1.PodDisruptionBudget{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
 					},
 				},
 			),
@@ -1256,18 +1256,18 @@ up{baz="bar"} 123
 						expectedAnnotations := map[string]string{"annotation-1": "value-a-1", "annotation-2": "value-a-2"}
 						expectedLabels := map[string]string{"label-1": "value-1", "label-2": "value-2", "managed-by": "vm-operator"}
 						selectN, insertN, storageN, lbName, saName := cr.GetVMSelectName(), cr.GetVMInsertName(), cr.GetVMStorageName(), cr.GetVMAuthLBName(), cr.PrefixedName()
-						objectsByNss := map[types.NamespacedName][]client.Object{
+						objectsByNsn := map[types.NamespacedName][]client.Object{
 							{Name: selectN}:  {&corev1.Service{}, &appsv1.StatefulSet{}},
 							{Name: storageN}: {&corev1.Service{}, &appsv1.StatefulSet{}},
 							{Name: insertN}:  {&corev1.Service{}, &appsv1.Deployment{}},
 							{Name: lbName}:   {&corev1.Service{}, &appsv1.Deployment{}},
 							{Name: saName}:   {&corev1.ServiceAccount{}},
 						}
-						for nss, objectsToAssert := range objectsByNss {
-							nss.Namespace = namespace
-							By(nss.String())
-							assertAnnotationsOnObjects(ctx, nss, objectsToAssert, expectedAnnotations)
-							assertLabelsOnObjects(ctx, nss, objectsToAssert, expectedLabels)
+						for nsn, objectsToAssert := range objectsByNsn {
+							nsn.Namespace = namespace
+							By(nsn.String())
+							assertAnnotationsOnObjects(ctx, nsn, objectsToAssert, expectedAnnotations)
+							assertLabelsOnObjects(ctx, nsn, objectsToAssert, expectedLabels)
 						}
 					},
 				},
@@ -1281,18 +1281,18 @@ up{baz="bar"} 123
 						expectedAnnotations := map[string]string{"annotation-1": "value-a-1", "annotation-2": ""}
 						expectedLabels := map[string]string{"label-1": "", "label-2": "", "managed-by": "vm-operator"}
 						selectN, insertN, storageN, lbName, saName := cr.GetVMSelectName(), cr.GetVMInsertName(), cr.GetVMStorageName(), cr.GetVMAuthLBName(), cr.PrefixedName()
-						objectsByNss := map[types.NamespacedName][]client.Object{
+						objectsByNsn := map[types.NamespacedName][]client.Object{
 							{Name: selectN}:  {&corev1.Service{}, &appsv1.StatefulSet{}},
 							{Name: storageN}: {&corev1.Service{}, &appsv1.StatefulSet{}},
 							{Name: insertN}:  {&corev1.Service{}, &appsv1.Deployment{}},
 							{Name: lbName}:   {&corev1.Service{}, &appsv1.Deployment{}},
 							{Name: saName}:   {&corev1.ServiceAccount{}},
 						}
-						for nss, objectsToAssert := range objectsByNss {
-							nss.Namespace = namespace
-							By(nss.String())
-							assertAnnotationsOnObjects(ctx, nss, objectsToAssert, expectedAnnotations)
-							assertLabelsOnObjects(ctx, nss, objectsToAssert, expectedLabels)
+						for nsn, objectsToAssert := range objectsByNsn {
+							nsn.Namespace = namespace
+							By(nsn.String())
+							assertAnnotationsOnObjects(ctx, nsn, objectsToAssert, expectedAnnotations)
+							assertLabelsOnObjects(ctx, nsn, objectsToAssert, expectedLabels)
 						}
 					},
 				},

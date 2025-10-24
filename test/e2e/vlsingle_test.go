@@ -223,12 +223,12 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 							}
 						},
 						verify: func(cr *vmv1.VLSingle) {
-							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+							nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 
 							expectedAnnotations := map[string]string{"added-annotation": "some-value"}
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
 							var createdDeploy appsv1.Deployment
-							Expect(k8sClient.Get(ctx, nss, &createdDeploy)).
+							Expect(k8sClient.Get(ctx, nsn, &createdDeploy)).
 								To(Succeed())
 						},
 					},
@@ -237,10 +237,10 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 							delete(cr.Spec.ManagedMetadata.Annotations, "added-annotation")
 						},
 						verify: func(cr *vmv1.VLSingle) {
-							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+							nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 							expectedAnnotations := map[string]string{"added-annotation": ""}
 
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
 
 						},
 					},

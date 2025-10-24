@@ -369,12 +369,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					Expect(k8sClient.Create(ctx, crole)).To(Succeed())
 					Expect(k8sClient.Create(ctx, croleb)).To(Succeed())
 					// check that access not exist with new version naming
-					newFormatNss := types.NamespacedName{
+					newFormatNsn := types.NamespacedName{
 						Name:      "monitoring:" + namespace + ":vmagent-" + cr.Name,
 						Namespace: namespace,
 					}
-					waitResourceDeleted(ctx, k8sClient, newFormatNss, &rbacv1.ClusterRole{})
-					waitResourceDeleted(ctx, k8sClient, newFormatNss, &rbacv1.ClusterRoleBinding{})
+					waitResourceDeleted(ctx, k8sClient, newFormatNsn, &rbacv1.ClusterRole{})
+					waitResourceDeleted(ctx, k8sClient, newFormatNsn, &rbacv1.ClusterRoleBinding{})
 				},
 				func(cr *vmv1beta1.VMAgent) {
 					prevFormatName := types.NamespacedName{

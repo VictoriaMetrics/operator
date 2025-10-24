@@ -61,13 +61,13 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
-func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, resultErr error) {
+func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmalert", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1beta1.VMAlert{}
 
 	defer func() {
-		result, resultErr = handleReconcileErr(ctx, r.Client, instance, result, resultErr)
+		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
 	}()
 
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -92,7 +92,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 	r.Client.Scheme().Default(instance)
 
-	result, resultErr = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
 		maps, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, instance, nil)
 		if err != nil {
 			return result, err
@@ -100,13 +100,13 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		if err := vmalert.CreateOrUpdate(ctx, instance, r, maps); err != nil {
 			return result, err
 		}
-
 		return result, nil
 	})
-	if resultErr != nil {
-		return
+
+	if err == nil {
+		result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 	}
-	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
+
 	return
 }
 

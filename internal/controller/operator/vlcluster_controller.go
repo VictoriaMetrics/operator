@@ -83,14 +83,15 @@ func (r *VLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	r.Client.Scheme().Default(instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err = vlcluster.CreateOrUpdate(ctx, r, instance); err != nil {
+		if err := vlcluster.CreateOrUpdate(ctx, r, instance); err != nil {
 			return result, fmt.Errorf("failed create or update vlcluster: %w", err)
 		}
-
 		return result, nil
 	})
 
-	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
+	if err == nil {
+		result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
+	}
 
 	return
 }

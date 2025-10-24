@@ -120,12 +120,11 @@ type errWaitReady struct {
 }
 
 // Error implements errors.Error interface
-func (err *errWaitReady) Error() string {
-	return fmt.Sprintf(": %q",
-		err.origin)
+func (e *errWaitReady) Error() string {
+	return fmt.Sprintf(": %q", e.origin)
 }
 
 // Unwrap implements error.Unwrap interface
-func (err *errWaitReady) Unwrap() error {
-	return err.origin
+func (e *errWaitReady) Unwrap() error {
+	return e.origin
 }

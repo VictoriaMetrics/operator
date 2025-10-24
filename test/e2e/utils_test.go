@@ -126,10 +126,7 @@ fi
 		Expect(k8sClient.Delete(ctx, job, &client.DeleteOptions{
 			PropagationPolicy: ptr.To(metav1.DeletePropagationForeground),
 		})).To(Succeed())
-		Eventually(func() error {
-			var jb batchv1.Job
-			return k8sClient.Get(ctx, nss, &jb)
-		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+		waitResourceDeleted(ctx, k8sClient, nss, &batchv1.Job{})
 	}()
 	Eventually(func() error {
 		var jb batchv1.Job
@@ -229,4 +226,12 @@ func mustGetFirstPod(rclient client.Client, ns string, lbs map[string]string) *c
 	})).To(Succeed())
 	Expect(podList.Items).ToNot(BeEmpty())
 	return &podList.Items[0]
+}
+
+//nolint:dupl,lll
+func waitResourceDeleted(ctx context.Context, rclient client.Client, nss types.NamespacedName, r client.Object) {
+	GinkgoHelper()
+	Eventually(func() error {
+		return rclient.Get(ctx, nss, r)
+	}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 }

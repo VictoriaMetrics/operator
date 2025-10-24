@@ -25,7 +25,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 	ctx := context.Background()
 	Context("e2e vmagent", func() {
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-		namespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Namespace: namespace,
 		}
 		tlsSecretName := "vmagent-remote-tls-certs"
@@ -33,42 +33,37 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
+					Name:      nsn.Name,
+					Namespace: nsn.Namespace,
 				},
 			},
 			)).To(Succeed())
-			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
-				}, &vmv1beta1.VMAgent{})
-			}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAgent{})
 		})
 
 		DescribeTable("should create vmagent",
 			func(name string, cr *vmv1beta1.VMAgent, setup func(), verify func(*vmv1beta1.VMAgent)) {
 
 				cr.Name = name
-				namespacedName.Name = name
+				nsn.Name = name
 				if setup != nil {
 					setup()
 				}
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
 				}, eventualDeploymentAppReadyTimeout,
 				).Should(Succeed())
 
 				var created vmv1beta1.VMAgent
-				Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
 				verify(&created)
 
 			},
 			Entry("with rw stream aggr and relabeling", "stream-aggr", &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      namespacedName.Name,
+					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMAgentSpec{
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -114,7 +109,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Entry("with 1 replica", "replica-1", &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      namespacedName.Name,
+					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMAgentSpec{
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -134,7 +129,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				&vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
 						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
@@ -162,7 +157,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				&vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -194,7 +189,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				&vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -262,7 +257,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						k8sClient,
 						&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 							Name:      tlsSecretName,
-							Namespace: namespacedName.Namespace,
+							Namespace: nsn.Namespace,
 						}},
 					)).To(Succeed())
 
@@ -271,7 +266,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				&vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
@@ -332,7 +327,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				&vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{UseDefaultResources: ptr.To(false)},
@@ -378,15 +373,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      "monitoring:" + namespace + ":vmagent-" + cr.Name,
 						Namespace: namespace,
 					}
-					Expect(
-						k8sClient.Get(ctx,
-							newFormatNss,
-							&rbacv1.ClusterRole{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-					Expect(
-						k8sClient.Get(ctx,
-							newFormatNss,
-							&rbacv1.ClusterRoleBinding{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-
+					waitResourceDeleted(ctx, k8sClient, newFormatNss, &rbacv1.ClusterRole{})
+					waitResourceDeleted(ctx, k8sClient, newFormatNss, &rbacv1.ClusterRoleBinding{})
 				},
 				func(cr *vmv1beta1.VMAgent) {
 					prevFormatName := types.NamespacedName{
@@ -398,14 +386,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      "monitoring:" + namespace + ":vmagent-" + cr.Name,
 						Namespace: namespace,
 					}
-					Expect(
-						k8sClient.Get(ctx,
-							prevFormatName,
-							&rbacv1.ClusterRole{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-					Expect(
-						k8sClient.Get(ctx,
-							prevFormatName,
-							&rbacv1.ClusterRoleBinding{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+					waitResourceDeleted(ctx, k8sClient, prevFormatName, &rbacv1.ClusterRole{})
+					waitResourceDeleted(ctx, k8sClient, prevFormatName, &rbacv1.ClusterRoleBinding{})
 					Expect(
 						k8sClient.Get(ctx,
 							newFormatName,
@@ -428,10 +410,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				// create and wait ready
 				initCR.Name = name
 				initCR.Namespace = namespace
-				namespacedName.Name = name
+				nsn.Name = name
 				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 				for _, step := range steps {
 					if step.setup != nil {
@@ -440,16 +422,16 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					// update and wait ready
 					Eventually(func() error {
 						var toUpdate vmv1beta1.VMAgent
-						Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 						step.modify(&toUpdate)
 						return k8sClient.Update(ctx, &toUpdate)
 					}, eventualExpandingTimeout).Should(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
 					}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 					// verify
 					var updated vmv1beta1.VMAgent
-					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 					step.verify(&updated)
 				}
 			},
@@ -494,11 +476,11 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					},
 					modify: func(cr *vmv1beta1.VMAgent) { cr.Spec.RevisionHistoryLimitCount = ptr.To[int32](3) },
 					verify: func(cr *vmv1beta1.VMAgent) {
-						namespacedNameDeployment := types.NamespacedName{
+						nsnDeployment := types.NamespacedName{
 							Name:      cr.PrefixedName(),
 							Namespace: namespace,
 						}
-						Expect(getRevisionHistoryLimit(k8sClient, namespacedNameDeployment)).To(Equal(int32(3)))
+						Expect(getRevisionHistoryLimit(k8sClient, nsnDeployment)).To(Equal(int32(3)))
 					},
 				},
 			),
@@ -550,7 +532,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
 					},
 				},
 				testStep{
@@ -558,7 +540,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.StatefulSet{})
 					},
 				},
 			),
@@ -587,12 +569,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					},
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						Eventually(func() error {
-							return k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Eventually(func() error {
-							return k8sClient.Get(ctx, nsn, &vmv1beta1.VMServiceScrape{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMServiceScrape{})
 					},
 				},
 				testStep{
@@ -625,8 +603,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMServiceScrape{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMServiceScrape{})
 					},
 				},
 				testStep{
@@ -638,10 +616,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(Succeed())
 						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMServiceScrape{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.DaemonSet{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMPodScrape{})
 					},
 				},
 			),

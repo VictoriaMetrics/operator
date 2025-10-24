@@ -25,7 +25,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 	ctx := context.Background()
 	Context("e2e vlagent", func() {
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-		namespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Namespace: namespace,
 		}
 		tlsSecretName := "vlagent-remote-tls-certs"
@@ -33,42 +33,36 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx, &vmv1.VLAgent{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
+					Name:      nsn.Name,
+					Namespace: nsn.Namespace,
 				},
-			},
-			)).To(Succeed())
-			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
-				}, &vmv1.VLAgent{})
-			}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			})).To(Succeed())
+			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VLAgent{})
 		})
 
 		DescribeTable("should create vlagent",
 			func(name string, cr *vmv1.VLAgent, setup func(), verify func(*vmv1.VLAgent)) {
 
 				cr.Name = name
-				namespacedName.Name = name
+				nsn.Name = name
 				if setup != nil {
 					setup()
 				}
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
 				}, eventualDeploymentAppReadyTimeout,
 				).Should(Succeed())
 
 				var created vmv1.VLAgent
-				Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
 				verify(&created)
 
 			},
 			Entry("with 1 replica, rw headers and rw-settings", "replica-1-rw", &vmv1.VLAgent{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      namespacedName.Name,
+					Name:      nsn.Name,
 				},
 				Spec: vmv1.VLAgentSpec{
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -101,7 +95,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				&vmv1.VLAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1.VLAgentSpec{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -129,7 +123,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				&vmv1.VLAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1.VLAgentSpec{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -214,7 +208,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				&vmv1.VLAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1.VLAgentSpec{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -321,7 +315,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				&vmv1.VLAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1.VLAgentSpec{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
@@ -369,10 +363,10 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				// create and wait ready
 				initCR.Name = name
 				initCR.Namespace = namespace
-				namespacedName.Name = name
+				nsn.Name = name
 				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 				for _, step := range steps {
 					if step.setup != nil {
@@ -381,16 +375,16 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					// update and wait ready
 					Eventually(func() error {
 						var toUpdate vmv1.VLAgent
-						Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 						step.modify(&toUpdate)
 						return k8sClient.Update(ctx, &toUpdate)
 					}, eventualExpandingTimeout).Should(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
 					}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 					// verify
 					var updated vmv1.VLAgent
-					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 					step.verify(&updated)
 				}
 			},
@@ -438,12 +432,8 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					},
 					verify: func(cr *vmv1.VLAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						Eventually(func() error {
-							return k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Eventually(func() error {
-							return k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMPodScrape{})
 					},
 				},
 				testStep{

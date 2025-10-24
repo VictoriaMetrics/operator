@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,7 +25,7 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 	Context("e2e vtsingle", func() {
 		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-		namespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Namespace: namespace,
 		}
 		BeforeEach(func() {
@@ -35,27 +34,25 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 		AfterEach(func() {
 			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1.VTSingle{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
+					Name:      nsn.Name,
+					Namespace: nsn.Namespace,
 				},
 			})).To(Succeed())
-			Eventually(func() error {
-				return k8sClient.Get(ctx, namespacedName, &vmv1.VTSingle{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VTSingle{})
 		})
 		Context("crud", func() {
 			DescribeTable("should create",
 				func(name string, cr *vmv1.VTSingle, verify func(*vmv1.VTSingle)) {
 					cr.Name = name
-					namespacedName.Name = name
+					nsn.Name = name
 					Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, nsn)
 					}, eventualDeploymentAppReadyTimeout,
 					).Should(Succeed())
 
 					var created vmv1.VTSingle
-					Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
 					verify(&created)
 				},
 				Entry("with strict security", "strict-security",
@@ -186,11 +183,11 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 				func(name string, initCR *vmv1.VTSingle, steps ...testStep) {
 					initCR.Name = name
 					initCR.Namespace = namespace
-					namespacedName.Name = name
+					nsn.Name = name
 					// setup test
 					Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, nsn)
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
 					for _, step := range steps {
@@ -200,16 +197,16 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 						// perform update
 						Eventually(func() error {
 							var toUpdate vmv1.VTSingle
-							Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 							step.modify(&toUpdate)
 							return k8sClient.Update(ctx, &toUpdate)
 						}, eventualExpandingTimeout).Should(Succeed())
 						Eventually(func() error {
-							return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, namespacedName)
+							return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, nsn)
 						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
 						var updated vmv1.VTSingle
-						Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 
 						// verify results
 						step.verify(&updated)

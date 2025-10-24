@@ -104,14 +104,11 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 			},
 		)).To(Succeed())
 		Expect(k8sClient.Delete(ctx, &anomalySingle)).To(Succeed())
-		Eventually(func() error {
-			return k8sClient.Get(context.Background(), types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
-		}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-
+		waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
 	})
 	Context("e2e vmanomaly", func() {
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-		namespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Namespace: namespace,
 		}
 		tlsSecretName := "vmanomaly-remote-tls-certs"
@@ -119,40 +116,40 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 			Expect(k8sClient.Delete(ctx,
 				&vmv1.VMAnomaly{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      namespacedName.Name,
-						Namespace: namespacedName.Namespace,
+						Name:      nsn.Name,
+						Namespace: nsn.Namespace,
 					},
 				},
 			)).To(Succeed())
 			Eventually(func() error {
 				return k8sClient.Get(context.Background(), types.NamespacedName{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
+					Name:      nsn.Name,
+					Namespace: nsn.Namespace,
 				}, &vmv1.VMAnomaly{})
 			}, anomalyDeleteTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		})
 		DescribeTable("should create vmanomaly",
 			func(name string, cr *vmv1.VMAnomaly, setup func(), verify func(*vmv1.VMAnomaly)) {
 				cr.Name = name
-				namespacedName.Name = name
+				nsn.Name = name
 				if setup != nil {
 					setup()
 				}
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
 				}, anomalyReadyTimeout,
 				).Should(Succeed())
 
 				var created vmv1.VMAnomaly
-				Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
 				verify(&created)
 			},
 			Entry("with reader", "custom-reader",
 				&vmv1.VMAnomaly{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1.VMAnomalySpec{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -231,7 +228,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						k8sClient,
 						&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 							Name:      tlsSecretName,
-							Namespace: namespacedName.Namespace,
+							Namespace: nsn.Namespace,
 						}},
 					)).To(Succeed())
 
@@ -241,7 +238,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				&vmv1.VMAnomaly{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1.VMAnomalySpec{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
@@ -304,10 +301,10 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				// create and wait ready
 				initCR.Name = name
 				initCR.Namespace = namespace
-				namespacedName.Name = name
+				nsn.Name = name
 				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
 				}, anomalyReadyTimeout).Should(Succeed())
 				for _, step := range steps {
 					if step.setup != nil {
@@ -316,16 +313,16 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					// update and wait ready
 					Eventually(func() error {
 						var toUpdate vmv1.VMAnomaly
-						Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 						step.modify(&toUpdate)
 						return k8sClient.Update(ctx, &toUpdate)
 					}, anomalyExpandTimeout).Should(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
 					}, anomalyExpandTimeout).Should(Succeed())
 					// verify
 					var updated vmv1.VMAnomaly
-					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 					step.verify(&updated)
 				}
 			},
@@ -413,12 +410,8 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					},
 					verify: func(cr *vmv1.VMAnomaly) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						Eventually(func() error {
-							return k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Eventually(func() error {
-							return k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
+						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMPodScrape{})
 					},
 				},
 				testStep{

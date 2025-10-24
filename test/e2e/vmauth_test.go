@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,7 +25,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 	Context("e2e ", func() {
 		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-		namespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Namespace: namespace,
 		}
 
@@ -38,21 +37,19 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 			AfterEach(func() {
 				Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      namespacedName.Name,
-						Namespace: namespacedName.Namespace,
+						Name:      nsn.Name,
+						Namespace: nsn.Namespace,
 					},
 				})).To(Succeed())
-				Eventually(func() error {
-					return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMAuth{})
-				}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+				waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAuth{})
 			})
 			DescribeTable("should create vmauth", func(name string, cr *vmv1beta1.VMAuth, verify func(cr *vmv1beta1.VMAuth)) {
 				cr.Name = name
 				cr.Namespace = namespace
-				namespacedName.Name = name
+				nsn.Name = name
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, nsn)
 				}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 				verify(cr)
 			},
@@ -136,11 +133,11 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 
 					initCR.Name = name
 					initCR.Namespace = namespace
-					namespacedName.Name = name
+					nsn.Name = name
 					// setup test
 					Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, nsn)
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 					for _, step := range steps {
 						if step.setup != nil {
@@ -149,15 +146,15 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						// perform update
 						Eventually(func() error {
 							var toUpdate vmv1beta1.VMAuth
-							Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 							step.modify(&toUpdate)
 							return k8sClient.Update(ctx, &toUpdate)
 						}, eventualExpandingTimeout).Should(Succeed())
 						Eventually(func() error {
-							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, namespacedName)
+							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, nsn)
 						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 						var updated vmv1beta1.VMAuth
-						Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 						// verify results
 						step.verify(&updated)
 					}
@@ -356,9 +353,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							}, eventualDeploymentPodTimeout).Should(BeEmpty())
 							nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
 							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).To(Succeed())
-							Eventually(func() error {
-								return k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})
-							}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+							waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
 						},
 					},
 					testStep{

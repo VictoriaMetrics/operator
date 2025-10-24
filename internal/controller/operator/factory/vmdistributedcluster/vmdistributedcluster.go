@@ -41,7 +41,7 @@ import (
 )
 
 const (
-	VMAgentBufferMetricName = "vmagent_remotewrite_pending_data_bytes"
+	VMAgentQueueMetricName = "vm_persistentqueue_bytes_pending"
 )
 
 // CreateOrUpdate handles VM deployment reconciliation.
@@ -662,7 +662,7 @@ func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, 
 	}
 	metrics := string(metricBytes)
 	for _, metric := range strings.Split(metrics, "\n") {
-		value, found := strings.CutPrefix(metric, VMAgentBufferMetricName)
+		value, found := strings.CutPrefix(metric, VMAgentQueueMetricName)
 		if found {
 			value = strings.Trim(value, " ")
 			res, err := strconv.ParseFloat(value, 64)
@@ -672,5 +672,5 @@ func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, 
 			return int64(res), nil
 		}
 	}
-	return 0, fmt.Errorf("metric %s not found", VMAgentBufferMetricName)
+	return 0, fmt.Errorf("metric %s not found", VMAgentQueueMetricName)
 }

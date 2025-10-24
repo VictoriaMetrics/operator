@@ -23,48 +23,43 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 
 	Context("e2e vmalert", func() {
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-		namespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Namespace: namespace,
 		}
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
+					Name:      nsn.Name,
+					Namespace: nsn.Namespace,
 				},
 			},
 			)).To(Succeed())
-			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
-				}, &vmv1beta1.VMAlert{})
-			}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAlert{})
 		})
 		tlsSecretName := "vmalert-remote-tls"
 		DescribeTable("should create vmalert",
 			func(name string, cr *vmv1beta1.VMAlert, setup func(), verify func(*vmv1beta1.VMAlert)) {
 
 				cr.Name = name
-				namespacedName.Name = name
+				nsn.Name = name
 				if setup != nil {
 					setup()
 				}
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
 				}, eventualDeploymentAppReadyTimeout,
 				).Should(Succeed())
 
 				var created vmv1beta1.VMAlert
-				Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
 				verify(&created)
 
 			},
 			Entry("with extra env and read source", "with-extra-env",
 				&vmv1beta1.VMAlert{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespacedName.Namespace,
+						Namespace: nsn.Namespace,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -94,7 +89,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 			Entry("with remote read and notifier tls", "with-remote-read-notifier-tls",
 				&vmv1beta1.VMAlert{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespacedName.Namespace,
+						Namespace: nsn.Namespace,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -196,7 +191,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					tlsSecret := &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      tlsSecretName,
-							Namespace: namespacedName.Namespace,
+							Namespace: nsn.Namespace,
 						},
 						StringData: map[string]string{
 							"remote-ca":   tlsCA,
@@ -219,7 +214,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      tlsSecretName,
-							Namespace: namespacedName.Namespace,
+							Namespace: nsn.Namespace,
 						},
 					})).To(Succeed())
 
@@ -228,7 +223,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 			Entry("with strict security and vm config reloader", "strict-vmreloader-create",
 				&vmv1beta1.VMAlert{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespacedName.Namespace,
+						Namespace: nsn.Namespace,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
@@ -279,7 +274,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 		)
 		existObject := &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: namespacedName.Namespace,
+				Namespace: nsn.Namespace,
 			},
 			Spec: vmv1beta1.VMAlertSpec{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -298,24 +293,24 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				// create and wait ready
 				existObject := existObject.DeepCopy()
 				existObject.Name = name
-				namespacedName.Name = name
+				nsn.Name = name
 				Expect(k8sClient.Create(ctx, existObject)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 				// update and wait ready
 				Eventually(func() error {
 					var toUpdate vmv1beta1.VMAlert
-					Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 					modify(&toUpdate)
 					return k8sClient.Update(ctx, &toUpdate)
 				}, eventualExpandingTimeout).Should(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 				// verify
 				var updated vmv1beta1.VMAlert
-				Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 				verify(&updated)
 			},
 			Entry("by expand up to 3 replicas with custom prefix", "replica-3-prefix",
@@ -339,7 +334,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					}, eventualDeploymentPodTimeout).Should(BeEmpty())
 					Expect(getRevisionHistoryLimit(k8sClient, types.NamespacedName{
 						Name:      cr.PrefixedName(),
-						Namespace: namespacedName.Namespace,
+						Namespace: nsn.Namespace,
 					})).To(Equal(int32(3)))
 				}),
 			Entry("by switching to vm config-reloader", "vm-reloader",

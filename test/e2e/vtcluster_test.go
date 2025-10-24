@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -25,7 +24,7 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 	Context("e2e vtcluster", func() {
 		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-		namespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Namespace: namespace,
 		}
 		BeforeEach(func() {
@@ -34,13 +33,11 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 		AfterEach(func() {
 			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1.VTCluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
+					Name:      nsn.Name,
+					Namespace: nsn.Namespace,
 				},
 			})).To(Succeed())
-			Eventually(func() error {
-				return k8sClient.Get(ctx, namespacedName, &vmv1.VTCluster{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VTCluster{})
 		})
 		baseVTCluster := &vmv1.VTCluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -67,11 +64,11 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 			func(name string, initCR *vmv1.VTCluster, steps ...testStep) {
 				initCR.Name = name
 				initCR.Namespace = namespace
-				namespacedName.Name = name
+				nsn.Name = name
 				// setup test
 				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTCluster{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTCluster{}, nsn)
 				}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
 				for _, step := range steps {
@@ -81,16 +78,16 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 					// perform update
 					Eventually(func() error {
 						var toUpdate vmv1.VTCluster
-						Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 						step.modify(&toUpdate)
 						return k8sClient.Update(ctx, &toUpdate)
 					}, eventualExpandingTimeout).Should(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTCluster{}, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTCluster{}, nsn)
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
 					var updated vmv1.VTCluster
-					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 
 					// verify results
 					step.verify(&updated)
@@ -189,7 +186,7 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 					},
 					verify: func(cr *vmv1.VTCluster) {
 						var dep appsv1.Deployment
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVMAuthLBName(), Namespace: namespace}, &dep)).To(MatchError(k8serrors.IsNotFound, "isNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: cr.GetVMAuthLBName(), Namespace: namespace}, &dep)
 
 						var svc corev1.Service
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVTSelectName(), Namespace: namespace}, &svc)).To(Succeed())
@@ -233,9 +230,7 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 
 						// vtselect must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVTSelectName()}
-						Eventually(func() error {
-							return k8sClient.Get(ctx, nsn, dep)
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nsn, dep)
 					},
 				},
 				testStep{
@@ -261,9 +256,7 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
 						// vtselect must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVTInsertName()}
-						Eventually(func() error {
-							return k8sClient.Get(ctx, nsn, dep)
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nsn, dep)
 					},
 				},
 				testStep{

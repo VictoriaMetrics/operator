@@ -8,7 +8,6 @@ import (
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -42,7 +41,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 	Context("e2e vmalertmanager", func() {
 		ctx := context.Background()
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-		namespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Namespace: namespace,
 		}
 
@@ -50,24 +49,22 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 		AfterEach(func() {
 			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMAlertmanager{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      namespacedName.Name,
-					Namespace: namespacedName.Namespace,
+					Name:      nsn.Name,
+					Namespace: nsn.Namespace,
 				},
 			})).To(Succeed())
-			Eventually(func() error {
-				return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMAlertmanager{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAlertmanager{})
 		})
 		DescribeTable("should create alertmanager",
 			func(name string, cr *vmv1beta1.VMAlertmanager, verify func(*vmv1beta1.VMAlertmanager)) {
-				namespacedName.Name = name
+				nsn.Name = name
 				cr.Name = name
 				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 				var created vmv1beta1.VMAlertmanager
-				Expect(k8sClient.Get(ctx, namespacedName, &created)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
 				verify(&created)
 			},
 			Entry("with 1 replica", "replica-1",
@@ -155,7 +152,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 
 		existAlertmanager := &vmv1beta1.VMAlertmanager{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: namespacedName.Namespace,
+				Namespace: nsn.Namespace,
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -168,27 +165,27 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 				// create and wait ready
 				existAlertmanager := existAlertmanager.DeepCopy()
 				existAlertmanager.Name = name
-				namespacedName.Name = name
+				nsn.Name = name
 				Expect(k8sClient.Create(ctx, existAlertmanager)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 				// update and wait ready
 				Eventually(func() error {
 					var toUpdate vmv1beta1.VMAlertmanager
-					Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
 					modify(&toUpdate)
 					return k8sClient.Update(ctx, &toUpdate)
 				}, eventualExpandingTimeout).Should(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, namespacedName)
+					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
 				}, eventualExpandingTimeout).Should(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 				// verify
 				var updated vmv1beta1.VMAlertmanager
-				Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 				verify(&updated)
 			},
 			Entry("by changing replicas to 2", "update-replica-2",

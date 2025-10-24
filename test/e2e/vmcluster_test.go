@@ -10,7 +10,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -27,7 +26,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 	licenseKey := os.Getenv("LICENSE_KEY")
 	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	var ctx context.Context
-	namespacedName := types.NamespacedName{
+	nsn := types.NamespacedName{
 		Namespace: namespace,
 	}
 	Context("create", func() {
@@ -38,31 +37,25 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      namespacedName.Name,
+					Name:      nsn.Name,
 				},
 			})).To(Succeed(), "must delete vmcluster after test")
-			Eventually(func() error {
-				err := k8sClient.Get(ctx, types.NamespacedName{
-					Name:      namespacedName.Name,
-					Namespace: namespace,
-				}, &vmv1beta1.VMCluster{})
-				if k8serrors.IsNotFound(err) {
-					return nil
-				}
-				return fmt.Errorf("want NotFound error, got: %w", err)
-			}, eventualDeletionTimeout, 1).WithContext(ctx).Should(Succeed())
+			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+				Name:      nsn.Name,
+				Namespace: namespace,
+			}, &vmv1beta1.VMCluster{})
 		})
 
 		DescribeTable("should create vmcluster", func(name string, cr *vmv1beta1.VMCluster, verify func(cr *vmv1beta1.VMCluster)) {
-			namespacedName.Name = name
+			nsn.Name = name
 			cr.Name = name
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, namespacedName)
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
 			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 			if verify != nil {
 				var createdCluster vmv1beta1.VMCluster
-				Expect(k8sClient.Get(ctx, namespacedName, &createdCluster)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &createdCluster)).To(Succeed())
 				verify(&createdCluster)
 			}
 
@@ -70,7 +63,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 			Entry("without any components", "empty", &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      namespacedName.Name,
+					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMClusterSpec{RetentionPeriod: "1"},
 			}, nil,
@@ -79,7 +72,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 				&vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -104,7 +97,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 			Entry("with vmstorage and vmselect", "with-select", &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      namespacedName.Name,
+					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
@@ -124,7 +117,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 			Entry("with vmstorage and vminsert", "with-insert", &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      namespacedName.Name,
+					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
@@ -145,7 +138,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 				&vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -203,7 +196,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 				&vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      namespacedName.Name,
+						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -289,7 +282,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 	Context("update", func() {
 		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
-		namespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Namespace: namespace,
 		}
 		BeforeEach(func() {
@@ -312,15 +305,13 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      namespacedName.Name,
+					Name:      nsn.Name,
 				},
 			})).To(Succeed())
-			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{
-					Name:      namespacedName.Name,
-					Namespace: namespace,
-				}, &vmv1beta1.VMCluster{})
-			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(k8serrors.IsNotFound, "want not found error"))
+			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+				Name:      nsn.Name,
+				Namespace: namespace,
+			}, &vmv1beta1.VMCluster{})
 			if licenseKey != "" {
 				Expect(k8sClient.Delete(ctx,
 					&corev1.Secret{
@@ -359,12 +350,12 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 						},
 					}
 				}
-				namespacedName.Name = name
+				nsn.Name = name
 				initCR.Namespace = namespace
 				initCR.Name = name
 				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, initCR, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
 				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 				for _, step := range steps {
 					if step.setup != nil {
@@ -373,20 +364,20 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					// update and wait ready
 					Eventually(func() error {
 						var toUpdate vmv1beta1.VMCluster
-						if err := k8sClient.Get(ctx, namespacedName, &toUpdate); err != nil {
+						if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
 							return err
 						}
 						step.modify(&toUpdate)
 						return k8sClient.Update(ctx, &toUpdate)
 					}, eventualExpandingTimeout).WithContext(ctx).Should(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusExpanding(ctx, k8sClient, initCR, namespacedName)
+						return expectObjectStatusExpanding(ctx, k8sClient, initCR, nsn)
 					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, initCR, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
 					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 					var updated vmv1beta1.VMCluster
-					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 					step.verify(&updated)
 				}
 			},
@@ -553,7 +544,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
 						var updatedCluster vmv1beta1.VMCluster
-						Expect(k8sClient.Get(ctx, namespacedName, &updatedCluster)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &updatedCluster)).To(Succeed())
 						Expect(*updatedCluster.Spec.VMStorage.RevisionHistoryLimitCount).To(Equal(int32(2)))
 					},
 				},
@@ -630,16 +621,13 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 						cr.Spec.VMSelect = nil
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &appsv1.StatefulSet{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &corev1.Service{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &vmv1beta1.VMServiceScrape{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-
+						nss := types.NamespacedName{
+							Name:      cr.GetVMSelectName(),
+							Namespace: namespace,
+						}
+						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.StatefulSet{})
+						waitResourceDeleted(ctx, k8sClient, nss, &corev1.Service{})
+						waitResourceDeleted(ctx, k8sClient, nss, &vmv1beta1.VMServiceScrape{})
 					},
 				},
 				testStep{
@@ -697,19 +685,16 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 						}
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &appsv1.StatefulSet{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &corev1.Service{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &vmv1beta1.VMServiceScrape{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &appsv1.Deployment{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						nss := types.NamespacedName{
+							Namespace: namespace,
+							Name:      cr.GetVMStorageName(),
+						}
+						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.StatefulSet{})
+						waitResourceDeleted(ctx, k8sClient, nss, &corev1.Service{})
+						waitResourceDeleted(ctx, k8sClient, nss, &vmv1beta1.VMServiceScrape{})
 
+						nss.Name = cr.GetVMInsertName()
+						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.Deployment{})
 					},
 				},
 				testStep{
@@ -794,11 +779,16 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 						cr.Spec.VMStorage.ServiceSpec.Name = ""
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name + "-additional-service"}, &corev1.Service{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						nss := types.NamespacedName{
+							Namespace: namespace,
+							Name:      cr.GetVMSelectName() + "-additional-service",
+						}
+						waitResourceDeleted(ctx, k8sClient, nss, &corev1.Service{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name + "-additional-service"}, &corev1.Service{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "my-service-name"}, &corev1.Service{})).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+							Namespace: namespace,
+							Name:      "my-service-name",
+						}, &corev1.Service{})
 					},
 				},
 				testStep{
@@ -821,9 +811,10 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 						}
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name + "-additional-service"}, &corev1.Service{})
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+							Namespace: namespace,
+							Name:      cr.GetVMStorageName() + "-additional-service",
+						}, &corev1.Service{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "my-service-name-v2"}, &corev1.Service{})).To(Succeed())
 						var stSvc corev1.Service
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &stSvc)).To(Succeed())
@@ -933,8 +924,14 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+							Name:      cr.GetVMSelectName(),
+							Namespace: namespace,
+						}, &vmv1beta1.VMServiceScrape{})
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+							Name:      cr.GetVMInsertName(),
+							Namespace: namespace,
+						}, &vmv1beta1.VMServiceScrape{})
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.GetVMInsertName(), namespace),
 							payload: `up{bar="baz"} 123
@@ -953,23 +950,26 @@ up{baz="bar"} 123
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
 						By("disabling loadbalancer")
-						var lbDep appsv1.Deployment
 						nss := types.NamespacedName{Namespace: namespace, Name: cr.GetVMAuthLBName()}
-						Eventually(func() error {
-							return k8sClient.Get(ctx, nss, &lbDep)
-						}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.Deployment{})
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, nss, &svc)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &svc)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nss, &svc)
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+							Namespace: namespace,
+							Name:      cr.GetVMInsertLBName(),
+						}, &svc)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+							Namespace: namespace,
+							Name:      cr.GetVMSelectLBName(),
+						}, &svc)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
 						var vss vmv1beta1.VMServiceScrape
-						Expect(k8sClient.Get(ctx, nss, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nss, &vss)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.GetVMInsertName(), namespace),
 							payload: `up{bar="baz"} 123
@@ -1000,9 +1000,10 @@ up{baz="bar"} 123
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -1027,15 +1028,15 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &lbDep)).To(Succeed())
 						var svc corev1.Service
 						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &svc)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &svc)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
 						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)).To(Succeed())
 
 					},
@@ -1061,8 +1062,8 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.GetVMInsertName(), namespace),
 							payload: `up{bar="baz"} 123
@@ -1092,14 +1093,14 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &svc)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &svc)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &svc)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &svc)).To(Succeed())
 						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.GetVMInsertName(), namespace),
 							payload: `up{bar="baz"} 123
@@ -1183,8 +1184,8 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertLBName()}, &vss)).To(Succeed())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectLBName()}, &vss)).To(Succeed())
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMSelectName()}, &vss)
+						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.GetVMInsertName()}, &vss)
 						var pdb policyv1.PodDisruptionBudget
 						Expect(k8sClient.Get(ctx, nss, &pdb)).To(Succeed())
 					},
@@ -1218,8 +1219,7 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &svc)).To(Succeed())
 						Expect(svc.Spec.ClusterIP).NotTo(Equal(corev1.ClusterIPNone))
 						Expect(svc.Spec.Ports[0].TargetPort).To(Equal(intstr.Parse("8427")))
-						var pdb policyv1.PodDisruptionBudget
-						Expect(k8sClient.Get(ctx, nss, &pdb)).To(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+						waitResourceDeleted(ctx, k8sClient, nss, &policyv1.PodDisruptionBudget{})
 					},
 				},
 			),
@@ -1304,16 +1304,10 @@ up{baz="bar"} 123
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      namespacedName.Name,
+					Name:      nsn.Name,
 				},
 			})).To(Succeed())
-			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{
-					Name:      namespacedName.Name,
-					Namespace: namespace,
-				}, &vmv1beta1.VMCluster{})
-
-			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(k8serrors.IsNotFound, "want not found error"))
+			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: nsn.Name}, &vmv1beta1.VMCluster{})
 		})
 
 		type testStep struct {
@@ -1324,13 +1318,13 @@ up{baz="bar"} 123
 
 		DescribeTable("should respect customized behavior",
 			func(name string, initCR *vmv1beta1.VMCluster, steps ...testStep) {
-				namespacedName.Name = name
+				nsn.Name = name
 				initCR.Namespace = namespace
 				initCR.Name = name
 				ctx = context.Background()
 				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
 				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, initCR, namespacedName)
+					return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
 				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 				for _, step := range steps {
 					if step.setup != nil {
@@ -1339,17 +1333,17 @@ up{baz="bar"} 123
 					// update and verify immediately
 					Eventually(func() error {
 						var toUpdate vmv1beta1.VMCluster
-						if err := k8sClient.Get(ctx, namespacedName, &toUpdate); err != nil {
+						if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
 							return err
 						}
 						step.modify(&toUpdate)
 						return k8sClient.Update(ctx, &toUpdate)
 					}, eventualExpandingTimeout).WithContext(ctx).Should(Succeed())
 					var updated vmv1beta1.VMCluster
-					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 					step.verify(&updated)
 					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, initCR, namespacedName)
+						return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
 					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 				}
 			},

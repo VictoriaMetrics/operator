@@ -369,12 +369,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					Expect(k8sClient.Create(ctx, crole)).To(Succeed())
 					Expect(k8sClient.Create(ctx, croleb)).To(Succeed())
 					// check that access not exist with new version naming
-					newFormatNss := types.NamespacedName{
+					newFormatNsn := types.NamespacedName{
 						Name:      "monitoring:" + namespace + ":vmagent-" + cr.Name,
 						Namespace: namespace,
 					}
-					waitResourceDeleted(ctx, k8sClient, newFormatNss, &rbacv1.ClusterRole{})
-					waitResourceDeleted(ctx, k8sClient, newFormatNss, &rbacv1.ClusterRoleBinding{})
+					waitResourceDeleted(ctx, k8sClient, newFormatNsn, &rbacv1.ClusterRole{})
+					waitResourceDeleted(ctx, k8sClient, newFormatNsn, &rbacv1.ClusterRoleBinding{})
 				},
 				func(cr *vmv1beta1.VMAgent) {
 					prevFormatName := types.NamespacedName{
@@ -420,12 +420,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						step.setup(initCR)
 					}
 					// update and wait ready
-					Eventually(func() error {
-						var toUpdate vmv1beta1.VMAgent
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-						step.modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).Should(Succeed())
+					var toUpdate vmv1beta1.VMAgent
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					step.modify(&toUpdate)
+					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
 					}, eventualStatefulsetAppReadyTimeout).Should(Succeed())

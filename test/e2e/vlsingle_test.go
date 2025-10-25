@@ -174,7 +174,6 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 				},
 			}
 			type testStep struct {
-				setup  func(*vmv1.VLSingle)
 				modify func(*vmv1.VLSingle)
 				verify func(*vmv1.VLSingle)
 			}
@@ -191,16 +190,11 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
 					for _, step := range steps {
-						if step.setup != nil {
-							step.setup(initCR)
-						}
 						// perform update
-						Eventually(func() error {
-							var toUpdate vmv1.VLSingle
-							Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-							step.modify(&toUpdate)
-							return k8sClient.Update(ctx, &toUpdate)
-						}, eventualExpandingTimeout).Should(Succeed())
+						var toUpdate vmv1.VLSingle
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						step.modify(&toUpdate)
+						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLSingle{}, nsn)
 						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
@@ -223,12 +217,12 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 							}
 						},
 						verify: func(cr *vmv1.VLSingle) {
-							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+							nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 
 							expectedAnnotations := map[string]string{"added-annotation": "some-value"}
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
 							var createdDeploy appsv1.Deployment
-							Expect(k8sClient.Get(ctx, nss, &createdDeploy)).
+							Expect(k8sClient.Get(ctx, nsn, &createdDeploy)).
 								To(Succeed())
 						},
 					},
@@ -237,10 +231,10 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 							delete(cr.Spec.ManagedMetadata.Annotations, "added-annotation")
 						},
 						verify: func(cr *vmv1.VLSingle) {
-							nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+							nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 							expectedAnnotations := map[string]string{"added-annotation": ""}
 
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
 
 						},
 					},

@@ -55,7 +55,6 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 			},
 		}
 		type testStep struct {
-			setup  func(*vmv1.VLCluster)
 			modify func(*vmv1.VLCluster)
 			verify func(*vmv1.VLCluster)
 		}
@@ -72,16 +71,11 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 				}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
 				for _, step := range steps {
-					if step.setup != nil {
-						step.setup(initCR)
-					}
 					// perform update
-					Eventually(func() error {
-						var toUpdate vmv1.VLCluster
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-						step.modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).Should(Succeed())
+					var toUpdate vmv1.VLCluster
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					step.modify(&toUpdate)
+					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
@@ -105,25 +99,25 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						cr.Spec.UseStrictSecurity = ptr.To(true)
 					},
 					verify: func(cr *vmv1.VLCluster) {
-						nsss := []types.NamespacedName{
+						nsns := []types.NamespacedName{
 							{Namespace: namespace, Name: cr.GetVLStorageName()},
 						}
 						expectedAnnotations := map[string]string{"added-annotation": "some-value"}
-						for _, nss := range nsss {
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.StatefulSet{}, &corev1.Service{}}, expectedAnnotations)
+						for _, nsn := range nsns {
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.StatefulSet{}, &corev1.Service{}}, expectedAnnotations)
 						}
-						for _, nss := range nsss {
+						for _, nsn := range nsns {
 							sts := &appsv1.StatefulSet{}
-							Expect(k8sClient.Get(ctx, nss, sts)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
 							assertStrictSecurity(sts.Spec.Template.Spec)
 						}
-						nsss = []types.NamespacedName{
+						nsns = []types.NamespacedName{
 							{Namespace: namespace, Name: cr.GetVLInsertName()},
 							{Namespace: namespace, Name: cr.GetVLSelectName()},
 						}
-						for _, nss := range nsss {
+						for _, nsn := range nsns {
 							sts := &appsv1.Deployment{}
-							Expect(k8sClient.Get(ctx, nss, sts)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
 							assertStrictSecurity(sts.Spec.Template.Spec)
 						}
 					},
@@ -133,19 +127,19 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						delete(cr.Spec.ManagedMetadata.Annotations, "added-annotation")
 					},
 					verify: func(cr *vmv1.VLCluster) {
-						nsss := []types.NamespacedName{
+						nsns := []types.NamespacedName{
 							{Namespace: namespace, Name: cr.GetVLStorageName()},
 						}
 						expectedAnnotations := map[string]string{"added-annotation": ""}
-						for _, nss := range nsss {
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.StatefulSet{}, &corev1.Service{}}, expectedAnnotations)
+						for _, nsn := range nsns {
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.StatefulSet{}, &corev1.Service{}}, expectedAnnotations)
 						}
-						nsss = []types.NamespacedName{
+						nsns = []types.NamespacedName{
 							{Namespace: namespace, Name: cr.GetVLInsertName()},
 							{Namespace: namespace, Name: cr.GetVLSelectName()},
 						}
-						for _, nss := range nsss {
-							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.Service{}}, expectedAnnotations)
+						for _, nsn := range nsns {
+							assertAnnotationsOnObjects(ctx, nsn, []client.Object{&appsv1.Deployment{}, &corev1.Service{}}, expectedAnnotations)
 						}
 
 					},

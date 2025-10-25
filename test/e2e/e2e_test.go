@@ -23,6 +23,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/format"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
@@ -49,6 +50,7 @@ var (
 			suite.InitOperatorProcess()
 		},
 		func() {
+			format.MaxLength = 10000
 			k8sClient = suite.GetClient()
 		},
 	)

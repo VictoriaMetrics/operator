@@ -121,16 +121,16 @@ fi
 		},
 	}
 	Expect(k8sClient.Create(ctx, job)).To(Succeed())
-	nss := types.NamespacedName{Name: job.Name, Namespace: job.Namespace}
+	nsn := types.NamespacedName{Name: job.Name, Namespace: job.Namespace}
 	defer func() {
 		Expect(k8sClient.Delete(ctx, job, &client.DeleteOptions{
 			PropagationPolicy: ptr.To(metav1.DeletePropagationForeground),
 		})).To(Succeed())
-		waitResourceDeleted(ctx, k8sClient, nss, &batchv1.Job{})
+		waitResourceDeleted(ctx, k8sClient, nsn, &batchv1.Job{})
 	}()
 	Eventually(func() error {
 		var jb batchv1.Job
-		if err := k8sClient.Get(ctx, nss, &jb); err != nil {
+		if err := k8sClient.Get(ctx, nsn, &jb); err != nil {
 			return err
 		}
 		if jb.Status.Succeeded > 0 {
@@ -156,17 +156,17 @@ fi
 }
 
 //nolint:dupl,lll
-func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, annotations map[string]string) {
+func assertAnnotationsOnObjects(ctx context.Context, nsn types.NamespacedName, objects []client.Object, annotations map[string]string) {
 	for idx, obj := range objects {
-		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nsn, obj)).To(Succeed())
 		gotAnnotations := obj.GetAnnotations()
 		for k, v := range annotations {
 			gv, ok := gotAnnotations[k]
 			if v == "" {
-				Expect(ok).To(BeFalse(), "annotation key=%q,value=%q must not exist for object at idx=%d, object=%q", k, gv, idx, nss.String())
+				Expect(ok).To(BeFalse(), "annotation key=%q,value=%q must not exist for object at idx=%d, object=%q", k, gv, idx, nsn.String())
 			} else {
-				Expect(ok).To(BeTrue(), "annotation key=%s must present for object at idx=%d, object=%q", k, idx, nss.String())
-				Expect(gv).To(Equal(v), "annotation key=%s must equal for object at idx=%d, object=%q", k, idx, nss.String())
+				Expect(ok).To(BeTrue(), "annotation key=%s must present for object at idx=%d, object=%q", k, idx, nsn.String())
+				Expect(gv).To(Equal(v), "annotation key=%s must equal for object at idx=%d, object=%q", k, idx, nsn.String())
 
 			}
 
@@ -175,9 +175,9 @@ func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, o
 }
 
 //nolint:dupl,lll
-func assertLabelsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, wantLabels map[string]string) {
+func assertLabelsOnObjects(ctx context.Context, nsn types.NamespacedName, objects []client.Object, wantLabels map[string]string) {
 	for idx, obj := range objects {
-		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nsn, obj)).To(Succeed())
 		gotAnnotations := obj.GetLabels()
 		for k, v := range wantLabels {
 			gv, ok := gotAnnotations[k]
@@ -229,9 +229,9 @@ func mustGetFirstPod(rclient client.Client, ns string, lbs map[string]string) *c
 }
 
 //nolint:dupl,lll
-func waitResourceDeleted(ctx context.Context, rclient client.Client, nss types.NamespacedName, r client.Object) {
+func waitResourceDeleted(ctx context.Context, rclient client.Client, nsn types.NamespacedName, r client.Object) {
 	GinkgoHelper()
 	Eventually(func() error {
-		return rclient.Get(ctx, nss, r)
-	}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+		return rclient.Get(ctx, nsn, r)
+	}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"), fmt.Sprintf("unexpected resource found: %#v", r))
 }

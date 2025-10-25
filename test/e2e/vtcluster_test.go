@@ -55,7 +55,6 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 			},
 		}
 		type testStep struct {
-			setup  func(*vmv1.VTCluster)
 			modify func(*vmv1.VTCluster)
 			verify func(*vmv1.VTCluster)
 		}
@@ -72,16 +71,11 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 				}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
 				for _, step := range steps {
-					if step.setup != nil {
-						step.setup(initCR)
-					}
 					// perform update
-					Eventually(func() error {
-						var toUpdate vmv1.VTCluster
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-						step.modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).Should(Succeed())
+					var toUpdate vmv1.VTCluster
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					step.modify(&toUpdate)
+					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTCluster{}, nsn)
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())

@@ -174,7 +174,6 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 				},
 			}
 			type testStep struct {
-				setup  func(*vmv1.VTSingle)
 				modify func(*vmv1.VTSingle)
 				verify func(*vmv1.VTSingle)
 			}
@@ -191,16 +190,11 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
 					for _, step := range steps {
-						if step.setup != nil {
-							step.setup(initCR)
-						}
 						// perform update
-						Eventually(func() error {
-							var toUpdate vmv1.VTSingle
-							Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-							step.modify(&toUpdate)
-							return k8sClient.Update(ctx, &toUpdate)
-						}, eventualExpandingTimeout).Should(Succeed())
+						var toUpdate vmv1.VTSingle
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						step.modify(&toUpdate)
+						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, nsn)
 						}, eventualDeploymentAppReadyTimeout).Should(Succeed())

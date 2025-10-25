@@ -24,7 +24,6 @@ var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "a
 		amCfgs []*vmv1beta1.VMAlertmanagerConfig
 	}
 	type step struct {
-		setup  func()
 		modify func()
 		verify func()
 	}
@@ -46,9 +45,6 @@ var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "a
 				}
 			})
 			step := steps[0]
-			if step.setup != nil {
-				step.setup()
-			}
 			for _, am := range args.ams {
 				Expect(k8sClient.Create(ctx, am)).To(Succeed())
 			}
@@ -70,9 +66,6 @@ var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "a
 			}
 			step.verify()
 			for _, step := range steps[1:] {
-				if step.setup != nil {
-					step.setup()
-				}
 				if step.modify != nil {
 					step.modify()
 				}

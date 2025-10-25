@@ -358,52 +358,50 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		}
 		return
 	}
-	currentStatus := vmv1beta1.UpdateStatusExpanding
 	specChanged, err := object.HasSpecChanges()
 	if err != nil {
 		resultErr = fmt.Errorf("cannot parse exist spec changes")
 		return
 	}
+	resultStatus := vmv1beta1.UpdateStatusOperational
 	if specChanged {
-		if err := reconcile.UpdateObjectStatus(ctx, c, object, currentStatus, nil); err != nil {
+		if err := reconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusExpanding, nil); err != nil {
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
 		if err := createGenericEventForObject(ctx, c, object, "starting object update"); err != nil {
 			logger.WithContext(ctx).Error(err, " cannot create k8s api event")
 		}
-		defer func() {
-			if currentStatus == vmv1beta1.UpdateStatusExpanding {
-				return
-			}
+		logger.WithContext(ctx).Info("object has changes with previous state, applying changes")
+	}
+	defer func() {
+		prevStatus := object.GetStatus().GetStatusMetadata().UpdateStatus
+		if specChanged && prevStatus != resultStatus {
 			newPatch, err := object.LastAppliedSpecAsPatch()
 			if err != nil {
-				resultErr = fmt.Errorf("cannot parse last applied spec for cluster: %w", err)
+				resultErr = fmt.Errorf("cannot parse last applied spec: %w", err)
 				return
 			}
 			if err := c.Patch(ctx, object, newPatch); err != nil {
-				resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
+				resultErr = fmt.Errorf("cannot update resource with last applied spec: %w", err)
 				return
 			}
-		}()
-		logger.WithContext(ctx).Info("object has changes with previous state, applying changes")
-	}
+		}
+		if err := reconcile.UpdateObjectStatus(ctx, c, object, resultStatus, resultErr); err != nil {
+			resultErr = fmt.Errorf("failed to update object status: %w", err)
+			return
+		}
+	}()
 
 	result, err = cb()
 	if err != nil {
-		// do not change status on conflict to failed
+		// do not change status on conflict or timeout to failed
 		// it should be retried on the next loop
-		if k8serrors.IsConflict(err) {
-			return
-		}
-		currentStatus = vmv1beta1.UpdateStatusFailed
-		if reconcile.IsErrorWaitTimeout(err) {
-			currentStatus = vmv1beta1.UpdateStatusExpanding
-			err = nil
-		}
-		if updateErr := reconcile.UpdateObjectStatus(ctx, c, object, currentStatus, err); updateErr != nil {
-			resultErr = fmt.Errorf("failed to update object status: %q, origin err: %w", updateErr, err)
-			return
+		if k8serrors.IsConflict(err) || reconcile.IsErrorWaitTimeout(err) {
+			resultStatus = vmv1beta1.UpdateStatusExpanding
+		} else {
+			resultStatus = vmv1beta1.UpdateStatusFailed
+			resultErr = err
 		}
 		return
 	}
@@ -413,11 +411,5 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		}
 		logger.WithContext(ctx).Info("object was successfully reconciled")
 	}
-	currentStatus = vmv1beta1.UpdateStatusOperational
-	if err := reconcile.UpdateObjectStatus(ctx, c, object, currentStatus, nil); err != nil {
-		resultErr = fmt.Errorf("failed to update object status: %w", err)
-		return
-	}
-
 	return result, nil
 }

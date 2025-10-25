@@ -362,14 +362,10 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster"), func() {
 						step.setup(initCR)
 					}
 					// update and wait ready
-					Eventually(func() error {
-						var toUpdate vmv1beta1.VMCluster
-						if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
-							return err
-						}
-						step.modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).WithContext(ctx).Should(Succeed())
+					var toUpdate vmv1beta1.VMCluster
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					step.modify(&toUpdate)
+					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusExpanding(ctx, k8sClient, initCR, nsn)
 					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
@@ -1311,7 +1307,6 @@ up{baz="bar"} 123
 		})
 
 		type testStep struct {
-			setup  func(*vmv1beta1.VMCluster)
 			modify func(*vmv1beta1.VMCluster)
 			verify func(*vmv1beta1.VMCluster)
 		}
@@ -1327,24 +1322,17 @@ up{baz="bar"} 123
 					return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
 				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 				for _, step := range steps {
-					if step.setup != nil {
-						step.setup(initCR)
-					}
 					// update and verify immediately
+					var toUpdate vmv1beta1.VMCluster
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					step.modify(&toUpdate)
+					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 					Eventually(func() error {
-						var toUpdate vmv1beta1.VMCluster
-						if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
-							return err
-						}
-						step.modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).WithContext(ctx).Should(Succeed())
+						return expectObjectStatusOperational(ctx, k8sClient, &toUpdate, nsn)
+					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 					var updated vmv1beta1.VMCluster
 					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 					step.verify(&updated)
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
-					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 				}
 			},
 			Entry("configures vmstorage with MaxUnavailable 2", "maxunavailable-2-integer",

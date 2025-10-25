@@ -24,7 +24,6 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 		rules  []*vmv1beta1.VMRule
 	}
 	type step struct {
-		setup  func()
 		modify func()
 		verify func()
 	}
@@ -46,9 +45,6 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 				}
 			})
 			step := steps[0]
-			if step.setup != nil {
-				step.setup()
-			}
 			for _, alert := range args.alerts {
 				Expect(k8sClient.Create(ctx, alert)).To(Succeed())
 			}
@@ -70,9 +66,6 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 			}
 			step.verify()
 			for _, step := range steps[1:] {
-				if step.setup != nil {
-					step.setup()
-				}
 				if step.modify != nil {
 					step.modify()
 				}

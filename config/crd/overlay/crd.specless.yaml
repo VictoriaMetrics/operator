@@ -7974,7 +7974,6 @@ spec:
                                             description: SampleLimit defines per-scrape
                                               limit on number of scraped samples that
                                               will be accepted.
-                                            format: int64
                                             type: integer
                                           scheme:
                                             description: HTTP scheme to use for scraping.
@@ -7997,7 +7996,6 @@ spec:
                                             description: |-
                                               SeriesLimit defines per-scrape limit on number of unique time series
                                               a single target can expose during all the scrapes on the time window of 24h.
-                                            format: int64
                                             type: integer
                                           targetPort:
                                             anyOf:
@@ -8342,7 +8340,6 @@ spec:
                                       description: SampleLimit defines per-scrape
                                         limit on number of scraped samples that will
                                         be accepted.
-                                      format: int64
                                       type: integer
                                     scrapeClass:
                                       description: ScrapeClass defined scrape class
@@ -8400,7 +8397,6 @@ spec:
                                       description: |-
                                         SeriesLimit defines per-scrape limit on number of unique time series
                                         a single target can expose during all the scrapes on the time window of 24h.
-                                      format: int64
                                       type: integer
                                     targetLabels:
                                       description: TargetLabels transfers labels on
@@ -17699,7 +17695,6 @@ spec:
                                         description: SampleLimit defines per-scrape
                                           limit on number of scraped samples that
                                           will be accepted.
-                                        format: int64
                                         type: integer
                                       scheme:
                                         description: HTTP scheme to use for scraping.
@@ -17722,7 +17717,6 @@ spec:
                                         description: |-
                                           SeriesLimit defines per-scrape limit on number of unique time series
                                           a single target can expose during all the scrapes on the time window of 24h.
-                                        format: int64
                                         type: integer
                                       targetPort:
                                         anyOf:
@@ -18060,7 +18054,6 @@ spec:
                                 sampleLimit:
                                   description: SampleLimit defines per-scrape limit
                                     on number of scraped samples that will be accepted.
-                                  format: int64
                                   type: integer
                                 scrapeClass:
                                   description: ScrapeClass defined scrape class to
@@ -18118,7 +18111,6 @@ spec:
                                   description: |-
                                     SeriesLimit defines per-scrape limit on number of unique time series
                                     a single target can expose during all the scrapes on the time window of 24h.
-                                  format: int64
                                   type: integer
                                 targetLabels:
                                   description: TargetLabels transfers labels on the
@@ -28307,7 +28299,6 @@ spec:
                                         description: SampleLimit defines per-scrape
                                           limit on number of scraped samples that
                                           will be accepted.
-                                        format: int64
                                         type: integer
                                       scheme:
                                         description: HTTP scheme to use for scraping.
@@ -28330,7 +28321,6 @@ spec:
                                         description: |-
                                           SeriesLimit defines per-scrape limit on number of unique time series
                                           a single target can expose during all the scrapes on the time window of 24h.
-                                        format: int64
                                         type: integer
                                       targetPort:
                                         anyOf:
@@ -28668,7 +28658,6 @@ spec:
                                 sampleLimit:
                                   description: SampleLimit defines per-scrape limit
                                     on number of scraped samples that will be accepted.
-                                  format: int64
                                   type: integer
                                 scrapeClass:
                                   description: ScrapeClass defined scrape class to
@@ -28726,7 +28715,6 @@ spec:
                                   description: |-
                                     SeriesLimit defines per-scrape limit on number of unique time series
                                     a single target can expose during all the scrapes on the time window of 24h.
-                                  format: int64
                                   type: integer
                                 targetLabels:
                                   description: TargetLabels transfers labels on the
@@ -38263,7 +38251,6 @@ spec:
                                         description: SampleLimit defines per-scrape
                                           limit on number of scraped samples that
                                           will be accepted.
-                                        format: int64
                                         type: integer
                                       scheme:
                                         description: HTTP scheme to use for scraping.
@@ -38286,7 +38273,6 @@ spec:
                                         description: |-
                                           SeriesLimit defines per-scrape limit on number of unique time series
                                           a single target can expose during all the scrapes on the time window of 24h.
-                                        format: int64
                                         type: integer
                                       targetPort:
                                         anyOf:
@@ -38624,7 +38610,6 @@ spec:
                                 sampleLimit:
                                   description: SampleLimit defines per-scrape limit
                                     on number of scraped samples that will be accepted.
-                                  format: int64
                                   type: integer
                                 scrapeClass:
                                   description: ScrapeClass defined scrape class to
@@ -38682,7 +38667,6 @@ spec:
                                   description: |-
                                     SeriesLimit defines per-scrape limit on number of unique time series
                                     a single target can expose during all the scrapes on the time window of 24h.
-                                  format: int64
                                   type: integer
                                 targetLabels:
                                   description: TargetLabels transfers labels on the

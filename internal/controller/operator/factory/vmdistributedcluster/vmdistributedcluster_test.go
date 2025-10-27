@@ -1137,3 +1137,145 @@ func TestReconcileInlineVMCluster(t *testing.T) {
 		})
 	}
 }
+
+func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
+	// Define a VMCluster for testing
+	testVMCluster := newVMCluster("test-vmcluster", "default", "v1", 1)
+
+	// Define various VMUser configurations
+	vmUserWithMatchingRule := newVMUser("user-match", "default", []vmv1beta1.TargetRef{
+		{
+			CRD: &vmv1beta1.CRDRef{
+				Kind:      "VMCluster/vmselect",
+				Name:      testVMCluster.Name,
+				Namespace: testVMCluster.Namespace,
+			},
+			TargetPathSuffix: "/select/0", // Matching suffix
+		},
+	})
+
+	vmUserWithIncorrectSuffix := newVMUser("user-wrong-suffix", "default", []vmv1beta1.TargetRef{
+		{
+			CRD: &vmv1beta1.CRDRef{
+				Kind:      "VMCluster/vmselect",
+				Name:      testVMCluster.Name,
+				Namespace: testVMCluster.Namespace,
+			},
+			TargetPathSuffix: "/insert/0", // Incorrect suffix
+		},
+	})
+
+	vmUserWithIncorrectKind := newVMUser("user-wrong-kind", "default", []vmv1beta1.TargetRef{
+		{
+			CRD: &vmv1beta1.CRDRef{
+				Kind:      "VMAgent", // Incorrect Kind
+				Name:      testVMCluster.Name,
+				Namespace: testVMCluster.Namespace,
+			},
+			TargetPathSuffix: "/select/0",
+		},
+	})
+
+	vmUserWithIncorrectName := newVMUser("user-wrong-name", "default", []vmv1beta1.TargetRef{
+		{
+			CRD: &vmv1beta1.CRDRef{
+				Kind:      "VMCluster/vmselect",
+				Name:      "another-cluster", // Incorrect Name
+				Namespace: testVMCluster.Namespace,
+			},
+			TargetPathSuffix: "/select/0",
+		},
+	})
+
+	vmUserWithNilCRD := newVMUser("user-nil-crd", "default", []vmv1beta1.TargetRef{
+		{
+			CRD:              nil, // Nil CRD
+			TargetPathSuffix: "/select/0",
+		},
+	})
+
+	vmUserWithEmptyTargetRefs := newVMUser("user-empty-targetrefs", "default", []vmv1beta1.TargetRef{})
+
+	testCases := []struct {
+		name                 string
+		vmUserObjs           []*vmv1beta1.VMUser
+		vmCluster            *vmv1beta1.VMCluster
+		expectedTargetRef    *vmv1beta1.TargetRef
+		expectedErrSubstring string
+	}{
+		{
+			name:                 "should return error if no vmusers are provided",
+			vmUserObjs:           []*vmv1beta1.VMUser{},
+			vmCluster:            testVMCluster,
+			expectedTargetRef:    nil,
+			expectedErrSubstring: "no vmuser has target refs for vmcluster test-vmcluster",
+		},
+		{
+			name:                 "should return error if no matching vmuser exists",
+			vmUserObjs:           []*vmv1beta1.VMUser{vmUserWithIncorrectKind, vmUserWithIncorrectSuffix},
+			vmCluster:            testVMCluster,
+			expectedTargetRef:    nil,
+			expectedErrSubstring: "no vmuser has target refs for vmcluster test-vmcluster",
+		},
+		{
+			name:                 "should return error if targetpathsuffix does not match",
+			vmUserObjs:           []*vmv1beta1.VMUser{vmUserWithIncorrectSuffix},
+			vmCluster:            testVMCluster,
+			expectedTargetRef:    nil,
+			expectedErrSubstring: "no vmuser has target refs for vmcluster test-vmcluster",
+		},
+		{
+			name:                 "should return matching TargetRef when found",
+			vmUserObjs:           []*vmv1beta1.VMUser{vmUserWithMatchingRule},
+			vmCluster:            testVMCluster,
+			expectedTargetRef:    &vmUserWithMatchingRule.Spec.TargetRefs[0],
+			expectedErrSubstring: "",
+		},
+		{
+			name:                 "should pick the first matching rule among multiple vmusers",
+			vmUserObjs:           []*vmv1beta1.VMUser{vmUserWithIncorrectName, vmUserWithMatchingRule, vmUserWithIncorrectSuffix},
+			vmCluster:            testVMCluster,
+			expectedTargetRef:    &vmUserWithMatchingRule.Spec.TargetRefs[0],
+			expectedErrSubstring: "",
+		},
+		{
+			name:                 "should return error if CRD is nil in targetref",
+			vmUserObjs:           []*vmv1beta1.VMUser{vmUserWithNilCRD},
+			vmCluster:            testVMCluster,
+			expectedTargetRef:    nil,
+			expectedErrSubstring: "no vmuser has target refs for vmcluster test-vmcluster",
+		},
+		{
+			name:                 "should return error if target refs are empty",
+			vmUserObjs:           []*vmv1beta1.VMUser{vmUserWithEmptyTargetRefs},
+			vmCluster:            testVMCluster,
+			expectedTargetRef:    nil,
+			expectedErrSubstring: "no vmuser has target refs for vmcluster test-vmcluster",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := findVMUserReadRuleForVMCluster(tc.vmUserObjs, tc.vmCluster)
+
+			if tc.expectedErrSubstring != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.expectedErrSubstring) {
+					t.Fatalf("Expected error containing \"%s\", but got: %v", tc.expectedErrSubstring, err)
+				}
+				if result != nil {
+					t.Fatalf("Expected nil TargetRef on error, but got: %+v", result)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Did not expect an error, but got: %v", err)
+				}
+				if result == nil {
+					t.Fatal("Expected a TargetRef, but got nil")
+				}
+				if !reflect.DeepEqual(result, tc.expectedTargetRef) {
+					t.Errorf("Expected TargetRef %+v, but got %+v", *tc.expectedTargetRef, *result)
+				}
+			}
+		})
+	}
+}

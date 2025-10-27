@@ -546,6 +546,83 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Expect(vmCluster2.Spec.ClusterVersion).To(Equal(updateVersion))
 		})
 
+		It("should skip reconciliation when VMDistributedCluster is paused", func() {
+			beforeEach()
+			DeferCleanup(afterEach)
+
+			By("creating a VMCluster")
+			vmCluster := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-paused",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: "v1.126.0-cluster",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			vmclusters := []vmv1beta1.VMCluster{*vmCluster}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmCluster)).To(Succeed())
+			})
+			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
+
+			By("creating a VMDistributedCluster")
+			namespacedName.Name = "distributed-paused"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      namespacedName.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+					},
+					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+
+			By("pausing the VMDistributedCluster")
+			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
+			cr.Spec.Paused = true
+			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
+
+			By("attempting to scale the VMCluster while paused")
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
+			initialReplicas := *vmCluster.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+			cr.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
+				Raw: []byte(fmt.Sprintf(`{"vmStorage":{"replicaCount": %d}}`, initialReplicas+1)),
+			}
+			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
+
+			Consistently(func() int32 {
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
+				return *vmCluster.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+			}, "10s", "1s").Should(Equal(initialReplicas))
+
+			By("unpausing the VMDistributedCluster")
+			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
+			cr.Spec.Paused = false
+			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
+
+			By("verifying reconciliation resumes after unpausing")
+			Eventually(func() int32 {
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
+				return *vmCluster.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+			}, eventualDeploymentAppReadyTimeout).Should(Equal(initialReplicas + 1))
+		})
+
 		It("should handle rolling updates with VMAgent configuration changes", func() {
 			beforeEach()
 			DeferCleanup(afterEach)
@@ -640,7 +717,16 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			// Verify both clusters are configured correctly
 			var updatedCluster vmv1alpha1.VMDistributedCluster
 			Expect(k8sClient.Get(ctx, namespacedName, &updatedCluster)).To(Succeed())
-			Expect(updatedCluster.Spec.Zones).To(HaveLen(2))
+			Expect(updatedCluster.Status.VMClusterInfo).To(HaveLen(2))
+			names := []string{
+				updatedCluster.Status.VMClusterInfo[0].VMClusterName,
+				updatedCluster.Status.VMClusterInfo[1].VMClusterName,
+			}
+			Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, vmCluster1)).To(Succeed())
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster2.Name, Namespace: namespace}, vmCluster2)).To(Succeed())
 
 		})
 	})

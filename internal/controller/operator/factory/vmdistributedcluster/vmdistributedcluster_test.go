@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -105,12 +106,29 @@ func (tc *trackingClient) Delete(ctx context.Context, obj client.Object, opts ..
 
 var _ client.StatusClient = (*trackingClient)(nil)
 
-type alwaysFailingUpdateClient struct {
+type customErrorClient struct {
 	client.Client
+	customError error
 }
 
-func (f *alwaysFailingUpdateClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	return fmt.Errorf("simulated update failure")
+func (tc *customErrorClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	return tc.customError
+}
+
+func (tc *customErrorClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	return tc.customError
+}
+
+func (tc *customErrorClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return tc.customError
+}
+
+func (tc *customErrorClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	return tc.customError
+}
+
+func (tc *customErrorClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	return tc.customError
 }
 
 func (tsw *trackingStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
@@ -739,4 +757,86 @@ func TestApplyOverrideSpec(t *testing.T) {
 		assert.Equal(t, "updated_value", merged.VMSelect.CommonApplicationDeploymentParams.ExtraArgs["foo"])
 		assert.Equal(t, "baz", merged.VMSelect.CommonApplicationDeploymentParams.ExtraArgs["bar"]) // Unchanged key remains
 	})
+}
+
+func TestGetReferencedVMCluster(t *testing.T) {
+	tests := []struct {
+		name               string
+		namespace          string
+		ref                *corev1.LocalObjectReference
+		existingVMClusters []*vmv1beta1.VMCluster
+		expectedErr        string
+		expectedVMCluster  *vmv1beta1.VMCluster
+	}{
+		{
+			name:      "Successfully get VMCluster",
+			namespace: "default",
+			ref:       &corev1.LocalObjectReference{Name: "my-vmcluster"},
+			existingVMClusters: []*vmv1beta1.VMCluster{
+				newVMCluster("my-vmcluster", "default", "v1", 1),
+			},
+			expectedErr:       "",
+			expectedVMCluster: newVMCluster("my-vmcluster", "default", "v1", 1),
+		},
+		{
+			name:      "VMCluster not found",
+			namespace: "default",
+			ref:       &corev1.LocalObjectReference{Name: "non-existent-vmcluster"},
+			existingVMClusters: []*vmv1beta1.VMCluster{
+				newVMCluster("my-vmcluster", "default", "v1", 1),
+			},
+			expectedErr:       "referenced VMCluster default/non-existent-vmcluster not found: vmclusters.operator.victoriametrics.com \"non-existent-vmcluster\" not found",
+			expectedVMCluster: nil,
+		},
+		{
+			name:               "Client get error",
+			namespace:          "default",
+			ref:                &corev1.LocalObjectReference{Name: "error-vmcluster"},
+			existingVMClusters: []*vmv1beta1.VMCluster{},
+			expectedErr:        "failed to get referenced VMCluster default/error-vmcluster: some arbitrary error",
+			expectedVMCluster:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			td := beforeEach(t)
+			ctx := context.Background()
+
+			var rclient client.Client
+			if tt.name == "Client get error" {
+				rclient = &customErrorClient{
+					Client:      td.trackingClient,
+					customError: fmt.Errorf("some arbitrary error"),
+				}
+			} else {
+
+				td.trackingClient.mu.Lock()
+				td.trackingClient.objects = make(map[client.ObjectKey]client.Object)
+				for _, obj := range tt.existingVMClusters {
+					td.trackingClient.objects[client.ObjectKey{Name: obj.Name, Namespace: obj.Namespace}] = obj
+				}
+				td.trackingClient.mu.Unlock()
+
+				rclient = td.trackingClient
+			}
+
+			vmCluster, err := getReferencedVMCluster(ctx, rclient, tt.namespace, tt.ref)
+
+			if tt.expectedErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q, got nil", tt.expectedErr)
+				}
+				if err.Error() != tt.expectedErr {
+					t.Errorf("expected error %q, got %q", tt.expectedErr, err.Error())
+				}
+			} else if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			if !reflect.DeepEqual(vmCluster, tt.expectedVMCluster) {
+				t.Errorf("expected VMCluster %+v, got %+v", tt.expectedVMCluster, vmCluster)
+			}
+		})
+	}
 }

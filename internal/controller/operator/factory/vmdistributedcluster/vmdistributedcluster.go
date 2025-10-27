@@ -206,7 +206,7 @@ func getReferencedVMCluster(ctx context.Context, rclient client.Client, namespac
 
 // reconcileInlineVMCluster manages the creation or update logic for inline VMCluster specs.
 func reconcileInlineVMCluster(ctx context.Context, rclient client.Client, crName, namespace string, index int, refOrSpec vmv1alpha1.VMClusterRefOrSpec) (*vmv1beta1.VMCluster, error) {
-	generatedName := fmt.Sprintf("%s-%s", crName, refOrSpec.Name)
+	generatedName := fmt.Sprintf("%s-%s%d", crName, refOrSpec.Name, index)
 	namespacedName := types.NamespacedName{Name: generatedName, Namespace: namespace}
 
 	vmClusterObj := &vmv1beta1.VMCluster{}
@@ -556,21 +556,6 @@ func setVMClusterStatusInVMUser(ctx context.Context, rclient client.Client, cr *
 		return fmt.Errorf("failed to update vmuser %s: %w", updatedObj.Name, err)
 	}
 
-	return nil
-}
-
-func changeVMClusterVersion(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, version string) error {
-	// Fetch VMCluster again as it might have been updated by another controller
-	if err := rclient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}, vmCluster); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return fmt.Errorf("VMCluster not found")
-		}
-		return fmt.Errorf("failed to fetch VMCluster %s/%s: %w", vmCluster.Namespace, vmCluster.Name, err)
-	}
-	vmCluster.Spec.ClusterVersion = version
-	if err := rclient.Update(ctx, vmCluster); err != nil {
-		return fmt.Errorf("failed to update VMCluster %s/%s: %w", vmCluster.Namespace, vmCluster.Name, err)
-	}
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
@@ -390,6 +391,106 @@ func TestFetchVMAgent(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedVMAgent.Name, vmAgent.Name)
 				assert.Equal(t, tt.expectedVMAgent.Namespace, vmAgent.Namespace)
+			}
+		})
+	}
+}
+
+func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
+	tests := []struct {
+		name            string
+		vmUserObjs      []*vmv1beta1.VMUser
+		vmCluster       *vmv1beta1.VMCluster
+		expectedTargetRef *vmv1beta1.TargetRef
+		expectedErr     string
+	}{
+		{
+			name: "matching rule found",
+			vmUserObjs: []*vmv1beta1.VMUser{
+				newVMUser("user1", "default", []vmv1beta1.TargetRef{
+					{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "test-cluster", Namespace: "default"}, TargetPathSuffix: "/select/0/prometheus/api/v1/read"},
+				}),
+			},
+			vmCluster:       newVMCluster("test-cluster", "default", "v1.0.0"),
+			expectedTargetRef: &vmv1beta1.TargetRef{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "test-cluster", Namespace: "default"}, TargetPathSuffix: "/select/0/prometheus/api/v1/read"},
+			expectedErr:     "",
+		},
+		{
+			name: "no matching rule found",
+			vmUserObjs: []*vmv1beta1.VMUser{
+				newVMUser("user1", "default", []vmv1beta1.TargetRef{
+					{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "other-cluster", Namespace: "default"}, TargetPathSuffix: "/select/0/prometheus/api/v1/read"},
+				}),
+			},
+			vmCluster:       newVMCluster("test-cluster", "default", "v1.0.0"),
+			expectedTargetRef: nil,
+			expectedErr:     "no vmuser has target refs for vmcluster test-cluster",
+		},
+		{
+			name: "multiple vmusers, one with matching rule",
+			vmUserObjs: []*vmv1beta1.VMUser{
+				newVMUser("user1", "default", []vmv1beta1.TargetRef{
+					{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "other-cluster", Namespace: "default"}, TargetPathSuffix: "/select/0/prometheus/api/v1/read"},
+				}),
+				newVMUser("user2", "default", []vmv1beta1.TargetRef{
+					{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "test-cluster", Namespace: "default"}, TargetPathSuffix: "/select/0/prometheus/api/v1/read"},
+				}),
+			},
+			vmCluster:       newVMCluster("test-cluster", "default", "v1.0.0"),
+			expectedTargetRef: &vmv1beta1.TargetRef{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "test-cluster", Namespace: "default"}, TargetPathSuffix: "/select/0/prometheus/api/v1/read"},
+			expectedErr:     "",
+		},
+		{
+			name: "crd kind mismatch",
+			vmUserObjs: []*vmv1beta1.VMUser{
+				newVMUser("user1", "default", []vmv1beta1.TargetRef{
+					{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vminsert", Name: "test-cluster", Namespace: "default"}, TargetPathSuffix: "/select/0/prometheus/api/v1/read"},
+				}),
+			},
+			vmCluster:       newVMCluster("test-cluster", "default", "v1.0.0"),
+			expectedTargetRef: nil,
+			expectedErr:     "no vmuser has target refs for vmcluster test-cluster",
+		},
+		{
+			name: "target path suffix mismatch",
+			vmUserObjs: []*vmv1beta1.VMUser{
+				newVMUser("user1", "default", []vmv1beta1.TargetRef{
+					{CRD: &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "test-cluster", Namespace: "default"}, TargetPathSuffix: "/insert/0/prometheus/api/v1/write"},
+				}),
+			},
+			vmCluster:       newVMCluster("test-cluster", "default", "v1.0.0"),
+			expectedTargetRef: nil,
+			expectedErr:     "no vmuser has target refs for vmcluster test-cluster",
+		},
+		{
+			name: "empty vmuser objects slice",
+			vmUserObjs:      []*vmv1beta1.VMUser{},
+			vmCluster:       newVMCluster("test-cluster", "default", "v1.0.0"),
+			expectedTargetRef: nil,
+			expectedErr:     "no vmuser has target refs for vmcluster test-cluster",
+		},
+		{
+			name: "vmuser with empty target refs",
+			vmUserObjs: []*vmv1beta1.VMUser{
+				newVMUser("user1", "default", []vmv1beta1.TargetRef{}),
+			},
+			vmCluster:       newVMCluster("test-cluster", "default", "v1.0.0"),
+			expectedTargetRef: nil,
+			expectedErr:     "no vmuser has target refs for vmcluster test-cluster",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tref, err := findVMUserReadRuleForVMCluster(tt.vmUserObjs, tt.vmCluster)
+
+			if tt.expectedErr != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErr)
+				assert.Nil(t, tref)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedTargetRef, tref)
 			}
 		})
 	}

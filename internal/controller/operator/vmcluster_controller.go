@@ -93,5 +93,6 @@ func (r *VMClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Owns(&appsv1.StatefulSet{}).
 		WithOptions(getDefaultOptions()).
+		WithEventFilter(patchAnnotationPredicate).
 		Complete(r)
 }

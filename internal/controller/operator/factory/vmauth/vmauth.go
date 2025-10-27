@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -71,6 +72,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err := createOrUpdateIngress(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
+	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot create or update hpa for vmauth: %w", err)
+	}
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		// it's not possible to scrape metrics from vmauth if proxyProtocol is configured
 		if !useProxyProtocol(cr) || len(cr.Spec.InternalListenPort) > 0 {
@@ -105,7 +109,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
-	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false); err != nil {
+	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, cr.Spec.HPA != nil); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth deployment: %w", err)
 	}
 	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
@@ -693,6 +697,24 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	}
 	return newService, nil
 }
+func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
+	if cr.Spec.HPA == nil {
+		return nil
+	}
+	targetRef := autoscalingv2.CrossVersionObjectReference{
+		Name:       cr.PrefixedName(),
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+	}
+	t := newOptsBuilder(cr, cr.PrefixedName(), cr.SelectorLabels())
+	newHPA := build.HPA(t, targetRef, cr.Spec.HPA)
+	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.HPA != nil {
+		t = newOptsBuilder(prevCR, prevCR.PrefixedName(), prevCR.SelectorLabels())
+		prevHPA = build.HPA(t, targetRef, prevCR.Spec.HPA)
+	}
+	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
+}
 
 func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
 	if prevCR == nil {
@@ -714,6 +736,11 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 	if cr.Spec.Ingress == nil && prevCR.Spec.Ingress != nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &networkingv1.Ingress{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot delete ingress from prev state: %w", err)
+		}
+	}
+	if cr.Spec.HPA == nil && prevCR.Spec.HPA != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot remove HPA from prev state: %w", err)
 		}
 	}
 	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
@@ -782,4 +809,41 @@ func addVMAuthProbes(cr *vmv1beta1.VMAuth, vmauthContainer corev1.Container) cor
 	}
 	vmauthContainer = build.Probe(vmauthContainer, cr)
 	return vmauthContainer
+}
+
+type optsBuilder struct {
+	*vmv1beta1.VMAuth
+	prefixedName      string
+	finalLabels       map[string]string
+	selectorLabels    map[string]string
+	additionalService *vmv1beta1.AdditionalServiceSpec
+}
+
+// PrefixedName implements build.svcBuilderArgs interface
+func (csb *optsBuilder) PrefixedName() string {
+	return csb.prefixedName
+}
+
+// AllLabels implements build.svcBuilderArgs interface
+func (csb *optsBuilder) AllLabels() map[string]string {
+	return csb.finalLabels
+}
+
+// SelectorLabels implements build.svcBuilderArgs interface
+func (csb *optsBuilder) SelectorLabels() map[string]string {
+	return csb.selectorLabels
+}
+
+// GetAdditionalService implements build.svcBuilderArgs interface
+func (csb *optsBuilder) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
+	return csb.additionalService
+}
+
+func newOptsBuilder(cr *vmv1beta1.VMAuth, name string, selectorLabels map[string]string) *optsBuilder {
+	return &optsBuilder{
+		VMAuth:         cr,
+		prefixedName:   name,
+		finalLabels:    cr.FinalLabels(selectorLabels),
+		selectorLabels: selectorLabels,
+	}
 }

@@ -874,13 +874,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				}
 			})
 
-			vmAgent1 := createVMAgent(ctx, k8sClient, "vmagent-1", namespace)
-			vmAgent2 := createVMAgent(ctx, k8sClient, "vmagent-2", namespace)
-			DeferCleanup(func() {
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmAgent1)).To(Succeed())
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmAgent2)).To(Succeed())
-			})
-
 			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
 			namespacedName.Name = "distributed-agent-upgrade"
@@ -900,10 +893,17 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							Ref: &corev1.LocalObjectReference{
 								Name: vmCluster2.Name,
 							},
-							// No VMAgent initially
 						},
 					},
 					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{
+							Name: validVMUserNames[0].Name,
+						},
+						{
+							Name: validVMUserNames[1].Name,
+						},
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())

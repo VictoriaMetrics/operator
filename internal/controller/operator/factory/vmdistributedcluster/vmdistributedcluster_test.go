@@ -1138,6 +1138,153 @@ func TestReconcileInlineVMCluster(t *testing.T) {
 	}
 }
 
+func TestWaitForVMClusterReady(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+	_ = vmv1alpha1.AddToScheme(scheme)
+
+	const testDeadline = 2 * time.Second
+
+	testCases := []struct {
+		name                 string
+		vmCluster            *vmv1beta1.VMCluster
+		setupClient          func(t *testing.T, fakeClient client.Client) client.Client // Function to customize the client behavior
+		initialVMClusterFunc func(vmc *vmv1beta1.VMCluster)                             // Function to set initial status or mutate before polling
+		pollResults          []vmv1beta1.UpdateStatus                                   // Sequence of status results during polling
+		expectedErrSubstring string
+	}{
+		{
+			name:      "should return nil when VMCluster becomes ready within deadline",
+			vmCluster: newVMCluster("ready-cluster", "default", "v1.0.0", 1),
+			setupClient: func(t *testing.T, fakeClient client.Client) client.Client {
+				// Simulate status change over time.
+				// The first Get will return non-operational, then operational.
+				return &mockClientWithPollingResponse{
+					Client:      fakeClient,
+					statuses:    []vmv1beta1.UpdateStatus{vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusOperational},
+					statusIndex: 0,
+					t:           t,
+				}
+			},
+			initialVMClusterFunc: func(vmc *vmv1beta1.VMCluster) {
+				vmc.Status.UpdateStatus = vmv1beta1.UpdateStatusExpanding
+			},
+			expectedErrSubstring: "",
+		},
+		{
+			name:      "should return error if VMCluster is not found",
+			vmCluster: newVMCluster("non-existent-cluster", "default", "v1.0.0", 1),
+			setupClient: func(t *testing.T, fakeClient client.Client) client.Client {
+				// The fake client will return IsNotFound if the object is not in initial objects.
+				// For this test, we expect the function under test to return an error.
+				return fakeClient
+			},
+			initialVMClusterFunc: nil, // Ensure no initial object is added to the fake client
+			expectedErrSubstring: "VMCluster not found",
+		},
+		{
+			name:      "should return error if VMCluster remains not ready until deadline",
+			vmCluster: newVMCluster("stuck-cluster", "default", "v1.0.0", 1),
+			setupClient: func(t *testing.T, fakeClient client.Client) client.Client {
+				// Always return pending status
+				return &mockClientWithPollingResponse{
+					Client:      fakeClient,
+					statuses:    []vmv1beta1.UpdateStatus{"Pending", "Pending", "Pending"},
+					statusIndex: 0,
+					t:           t,
+				}
+			},
+			initialVMClusterFunc: func(vmc *vmv1beta1.VMCluster) {
+				vmc.Status.UpdateStatus = "Pending"
+			},
+			expectedErrSubstring: "failed to wait for VMCluster default/stuck-cluster to be ready: context deadline exceeded",
+		},
+		{
+			name:      "should return error if Get fails unexpectedly",
+			vmCluster: newVMCluster("get-error-cluster", "default", "v1.0.0", 1),
+			setupClient: func(t *testing.T, fakeClient client.Client) client.Client {
+				return &customErrorClient{
+					Client:      fakeClient,
+					customError: fmt.Errorf("simulated get error"),
+				}
+			},
+			initialVMClusterFunc: func(vmc *vmv1beta1.VMCluster) {
+				// Still need to create the VMCluster in the fake client for the customErrorClient to wrap
+				// However, Get will still return the custom error for this specific VMCluster
+			},
+			expectedErrSubstring: "failed to fetch VMCluster default/get-error-cluster",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Prepare the initial VMCluster object if needed
+			initialVMCluster := tc.vmCluster.DeepCopy()
+			if tc.initialVMClusterFunc != nil {
+				tc.initialVMClusterFunc(initialVMCluster)
+			}
+
+			// Setup fake client with initial objects
+			var initialObjects []client.Object
+			if tc.initialVMClusterFunc != nil {
+				initialObjects = append(initialObjects, initialVMCluster)
+			}
+			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initialObjects...).Build()
+
+			// Customize client behavior based on test case
+			rclient := tc.setupClient(t, fakeClient)
+
+			ctx, cancel := context.WithTimeout(context.Background(), testDeadline+500*time.Millisecond) // Give a little extra time for the poll to time out
+			defer cancel()
+
+			// Call the function under test
+			err := waitForVMClusterReady(ctx, rclient, tc.vmCluster, testDeadline)
+
+			// Assert errors
+			if tc.expectedErrSubstring != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrSubstring)
+			} else {
+				assert.NoError(t, err)
+				// If no error, ensure the status is operational on the returned vmCluster object (which is passed by reference)
+				assert.Equal(t, vmv1beta1.UpdateStatusOperational, tc.vmCluster.Status.UpdateStatus)
+			}
+		})
+	}
+}
+
+// mockClientWithPollingResponse is a client.Client implementation that allows controlling
+// the VMCluster's UpdateStatus during Get calls to simulate polling.
+type mockClientWithPollingResponse struct {
+	client.Client
+	statuses    []vmv1beta1.UpdateStatus
+	statusIndex int
+	t           *testing.T
+	mu          sync.Mutex
+}
+
+func (m *mockClientWithPollingResponse) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Call the underlying fake client's Get first
+	err := m.Client.Get(ctx, key, obj, opts...)
+	if err != nil {
+		return err
+	}
+
+	// If it's a VMCluster and we have statuses to simulate
+	if vmCluster, ok := obj.(*vmv1beta1.VMCluster); ok && len(m.statuses) > 0 {
+		currentStatus := m.statuses[m.statusIndex]
+		vmCluster.Status.UpdateStatus = currentStatus
+		m.t.Logf("MockClient: Setting VMCluster %s/%s status to %s (index %d)", key.Namespace, key.Name, currentStatus, m.statusIndex)
+		if m.statusIndex < len(m.statuses)-1 {
+			m.statusIndex++
+		}
+	}
+	return nil
+}
+
 func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 	// Define a VMCluster for testing
 	testVMCluster := newVMCluster("test-vmcluster", "default", "v1", 1)

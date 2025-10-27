@@ -30,8 +30,12 @@ func createVMClustersAndUpdateTargetRefs(
 	refs := make([]vmv1beta1.TargetRef, len(clusters))
 	for i, vmcluster := range clusters {
 		Expect(k8sClient.Create(ctx, &vmcluster)).To(Succeed())
+		localVMCluster := vmcluster
+		DeferCleanup(func() {
+			Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &localVMCluster)).To(Succeed())
+		})
 		Eventually(func() error {
-			return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, types.NamespacedName{Name: vmcluster.Name, Namespace: ns})
+			return expectObjectStatusOperational(ctx, k8sClient, &localVMCluster, types.NamespacedName{Name: localVMCluster.Name, Namespace: ns})
 		}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 
 		refs[i] = vmv1beta1.TargetRef{
@@ -264,10 +268,12 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							{URL: "http://localhost:8428/api/v1/write"},
 						},
 					},
-				},
-			}, func(cr *vmv1alpha1.VMDistributedCluster) {
+				}}, func(cr *vmv1alpha1.VMDistributedCluster) {
 				Expect(cr.Status.VMClusterInfo).To(HaveLen(1))
-				Expect(cr.Status.VMClusterInfo[0].VMClusterName).To(Equal("vmcluster-1"))
+				names := []string{
+					cr.Status.VMClusterInfo[0].VMClusterName,
+				}
+				Expect(names).To(ContainElements("vmcluster-1"))
 			}),
 			Entry("with multiple VMClusters and VMAgent pairs", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -507,6 +513,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, cr)).To(Succeed())
+			})
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
@@ -594,6 +603,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 
 			By("pausing the VMDistributedCluster")
+			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
 			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
 			cr.Spec.Paused = true
 			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
@@ -601,6 +611,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			By("attempting to scale the VMCluster while paused")
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
 			initialReplicas := *vmCluster.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
+			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
 			cr.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
 				Raw: []byte(fmt.Sprintf(`{"vmStorage":{"replicaCount": %d}}`, initialReplicas+1)),
 			}
@@ -612,6 +624,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}, "10s", "1s").Should(Equal(initialReplicas))
 
 			By("unpausing the VMDistributedCluster")
+			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
 			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
 			cr.Spec.Paused = false
 			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
@@ -851,13 +864,223 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						{Name: validVMUserNames[1].Name},
 					},
 					Zones: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{
-							Name: "missing-cluster",
-						}},
+						{
+							Ref: &corev1.LocalObjectReference{
+								Name: "missing-cluster",
+							},
+						},
 					},
 				},
 			}, []vmv1beta1.VMCluster{}),
+			Entry("with zone spec but missing name", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "zone-spec-missing-name",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+					},
+					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Spec: &vmv1beta1.VMClusterSpec{
+								ClusterVersion: "v1.126.0-cluster",
+							},
+						},
+					},
+				},
+			}, []vmv1beta1.VMCluster{}),
+			Entry("with zone missing spec and ref", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "zone-missing-spec-ref",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+					},
+					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+						{}, // Neither Spec nor Ref is defined
+					},
+				},
+			}, []vmv1beta1.VMCluster{}),
+			Entry("with zone having both spec and ref", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "zone-both-spec-ref",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+					},
+					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Ref: &corev1.LocalObjectReference{
+								Name: "vmcluster-existing",
+							},
+							Spec: &vmv1beta1.VMClusterSpec{
+								ClusterVersion: "v1.126.0-cluster",
+							},
+						},
+					},
+				},
+			}, []vmv1beta1.VMCluster{}),
+			Entry("with missing global VMAgent", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "missing-global-vmagent",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: "non-existent-vmagent"},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+					},
+					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+						{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
+					},
+				},
+			}, []vmv1beta1.VMCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      "vmcluster-1",
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+					},
+				},
+			}),
+			Entry("with missing VMUser", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "missing-vmuser-fail",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: "non-existent-vmuser"},
+					},
+					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+						{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
+					},
+				},
+			}, []vmv1beta1.VMCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      "vmcluster-1",
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+					},
+				},
+			}),
+			Entry("with missing VMCluster", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "missing-vmcluster-fail",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+					},
+					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+						{Ref: &corev1.LocalObjectReference{Name: "non-existent-vmcluster"}},
+					},
+				},
+			}, []vmv1beta1.VMCluster{}),
+			Entry("with invalid OverrideSpec for VMCluster", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "invalid-override-spec",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+					},
+					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"},
+							OverrideSpec: &apiextensionsv1.JSON{
+								Raw: []byte(`{"invalidField": "invalidValue"}`), // Invalid override spec
+							},
+						},
+					},
+				},
+			}, []vmv1beta1.VMCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      "vmcluster-1",
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+					},
+				},
+			}),
+			Entry("VMCluster creation fails post-override spec", &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-create-fail",
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
+					VMUsers: []corev1.LocalObjectReference{
+						{Name: validVMUserNames[0].Name},
+					},
+					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Name: "existing-vmcluster-for-failure", // This VMCluster name will conflict with the one created below
+							Spec: &vmv1beta1.VMClusterSpec{
+								ClusterVersion: "v1.126.0-cluster",
+								VMStorage: &vmv1beta1.VMStorage{
+									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To[int32](1),
+									},
+								},
+							},
+						},
+					},
+				},
+			}, []vmv1beta1.VMCluster{
+				{
+					// This VMCluster will be created by createVMClustersAndUpdateTargetRefs before VMDistributedCluster attempts to create one with the same name.
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      "existing-vmcluster-for-failure",
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+					},
+				},
+			}),
 		)
+
 	})
 
 	It("should delete VMDistributedCluster and remove it from the cluster", func() {

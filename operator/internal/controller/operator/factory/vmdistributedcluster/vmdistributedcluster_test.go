@@ -318,3 +318,79 @@ func TestFetchVMUsers(t *testing.T) {
 		})
 	}
 }
+
+func TestFetchVMAgent(t *testing.T) {
+	s := newScheme()
+	testVMAgent := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-vmagent",
+			Namespace: "default",
+		},
+	}
+
+	tests := []struct {
+		name        string
+		clientObjs  []client.Object
+		namespace   string
+		ref         corev1.LocalObjectReference
+		expectedErr string
+		expectedVMAgent *vmv1beta1.VMAgent
+	}{
+		{
+			name:       "successfully retrieves VMAgent",
+			clientObjs: []client.Object{testVMAgent},
+			namespace:  "default",
+			ref:        corev1.LocalObjectReference{Name: "test-vmagent"},
+			expectedVMAgent: testVMAgent,
+		},
+		{
+			name:        "vmagent name not specified",
+			clientObjs:  []client.Object{testVMAgent},
+			namespace:   "default",
+			ref:         corev1.LocalObjectReference{Name: ""},
+			expectedErr: "global vmagent name is not specified",
+		},
+		{
+			name:        "referenced vmagent not found",
+			clientObjs:  []client.Object{},
+			namespace:   "default",
+			ref:         corev1.LocalObjectReference{Name: "non-existent-vmagent"},
+			expectedErr: "failed to get global VMAgent default/non-existent-vmagent: vmagents.operator.victoriametrics.com \"non-existent-vmagent\" not found",
+		},
+		{
+			name:        "generic client error when fetching vmagent",
+			clientObjs:  []client.Object{testVMAgent},
+			namespace:   "default",
+			ref:         corev1.LocalObjectReference{Name: "test-vmagent"},
+			expectedErr: "simulated error", // This will be caught by the tracking client
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			var c client.Client
+			if tt.name == "generic client error when fetching vmagent" {
+				c = &mockClient{
+					mockGet: func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+						return errors.New("simulated error")
+					},
+				}
+			} else {
+				c = fake.NewClientBuilder().WithScheme(s).WithObjects(tt.clientObjs...).Build()
+			}
+
+			vmAgent, err := fetchVMAgent(ctx, c, tt.namespace, tt.ref)
+
+			if tt.expectedErr != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErr)
+				assert.Nil(t, vmAgent)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedVMAgent.Name, vmAgent.Name)
+				assert.Equal(t, tt.expectedVMAgent.Namespace, vmAgent.Namespace)
+			}
+		})
+	}
+}

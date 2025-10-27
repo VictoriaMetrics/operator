@@ -119,7 +119,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Namespace: namespace,
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					// Basic VMAgent configuration
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "http://vminsert.monitoring:8089/api/v1/write", // Dummy URL to satisfy validation
+						},
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, &validVMAgent)).To(Succeed(), "must create managed vm-agent before test")
@@ -290,7 +294,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 		It("should wait for VMCluster upgrade completion", func() {
 			beforeEach()
-			DeferCleanup(afterEach)
 
 			initialVersion := "v1.126.0-cluster"
 			updateVersion := "v1.127.0-cluster"

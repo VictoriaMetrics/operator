@@ -709,7 +709,7 @@ func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 	newHPA := build.HPA(cr, targetRef, cr.Spec.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.HPA != nil {
-		prevHPA = build.HPA(cr, targetRef, prevCR.Spec.HPA)
+		prevHPA = build.HPA(prevCR, targetRef, prevCR.Spec.HPA)
 	}
 	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
 }

@@ -706,12 +706,10 @@ func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	}
-	t := newOptsBuilder(cr, cr.PrefixedName(), cr.SelectorLabels())
-	newHPA := build.HPA(t, targetRef, cr.Spec.HPA)
+	newHPA := build.HPA(cr, targetRef, cr.Spec.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.HPA != nil {
-		t = newOptsBuilder(prevCR, prevCR.PrefixedName(), prevCR.SelectorLabels())
-		prevHPA = build.HPA(t, targetRef, prevCR.Spec.HPA)
+		prevHPA = build.HPA(cr, targetRef, prevCR.Spec.HPA)
 	}
 	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
 }
@@ -809,41 +807,4 @@ func addVMAuthProbes(cr *vmv1beta1.VMAuth, vmauthContainer corev1.Container) cor
 	}
 	vmauthContainer = build.Probe(vmauthContainer, cr)
 	return vmauthContainer
-}
-
-type optsBuilder struct {
-	*vmv1beta1.VMAuth
-	prefixedName      string
-	finalLabels       map[string]string
-	selectorLabels    map[string]string
-	additionalService *vmv1beta1.AdditionalServiceSpec
-}
-
-// PrefixedName implements build.svcBuilderArgs interface
-func (csb *optsBuilder) PrefixedName() string {
-	return csb.prefixedName
-}
-
-// AllLabels implements build.svcBuilderArgs interface
-func (csb *optsBuilder) AllLabels() map[string]string {
-	return csb.finalLabels
-}
-
-// SelectorLabels implements build.svcBuilderArgs interface
-func (csb *optsBuilder) SelectorLabels() map[string]string {
-	return csb.selectorLabels
-}
-
-// GetAdditionalService implements build.svcBuilderArgs interface
-func (csb *optsBuilder) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
-	return csb.additionalService
-}
-
-func newOptsBuilder(cr *vmv1beta1.VMAuth, name string, selectorLabels map[string]string) *optsBuilder {
-	return &optsBuilder{
-		VMAuth:         cr,
-		prefixedName:   name,
-		finalLabels:    cr.FinalLabels(selectorLabels),
-		selectorLabels: selectorLabels,
-	}
 }

@@ -12,10 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VictoriaMetrics/operator/api/client/versioned/scheme"
-	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -26,6 +22,10 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/VictoriaMetrics/operator/api/client/versioned/scheme"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 const (

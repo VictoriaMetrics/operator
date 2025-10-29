@@ -67,7 +67,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			return fmt.Errorf("VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
 		}
 		if zone.Spec != nil && zone.Ref != nil {
-			return fmt.Errorf("Either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
+			return fmt.Errorf("either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
 		}
 	}
 
@@ -418,7 +418,8 @@ func updateVMUserTargetRefs(ctx context.Context, rclient client.Client, vmUserOb
 			}
 		}
 		if !alreadyPresent {
-			newTargetRefs = append(freshVMUserObj.Spec.TargetRefs, *found.DeepCopy())
+			newTargetRefs = append(newTargetRefs, freshVMUserObj.Spec.TargetRefs...)
+			newTargetRefs = append(newTargetRefs, *found.DeepCopy())
 			needsUpdate = true
 		} else {
 			// If already present, no update needed

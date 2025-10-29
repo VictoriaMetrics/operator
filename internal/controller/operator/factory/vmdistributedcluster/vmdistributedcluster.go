@@ -212,12 +212,13 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 			return nil, err
 		}
 
-		if vmClusterObjOrRef.Ref != nil {
+		switch {
+		case vmClusterObjOrRef.Ref != nil:
 			vmClusters[i], err = getReferencedVMCluster(ctx, rclient, namespace, vmClusterObjOrRef.Ref)
 			if err != nil {
 				return nil, fmt.Errorf("failed to fetch vmclusters: %w", err)
 			}
-		} else if vmClusterObjOrRef.Spec != nil {
+		case vmClusterObjOrRef.Spec != nil:
 			// Create an in-memory VMCluster object, it will be reconciled in the main loop.
 			vmClusters[i] = &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -226,7 +227,7 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 				},
 				Spec: *vmClusterObjOrRef.Spec.DeepCopy(),
 			}
-		} else {
+		default:
 			return nil, fmt.Errorf("invalid VMClusterRefOrSpec at index %d: neither Ref nor Spec is set", i)
 		}
 	}

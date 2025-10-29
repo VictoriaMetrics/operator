@@ -19,6 +19,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -191,8 +192,12 @@ func makeSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		args = append(args, rwArgs...)
 	}
 
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
+	cfg := config.MustGetBaseConfig()
 
+	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 	if cr.Spec.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
 	}

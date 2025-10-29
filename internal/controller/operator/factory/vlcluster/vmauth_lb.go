@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -133,6 +134,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		},
 	}
 	vmounts = append(vmounts, spec.VolumeMounts...)
+	cfg := config.MustGetBaseConfig()
 
 	args := []string{
 		"-auth.config=/opt/vmauth-config/config.yaml",
@@ -147,6 +149,9 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", spec.Port))
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 	if len(spec.ExtraEnvs) > 0 || len(spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}

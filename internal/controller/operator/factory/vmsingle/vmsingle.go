@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -168,7 +169,11 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
 
+	cfg := config.MustGetBaseConfig()
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 	if len(cr.Spec.ExtraEnvs) > 0 || len(cr.Spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}

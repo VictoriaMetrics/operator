@@ -16,6 +16,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -176,7 +177,11 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 	if r.Spec.LogIngestedRows {
 		args = append(args, "-logIngestedRows")
 	}
+	cfg := config.MustGetBaseConfig()
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", r.Spec.Port))
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 	if len(r.Spec.ExtraEnvs) > 0 || len(r.Spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}

@@ -52,10 +52,6 @@ const (
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
 var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
 
-func getCfg() *config.BaseOperatorConf {
-	return config.MustGetBaseConfig()
-}
-
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
 
 	var prevService, prevAdditionalService *corev1.Service
@@ -549,7 +545,11 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 		args = append(args, rwArgs...)
 	}
 
+	cfg := config.MustGetBaseConfig()
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 
 	if cr.Spec.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
@@ -760,7 +760,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
 			ic = append(ic,
-				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader), cr, configReloader.Args)...)
+				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader), cr, configReloader.Args)...)
 			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 		}
 	}
@@ -1231,7 +1231,8 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, extraWatchsMounts []corev1.VolumeMount) corev1.Container {
 	var configReloadVolumeMounts []corev1.VolumeMount
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+	cfg := config.MustGetBaseConfig()
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 	if !cr.Spec.IngestOnlyMode {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
@@ -1301,13 +1302,17 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, extraWatchVolumes []corev1.V
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 	}
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+	cfg := config.MustGetBaseConfig()
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 
 	if !cr.Spec.IngestOnlyMode {
 		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConfOutDir, configEnvsubstFilename)))
 		if useVMConfigReloader {
 			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
 			args = append(args, "--config-secret-key=vmagent.yaml.gz")
+			if cfg.EnableTCP6 {
+				args = append(args, "--enableTCP6")
+			}
 		} else {
 			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, vmagentGzippedFilename)))
 		}

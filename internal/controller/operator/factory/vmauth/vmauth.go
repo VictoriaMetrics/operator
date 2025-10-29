@@ -41,10 +41,6 @@ const (
 	internalPortName      = "internal"
 )
 
-func getCfg() *config.BaseOperatorConf {
-	return config.MustGetBaseConfig()
-}
-
 // CreateOrUpdate - handles VMAuth deployment reconciliation.
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
 
@@ -61,7 +57,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader) {
+		cfg := config.MustGetBaseConfig()
+		if ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader) {
 			if err := createVMAuthSecretAccess(ctx, rclient, cr, prevCR); err != nil {
 				return err
 			}
@@ -163,8 +160,12 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 	args = append(args, fmt.Sprintf("-auth.config=%s", configPath))
 
+	cfg := config.MustGetBaseConfig()
 	if cr.Spec.UseProxyProtocol {
 		args = append(args, "-httpListenAddr.useProxyProtocol=true")
+	}
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
 	}
 	if cr.Spec.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
@@ -197,7 +198,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -540,11 +541,15 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+	cfg := config.MustGetBaseConfig()
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 	if useVMConfigReloader {
 		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
 		if len(cr.Spec.InternalListenPort) == 0 && useProxyProtocol(cr) {
 			args = append(args, "--reload-use-proxy-protocol")
+		}
+		if cfg.EnableTCP6 {
+			args = append(args, "--enableTCP6")
 		}
 	} else {
 		args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))

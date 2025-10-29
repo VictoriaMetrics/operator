@@ -34,10 +34,6 @@ const (
 	tlsAssetsDir            = "/etc/vmalert-tls/certs"
 )
 
-func getCfg() *config.BaseOperatorConf {
-	return config.MustGetBaseConfig()
-}
-
 // createOrUpdateService creates service for vmalert
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) (*corev1.Service, error) {
 
@@ -504,7 +500,11 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 		args = append(args, fmt.Sprintf("-rule=%q", path.Join(vmAlertConfigDir, cm, "*.yaml")))
 	}
 
+	cfg := config.MustGetBaseConfig()
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 
 	for _, rulePath := range cr.Spec.RulePath {
 		args = append(args, fmt.Sprintf("-rule=%q", rulePath))
@@ -657,16 +657,21 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 }
 
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, extraWatchVolumeMounts []corev1.VolumeMount) corev1.Container {
+
+	var args []string
 	volumeWatchArg := "-volume-dir"
 	reloadURLArg := "-webhook-url"
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+
+	cfg := config.MustGetBaseConfig()
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 	if useVMConfigReloader {
 		volumeWatchArg = "--watched-dir"
 		reloadURLArg = "--reload-url"
+		if cfg.EnableTCP6 {
+			args = append(args, "--enableTCP6")
+		}
 	}
-	args := []string{
-		fmt.Sprintf("%s=%s", reloadURLArg, vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
-	}
+	args = append(args, fmt.Sprintf("%s=%s", reloadURLArg, vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)))
 	for _, cm := range ruleConfigMapNames {
 		args = append(args, fmt.Sprintf("%s=%s", volumeWatchArg, path.Join(vmAlertConfigDir, cm)))
 	}

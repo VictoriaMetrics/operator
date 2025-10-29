@@ -17,6 +17,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -195,9 +196,13 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 }
 
 func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
+	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VLSelect.Port),
 		"-internalinsert.disable=true",
+	}
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
 	}
 	if cr.Spec.VLSelect.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.VLSelect.LogLevel))

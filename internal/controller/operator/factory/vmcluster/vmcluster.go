@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -534,8 +535,12 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 }
 
 func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, error) {
+	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMSelect.Port),
+	}
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
 	}
 	if cr.Spec.VMSelect.ClusterNativePort != "" {
 		args = append(args, fmt.Sprintf("-clusternativeListenAddr=:%s", cr.Spec.VMSelect.ClusterNativePort))
@@ -750,8 +755,12 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 }
 
 func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, error) {
+	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMInsert.Port),
+	}
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
 	}
 	if cr.Spec.VMInsert.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.VMInsert.LogLevel))
@@ -947,12 +956,15 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 }
 
 func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, error) {
+	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("-vminsertAddr=:%s", cr.Spec.VMStorage.VMInsertPort),
 		fmt.Sprintf("-vmselectAddr=:%s", cr.Spec.VMStorage.VMSelectPort),
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMStorage.Port),
 	}
-
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 	if cr.Spec.RetentionPeriod != "" {
 		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod))
 	}
@@ -1476,7 +1488,11 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", spec.LogFormat))
 	}
 
+	cfg := config.MustGetBaseConfig()
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", spec.Port))
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 	if len(spec.ExtraEnvs) > 0 || len(spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}

@@ -16,6 +16,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -168,11 +169,14 @@ func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 }
 
 func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
+	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VLStorage.Port),
 		fmt.Sprintf("-storageDataPath=%s", cr.Spec.VLStorage.StorageDataPath),
 	}
-
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 	if cr.Spec.VLStorage.RetentionPeriod != "" {
 		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.VLStorage.RetentionPeriod))
 	}

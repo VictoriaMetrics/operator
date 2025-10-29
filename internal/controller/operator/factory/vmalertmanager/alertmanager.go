@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -51,7 +52,8 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader) {
+		cfg := config.MustGetBaseConfig()
+		if ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader) {
 			if err := createConfigSecretAccess(ctx, rclient, cr, prevCR); err != nil {
 				return err
 			}

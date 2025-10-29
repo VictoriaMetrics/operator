@@ -505,12 +505,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 			vmclusters := []vmv1beta1.VMCluster{*vmCluster1, *vmCluster2}
 			DeferCleanup(func() {
-				// This cleanup loop is intentionally left as is because it deletes the clusters
-				// *before* the VMDistributedCluster is deleted, which is part of this specific test logic.
-				// This is different from the generic cleanupVMClusters which only waits for deletion.
-				for _, vmcluster := range vmclusters {
-					Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmcluster)).To(Succeed())
-				}
+				cleanupVMClusters(ctx, k8sClient, vmclusters, namespacedName)
+				afterEach()
 			})
 
 			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
@@ -567,10 +563,22 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
 
 			// Verify both clusters have desired version set
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, vmCluster1)).To(Succeed())
-			Expect(vmCluster1.Spec.ClusterVersion).To(Equal(updateVersion))
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster2.Name, Namespace: namespace}, vmCluster2)).To(Succeed())
-			Expect(vmCluster2.Spec.ClusterVersion).To(Equal(updateVersion))
+			Eventually(func() error {
+				vmCluster1 := &vmv1beta1.VMCluster{}
+				vmCluster2 := &vmv1beta1.VMCluster{}
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: names[0], Namespace: namespace}, vmCluster1)
+				if err != nil {
+					return err
+				}
+				err = k8sClient.Get(ctx, types.NamespacedName{Name: names[1], Namespace: namespace}, vmCluster2)
+				if err != nil {
+					return err
+				}
+				if vmCluster1.Spec.ClusterVersion != updateVersion || vmCluster2.Spec.ClusterVersion != updateVersion {
+					return fmt.Errorf("expected both clusters to have version %s, but got %s and %s", updateVersion, vmCluster1.Spec.ClusterVersion, vmCluster2.Spec.ClusterVersion)
+				}
+				return nil
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 		})
 
 		It("should skip reconciliation when VMDistributedCluster is paused", func() {

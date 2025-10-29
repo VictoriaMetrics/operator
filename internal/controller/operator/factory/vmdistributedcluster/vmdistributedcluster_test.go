@@ -190,11 +190,11 @@ func (m *mockVMAgent) GetName() string {
 	return "test-vmagent"
 }
 
-func newVMUser(name, namespace string, targetRefs []vmv1beta1.TargetRef) *vmv1beta1.VMUser {
+func newVMUser(name string, targetRefs []vmv1beta1.TargetRef) *vmv1beta1.VMUser {
 	return &vmv1beta1.VMUser{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: "default",
 		},
 		Spec: vmv1beta1.VMUserSpec{
 			TargetRefs: targetRefs,
@@ -202,28 +202,28 @@ func newVMUser(name, namespace string, targetRefs []vmv1beta1.TargetRef) *vmv1be
 	}
 }
 
-func newVMCluster(name, namespace, version string, replicas int32) *vmv1beta1.VMCluster {
+func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 	return &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: "default",
 			Labels:    map[string]string{"tenant": "default"},
 		},
 		Spec: vmv1beta1.VMClusterSpec{
 			ClusterVersion: version,
 			VMSelect: &vmv1beta1.VMSelect{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(replicas),
+					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 			VMInsert: &vmv1beta1.VMInsert{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(replicas),
+					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 			VMStorage: &vmv1beta1.VMStorage{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(replicas),
+					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 		},
@@ -258,7 +258,7 @@ type testData struct {
 	trackingClient *trackingClient
 }
 
-func beforeEach(t *testing.T, initialObjs ...runtime.Object) testData {
+func beforeEach() testData {
 	scheme := runtime.NewScheme()
 	_ = vmv1alpha1.AddToScheme(scheme)
 	_ = vmv1beta1.AddToScheme(scheme)
@@ -271,20 +271,20 @@ func beforeEach(t *testing.T, initialObjs ...runtime.Object) testData {
 		},
 		Status: vmv1beta1.VMAgentStatus{Replicas: 1},
 	}
-	vmuser1 := newVMUser("vmuser-1", "default", []vmv1beta1.TargetRef{
+	vmuser1 := newVMUser("vmuser-1", []vmv1beta1.TargetRef{
 		{
 			CRD:              &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "vmcluster-1", Namespace: "default"},
 			TargetPathSuffix: "/select/0/prometheus/api/v1",
 		},
 	})
-	vmuser2 := newVMUser("vmuser-2", "default", []vmv1beta1.TargetRef{
+	vmuser2 := newVMUser("vmuser-2", []vmv1beta1.TargetRef{
 		{
 			CRD:              &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "vmcluster-2", Namespace: "default"},
 			TargetPathSuffix: "/select/0/prometheus/api/v1",
 		},
 	})
-	vmcluster1 := newVMCluster("vmcluster-1", "default", "v1.0.0", 1)
-	vmcluster2 := newVMCluster("vmcluster-2", "default", "v1.0.0", 1)
+	vmcluster1 := newVMCluster("vmcluster-1", "v1.0.0")
+	vmcluster2 := newVMCluster("vmcluster-2", "v1.0.0")
 
 	zones := []vmv1alpha1.VMClusterRefOrSpec{
 		{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
@@ -298,49 +298,32 @@ func beforeEach(t *testing.T, initialObjs ...runtime.Object) testData {
 	cr := newVMDistributedCluster("test-vdc", "default", zones, vmAgentRef, vmUserRefs)
 
 	// Create a new trackingClient
-	tc := &trackingClient{
-		Client:  fake.NewClientBuilder().WithScheme(scheme).WithObjects(vmagent, vmuser1, vmuser2, vmcluster1, vmcluster2).WithRuntimeObjects(initialObjs...).Build(),
-		Actions: []action{},
-		objects: make(map[client.ObjectKey]client.Object),
-	}
-
-	// Populate the trackingClient's internal objects map with initial objects
-	for _, obj := range initialObjs {
-		if co, ok := obj.(client.Object); ok {
-			tc.objects[client.ObjectKeyFromObject(co)] = co.DeepCopyObject().(client.Object)
-		}
-	}
-
-	builder := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
 		vmagent,
 		vmuser1,
 		vmuser2,
 		vmcluster1,
 		vmcluster2,
 		cr,
-	)
-
-	var clientObjs []client.Object
-	for _, obj := range initialObjs {
-		clientObjs = append(clientObjs, obj.(client.Object))
+	).Build()
+	tc := &trackingClient{
+		Client:  rclient,
+		Actions: []action{},
+		objects: make(map[client.ObjectKey]client.Object),
 	}
-	rclient := builder.WithObjects(clientObjs...).Build()
-
-	trackingClient := &trackingClient{Client: rclient}
-
 	return testData{
 		vmagent:        vmagent,
 		vmusers:        []*vmv1beta1.VMUser{vmuser1, vmuser2},
 		vmcluster1:     vmcluster1,
 		vmcluster2:     vmcluster2,
 		cr:             cr,
-		trackingClient: trackingClient,
+		trackingClient: tc,
 	}
 }
 
 func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 	t.Run("Paused CR should do nothing", func(t *testing.T) {
-		data := beforeEach(t)
+		data := beforeEach()
 		data.cr.Spec.Paused = true
 		rclient := data.trackingClient
 		ctx := context.TODO()
@@ -351,7 +334,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 	})
 
 	t.Run("Missing VMAgent should return error", func(t *testing.T) {
-		data := beforeEach(t)
+		data := beforeEach()
 		data.cr.Spec.VMAgent.Name = "non-existent"
 		rclient := data.trackingClient
 		ctx := context.TODO()
@@ -362,7 +345,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 	})
 
 	t.Run("Missing VMUser should return error", func(t *testing.T) {
-		data := beforeEach(t)
+		data := beforeEach()
 		data.cr.Spec.VMUsers = append(data.cr.Spec.VMUsers, corev1.LocalObjectReference{Name: "non-existent-vmuser"})
 		rclient := data.trackingClient
 		ctx := context.TODO()
@@ -373,7 +356,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 	})
 
 	t.Run("Missing VMCluster should return error", func(t *testing.T) {
-		data := beforeEach(t)
+		data := beforeEach()
 		data.cr.Spec.Zones[0].Ref.Name = "non-existent-vmcluster"
 		rclient := data.trackingClient
 		ctx := context.TODO()
@@ -384,7 +367,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 	})
 
 	t.Run("VMClusterRefOrSpec validation errors", func(t *testing.T) {
-		data := beforeEach(t)
+		data := beforeEach()
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
@@ -398,7 +381,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		}
 		err := CreateOrUpdate(ctx, data.cr, rclient, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index 0")
+		assert.Contains(t, err.Error(), "either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index 0")
 
 		// Neither Ref nor Spec set
 		data.cr.Spec.Zones = []vmv1alpha1.VMClusterRefOrSpec{
@@ -443,9 +426,9 @@ func TestFetchVMClusters(t *testing.T) {
 	namespace := "default"
 	crName := "test-vdc"
 
-	vmcluster1 := newVMCluster("ref-cluster-1", namespace, "v1.0.0", 1)
+	vmcluster1 := newVMCluster("ref-cluster-1", "v1.0.0")
 	// vmcluster2 will be an in-memory representation for an inline cluster
-	vmcluster2 := newVMCluster("inline-cluster-2", namespace, "v1.0.0", 1)
+	vmcluster2 := newVMCluster("inline-cluster-2", "v1.0.0")
 
 	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(vmcluster1).Build()
 
@@ -654,15 +637,15 @@ func TestApplyOverrideSpec(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, modified)
 		assert.Equal(t, "v1.1.0", merged.ClusterVersion)
-		assert.Equal(t, int32(2), *merged.VMSelect.CommonApplicationDeploymentParams.ReplicaCount)
+		assert.Equal(t, int32(2), *merged.VMSelect.ReplicaCount)
 		assert.Equal(t, "custom-sa", merged.ServiceAccountName)
-		assert.Equal(t, "bar", merged.VMSelect.CommonApplicationDeploymentParams.ExtraArgs["foo"])
+		assert.Equal(t, "bar", merged.VMSelect.ExtraArgs["foo"])
 
 		// Ensure un-overridden parts remain from baseSpec
 		assert.NotNil(t, merged.VMInsert)
-		assert.Equal(t, *baseSpec.VMInsert.CommonApplicationDeploymentParams.ReplicaCount, *merged.VMInsert.CommonApplicationDeploymentParams.ReplicaCount)
+		assert.Equal(t, *baseSpec.VMInsert.ReplicaCount, *merged.VMInsert.ReplicaCount)
 		assert.NotNil(t, merged.VMStorage)
-		assert.Equal(t, *baseSpec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount, *merged.VMStorage.CommonApplicationDeploymentParams.ReplicaCount)
+		assert.Equal(t, *baseSpec.VMStorage.ReplicaCount, *merged.VMStorage.ReplicaCount)
 	})
 
 	t.Run("Partial override (nil fields ignored)", func(t *testing.T) {
@@ -685,11 +668,11 @@ func TestApplyOverrideSpec(t *testing.T) {
 		assert.Equal(t, "v1.2.0", merged.ClusterVersion)
 		// VMSelect should be from baseSpec
 		assert.NotNil(t, merged.VMSelect)
-		assert.Equal(t, *baseSpec.VMSelect.CommonApplicationDeploymentParams.ReplicaCount, *merged.VMSelect.CommonApplicationDeploymentParams.ReplicaCount)
+		assert.Equal(t, *baseSpec.VMSelect.ReplicaCount, *merged.VMSelect.ReplicaCount)
 		// VMInsert ReplicaCount should be overridden
 		assert.NotNil(t, merged.VMInsert)
-		assert.Equal(t, int32(3), *merged.VMInsert.CommonApplicationDeploymentParams.ReplicaCount)
-		assert.Equal(t, *baseSpec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount, *merged.VMStorage.CommonApplicationDeploymentParams.ReplicaCount)
+		assert.Equal(t, int32(3), *merged.VMInsert.ReplicaCount)
+		assert.Equal(t, *baseSpec.VMStorage.ReplicaCount, *merged.VMStorage.ReplicaCount)
 	})
 
 	t.Run("Empty override spec", func(t *testing.T) {
@@ -716,11 +699,11 @@ func TestApplyOverrideSpec(t *testing.T) {
 		merged, modified, err := ApplyOverrideSpec(baseSpec, overrideSpec)
 		assert.NoError(t, err)
 		assert.True(t, modified)
-		assert.NotNil(t, merged.VMSelect.CommonApplicationDeploymentParams.ExtraArgs)
-		assert.Equal(t, "bar", merged.VMSelect.CommonApplicationDeploymentParams.ExtraArgs["foo"])
+		assert.NotNil(t, merged.VMSelect.ExtraArgs)
+		assert.Equal(t, "bar", merged.VMSelect.ExtraArgs["foo"])
 		// Other fields should remain from baseSpec
 		assert.Equal(t, baseSpec.ClusterVersion, merged.ClusterVersion)
-		assert.Equal(t, *baseSpec.VMSelect.CommonApplicationDeploymentParams.ReplicaCount, *merged.VMSelect.CommonApplicationDeploymentParams.ReplicaCount)
+		assert.Equal(t, *baseSpec.VMSelect.ReplicaCount, *merged.VMSelect.ReplicaCount)
 	})
 
 	t.Run("Override nested map with new key", func(t *testing.T) {
@@ -738,12 +721,12 @@ func TestApplyOverrideSpec(t *testing.T) {
 		merged, modified, err := ApplyOverrideSpec(baseSpec, overrideSpec)
 		assert.NoError(t, err)
 		assert.True(t, modified)
-		assert.Equal(t, "new_value", merged.VMSelect.CommonApplicationDeploymentParams.ExtraArgs["new_arg"])
+		assert.Equal(t, "new_value", merged.VMSelect.ExtraArgs["new_arg"])
 	})
 
 	t.Run("Override nested map with existing key change", func(t *testing.T) {
 		baseSpecWithExtraArgs := baseSpec
-		baseSpecWithExtraArgs.VMSelect.CommonApplicationDeploymentParams.ExtraArgs = map[string]string{"foo": "initial_value", "bar": "baz"}
+		baseSpecWithExtraArgs.VMSelect.ExtraArgs = map[string]string{"foo": "initial_value", "bar": "baz"}
 
 		overrideSpecVMClusterSpec := vmv1beta1.VMClusterSpec{
 			VMSelect: &vmv1beta1.VMSelect{
@@ -759,8 +742,8 @@ func TestApplyOverrideSpec(t *testing.T) {
 		merged, modified, err := ApplyOverrideSpec(baseSpecWithExtraArgs, overrideSpec)
 		assert.NoError(t, err)
 		assert.True(t, modified)
-		assert.Equal(t, "updated_value", merged.VMSelect.CommonApplicationDeploymentParams.ExtraArgs["foo"])
-		assert.Equal(t, "baz", merged.VMSelect.CommonApplicationDeploymentParams.ExtraArgs["bar"]) // Unchanged key remains
+		assert.Equal(t, "updated_value", merged.VMSelect.ExtraArgs["foo"])
+		assert.Equal(t, "baz", merged.VMSelect.ExtraArgs["bar"]) // Unchanged key remains
 	})
 }
 
@@ -778,17 +761,17 @@ func TestGetReferencedVMCluster(t *testing.T) {
 			namespace: "default",
 			ref:       &corev1.LocalObjectReference{Name: "my-vmcluster"},
 			existingVMClusters: []*vmv1beta1.VMCluster{
-				newVMCluster("my-vmcluster", "default", "v1", 1),
+				newVMCluster("my-vmcluster", "v1"),
 			},
 			expectedErr:       "",
-			expectedVMCluster: newVMCluster("my-vmcluster", "default", "v1", 1),
+			expectedVMCluster: newVMCluster("my-vmcluster", "v1"),
 		},
 		{
 			name:      "VMCluster not found",
 			namespace: "default",
 			ref:       &corev1.LocalObjectReference{Name: "non-existent-vmcluster"},
 			existingVMClusters: []*vmv1beta1.VMCluster{
-				newVMCluster("my-vmcluster", "default", "v1", 1),
+				newVMCluster("my-vmcluster", "v1"),
 			},
 			expectedErr:       "referenced VMCluster default/non-existent-vmcluster not found: vmclusters.operator.victoriametrics.com \"non-existent-vmcluster\" not found",
 			expectedVMCluster: nil,
@@ -805,7 +788,7 @@ func TestGetReferencedVMCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			td := beforeEach(t)
+			td := beforeEach()
 			ctx := context.Background()
 
 			var rclient client.Client
@@ -863,7 +846,7 @@ func TestWaitForVMClusterReady(t *testing.T) {
 	}{
 		{
 			name:      "should return nil when VMCluster becomes ready within deadline",
-			vmCluster: newVMCluster("ready-cluster", "default", "v1.0.0", 1),
+			vmCluster: newVMCluster("ready-cluster", "v1.0.0"),
 			setupClient: func(t *testing.T, fakeClient client.Client) client.Client {
 				// Simulate status change over time.
 				// The first Get will return non-operational, then operational.
@@ -881,7 +864,7 @@ func TestWaitForVMClusterReady(t *testing.T) {
 		},
 		{
 			name:      "should return error if VMCluster is not found",
-			vmCluster: newVMCluster("non-existent-cluster", "default", "v1.0.0", 1),
+			vmCluster: newVMCluster("non-existent-cluster", "v1.0.0"),
 			setupClient: func(t *testing.T, fakeClient client.Client) client.Client {
 				// The fake client will return IsNotFound if the object is not in initial objects.
 				// For this test, we expect the function under test to return an error.
@@ -892,7 +875,7 @@ func TestWaitForVMClusterReady(t *testing.T) {
 		},
 		{
 			name:      "should return error if VMCluster remains not ready until deadline",
-			vmCluster: newVMCluster("stuck-cluster", "default", "v1.0.0", 1),
+			vmCluster: newVMCluster("stuck-cluster", "v1.0.0"),
 			setupClient: func(t *testing.T, fakeClient client.Client) client.Client {
 				// Always return pending status
 				return &mockClientWithPollingResponse{
@@ -909,7 +892,7 @@ func TestWaitForVMClusterReady(t *testing.T) {
 		},
 		{
 			name:      "should return error if Get fails unexpectedly",
-			vmCluster: newVMCluster("get-error-cluster", "default", "v1.0.0", 1),
+			vmCluster: newVMCluster("get-error-cluster", "v1.0.0"),
 			setupClient: func(t *testing.T, fakeClient client.Client) client.Client {
 				return &customErrorClient{
 					Client:      fakeClient,
@@ -995,10 +978,10 @@ func (m *mockClientWithPollingResponse) Get(ctx context.Context, key client.Obje
 
 func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 	// Define a VMCluster for testing
-	testVMCluster := newVMCluster("test-vmcluster", "default", "v1", 1)
+	testVMCluster := newVMCluster("test-vmcluster", "v1")
 
 	// Define various VMUser configurations
-	vmUserWithMatchingRule := newVMUser("user-match", "default", []vmv1beta1.TargetRef{
+	vmUserWithMatchingRule := newVMUser("user-match", []vmv1beta1.TargetRef{
 		{
 			CRD: &vmv1beta1.CRDRef{
 				Kind:      "VMCluster/vmselect",
@@ -1009,7 +992,7 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 		},
 	})
 
-	vmUserWithIncorrectSuffix := newVMUser("user-wrong-suffix", "default", []vmv1beta1.TargetRef{
+	vmUserWithIncorrectSuffix := newVMUser("user-wrong-suffix", []vmv1beta1.TargetRef{
 		{
 			CRD: &vmv1beta1.CRDRef{
 				Kind:      "VMCluster/vmselect",
@@ -1020,7 +1003,7 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 		},
 	})
 
-	vmUserWithIncorrectKind := newVMUser("user-wrong-kind", "default", []vmv1beta1.TargetRef{
+	vmUserWithIncorrectKind := newVMUser("user-wrong-kind", []vmv1beta1.TargetRef{
 		{
 			CRD: &vmv1beta1.CRDRef{
 				Kind:      "VMAgent", // Incorrect Kind
@@ -1031,7 +1014,7 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 		},
 	})
 
-	vmUserWithIncorrectName := newVMUser("user-wrong-name", "default", []vmv1beta1.TargetRef{
+	vmUserWithIncorrectName := newVMUser("user-wrong-name", []vmv1beta1.TargetRef{
 		{
 			CRD: &vmv1beta1.CRDRef{
 				Kind:      "VMCluster/vmselect",
@@ -1042,14 +1025,14 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 		},
 	})
 
-	vmUserWithNilCRD := newVMUser("user-nil-crd", "default", []vmv1beta1.TargetRef{
+	vmUserWithNilCRD := newVMUser("user-nil-crd", []vmv1beta1.TargetRef{
 		{
 			CRD:              nil, // Nil CRD
 			TargetPathSuffix: "/select/0",
 		},
 	})
 
-	vmUserWithEmptyTargetRefs := newVMUser("user-empty-targetrefs", "default", []vmv1beta1.TargetRef{})
+	vmUserWithEmptyTargetRefs := newVMUser("user-empty-targetrefs", []vmv1beta1.TargetRef{})
 
 	testCases := []struct {
 		name                 string
@@ -1163,18 +1146,18 @@ func TestUpdateVMUserTargetRefs(t *testing.T) {
 	}{
 		{
 			name: `should add targetRef if status is true and not present in refs`,
-			initialVMUser: newVMUser(`test-user-add`, `default`, []vmv1beta1.TargetRef{
+			initialVMUser: newVMUser(`test-user-add`, []vmv1beta1.TargetRef{
 				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 			}),
 			targetRefToUpdate: newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
 			status:            true,
-			expectedVMUser: newVMUser(`test-user-add`, `default`, []vmv1beta1.TargetRef{
+			expectedVMUser: newVMUser(`test-user-add`, []vmv1beta1.TargetRef{
 				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 				*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
 			}),
 			expectedActions: []action{
 				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-add`, Namespace: `default`}},
-				{Method: `Update`, ObjectKey: types.NamespacedName{Name: `test-user-add`, Namespace: `default`}, Object: newVMUser(`test-user-add`, `default`, []vmv1beta1.TargetRef{
+				{Method: `Update`, ObjectKey: types.NamespacedName{Name: `test-user-add`, Namespace: `default`}, Object: newVMUser(`test-user-add`, []vmv1beta1.TargetRef{
 					*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 					*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
 				})},
@@ -1184,13 +1167,13 @@ func TestUpdateVMUserTargetRefs(t *testing.T) {
 		},
 		{
 			name: `should not add targetRef if status is true and already present`,
-			initialVMUser: newVMUser(`test-user-present`, `default`, []vmv1beta1.TargetRef{
+			initialVMUser: newVMUser(`test-user-present`, []vmv1beta1.TargetRef{
 				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 				*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
 			}),
 			targetRefToUpdate: newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
 			status:            true,
-			expectedVMUser: newVMUser(`test-user-present`, `default`, []vmv1beta1.TargetRef{
+			expectedVMUser: newVMUser(`test-user-present`, []vmv1beta1.TargetRef{
 				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 				*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
 			}),
@@ -1202,18 +1185,18 @@ func TestUpdateVMUserTargetRefs(t *testing.T) {
 		},
 		{
 			name: `should remove targetRef if status is false and present`,
-			initialVMUser: newVMUser(`test-user-remove`, `default`, []vmv1beta1.TargetRef{
+			initialVMUser: newVMUser(`test-user-remove`, []vmv1beta1.TargetRef{
 				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 				*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
 			}),
 			targetRefToUpdate: newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
 			status:            false,
-			expectedVMUser: newVMUser(`test-user-remove`, `default`, []vmv1beta1.TargetRef{
+			expectedVMUser: newVMUser(`test-user-remove`, []vmv1beta1.TargetRef{
 				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 			}),
 			expectedActions: []action{
 				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-remove`, Namespace: `default`}},
-				{Method: `Update`, ObjectKey: types.NamespacedName{Name: `test-user-remove`, Namespace: `default`}, Object: newVMUser(`test-user-remove`, `default`, []vmv1beta1.TargetRef{
+				{Method: `Update`, ObjectKey: types.NamespacedName{Name: `test-user-remove`, Namespace: `default`}, Object: newVMUser(`test-user-remove`, []vmv1beta1.TargetRef{
 					*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 				})},
 				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-remove`, Namespace: `default`}},
@@ -1222,12 +1205,12 @@ func TestUpdateVMUserTargetRefs(t *testing.T) {
 		},
 		{
 			name: `should not remove targetRef if status is false and not present`,
-			initialVMUser: newVMUser(`test-user-no-remove`, `default`, []vmv1beta1.TargetRef{
+			initialVMUser: newVMUser(`test-user-no-remove`, []vmv1beta1.TargetRef{
 				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 			}),
 			targetRefToUpdate: newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
 			status:            false,
-			expectedVMUser: newVMUser(`test-user-no-remove`, `default`, []vmv1beta1.TargetRef{
+			expectedVMUser: newVMUser(`test-user-no-remove`, []vmv1beta1.TargetRef{
 				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 			}),
 			expectedActions: []action{
@@ -1238,7 +1221,7 @@ func TestUpdateVMUserTargetRefs(t *testing.T) {
 		},
 		{
 			name:                 `should return error if Get fails`,
-			initialVMUser:        newVMUser(`test-user-get-fail`, `default`, []vmv1beta1.TargetRef{}), // VMUser exists, but Get fails with customErrorClient
+			initialVMUser:        newVMUser(`test-user-get-fail`, []vmv1beta1.TargetRef{}), // VMUser exists, but Get fails with customErrorClient
 			targetRefToUpdate:    newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
 			status:               true,
 			expectedVMUser:       nil,

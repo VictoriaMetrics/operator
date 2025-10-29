@@ -639,7 +639,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			By("attempting to scale the VMCluster while paused")
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
-			initialReplicas := *vmCluster.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+			initialReplicas := *vmCluster.Spec.VMStorage.ReplicaCount
 
 			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
 			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
@@ -650,7 +650,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			Consistently(func() int32 {
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
-				return *vmCluster.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+				return *vmCluster.Spec.VMStorage.ReplicaCount
 			}, "10s", "1s").Should(Equal(initialReplicas))
 
 			By("unpausing the VMDistributedCluster")
@@ -662,7 +662,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			By("verifying reconciliation resumes after unpausing")
 			Eventually(func() int32 {
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
-				return *vmCluster.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+				return *vmCluster.Spec.VMStorage.ReplicaCount
 			}, eventualDeploymentAppReadyTimeout).Should(Equal(initialReplicas + 1))
 		})
 
@@ -886,7 +886,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				return expectObjectStatusOperational(ctx, k8sClient, &vmCluster1, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 			Expect(vmCluster1.Spec.ClusterVersion).To(Equal("v1.125.0-cluster"))
-			actualReplicaCount := *vmCluster1.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+			actualReplicaCount := *vmCluster1.Spec.VMStorage.ReplicaCount
 			Expect(actualReplicaCount).To(Equal(int32(1)))
 
 			var vmCluster2 vmv1beta1.VMCluster
@@ -896,7 +896,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				return expectObjectStatusOperational(ctx, k8sClient, &vmCluster2, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 			Expect(vmCluster2.Spec.ClusterVersion).To(Equal("v1.126.0-cluster"))
-			actualReplicaCount = *vmCluster2.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+			actualReplicaCount = *vmCluster2.Spec.VMStorage.ReplicaCount
 			Expect(actualReplicaCount).To(Equal(int32(2)))
 
 			DeferCleanup(func() {

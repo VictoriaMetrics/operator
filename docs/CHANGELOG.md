@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+## [v0.64.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.64.0)
+
+**Release date:** 29 October 2025
+
 **Update Note 1:** This release deprecates 3rd party config-reloader containers - `jimmidyson/configmap-reload` and `quay.io/prometheus-operator/prometheus-config-reloader` in favor of own implementation - 
 [victoriametrics/operator:config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader).
 This change could be reverted by providing env variable `VM_USECUSTOMCONFIGRELOADER=false` to the operator binary.

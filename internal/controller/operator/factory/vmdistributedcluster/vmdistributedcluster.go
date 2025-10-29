@@ -114,7 +114,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if err := rclient.Status().Update(ctx, cr); err != nil {
 			return fmt.Errorf("failed to update status: %w", err)
 		}
-		return fmt.Errorf("unexpected generations or zones config change detected: %w", errors.New("unexpected generations or zones config change detected"))
+		return fmt.Errorf("unexpected generations or zones config change detected: unexpected generations or zones config change detected")
 	}
 
 	// TODO[vrutkovs]: Mark all VMClusters as paused?

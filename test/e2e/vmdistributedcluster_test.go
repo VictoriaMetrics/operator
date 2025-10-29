@@ -546,6 +546,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			cr.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
 				Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
 			}
+			cr.Spec.Zones[1].OverrideSpec = &apiextensionsv1.JSON{
+				Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
+			}
 			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
 			// Wait for VMDistributedCluster to become operational after its own upgrade
 			Eventually(func() error {

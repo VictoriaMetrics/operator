@@ -636,10 +636,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			By("attempting to scale the VMCluster while paused")
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
 			initialReplicas := *vmCluster.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+
 			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
 			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
 			cr.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
-				Raw: []byte(fmt.Sprintf(`{"vmStorage":{"replicaCount": %d}}`, initialReplicas+1)),
+				Raw: []byte(fmt.Sprintf(`{"vmstorage":{"replicaCount": %d}}`, initialReplicas+1)),
 			}
 			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
 

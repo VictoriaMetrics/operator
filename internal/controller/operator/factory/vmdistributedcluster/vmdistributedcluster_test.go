@@ -79,7 +79,7 @@ func (tc *trackingClient) Get(ctx context.Context, key client.ObjectKey, obj cli
 func (tc *trackingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
-	tc.Actions = append(tc.Actions, action{Method: "update", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
+	tc.Actions = append(tc.Actions, action{Method: "Update", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
 	// Update the object in our internal map as well
 	objCopy := obj.DeepCopyObject().(client.Object)
 	tc.objects[client.ObjectKeyFromObject(objCopy)] = objCopy
@@ -984,7 +984,7 @@ func TestReconcileInlineVMCluster(t *testing.T) {
 					ObjectKey: types.NamespacedName{Name: "test-dc-0", Namespace: "default"},
 				},
 				{
-					Method:    "update",
+					Method:    "Update",
 					ObjectKey: types.NamespacedName{Name: "test-dc-0", Namespace: "default"},
 					Object: &vmv1beta1.VMCluster{
 						ObjectMeta: metav1.ObjectMeta{
@@ -1447,5 +1447,181 @@ func TestFindVMUserReadRuleForVMCluster(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestUpdateVMUserTargetRefs(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+	_ = vmv1alpha1.AddToScheme(scheme)
+
+	newTargetRef := func(kind, name, namespace, suffix string) *vmv1beta1.TargetRef {
+		return &vmv1beta1.TargetRef{
+			CRD: &vmv1beta1.CRDRef{
+				Kind:      kind,
+				Name:      name,
+				Namespace: namespace,
+			},
+			TargetPathSuffix: suffix,
+		}
+	}
+
+	testCases := []struct {
+		name                 string
+		initialVMUser        *vmv1beta1.VMUser
+		targetRefToUpdate    *vmv1beta1.TargetRef
+		status               bool              // true for add, false for remove
+		expectedVMUser       *vmv1beta1.VMUser // Expected state of the VMUser after the operation
+		expectedActions      []action
+		rClient              client.Client // Specific client for error cases
+		expectedErrSubstring string
+	}{
+		{
+			name: `should add targetRef if status is true and not present in refs`,
+			initialVMUser: newVMUser(`test-user-add`, `default`, []vmv1beta1.TargetRef{
+				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+			}),
+			targetRefToUpdate: newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
+			status:            true,
+			expectedVMUser: newVMUser(`test-user-add`, `default`, []vmv1beta1.TargetRef{
+				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+				*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
+			}),
+			expectedActions: []action{
+				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-add`, Namespace: `default`}},
+				{Method: `Update`, ObjectKey: types.NamespacedName{Name: `test-user-add`, Namespace: `default`}, Object: newVMUser(`test-user-add`, `default`, []vmv1beta1.TargetRef{
+					*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+					*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
+				})},
+				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-add`, Namespace: `default`}},
+			},
+			expectedErrSubstring: ``,
+		},
+		{
+			name: `should not add targetRef if status is true and already present`,
+			initialVMUser: newVMUser(`test-user-present`, `default`, []vmv1beta1.TargetRef{
+				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+				*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
+			}),
+			targetRefToUpdate: newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
+			status:            true,
+			expectedVMUser: newVMUser(`test-user-present`, `default`, []vmv1beta1.TargetRef{
+				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+				*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
+			}),
+			expectedActions: []action{
+				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-present`, Namespace: `default`}},
+				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-present`, Namespace: `default`}},
+			},
+			expectedErrSubstring: ``,
+		},
+		{
+			name: `should remove targetRef if status is false and present`,
+			initialVMUser: newVMUser(`test-user-remove`, `default`, []vmv1beta1.TargetRef{
+				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+				*newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
+			}),
+			targetRefToUpdate: newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
+			status:            false,
+			expectedVMUser: newVMUser(`test-user-remove`, `default`, []vmv1beta1.TargetRef{
+				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+			}),
+			expectedActions: []action{
+				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-remove`, Namespace: `default`}},
+				{Method: `Update`, ObjectKey: types.NamespacedName{Name: `test-user-remove`, Namespace: `default`}, Object: newVMUser(`test-user-remove`, `default`, []vmv1beta1.TargetRef{
+					*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+				})},
+				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-remove`, Namespace: `default`}},
+			},
+			expectedErrSubstring: ``,
+		},
+		{
+			name: `should not remove targetRef if status is false and not present`,
+			initialVMUser: newVMUser(`test-user-no-remove`, `default`, []vmv1beta1.TargetRef{
+				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+			}),
+			targetRefToUpdate: newTargetRef(`VMCluster/vmselect`, `cluster2`, `default`, `/select/0`),
+			status:            false,
+			expectedVMUser: newVMUser(`test-user-no-remove`, `default`, []vmv1beta1.TargetRef{
+				*newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+			}),
+			expectedActions: []action{
+				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-no-remove`, Namespace: `default`}},
+				{Method: `Get`, ObjectKey: types.NamespacedName{Name: `test-user-no-remove`, Namespace: `default`}},
+			},
+			expectedErrSubstring: ``,
+		},
+		{
+			name:                 `should return error if Get fails`,
+			initialVMUser:        newVMUser(`test-user-get-fail`, `default`, []vmv1beta1.TargetRef{}), // VMUser exists, but Get fails with customErrorClient
+			targetRefToUpdate:    newTargetRef(`VMCluster/vmselect`, `cluster1`, `default`, `/select/0`),
+			status:               true,
+			expectedVMUser:       nil,
+			rClient:              &customErrorClient{customError: fmt.Errorf(`simulated get error`)},
+			expectedErrSubstring: `failed to fetch vmuser test-user-get-fail`,
+			expectedActions:      []action{}, // No actions recorded by trackingClient if customErrorClient directly returns error
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var rclient client.Client
+			var trClient *trackingClient
+
+			initialObjects := []client.Object{}
+			if tc.initialVMUser != nil {
+				initialObjects = append(initialObjects, tc.initialVMUser.DeepCopy())
+			}
+
+			// Always create a fake client for tracking, initialized with initial objects
+			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initialObjects...).Build()
+			trClient = &trackingClient{
+				Client:  fakeClient,
+				objects: make(map[client.ObjectKey]client.Object),
+			}
+			for _, obj := range initialObjects {
+				trClient.objects[client.ObjectKeyFromObject(obj)] = obj.DeepCopyObject().(client.Object)
+			}
+
+			if customErrClient, ok := tc.rClient.(*customErrorClient); ok {
+				// If customErrorClient is provided, wrap the fake client in it
+				// This allows customErrorClient to simulate errors on Get/Update calls,
+				// while trackingClient still tracks other operations or the state before the error.
+				customErrClient.Client = fakeClient
+				rclient = customErrClient
+			} else {
+				// Otherwise, use the tracking client as the main client
+				rclient = trClient
+			}
+
+			ctx := context.Background()
+			err := updateVMUserTargetRefs(ctx, rclient, tc.initialVMUser, tc.targetRefToUpdate, tc.status)
+
+			if tc.expectedErrSubstring != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrSubstring)
+				// If error is expected, the VMUser should not have been updated successfully.
+				// For Get errors, actualVMUser might not be found.
+				// For Update errors, the state should be the same as initialVMUser.
+			} else {
+				assert.NoError(t, err)
+				// Verify the state of the VMUser in the client
+				actualVMUser := &vmv1beta1.VMUser{}
+				err = rclient.Get(ctx, types.NamespacedName{Name: tc.initialVMUser.Name, Namespace: tc.initialVMUser.Namespace}, actualVMUser)
+				assert.NoError(t, err)
+				assert.True(t, reflect.DeepEqual(tc.expectedVMUser.Spec.TargetRefs, actualVMUser.Spec.TargetRefs),
+					fmt.Sprintf(`Expected TargetRefs: %+v, Got: %+v`, tc.expectedVMUser.Spec.TargetRefs, actualVMUser.Spec.TargetRefs))
+			}
+			compareExpectedActions(t, trClient.Actions, tc.expectedActions)
+
+			// Special handling for customErrorClient cases where trackingClient might not record all actions
+			// For "should return error if Get fails", trClient.Actions would be empty because Get itself is overridden.
+			// if _, ok := rclient.(*customErrorClient); ok && strings.Contains(tc.expectedErrSubstring, "failed to fetch vmuser") {
+			// 	assert.Empty(t, trClient.Actions, "No actions should be recorded if Get fails immediately for customErrorClient")
+			// } else {
+			// 	compareExpectedActions(t, trClient.Actions, tc.expectedActions)
+			// }
+		})
+
 	}
 }

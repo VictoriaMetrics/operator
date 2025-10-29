@@ -880,13 +880,13 @@ func TestWaitForVMClusterReady(t *testing.T) {
 				// Always return pending status
 				return &mockClientWithPollingResponse{
 					Client:      fakeClient,
-					statuses:    []vmv1beta1.UpdateStatus{"Pending", "Pending", "Pending"},
+					statuses:    []vmv1beta1.UpdateStatus{vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusExpanding},
 					statusIndex: 0,
 					t:           t,
 				}
 			},
 			initialVMClusterFunc: func(vmc *vmv1beta1.VMCluster) {
-				vmc.Status.UpdateStatus = "Pending"
+				vmc.Status.UpdateStatus = vmv1beta1.UpdateStatusExpanding
 			},
 			expectedErrSubstring: "failed to wait for VMCluster default/stuck-cluster to be ready: context deadline exceeded",
 		},

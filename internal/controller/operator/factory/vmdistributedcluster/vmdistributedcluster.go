@@ -84,7 +84,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Fetch VMCLuster statuses by name
-	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Name, cr.Namespace, cr.Spec.Zones)
+	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones)
 	if err != nil {
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
@@ -205,40 +205,39 @@ func getReferencedVMCluster(ctx context.Context, rclient client.Client, namespac
 }
 
 // reconcileInlineVMCluster manages the creation or update logic for inline VMCluster specs.
-func reconcileInlineVMCluster(ctx context.Context, rclient client.Client, crName, namespace string, index int, refOrSpec vmv1alpha1.VMClusterRefOrSpec) (*vmv1beta1.VMCluster, error) {
-	generatedName := fmt.Sprintf("%s-%s%d", crName, refOrSpec.Name, index)
-	namespacedName := types.NamespacedName{Name: generatedName, Namespace: namespace}
+func reconcileInlineVMCluster(ctx context.Context, rclient client.Client, name, namespace string, index int, vmSpec vmv1beta1.VMClusterSpec) (*vmv1beta1.VMCluster, error) {
+	namespacedName := types.NamespacedName{Name: name, Namespace: namespace}
 
 	vmClusterObj := &vmv1beta1.VMCluster{}
 	err := rclient.Get(ctx, namespacedName, vmClusterObj)
 
 	if err != nil && !k8serrors.IsNotFound(err) {
-		return nil, fmt.Errorf("failed to get VMCluster %s/%s for inline spec: %w", namespace, generatedName, err)
+		return nil, fmt.Errorf("failed to get VMCluster %s/%s for inline spec: %w", namespace, name, err)
 	}
 
 	if err != nil && k8serrors.IsNotFound(err) {
 		// VMCluster not found, so create it
 		vmClusterObj.ObjectMeta = metav1.ObjectMeta{
-			Name:      generatedName,
+			Name:      name,
 			Namespace: namespace,
 		}
-		vmClusterObj.Spec = *refOrSpec.Spec
+		vmClusterObj.Spec = vmSpec
 		if createErr := rclient.Create(ctx, vmClusterObj); createErr != nil {
-			return nil, fmt.Errorf("failed to create VMCluster from inline spec at index %d: %w", index, createErr)
+			return nil, fmt.Errorf("failed to create VMCluster from inline spec %v: %w", vmSpec, createErr)
 		}
 	} else {
 		// VMCluster exists, so update it if spec differs
-		if !reflect.DeepEqual(vmClusterObj.Spec, *refOrSpec.Spec) {
-			vmClusterObj.Spec = *refOrSpec.Spec
+		if !reflect.DeepEqual(vmClusterObj.Spec, vmSpec) {
+			vmClusterObj.Spec = vmSpec
 			if updateErr := rclient.Update(ctx, vmClusterObj); updateErr != nil {
-				return nil, fmt.Errorf("failed to update VMCluster %s/%s from inline spec: %w", namespace, generatedName, updateErr)
+				return nil, fmt.Errorf("failed to update VMCluster %s/%s from inline spec: %w", namespace, name, updateErr)
 			}
 		}
 	}
 	return vmClusterObj, nil
 }
 
-func fetchVMClusters(ctx context.Context, rclient client.Client, crName, namespace string, refs []vmv1alpha1.VMClusterRefOrSpec) ([]*vmv1beta1.VMCluster, error) {
+func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []vmv1alpha1.VMClusterRefOrSpec) ([]*vmv1beta1.VMCluster, error) {
 	var err error
 	vmClusters := make([]*vmv1beta1.VMCluster, len(refs))
 	for i, vmClusterObjOrRef := range refs {
@@ -253,12 +252,9 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, crName, namespa
 			}
 		} else if vmClusterObjOrRef.Spec != nil {
 			// Create an in-memory VMCluster object, it will be reconciled in the main loop.
-			vmClusters[i] = &vmv1beta1.VMCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("%s-%d", crName, i),
-					Namespace: namespace,
-				},
-				Spec: *vmClusterObjOrRef.Spec.DeepCopy(),
+			vmClusters[i], err = reconcileInlineVMCluster(ctx, rclient, vmClusterObjOrRef.Name, namespace, i, *vmClusterObjOrRef.Spec)
+			if err != nil {
+				return nil, fmt.Errorf("failed to reconcile inline vmcluster: %w", err)
 			}
 		} else {
 			return nil, fmt.Errorf("invalid VMClusterRefOrSpec at index %d: neither Ref nor Spec is set", i)
@@ -406,20 +402,6 @@ func findVMUserReadRuleForVMCluster(vmUserObjs []*vmv1beta1.VMUser, vmCluster *v
 	// 2. Match static url to vmselect service
 	// TODO[vrutkovs]: match static url to vmselect service
 	return nil, fmt.Errorf("no vmuser has target refs for vmcluster %s", vmCluster.Name)
-
-	// Extract vmselect service name and ensure it exists
-	// svcName := vmCluster.GetVMSelectName()
-	// svcObj := &corev1.Service{}
-	// if err := rclient.Get(ctx, types.NamespacedName{Name: svcName, Namespace: vmCluster.Namespace}, svcObj); err != nil {
-	// 	return fmt.Errorf("failed to find vmselect service %s for vmcluster %s: %w", svcName, vmCluster.Name, err)
-	// }
-	// // Extract vmuser rules and find matches to svcObj
-	// for _, rule := range rules {
-	// 	if rule.Type == vmv1beta1.VMUserRuleTypeRead && rule.ServiceName == svcObj.Name {
-	// 		return nil
-	// 	}
-	// }
-	// return fmt.Errorf("no matching read rule found for vmcluster %s", vmCluster.Name)
 }
 
 func setVMClusterStatusInVMUsers(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, vmCluster *vmv1beta1.VMCluster, vmUserObjs []*vmv1beta1.VMUser, status bool) error {
@@ -427,7 +409,7 @@ func setVMClusterStatusInVMUsers(ctx context.Context, rclient client.Client, cr 
 	var found *vmv1beta1.TargetRef
 	for _, vmClusterInfo := range cr.Status.VMClusterInfo {
 		if vmClusterInfo.VMClusterName == vmCluster.Name {
-			found = &vmClusterInfo.TargetRef
+			found = vmClusterInfo.TargetRef.DeepCopy()
 			break
 		}
 	}
@@ -469,14 +451,15 @@ func setVMClusterStatusInVMUsers(ctx context.Context, rclient client.Client, cr 
 				}
 			}
 			if !alreadyExists {
-				newTargetRefs = append(newTargetRefs, *found)
+				foundCopy := found.DeepCopy()
+				newTargetRefs = append(newTargetRefs, *foundCopy)
 			}
 		} else {
-			for _, targetRef := range freshVMUserObj.Spec.TargetRefs {
+			for i, targetRef := range freshVMUserObj.Spec.TargetRefs {
 				if reflect.DeepEqual(targetRef.CRD, found.CRD) && targetRef.TargetPathSuffix == found.TargetPathSuffix {
 					continue
 				}
-				newTargetRefs = append(newTargetRefs, targetRef)
+				newTargetRefs = append(newTargetRefs, freshVMUserObj.Spec.TargetRefs[i])
 			}
 		}
 
@@ -485,75 +468,6 @@ func setVMClusterStatusInVMUsers(ctx context.Context, rclient client.Client, cr 
 		if err := rclient.Update(ctx, freshVMUserObj); err != nil {
 			return fmt.Errorf("failed to update vmuser %s: %w", freshVMUserObj.Name, err)
 		}
-	}
-
-	return nil
-}
-
-func setVMClusterStatusInVMUser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, vmCluster *vmv1beta1.VMCluster, vmUserObj *vmv1beta1.VMUser, status bool) error {
-	// Find matching rule in the vmdistributed status
-	var found *vmv1beta1.TargetRef
-	for _, vmClusterInfo := range cr.Status.VMClusterInfo {
-		if vmClusterInfo.VMClusterName == vmCluster.Name {
-			found = &vmClusterInfo.TargetRef
-			break
-		}
-	}
-	if found == nil {
-		return fmt.Errorf("no matching rule found for vmcluster %s in status of vmdistributedcluster %s", vmCluster.Name, cr.Name)
-	}
-
-	// Fetch fresh copy of vmuser
-	freshVMUserObj := &vmv1beta1.VMUser{}
-	if err := rclient.Get(ctx, types.NamespacedName{Name: vmUserObj.Name, Namespace: vmUserObj.Namespace}, freshVMUserObj); err != nil {
-		return fmt.Errorf("failed to fetch vmuser %s: %w", vmUserObj.Name, err)
-	}
-	// Create a deep copy to ensure modifications are distinct from the cached object in fake.Client
-	freshVMUserObj = freshVMUserObj.DeepCopy()
-
-	// Check if this vmuser has the matching rule
-	hasMatchingRule := false
-	for _, ref := range freshVMUserObj.Spec.TargetRefs {
-		if reflect.DeepEqual(ref.CRD, found.CRD) && ref.TargetPathSuffix == found.TargetPathSuffix {
-			hasMatchingRule = true
-			break
-		}
-	}
-
-	if !hasMatchingRule {
-		return nil // Skip vmusers that don't have this rule
-	}
-
-	// Prepare new target references list
-	newTargetRefs := make([]vmv1beta1.TargetRef, 0)
-	if status {
-		newTargetRefs = append(newTargetRefs, freshVMUserObj.Spec.TargetRefs...)
-		// Only add if not already present
-		alreadyExists := false
-		for _, ref := range newTargetRefs {
-			if reflect.DeepEqual(ref.CRD, found.CRD) && ref.TargetPathSuffix == found.TargetPathSuffix {
-				alreadyExists = true
-				break
-			}
-		}
-		if !alreadyExists {
-			newTargetRefs = append(newTargetRefs, *found)
-		}
-	} else {
-		for _, targetRef := range freshVMUserObj.Spec.TargetRefs {
-			if reflect.DeepEqual(targetRef.CRD, found.CRD) && targetRef.TargetPathSuffix == found.TargetPathSuffix {
-				continue
-			}
-			newTargetRefs = append(newTargetRefs, targetRef)
-		}
-	}
-
-	// Update vmuser with new target references
-	freshVMUserObj.Spec.TargetRefs = newTargetRefs
-	// Deep copy the object before updating to ensure fake.Client correctly persists slice changes.
-	updatedObj := freshVMUserObj.DeepCopy()
-	if err := rclient.Update(ctx, updatedObj); err != nil {
-		return fmt.Errorf("failed to update vmuser %s: %w", updatedObj.Name, err)
 	}
 
 	return nil

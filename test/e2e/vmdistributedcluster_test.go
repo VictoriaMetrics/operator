@@ -545,19 +545,12 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 
-			// 	// Start upgrade by changing ClusterVersion
-			Eventually(func() error {
-				var obj vmv1alpha1.VMDistributedCluster
-				if err := k8sClient.Get(ctx, namespacedName, &obj); err != nil {
-					return err
-				}
-				// Apply spec update
-				obj.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
-					Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
-				}
-				return k8sClient.Update(ctx, &obj)
-			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
-
+			// Apply spec update
+			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
+			cr.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
+				Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
+			}
+			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
 			// Wait for VMDistributedCluster to become operational after its own upgrade
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
@@ -816,7 +809,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						{
 							Name: "inline-cluster-1",
 							Spec: &vmv1beta1.VMClusterSpec{
-								ClusterVersion: "v1.126.0-cluster",
+								ClusterVersion: "v1.125.0-cluster",
 								VMStorage: &vmv1beta1.VMStorage{
 									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 										ReplicaCount: ptr.To[int32](1),
@@ -830,7 +823,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 								ClusterVersion: "v1.126.0-cluster",
 								VMStorage: &vmv1beta1.VMStorage{
 									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
+										ReplicaCount: ptr.To[int32](2),
 									},
 								},
 							},
@@ -865,6 +858,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 			}
 			Expect(k8sClient.Update(ctx, &vmUser)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmUser)).To(Succeed())
+			})
 
 			By("waiting for VMDistributedCluster to become operational")
 			Eventually(func() error {
@@ -873,16 +869,24 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			By("verifying that the inline VMClusters are created and operational")
 			var vmCluster1 vmv1beta1.VMCluster
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "inline-cluster-1", Namespace: namespace}, &vmCluster1)).To(Succeed())
+			namespacedName := types.NamespacedName{Name: "inline-cluster-1", Namespace: namespace}
+			Expect(k8sClient.Get(ctx, namespacedName, &vmCluster1)).To(Succeed())
 			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmCluster1, types.NamespacedName{Name: "inline-cluster-1", Namespace: namespace})
+				return expectObjectStatusOperational(ctx, k8sClient, &vmCluster1, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+			Expect(vmCluster1.Spec.ClusterVersion).To(Equal("v1.125.0-cluster"))
+			actualReplicaCount := *vmCluster1.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+			Expect(actualReplicaCount).To(Equal(int32(1)))
 
 			var vmCluster2 vmv1beta1.VMCluster
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "inline-cluster-2", Namespace: namespace}, &vmCluster2)).To(Succeed())
+			namespacedName = types.NamespacedName{Name: "inline-cluster-2", Namespace: namespace}
+			Expect(k8sClient.Get(ctx, namespacedName, &vmCluster2)).To(Succeed())
 			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmCluster2, types.NamespacedName{Name: "inline-cluster-2", Namespace: namespace})
+				return expectObjectStatusOperational(ctx, k8sClient, &vmCluster2, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+			Expect(vmCluster2.Spec.ClusterVersion).To(Equal("v1.126.0-cluster"))
+			actualReplicaCount = *vmCluster2.Spec.VMStorage.CommonApplicationDeploymentParams.ReplicaCount
+			Expect(actualReplicaCount).To(Equal(int32(2)))
 
 			DeferCleanup(func() {
 				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmCluster1)).To(Succeed())

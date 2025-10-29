@@ -113,6 +113,10 @@ type customErrorClient struct {
 	customError error
 }
 
+func (tc *customErrorClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	return tc.customError
+}
+
 func (tc *customErrorClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	return tc.customError
 }
@@ -451,12 +455,11 @@ func TestFetchVMClusters(t *testing.T) {
 			{Name: "inline-cluster-2", Spec: &vmcluster2.Spec},
 		}
 
-		fetchedClusters, err := fetchVMClusters(ctx, rclient, crName, namespace, zones)
+		fetchedClusters, err := fetchVMClusters(ctx, rclient, namespace, zones)
 		assert.NoError(t, err)
 		assert.Len(t, fetchedClusters, 2)
 		assert.Equal(t, vmcluster1.Name, fetchedClusters[0].Name)
-		// Inline cluster gets CR name prefix, and it's an in-memory object, not created in fake client yet.
-		assert.Equal(t, fmt.Sprintf("%s-%d", crName, 1), fetchedClusters[1].Name)
+		assert.Equal(t, vmcluster2.Name, fetchedClusters[1].Name)
 		assert.Equal(t, vmcluster2.Spec, fetchedClusters[1].Spec)
 
 		// Verify inline cluster was NOT actually created in the fake client
@@ -469,7 +472,7 @@ func TestFetchVMClusters(t *testing.T) {
 		zones := []vmv1alpha1.VMClusterRefOrSpec{
 			{Ref: &corev1.LocalObjectReference{Name: "non-existent-cluster"}},
 		}
-		_, err := fetchVMClusters(ctx, rclient, crName, namespace, zones)
+		_, err := fetchVMClusters(ctx, rclient, namespace, zones)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "vmclusters.operator.victoriametrics.com \"non-existent-cluster\" not found")
 	})
@@ -478,7 +481,7 @@ func TestFetchVMClusters(t *testing.T) {
 		zones := []vmv1alpha1.VMClusterRefOrSpec{
 			{Spec: &vmv1beta1.VMClusterSpec{}}, // Missing name for inline spec is caught by validateVMClusterRefOrSpec
 		}
-		_, err := fetchVMClusters(ctx, rclient, crName, namespace, zones)
+		_, err := fetchVMClusters(ctx, rclient, namespace, zones)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Name must be set when Spec is provided")
 	})
@@ -866,6 +869,7 @@ func TestReconcileInlineVMCluster(t *testing.T) {
 			namespace: "default",
 			index:     0,
 			refOrSpec: vmv1alpha1.VMClusterRefOrSpec{
+				Name: "test-dc-0",
 				Spec: &vmv1beta1.VMClusterSpec{
 					VMStorage: &vmv1beta1.VMStorage{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
@@ -928,6 +932,7 @@ func TestReconcileInlineVMCluster(t *testing.T) {
 			namespace: "default",
 			index:     0,
 			refOrSpec: vmv1alpha1.VMClusterRefOrSpec{
+				Name: "test-dc-0",
 				Spec: &vmv1beta1.VMClusterSpec{
 					VMStorage: &vmv1beta1.VMStorage{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
@@ -1007,6 +1012,7 @@ func TestReconcileInlineVMCluster(t *testing.T) {
 			namespace: "default",
 			index:     0,
 			refOrSpec: vmv1alpha1.VMClusterRefOrSpec{
+				Name: "test-dc-0",
 				Spec: &vmv1beta1.VMClusterSpec{
 					VMStorage: &vmv1beta1.VMStorage{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
@@ -1081,60 +1087,77 @@ func TestReconcileInlineVMCluster(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			var rclient client.Client
-			var trClient *trackingClient
-			if tc.rClient != nil {
-				// Use the custom client provided in the test case
-				rclient = tc.rClient
-			} else {
-				// Use fake client for tracking, initialized with initial objects
-				fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(tc.initialObjects...).Build()
-				trClient = &trackingClient{
-					Client:  fakeClient,
-					objects: make(map[client.ObjectKey]client.Object),
-				}
-				// Populate trackingClient's internal objects map with initial objects for Get calls
-				for _, obj := range tc.initialObjects {
-					trClient.objects[client.ObjectKeyFromObject(obj)] = obj.DeepCopyObject().(client.Object)
-				}
-				rclient = trClient
-			}
-
-			ctx := context.Background()
-			result, err := reconcileInlineVMCluster(ctx, rclient, tc.crName, tc.namespace, tc.index, tc.refOrSpec)
-
-			if tc.expectedErrSubstring != "" {
-				if err == nil || !strings.Contains(err.Error(), tc.expectedErrSubstring) {
-					t.Fatalf("Expected error containing \"%s\", but got: %v", tc.expectedErrSubstring, err)
-				}
-				// For error cases, result should be nil.
-				if result != nil {
-					t.Fatalf("Expected nil VMCluster on error, but got: %+v", result)
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("Did not expect an error, but got: %v", err)
-				}
-				if result == nil {
-					t.Fatal("Expected a VMCluster, but got nil")
-				}
-				// Compare returned VMCluster with expected.
-				// For comparison, ensure metadata that is set by K8s (like GVK, resourceVersion etc.)
-				// is either ignored or matched correctly. Only Spec and basic ObjectMeta are compared here.
-				if result.Name != tc.expectedVMCluster.Name || result.Namespace != tc.expectedVMCluster.Namespace {
-					t.Errorf("Expected VMCluster namespace/name %s/%s, but got %s/%s", tc.expectedVMCluster.Namespace, tc.expectedVMCluster.Name, result.Namespace, result.Name)
-				}
-				if !reflect.DeepEqual(result.Spec, tc.expectedVMCluster.Spec) {
-					t.Errorf("Expected VMCluster spec %+v, but got %+v", tc.expectedVMCluster.Spec, result.Spec)
-				}
-			}
-
-			if trClient != nil {
-				// Verify actions for trackingClient
-				compareExpectedActions(t, trClient.Actions, tc.expectedActions)
-			}
+			t.Parallel()
+			testReconcileInlineVMClusterFn(t, scheme, tc)
 		})
+	}
+}
+
+func testReconcileInlineVMClusterFn(t *testing.T, scheme *runtime.Scheme, tc struct {
+	name                 string
+	crName               string
+	namespace            string
+	index                int
+	refOrSpec            vmv1alpha1.VMClusterRefOrSpec
+	initialObjects       []client.Object
+	rClient              client.Client
+	expectedVMCluster    *vmv1beta1.VMCluster
+	expectedActions      []action
+	expectedErrSubstring string
+}) {
+	var rclient client.Client
+	var trClient *trackingClient
+	if tc.rClient != nil {
+		// Use the custom client provided in the test case
+		rclient = tc.rClient
+	} else {
+		// Use fake client for tracking, initialized with initial objects
+		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(tc.initialObjects...).Build()
+		trClient = &trackingClient{
+			Client:  fakeClient,
+			objects: make(map[client.ObjectKey]client.Object),
+		}
+		// Populate trackingClient's internal objects map with initial objects for Get calls
+		for _, obj := range tc.initialObjects {
+			trClient.objects[client.ObjectKeyFromObject(obj)] = obj.DeepCopyObject().(client.Object)
+		}
+		rclient = trClient
+	}
+
+	ctx := context.Background()
+	result, err := reconcileInlineVMCluster(ctx, rclient, *&tc.refOrSpec.Name, tc.namespace, tc.index, *tc.refOrSpec.Spec)
+
+	if tc.expectedErrSubstring != "" {
+		if err == nil || !strings.Contains(err.Error(), tc.expectedErrSubstring) {
+			t.Fatalf("Expected error containing \"%s\", but got: %v", tc.expectedErrSubstring, err)
+		}
+		// For error cases, result should be nil.
+		if result != nil {
+			t.Fatalf("Expected nil VMCluster on error, but got: %+v", result)
+		}
+	} else {
+		if err != nil {
+			t.Fatalf("Did not expect an error, but got: %v", err)
+		}
+		if result == nil {
+			t.Fatal("Expected a VMCluster, but got nil")
+		}
+		// Compare returned VMCluster with expected.
+		// For comparison, ensure metadata that is set by K8s (like GVK, resourceVersion etc.)
+		// is either ignored or matched correctly. Only Spec and basic ObjectMeta are compared here.
+		if result.Name != tc.expectedVMCluster.Name || result.Namespace != tc.expectedVMCluster.Namespace {
+			t.Errorf("Expected VMCluster namespace/name %s/%s, but got %s/%s", tc.expectedVMCluster.Namespace, tc.expectedVMCluster.Name, result.Namespace, result.Name)
+		}
+		if !reflect.DeepEqual(result.Spec, tc.expectedVMCluster.Spec) {
+			t.Errorf("Expected VMCluster spec %+v, but got %+v", tc.expectedVMCluster.Spec, result.Spec)
+		}
+	}
+
+	if trClient != nil {
+		// Verify actions for trackingClient
+		compareExpectedActions(t, trClient.Actions, tc.expectedActions)
 	}
 }
 

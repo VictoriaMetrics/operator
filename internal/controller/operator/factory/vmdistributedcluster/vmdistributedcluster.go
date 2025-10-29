@@ -419,55 +419,71 @@ func setVMClusterStatusInVMUsers(ctx context.Context, rclient client.Client, cr 
 
 	// Update all vmusers with the matching rule
 	for _, vmUserObj := range vmUserObjs {
-		// Fetch fresh copy of vmuser
-		freshVMUserObj := &vmv1beta1.VMUser{}
-		if err := rclient.Get(ctx, types.NamespacedName{Name: vmUserObj.Name, Namespace: vmUserObj.Namespace}, freshVMUserObj); err != nil {
-			return fmt.Errorf("failed to fetch vmuser %s: %w", vmUserObj.Name, err)
+		if err := updateVMUserTargetRefs(ctx, rclient, vmUserObj, found, status); err != nil {
+			return err
 		}
+	}
 
-		// Check if this vmuser has the matching rule
-		hasMatchingRule := false
+	return nil
+}
+
+// updateVMUserTargetRefs updates a single VMUser's TargetRefs based on the provided VMCluster rule and status.
+func updateVMUserTargetRefs(ctx context.Context, rclient client.Client, vmUserObj *vmv1beta1.VMUser, found *vmv1beta1.TargetRef, status bool) error {
+	// Fetch fresh copy of vmuser
+	freshVMUserObj := &vmv1beta1.VMUser{}
+	if err := rclient.Get(ctx, types.NamespacedName{Name: vmUserObj.Name, Namespace: vmUserObj.Namespace}, freshVMUserObj); err != nil {
+		return fmt.Errorf("failed to fetch vmuser %s: %w", vmUserObj.Name, err)
+	}
+
+	var newTargetRefs []vmv1beta1.TargetRef
+	needsUpdate := false
+
+	if status { // true: add the targetRef if not already present
+		alreadyPresent := false
 		for _, ref := range freshVMUserObj.Spec.TargetRefs {
 			if reflect.DeepEqual(ref.CRD, found.CRD) && ref.TargetPathSuffix == found.TargetPathSuffix {
-				hasMatchingRule = true
+				alreadyPresent = true
 				break
 			}
 		}
-
-		if !hasMatchingRule {
-			continue // Skip vmusers that don't have this rule
-		}
-
-		// Prepare new target references list
-		newTargetRefs := make([]vmv1beta1.TargetRef, 0)
-		if status {
-			newTargetRefs = append(newTargetRefs, freshVMUserObj.Spec.TargetRefs...)
-			// Only add if not already present
-			alreadyExists := false
-			for _, ref := range newTargetRefs {
-				if reflect.DeepEqual(ref.CRD, found.CRD) && ref.TargetPathSuffix == found.TargetPathSuffix {
-					alreadyExists = true
-					break
-				}
-			}
-			if !alreadyExists {
-				foundCopy := found.DeepCopy()
-				newTargetRefs = append(newTargetRefs, *foundCopy)
-			}
+		if !alreadyPresent {
+			newTargetRefs = append(freshVMUserObj.Spec.TargetRefs, *found.DeepCopy())
+			needsUpdate = true
 		} else {
-			for i, targetRef := range freshVMUserObj.Spec.TargetRefs {
-				if reflect.DeepEqual(targetRef.CRD, found.CRD) && targetRef.TargetPathSuffix == found.TargetPathSuffix {
-					continue
-				}
-				newTargetRefs = append(newTargetRefs, freshVMUserObj.Spec.TargetRefs[i])
+			// If already present, no update needed
+			newTargetRefs = freshVMUserObj.Spec.TargetRefs
+		}
+	} else { // false: remove the targetRef if present
+		newTargetRefs = make([]vmv1beta1.TargetRef, 0)
+		removed := false
+		for _, ref := range freshVMUserObj.Spec.TargetRefs {
+			if reflect.DeepEqual(ref.CRD, found.CRD) && ref.TargetPathSuffix == found.TargetPathSuffix {
+				removed = true
+				continue
 			}
+			newTargetRefs = append(newTargetRefs, ref)
 		}
+		if removed {
+			needsUpdate = true
+		} else {
+			// If not present, no update needed
+			newTargetRefs = freshVMUserObj.Spec.TargetRefs // Ensure newTargetRefs is assigned current refs if no removal
+		}
+	}
 
-		// Update vmuser with new target references
-		freshVMUserObj.Spec.TargetRefs = newTargetRefs
-		if err := rclient.Update(ctx, freshVMUserObj); err != nil {
-			return fmt.Errorf("failed to update vmuser %s: %w", freshVMUserObj.Name, err)
-		}
+	if !needsUpdate {
+		return nil
+	}
+
+	// Only update if the new list of target refs is actually different from the old one
+	// This helps prevent unnecessary updates if the needsUpdate logic had a nuance.
+	if reflect.DeepEqual(freshVMUserObj.Spec.TargetRefs, newTargetRefs) {
+		return nil
+	}
+
+	freshVMUserObj.Spec.TargetRefs = newTargetRefs
+	if err := rclient.Update(ctx, freshVMUserObj); err != nil {
+		return fmt.Errorf("failed to update vmuser %s: %w", freshVMUserObj.Name, err)
 	}
 
 	return nil

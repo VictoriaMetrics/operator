@@ -738,6 +738,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, types.NamespacedName{Name: vmagent.Name, Namespace: vmagent.Namespace})
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 			}
+			DeferCleanup(func() {
+				for _, vmagent := range vmAgents {
+					Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmagent)).To(Succeed())
+				}
+			})
 
 			namespacedName.Name = "distributed-agent-upgrade"
 			cr := &vmv1alpha1.VMDistributedCluster{

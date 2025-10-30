@@ -48,7 +48,10 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts 
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newSts.Namespace, Name: newSts.Name}, &stsForStatus); err != nil {
 			return false, err
 		}
-		if stsForStatus.Generation > stsForStatus.Status.ObservedGeneration {
+		if stsForStatus.Generation > stsForStatus.Status.ObservedGeneration ||
+			// special case to prevent possible race condition between updated object and local cache
+			// See this issue https://github.com/VictoriaMetrics/operator/issues/1579
+			newSts.Generation > stsForStatus.Generation {
 			return false, nil
 		}
 		if *newSts.Spec.Replicas != stsForStatus.Status.ReadyReplicas || *newSts.Spec.Replicas != stsForStatus.Status.UpdatedReplicas {

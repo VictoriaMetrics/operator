@@ -102,7 +102,10 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 		// (https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment)
 		// this function uses the deployment readiness detection algorithm from `kubectl rollout status` command
 		// (https://github.com/kubernetes/kubectl/blob/6e4fe32a45fdcbf61e5c30ebdc511d75e7242432/pkg/polymorphichelpers/rollout_status.go#L76)
-		if actualDeploy.Generation > actualDeploy.Status.ObservedGeneration {
+		if actualDeploy.Generation > actualDeploy.Status.ObservedGeneration ||
+			// special case to prevent possible race condition between updated object and local cache
+			// See this issue https://github.com/VictoriaMetrics/operator/issues/1579
+			dep.Generation > actualDeploy.Generation {
 			// Waiting for deployment spec update to be observed by controller...
 			return false, nil
 		}

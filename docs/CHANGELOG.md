@@ -17,6 +17,7 @@ aliases:
 
 **Release date:** 30 October 2025
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly check `StatefulSet` ready status for `rollingUpdateStrategy: RollingUpdate`. See this issue [#1579](https://github.com/VictoriaMetrics/operator/issues/1579) for details.
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): fix `-storageNode` argument generation for vlinsert. Bug was introduced in [ff722eb](https://github.com/VictoriaMetrics/operator/commit/ff722eb3ba4e72765548b4353b5f370b42d143f7).
 
 ## [v0.64.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.64.0)

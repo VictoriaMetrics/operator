@@ -12,7 +12,7 @@ aliases:
 ---
 
 ## tip
-
+* FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): added HPA  support with `spec.hpa` field for the VMAuth. See this issue [#1573](https://github.com/VictoriaMetrics/operator/issues/1573) for details.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly set default `useVMConfigReloader` value. See [#1589](https://github.com/VictoriaMetrics/operator/issues/1589).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly check `StatefulSet` ready status for `rollingUpdateStrategy: RollingUpdate`. See this issue [#1579](https://github.com/VictoriaMetrics/operator/issues/1579) for details.
 

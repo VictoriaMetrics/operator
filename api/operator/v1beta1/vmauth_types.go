@@ -554,16 +554,13 @@ func (*VMAuth) ProbeNeedLiveness() bool {
 	return true
 }
 
-var globalVLClusterLabels = map[string]string{"app.kubernetes.io/part-of": "vmauth"}
-
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr *VMAuth) FinalLabels(selectorLabels map[string]string) map[string]string {
-	baseLabels := labels.Merge(globalVLClusterLabels, selectorLabels)
 	if cr.Spec.ManagedMetadata == nil {
 		// fast path
-		return baseLabels
+		return selectorLabels
 	}
-	return labels.Merge(cr.Spec.ManagedMetadata.Labels, baseLabels)
+	return labels.Merge(cr.Spec.ManagedMetadata.Labels, selectorLabels)
 }
 
 // +kubebuilder:object:root=true

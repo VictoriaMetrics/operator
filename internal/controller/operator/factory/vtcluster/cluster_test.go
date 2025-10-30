@@ -161,17 +161,17 @@ func TestCreateOrUpdate(t *testing.T) {
 			Spec: vmv1.VTClusterSpec{
 				Insert: &vmv1.VTInsert{
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To(int32(1)),
+						ReplicaCount: ptr.To(int32(2)),
 					},
 				},
 				Storage: &vmv1.VTStorage{
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To(int32(1)),
+						ReplicaCount: ptr.To(int32(2)),
 					},
 				},
 				Select: &vmv1.VTSelect{
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To(int32(1)),
+						ReplicaCount: ptr.To(int32(2)),
 					},
 				},
 			},
@@ -188,7 +188,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVTInsertName(), Namespace: cr.Namespace}, &dep))
 			assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 			cnt := dep.Spec.Template.Spec.Containers[0]
-			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:10481", "-internalselect.disable=true", "-storageNode=vtstorage-base-0.vtstorage-base.default:10491"})
+			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:10481", "-internalselect.disable=true", "-storageNode=vtstorage-base-0.vtstorage-base.default:10491,vtstorage-base-1.vtstorage-base.default:10491"})
 			assert.Nil(t, dep.Annotations)
 			assert.Equal(t, dep.Labels, cr.FinalLabels(cr.VTInsertSelectorLabels()))
 
@@ -196,7 +196,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVTSelectName(), Namespace: cr.Namespace}, &dep))
 			assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 			cnt = dep.Spec.Template.Spec.Containers[0]
-			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:10471", "-internalinsert.disable=true", "-storageNode=vtstorage-base-0.vtstorage-base.default:10491"})
+			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:10471", "-internalinsert.disable=true", "-storageNode=vtstorage-base-0.vtstorage-base.default:10491,vtstorage-base-1.vtstorage-base.default:10491"})
 			assert.Nil(t, dep.Annotations)
 			assert.Equal(t, dep.Labels, cr.FinalLabels(cr.VTSelectSelectorLabels()))
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path"
 	"sort"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -138,13 +137,14 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	if cr.Spec.VLStorage != nil && cr.Spec.VLStorage.ReplicaCount != nil {
-		storageArg := "-storageNode="
-		for _, i := range cr.AvailableStorageNodeIDs("insert") {
+		storageNodeFlag := build.NewFlag("-storageNode", "")
+		storageNodeIds := cr.AvailableStorageNodeIDs("insert")
+		for idx, i := range storageNodeIds {
 			// TODO: introduce TLS webserver config for storage nodes
-			storageArg += build.PodDNSAddress(cr.GetVLStorageName(), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName)
+			storageNodeFlag.Add(build.PodDNSAddress(cr.GetVLStorageName(), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
 		}
-		storageArg = strings.TrimSuffix(storageArg, ",")
-		args = append(args, storageArg)
+		totalNodes := len(storageNodeIds)
+		args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 	}
 	if len(cr.Spec.VLInsert.ExtraEnvs) > 0 || len(cr.Spec.VLInsert.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")

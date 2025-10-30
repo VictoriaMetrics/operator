@@ -155,17 +155,17 @@ func TestCreateOrUpdate(t *testing.T) {
 		Spec: vmv1.VLClusterSpec{
 			VLInsert: &vmv1.VLInsert{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(1)),
+					ReplicaCount: ptr.To(int32(2)),
 				},
 			},
 			VLStorage: &vmv1.VLStorage{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(1)),
+					ReplicaCount: ptr.To(int32(2)),
 				},
 			},
 			VLSelect: &vmv1.VLSelect{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(1)),
+					ReplicaCount: ptr.To(int32(2)),
 				},
 			},
 		},
@@ -182,7 +182,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLInsertName(), Namespace: cr.Namespace}, &dep))
 		assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 		cnt := dep.Spec.Template.Spec.Containers[0]
-		assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9481", "-internalselect.disable=true", "-storageNode=vlstorage-base-0.vlstorage-base.default:9491"})
+		assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9481", "-internalselect.disable=true", "-storageNode=vlstorage-base-0.vlstorage-base.default:9491,vlstorage-base-1.vlstorage-base.default:9491"})
 		assert.Nil(t, dep.Annotations)
 		assert.Equal(t, dep.Labels, cr.FinalLabels(cr.VLInsertSelectorLabels()))
 
@@ -190,7 +190,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLSelectName(), Namespace: cr.Namespace}, &dep))
 		assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 		cnt = dep.Spec.Template.Spec.Containers[0]
-		assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9471", "-internalinsert.disable=true", "-storageNode=vlstorage-base-0.vlstorage-base.default:9491"})
+		assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9471", "-internalinsert.disable=true", "-storageNode=vlstorage-base-0.vlstorage-base.default:9491,vlstorage-base-1.vlstorage-base.default:9491"})
 		assert.Nil(t, dep.Annotations)
 		assert.Equal(t, dep.Labels, cr.FinalLabels(cr.VLSelectSelectorLabels()))
 

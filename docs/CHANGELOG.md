@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+## [v0.65.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.65.0)
+
+**Release date:** 31 October 2025
+
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): added HPA  support with `spec.hpa` field for the VMAuth. See this issue [#1573](https://github.com/VictoriaMetrics/operator/issues/1573) for details. Thanks to the @endesapt
 * FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): support `ServiceMonitor's` [ServiceDiscoveryRole](https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api-reference/api.md#monitoring.coreos.com/v1.ServiceDiscoveryRole).
 
@@ -30,7 +34,7 @@ aliases:
 
 **Release date:** 29 October 2025
 
-**It isn't recommended to use Operator  v0.64.0 because of the bug [#1583](https://github.com/VictoriaMetrics/operator/issues/1583), which incorrectly builds args for `VLCluster` resources. Upgrade to [v0.64.1](https://docs.victoriametrics.com/operator/changelog/#v0641) instead.**
+**It isn't recommended to use Operator  v0.64.0 because of the bug [#1583](https://github.com/VictoriaMetrics/operator/issues/1583), which incorrectly builds args for `VLCluster` resources. Upgrade to [v0.65.0](https://docs.victoriametrics.com/operator/changelog/#v0641) instead.**
 
 **Update Note 1:** This release deprecates 3rd party config-reloader containers - `jimmidyson/configmap-reload` and `quay.io/prometheus-operator/prometheus-config-reloader` in favor of own implementation - 
 [victoriametrics/operator:config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader).

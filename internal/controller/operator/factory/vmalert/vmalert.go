@@ -34,7 +34,9 @@ const (
 	tlsAssetsDir            = "/etc/vmalert-tls/certs"
 )
 
-var defaultConfig = config.MustGetBaseConfig()
+func getCfg() *config.BaseOperatorConf {
+	return config.MustGetBaseConfig()
+}
 
 // createOrUpdateService creates service for vmalert
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) (*corev1.Service, error) {
@@ -657,7 +659,7 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, extraWatchVolumeMounts []corev1.VolumeMount) corev1.Container {
 	volumeWatchArg := "-volume-dir"
 	reloadURLArg := "-webhook-url"
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, defaultConfig.UseVMConfigReloader)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
 	if useVMConfigReloader {
 		volumeWatchArg = "--watched-dir"
 		reloadURLArg = "--reload-url"

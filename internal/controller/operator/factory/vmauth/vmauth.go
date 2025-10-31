@@ -40,7 +40,9 @@ const (
 	internalPortName      = "internal"
 )
 
-var defaultConfig = config.MustGetBaseConfig()
+func getCfg() *config.BaseOperatorConf {
+	return config.MustGetBaseConfig()
+}
 
 // CreateOrUpdate - handles VMAuth deployment reconciliation.
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
@@ -58,7 +60,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if ptr.Deref(cr.Spec.UseVMConfigReloader, defaultConfig.UseVMConfigReloader) {
+		if ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader) {
 			if err := createVMAuthSecretAccess(ctx, rclient, cr, prevCR); err != nil {
 				return err
 			}
@@ -191,7 +193,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, defaultConfig.UseVMConfigReloader)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
 
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -534,7 +536,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, defaultConfig.UseVMConfigReloader)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
 	if useVMConfigReloader {
 		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
 		if len(cr.Spec.InternalListenPort) == 0 && useProxyProtocol(cr) {

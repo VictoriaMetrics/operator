@@ -13,18 +13,20 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly set default `useVMConfigReloader` value. See [#1589](https://github.com/VictoriaMetrics/operator/issues/1589).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly check `StatefulSet` ready status for `rollingUpdateStrategy: RollingUpdate`. See this issue [#1579](https://github.com/VictoriaMetrics/operator/issues/1579) for details.
+
 ## [v0.64.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.64.1)
 
 **Release date:** 30 October 2025
 
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly check `StatefulSet` ready status for `rollingUpdateStrategy: RollingUpdate`. See this issue [#1579](https://github.com/VictoriaMetrics/operator/issues/1579) for details.
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): fix `-storageNode` argument generation for vlinsert. Bug was introduced in [ff722eb](https://github.com/VictoriaMetrics/operator/commit/ff722eb3ba4e72765548b4353b5f370b42d143f7).
 
 ## [v0.64.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.64.0)
 
 **Release date:** 29 October 2025
 
-**It isn't recommended to use Operator  v0.64.1 because of the bug [#1583](https://github.com/VictoriaMetrics/operator/issues/1583), which incorrectly builds args for `VLCluster` resources. Upgrade to [v0.64.1](https://docs.victoriametrics.com/operator/changelog/#v0641) instead.**
+**It isn't recommended to use Operator  v0.64.0 because of the bug [#1583](https://github.com/VictoriaMetrics/operator/issues/1583), which incorrectly builds args for `VLCluster` resources. Upgrade to [v0.64.1](https://docs.victoriametrics.com/operator/changelog/#v0641) instead.**
 
 **Update Note 1:** This release deprecates 3rd party config-reloader containers - `jimmidyson/configmap-reload` and `quay.io/prometheus-operator/prometheus-config-reloader` in favor of own implementation - 
 [victoriametrics/operator:config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader).

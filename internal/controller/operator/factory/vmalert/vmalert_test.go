@@ -853,6 +853,11 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 			Namespace: "default",
 			Name:      "base",
 		},
+		Spec: vmv1beta1.VMAlertSpec{
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				UseVMConfigReloader: ptr.To(false),
+			},
+		},
 	}
 	cmNames := []string{"cm-0", "cm-1"}
 	expected := corev1.Container{

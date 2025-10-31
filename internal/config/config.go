@@ -109,10 +109,10 @@ type BaseOperatorConf struct {
 
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
-	UseCustomConfigReloader bool `default:"true" env:"USECUSTOMCONFIGRELOADER"`
+	UseVMConfigReloader bool `default:"true" env:"USECUSTOMCONFIGRELOADER"`
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry                string `default:"" env:"CONTAINERREGISTRY"`
-	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.62.0" env:"CUSTOMCONFIGRELOADERIMAGE"`
+	VMConfigReloaderImage            string `default:"victoriametrics/operator:config-reloader-v0.62.0" env:"CUSTOMCONFIGRELOADERIMAGE"`
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false" env:"PSPAUTOCREATEENABLED"`
 
@@ -581,15 +581,15 @@ func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
 	return boc.ForceResyncInterval + time.Duration(p*float64(dv))
 }
 
-// CustomConfigReloaderImageVersion returns version of custom config-reloader
-func (boc *BaseOperatorConf) CustomConfigReloaderImageVersion() *version.Version {
+// VMConfigReloaderImageVersion returns version of custom config-reloader
+func (boc *BaseOperatorConf) VMConfigReloaderImageVersion() *version.Version {
 	return boc.parsedConfigReloaderImageVersion
 }
 
-// parseAndSetCustomConfigReloadImageVersion parses custom config reloader image version and returns result
+// parseAndSetVMConfigReloadImageVersion parses custom config reloader image version and returns result
 // in case of parsing error (if tag was incorrectly set by user), returns empty version 0.0
-func parseAndSetCustomConfigReloadImageVersion(boc *BaseOperatorConf) error {
-	reloaderImage := boc.CustomConfigReloaderImage
+func parseAndSetVMConfigReloadImageVersion(boc *BaseOperatorConf) error {
+	reloaderImage := boc.VMConfigReloaderImage
 	idx := strings.LastIndex(reloaderImage, ":")
 	if idx > 0 {
 		imageVersion := reloaderImage[idx+1:]
@@ -723,7 +723,7 @@ func MustGetBaseConfig() *BaseOperatorConf {
 		if err := c.Validate(); err != nil {
 			panic(err)
 		}
-		if err := parseAndSetCustomConfigReloadImageVersion(&c); err != nil {
+		if err := parseAndSetVMConfigReloadImageVersion(&c); err != nil {
 			panic(err)
 		}
 		opConf = &c
@@ -877,7 +877,7 @@ func ConfigAsMetrics(r metrics.RegistererGatherer, cfg *BaseOperatorConf) {
 	strTagAsMetric("ClusterDomainName", cfgRootElems, cfg.ClusterDomainName)
 
 	boolTagAsMetric("EnableStrictSecurity", cfgRootElems, cfg.EnableStrictSecurity)
-	boolTagAsMetric("UseCustomConfigReloader", cfgRootElems, cfg.UseCustomConfigReloader)
+	boolTagAsMetric("UseVMConfigReloader", cfgRootElems, cfg.UseVMConfigReloader)
 
 	boolTagAsMetric("EnabledPrometheusConverterOwnerReferences", cfgRootElems, cfg.EnabledPrometheusConverterOwnerReferences)
 	cfgPromElems := reflect.TypeOf(&cfg.EnabledPrometheusConverter).Elem()
@@ -896,7 +896,7 @@ func ConfigAsMetrics(r metrics.RegistererGatherer, cfg *BaseOperatorConf) {
 	strTagAsMetric("AnomalyVersion", cfgRootElems, cfg.AnomalyVersion)
 	strTagAsMetric("LogsVersion", cfgRootElems, cfg.LogsVersion)
 	strTagAsMetric("MetricsVersion", cfgRootElems, cfg.MetricsVersion)
-	strTagAsMetric("CustomConfigReloaderImage", cfgRootElems, cfg.CustomConfigReloaderImage)
+	strTagAsMetric("VMConfigReloaderImage", cfgRootElems, cfg.VMConfigReloaderImage)
 
 	r.MustRegister(metric)
 }

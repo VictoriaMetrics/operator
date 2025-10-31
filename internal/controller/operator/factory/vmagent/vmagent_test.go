@@ -2175,6 +2175,9 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				},
 				Spec: vmv1beta1.VMAgentSpec{
 					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
+					CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+						UseVMConfigReloader: ptr.To(false),
+					},
 				},
 			},
 			want: []string{
@@ -2207,6 +2210,9 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
+					CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+						UseVMConfigReloader: ptr.To(false),
+					},
 					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
 					IngestOnlyMode:          false,
 					InlineRelabelConfig:     []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
@@ -2240,6 +2246,9 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMAgentSpec{
+					CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+						UseVMConfigReloader: ptr.To(false),
+					},
 					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ConfigMaps: []string{"cm-0", "cm-1"},

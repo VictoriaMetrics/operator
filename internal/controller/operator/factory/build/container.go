@@ -373,7 +373,7 @@ func AddConfigReloadAuthKeyToReloader(container *corev1.Container, spec *vmv1bet
 	if spec.ConfigReloadAuthKeySecret == nil {
 		return
 	}
-	useVMConfigReloader := ptr.Deref(spec.UseVMConfigReloader, false)
+	useVMConfigReloader := ptr.Deref(spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
 	if !useVMConfigReloader {
 		return
 	}

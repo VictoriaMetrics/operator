@@ -129,7 +129,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 				c: mutateConf(func(c *config.BaseOperatorConf) {
-					c.UseCustomConfigReloader = true
+					c.UseVMConfigReloader = true
 				}),
 			},
 			predefinedObjects: []runtime.Object{

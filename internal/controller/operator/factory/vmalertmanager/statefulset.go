@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -46,6 +47,8 @@ receivers:
 - name: blackhole
 `
 )
+
+var defaultConfig = config.MustGetBaseConfig()
 
 func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, error) {
 	if cr.Spec.Retention == "" {
@@ -151,7 +154,7 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 
 func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec, error) {
 
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, defaultConfig.UseVMConfigReloader)
 	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
 
 	amArgs := []string{
@@ -597,7 +600,7 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
 }
 
 func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, defaultConfig.UseVMConfigReloader)
 	if !useVMConfigReloader {
 		return nil
 	}
@@ -634,7 +637,7 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
 		localReloadURL.Scheme = "https"
 	}
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, defaultConfig.UseVMConfigReloader)
 
 	var args []string
 	if useVMConfigReloader {

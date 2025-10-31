@@ -134,6 +134,9 @@ type VMAuthSpec struct {
 	// Available from operator v0.64.0
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+	// Configures horizontal pod autoscaling.
+	// +optional
+	HPA *EmbeddedHPA `json:"hpa,omitempty"`
 }
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
@@ -443,6 +446,12 @@ func (cr *VMAuth) Validate() error {
 		}
 	}
 
+	if cr.Spec.HPA != nil {
+		if err := cr.Spec.HPA.Validate(); err != nil {
+			return fmt.Errorf("incorrect cr.spec.hpa syntax: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -543,6 +552,15 @@ func (cr *VMAuth) ProbePort() string {
 
 func (*VMAuth) ProbeNeedLiveness() bool {
 	return true
+}
+
+// FinalLabels adds cluster labels to the base labels and filters by prefix if needed
+func (cr *VMAuth) FinalLabels(selectorLabels map[string]string) map[string]string {
+	if cr.Spec.ManagedMetadata == nil {
+		// fast path
+		return selectorLabels
+	}
+	return labels.Merge(cr.Spec.ManagedMetadata.Labels, selectorLabels)
 }
 
 // +kubebuilder:object:root=true

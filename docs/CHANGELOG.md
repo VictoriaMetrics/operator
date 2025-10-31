@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): added HPA  support with `spec.hpa` field for the VMAuth. See this issue [#1573](https://github.com/VictoriaMetrics/operator/issues/1573) for details. Thanks to the @endesapt
 * FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): support `ServiceMonitor's` [ServiceDiscoveryRole](https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api-reference/api.md#monitoring.coreos.com/v1.ServiceDiscoveryRole).
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly set default `useVMConfigReloader` value. See [#1589](https://github.com/VictoriaMetrics/operator/issues/1589).

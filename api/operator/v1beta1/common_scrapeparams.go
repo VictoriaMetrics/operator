@@ -255,11 +255,11 @@ type EndpointScrapeParams struct {
 	FollowRedirects *bool `json:"follow_redirects,omitempty"`
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
-	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	SampleLimit int `json:"sampleLimit,omitempty"`
 	// SeriesLimit defines per-scrape limit on number of unique time series
 	// a single target can expose during all the scrapes on the time window of 24h.
 	// +optional
-	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
+	SeriesLimit int `json:"seriesLimit,omitempty"`
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`

@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"math"
 	"strings"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -114,6 +115,7 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 			PodTargetLabels: serviceMon.Spec.PodTargetLabels,
 			Selector:        serviceMon.Spec.Selector,
 			Endpoints:       convertEndpoint(serviceMon.Spec.Endpoints),
+			DiscoveryRole:   convertDiscoveryRole(serviceMon.Spec.ServiceDiscoveryRole),
 			NamespaceSelector: vmv1beta1.NamespaceSelector{
 				Any:        serviceMon.Spec.NamespaceSelector.Any,
 				MatchNames: serviceMon.Spec.NamespaceSelector.MatchNames,
@@ -121,8 +123,8 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 			ScrapeClassName: serviceMon.Spec.ScrapeClassName,
 		},
 	}
-	if serviceMon.Spec.SampleLimit != nil {
-		cs.Spec.SampleLimit = *serviceMon.Spec.SampleLimit
+	if serviceMon.Spec.SampleLimit != nil && *serviceMon.Spec.SampleLimit <= uint64(math.MaxInt) {
+		cs.Spec.SampleLimit = int(*serviceMon.Spec.SampleLimit)
 	}
 	if serviceMon.Spec.AttachMetadata != nil {
 		cs.Spec.AttachMetadata = vmv1beta1.AttachMetadata{
@@ -154,6 +156,20 @@ func ReplacePromDirPath(origin string) string {
 		return strings.Replace(origin, prometheusConfigmapDir, vmv1beta1.ConfigMapsDir, 1)
 	}
 	return origin
+}
+
+func convertDiscoveryRole(src *promv1.ServiceDiscoveryRole) string {
+	var role string
+	if src == nil {
+		return role
+	}
+	switch *src {
+	case promv1.EndpointsRole:
+		role = "endpoints"
+	case promv1.EndpointSliceRole:
+		role = "endpointslices"
+	}
+	return role
 }
 
 // ConvertOAuth converts prometheus OAuth config to VM one
@@ -367,7 +383,7 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 			EndpointAuth: vmv1beta1.EndpointAuth{
 				BasicAuth: ConvertBasicAuth(promEndPoint.BasicAuth),
 				//nolint:staticcheck
-				BearerTokenSecret: convertBearerToken(&promEndPoint.BearerTokenSecret),
+				BearerTokenSecret: convertBearerToken(promEndPoint.BearerTokenSecret),
 				TLSConfig:         ConvertSafeTLSConfig(safeTLS),
 				OAuth2:            ConvertOAuth(promEndPoint.OAuth2),
 				Authorization:     ConvertAuthorization(promEndPoint.Authorization, nil),
@@ -400,8 +416,8 @@ func ConvertPodMonitor(podMon *promv1.PodMonitor, conf *config.BaseOperatorConf)
 			ScrapeClassName:     podMon.Spec.ScrapeClassName,
 		},
 	}
-	if podMon.Spec.SampleLimit != nil {
-		cs.Spec.SampleLimit = *podMon.Spec.SampleLimit
+	if podMon.Spec.SampleLimit != nil && *podMon.Spec.SampleLimit <= uint64(math.MaxInt) {
+		cs.Spec.SampleLimit = int(*podMon.Spec.SampleLimit)
 	}
 	if podMon.Spec.AttachMetadata != nil {
 		cs.Spec.AttachMetadata = vmv1beta1.AttachMetadata{
@@ -488,8 +504,8 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 	if probe.Spec.ProberSpec.ProxyURL != nil {
 		cp.Spec.ProxyURL = probe.Spec.ProberSpec.ProxyURL
 	}
-	if probe.Spec.SampleLimit != nil {
-		cp.Spec.SampleLimit = *probe.Spec.SampleLimit
+	if probe.Spec.SampleLimit != nil && *probe.Spec.SampleLimit <= uint64(math.MaxInt) {
+		cp.Spec.SampleLimit = int(*probe.Spec.SampleLimit)
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cp.OwnerReferences = []metav1.OwnerReference{

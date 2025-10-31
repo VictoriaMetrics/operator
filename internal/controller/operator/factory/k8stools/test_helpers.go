@@ -158,6 +158,7 @@ func NewReadyDeployment(name, namespace string) *appsv1.Deployment {
 // TestClientWithStatsTrack helps to track actual requests to the api server
 type TestClientWithStatsTrack struct {
 	origin         client.Client
+	ApplyCalls     atomic.Int64
 	GetCalls       atomic.Int64
 	DeleteCalls    atomic.Int64
 	CreateCalls    atomic.Int64
@@ -165,6 +166,11 @@ type TestClientWithStatsTrack struct {
 	ListCalls      atomic.Int64
 	PatchCalls     atomic.Int64
 	DeleteAllCalls atomic.Int64
+}
+
+func (tcs *TestClientWithStatsTrack) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+	tcs.ApplyCalls.Add(1)
+	return tcs.origin.Apply(ctx, obj, opts...)
 }
 
 func (tcs *TestClientWithStatsTrack) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {

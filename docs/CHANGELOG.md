@@ -13,8 +13,11 @@ aliases:
 
 ## tip
 
+* FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): support `ServiceMonitor's` [ServiceDiscoveryRole](https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api-reference/api.md#monitoring.coreos.com/v1.ServiceDiscoveryRole).
+
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly set default `useVMConfigReloader` value. See [#1589](https://github.com/VictoriaMetrics/operator/issues/1589).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly check `StatefulSet` ready status for `rollingUpdateStrategy: RollingUpdate`. See this issue [#1579](https://github.com/VictoriaMetrics/operator/issues/1579) for details.
+* BUGFIX: [vmpodscrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/), [vmnodescrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape/), [vmservicescrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/), [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/), [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/) and [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): use int type instead of uint64 for scrapes `seriesLimit` and `sampleLimit` parameters.
 
 ## [v0.64.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.64.1)
 

@@ -33,11 +33,11 @@ type VMPodScrapeSpec struct {
 	NamespaceSelector NamespaceSelector `json:"namespaceSelector,omitempty"`
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
-	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	SampleLimit int `json:"sampleLimit,omitempty"`
 	// SeriesLimit defines per-scrape limit on number of unique time series
 	// a single target can expose during all the scrapes on the time window of 24h.
 	// +optional
-	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
+	SeriesLimit int `json:"seriesLimit,omitempty"`
 	// AttachMetadata configures metadata attaching from service discovery
 	// +optional
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`

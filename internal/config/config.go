@@ -581,11 +581,6 @@ func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
 	return boc.ForceResyncInterval + time.Duration(p*float64(dv))
 }
 
-// VMConfigReloaderImageVersion returns version of custom config-reloader
-func (boc *BaseOperatorConf) VMConfigReloaderImageVersion() *version.Version {
-	return boc.parsedConfigReloaderImageVersion
-}
-
 // parseAndSetVMConfigReloadImageVersion parses custom config reloader image version and returns result
 // in case of parsing error (if tag was incorrectly set by user), returns empty version 0.0
 func parseAndSetVMConfigReloadImageVersion(boc *BaseOperatorConf) error {

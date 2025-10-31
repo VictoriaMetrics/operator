@@ -252,11 +252,13 @@ func TestConvertPodEndpoints(t *testing.T) {
 	// with partial tls config
 	o := opts{
 		pe: []promv1.PodMetricsEndpoint{{
-			BearerTokenSecret: corev1.SecretKeySelector{},
-			TLSConfig: &promv1.SafeTLSConfig{
-				CA: promv1.SecretOrConfigMap{
-					ConfigMap: &corev1.ConfigMapKeySelector{
-						Key: "ca",
+			HTTPConfig: promv1.HTTPConfig{
+				BearerTokenSecret: &corev1.SecretKeySelector{},
+				TLSConfig: &promv1.SafeTLSConfig{
+					CA: promv1.SecretOrConfigMap{
+						ConfigMap: &corev1.ConfigMapKeySelector{
+							Key: "ca",
+						},
 					},
 				},
 			},
@@ -278,13 +280,15 @@ func TestConvertPodEndpoints(t *testing.T) {
 	// with tls config
 	o = opts{
 		pe: []promv1.PodMetricsEndpoint{{
-			BearerTokenSecret: corev1.SecretKeySelector{},
-			TLSConfig: &promv1.SafeTLSConfig{
-				InsecureSkipVerify: ptr.To(true),
-				ServerName:         ptr.To("some-srv"),
-				CA: promv1.SecretOrConfigMap{
-					ConfigMap: &corev1.ConfigMapKeySelector{
-						Key: "ca",
+			HTTPConfig: promv1.HTTPConfig{
+				BearerTokenSecret: &corev1.SecretKeySelector{},
+				TLSConfig: &promv1.SafeTLSConfig{
+					InsecureSkipVerify: ptr.To(true),
+					ServerName:         ptr.To("some-srv"),
+					CA: promv1.SecretOrConfigMap{
+						ConfigMap: &corev1.ConfigMapKeySelector{
+							Key: "ca",
+						},
 					},
 				},
 			},
@@ -308,10 +312,12 @@ func TestConvertPodEndpoints(t *testing.T) {
 	// with basic auth and bearer
 	o = opts{
 		pe: []promv1.PodMetricsEndpoint{{
-			BearerTokenSecret: corev1.SecretKeySelector{Key: "bearer"},
-			BasicAuth: &promv1.BasicAuth{
-				Username: corev1.SecretKeySelector{Key: "username"},
-				Password: corev1.SecretKeySelector{Key: "password"},
+			HTTPConfig: promv1.HTTPConfig{
+				BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
+				BasicAuth: &promv1.BasicAuth{
+					Username: corev1.SecretKeySelector{Key: "username"},
+					Password: corev1.SecretKeySelector{Key: "password"},
+				},
 			},
 		}},
 		want: []vmv1beta1.PodMetricsEndpoint{{

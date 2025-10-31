@@ -30301,7 +30301,6 @@ spec:
               sampleLimit:
                 description: SampleLimit defines per-scrape limit on number of scraped
                   samples that will be accepted.
-                format: int64
                 type: integer
               scheme:
                 description: HTTP scheme to use for scraping.
@@ -30372,7 +30371,6 @@ spec:
                 description: |-
                   SeriesLimit defines per-scrape limit on number of unique time series
                   a single target can expose during all the scrapes on the time window of 24h.
-                format: int64
                 type: integer
               targetLabels:
                 description: TargetLabels transfers labels on the Kubernetes Node
@@ -31286,7 +31284,6 @@ spec:
                     sampleLimit:
                       description: SampleLimit defines per-scrape limit on number
                         of scraped samples that will be accepted.
-                      format: int64
                       type: integer
                     scheme:
                       description: HTTP scheme to use for scraping.
@@ -31308,7 +31305,6 @@ spec:
                       description: |-
                         SeriesLimit defines per-scrape limit on number of unique time series
                         a single target can expose during all the scrapes on the time window of 24h.
-                      format: int64
                       type: integer
                     targetPort:
                       anyOf:
@@ -31612,7 +31608,6 @@ spec:
               sampleLimit:
                 description: SampleLimit defines per-scrape limit on number of scraped
                   samples that will be accepted.
-                format: int64
                 type: integer
               scrapeClass:
                 description: ScrapeClass defined scrape class to apply
@@ -31667,7 +31662,6 @@ spec:
                 description: |-
                   SeriesLimit defines per-scrape limit on number of unique time series
                   a single target can expose during all the scrapes on the time window of 24h.
-                format: int64
                 type: integer
             required:
             - podMetricsEndpoints
@@ -32168,7 +32162,6 @@ spec:
               sampleLimit:
                 description: SampleLimit defines per-scrape limit on number of scraped
                   samples that will be accepted.
-                format: int64
                 type: integer
               scheme:
                 description: HTTP scheme to use for scraping.
@@ -32193,7 +32186,6 @@ spec:
                 description: |-
                   SeriesLimit defines per-scrape limit on number of unique time series
                   a single target can expose during all the scrapes on the time window of 24h.
-                format: int64
                 type: integer
               targets:
                 description: Targets defines a set of static and/or dynamically discovered
@@ -36019,7 +36011,6 @@ spec:
               sampleLimit:
                 description: SampleLimit defines per-scrape limit on number of scraped
                   samples that will be accepted.
-                format: int64
                 type: integer
               scheme:
                 description: HTTP scheme to use for scraping.
@@ -36044,7 +36035,6 @@ spec:
                 description: |-
                   SeriesLimit defines per-scrape limit on number of unique time series
                   a single target can expose during all the scrapes on the time window of 24h.
-                format: int64
                 type: integer
               staticConfigs:
                 description: StaticConfigs defines a list of static targets with a
@@ -36955,7 +36945,6 @@ spec:
                     sampleLimit:
                       description: SampleLimit defines per-scrape limit on number
                         of scraped samples that will be accepted.
-                      format: int64
                       type: integer
                     scheme:
                       description: HTTP scheme to use for scraping.
@@ -36977,7 +36966,6 @@ spec:
                       description: |-
                         SeriesLimit defines per-scrape limit on number of unique time series
                         a single target can expose during all the scrapes on the time window of 24h.
-                      format: int64
                       type: integer
                     targetPort:
                       anyOf:
@@ -37299,7 +37287,6 @@ spec:
               sampleLimit:
                 description: SampleLimit defines per-scrape limit on number of scraped
                   samples that will be accepted.
-                format: int64
                 type: integer
               scrapeClass:
                 description: ScrapeClass defined scrape class to apply
@@ -37355,7 +37342,6 @@ spec:
                 description: |-
                   SeriesLimit defines per-scrape limit on number of unique time series
                   a single target can expose during all the scrapes on the time window of 24h.
-                format: int64
                 type: integer
               targetLabels:
                 description: TargetLabels transfers labels on the Kubernetes Service
@@ -39448,7 +39434,6 @@ spec:
               sampleLimit:
                 description: SampleLimit defines per-scrape limit on number of scraped
                   samples that will be accepted.
-                format: int64
                 type: integer
               scrapeClass:
                 description: ScrapeClass defined scrape class to apply
@@ -39457,7 +39442,6 @@ spec:
                 description: |-
                   SeriesLimit defines per-scrape limit on number of unique time series
                   a single target can expose during all the scrapes on the time window of 24h.
-                format: int64
                 type: integer
               targetEndpoints:
                 description: A list of target endpoints to scrape metrics from.
@@ -39899,7 +39883,6 @@ spec:
                     sampleLimit:
                       description: SampleLimit defines per-scrape limit on number
                         of scraped samples that will be accepted.
-                      format: int64
                       type: integer
                     scheme:
                       description: HTTP scheme to use for scraping.
@@ -39921,7 +39904,6 @@ spec:
                       description: |-
                         SeriesLimit defines per-scrape limit on number of unique time series
                         a single target can expose during all the scrapes on the time window of 24h.
-                      format: int64
                       type: integer
                     targets:
                       description: Targets static targets addresses in form of ["192.122.55.55:9100","some-name:9100"].

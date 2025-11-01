@@ -64,7 +64,8 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 	if err != nil {
 		return err
 	}
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForAlertmanager(service, cr))
 		if err != nil {
 			return err
@@ -115,7 +116,9 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAlertmanager,
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 		}
 	}
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, disableSelfScrape) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

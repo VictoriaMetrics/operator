@@ -48,7 +48,8 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 	if err != nil {
 		return err
 	}
-	if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		svs := build.VMServiceScrapeForServiceWithSpec(selectSvc, cr.Spec.VLSelect)
 		if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 			// for backward compatibility we must keep job label value
@@ -191,7 +192,8 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, false), &cr.Spec.VLSelect.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.VLSelect.CommonApplicationDeploymentParams)
 	return depSpec, nil
 }
 
@@ -301,7 +303,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	selectContainers = build.Probe(selectContainers, cr.Spec.VLSelect)
 	operatorContainers := []corev1.Container{selectContainers}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, cfg.EnableStrictSecurity))
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VLSelect.Containers)
 	if err != nil {
 		return nil, err

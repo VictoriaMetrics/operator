@@ -48,7 +48,8 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 	if err != nil {
 		return err
 	}
-	if !ptr.Deref(cr.Spec.VLStorage.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.VLStorage.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.VLStorage))
 		if err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for VLStorage: %w", err)
@@ -160,7 +161,8 @@ func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.VLStorage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VLStorage.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, false), &cr.Spec.VLStorage.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.VLStorage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.VLStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VLStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VLStorage.ClaimTemplates...)
@@ -281,7 +283,7 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 	storageContainers := []corev1.Container{vmstorageContainer}
 	var initContainers []corev1.Container
 
-	useStrictSecurity := ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, false)
+	useStrictSecurity := ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, cfg.EnableStrictSecurity)
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLStorage.SecurityContext, initContainers, useStrictSecurity)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.VLStorage.InitContainers)
 	if err != nil {

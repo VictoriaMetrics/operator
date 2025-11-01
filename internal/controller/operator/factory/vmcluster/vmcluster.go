@@ -62,6 +62,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		}
 	}
 
+	cfg := config.MustGetBaseConfig()
 	if cr.Spec.VMStorage != nil {
 		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
 			err := createOrUpdatePodDisruptionBudgetForVMStorage(ctx, rclient, cr, prevCR)
@@ -77,7 +78,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		if err != nil {
 			return err
 		}
-		if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, false) {
+		if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.VMStorage, "vmbackupmanager"))
 			if err != nil {
 				return fmt.Errorf("cannot create VMServiceScrape for vmStorage: %w", err)
@@ -103,7 +104,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		if err != nil {
 			return err
 		}
-		if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
+		if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 
 			svs := build.VMServiceScrapeForServiceWithSpec(selectSvc, cr.Spec.VMSelect)
 			if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
@@ -133,7 +134,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
-		if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
+		if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 			svs := build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.VMInsert)
 			if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 				// for backward compatibility we must keep job label value
@@ -521,7 +522,8 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false), &cr.Spec.VMSelect.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.VMSelect.CommonApplicationDeploymentParams)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		storageSpec := cr.Spec.VMSelect.PersistentVolume
 		// hack, storage is deprecated.
@@ -674,7 +676,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	vmselectContainer = build.Probe(vmselectContainer, cr.Spec.VMSelect)
 	operatorContainers := []corev1.Container{vmselectContainer}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, cfg.EnableStrictSecurity))
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMSelect.Containers)
 	if err != nil {
 		return nil, err
@@ -750,7 +752,8 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, false), &cr.Spec.VMInsert.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.VMInsert.CommonApplicationDeploymentParams)
 	return stsSpec, nil
 }
 
@@ -876,7 +879,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	vminsertContainer = build.Probe(vminsertContainer, cr.Spec.VMInsert)
 	operatorContainers := []corev1.Container{vminsertContainer}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMInsert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMInsert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, cfg.EnableStrictSecurity))
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMInsert.Containers)
 	if err != nil {
 		return nil, err
@@ -947,7 +950,8 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 	if cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.VMStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)
@@ -1116,7 +1120,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 			}
 		}
 	}
-	useStrictSecurity := ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false)
+	useStrictSecurity := ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, cfg.EnableStrictSecurity)
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMStorage.SecurityContext, initContainers, useStrictSecurity)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.VMStorage.InitContainers)
 	if err != nil {
@@ -1247,6 +1251,9 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 	prevLB := prevSpec.RequestsLoadBalancer
 	newLB := cr.Spec.RequestsLoadBalancer
 
+	cfg := config.MustGetBaseConfig()
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+
 	if prevSt != nil {
 		if vmst == nil {
 			if err := finalize.OnVMStorageDelete(ctx, rclient, cr, prevSt); err != nil {
@@ -1259,7 +1266,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 					return fmt.Errorf("cannot remove PDB from prev storage: %w", err)
 				}
 			}
-			if ptr.Deref(vmst.DisableSelfServiceScrape, false) && !ptr.Deref(prevSt.DisableSelfServiceScrape, false) {
+			if ptr.Deref(vmst.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevSt.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev storage: %w", err)
 				}
@@ -1289,7 +1296,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 					return fmt.Errorf("cannot remove HPA from prev select: %w", err)
 				}
 			}
-			if ptr.Deref(vmse.DisableSelfServiceScrape, false) && !ptr.Deref(prevSe.DisableSelfServiceScrape, false) {
+			if ptr.Deref(vmse.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevSe.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev select: %w", err)
 				}
@@ -1303,7 +1310,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		// have to remove prev service scrape
 		if newLB.Enabled && !newLB.DisableSelectBalancing && (!prevLB.Enabled || prevLB.DisableSelectBalancing) {
 			// remove service scrape because service was renamed
-			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMSelectName(), Namespace: cr.Namespace},
 				}); err != nil {
@@ -1320,7 +1327,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			}}); err != nil {
 				return fmt.Errorf("cannot remove vmselect lb service: %w", err)
 			}
-			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMSelectLBName(), Namespace: cr.Namespace},
 				}); err != nil {
@@ -1348,7 +1355,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 					return fmt.Errorf("cannot remove HPA from prev insert: %w", err)
 				}
 			}
-			if ptr.Deref(vmis.DisableSelfServiceScrape, false) && !ptr.Deref(prevIs.DisableSelfServiceScrape, false) {
+			if ptr.Deref(vmis.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevIs.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev insert: %w", err)
 				}
@@ -1362,7 +1369,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		// have to remove prev service scrape
 		if newLB.Enabled && !newLB.DisableInsertBalancing && (!prevLB.Enabled || prevLB.DisableInsertBalancing) {
 			// remove service scrape because service was renamed
-			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMInsertName(), Namespace: cr.Namespace},
 				}); err != nil {
@@ -1379,7 +1386,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			}}); err != nil {
 				return fmt.Errorf("cannot remove vminsert lb service: %w", err)
 			}
-			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVMInsertLBName(), Namespace: cr.Namespace},
 				}); err != nil {
@@ -1524,7 +1531,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	}
 	var err error
 
-	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, cfg.EnableStrictSecurity))
 	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
@@ -1563,7 +1570,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, false), &spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &spec.CommonApplicationDeploymentParams)
 
 	return lbDep, nil
 }

@@ -121,7 +121,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		return err
 	}
 
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		if cr.Spec.DaemonSetMode {
 			ps := build.VMPodScrapeForObjectWithSpec(cr, cr.Spec.ServiceScrapeSpec, cr.Spec.ExtraArgs)
 			err = reconcile.VMPodScrapeForCRD(ctx, rclient, ps)
@@ -416,7 +417,8 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 		return nil, err
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	cfg := config.MustGetBaseConfig()
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 
 	if cr.Spec.DaemonSetMode {
 		dsSpec := &appsv1.DaemonSet{
@@ -746,7 +748,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 	}
 
 	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, &cr.Spec.CommonApplicationDeploymentParams)
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 
 	vmagentContainer = build.Probe(vmagentContainer, cr)
 
@@ -1407,6 +1409,8 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 	}
 
+	cfg := config.MustGetBaseConfig()
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
 	if !prevCR.Spec.DaemonSetMode && cr.Spec.DaemonSetMode {
 		// transit into DaemonSetMode
 		if cr.Spec.PodDisruptionBudget != nil {
@@ -1414,7 +1418,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 			}
 		}
-		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 				return fmt.Errorf("cannot delete VMServiceScrape during daemonset transition: %w", err)
 			}
@@ -1423,14 +1427,14 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 
 	if prevCR.Spec.DaemonSetMode && !cr.Spec.DaemonSetMode {
 		// transit into non DaemonSetMode
-		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
 				return fmt.Errorf("cannot delete VMPodScrape during transition for non-daemonsetMode: %w", err)
 			}
 		}
 	}
 
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, disableSelfScrape) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

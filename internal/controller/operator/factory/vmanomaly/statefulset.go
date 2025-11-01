@@ -18,6 +18,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -45,20 +46,21 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		err := reconcile.VMPodScrapeForCRD(ctx, rclient, build.VMPodScrapeForObjectWithSpec(cr, cr.Spec.ServiceScrapeSpec, cr.Spec.ExtraArgs))
 		if err != nil {
 			return err
 		}
 	}
 
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
+	rcfg := map[build.ResourceKind]*build.ResourceCfg{
 		build.TLSAssetsResourceKind: {
 			MountDir:   tlsAssetsDir,
 			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
 		},
 	}
-	ac := build.NewAssetsCache(ctx, rclient, cfg)
+	ac := build.NewAssetsCache(ctx, rclient, rcfg)
 
 	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, ac)
 	if err != nil {
@@ -136,7 +138,8 @@ func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache
 	if err != nil {
 		return nil, err
 	}
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	cfg := config.MustGetBaseConfig()
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 	podAnnotations := cr.PodAnnotations()
 	if len(configHash) > 0 {
 		podAnnotations = labels.Merge(podAnnotations, map[string]string{
@@ -190,7 +193,8 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 		}
 	}
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove podScrape: %w", err)
 		}

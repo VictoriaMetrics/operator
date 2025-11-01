@@ -80,6 +80,7 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 // CreateOrUpdate creates vmalert deployment for given CRD
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
+	cfg := config.MustGetBaseConfig()
 	var prevCR *vmv1beta1.VMAlert
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -112,7 +113,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return err
 	}
 
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
 		if err != nil {
 			return fmt.Errorf("cannot create vmservicescrape: %w", err)
@@ -169,7 +171,8 @@ func newDeploy(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 		},
 		Spec: *generatedSpec,
 	}
-	build.DeploymentAddCommonParams(deploy, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.DeploymentAddCommonParams(deploy, ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.CommonApplicationDeploymentParams)
 	return deploy, nil
 }
 
@@ -299,7 +302,8 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 		vmalertContainers = append(vmalertContainers, crc)
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	cfg := config.MustGetBaseConfig()
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, vmalertContainers, useStrictSecurity)
 	containers, err := k8stools.MergePatchContainers(vmalertContainers, cr.Spec.Containers)
@@ -762,6 +766,7 @@ func discoverNotifiersIfNeeded(ctx context.Context, rclient client.Client, cr *v
 }
 
 func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) error {
+	cfg := config.MustGetBaseConfig()
 	if cr.ParsedLastAppliedSpec == nil {
 		return nil
 	}
@@ -777,7 +782,8 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAlert, rclien
 		}
 	}
 
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, disableSelfScrape) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

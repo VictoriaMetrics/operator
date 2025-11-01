@@ -49,6 +49,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
+	cfg := config.MustGetBaseConfig()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
@@ -57,7 +58,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		cfg := config.MustGetBaseConfig()
 		if ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader) {
 			if err := createVMAuthSecretAccess(ctx, rclient, cr, prevCR); err != nil {
 				return err
@@ -74,7 +74,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update hpa for vmauth: %w", err)
 	}
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		// it's not possible to scrape metrics from vmauth if proxyProtocol is configured
 		if !useProxyProtocol(cr) || len(cr.Spec.InternalListenPort) > 0 {
 			if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, buildServiceScrape(svc, cr)); err != nil {
@@ -119,6 +119,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 
 func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 
+	cfg := config.MustGetBaseConfig()
 	podSpec, err := makeSpecForVMAuth(cr)
 	if err != nil {
 		return nil, err
@@ -147,7 +148,7 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.CommonApplicationDeploymentParams)
 
 	return depSpec, nil
 }
@@ -197,7 +198,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		})
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 
 	var volumes []corev1.Volume
@@ -748,12 +749,14 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			return fmt.Errorf("cannot remove HPA from prev state: %w", err)
 		}
 	}
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 		if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels()); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}
 	}
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 		if useProxyProtocol(cr) && len(cr.Spec.InternalListenPort) == 0 {
 			if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels()); err != nil {
 				return fmt.Errorf("cannot remove serviceScrape: %w", err)

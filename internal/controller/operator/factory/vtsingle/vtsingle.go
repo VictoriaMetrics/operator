@@ -90,7 +90,8 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 		return err
 	}
 
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
 		if err != nil {
 			return fmt.Errorf("cannot create serviceScrape for vtsingle: %w", err)
@@ -140,7 +141,8 @@ func newDeployment(r *vmv1.VTSingle) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(r.Spec.UseStrictSecurity, false), &r.Spec.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.DeploymentAddCommonParams(depSpec, ptr.Deref(r.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &r.Spec.CommonApplicationDeploymentParams)
 	return depSpec, nil
 }
 
@@ -274,7 +276,7 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 
 	operatorContainers := []corev1.Container{vtsingleContainer}
 
-	build.AddStrictSecuritySettingsToContainers(r.Spec.SecurityContext, operatorContainers, ptr.Deref(r.Spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(r.Spec.SecurityContext, operatorContainers, ptr.Deref(r.Spec.UseStrictSecurity, cfg.EnableStrictSecurity))
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, r.Spec.Containers)
 	if err != nil {
@@ -335,7 +337,9 @@ func deletePrevStateResources(ctx context.Context, cr *vmv1.VTSingle, rclient cl
 	}
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, disableSelfScrape) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

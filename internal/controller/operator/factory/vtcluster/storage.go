@@ -48,7 +48,8 @@ func createOrUpdateVTStorage(ctx context.Context, rclient client.Client, cr, pre
 	if err != nil {
 		return err
 	}
-	if !ptr.Deref(cr.Spec.Storage.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.Storage.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.Storage))
 		if err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for VTStorage: %w", err)
@@ -160,7 +161,8 @@ func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.Storage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.Storage.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.Storage.UseStrictSecurity, false), &cr.Spec.Storage.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.Storage.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.Storage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.Storage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.Storage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.Storage.ClaimTemplates...)
@@ -281,7 +283,7 @@ func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) 
 	storageContainers := []corev1.Container{vmstorageContainer}
 	var initContainers []corev1.Container
 
-	useStrictSecurity := ptr.Deref(cr.Spec.Storage.UseStrictSecurity, false)
+	useStrictSecurity := ptr.Deref(cr.Spec.Storage.UseStrictSecurity, cfg.EnableStrictSecurity)
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.Storage.SecurityContext, initContainers, useStrictSecurity)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.Storage.InitContainers)
 	if err != nil {

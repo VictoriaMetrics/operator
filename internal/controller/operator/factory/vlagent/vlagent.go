@@ -95,7 +95,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 		return err
 	}
 
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 		ps := build.VMPodScrapeForObjectWithSpec(cr, cr.Spec.ServiceScrapeSpec, cr.Spec.ExtraArgs)
 		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, ps); err != nil {
 			return fmt.Errorf("cannot create or update scrape object: %w", err)
@@ -142,7 +144,8 @@ func newDeploy(cr *vmv1.VLAgent) (*appsv1.StatefulSet, error) {
 		return nil, err
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	cfg := config.MustGetBaseConfig()
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -193,7 +196,6 @@ func makeSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 	}
 
 	cfg := config.MustGetBaseConfig()
-
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
@@ -286,7 +288,7 @@ func makeSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 
 	vlagentContainer = build.Probe(vlagentContainer, cr)
 	var operatorContainers []corev1.Container
@@ -550,7 +552,9 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 	}
 
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, disableSelfScrape) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

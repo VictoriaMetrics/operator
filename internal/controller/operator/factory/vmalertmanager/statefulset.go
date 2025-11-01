@@ -48,10 +48,6 @@ receivers:
 `
 )
 
-func getCfg() *config.BaseOperatorConf {
-	return config.MustGetBaseConfig()
-}
-
 func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, error) {
 	if cr.Spec.Retention == "" {
 		cr.Spec.Retention = defaultRetention
@@ -77,7 +73,8 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 
 		statefulset.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(statefulset, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.StatefulSetAddCommonParams(statefulset, ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.CommonApplicationDeploymentParams)
 	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &statefulset.Spec)
 	statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 
@@ -156,7 +153,8 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 
 func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec, error) {
 
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+	cfg := config.MustGetBaseConfig()
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
 
 	amArgs := []string{
@@ -187,6 +185,9 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 	listenHost := ""
 	if cr.Spec.ListenLocal {
 		listenHost = "127.0.0.1"
+		if cfg.EnableTCP6 {
+			listenHost = "localhost"
+		}
 	}
 	amArgs = append(amArgs, fmt.Sprintf("--web.listen-address=%s:%d", listenHost, port))
 
@@ -390,7 +391,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 
 	var initContainers []corev1.Container
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 
 	initContainers = append(initContainers, buildInitConfigContainer(cr)...)
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
@@ -602,7 +603,8 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
 }
 
 func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+	cfg := config.MustGetBaseConfig()
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 	if !useVMConfigReloader {
 		return nil
 	}
@@ -631,15 +633,20 @@ func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
 }
 
 func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMounts []corev1.VolumeMount) corev1.Container {
+	cfg := config.MustGetBaseConfig()
+	host := "127.0.0.1"
+	if cfg.EnableTCP6 {
+		host = "localhost"
+	}
 	localReloadURL := &url.URL{
 		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%s", "127.0.0.1", cr.Port()),
+		Host:   fmt.Sprintf("%s:%s", host, cr.Port()),
 		Path:   path.Clean(cr.Spec.RoutePrefix + "/-/reload"),
 	}
 	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
 		localReloadURL.Scheme = "https"
 	}
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 
 	var args []string
 	if useVMConfigReloader {
@@ -650,6 +657,9 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 			fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()),
 			"--webhook-method=POST",
 		)
+		if cfg.EnableTCP6 {
+			args = append(args, "--enableTCP6")
+		}
 		for _, vm := range crVolumeMounts {
 			args = append(args, fmt.Sprintf("--watched-dir=%s", vm.MountPath))
 		}

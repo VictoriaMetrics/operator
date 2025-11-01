@@ -13,6 +13,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -77,6 +78,9 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 	prevLB := prevSpec.RequestsLoadBalancer
 	newLB := cr.Spec.RequestsLoadBalancer
 
+	cfg := config.MustGetBaseConfig()
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+
 	if prevSt != nil {
 		if vmst == nil {
 			if err := finalize.OnVLStorageDelete(ctx, rclient, cr, prevSt); err != nil {
@@ -89,7 +93,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 					return fmt.Errorf("cannot remove PDB from prev storage: %w", err)
 				}
 			}
-			if ptr.Deref(vmst.DisableSelfServiceScrape, false) && !ptr.Deref(prevSt.DisableSelfServiceScrape, false) {
+			if ptr.Deref(vmst.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevSt.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev storage: %w", err)
 				}
@@ -119,7 +123,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 					return fmt.Errorf("cannot remove HPA from prev select: %w", err)
 				}
 			}
-			if ptr.Deref(vmse.DisableSelfServiceScrape, false) && !ptr.Deref(prevSe.DisableSelfServiceScrape, false) {
+			if ptr.Deref(vmse.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevSe.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev select: %w", err)
 				}
@@ -133,7 +137,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		// have to remove prev service scrape
 		if newLB.Enabled && !newLB.DisableSelectBalancing && (!prevLB.Enabled || prevLB.DisableSelectBalancing) {
 			// remove service scrape because service was renamed
-			if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVLSelectName(), Namespace: cr.Namespace},
 				}); err != nil {
@@ -150,7 +154,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			}}); err != nil {
 				return fmt.Errorf("cannot remove select lb service: %w", err)
 			}
-			if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVLSelectLBName(), Namespace: cr.Namespace},
 				}); err != nil {
@@ -178,7 +182,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 					return fmt.Errorf("cannot remove HPA from prev insert: %w", err)
 				}
 			}
-			if ptr.Deref(vmis.DisableSelfServiceScrape, false) && !ptr.Deref(prevIs.DisableSelfServiceScrape, false) {
+			if ptr.Deref(vmis.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevIs.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev insert: %w", err)
 				}
@@ -192,7 +196,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		// have to remove prev service scrape
 		if newLB.Enabled && !newLB.DisableInsertBalancing && (!prevLB.Enabled || prevLB.DisableInsertBalancing) {
 			// remove service scrape because service was renamed
-			if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVLInsertName(), Namespace: cr.Namespace},
 				}); err != nil {
@@ -209,7 +213,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			}}); err != nil {
 				return fmt.Errorf("cannot remove insert lb service: %w", err)
 			}
-			if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, false) {
+			if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVLInsertLBName(), Namespace: cr.Namespace},
 				}); err != nil {

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `VM_ENABLETCP6` variable that runs all operator CRs in IPv6 mode. See [#1581](https://github.com/VictoriaMetrics/operator/issues/1581).
+
 ## [v0.65.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.65.0)
 
 **Release date:** 31 October 2025

@@ -7,6 +7,7 @@
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |
 | VM_CUSTOMCONFIGRELOADERIMAGE: `victoriametrics/operator:config-reloader-v0.62.0` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a> |
 | VM_PSPAUTOCREATEENABLED: `false` <a href="#variables-vm-pspautocreateenabled" id="variables-vm-pspautocreateenabled">#</a> |
+| VM_ENABLETCP6: `false` <a href="#variables-vm-enabletcp6" id="variables-vm-enabletcp6">#</a> |
 | VM_CONFIG_RELOADER_LIMIT_CPU: `unlimited` <a href="#variables-vm-config-reloader-limit-cpu" id="variables-vm-config-reloader-limit-cpu">#</a><br>defines global resource.limits.cpu for all config-reloader containers |
 | VM_CONFIG_RELOADER_LIMIT_MEMORY: `unlimited` <a href="#variables-vm-config-reloader-limit-memory" id="variables-vm-config-reloader-limit-memory">#</a><br>defines global resource.limits.memory for all config-reloader containers |
 | VM_CONFIG_RELOADER_REQUEST_CPU: `-` <a href="#variables-vm-config-reloader-request-cpu" id="variables-vm-config-reloader-request-cpu">#</a><br>defines global resource.requests.cpu for all config-reloader containers |
@@ -114,7 +115,6 @@
 | VM_VMALERTMANAGER_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertmanager-configreloadermemory" id="variables-vm-vmalertmanager-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE: `prom/alertmanager` <a href="#variables-vm-vmalertmanager-alertmanagerdefaultbaseimage" id="variables-vm-vmalertmanager-alertmanagerdefaultbaseimage">#</a> |
 | VM_VMALERTMANAGER_ALERTMANAGERVERSION: `v0.28.1` <a href="#variables-vm-vmalertmanager-alertmanagerversion" id="variables-vm-vmalertmanager-alertmanagerversion">#</a> |
-| VM_VMALERTMANAGER_LOCALHOST: `127.0.0.1` <a href="#variables-vm-vmalertmanager-localhost" id="variables-vm-vmalertmanager-localhost">#</a> |
 | VM_VMALERTMANAGER_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmalertmanager-usedefaultresources" id="variables-vm-vmalertmanager-usedefaultresources">#</a> |
 | VM_VMALERTMANAGER_RESOURCE_LIMIT_MEM: `256Mi` <a href="#variables-vm-vmalertmanager-resource-limit-mem" id="variables-vm-vmalertmanager-resource-limit-mem">#</a> |
 | VM_VMALERTMANAGER_RESOURCE_LIMIT_CPU: `100m` <a href="#variables-vm-vmalertmanager-resource-limit-cpu" id="variables-vm-vmalertmanager-resource-limit-cpu">#</a> |

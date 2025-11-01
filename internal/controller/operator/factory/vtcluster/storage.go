@@ -16,6 +16,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -47,7 +48,8 @@ func createOrUpdateVTStorage(ctx context.Context, rclient client.Client, cr, pre
 	if err != nil {
 		return err
 	}
-	if !ptr.Deref(cr.Spec.Storage.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.Storage.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.Storage))
 		if err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for VTStorage: %w", err)
@@ -159,7 +161,8 @@ func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.Storage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.Storage.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.Storage.UseStrictSecurity, false), &cr.Spec.Storage.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.Storage.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.Storage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.Storage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.Storage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.Storage.ClaimTemplates...)
@@ -168,11 +171,14 @@ func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {
 }
 
 func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
+	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Storage.Port),
 		fmt.Sprintf("-storageDataPath=%s", cr.Spec.Storage.StorageDataPath),
 	}
-
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 	if cr.Spec.Storage.RetentionPeriod != "" {
 		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.Storage.RetentionPeriod))
 	}
@@ -277,7 +283,7 @@ func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) 
 	storageContainers := []corev1.Container{vmstorageContainer}
 	var initContainers []corev1.Container
 
-	useStrictSecurity := ptr.Deref(cr.Spec.Storage.UseStrictSecurity, false)
+	useStrictSecurity := ptr.Deref(cr.Spec.Storage.UseStrictSecurity, cfg.EnableStrictSecurity)
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.Storage.SecurityContext, initContainers, useStrictSecurity)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.Storage.InitContainers)
 	if err != nil {

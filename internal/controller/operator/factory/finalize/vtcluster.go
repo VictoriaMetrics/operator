@@ -72,7 +72,7 @@ func OnVTInsertDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 	if obj.HPA != nil {
 		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
 	}
-	if !ptr.Deref(obj.DisableSelfServiceScrape, false) {
+	if !ptr.Deref(obj.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta})
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTInsertLBName(), Namespace: cr.Namespace}})
 	}
@@ -112,7 +112,7 @@ func OnVTSelectDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 	if obj.HPA != nil {
 		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
 	}
-	if !ptr.Deref(obj.DisableSelfServiceScrape, false) {
+	if !ptr.Deref(obj.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta})
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTSelectLBName(), Namespace: cr.Namespace}})
 	}
@@ -148,7 +148,7 @@ func OnVTStorageDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTCl
 	if obj.PodDisruptionBudget != nil {
 		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
 	}
-	if !ptr.Deref(obj.DisableSelfServiceScrape, false) {
+	if !ptr.Deref(obj.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta})
 	}
 
@@ -172,7 +172,7 @@ func OnVTClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, c
 		&corev1.Secret{ObjectMeta: lbMeta},
 		&corev1.Service{ObjectMeta: lbMeta},
 	}
-	if !ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, false) {
+	if !ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: lbMeta})
 	}
 	if cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
@@ -180,7 +180,7 @@ func OnVTClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, c
 	}
 
 	if cr.Spec.Select != nil {
-		if !ptr.Deref(cr.Spec.Select.DisableSelfServiceScrape, false) {
+		if !ptr.Deref(cr.Spec.Select.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 			objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{
 				ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTSelectLBName(), Namespace: cr.Namespace}})
 		}
@@ -190,7 +190,7 @@ func OnVTClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, c
 		}})
 	}
 	if cr.Spec.Insert != nil {
-		if !ptr.Deref(cr.Spec.Insert.DisableSelfServiceScrape, false) {
+		if !ptr.Deref(cr.Spec.Insert.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 			objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{
 				ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTInsertLBName(), Namespace: cr.Namespace}})
 		}

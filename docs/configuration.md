@@ -395,6 +395,13 @@ If namespaced mode is enabled, operator uses a limited set of features:
 
 At each namespace operator must have a set of required permissions, an example can be found at [this file](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/operator_rbac_for_single_namespace.yaml).
 
+## IPv6 mode
+
+By default, VM services are accepting only IPv4 TCP and UDP traffic..
+
+To allow accepting IPv6 traffic set `VM_ENABLETCP6` environment variable to `true`.
+With this option set all VM components and config reloaders become IPv6-compatible.
+
 ## Monitoring of cluster components
 
 By default, operator creates [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) 

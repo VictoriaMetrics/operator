@@ -52,10 +52,6 @@ const (
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
 var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
 
-func getCfg() *config.BaseOperatorConf {
-	return config.MustGetBaseConfig()
-}
-
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
 
 	var prevService, prevAdditionalService *corev1.Service
@@ -125,7 +121,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		return err
 	}
 
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		if cr.Spec.DaemonSetMode {
 			ps := build.VMPodScrapeForObjectWithSpec(cr, cr.Spec.ServiceScrapeSpec, cr.Spec.ExtraArgs)
 			err = reconcile.VMPodScrapeForCRD(ctx, rclient, ps)
@@ -420,7 +417,8 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 		return nil, err
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	cfg := config.MustGetBaseConfig()
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 
 	if cr.Spec.DaemonSetMode {
 		dsSpec := &appsv1.DaemonSet{
@@ -549,7 +547,11 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 		args = append(args, rwArgs...)
 	}
 
+	cfg := config.MustGetBaseConfig()
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
 
 	if cr.Spec.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
@@ -746,7 +748,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 	}
 
 	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, &cr.Spec.CommonApplicationDeploymentParams)
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 
 	vmagentContainer = build.Probe(vmagentContainer, cr)
 
@@ -760,7 +762,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
 			ic = append(ic,
-				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader), cr, configReloader.Args)...)
+				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader), cr, configReloader.Args)...)
 			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 		}
 	}
@@ -1231,7 +1233,8 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, extraWatchsMounts []corev1.VolumeMount) corev1.Container {
 	var configReloadVolumeMounts []corev1.VolumeMount
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+	cfg := config.MustGetBaseConfig()
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 	if !cr.Spec.IngestOnlyMode {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
@@ -1301,13 +1304,17 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, extraWatchVolumes []corev1.V
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 	}
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
+	cfg := config.MustGetBaseConfig()
+	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 
 	if !cr.Spec.IngestOnlyMode {
 		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConfOutDir, configEnvsubstFilename)))
 		if useVMConfigReloader {
 			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
 			args = append(args, "--config-secret-key=vmagent.yaml.gz")
+			if cfg.EnableTCP6 {
+				args = append(args, "--enableTCP6")
+			}
 		} else {
 			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, vmagentGzippedFilename)))
 		}
@@ -1402,6 +1409,8 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 	}
 
+	cfg := config.MustGetBaseConfig()
+	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
 	if !prevCR.Spec.DaemonSetMode && cr.Spec.DaemonSetMode {
 		// transit into DaemonSetMode
 		if cr.Spec.PodDisruptionBudget != nil {
@@ -1409,7 +1418,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 			}
 		}
-		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 				return fmt.Errorf("cannot delete VMServiceScrape during daemonset transition: %w", err)
 			}
@@ -1418,14 +1427,14 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 
 	if prevCR.Spec.DaemonSetMode && !cr.Spec.DaemonSetMode {
 		// transit into non DaemonSetMode
-		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
 				return fmt.Errorf("cannot delete VMPodScrape during transition for non-daemonsetMode: %w", err)
 			}
 		}
 	}
 
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, false) {
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, disableSelfScrape) {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}

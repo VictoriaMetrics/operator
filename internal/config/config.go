@@ -115,6 +115,7 @@ type BaseOperatorConf struct {
 	VMConfigReloaderImage            string `default:"victoriametrics/operator:config-reloader-v0.62.0" env:"CUSTOMCONFIGRELOADERIMAGE"`
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false" env:"PSPAUTOCREATEENABLED"`
+	EnableTCP6                       bool `default:"false" env:"ENABLETCP6"`
 
 	// defines global resource.limits.cpu for all config-reloader containers
 	ConfigReloaderLimitCPU string `default:"unlimited"`
@@ -356,7 +357,6 @@ type BaseOperatorConf struct {
 		ConfigReloaderMemory         string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
 		AlertManagerVersion          string `default:"v0.28.1" env:"ALERTMANAGERVERSION"`
-		LocalHost                    string `default:"127.0.0.1" env:"LOCALHOST"`
 		UseDefaultResources          bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource                     struct {
 			Limit struct {
@@ -873,6 +873,7 @@ func ConfigAsMetrics(r metrics.RegistererGatherer, cfg *BaseOperatorConf) {
 
 	boolTagAsMetric("EnableStrictSecurity", cfgRootElems, cfg.EnableStrictSecurity)
 	boolTagAsMetric("UseVMConfigReloader", cfgRootElems, cfg.UseVMConfigReloader)
+	boolTagAsMetric("EnableTCP6", cfgRootElems, cfg.EnableTCP6)
 
 	boolTagAsMetric("EnabledPrometheusConverterOwnerReferences", cfgRootElems, cfg.EnabledPrometheusConverterOwnerReferences)
 	cfgPromElems := reflect.TypeOf(&cfg.EnabledPrometheusConverter).Elem()

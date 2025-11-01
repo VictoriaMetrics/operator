@@ -17,6 +17,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -40,7 +41,8 @@ func createOrUpdateVLInsert(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdateVLInsertHPA(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, false) {
+	cfg := config.MustGetBaseConfig()
+	if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		svs := build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.VLInsert)
 		if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 			// for backward compatibility we must keep job label value
@@ -120,14 +122,19 @@ func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VLInsert.UseStrictSecurity, false), &cr.Spec.VLInsert.CommonApplicationDeploymentParams)
+	cfg := config.MustGetBaseConfig()
+	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VLInsert.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.VLInsert.CommonApplicationDeploymentParams)
 	return stsSpec, nil
 }
 
 func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
+	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VLInsert.Port),
 		"-internalselect.disable=true",
+	}
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
 	}
 	if cr.Spec.VLInsert.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.VLInsert.LogLevel))
@@ -227,7 +234,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	insertContainers = build.Probe(insertContainers, cr.Spec.VLInsert)
 	operatorContainers := []corev1.Container{insertContainers}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLInsert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VLInsert.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLInsert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VLInsert.UseStrictSecurity, cfg.EnableStrictSecurity))
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VLInsert.Containers)
 	if err != nil {
 		return nil, err

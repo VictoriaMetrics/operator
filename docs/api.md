@@ -1693,7 +1693,7 @@ Appears in: [Receiver](#receiver)
 EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
 https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/
 
-Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VMInsert](#vminsert), [VMSelect](#vmselect), [VTInsert](#vtinsert), [VTSelect](#vtselect)
+Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VTInsert](#vtinsert), [VTSelect](#vtselect)
 
 | Field | Description |
 | --- | --- |
@@ -3944,6 +3944,7 @@ Appears in: [VMAuth](#vmauth)
 | hostAliases<a href="#vmauthspec-hostaliases" id="vmauthspec-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | hostNetwork<a href="#vmauthspec-hostnetwork" id="vmauthspec-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | host_aliases<a href="#vmauthspec-host_aliases" id="vmauthspec-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
+| hpa<a href="#vmauthspec-hpa" id="vmauthspec-hpa">#</a><br/>_[EmbeddedHPA](#embeddedhpa)_ | _(Optional)_<br/>Configures horizontal pod autoscaling. |
 | image<a href="#vmauthspec-image" id="vmauthspec-image">#</a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
 | imagePullSecrets<a href="#vmauthspec-imagepullsecrets" id="vmauthspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
 | ingress<a href="#vmauthspec-ingress" id="vmauthspec-ingress">#</a><br/>_[EmbeddedIngress](#embeddedingress)_ | _(Required)_<br/>Ingress enables ingress configuration for VMAuth. |

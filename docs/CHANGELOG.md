@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.129.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.129.0) version
+
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `VM_ENABLETCP6` variable that runs all operator CRs in IPv6 mode. See [#1581](https://github.com/VictoriaMetrics/operator/issues/1581).
 
 ## [v0.65.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.65.0)

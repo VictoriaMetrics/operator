@@ -76,6 +76,14 @@ type VMAuthSpec struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	UnauthorizedAccessConfig []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty" yaml:"unauthorizedAccessConfig,omitempty"`
+	// VMUserConfigOptions applies configurations to above UnauthorizedAccessConfig
+	// Deprecated: use unauthorizedUserAccessSpec instead
+	// will be removed at v1.0 release
+	// +deprecated
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	VMUserConfigOptions `json:",inline" yaml:",inline"`
+
 	// UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config
 	// +optional
 	UnauthorizedUserAccessSpec *VMAuthUnauthorizedUserAccessSpec `json:"unauthorizedUserAccessSpec,omitempty" yaml:"unauthorizedUserAccessSpec,omitempty"`
@@ -85,11 +93,7 @@ type VMAuthSpec struct {
 	// will be added after removal of VMUserConfigOptions
 	// currently it has collision with inlined fields
 	// IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
-	// will be removed at v1.0 release
-	// +deprecated
-	// +kubebuilder:validation:Schemaless
-	// +kubebuilder:pruning:PreserveUnknownFields
-	VMUserConfigOptions `json:",inline" yaml:",inline"`
+
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)

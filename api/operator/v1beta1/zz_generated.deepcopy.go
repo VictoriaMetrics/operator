@@ -5106,12 +5106,12 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	in.VMUserConfigOptions.DeepCopyInto(&out.VMUserConfigOptions)
 	if in.UnauthorizedUserAccessSpec != nil {
 		in, out := &in.UnauthorizedUserAccessSpec, &out.UnauthorizedUserAccessSpec
 		*out = new(VMAuthUnauthorizedUserAccessSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	in.VMUserConfigOptions.DeepCopyInto(&out.VMUserConfigOptions)
 	if in.License != nil {
 		in, out := &in.License, &out.License
 		*out = new(License)

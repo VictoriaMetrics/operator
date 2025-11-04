@@ -59,7 +59,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		if cr.Spec.VLStorage != nil {
 			var vlst appsv1.StatefulSet
 			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: cr.GetVLStorageName(), Namespace: cr.Namespace}, &vlst); err != nil {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: cr.GetStorageName(), Namespace: cr.Namespace}, &vlst); err != nil {
 					return err
 				}
 				vlst.Status.ReadyReplicas = *cr.Spec.VLStorage.ReplicaCount
@@ -74,7 +74,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		if cr.Spec.VLSelect != nil {
 			var vls appsv1.Deployment
 			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: cr.GetVLSelectName(), Namespace: cr.Namespace}, &vls); err != nil {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: cr.GetSelectName(), Namespace: cr.Namespace}, &vls); err != nil {
 					return err
 				}
 				vls.Status.Conditions = append(vls.Status.Conditions, appsv1.DeploymentCondition{
@@ -95,7 +95,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		if cr.Spec.VLInsert != nil {
 			var vli appsv1.Deployment
 			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: cr.GetVLInsertName(), Namespace: cr.Namespace}, &vli); err != nil {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: cr.GetInsertName(), Namespace: cr.Namespace}, &vli); err != nil {
 					return err
 				}
 				vli.Status.Conditions = append(vli.Status.Conditions, appsv1.DeploymentCondition{
@@ -179,29 +179,29 @@ func TestCreateOrUpdate(t *testing.T) {
 
 		// check insert
 		var dep appsv1.Deployment
-		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLInsertName(), Namespace: cr.Namespace}, &dep))
+		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetInsertName(), Namespace: cr.Namespace}, &dep))
 		assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 		cnt := dep.Spec.Template.Spec.Containers[0]
 		assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9481", "-internalselect.disable=true", "-storageNode=vlstorage-base-0.vlstorage-base.default:9491,vlstorage-base-1.vlstorage-base.default:9491"})
 		assert.Nil(t, dep.Annotations)
-		assert.Equal(t, dep.Labels, cr.FinalLabels(cr.VLInsertSelectorLabels()))
+		assert.Equal(t, dep.Labels, cr.FinalLabels(cr.GetInsertSelectorLabels()))
 
 		// check select
-		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLSelectName(), Namespace: cr.Namespace}, &dep))
+		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetSelectName(), Namespace: cr.Namespace}, &dep))
 		assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 		cnt = dep.Spec.Template.Spec.Containers[0]
 		assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9471", "-internalinsert.disable=true", "-storageNode=vlstorage-base-0.vlstorage-base.default:9491,vlstorage-base-1.vlstorage-base.default:9491"})
 		assert.Nil(t, dep.Annotations)
-		assert.Equal(t, dep.Labels, cr.FinalLabels(cr.VLSelectSelectorLabels()))
+		assert.Equal(t, dep.Labels, cr.FinalLabels(cr.GetSelectSelectorLabels()))
 
 		// check storage
 		var sts appsv1.StatefulSet
-		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLStorageName(), Namespace: cr.Namespace}, &sts))
+		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetStorageName(), Namespace: cr.Namespace}, &sts))
 		assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
 		cnt = sts.Spec.Template.Spec.Containers[0]
 		assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9491", "-storageDataPath=/vlstorage-data"})
 		assert.Nil(t, sts.Annotations)
-		assert.Equal(t, sts.Labels, cr.FinalLabels(cr.VLStorageSelectorLabels()))
+		assert.Equal(t, sts.Labels, cr.FinalLabels(cr.GetStorageSelectorLabels()))
 
 		return nil
 	}
@@ -229,7 +229,7 @@ func TestCreateOrUpdate(t *testing.T) {
 
 		// check storage
 		var sts appsv1.StatefulSet
-		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLStorageName(), Namespace: cr.Namespace}, &sts))
+		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetStorageName(), Namespace: cr.Namespace}, &sts))
 		assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
 		cnt := sts.Spec.Template.Spec.Containers[0]
 		assert.Equal(t, cnt.Args, []string{"-futureRetention=2d", "-httpListenAddr=:9491", "-retention.maxDiskSpaceUsageBytes=5GB", "-retentionPeriod=1w", "-storageDataPath=/vlstorage-data"})
@@ -268,7 +268,7 @@ func TestCreateOrUpdate(t *testing.T) {
 
 		// check select
 		var d appsv1.Deployment
-		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetVLSelectName(), Namespace: cr.Namespace}, &d))
+		assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetSelectName(), Namespace: cr.Namespace}, &d))
 		assert.Len(t, d.Spec.Template.Spec.Containers, 1)
 		cnt := d.Spec.Template.Spec.Containers[0]
 		assert.Equal(t, cnt.Args, []string{

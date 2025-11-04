@@ -87,7 +87,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				return fmt.Errorf("cannot remove storage from prev state: %w", err)
 			}
 		} else {
-			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: cr.GetVLStorageName()}
+			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: cr.GetStorageName()}
 			if vmst.PodDisruptionBudget == nil && prevSt.PodDisruptionBudget != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev storage: %w", err)
@@ -99,7 +99,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				}
 			}
 			prevSvc, currSvc := prevSt.ServiceSpec, vmst.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetVLStorageName(), cr.Namespace, prevSvc, currSvc); err != nil {
+			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetStorageName(), cr.Namespace, prevSvc, currSvc); err != nil {
 				return fmt.Errorf("cannot remove storage additional service: %w", err)
 			}
 		}
@@ -112,7 +112,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			}
 		} else {
 			commonObjMeta := metav1.ObjectMeta{
-				Namespace: cr.Namespace, Name: cr.GetVLSelectName()}
+				Namespace: cr.Namespace, Name: cr.GetSelectName()}
 			if vmse.PodDisruptionBudget == nil && prevSe.PodDisruptionBudget != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev select: %w", err)
@@ -129,7 +129,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				}
 			}
 			prevSvc, currSvc := prevSe.ServiceSpec, vmse.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetVLSelectName(), cr.Namespace, prevSvc, currSvc); err != nil {
+			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetSelectName(), cr.Namespace, prevSvc, currSvc); err != nil {
 				return fmt.Errorf("cannot remove select additional service: %w", err)
 			}
 		}
@@ -139,7 +139,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			// remove service scrape because service was renamed
 			if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVLSelectName(), Namespace: cr.Namespace},
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetSelectName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for non-lb select svc: %w", err)
 				}
@@ -149,14 +149,14 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		// transit to the k8s service balancing mode
 		if prevLB.Enabled && !prevLB.DisableSelectBalancing && (!newLB.Enabled || newLB.DisableSelectBalancing) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-				Name:      cr.GetVLSelectLBName(),
+				Name:      cr.GetSelectLBName(),
 				Namespace: cr.Namespace,
 			}}); err != nil {
 				return fmt.Errorf("cannot remove select lb service: %w", err)
 			}
 			if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVLSelectLBName(), Namespace: cr.Namespace},
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetSelectLBName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for lb select svc: %w", err)
 				}
@@ -171,7 +171,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			}
 		} else {
 
-			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: cr.GetVLInsertName()}
+			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: cr.GetInsertName()}
 			if vmis.PodDisruptionBudget == nil && prevIs.PodDisruptionBudget != nil {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev insert: %w", err)
@@ -188,7 +188,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 				}
 			}
 			prevSvc, currSvc := prevIs.ServiceSpec, vmis.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetVLInsertName(), cr.Namespace, prevSvc, currSvc); err != nil {
+			if err := reconcile.AdditionalServices(ctx, rclient, cr.GetInsertName(), cr.Namespace, prevSvc, currSvc); err != nil {
 				return fmt.Errorf("cannot remove insert additional service: %w", err)
 			}
 		}
@@ -198,7 +198,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			// remove service scrape because service was renamed
 			if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVLInsertName(), Namespace: cr.Namespace},
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetInsertName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for non-lb insert svc: %w", err)
 				}
@@ -208,14 +208,14 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		// transit to the k8s service balancing mode
 		if prevLB.Enabled && !prevLB.DisableInsertBalancing && (!newLB.Enabled || newLB.DisableInsertBalancing) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-				Name:      cr.GetVLInsertLBName(),
+				Name:      cr.GetInsertLBName(),
 				Namespace: cr.Namespace,
 			}}); err != nil {
 				return fmt.Errorf("cannot remove insert lb service: %w", err)
 			}
 			if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: cr.GetVLInsertLBName(), Namespace: cr.Namespace},
+					ObjectMeta: metav1.ObjectMeta{Name: cr.GetInsertLBName(), Namespace: cr.Namespace},
 				}); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for lb insert svc: %w", err)
 				}

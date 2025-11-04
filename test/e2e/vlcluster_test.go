@@ -106,7 +106,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					},
 					verify: func(cr *vmv1.VLCluster) {
 						nsss := []types.NamespacedName{
-							{Namespace: namespace, Name: cr.GetVLStorageName()},
+							{Namespace: namespace, Name: cr.GetStorageName()},
 						}
 						expectedAnnotations := map[string]string{"added-annotation": "some-value"}
 						for _, nss := range nsss {
@@ -118,8 +118,8 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 							assertStrictSecurity(sts.Spec.Template.Spec)
 						}
 						nsss = []types.NamespacedName{
-							{Namespace: namespace, Name: cr.GetVLInsertName()},
-							{Namespace: namespace, Name: cr.GetVLSelectName()},
+							{Namespace: namespace, Name: cr.GetInsertName()},
+							{Namespace: namespace, Name: cr.GetSelectName()},
 						}
 						for _, nss := range nsss {
 							sts := &appsv1.Deployment{}
@@ -134,15 +134,15 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					},
 					verify: func(cr *vmv1.VLCluster) {
 						nsss := []types.NamespacedName{
-							{Namespace: namespace, Name: cr.GetVLStorageName()},
+							{Namespace: namespace, Name: cr.GetStorageName()},
 						}
 						expectedAnnotations := map[string]string{"added-annotation": ""}
 						for _, nss := range nsss {
 							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.StatefulSet{}, &corev1.Service{}}, expectedAnnotations)
 						}
 						nsss = []types.NamespacedName{
-							{Namespace: namespace, Name: cr.GetVLInsertName()},
-							{Namespace: namespace, Name: cr.GetVLSelectName()},
+							{Namespace: namespace, Name: cr.GetInsertName()},
+							{Namespace: namespace, Name: cr.GetSelectName()},
 						}
 						for _, nss := range nsss {
 							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.Service{}}, expectedAnnotations)
@@ -163,14 +163,14 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVMAuthLBName(), Namespace: namespace}, &dep)).To(Succeed())
 
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVLSelectName(), Namespace: namespace}, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetSelectName(), Namespace: namespace}, &svc)).To(Succeed())
 						Expect(svc.Spec.Selector).To(Equal(cr.VMAuthLBSelectorLabels()))
 
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVLInsertName(), Namespace: namespace}, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetInsertName(), Namespace: namespace}, &svc)).To(Succeed())
 						Expect(svc.Spec.Selector).To(Equal(cr.VMAuthLBSelectorLabels()))
 
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
-							dstURL: fmt.Sprintf("http://%s.%s.svc:9481/insert/jsonline?_stream_fields=stream&_time_field=date&_msg_field=log.message", cr.GetVLInsertName(), namespace),
+							dstURL: fmt.Sprintf("http://%s.%s.svc:9481/insert/jsonline?_stream_fields=stream&_time_field=date&_msg_field=log.message", cr.GetInsertName(), namespace),
 							payload: `{\"log\": {\"level\": \"info\", \"message\": \"hello world\" }, \"date\": \"0\", \"stream\": \"stream1\" }
 { \"log\": { \"level\": \"info\", \"message\": \"hello world\" }, \"date\": \"0\", \"stream\": \"stream2\" }
               `,
@@ -178,7 +178,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 							method:       "POST",
 						})
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
-							dstURL:       fmt.Sprintf("http://%s.%s.svc:9471/select/logsql/query?query=*", cr.GetVLSelectName(), namespace),
+							dstURL:       fmt.Sprintf("http://%s.%s.svc:9471/select/logsql/query?query=*", cr.GetSelectName(), namespace),
 							payload:      ``,
 							expectedCode: 200,
 						})
@@ -193,14 +193,14 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: cr.GetVMAuthLBName(), Namespace: namespace}, &dep)
 
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVLSelectName(), Namespace: namespace}, &svc)).To(Succeed())
-						Expect(svc.Spec.Selector).To(Equal(cr.VLSelectSelectorLabels()))
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetSelectName(), Namespace: namespace}, &svc)).To(Succeed())
+						Expect(svc.Spec.Selector).To(Equal(cr.GetSelectSelectorLabels()))
 
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetVLInsertName(), Namespace: namespace}, &svc)).To(Succeed())
-						Expect(svc.Spec.Selector).To(Equal(cr.VLInsertSelectorLabels()))
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.GetInsertName(), Namespace: namespace}, &svc)).To(Succeed())
+						Expect(svc.Spec.Selector).To(Equal(cr.GetInsertSelectorLabels()))
 
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
-							dstURL: fmt.Sprintf("http://%s.%s.svc:9481/insert/jsonline?_stream_fields=stream&_time_field=date&_msg_field=log.message", cr.GetVLInsertName(), namespace),
+							dstURL: fmt.Sprintf("http://%s.%s.svc:9481/insert/jsonline?_stream_fields=stream&_time_field=date&_msg_field=log.message", cr.GetInsertName(), namespace),
 							payload: `{\"log\": {\"level\": \"info\", \"message\": \"hello world\" }, \"date\": \"0\", \"stream\": \"stream1\" }
 { \"log\": { \"level\": \"info\", \"message\": \"hello world\" }, \"date\": \"0\", \"stream\": \"stream2\" }
               `,
@@ -208,7 +208,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 							method:       "POST",
 						})
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
-							dstURL:       fmt.Sprintf("http://%s.%s.svc:9471/select/logsql/query?query=*", cr.GetVLSelectName(), namespace),
+							dstURL:       fmt.Sprintf("http://%s.%s.svc:9471/select/logsql/query?query=*", cr.GetSelectName(), namespace),
 							payload:      ``,
 							expectedCode: 200,
 						})
@@ -265,11 +265,11 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					},
 					verify: func(cr *vmv1.VLCluster) {
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetInsertName()}, &svc)).To(Succeed())
 						Expect(svc.Spec.Ports).To(HaveLen(3))
 
 						var dep appsv1.Deployment
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}, &dep)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetInsertName()}, &dep)).To(Succeed())
 						Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(1))
 						Expect(dep.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
 					},
@@ -286,17 +286,17 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						})
 					},
 					verify: func(cr *vmv1.VLCluster) {
-						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVLStorageName()}
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetStorageName()}
 						sts := &appsv1.StatefulSet{}
 						Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
 						Expect(*sts.Spec.Replicas).To(Equal(int32(1)))
-						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetInsertName()}
 						dep := &appsv1.Deployment{}
 						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(3)))
 
 						// vlselect must be removed
-						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLSelectName()}
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetSelectName()}
 						waitResourceDeleted(ctx, k8sClient, nsn, dep)
 					},
 				},
@@ -313,16 +313,16 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						})
 					},
 					verify: func(cr *vmv1.VLCluster) {
-						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVLStorageName()}
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetStorageName()}
 						sts := &appsv1.StatefulSet{}
 						Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
 						Expect(*sts.Spec.Replicas).To(Equal(int32(2)))
-						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLSelectName()}
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetSelectName()}
 						dep := &appsv1.Deployment{}
 						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
 						// vlselect must be removed
-						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetInsertName()}
 						waitResourceDeleted(ctx, k8sClient, nsn, dep)
 					},
 				},
@@ -343,15 +343,15 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						})
 					},
 					verify: func(cr *vmv1.VLCluster) {
-						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetVLStorageName()}
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.GetStorageName()}
 						sts := &appsv1.StatefulSet{}
 						Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
 						Expect(*sts.Spec.Replicas).To(Equal(int32(0)))
 						dep := &appsv1.Deployment{}
-						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLInsertName()}
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetInsertName()}
 						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(0)))
-						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetVLSelectName()}
+						nsn = types.NamespacedName{Namespace: namespace, Name: cr.GetSelectName()}
 						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(0)))
 					},

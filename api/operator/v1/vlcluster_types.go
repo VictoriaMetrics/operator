@@ -603,28 +603,28 @@ func (cr *VLCluster) GetVMAuthLBName() string {
 	return fmt.Sprintf("vlclusterlb-%s", cr.Name)
 }
 
-// GetVLSelectLBName returns headless proxy service name for select component
-func (cr *VLCluster) GetVLSelectLBName() string {
+// GetSelectLBName returns headless proxy service name for select component
+func (cr *VLCluster) GetSelectLBName() string {
 	return prefixedName(cr.Name, "vlselectint")
 }
 
-// GetVLInsertLBName returns headless proxy service name for insert component
-func (cr *VLCluster) GetVLInsertLBName() string {
+// GetInsertLBName returns headless proxy service name for insert component
+func (cr *VLCluster) GetInsertLBName() string {
 	return prefixedName(cr.Name, "vlinsertint")
 }
 
-// GetVLInsertName returns insert component name
-func (cr *VLCluster) GetVLInsertName() string {
+// GetInsertName returns insert component name
+func (cr *VLCluster) GetInsertName() string {
 	return prefixedName(cr.Name, "vlinsert")
 }
 
 // GetLVSelectName returns select component name
-func (cr *VLCluster) GetVLSelectName() string {
+func (cr *VLCluster) GetSelectName() string {
 	return prefixedName(cr.Name, "vlselect")
 }
 
-// GetVLStorageName returns select component name
-func (cr *VLCluster) GetVLStorageName() string {
+// GetStorageName returns select component name
+func (cr *VLCluster) GetStorageName() string {
 	return prefixedName(cr.Name, "vlstorage")
 }
 
@@ -635,8 +635,8 @@ func (cr *VLCluster) Validate() error {
 	}
 	if cr.Spec.VLSelect != nil {
 		vms := cr.Spec.VLSelect
-		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == cr.GetVLSelectName() {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetVLSelectName())
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == cr.GetSelectName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetSelectName())
 		}
 		if vms.HPA != nil {
 			if err := vms.HPA.Validate(); err != nil {
@@ -646,8 +646,8 @@ func (cr *VLCluster) Validate() error {
 	}
 	if cr.Spec.VLInsert != nil {
 		vli := cr.Spec.VLInsert
-		if vli.ServiceSpec != nil && vli.ServiceSpec.Name == cr.GetVLInsertName() {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetVLInsertName())
+		if vli.ServiceSpec != nil && vli.ServiceSpec.Name == cr.GetInsertName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetInsertName())
 		}
 		if vli.HPA != nil {
 			if err := vli.HPA.Validate(); err != nil {
@@ -657,8 +657,8 @@ func (cr *VLCluster) Validate() error {
 	}
 	if cr.Spec.VLStorage != nil {
 		vls := cr.Spec.VLStorage
-		if vls.ServiceSpec != nil && vls.ServiceSpec.Name == cr.GetVLStorageName() {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetVLStorageName())
+		if vls.ServiceSpec != nil && vls.ServiceSpec.Name == cr.GetStorageName() {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", cr.GetStorageName())
 		}
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
@@ -671,8 +671,8 @@ func (cr *VLCluster) Validate() error {
 	return nil
 }
 
-// VLSelectSelectorLabels returns selector labels for select cluster component
-func (cr *VLCluster) VLSelectSelectorLabels() map[string]string {
+// GetSelectSelectorLabels returns selector labels for select cluster component
+func (cr *VLCluster) GetSelectSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlselect",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -681,17 +681,17 @@ func (cr *VLCluster) VLSelectSelectorLabels() map[string]string {
 	}
 }
 
-// VLSelectPodLabels returns pod labels for select cluster component
-func (cr *VLCluster) VLSelectPodLabels() map[string]string {
-	selectorLabels := cr.VLSelectSelectorLabels()
+// GetSelectPodLabels returns pod labels for select cluster component
+func (cr *VLCluster) GetSelectPodLabels() map[string]string {
+	selectorLabels := cr.GetSelectSelectorLabels()
 	if cr.Spec.VLSelect == nil || cr.Spec.VLSelect.PodMetadata == nil {
 		return selectorLabels
 	}
 	return labels.Merge(cr.Spec.VLSelect.PodMetadata.Labels, selectorLabels)
 }
 
-// VLInsertSelectorLabels returns selector labels for insert cluster component
-func (cr *VLCluster) VLInsertSelectorLabels() map[string]string {
+// GetInsertSelectorLabels returns selector labels for insert cluster component
+func (cr *VLCluster) GetInsertSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlinsert",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -700,17 +700,17 @@ func (cr *VLCluster) VLInsertSelectorLabels() map[string]string {
 	}
 }
 
-// VLInsertPodLabels returns pod labels for vlinsert cluster component
-func (cr *VLCluster) VLInsertPodLabels() map[string]string {
-	selectorLabels := cr.VLInsertSelectorLabels()
+// GetInsertPodLabels returns pod labels for vlinsert cluster component
+func (cr *VLCluster) GetInsertPodLabels() map[string]string {
+	selectorLabels := cr.GetInsertSelectorLabels()
 	if cr.Spec.VLInsert == nil || cr.Spec.VLInsert.PodMetadata == nil {
 		return selectorLabels
 	}
 	return labels.Merge(cr.Spec.VLInsert.PodMetadata.Labels, selectorLabels)
 }
 
-// VLStorageSelectorLabels returns pod labels for vlstorage cluster component
-func (cr *VLCluster) VLStorageSelectorLabels() map[string]string {
+// GetStorageSelectorLabels returns pod labels for vlstorage cluster component
+func (cr *VLCluster) GetStorageSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlstorage",
 		"app.kubernetes.io/instance":  cr.Name,
@@ -719,9 +719,9 @@ func (cr *VLCluster) VLStorageSelectorLabels() map[string]string {
 	}
 }
 
-// VLStoragePodLabels returns pod labels for the vmstorage cluster component
-func (cr *VLCluster) VLStoragePodLabels() map[string]string {
-	selectorLabels := cr.VLStorageSelectorLabels()
+// GetStoragePodLabels returns pod labels for the vmstorage cluster component
+func (cr *VLCluster) GetStoragePodLabels() map[string]string {
+	selectorLabels := cr.GetStorageSelectorLabels()
 	if cr.Spec.VLStorage == nil || cr.Spec.VLStorage.PodMetadata == nil {
 		return selectorLabels
 	}
@@ -768,24 +768,24 @@ func (cr *VLCluster) FinalLabels(selectorLabels map[string]string) map[string]st
 	return labels.Merge(cr.Spec.ManagedMetadata.Labels, baseLabels)
 }
 
-// VLSelectPodAnnotations returns pod annotations for select cluster component
-func (cr *VLCluster) VLSelectPodAnnotations() map[string]string {
+// GetSelectPodAnnotations returns pod annotations for select cluster component
+func (cr *VLCluster) GetSelectPodAnnotations() map[string]string {
 	if cr.Spec.VLSelect == nil || cr.Spec.VLSelect.PodMetadata == nil {
 		return make(map[string]string)
 	}
 	return cr.Spec.VLSelect.PodMetadata.Annotations
 }
 
-// VLInsertPodAnnotations returns pod annotations for insert cluster component
-func (cr *VLCluster) VLInsertPodAnnotations() map[string]string {
+// GetInsertPodAnnotations returns pod annotations for insert cluster component
+func (cr *VLCluster) GetInsertPodAnnotations() map[string]string {
 	if cr.Spec.VLInsert == nil || cr.Spec.VLInsert.PodMetadata == nil {
 		return make(map[string]string)
 	}
 	return cr.Spec.VLInsert.PodMetadata.Annotations
 }
 
-// VLStoragePodAnnotations returns pod annotations for storage cluster component
-func (cr *VLCluster) VLStoragePodAnnotations() map[string]string {
+// GetStoragePodAnnotations returns pod annotations for storage cluster component
+func (cr *VLCluster) GetStoragePodAnnotations() map[string]string {
 	if cr.Spec.VLStorage == nil || cr.Spec.VLStorage.PodMetadata == nil {
 		return make(map[string]string)
 	}
@@ -867,7 +867,7 @@ func (cr *VLCluster) SelectURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.VLSelect.ExtraArgs), cr.GetVLSelectName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.VLSelect.ExtraArgs), cr.GetSelectName(), cr.Namespace, port)
 }
 
 // InsertURL returns url to access VLInsert component
@@ -886,7 +886,7 @@ func (cr *VLCluster) InsertURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.VLInsert.ExtraArgs), cr.GetVLInsertName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.VLInsert.ExtraArgs), cr.GetInsertName(), cr.Namespace, port)
 }
 
 // StorageURL returns url to access VLStorage component
@@ -905,7 +905,7 @@ func (cr *VLCluster) StorageURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.VLStorage.ExtraArgs), cr.GetVLStorageName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.VLStorage.ExtraArgs), cr.GetStorageName(), cr.Namespace, port)
 }
 
 // +kubebuilder:object:root=true

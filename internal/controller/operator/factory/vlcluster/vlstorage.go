@@ -26,13 +26,13 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 	if cr.Spec.VLStorage == nil {
 		return nil
 	}
-	b := newOptsBuilder(cr, cr.GetVLStorageName(), cr.VLStorageSelectorLabels())
+	b := newOptsBuilder(cr, cr.GetStorageName(), cr.GetStorageSelectorLabels())
 
 	if cr.Spec.VLStorage.PodDisruptionBudget != nil {
 		pdb := build.PodDisruptionBudget(b, cr.Spec.VLStorage.PodDisruptionBudget)
 		var prevPDB *policyv1.PodDisruptionBudget
 		if prevCR != nil && prevCR.Spec.VLStorage.PodDisruptionBudget != nil {
-			prevB := newOptsBuilder(prevCR, prevCR.GetVLStorageName(), prevCR.VLStorageSelectorLabels())
+			prevB := newOptsBuilder(prevCR, prevCR.GetStorageName(), prevCR.GetStorageSelectorLabels())
 			prevPDB = build.PodDisruptionBudget(prevB, prevCR.Spec.VLStorage.PodDisruptionBudget)
 		}
 		err := reconcile.PDB(ctx, rclient, pdb, prevPDB)
@@ -62,18 +62,18 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {
 	t := &optsBuilder{
 		cr,
-		cr.GetVLStorageName(),
-		cr.FinalLabels(cr.VLStorageSelectorLabels()),
-		cr.VLStorageSelectorLabels(),
+		cr.GetStorageName(),
+		cr.FinalLabels(cr.GetStorageSelectorLabels()),
+		cr.GetStorageSelectorLabels(),
 		cr.Spec.VLStorage.ServiceSpec,
 	}
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil && prevCR.Spec.VLStorage != nil {
 		prevT := &optsBuilder{
 			prevCR,
-			prevCR.GetVLStorageName(),
-			prevCR.FinalLabels(prevCR.VLStorageSelectorLabels()),
-			prevCR.VLStorageSelectorLabels(),
+			prevCR.GetStorageName(),
+			prevCR.FinalLabels(prevCR.GetStorageSelectorLabels()),
+			prevCR.GetStorageSelectorLabels(),
 			prevCR.Spec.VLStorage.ServiceSpec,
 		}
 
@@ -125,7 +125,7 @@ func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, 
 
 	stsOpts := reconcile.STSOptions{
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: cr.VLStorageSelectorLabels,
+		SelectorLabels: cr.GetStorageSelectorLabels,
 		UpdateBehavior: cr.Spec.VLStorage.RollingUpdateStrategyBehavior,
 	}
 	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
@@ -140,22 +140,22 @@ func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetVLStorageName(),
+			Name:            cr.GetStorageName(),
 			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(cr.VLStorageSelectorLabels()),
+			Labels:          cr.FinalLabels(cr.GetStorageSelectorLabels()),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.VLStorageSelectorLabels(),
+				MatchLabels: cr.GetStorageSelectorLabels(),
 			},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: cr.Spec.VLStorage.RollingUpdateStrategy,
 			},
 			Template:    *podSpec,
-			ServiceName: cr.GetVLStorageName(),
+			ServiceName: cr.GetStorageName(),
 		},
 	}
 	if cr.Spec.VLStorage.PersistentVolumeClaimRetentionPolicy != nil {
@@ -299,15 +299,15 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 	for i := range cr.Spec.VLStorage.TopologySpreadConstraints {
 		if cr.Spec.VLStorage.TopologySpreadConstraints[i].LabelSelector == nil {
 			cr.Spec.VLStorage.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
-				MatchLabels: cr.VLStorageSelectorLabels(),
+				MatchLabels: cr.GetStorageSelectorLabels(),
 			}
 		}
 	}
 
 	vmStoragePodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      cr.VLStoragePodLabels(),
-			Annotations: cr.VLStoragePodAnnotations(),
+			Labels:      cr.GetStoragePodLabels(),
+			Annotations: cr.GetStoragePodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
 			Volumes:            volumes,

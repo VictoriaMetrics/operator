@@ -23,6 +23,7 @@ aliases:
 
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): added HPA  support with `spec.hpa` field for the VMAuth. See this issue [#1573](https://github.com/VictoriaMetrics/operator/issues/1573) for details. Thanks to the @endesapt
 * FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): support `ServiceMonitor's` [ServiceDiscoveryRole](https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api-reference/api.md#monitoring.coreos.com/v1.ServiceDiscoveryRole).
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): do not set `promscrape.cluster.membersCount` and `promscrape.cluster.memberNum` flags in ingestOnly mode. See [#1594](https://github.com/VictoriaMetrics/operator/issues/1594).
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly set default `useVMConfigReloader` value. See [#1589](https://github.com/VictoriaMetrics/operator/issues/1589).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly check `StatefulSet` ready status for `rollingUpdateStrategy: RollingUpdate`. See this issue [#1579](https://github.com/VictoriaMetrics/operator/issues/1579) for details.

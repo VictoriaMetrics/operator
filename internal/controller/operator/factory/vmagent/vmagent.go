@@ -286,10 +286,10 @@ func createOrUpdateShardedDeploy(ctx context.Context, rclient client.Client, cr,
 			}()
 			shardedDeploy := newDeploy.DeepCopyObject()
 			var prevShardedObject runtime.Object
-			addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy)
+			addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy, cr.Spec.IngestOnlyMode)
 			if prevDeploy != nil {
 				prevShardedObject = prevDeploy.DeepCopyObject()
-				addShardSettingsToVMAgent(shardNum, shardsCount, prevShardedObject)
+				addShardSettingsToVMAgent(shardNum, shardsCount, prevShardedObject, prevCR.Spec.IngestOnlyMode)
 			}
 			placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
 
@@ -798,7 +798,7 @@ func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, er
 	}, nil
 }
 
-func addShardSettingsToVMAgent(shardNum, shardsCount int, dep runtime.Object) {
+func addShardSettingsToVMAgent(shardNum, shardsCount int, dep runtime.Object, ingestOnly bool) {
 	var containers []corev1.Container
 	switch dep := dep.(type) {
 	case *appsv1.StatefulSet:
@@ -813,6 +813,9 @@ func addShardSettingsToVMAgent(shardNum, shardsCount int, dep runtime.Object) {
 		// need to mutate selectors ?
 		dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
 		dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
+	}
+	if ingestOnly {
+		return
 	}
 	for i := range containers {
 		container := &containers[i]

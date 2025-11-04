@@ -577,16 +577,14 @@ type VMAuthList struct {
 }
 
 // AsOwner returns owner references with current object as owner
-func (cr *VMAuth) AsOwner() []metav1.OwnerReference {
-	return []metav1.OwnerReference{
-		{
-			APIVersion:         cr.APIVersion,
-			Kind:               cr.Kind,
-			Name:               cr.Name,
-			UID:                cr.UID,
-			Controller:         ptr.To(true),
-			BlockOwnerDeletion: ptr.To(true),
-		},
+func (cr *VMAuth) AsOwner() metav1.OwnerReference {
+	return metav1.OwnerReference{
+		APIVersion:         cr.APIVersion,
+		Kind:               cr.Kind,
+		Name:               cr.Name,
+		UID:                cr.UID,
+		Controller:         ptr.To(true),
+		BlockOwnerDeletion: ptr.To(true),
 	}
 }
 

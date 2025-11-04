@@ -42,7 +42,7 @@ func newVLogsPVC(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 			Labels:          labels.Merge(r.Spec.StorageMetadata.Labels, r.SelectorLabels()),
 			Annotations:     r.Spec.StorageMetadata.Annotations,
 			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: r.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
 		},
 		Spec: *r.Spec.Storage,
 	}
@@ -122,7 +122,7 @@ func newVLogsDeployment(r *vmv1beta1.VLogs) (*appsv1.Deployment, error) {
 			Namespace:       r.Namespace,
 			Labels:          r.AllLabels(),
 			Annotations:     r.AnnotationsFiltered(),
-			OwnerReferences: r.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{

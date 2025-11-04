@@ -158,16 +158,14 @@ func (r *VLogs) PodAnnotations() map[string]string {
 }
 
 // AsOwner returns owner references with current object as owner
-func (r *VLogs) AsOwner() []metav1.OwnerReference {
-	return []metav1.OwnerReference{
-		{
-			APIVersion:         r.APIVersion,
-			Kind:               r.Kind,
-			Name:               r.Name,
-			UID:                r.UID,
-			Controller:         ptr.To(true),
-			BlockOwnerDeletion: ptr.To(true),
-		},
+func (r *VLogs) AsOwner() metav1.OwnerReference {
+	return metav1.OwnerReference{
+		APIVersion:         r.APIVersion,
+		Kind:               r.Kind,
+		Name:               r.Name,
+		UID:                r.UID,
+		Controller:         ptr.To(true),
+		BlockOwnerDeletion: ptr.To(true),
 	}
 }
 

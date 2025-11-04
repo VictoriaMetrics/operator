@@ -61,7 +61,7 @@ func buildLBConfigSecretMeta(cr *vmv1.VLCluster) metav1.ObjectMeta {
 		Name:            cr.GetVMAuthLBName(),
 		Labels:          cr.FinalLabels(cr.VMAuthLBSelectorLabels()),
 		Annotations:     cr.FinalAnnotations(),
-		OwnerReferences: cr.AsOwner(),
+		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 	}
 }
 
@@ -196,7 +196,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 			Name:            cr.GetVMAuthLBName(),
 			Labels:          cr.FinalLabels(cr.VMAuthLBSelectorLabels()),
 			Annotations:     cr.FinalAnnotations(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{

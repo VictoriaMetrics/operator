@@ -49,7 +49,7 @@ func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Ser
 			Namespace:       cr.GetNamespace(),
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: corev1.ServiceSpec{

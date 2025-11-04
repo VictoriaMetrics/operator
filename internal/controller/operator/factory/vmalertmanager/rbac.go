@@ -47,7 +47,7 @@ func buildRole(cr *vmv1beta1.VMAlertmanager) *rbacv1.Role {
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -67,7 +67,7 @@ func buildRoleBinding(cr *vmv1beta1.VMAlertmanager) *rbacv1.RoleBinding {
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		RoleRef: rbacv1.RoleRef{
 			Name:     cr.PrefixedName(),

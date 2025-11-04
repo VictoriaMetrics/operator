@@ -505,7 +505,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
 			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
@@ -735,7 +735,7 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMInsertSelectorLabels()),
 			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -933,7 +933,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
 			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
@@ -1424,7 +1424,7 @@ func buildLBConfigSecretMeta(cr *vmv1beta1.VMCluster) metav1.ObjectMeta {
 		Name:            cr.GetVMAuthLBName(),
 		Labels:          cr.FinalLabels(cr.VMAuthLBSelectorLabels()),
 		Annotations:     cr.AnnotationsFiltered(),
-		OwnerReferences: cr.AsOwner(),
+		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 	}
 }
 
@@ -1546,7 +1546,7 @@ func buildVMauthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 			Name:            cr.GetVMAuthLBName(),
 			Labels:          cr.FinalLabels(cr.VMAuthLBSelectorLabels()),
 			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{

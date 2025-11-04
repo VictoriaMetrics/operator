@@ -427,7 +427,7 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 				Namespace:       cr.Namespace,
 				Labels:          cr.AllLabels(),
 				Annotations:     cr.AnnotationsFiltered(),
-				OwnerReferences: cr.AsOwner(),
+				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 				Finalizers:      []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.DaemonSetSpec{
@@ -457,7 +457,7 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 				Namespace:       cr.Namespace,
 				Labels:          cr.AllLabels(),
 				Annotations:     cr.AnnotationsFiltered(),
-				OwnerReferences: cr.AsOwner(),
+				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 				Finalizers:      []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.StatefulSetSpec{
@@ -498,7 +498,7 @@ func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, er
 			Namespace:       cr.Namespace,
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -844,7 +844,7 @@ func buildRelabelingsAssetsMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
 		Name:            cr.RelabelingAssetName(),
 		Labels:          cr.AllLabels(),
 		Annotations:     cr.AnnotationsFiltered(),
-		OwnerReferences: cr.AsOwner(),
+		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 	}
 }
 

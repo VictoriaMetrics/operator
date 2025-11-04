@@ -15,7 +15,7 @@ func HPA(opts builderOpts, targetRef autoscalingv2.CrossVersionObjectReference, 
 			Namespace:       opts.GetNamespace(),
 			Annotations:     opts.AnnotationsFiltered(),
 			Labels:          opts.AllLabels(),
-			OwnerReferences: opts.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{opts.AsOwner()},
 		},
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
 			MaxReplicas:    spec.MaxReplicas,

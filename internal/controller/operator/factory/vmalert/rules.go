@@ -323,7 +323,7 @@ func makeRulesConfigMap(cr *vmv1beta1.VMAlert, ruleFiles map[string]string) core
 			Name:            ruleConfigMapName(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          ruleLabels,
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Data: ruleFiles,

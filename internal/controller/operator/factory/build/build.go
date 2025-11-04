@@ -28,7 +28,7 @@ type builderOpts interface {
 	AnnotationsFiltered() map[string]string
 	AllLabels() map[string]string
 	SelectorLabels() map[string]string
-	AsOwner() []metav1.OwnerReference
+	AsOwner() metav1.OwnerReference
 	GetNamespace() string
 	GetAdditionalService() *vmv1beta1.AdditionalServiceSpec
 }

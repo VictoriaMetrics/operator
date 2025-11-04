@@ -178,7 +178,7 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VLSelectSelectorLabels()),
 			Annotations:     cr.FinalAnnotations(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{

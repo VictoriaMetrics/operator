@@ -105,7 +105,7 @@ func buildVTInsertDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VTInsertSelectorLabels()),
 			Annotations:     cr.FinalAnnotations(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{

@@ -64,7 +64,7 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			Namespace:       cr.Namespace,
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: *spec,
@@ -596,7 +596,7 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
 		Namespace:       cr.Namespace,
 		Labels:          cr.AllLabels(),
 		Annotations:     cr.AnnotationsFiltered(),
-		OwnerReferences: cr.AsOwner(),
+		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		Finalizers:      []string{vmv1beta1.FinalizerName},
 	}
 

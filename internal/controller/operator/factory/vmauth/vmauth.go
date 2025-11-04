@@ -135,7 +135,7 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 			Namespace:       cr.Namespace,
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -446,7 +446,7 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {
 			"generated": "true",
 		},
 		Namespace:       cr.Namespace,
-		OwnerReferences: cr.AsOwner(),
+		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		Finalizers: []string{
 			vmv1beta1.FinalizerName,
 		},
@@ -526,7 +526,7 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 			Namespace:       cr.Namespace,
 			Labels:          lbls,
 			Annotations:     cr.Spec.Ingress.Annotations,
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: spec,

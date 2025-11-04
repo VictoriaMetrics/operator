@@ -152,7 +152,7 @@ func newDeploy(cr *vmv1.VLAgent) (*appsv1.StatefulSet, error) {
 			Namespace:       cr.Namespace,
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{

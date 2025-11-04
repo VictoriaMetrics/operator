@@ -47,7 +47,7 @@ func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 			Labels:          labels.Merge(cr.Spec.StorageMetadata.Labels, cr.SelectorLabels()),
 			Annotations:     cr.Spec.StorageMetadata.Annotations,
 			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: *cr.Spec.Storage,
 	}
@@ -128,7 +128,7 @@ func newDeploy(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment,
 			Namespace:       cr.Namespace,
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{

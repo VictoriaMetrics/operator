@@ -27,13 +27,13 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 	if cr.Spec.VLSelect == nil {
 		return nil
 	}
-	b := newOptsBuilder(cr, cr.GetVLSelectName(), cr.VLSelectSelectorLabels())
+	b := newOptsBuilder(cr, cr.GetSelectName(), cr.GetSelectSelectorLabels())
 
 	if cr.Spec.VLSelect.PodDisruptionBudget != nil {
 		pdb := build.PodDisruptionBudget(b, cr.Spec.VLSelect.PodDisruptionBudget)
 		var prevPDB *policyv1.PodDisruptionBudget
 		if prevCR != nil && prevCR.Spec.VLSelect.PodDisruptionBudget != nil {
-			prevB := newOptsBuilder(prevCR, prevCR.GetVLSelectName(), prevCR.VLSelectSelectorLabels())
+			prevB := newOptsBuilder(prevCR, prevCR.GetSelectName(), prevCR.GetSelectSelectorLabels())
 			prevPDB = build.PodDisruptionBudget(prevB, prevCR.Spec.VLSelect.PodDisruptionBudget)
 		}
 		err := reconcile.PDB(ctx, rclient, pdb, prevPDB)
@@ -71,15 +71,15 @@ func createOrUpdateVLSelectHPA(ctx context.Context, rclient client.Client, cr, p
 		return nil
 	}
 	targetRef := autoscalingv2.CrossVersionObjectReference{
-		Name:       cr.GetVLSelectName(),
+		Name:       cr.GetSelectName(),
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	}
-	b := newOptsBuilder(cr, cr.GetVLSelectName(), cr.VLSelectSelectorLabels())
+	b := newOptsBuilder(cr, cr.GetSelectName(), cr.GetSelectSelectorLabels())
 	defaultHPA := build.HPA(b, targetRef, cr.Spec.VLSelect.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VLSelect.HPA != nil {
-		b := newOptsBuilder(prevCR, prevCR.GetVLSelectName(), prevCR.VLSelectSelectorLabels())
+		b := newOptsBuilder(prevCR, prevCR.GetSelectName(), prevCR.GetSelectSelectorLabels())
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VLSelect.HPA)
 	}
 
@@ -116,7 +116,7 @@ func createOrUpdateVLSelectService(ctx context.Context, rclient client.Client, c
 		if prevCR != nil && prevCR.Spec.VLSelect != nil {
 			prevPort = prevCR.Spec.VLSelect.Port
 		}
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetVLSelectName(), cr.Spec.VLSelect.Port, prevPort, "vlselect", cr.VMAuthLBSelectorLabels()); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetSelectName(), cr.Spec.VLSelect.Port, prevPort, "vlselect", cr.VMAuthLBSelectorLabels()); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for select: %w", err)
 		}
 	}
@@ -126,9 +126,9 @@ func createOrUpdateVLSelectService(ctx context.Context, rclient client.Client, c
 func buildVLSelectService(cr *vmv1.VLCluster) *corev1.Service {
 	b := &optsBuilder{
 		cr,
-		cr.GetVLSelectName(),
-		cr.FinalLabels(cr.VLSelectSelectorLabels()),
-		cr.VLSelectSelectorLabels(),
+		cr.GetSelectName(),
+		cr.FinalLabels(cr.GetSelectSelectorLabels()),
+		cr.GetSelectSelectorLabels(),
 		cr.Spec.VLSelect.ServiceSpec,
 	}
 	svc := build.Service(b, cr.Spec.VLSelect.Port, func(svc *corev1.Service) {
@@ -136,10 +136,10 @@ func buildVLSelectService(cr *vmv1.VLCluster) *corev1.Service {
 		svc.Spec.PublishNotReadyAddresses = true
 	})
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
-		svc.Name = cr.GetVLSelectLBName()
+		svc.Name = cr.GetSelectLBName()
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
-		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetVLSelectName()
+		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetSelectName()
 	}
 
 	return svc
@@ -174,9 +174,9 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 	}
 	depSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetVLSelectName(),
+			Name:            cr.GetSelectName(),
 			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(cr.VLSelectSelectorLabels()),
+			Labels:          cr.FinalLabels(cr.GetSelectSelectorLabels()),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
@@ -187,7 +187,7 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 				RollingUpdate: cr.Spec.VLSelect.RollingUpdate,
 			},
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.VLSelectSelectorLabels(),
+				MatchLabels: cr.GetSelectSelectorLabels(),
 			},
 			Template: *podSpec,
 		},
@@ -218,7 +218,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		storageNodeFlag := build.NewFlag("-storageNode", "")
 		storageNodeIds := cr.AvailableStorageNodeIDs("select")
 		for idx, i := range storageNodeIds {
-			storageNodeFlag.Add(build.PodDNSAddress(cr.GetVLStorageName(), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
+			storageNodeFlag.Add(build.PodDNSAddress(cr.GetStorageName(), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
 		}
 		if len(cr.Spec.VLSelect.ExtraStorageNodes) > 0 {
 			for i, node := range cr.Spec.VLSelect.ExtraStorageNodes {
@@ -312,15 +312,15 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	for i := range cr.Spec.VLSelect.TopologySpreadConstraints {
 		if cr.Spec.VLSelect.TopologySpreadConstraints[i].LabelSelector == nil {
 			cr.Spec.VLSelect.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
-				MatchLabels: cr.VLSelectSelectorLabels(),
+				MatchLabels: cr.GetSelectSelectorLabels(),
 			}
 		}
 	}
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      cr.VLSelectPodLabels(),
-			Annotations: cr.VLSelectPodAnnotations(),
+			Labels:      cr.GetSelectPodLabels(),
+			Annotations: cr.GetSelectPodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
 			Volumes:            volumes,

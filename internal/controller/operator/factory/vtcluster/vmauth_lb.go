@@ -58,7 +58,7 @@ func buildLBConfigSecretMeta(cr *vmv1.VTCluster) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Namespace:       cr.Namespace,
 		Name:            cr.GetVMAuthLBName(),
-		Labels:          cr.FinalLabels(cr.VMAuthLBSelectorLabels()),
+		Labels:          cr.FinalLabels(cr.GetVMAuthLBSelectorLabels()),
 		Annotations:     cr.FinalAnnotations(),
 		OwnerReferences: cr.AsOwner(),
 	}
@@ -86,9 +86,9 @@ func buildVMauthLBSecret(cr *vmv1.VTCluster) *corev1.Secret {
 		}
 	}
 	insertURL := fmt.Sprintf("%s://%s.%s:%s",
-		insertProto, cr.GetVTInsertLBName(), targetHostSuffix, insertPort)
+		insertProto, cr.GetInsertLBName(), targetHostSuffix, insertPort)
 	selectURL := fmt.Sprintf("%s://%s.%s:%s",
-		selectProto, cr.GetVTSelectLBName(), targetHostSuffix, selectPort)
+		selectProto, cr.GetSelectLBName(), targetHostSuffix, selectPort)
 
 	lbScrt := &corev1.Secret{
 		ObjectMeta: buildLBConfigSecretMeta(cr),
@@ -193,13 +193,13 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
 			Name:            cr.GetVMAuthLBName(),
-			Labels:          cr.FinalLabels(cr.VMAuthLBSelectorLabels()),
+			Labels:          cr.FinalLabels(cr.GetVMAuthLBSelectorLabels()),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.VMAuthLBSelectorLabels(),
+				MatchLabels: cr.GetVMAuthLBSelectorLabels(),
 			},
 			Strategy: appsv1.DeploymentStrategy{
 				Type:          strategyType,
@@ -207,8 +207,8 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      cr.VMAuthLBPodLabels(),
-					Annotations: cr.VMAuthLBPodAnnotations(),
+					Labels:      cr.GetVMAuthLBPodLabels(),
+					Annotations: cr.GetVMAuthLBPodAnnotations(),
 				},
 				Spec: corev1.PodSpec{
 					Volumes:            volumes,
@@ -226,7 +226,7 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 }
 
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
-	lbls := cr.VMAuthLBSelectorLabels()
+	lbls := cr.GetVMAuthLBSelectorLabels()
 
 	// add proxy label directly to the service.labels
 	// it'll be used below for vmservicescrape matcher
@@ -264,11 +264,11 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
 
-	t := newOptsBuilder(cr, cr.GetVMAuthLBName(), cr.VMAuthLBSelectorLabels())
+	t := newOptsBuilder(cr, cr.GetVMAuthLBName(), cr.GetVMAuthLBSelectorLabels())
 	pdb := build.PodDisruptionBudget(t, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		t = newOptsBuilder(prevCR, prevCR.GetVMAuthLBName(), prevCR.VMAuthLBSelectorLabels())
+		t = newOptsBuilder(prevCR, prevCR.GetVMAuthLBName(), prevCR.GetVMAuthLBSelectorLabels())
 		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
@@ -284,7 +284,7 @@ func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr
 		cr,
 		svcName,
 		fls,
-		cr.VMAuthLBSelectorLabels(),
+		cr.GetVMAuthLBSelectorLabels(),
 		nil,
 	}
 
@@ -300,7 +300,7 @@ func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr
 			prevCR,
 			svcName,
 			fls,
-			prevCR.VMAuthLBSelectorLabels(),
+			prevCR.GetVMAuthLBSelectorLabels(),
 			nil,
 		}
 

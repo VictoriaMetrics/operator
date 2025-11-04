@@ -52,7 +52,7 @@ func OnVTClusterDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTCl
 func OnVTInsertDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster, obj *vmv1.VTInsert) error {
 	objMeta := metav1.ObjectMeta{
 		Namespace: cr.Namespace,
-		Name:      cr.GetVTInsertName(),
+		Name:      cr.GetInsertName(),
 	}
 	objsToRemove := []client.Object{
 		&appsv1.Deployment{ObjectMeta: objMeta},
@@ -62,7 +62,7 @@ func OnVTInsertDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 		objsToRemove = append(objsToRemove, &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: cr.Namespace,
-				Name:      obj.ServiceSpec.NameOrDefault(cr.GetVTInsertName()),
+				Name:      obj.ServiceSpec.NameOrDefault(cr.GetInsertName()),
 			},
 		})
 	}
@@ -74,11 +74,11 @@ func OnVTInsertDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 	}
 	if !ptr.Deref(obj.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta})
-		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTInsertLBName(), Namespace: cr.Namespace}})
+		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: cr.GetInsertLBName(), Namespace: cr.Namespace}})
 	}
 
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
-		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTInsertLBName(), Namespace: cr.Namespace}})
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: cr.GetInsertLBName(), Namespace: cr.Namespace}})
 	}
 	for _, objToRemove := range objsToRemove {
 		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
@@ -92,7 +92,7 @@ func OnVTInsertDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 func OnVTSelectDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster, obj *vmv1.VTSelect) error {
 	objMeta := metav1.ObjectMeta{
 		Namespace: cr.Namespace,
-		Name:      cr.GetVTSelectName(),
+		Name:      cr.GetSelectName(),
 	}
 	objsToRemove := []client.Object{
 		&appsv1.Deployment{ObjectMeta: objMeta},
@@ -102,7 +102,7 @@ func OnVTSelectDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 		objsToRemove = append(objsToRemove, &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: cr.Namespace,
-				Name:      obj.ServiceSpec.NameOrDefault(cr.GetVTSelectName()),
+				Name:      obj.ServiceSpec.NameOrDefault(cr.GetSelectName()),
 			},
 		})
 	}
@@ -114,10 +114,10 @@ func OnVTSelectDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 	}
 	if !ptr.Deref(obj.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta})
-		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTSelectLBName(), Namespace: cr.Namespace}})
+		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: cr.GetSelectLBName(), Namespace: cr.Namespace}})
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
-		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTSelectLBName(), Namespace: cr.Namespace}})
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: cr.GetSelectLBName(), Namespace: cr.Namespace}})
 	}
 	for _, objToRemove := range objsToRemove {
 		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
@@ -131,7 +131,7 @@ func OnVTSelectDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 func OnVTStorageDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster, obj *vmv1.VTStorage) error {
 	objMeta := metav1.ObjectMeta{
 		Namespace: cr.Namespace,
-		Name:      cr.GetVTStorageName(),
+		Name:      cr.GetStorageName(),
 	}
 	objsToRemove := []client.Object{
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
@@ -141,7 +141,7 @@ func OnVTStorageDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTCl
 		objsToRemove = append(objsToRemove, &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: cr.Namespace,
-				Name:      obj.ServiceSpec.NameOrDefault(cr.GetVTStorageName()),
+				Name:      obj.ServiceSpec.NameOrDefault(cr.GetStorageName()),
 			},
 		})
 	}
@@ -182,20 +182,20 @@ func OnVTClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, c
 	if cr.Spec.Select != nil {
 		if !ptr.Deref(cr.Spec.Select.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 			objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{
-				ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTSelectLBName(), Namespace: cr.Namespace}})
+				ObjectMeta: metav1.ObjectMeta{Name: cr.GetSelectLBName(), Namespace: cr.Namespace}})
 		}
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.GetVTSelectLBName(),
+			Name:      cr.GetSelectLBName(),
 			Namespace: cr.Namespace,
 		}})
 	}
 	if cr.Spec.Insert != nil {
 		if !ptr.Deref(cr.Spec.Insert.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 			objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{
-				ObjectMeta: metav1.ObjectMeta{Name: cr.GetVTInsertLBName(), Namespace: cr.Namespace}})
+				ObjectMeta: metav1.ObjectMeta{Name: cr.GetInsertLBName(), Namespace: cr.Namespace}})
 		}
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.GetVTInsertLBName(),
+			Name:      cr.GetInsertLBName(),
 			Namespace: cr.Namespace,
 		}})
 	}

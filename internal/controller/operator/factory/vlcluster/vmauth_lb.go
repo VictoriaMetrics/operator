@@ -87,9 +87,9 @@ func buildVMauthLBSecret(cr *vmv1.VLCluster) *corev1.Secret {
 		}
 	}
 	insertURL := fmt.Sprintf("%s://%s.%s:%s",
-		insertProto, cr.GetVLInsertLBName(), targetHostSuffix, insertPort)
+		insertProto, cr.GetInsertLBName(), targetHostSuffix, insertPort)
 	selectURL := fmt.Sprintf("%s://%s.%s:%s",
-		selectProto, cr.GetVLSelectLBName(), targetHostSuffix, selectPort)
+		selectProto, cr.GetSelectLBName(), targetHostSuffix, selectPort)
 
 	lbScrt := &corev1.Secret{
 		ObjectMeta: buildLBConfigSecretMeta(cr),

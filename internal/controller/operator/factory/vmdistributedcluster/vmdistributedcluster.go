@@ -32,9 +32,11 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -45,7 +47,7 @@ const (
 )
 
 // CreateOrUpdate handles VM deployment reconciliation.
-func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, vmclusterWaitReadyDeadline, httpTimeout time.Duration) error {
+func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, scheme *runtime.Scheme, vmclusterWaitReadyDeadline, httpTimeout time.Duration) error {
 	// Store the previous CR for comparison
 	var prevCR *vmv1alpha1.VMDistributedCluster
 	if cr.ParsedLastAppliedSpec != nil {
@@ -132,15 +134,22 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if err = rclient.Get(ctx, types.NamespacedName{Name: vmClusterObj.Name, Namespace: vmClusterObj.Namespace}, vmClusterObj); k8serrors.IsNotFound(err) {
 			needsToBeCreated = true
 		}
-		mergedSpec, modified, err := ApplyOverrideSpec(vmClusterObj.Spec, zoneRefOrSpec.OverrideSpec)
+
+		// Update the VMCluster when overrideSpec needs to be applied or ownerref set
+		mergedSpec, modifiedSpec, err := ApplyOverrideSpec(vmClusterObj.Spec, zoneRefOrSpec.OverrideSpec)
 		if err != nil {
 			return fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 		}
-		if !needsToBeCreated && !modified {
+		modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmClusterObj, i, scheme)
+		if err != nil {
+			return fmt.Errorf("failed to set owner reference for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+		}
+		if !needsToBeCreated && !modifiedSpec && !modifiedOwnerRef {
 			continue
 		}
 
 		vmClusterObj.Spec = mergedSpec
+
 		if needsToBeCreated {
 			if err := rclient.Create(ctx, vmClusterObj); err != nil {
 				return fmt.Errorf("failed to create vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
@@ -178,6 +187,9 @@ func validateVMClusterRefOrSpec(i int, refOrSpec vmv1alpha1.VMClusterRefOrSpec) 
 	}
 	if refOrSpec.Spec == nil && refOrSpec.Ref == nil {
 		return fmt.Errorf("VMClusterRefOrSpec at index %d must have either Ref or Spec set, got: %+v", i, refOrSpec)
+	}
+	if refOrSpec.Spec != nil && refOrSpec.OverrideSpec != nil {
+		return fmt.Errorf("VMClusterRefOrSpec at index %d cannot have both Spec and OverrideSpec set, got: %+v", i, refOrSpec)
 	}
 	if refOrSpec.Spec != nil && refOrSpec.Name == "" {
 		return fmt.Errorf("VMClusterRefOrSpec.Name must be set when Spec is provided for index %d", i)
@@ -557,4 +569,23 @@ func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, 
 		}
 	}
 	return 0, fmt.Errorf("metric %s not found", VMAgentQueueMetricName)
+}
+
+func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster, index int, scheme *runtime.Scheme) (bool, error) {
+	ref := metav1.OwnerReference{
+		APIVersion: cr.APIVersion,
+		Kind:       cr.Kind,
+		UID:        cr.GetUID(),
+		Name:       cr.GetName(),
+	}
+	if ok, err := controllerutil.HasOwnerReference([]metav1.OwnerReference{ref}, vmClusterObj, scheme); err != nil {
+		return false, fmt.Errorf("failed to check owner reference for vmcluster %s at index %d: %w", vmClusterObj.Name, index, err)
+	} else if !ok {
+		// Set owner reference for the VMCluster to the VMDistributedCluster
+		if err := controllerutil.SetOwnerReference(cr, vmClusterObj, scheme); err != nil {
+			return false, fmt.Errorf("failed to set owner reference for vmcluster %s at index %d: %w", vmClusterObj.Name, index, err)
+		}
+		return true, nil
+	}
+	return false, nil
 }

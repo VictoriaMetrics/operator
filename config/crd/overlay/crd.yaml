@@ -16108,14 +16108,14 @@ spec:
               properties:
                 paused:
                   type: boolean
-                vmAgent:
+                vmagent:
                   properties:
                     name:
                       default: ""
                       type: string
                   type: object
                   x-kubernetes-map-type: atomic
-                vmUsers:
+                vmusers:
                   items:
                     properties:
                       name:

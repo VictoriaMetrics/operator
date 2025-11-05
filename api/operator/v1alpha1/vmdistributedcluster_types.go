@@ -51,23 +51,26 @@ type VMDistributedClusterSpec struct {
 // VMClusterRefOrSpec is either a reference to existing VMCluster or a specification of a new VMCluster.
 // +kubebuilder:validation:Xor=Ref,Spec
 type VMClusterRefOrSpec struct {
-	// Name specifies the static name to be used for the VMCluster when Spec is provided.
-	// If Ref is used, this field is ignored.
-	// +optional
-	Name string `json:"name,omitempty"`
 	// Ref points to the VMCluster object.
+	// If Ref is specified, Name and Spec are ignored.
 	// +optional
 	Ref *corev1.LocalObjectReference `json:"ref,omitempty"`
-	// Spec defines the desired state of a new VMCluster.
-	// +optional
-	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
 	// OverrideSpec specifies an override to the VMClusterSpec of the referenced object.
-	// This field is ignored if `Spec` is specified.
 	// This override is applied to the referenced object if `Ref` is specified.
+	// This field is ignored if `Spec` is specified.
 	// +kubebuilder:validation:Type=object
 	// +kubebuilder:validation:XPreserveUnknownFields
 	// +optional
 	OverrideSpec *apiextensionsv1.JSON `json:"overrideSpec,omitempty"`
+
+	// Name specifies the static name to be used for the VMCluster when Spec is provided.
+	// This field is ignored if `Ref` is specified.
+	// +optional
+	Name string `json:"name,omitempty"`
+	// Spec defines the desired state of a new VMCluster.
+	// This field is ignored if `Ref` is specified.
+	// +optional
+	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true

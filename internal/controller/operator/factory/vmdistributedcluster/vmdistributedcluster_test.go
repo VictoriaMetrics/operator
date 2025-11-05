@@ -549,14 +549,14 @@ func TestValidateVMClusterRefOrSpec(t *testing.T) {
 		}
 		err := validateVMClusterRefOrSpec(0, refOrSpec)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "must have either Ref or Spec set")
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec at index 0 must specify either Ref or Spec")
 	})
 
 	t.Run("Error: Neither Ref nor Spec set", func(t *testing.T) {
 		refOrSpec := vmv1alpha1.VMClusterRefOrSpec{}
 		err := validateVMClusterRefOrSpec(0, refOrSpec)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "must have either Ref or Spec set")
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec at index 0 must have either Ref or Spec set")
 	})
 
 	t.Run("Error: Spec set but Name missing", func(t *testing.T) {
@@ -565,7 +565,7 @@ func TestValidateVMClusterRefOrSpec(t *testing.T) {
 		}
 		err := validateVMClusterRefOrSpec(0, refOrSpec)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Name must be set when Spec is provided")
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Name must be set when Spec is provided for index 0")
 	})
 
 	t.Run("Error: Ref set but Name missing in Ref", func(t *testing.T) {
@@ -574,7 +574,7 @@ func TestValidateVMClusterRefOrSpec(t *testing.T) {
 		}
 		err := validateVMClusterRefOrSpec(0, refOrSpec)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Ref.Name must be set for reference")
+		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Ref.Name must be set for reference at index 0")
 	})
 
 	t.Run("Error: Spec and OverrideSpec set", func(t *testing.T) {

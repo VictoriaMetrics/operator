@@ -174,7 +174,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 // validateVMClusterRefOrSpec checks for mutual exclusivity and required fields for VMClusterRefOrSpec.
 func validateVMClusterRefOrSpec(i int, refOrSpec vmv1alpha1.VMClusterRefOrSpec) error {
 	if refOrSpec.Spec != nil && refOrSpec.Ref != nil {
-		return fmt.Errorf("VMClusterRefOrSpec at index %d must have either Ref or Spec set, got: %+v", i, refOrSpec)
+		return fmt.Errorf("VMClusterRefOrSpec at index %d must specify either Ref or Spec, got: %+v", i, refOrSpec)
 	}
 	if refOrSpec.Spec == nil && refOrSpec.Ref == nil {
 		return fmt.Errorf("VMClusterRefOrSpec at index %d must have either Ref or Spec set, got: %+v", i, refOrSpec)
@@ -184,9 +184,6 @@ func validateVMClusterRefOrSpec(i int, refOrSpec vmv1alpha1.VMClusterRefOrSpec) 
 	}
 	if refOrSpec.Ref != nil && refOrSpec.Ref.Name == "" {
 		return fmt.Errorf("VMClusterRefOrSpec.Ref.Name must be set for reference at index %d", i)
-	}
-	if refOrSpec.Spec != nil && refOrSpec.OverrideSpec != nil {
-		return fmt.Errorf("VMClusterRefOrSpec at index %d cannot have both Spec and OverrideSpec set, got: %+v", i, refOrSpec)
 	}
 	return nil
 }

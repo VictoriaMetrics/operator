@@ -324,7 +324,7 @@ func (cr *VLogs) AsURL() string {
 
 // LastAppliedSpecAsPatch return last applied vlogs spec as patch annotation
 func (cr *VLogs) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return LastAppliedChangesAsPatch(cr.Spec)
 }
 
 // HasSpecChanges compares vlogs spec with last applied vlogs spec stored in annotation

@@ -327,7 +327,7 @@ func (cr *VLSingle) AsURL() string {
 
 // LastAppliedSpecAsPatch return last applied vlsingle spec as patch annotation
 func (cr *VLSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return vmv1beta1.LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return vmv1beta1.LastAppliedChangesAsPatch(cr.Spec)
 }
 
 // HasSpecChanges compares vlsingle spec with last applied vlsingle spec stored in annotation

@@ -7,7 +7,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -17,7 +16,7 @@ import (
 
 // VMServiceScrapeForCRD creates or updates given object
 func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1beta1.VMServiceScrape) error {
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retryOnConflict(func() error {
 		var existVSS vmv1beta1.VMServiceScrape
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: vss.Namespace, Name: vss.Name}, &existVSS)
 		if err != nil {
@@ -26,6 +25,11 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 				return rclient.Create(ctx, vss)
 			}
 			return err
+		}
+		if !vss.DeletionTimestamp.IsZero() {
+			return &errRecreate{
+				origin: fmt.Errorf("waiting for servicescrape %q to be removed", vss.Name),
+			}
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &existVSS); err != nil {
 			return err
@@ -49,7 +53,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 
 // VMPodScrapeForCRD creates or updates given object
 func VMPodScrapeForCRD(ctx context.Context, rclient client.Client, vps *vmv1beta1.VMPodScrape) error {
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retryOnConflict(func() error {
 		var existVPS vmv1beta1.VMPodScrape
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: vps.Namespace, Name: vps.Name}, &existVPS)
 		if err != nil {
@@ -58,6 +62,11 @@ func VMPodScrapeForCRD(ctx context.Context, rclient client.Client, vps *vmv1beta
 				return rclient.Create(ctx, vps)
 			}
 			return err
+		}
+		if !vps.DeletionTimestamp.IsZero() {
+			return &errRecreate{
+				origin: fmt.Errorf("waiting for podscrape %q to be removed", vps.Name),
+			}
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &existVPS); err != nil {
 			return err

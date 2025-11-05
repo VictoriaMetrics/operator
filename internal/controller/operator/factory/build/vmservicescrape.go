@@ -157,6 +157,7 @@ type podScrapeBuilder interface {
 	ProbePort() string
 	SelectorLabels() map[string]string
 	GetMetricPath() string
+	AsOwner() metav1.OwnerReference
 }
 
 // VMPodScrapeForObjectWithSpec build VMPodScrape for given podScrapeBuilder with provided args
@@ -198,9 +199,10 @@ func VMPodScrapeForObjectWithSpec(psb podScrapeBuilder, serviceScrapeSpec *vmv1b
 	selectorLabels := psb.SelectorLabels()
 	podScrape := &vmv1beta1.VMPodScrape{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      psb.PrefixedName(),
-			Namespace: psb.GetNamespace(),
-			Labels:    selectorLabels,
+			Name:            psb.PrefixedName(),
+			Namespace:       psb.GetNamespace(),
+			Labels:          selectorLabels,
+			OwnerReferences: []metav1.OwnerReference{psb.AsOwner()},
 		},
 		Spec: vmv1beta1.VMPodScrapeSpec{
 			Selector: *metav1.SetAsLabelSelector(selectorLabels),

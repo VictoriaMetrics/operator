@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
@@ -17,7 +16,7 @@ import (
 
 // HPA creates or update horizontalPodAutoscaler object
 func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.HorizontalPodAutoscaler) error {
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retryOnConflict(func() error {
 		var currentHPA v2.HorizontalPodAutoscaler
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newHPA.GetName(), Namespace: newHPA.GetNamespace()}, &currentHPA); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -25,6 +24,11 @@ func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.Horizon
 				return rclient.Create(ctx, newHPA)
 			}
 			return fmt.Errorf("cannot get exist hpa object: %w", err)
+		}
+		if !newHPA.DeletionTimestamp.IsZero() {
+			return &errRecreate{
+				origin: fmt.Errorf("waiting for HPA %q to be removed", newHPA.Name),
+			}
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentHPA); err != nil {
 			return err

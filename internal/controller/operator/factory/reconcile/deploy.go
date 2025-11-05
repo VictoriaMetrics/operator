@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -33,7 +32,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 	}
 	rclient.Scheme().Default(newDeploy)
 
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retryOnConflict(func() error {
 		var currentDeploy appsv1.Deployment
 		err := rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, &currentDeploy)
 		if err != nil {
@@ -45,6 +44,11 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 				return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 			}
 			return fmt.Errorf("cannot get deployment for app: %s err: %w", newDeploy.Name, err)
+		}
+		if !newDeploy.DeletionTimestamp.IsZero() {
+			return &errRecreate{
+				origin: fmt.Errorf("waiting for deployment %q to be removed", newDeploy.Name),
+			}
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentDeploy); err != nil {
 			return err
@@ -92,7 +96,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 
 // waitDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
 func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1.Deployment, deadline time.Duration) error {
-	var isErrDealine bool
+	var isErrDeadline bool
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		var actualDeploy appsv1.Deployment
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: dep.Namespace, Name: dep.Name}, &actualDeploy); err != nil {
@@ -111,7 +115,7 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 		}
 		cond := getDeploymentCondition(actualDeploy.Status, appsv1.DeploymentProgressing)
 		if cond != nil && cond.Reason == "ProgressDeadlineExceeded" {
-			isErrDealine = true
+			isErrDeadline = true
 			return true, fmt.Errorf("deployment %s/%s has exceeded its progress deadline", dep.Namespace, dep.Name)
 		}
 		if actualDeploy.Spec.Replicas != nil && actualDeploy.Status.UpdatedReplicas < *actualDeploy.Spec.Replicas {
@@ -130,7 +134,7 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 	})
 	if err != nil {
 		podErr := reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for deployment to become ready: %w", err), dep.Namespace, labels.SelectorFromSet(dep.Spec.Selector.MatchLabels), dep.Spec.MinReadySeconds)
-		if isErrDealine {
+		if isErrDeadline {
 			return err
 		}
 		return podErr

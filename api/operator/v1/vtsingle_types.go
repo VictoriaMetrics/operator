@@ -336,7 +336,7 @@ func (cr *VTSingle) AsURL() string {
 
 // LastAppliedSpecAsPatch return last applied vtsingle spec as patch annotation
 func (cr *VTSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return vmv1beta1.LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return vmv1beta1.LastAppliedChangesAsPatch(cr.Spec)
 }
 
 // HasSpecChanges compares vtsingle spec with last applied vtsingle spec stored in annotation

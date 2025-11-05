@@ -25,6 +25,11 @@ func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbac
 		}
 		return fmt.Errorf("cannot get exist rolebinding: %w", err)
 	}
+	if !newRB.DeletionTimestamp.IsZero() {
+		return &errRecreate{
+			origin: fmt.Errorf("waiting for rolebinding %q to be removed", newRB.Name),
+		}
+	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, &currentRB); err != nil {
 		return err
 	}
@@ -51,6 +56,11 @@ func Role(ctx context.Context, rclient client.Client, newRL, prevRL *rbacv1.Role
 		}
 		return fmt.Errorf("cannot get exist role: %w", err)
 	}
+	if !newRL.DeletionTimestamp.IsZero() {
+		return &errRecreate{
+			origin: fmt.Errorf("waiting for role %q to be removed", newRL.Name),
+		}
+	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, &currentRL); err != nil {
 		return err
 	}
@@ -76,6 +86,11 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newCRB, prev
 			return rclient.Create(ctx, newCRB)
 		}
 		return fmt.Errorf("cannot get crb: %w", err)
+	}
+	if !newCRB.DeletionTimestamp.IsZero() {
+		return &errRecreate{
+			origin: fmt.Errorf("waiting for clusterrolebinding %q to be removed", newCRB.Name),
+		}
 	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, &currentCRB); err != nil {
 		return err
@@ -105,6 +120,11 @@ func ClusterRole(ctx context.Context, rclient client.Client, newClusterRole, pre
 			return rclient.Create(ctx, newClusterRole)
 		}
 		return fmt.Errorf("cannot get exist cluster role: %w", err)
+	}
+	if !newClusterRole.DeletionTimestamp.IsZero() {
+		return &errRecreate{
+			origin: fmt.Errorf("waiting for clusterrole %q to be removed", newClusterRole.Name),
+		}
 	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, &currentClusterRole); err != nil {
 		return err

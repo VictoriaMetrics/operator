@@ -7,7 +7,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -17,7 +16,7 @@ import (
 
 // ServiceAccount creates service account or updates exist one
 func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *corev1.ServiceAccount) error {
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retryOnConflict(func() error {
 		var currentSA corev1.ServiceAccount
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newSA.Name, Namespace: newSA.Namespace}, &currentSA); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -25,6 +24,11 @@ func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *c
 				return rclient.Create(ctx, newSA)
 			}
 			return fmt.Errorf("cannot get ServiceAccount: %w", err)
+		}
+		if !newSA.DeletionTimestamp.IsZero() {
+			return &errRecreate{
+				origin: fmt.Errorf("waiting for serviceaccount %q to be removed", newSA.Name),
+			}
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSA); err != nil {
 			return err

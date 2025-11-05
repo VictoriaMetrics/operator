@@ -85,6 +85,8 @@ SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues 
 * BUGFIX: [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): properly print `status` replicas for `insert`, `select` and `storage` components.
 
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `VMDistributedCluster` CR to apply changes to zone-distributed VictoriaMetrics clusters.
+
 ## [v0.65.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.65.0)
 
 **Release date:** 31 October 2025

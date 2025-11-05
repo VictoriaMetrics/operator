@@ -34,9 +34,9 @@ type VMDistributedClusterSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
 	// VMAgent points to the VMAgent object for collecting metrics from multiple VMClusters
-	VMAgent corev1.LocalObjectReference `json:"vmAgent,omitempty"`
+	VMAgent corev1.LocalObjectReference `json:"vmagent,omitempty"`
 	// VMUsers is a list of VMUser objects controlling traffic distribution between multiple VMClusters
-	VMUsers []corev1.LocalObjectReference `json:"vmUsers,omitempty"`
+	VMUsers []corev1.LocalObjectReference `json:"vmusers,omitempty"`
 	// Zones is a list of VMCluster instances to update. Each VMCluster in the list represents a "zone" within the distributed cluster.
 	Zones []VMClusterRefOrSpec `json:"zones,omitempty"`
 	// ClusterVersion defines expected image tag for all components.

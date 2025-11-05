@@ -86,6 +86,18 @@ func cleanupVMClusters(ctx context.Context, k8sClient client.Client, vmclusters 
 	}
 }
 
+func verifyOwnerReferences(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, vmclusters []vmv1beta1.VMCluster, namespace string) {
+	var fetchedVMCluster vmv1beta1.VMCluster
+	for _, vmcluster := range vmclusters {
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmcluster.Name, Namespace: namespace}, &fetchedVMCluster)).To(Succeed())
+		Expect(fetchedVMCluster.GetOwnerReferences()).To(HaveLen(1))
+		ownerRef := fetchedVMCluster.GetOwnerReferences()[0]
+		Expect(ownerRef.Kind).To(Equal("VMDistributedCluster"))
+		Expect(ownerRef.APIVersion).To(Equal("operator.victoriametrics.com/v1alpha1"))
+		Expect(ownerRef.Name).To(Equal(cr.Name))
+	}
+}
+
 var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster"), func() {
 	var ctx context.Context
 
@@ -210,7 +222,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	}
 
 	Context("create", func() {
-		DescribeTable("should create vmdistributedcluster with VMAgent", func(cr *vmv1alpha1.VMDistributedCluster, vmclusters []vmv1beta1.VMCluster, vmagents map[string]*vmv1beta1.VMAgent, verify func(cr *vmv1alpha1.VMDistributedCluster)) {
+		DescribeTable("should create vmdistributedcluster with VMAgent", func(cr *vmv1alpha1.VMDistributedCluster, vmclusters []vmv1beta1.VMCluster, vmagents map[string]*vmv1beta1.VMAgent, verify func(cr *vmv1alpha1.VMDistributedCluster, createdVMClusters []vmv1beta1.VMCluster)) {
 			beforeEach()
 			DeferCleanup(func() {
 				cleanupVMClusters(ctx, k8sClient, vmclusters, namespacedName)
@@ -241,7 +253,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			if verify != nil {
 				var createdCluster vmv1alpha1.VMDistributedCluster
 				Expect(k8sClient.Get(ctx, namespacedName, &createdCluster)).To(Succeed())
-				verify(&createdCluster)
+				verify(&createdCluster, vmclusters)
 			}
 		},
 			Entry("with single VMCluster", &vmv1alpha1.VMDistributedCluster{
@@ -291,12 +303,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							{URL: "http://localhost:8428/api/v1/write"},
 						},
 					},
-				}}, func(cr *vmv1alpha1.VMDistributedCluster) {
+				}}, func(cr *vmv1alpha1.VMDistributedCluster, createdVMClusters []vmv1beta1.VMCluster) {
 				Expect(cr.Status.VMClusterInfo).To(HaveLen(1))
 				names := []string{
 					cr.Status.VMClusterInfo[0].VMClusterName,
 				}
 				Expect(names).To(ContainElements("vmcluster-1"))
+				verifyOwnerReferences(ctx, cr, createdVMClusters, namespace)
 			}),
 			Entry("with multiple VMClusters and VMAgent pairs", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -379,13 +392,14 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							{URL: "http://localhost:8428/api/v1/write"},
 						},
 					},
-				}}, func(cr *vmv1alpha1.VMDistributedCluster) {
+				}}, func(cr *vmv1alpha1.VMDistributedCluster, createdVMClusters []vmv1beta1.VMCluster) {
 				Expect(cr.Status.VMClusterInfo).To(HaveLen(2))
 				names := []string{
 					cr.Status.VMClusterInfo[0].VMClusterName,
 					cr.Status.VMClusterInfo[1].VMClusterName,
 				}
 				Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
+				verifyOwnerReferences(ctx, cr, createdVMClusters, namespace)
 			}),
 			Entry("with mixed VMClusters (some with VMAgent, some without)", &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -458,13 +472,14 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							{URL: "http://localhost:8428/api/v1/write"},
 						},
 					},
-				}}, func(cr *vmv1alpha1.VMDistributedCluster) {
+				}}, func(cr *vmv1alpha1.VMDistributedCluster, createdVMClusters []vmv1beta1.VMCluster) {
 				Expect(cr.Status.VMClusterInfo).To(HaveLen(2))
 				names := []string{
 					cr.Status.VMClusterInfo[0].VMClusterName,
 					cr.Status.VMClusterInfo[1].VMClusterName,
 				}
 				Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
+				verifyOwnerReferences(ctx, cr, createdVMClusters, namespace)
 			}),
 		)
 
@@ -540,6 +555,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+			verifyOwnerReferences(ctx, cr, vmclusters, namespace)
 
 			// Apply spec update
 			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
@@ -630,6 +646,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+			verifyOwnerReferences(ctx, cr, vmclusters, namespace)
 
 			By("pausing the VMDistributedCluster")
 			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
@@ -783,6 +800,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+			verifyOwnerReferences(ctx, cr, vmclusters, namespace)
 
 			// Update to update VMAgent
 			Eventually(func() error {
@@ -843,6 +861,16 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			var inlineVMClusters []vmv1beta1.VMCluster
+			for _, zone := range cr.Spec.Zones {
+				inlineVMClusters = append(inlineVMClusters, vmv1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      zone.Name,
+						Namespace: namespace,
+					},
+				})
+			}
+			verifyOwnerReferences(ctx, cr, inlineVMClusters, namespace)
 			DeferCleanup(func() {
 				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, cr)).To(Succeed())
 			})
@@ -978,6 +1006,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+			verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*initialCluster}, namespace)
 
 			By("verifying that the referenced VMCluster has the override applied")
 			var updatedCluster vmv1beta1.VMCluster

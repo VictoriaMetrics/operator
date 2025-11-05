@@ -35,14 +35,14 @@ func (in *VMClusterRefOrSpec) DeepCopyInto(out *VMClusterRefOrSpec) {
 		*out = new(v1.LocalObjectReference)
 		**out = **in
 	}
-	if in.Spec != nil {
-		in, out := &in.Spec, &out.Spec
-		*out = new(v1beta1.VMClusterSpec)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.OverrideSpec != nil {
 		in, out := &in.OverrideSpec, &out.OverrideSpec
 		*out = new(apiextensionsv1.JSON)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Spec != nil {
+		in, out := &in.Spec, &out.Spec
+		*out = new(v1beta1.VMClusterSpec)
 		(*in).DeepCopyInto(*out)
 	}
 }

@@ -21,6 +21,7 @@ RUN \
 COPY cmd/ cmd/
 COPY api/ api/
 COPY internal/ internal/
+COPY LICENSE .
 ARG ROOT
 ARG BUILDINFO
 ARG FIPS_VERSION
@@ -40,9 +41,16 @@ RUN \
    -o app ${ROOT}/
 
 # Use scratch as minimal base image to package the manager binary
-FROM scratch
+FROM registry.access.redhat.com/ubi10-micro:latest
 WORKDIR /
 COPY --from=builder /workspace/app .
+COPY --from=builder /workspace/LICENSE /licenses/apache2.txt
 USER 65532:65532
+LABEL name="VictoriaMetrics/operator"
+LABEL maintainer="VictoriaMetrics, Inc."
+LABEL vendor="VictoriaMetrics, Inc."
+
+
+
 
 ENTRYPOINT ["/app"]

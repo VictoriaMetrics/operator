@@ -283,7 +283,7 @@ func (cr *VMAnomaly) GetStatus() *VMAnomalyStatus {
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAnomaly) DefaultStatusFields(vs *VMAnomalyStatus) {
 	var shardCnt int32
-	if cr.Spec.ShardCount != nil {
+	if cr.IsSharded() {
 		shardCnt = int32(*cr.Spec.ShardCount)
 	}
 	vs.Shards = shardCnt
@@ -415,10 +415,15 @@ func (cr *VMAnomaly) Validate() error {
 	return nil
 }
 
+// IsSharded returns true if sharding is enabled
+func (cr *VMAnomaly) IsSharded() bool {
+	return cr != nil && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1
+}
+
 // GetShardCount returns shard count for vmanomaly
 func (cr *VMAnomaly) GetShardCount() int {
-	if cr == nil || cr.Spec.ShardCount == nil {
-		return 0
+	if !cr.IsSharded() {
+		return 1
 	}
 	return *cr.Spec.ShardCount
 }

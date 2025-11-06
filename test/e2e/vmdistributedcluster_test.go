@@ -675,6 +675,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
 			cr.Spec.Paused = false
 			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 
 			By("verifying reconciliation resumes after unpausing")
 			Eventually(func() int32 {
@@ -862,6 +865,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			var inlineVMClusters []vmv1beta1.VMCluster
+			var refs []vmv1beta1.TargetRef
 			for _, zone := range cr.Spec.Zones {
 				inlineVMClusters = append(inlineVMClusters, vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -869,7 +873,21 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						Namespace: namespace,
 					},
 				})
+				refs = append(refs, vmv1beta1.TargetRef{
+					CRD: &vmv1beta1.CRDRef{
+						Kind:      "VMCluster/vmselect",
+						Name:      zone.Name,
+						Namespace: namespace,
+					},
+					TargetPathSuffix: "/select/1",
+				})
 			}
+
+			// Update all VMUsers with the target refs
+			updateVMUserTargetRefs(ctx, k8sClient, validVMUserNames, refs)
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, inlineVMClusters, namespace)
 			DeferCleanup(func() {
 				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, cr)).To(Succeed())

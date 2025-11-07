@@ -1,5 +1,6 @@
 ARG ROOT
 ARG BUILDINFO
+ARG BASEIMAGE=scratch
 
 # Build the manager binary
 FROM golang:1.25.3 AS builder
@@ -40,9 +41,13 @@ RUN \
    -o app ${ROOT}/
 
 # Use scratch as minimal base image to package the manager binary
-FROM scratch
+FROM ${BASEIMAGE}
 WORKDIR /
+COPY LICENSE /licenses/apache2.txt
 COPY --from=builder /workspace/app .
 USER 65532:65532
+LABEL name="VictoriaMetrics/operator"
+LABEL maintainer="VictoriaMetrics, Inc."
+LABEL vendor="VictoriaMetrics, Inc."
 
 ENTRYPOINT ["/app"]

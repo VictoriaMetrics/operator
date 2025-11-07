@@ -221,6 +221,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 		--build-arg BUILDINFO=$(BUILDINFO) \
 		--build-arg GODEBUG_ARGS="$(GODEBUG_BUILD_ARGS)" \
 		--build-arg FIPS_VERSION="$(FIPS_BUILD_VERSION)" \
+		--build-arg BASEIMAGE="$(BASEIMAGE)" \
 		--label "org.opencontainers.image.source=https://github.com/VictoriaMetrics/operator" \
 		--label "org.opencontainers.image.documentation=https://docs.victoriametrics.com/operator" \
 		--label "org.opencontainers.image.title=operator" \
@@ -237,6 +238,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 
 publish:
 	TAG=$(TAG) ROOT=./cmd $(MAKE) docker-buildx
+	TAG=$(TAG)-ubi BASEIMAGE=registry.access.redhat.com/ubi10-micro:latest ROOT=./cmd $(MAKE) docker-buildx
 	TAG=$(TAG)-fips GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd $(MAKE) docker-buildx
 	TAG=config-reloader-$(TAG) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 	TAG=config-reloader-$(TAG)-fips GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
@@ -253,7 +255,7 @@ olm: operator-sdk opm yq docs
 	rm -rf bundle*
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manifests && \
-		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
+		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)-ubi
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 		-q --overwrite --version $(VERSION) \
 		--channels=beta --default-channel=beta --output-dir=bundle/$(VERSION)

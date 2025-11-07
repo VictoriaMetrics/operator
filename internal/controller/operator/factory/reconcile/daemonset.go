@@ -43,7 +43,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1
 			}
 			return fmt.Errorf("cannot get DaemonSet for app: %s err: %w", newDs.Name, err)
 		}
-		if !newDs.DeletionTimestamp.IsZero() {
+		if !currentDs.DeletionTimestamp.IsZero() {
 			return &errRecreate{
 				origin: fmt.Errorf("waiting for daemonset %q to be removed", newDs.Name),
 			}

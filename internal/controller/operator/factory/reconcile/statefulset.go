@@ -91,7 +91,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 			}
 			return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 		}
-		if !newSts.DeletionTimestamp.IsZero() {
+		if !currentSTS.DeletionTimestamp.IsZero() {
 			return &errRecreate{
 				origin: fmt.Errorf("waiting for statefulset %q to be removed", newSts.Name),
 			}

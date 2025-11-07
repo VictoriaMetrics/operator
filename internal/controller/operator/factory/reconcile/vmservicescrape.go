@@ -26,7 +26,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 			}
 			return err
 		}
-		if !vss.DeletionTimestamp.IsZero() {
+		if !existVSS.DeletionTimestamp.IsZero() {
 			return &errRecreate{
 				origin: fmt.Errorf("waiting for servicescrape %q to be removed", vss.Name),
 			}
@@ -63,7 +63,7 @@ func VMPodScrapeForCRD(ctx context.Context, rclient client.Client, vps *vmv1beta
 			}
 			return err
 		}
-		if !vps.DeletionTimestamp.IsZero() {
+		if !existVPS.DeletionTimestamp.IsZero() {
 			return &errRecreate{
 				origin: fmt.Errorf("waiting for podscrape %q to be removed", vps.Name),
 			}

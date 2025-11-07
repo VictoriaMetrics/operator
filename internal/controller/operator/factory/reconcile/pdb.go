@@ -17,8 +17,8 @@ import (
 // PDB creates or updates PodDisruptionBudget
 func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.PodDisruptionBudget) error {
 	return retryOnConflict(func() error {
-		currentPdb := &policyv1.PodDisruptionBudget{}
-		err := rclient.Get(ctx, types.NamespacedName{Namespace: newPDB.Namespace, Name: newPDB.Name}, currentPdb)
+		currentPDB := &policyv1.PodDisruptionBudget{}
+		err := rclient.Get(ctx, types.NamespacedName{Namespace: newPDB.Namespace, Name: newPDB.Name}, currentPDB)
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating new PDB %s", newPDB.Name))
@@ -26,26 +26,26 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 			}
 			return fmt.Errorf("cannot get existing pdb: %s, err: %w", newPDB.Name, err)
 		}
-		if !newPDB.DeletionTimestamp.IsZero() {
+		if !currentPDB.DeletionTimestamp.IsZero() {
 			return &errRecreate{
 				origin: fmt.Errorf("waiting for PDB %q to be removed", newPDB.Name),
 			}
 		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, currentPdb); err != nil {
+		if err := finalize.FreeIfNeeded(ctx, rclient, currentPDB); err != nil {
 			return err
 		}
 
-		if equality.Semantic.DeepEqual(newPDB.Spec, currentPdb.Spec) &&
-			equality.Semantic.DeepEqual(newPDB.Labels, currentPdb.Labels) &&
-			isObjectMetaEqual(currentPdb, newPDB, prevPDB) {
+		if equality.Semantic.DeepEqual(newPDB.Spec, currentPDB.Spec) &&
+			equality.Semantic.DeepEqual(newPDB.Labels, currentPDB.Labels) &&
+			isObjectMetaEqual(currentPDB, newPDB, prevPDB) {
 			return nil
 		}
-		logMsg := fmt.Sprintf("updating PDB %s configuration spec_diff: %s", newPDB.Name, diffDeep(newPDB.Spec, currentPdb.Spec))
+		logMsg := fmt.Sprintf("updating PDB %s configuration spec_diff: %s", newPDB.Name, diffDeep(newPDB.Spec, currentPDB.Spec))
 		logger.WithContext(ctx).Info(logMsg)
 
-		mergeObjectMetadataIntoNew(currentPdb, newPDB, prevPDB)
+		mergeObjectMetadataIntoNew(currentPDB, newPDB, prevPDB)
 		// for some reason Status is not marked as status sub-resource at PDB CRD
-		newPDB.Status = currentPdb.Status
+		newPDB.Status = currentPDB.Status
 
 		return rclient.Update(ctx, newPDB)
 	})

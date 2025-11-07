@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"sync"
 
@@ -228,10 +229,11 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			rv.err = fmt.Errorf("failed to get prev StatefulSet: %w", err)
 			return
 		}
+		selectorLabels := maps.Clone(newApp.Spec.Selector.MatchLabels)
 		opts := reconcile.STSOptions{
 			HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
 			SelectorLabels: func() map[string]string {
-				return build.ShardSelectorLabels(cr)
+				return selectorLabels
 			},
 		}
 		if err := reconcile.HandleSTSUpdate(shardCtx, rclient, opts, newApp, prevApp); err != nil {

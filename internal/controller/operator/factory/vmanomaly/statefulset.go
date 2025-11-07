@@ -75,21 +75,21 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 
-	var prevStatefulSet *appsv1.StatefulSet
+	var prevAppTpl *appsv1.StatefulSet
 
 	if prevCR != nil {
 		var err error
-		prevStatefulSet, err = newStatefulSet(prevCR, configHash, ac)
+		prevAppTpl, err = newK8sApp(prevCR, configHash, ac)
 		if err != nil {
 			return fmt.Errorf("cannot build prev statefulSet for vmanomaly: %w", err)
 		}
 	}
-	newStatefulSet, err := newStatefulSet(cr, configHash, ac)
+	newAppTpl, err := newK8sApp(cr, configHash, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build new statefulSet for vmanomaly: %w", err)
 	}
 
-	return createOrUpdateApp(ctx, rclient, cr, prevCR, newStatefulSet, prevStatefulSet)
+	return createOrUpdateApp(ctx, rclient, cr, prevCR, newAppTpl, prevAppTpl)
 }
 
 func patchShardContainers(containers []corev1.Container, shardNum, shardCount int) {
@@ -119,8 +119,8 @@ func patchShardContainers(containers []corev1.Container, shardNum, shardCount in
 	}
 }
 
-// newStatefulSet builds vmanomaly statefulSet
-func newStatefulSet(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*appsv1.StatefulSet, error) {
+// newK8sApp builds vmanomaly statefulSet
+func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*appsv1.StatefulSet, error) {
 	podSpec, err := newPodSpec(cr, ac)
 	if err != nil {
 		return nil, err
@@ -190,55 +190,55 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 	return nil
 }
 
-func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, newStatefulSet, prevStatefulSet *appsv1.StatefulSet) error {
+func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, newAppTpl, prevAppTpl *appsv1.StatefulSet) error {
 	statefulSetNames := make(map[string]struct{})
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
-	logger.WithContext(ctx).Info(fmt.Sprintf("using cluster version of %T with shards count=%d", cr, shardCount))
 
 	isUpscaling := false
-	if prevCR.IsSharded() && prevShardCount < shardCount {
-		logger.WithContext(ctx).Info(fmt.Sprintf("%T shard upscaling from=%d to=%d", cr, prevShardCount, shardCount))
-		isUpscaling = true
+	if prevCR.IsSharded() {
+		if prevShardCount < shardCount {
+			logger.WithContext(ctx).Info(fmt.Sprintf("%T shard upscaling from=%d to=%d", cr, prevShardCount, shardCount))
+			isUpscaling = true
+		} else {
+			logger.WithContext(ctx).Info(fmt.Sprintf("%T shard downscaling from=%d to=%d", cr, prevShardCount, shardCount))
+		}
 	}
+
 	var wg sync.WaitGroup
-	type shardResult struct {
+	type returnValue struct {
 		name string
 		err  error
 	}
-	resultChan := make(chan *shardResult)
+	rtCh := make(chan *returnValue)
 	shardCtx, cancel := context.WithCancel(ctx)
 	updateShard := func(num int) {
-		defer wg.Done()
-		newShardedApp, err := getShard(cr, newStatefulSet, num)
+		var rv returnValue
+		defer func() {
+			rtCh <- &rv
+			wg.Done()
+		}()
+		newApp, err := getShard(cr, newAppTpl, num)
 		if err != nil {
-			resultChan <- &shardResult{
-				err: fmt.Errorf("failed to get new StatefulSet: %w", err),
-			}
+			rv.err = fmt.Errorf("failed to get new StatefulSet: %w", err)
 			return
 		}
-		prevShardedApp, err := getShard(prevCR, prevStatefulSet, num)
+		prevApp, err := getShard(prevCR, prevAppTpl, num)
 		if err != nil {
-			resultChan <- &shardResult{
-				err: fmt.Errorf("failed to get prev StatefulSet: %w", err),
-			}
+			rv.err = fmt.Errorf("failed to get prev StatefulSet: %w", err)
 			return
 		}
-		statefulSetOpts := reconcile.STSOptions{
-			HasClaim: len(newShardedApp.Spec.VolumeClaimTemplates) > 0,
+		opts := reconcile.STSOptions{
+			HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
 			SelectorLabels: func() map[string]string {
 				return build.ShardSelectorLabels(cr)
 			},
 		}
-		if err := reconcile.HandleSTSUpdate(shardCtx, rclient, statefulSetOpts, newShardedApp, prevShardedApp); err != nil {
-			resultChan <- &shardResult{
-				err: err,
-			}
+		if err := reconcile.HandleSTSUpdate(shardCtx, rclient, opts, newApp, prevApp); err != nil {
+			rv.err = err
 			return
 		}
-		resultChan <- &shardResult{
-			name: newShardedApp.Name,
-		}
+		rv.name = newApp.Name
 	}
 	for shardNum := range build.ShardNumIter(isUpscaling, shardCount) {
 		wg.Add(1)
@@ -246,11 +246,11 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	}
 	go func() {
 		wg.Wait()
-		close(resultChan)
+		close(rtCh)
 		cancel()
 	}()
 	var errs []error
-	for r := range resultChan {
+	for r := range rtCh {
 		if r.err != nil {
 			cancel()
 			errs = append(errs, r.err)
@@ -268,15 +268,14 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	return nil
 }
 
-func getShard(cr *vmv1.VMAnomaly, app *appsv1.StatefulSet, num int) (*appsv1.StatefulSet, error) {
-	if app == nil || !cr.IsSharded() {
-		return app, nil
+func getShard(cr *vmv1.VMAnomaly, appTpl *appsv1.StatefulSet, num int) (*appsv1.StatefulSet, error) {
+	if appTpl == nil || !cr.IsSharded() {
+		return appTpl, nil
 	}
-	shardedApp := app.DeepCopyObject().(*appsv1.StatefulSet)
-	patchShardContainers(shardedApp.Spec.Template.Spec.Containers, num, cr.GetShardCount())
-	shardedApp, err := build.RenderShard(shardedApp, num)
+	app, err := build.RenderShard(appTpl, num)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fill placeholders for StatefulSet in sharded %T: %w", cr, err)
 	}
-	return shardedApp, nil
+	patchShardContainers(app.Spec.Template.Spec.Containers, num, cr.GetShardCount())
+	return app, nil
 }

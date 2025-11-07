@@ -2294,7 +2294,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		if err != nil {
 			t.Fatalf("BUG: cannot parse as yaml: %q", err)
 		}
-		got, err := makeSpec(cr, ac)
+		got, err := newPodSpec(cr, ac)
 		if err != nil {
 			t.Fatalf("not expected error=%q", err)
 		}

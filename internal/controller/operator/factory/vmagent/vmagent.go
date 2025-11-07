@@ -153,23 +153,23 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		}
 	}
 
-	var prevDeploy runtime.Object
+	var prevAppTpl runtime.Object
 
 	if prevCR != nil {
-		prevDeploy, err = newDeploy(prevCR, ac)
+		prevAppTpl, err = newK8sApp(prevCR, ac)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 		}
 	}
-	newDeploy, err := newDeploy(cr, ac)
+	newAppTpl, err := newK8sApp(cr, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
-	return createOrUpdateApp(ctx, rclient, cr, prevCR, newDeploy, prevDeploy)
+	return createOrUpdateApp(ctx, rclient, cr, prevCR, newAppTpl, prevAppTpl)
 }
 
-func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, newDeploy, prevDeploy runtime.Object) error {
+func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, newAppTpl, prevAppTpl runtime.Object) error {
 	deploymentNames := make(map[string]struct{})
 	stsNames := make(map[string]struct{})
 	shardCount := cr.GetShardCount()
@@ -193,114 +193,113 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	}
 	rtCh := make(chan *returnValue)
 
+	updateShard := func(shardNum int) {
+		var rv returnValue
+		defer func() {
+			rtCh <- &rv
+			wg.Done()
+		}()
+
+		switch newAppTpl := newAppTpl.(type) {
+		case *appsv1.Deployment:
+			newApp := newAppTpl
+			var prevApp *appsv1.Deployment
+			var err error
+			if cr.IsSharded() {
+				newApp, err = build.RenderShard(newAppTpl, shardNum)
+				if err != nil {
+					rv.err = fmt.Errorf("cannot fill placeholders for %T sharded vmagent(%d): %w", newAppTpl, shardNum, err)
+					return
+				}
+				if !cr.Spec.IngestOnlyMode {
+					patchShardContainers(newApp.Spec.Template.Spec.Containers, shardNum, shardCount)
+				}
+			}
+			if prevAppTpl != nil {
+				// prev object could be deployment due to switching from statefulmode
+				if prevObjApp, ok := prevAppTpl.(*appsv1.Deployment); ok {
+					if prevCR.IsSharded() {
+						var err error
+						prevApp, err = build.RenderShard(prevObjApp, shardNum)
+						if err != nil {
+							rv.err = fmt.Errorf("cannot fill placeholders for prev %T sharded vmagent(%d): %w", newAppTpl, shardNum, err)
+							return
+						}
+						if !prevCR.Spec.IngestOnlyMode {
+							patchShardContainers(prevApp.Spec.Template.Spec.Containers, shardNum, shardCount)
+						}
+					} else {
+						prevApp = prevObjApp
+					}
+				}
+			}
+
+			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, false); err != nil {
+				rv.err = fmt.Errorf("cannot reconcile deployment for vmagent(%d): %w", shardNum, err)
+				return
+			}
+			rv.deploymentName = newApp.Name
+		case *appsv1.StatefulSet:
+			newApp := newAppTpl
+			var prevApp *appsv1.StatefulSet
+			var err error
+			if cr.IsSharded() {
+				newApp, err = build.RenderShard(newAppTpl, shardNum)
+				if err != nil {
+					rv.err = fmt.Errorf("cannot fill placeholders for %T in sharded vmagent(%d): %w", newAppTpl, shardNum, err)
+					return
+				}
+				if !cr.Spec.IngestOnlyMode {
+					patchShardContainers(newApp.Spec.Template.Spec.Containers, shardNum, shardCount)
+				}
+			}
+			if prevAppTpl != nil {
+				// prev object could be deployment due to switching to statefulmode
+				if prevObjApp, ok := prevAppTpl.(*appsv1.StatefulSet); ok {
+					if prevCR.IsSharded() {
+						var err error
+						prevApp, err = build.RenderShard(prevObjApp, shardNum)
+						if err != nil {
+							rv.err = fmt.Errorf("cannot fill placeholders for prev %T in sharded vmagent(%d): %w", newAppTpl, shardNum, err)
+							return
+						}
+						if !prevCR.Spec.IngestOnlyMode {
+							patchShardContainers(prevApp.Spec.Template.Spec.Containers, shardNum, shardCount)
+						}
+					} else {
+						prevApp = prevObjApp
+					}
+				}
+			}
+			opts := reconcile.STSOptions{
+				HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
+				SelectorLabels: func() map[string]string {
+					return build.ShardSelectorLabels(cr)
+				},
+			}
+			if err := reconcile.HandleSTSUpdate(ctx, rclient, opts, newApp, prevApp); err != nil {
+				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)
+				return
+			}
+			rv.stsName = newApp.Name
+		case *appsv1.DaemonSet:
+			newApp := newAppTpl
+			var prevApp *appsv1.DaemonSet
+			if prevAppTpl != nil {
+				prevApp, _ = prevAppTpl.(*appsv1.DaemonSet)
+			}
+			if err := reconcile.DaemonSet(ctx, rclient, newApp, prevApp); err != nil {
+				rv.err = fmt.Errorf("cannot reconcile daemonset for vmagent: %w", err)
+				return
+			}
+		default:
+			panic(fmt.Sprintf("BUG: unexpected deploy object type: %T", newAppTpl))
+		}
+	}
+
 	for shardNum := range build.ShardNumIter(isUpscaling, shardCount) {
 		wg.Add(1)
-		go func(shardNum int) {
-			var rv returnValue
-			defer func() {
-				rtCh <- &rv
-				wg.Done()
-			}()
-			shardedDeploy := newDeploy.DeepCopyObject()
-			var prevShardedObject runtime.Object
-			if prevDeploy != nil {
-				prevShardedObject = prevDeploy.DeepCopyObject()
-			}
-
-			switch shardedDeploy := shardedDeploy.(type) {
-			case *appsv1.Deployment:
-				var prevDeploy *appsv1.Deployment
-				var err error
-				if cr.IsSharded() {
-					shardedDeploy, err = build.RenderShard(shardedDeploy, shardNum)
-					if err != nil {
-						rv.err = fmt.Errorf("cannot fill placeholders for deployment sharded vmagent(%d): %w", shardNum, err)
-						return
-					}
-					if !cr.Spec.IngestOnlyMode {
-						patchShardContainers(shardedDeploy.Spec.Template.Spec.Containers, shardNum, shardCount)
-					}
-				}
-				if prevShardedObject != nil {
-					// prev object could be deployment due to switching from statefulmode
-					prevObjApp, ok := prevShardedObject.(*appsv1.Deployment)
-					if ok {
-						prevDeploy = prevObjApp
-						if prevCR.IsSharded() {
-							prevDeploy, err = build.RenderShard(prevDeploy, shardNum)
-							if err != nil {
-								rv.err = fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent(%d): %w", shardNum, err)
-								return
-							}
-							if !prevCR.Spec.IngestOnlyMode {
-								patchShardContainers(prevDeploy.Spec.Template.Spec.Containers, shardNum, shardCount)
-							}
-						}
-					}
-				}
-
-				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, prevDeploy, false); err != nil {
-					rv.err = fmt.Errorf("cannot reconcile deployment for vmagent(%d): %w", shardNum, err)
-					return
-				}
-				rv.deploymentName = shardedDeploy.Name
-			case *appsv1.StatefulSet:
-				var prevSts *appsv1.StatefulSet
-				var err error
-				if cr.IsSharded() {
-					shardedDeploy, err = build.RenderShard(shardedDeploy, shardNum)
-					if err != nil {
-						rv.err = fmt.Errorf("cannot fill placeholders for sts in sharded vmagent(%d): %w", shardNum, err)
-						return
-					}
-					if !cr.Spec.IngestOnlyMode {
-						patchShardContainers(shardedDeploy.Spec.Template.Spec.Containers, shardNum, shardCount)
-					}
-				}
-				if prevShardedObject != nil {
-					// prev object could be deployment due to switching to statefulmode
-					prevObjApp, ok := prevShardedObject.(*appsv1.StatefulSet)
-					if ok {
-						prevSts = prevObjApp
-						if prevCR.IsSharded() {
-							prevSts, err = build.RenderShard(prevSts, shardNum)
-							if err != nil {
-								rv.err = fmt.Errorf("cannot fill placeholders for prev sts in sharded vmagent(%d): %w", shardNum, err)
-								return
-							}
-							if !prevCR.Spec.IngestOnlyMode {
-								patchShardContainers(prevSts.Spec.Template.Spec.Containers, shardNum, shardCount)
-							}
-						}
-					}
-				}
-				stsOpts := reconcile.STSOptions{
-					HasClaim: len(shardedDeploy.Spec.VolumeClaimTemplates) > 0,
-					SelectorLabels: func() map[string]string {
-						return build.ShardSelectorLabels(cr)
-					},
-				}
-				if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, prevSts); err != nil {
-					rv.err = fmt.Errorf("cannot reconcile sts for vmagent(%d): %w", shardNum, err)
-					return
-				}
-				rv.stsName = shardedDeploy.Name
-			case *appsv1.DaemonSet:
-				var prevDeploy *appsv1.DaemonSet
-				if prevShardedObject != nil {
-					prevObjApp, ok := prevShardedObject.(*appsv1.DaemonSet)
-					if ok {
-						prevDeploy = prevObjApp
-					}
-				}
-				if err := reconcile.DaemonSet(ctx, rclient, shardedDeploy, prevDeploy); err != nil {
-					rv.err = fmt.Errorf("cannot reconcile daemonset for vmagent: %w", err)
-					return
-				}
-			default:
-				panic(fmt.Sprintf("BUG: unexpected deploy object type: %T", shardedDeploy))
-			}
-		}(shardNum)
+		go updateShard(shardNum)
 	}
 
 	go func() {
@@ -332,10 +331,10 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	return nil
 }
 
-// newDeploy builds vmagent deployment spec.
-func newDeploy(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, error) {
+// newK8sApp builds vmagent deployment spec.
+func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, error) {
 
-	podSpec, err := makeSpec(cr, ac)
+	podSpec, err := newPodSpec(cr, ac)
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +460,7 @@ func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
 	return ""
 }
 
-func makeSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, error) {
+func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, error) {
 	var args []string
 
 	if rwArgs, err := buildRemoteWriteArgs(cr, ac); err != nil {

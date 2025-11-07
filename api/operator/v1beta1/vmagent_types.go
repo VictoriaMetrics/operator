@@ -419,6 +419,19 @@ func (cr *VMAgent) Validate() error {
 	return nil
 }
 
+// IsSharded returns true if sharding is enabled
+func (cr *VMAgent) IsSharded() bool {
+	return cr != nil && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 && !cr.Spec.DaemonSetMode
+}
+
+// GetShardCount returns shard count for vmagent
+func (cr *VMAgent) GetShardCount() int {
+	if !cr.IsSharded() {
+		return 1
+	}
+	return *cr.Spec.ShardCount
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	type pcr VMAgent
@@ -669,7 +682,7 @@ func (cr *VMAgent) DefaultStatusFields(vs *VMAgentStatus) {
 		replicaCount = *cr.Spec.ReplicaCount
 	}
 	var shardCnt int32
-	if cr.Spec.ShardCount != nil {
+	if cr.IsSharded() {
 		shardCnt = int32(*cr.Spec.ShardCount)
 	}
 	vs.Replicas = replicaCount

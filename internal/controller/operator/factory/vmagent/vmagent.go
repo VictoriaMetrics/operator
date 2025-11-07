@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -143,36 +142,28 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
 	}
 
-	if cr.Spec.PodDisruptionBudget != nil && !cr.Spec.DaemonSetMode {
-		var prevPDB *policyv1.PodDisruptionBudget
-		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
-			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
-		}
-		err = reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB)
-		if err != nil {
-			return fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
-		}
-	}
-
-	var prevAppTpl runtime.Object
-
-	if prevCR != nil {
-		prevAppTpl, err = newK8sApp(prevCR, ac)
-		if err != nil {
-			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
-		}
-	}
 	newAppTpl, err := newK8sApp(cr, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
+	var prevAppTpl client.Object
+
+	if prevCR != nil {
+		var err error
+		prevAppTpl, err = newK8sApp(prevCR, ac)
+		if err != nil {
+			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
+		}
+	}
+
 	return createOrUpdateApp(ctx, rclient, cr, prevCR, newAppTpl, prevAppTpl)
 }
 
-func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, newAppTpl, prevAppTpl runtime.Object) error {
-	deploymentNames := make(map[string]struct{})
-	stsNames := make(map[string]struct{})
+func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, newAppTpl, prevAppTpl client.Object) error {
+	deploymentToKeep := make(map[string]struct{})
+	stsToKeep := make(map[string]struct{})
+	pdbToKeep := make(map[string]struct{})
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
 
@@ -185,6 +176,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			logger.WithContext(ctx).Info(fmt.Sprintf("VMAgent shard downscaling from=%d to=%d", prevShardCount, shardCount))
 		}
 	}
+
 	var wg sync.WaitGroup
 
 	type returnValue struct {
@@ -200,6 +192,18 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			rtCh <- &rv
 			wg.Done()
 		}()
+
+		if cr.Spec.PodDisruptionBudget != nil && !cr.Spec.DaemonSetMode {
+			pdb := build.ShardPodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget, shardNum)
+			var prevPDB *policyv1.PodDisruptionBudget
+			if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
+				prevPDB = build.ShardPodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget, shardNum)
+			}
+			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB); err != nil {
+				rv.err = err
+				return
+			}
+		}
 
 		switch newAppTpl := newAppTpl.(type) {
 		case *appsv1.Deployment:
@@ -314,17 +318,26 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			return rt.err
 		}
 		if rt.deploymentName != "" {
-			deploymentNames[rt.deploymentName] = struct{}{}
+			deploymentToKeep[rt.deploymentName] = struct{}{}
+			if cr.Spec.PodDisruptionBudget != nil {
+				pdbToKeep[rt.deploymentName] = struct{}{}
+			}
 		}
 		if rt.stsName != "" {
-			stsNames[rt.stsName] = struct{}{}
+			stsToKeep[rt.stsName] = struct{}{}
+			if cr.Spec.PodDisruptionBudget != nil {
+				pdbToKeep[rt.stsName] = struct{}{}
+			}
 		}
 	}
 
-	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
+	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep); err != nil {
 		return err
 	}
-	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsNames); err != nil {
+	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentToKeep); err != nil {
+		return err
+	}
+	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep); err != nil {
 		return err
 	}
 	if err := removeStaleDaemonSet(ctx, rclient, cr); err != nil {
@@ -334,7 +347,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 }
 
 // newK8sApp builds vmagent deployment spec.
-func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (runtime.Object, error) {
+func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, error) {
 
 	podSpec, err := newPodSpec(cr, ac)
 	if err != nil {
@@ -1312,21 +1325,11 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil && prevCR.Spec.PodDisruptionBudget != nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
-			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
-		}
-	}
 
 	cfg := config.MustGetBaseConfig()
 	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
 	if !prevCR.Spec.DaemonSetMode && cr.Spec.DaemonSetMode {
 		// transit into DaemonSetMode
-		if cr.Spec.PodDisruptionBudget != nil {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
-				return fmt.Errorf("cannot delete PDB from prev state: %w", err)
-			}
-		}
 		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
 				return fmt.Errorf("cannot delete VMServiceScrape during daemonset transition: %w", err)

@@ -9,7 +9,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -25,7 +24,7 @@ import (
 // its users responsibility to define it correctly.
 func Service(ctx context.Context, rclient client.Client, newService, prevService *corev1.Service) error {
 	svcForReconcile := newService.DeepCopy()
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retryOnConflict(func() error {
 		return reconcileService(ctx, rclient, svcForReconcile, prevService)
 	})
 }
@@ -57,6 +56,11 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 			return nil
 		}
 		return fmt.Errorf("cannot get service for existing service: %w", err)
+	}
+	if !newService.DeletionTimestamp.IsZero() {
+		return &errRecreate{
+			origin: fmt.Errorf("waiting for service %q to be removed", newService.Name),
+		}
 	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, currentService); err != nil {
 		return err

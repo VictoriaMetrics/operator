@@ -413,7 +413,7 @@ func (*VLAgent) ProbeNeedLiveness() bool {
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VLAgent) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return vmv1beta1.LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return vmv1beta1.LastAppliedChangesAsPatch(cr.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation

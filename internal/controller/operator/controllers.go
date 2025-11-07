@@ -20,7 +20,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	k8sreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -419,4 +421,18 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 	}
 
 	return result, nil
+}
+
+var patchAnnotationPredicate = predicate.Funcs{
+	UpdateFunc: func(e event.UpdateEvent) bool {
+		if e.ObjectOld == nil || e.ObjectNew == nil {
+			return true
+		}
+		oldAnnotations := e.ObjectOld.GetAnnotations()
+		newAnnotations := e.ObjectNew.GetAnnotations()
+		if oldAnnotations[vmv1beta1.LastAppliedSpecAnnotation] != newAnnotations[vmv1beta1.LastAppliedSpecAnnotation] {
+			return false
+		}
+		return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+	},
 }

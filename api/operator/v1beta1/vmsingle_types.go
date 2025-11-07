@@ -310,7 +310,7 @@ func (cr *VMSingle) AsURL() string {
 
 // LastAppliedSpecAsPatch return last applied single spec as patch annotation
 func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return LastAppliedChangesAsPatch(cr.Spec)
 }
 
 // HasSpecChanges compares single spec with last applied single spec stored in annotation

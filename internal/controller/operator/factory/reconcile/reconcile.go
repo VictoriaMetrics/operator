@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -111,8 +113,8 @@ func mergeObjectMetadataIntoNew(currObj, newObj, prevObj client.Object) {
 // IsErrorWaitTimeout determines if the err is an error which indicates that timeout for app
 // transition into Ready state reached and should be continued at the next reconcile loop
 func IsErrorWaitTimeout(err error) bool {
-	var et *errWaitReady
-	return errors.As(err, &et)
+	var e *errWaitReady
+	return errors.As(err, &e)
 }
 
 type errWaitReady struct {
@@ -127,4 +129,31 @@ func (e *errWaitReady) Error() string {
 // Unwrap implements error.Unwrap interface
 func (e *errWaitReady) Unwrap() error {
 	return e.origin
+}
+
+func isRecreate(err error) bool {
+	var e *errRecreate
+	return errors.As(err, &e)
+}
+
+type errRecreate struct {
+	origin error
+}
+
+// Error implements errors.Error interface
+func (e *errRecreate) Error() string {
+	return fmt.Sprintf(": %q", e.origin)
+}
+
+// Unwrap implements error.Unwrap interface
+func (e *errRecreate) Unwrap() error {
+	return e.origin
+}
+
+func isRetryable(err error) bool {
+	return k8serrors.IsConflict(err) || isRecreate(err)
+}
+
+func retryOnConflict(fn func() error) error {
+	return retry.OnError(retry.DefaultRetry, isRetryable, fn)
 }

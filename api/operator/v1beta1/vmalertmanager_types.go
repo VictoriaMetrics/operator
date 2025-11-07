@@ -477,7 +477,7 @@ func (cr *VMAlertmanager) IsUnmanaged() bool {
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VMAlertmanager) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.ObjectMeta, cr.Spec)
+	return LastAppliedChangesAsPatch(cr.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation

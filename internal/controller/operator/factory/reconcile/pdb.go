@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
@@ -17,7 +16,7 @@ import (
 
 // PDB creates or updates PodDisruptionBudget
 func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.PodDisruptionBudget) error {
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retryOnConflict(func() error {
 		currentPdb := &policyv1.PodDisruptionBudget{}
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: newPDB.Namespace, Name: newPDB.Name}, currentPdb)
 		if err != nil {
@@ -26,6 +25,11 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 				return rclient.Create(ctx, newPDB)
 			}
 			return fmt.Errorf("cannot get existing pdb: %s, err: %w", newPDB.Name, err)
+		}
+		if !newPDB.DeletionTimestamp.IsZero() {
+			return &errRecreate{
+				origin: fmt.Errorf("waiting for PDB %q to be removed", newPDB.Name),
+			}
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, currentPdb); err != nil {
 			return err

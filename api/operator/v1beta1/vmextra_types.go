@@ -49,8 +49,8 @@ const (
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
-	PVCExpandableLabel            = "operator.victoriametrics.com/pvc-allow-volume-expansion"
-	lastAppliedSpecAnnotationName = "operator.victoriametrics/last-applied-spec"
+	PVCExpandableLabel        = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+	LastAppliedSpecAnnotation = "operator.victoriametrics/last-applied-spec"
 )
 
 const (
@@ -1034,13 +1034,13 @@ type objectWithLastAppliedState[T, ST any] interface {
 
 // ParseLastAppliedStateTo parses spec from provided CR annotations and sets it to the given CR
 func ParseLastAppliedStateTo[T objectWithLastAppliedState[T, ST], ST any](cr T) error {
-	lastAppliedSpecJSON := cr.GetAnnotations()[lastAppliedSpecAnnotationName]
+	lastAppliedSpecJSON := cr.GetAnnotations()[LastAppliedSpecAnnotation]
 	if len(lastAppliedSpecJSON) == 0 {
 		return nil
 	}
 	var dst ST
 	if err := json.Unmarshal([]byte(lastAppliedSpecJSON), &dst); err != nil {
-		return fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", lastAppliedSpecAnnotationName, err)
+		return fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", LastAppliedSpecAnnotation, err)
 	}
 	cr.SetLastSpec(dst)
 	return nil
@@ -1048,7 +1048,7 @@ func ParseLastAppliedStateTo[T objectWithLastAppliedState[T, ST], ST any](cr T) 
 
 // HasSpecChanges compares single spec with last applied single spec stored in annotation
 func HasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
-	lastAppliedSpecJSON := crMeta.GetAnnotations()[lastAppliedSpecAnnotationName]
+	lastAppliedSpecJSON := crMeta.GetAnnotations()[LastAppliedSpecAnnotation]
 	if len(lastAppliedSpecJSON) == 0 {
 		return true, nil
 	}
@@ -1065,12 +1065,12 @@ func HasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
 }
 
 // LastAppliedChangesAsPatch builds patch request from provided spec
-func LastAppliedChangesAsPatch(crMeta metav1.ObjectMeta, spec any) (client.Patch, error) {
+func LastAppliedChangesAsPatch(spec any) (client.Patch, error) {
 	data, err := json.Marshal(spec)
 	if err != nil {
 		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json :%w", err)
 	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q }}}`, lastAppliedSpecAnnotationName, data)
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q }}}`, LastAppliedSpecAnnotation, data)
 	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
 
 }

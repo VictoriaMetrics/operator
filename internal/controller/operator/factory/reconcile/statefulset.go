@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -80,7 +79,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 	}
 	rclient.Scheme().Default(newSts)
 
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retryOnConflict(func() error {
 		var currentSts appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -91,6 +90,11 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				return waitForStatefulSetReady(ctx, rclient, newSts)
 			}
 			return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
+		}
+		if !newSts.DeletionTimestamp.IsZero() {
+			return &errRecreate{
+				origin: fmt.Errorf("waiting for statefulset %q to be removed", newSts.Name),
+			}
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSts); err != nil {
 			return err

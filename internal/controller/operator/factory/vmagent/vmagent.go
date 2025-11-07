@@ -3,6 +3,7 @@ package vmagent
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path"
 	"sort"
 	"strconv"
@@ -271,10 +272,11 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					}
 				}
 			}
+			selectorLabels := maps.Clone(newApp.Spec.Selector.MatchLabels)
 			opts := reconcile.STSOptions{
 				HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
 				SelectorLabels: func() map[string]string {
-					return build.ShardSelectorLabels(cr)
+					return selectorLabels
 				},
 			}
 			if err := reconcile.HandleSTSUpdate(ctx, rclient, opts, newApp, prevApp); err != nil {

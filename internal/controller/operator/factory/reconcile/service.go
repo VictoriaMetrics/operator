@@ -57,7 +57,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		}
 		return fmt.Errorf("cannot get service for existing service: %w", err)
 	}
-	if !newService.DeletionTimestamp.IsZero() {
+	if !currentService.DeletionTimestamp.IsZero() {
 		return &errRecreate{
 			origin: fmt.Errorf("waiting for service %q to be removed", newService.Name),
 		}

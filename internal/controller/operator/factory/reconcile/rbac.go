@@ -25,7 +25,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbac
 		}
 		return fmt.Errorf("cannot get exist rolebinding: %w", err)
 	}
-	if !newRB.DeletionTimestamp.IsZero() {
+	if !currentRB.DeletionTimestamp.IsZero() {
 		return &errRecreate{
 			origin: fmt.Errorf("waiting for rolebinding %q to be removed", newRB.Name),
 		}
@@ -56,7 +56,7 @@ func Role(ctx context.Context, rclient client.Client, newRL, prevRL *rbacv1.Role
 		}
 		return fmt.Errorf("cannot get exist role: %w", err)
 	}
-	if !newRL.DeletionTimestamp.IsZero() {
+	if !currentRL.DeletionTimestamp.IsZero() {
 		return &errRecreate{
 			origin: fmt.Errorf("waiting for role %q to be removed", newRL.Name),
 		}
@@ -87,7 +87,7 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newCRB, prev
 		}
 		return fmt.Errorf("cannot get crb: %w", err)
 	}
-	if !newCRB.DeletionTimestamp.IsZero() {
+	if !currentCRB.DeletionTimestamp.IsZero() {
 		return &errRecreate{
 			origin: fmt.Errorf("waiting for clusterrolebinding %q to be removed", newCRB.Name),
 		}
@@ -121,7 +121,7 @@ func ClusterRole(ctx context.Context, rclient client.Client, newClusterRole, pre
 		}
 		return fmt.Errorf("cannot get exist cluster role: %w", err)
 	}
-	if !newClusterRole.DeletionTimestamp.IsZero() {
+	if !currentClusterRole.DeletionTimestamp.IsZero() {
 		return &errRecreate{
 			origin: fmt.Errorf("waiting for clusterrole %q to be removed", newClusterRole.Name),
 		}

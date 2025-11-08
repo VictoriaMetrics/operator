@@ -37,7 +37,7 @@ var (
 		"VM_METRICS_VERSION": "v1.129.0",
 		"VM_LOGS_VERSION":    "v1.36.1",
 		"VM_ANOMALY_VERSION": "v1.26.1",
-		"VM_TRACES_VERSION":  "v0.4.0",
+		"VM_TRACES_VERSION":  "v0.5.0",
 	}
 )
 

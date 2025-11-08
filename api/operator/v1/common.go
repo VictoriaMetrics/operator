@@ -13,10 +13,6 @@ const (
 	metricPath = "/metrics"
 )
 
-func prefixedName(name, prefix string) string {
-	return fmt.Sprintf("%s-%s", prefix, name)
-}
-
 // TLSServerConfig defines VictoriaMetrics TLS configuration for the application's server
 type TLSServerConfig struct {
 	// CertSecretRef defines reference for secret with certificate content under given key

@@ -365,8 +365,9 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 			if tt.args.cr.Spec.RequestsLoadBalancer.Enabled {
 				var vmauthLB appsv1.Deployment
+				name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetVMAuthLBName(), Namespace: tt.args.cr.Namespace}, &vmauthLB); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmauthLB); err != nil {
 						return err
 					}
 					vmauthLB.Status.Conditions = append(vmauthLB.Status.Conditions, appsv1.DeploymentCondition{
@@ -384,8 +385,9 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 			if tt.args.cr.Spec.VMInsert != nil {
 				var vminsert appsv1.Deployment
+				name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
 						return err
 					}
 					vminsert.Status.Conditions = append(vminsert.Status.Conditions, appsv1.DeploymentCondition{
@@ -402,8 +404,9 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 			if tt.args.cr.Spec.VMSelect != nil {
 				var vmselect appsv1.StatefulSet
+				name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
 						return err
 					}
 					vmselect.Status.ReadyReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
@@ -417,7 +420,8 @@ func TestCreateOrUpdate(t *testing.T) {
 			if tt.args.cr.Spec.VMStorage != nil {
 				var vmstorage appsv1.StatefulSet
 				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetStorageName(), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
+					name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
 						return err
 					}
 					vmstorage.Status.ReadyReplicas = *tt.args.cr.Spec.VMStorage.ReplicaCount
@@ -439,17 +443,20 @@ func TestCreateOrUpdate(t *testing.T) {
 				var vmselect, vmstorage appsv1.StatefulSet
 				var vminsert appsv1.Deployment
 				if tt.args.cr.Spec.VMInsert != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetInsertName(), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+					name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
 				if tt.args.cr.Spec.VMSelect != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetSelectName(), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+					name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
 				if tt.args.cr.Spec.VMStorage != nil {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.GetStorageName(), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
+					name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}

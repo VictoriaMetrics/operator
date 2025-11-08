@@ -26,14 +26,13 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 	if cr.Spec.VLStorage == nil {
 		return nil
 	}
-	b := newOptsBuilder(cr, cr.GetStorageName(), cr.GetStorageSelectorLabels())
-
 	if cr.Spec.VLStorage.PodDisruptionBudget != nil {
+		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 		pdb := build.PodDisruptionBudget(b, cr.Spec.VLStorage.PodDisruptionBudget)
 		var prevPDB *policyv1.PodDisruptionBudget
 		if prevCR != nil && prevCR.Spec.VLStorage.PodDisruptionBudget != nil {
-			prevB := newOptsBuilder(prevCR, prevCR.GetStorageName(), prevCR.GetStorageSelectorLabels())
-			prevPDB = build.PodDisruptionBudget(prevB, prevCR.Spec.VLStorage.PodDisruptionBudget)
+			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+			prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VLStorage.PodDisruptionBudget)
 		}
 		err := reconcile.PDB(ctx, rclient, pdb, prevPDB)
 		if err != nil {
@@ -60,35 +59,21 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 }
 
 func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {
-	t := &optsBuilder{
-		cr,
-		cr.GetStorageName(),
-		cr.FinalLabels(cr.GetStorageSelectorLabels()),
-		cr.GetStorageSelectorLabels(),
-		cr.Spec.VLStorage.ServiceSpec,
-	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	newHeadless := build.Service(b, cr.Spec.VLStorage.Port, func(svc *corev1.Service) {
+		svc.Spec.ClusterIP = "None"
+		svc.Spec.PublishNotReadyAddresses = true
+	})
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil && prevCR.Spec.VLStorage != nil {
-		prevT := &optsBuilder{
-			prevCR,
-			prevCR.GetStorageName(),
-			prevCR.FinalLabels(prevCR.GetStorageSelectorLabels()),
-			prevCR.GetStorageSelectorLabels(),
-			prevCR.Spec.VLStorage.ServiceSpec,
-		}
-
-		prevService = build.Service(prevT, prevCR.Spec.VLStorage.Port, func(svc *corev1.Service) {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		prevService = build.Service(b, prevCR.Spec.VLStorage.Port, func(svc *corev1.Service) {
 			svc.Spec.ClusterIP = "None"
 			svc.Spec.PublishNotReadyAddresses = true
 		})
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.VLStorage.ServiceSpec)
 
 	}
-	newHeadless := build.Service(t, cr.Spec.VLStorage.Port, func(svc *corev1.Service) {
-		svc.Spec.ClusterIP = "None"
-		svc.Spec.PublishNotReadyAddresses = true
-	})
-
 	if err := cr.Spec.VLStorage.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newHeadless, s)
 		if additionalService.Name == newHeadless.Name {
@@ -124,8 +109,10 @@ func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	stsOpts := reconcile.STSOptions{
-		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: cr.GetStorageSelectorLabels,
+		HasClaim: len(newSts.Spec.VolumeClaimTemplates) > 0,
+		SelectorLabels: func() map[string]string {
+			return cr.SelectorLabels(vmv1beta1.ClusterComponentStorage)
+		},
 		UpdateBehavior: cr.Spec.VLStorage.RollingUpdateStrategyBehavior,
 	}
 	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
@@ -140,22 +127,22 @@ func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetStorageName(),
+			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentStorage),
 			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(cr.GetStorageSelectorLabels()),
+			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentStorage),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.GetStorageSelectorLabels(),
+				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
 			},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: cr.Spec.VLStorage.RollingUpdateStrategy,
 			},
 			Template:    *podSpec,
-			ServiceName: cr.GetStorageName(),
+			ServiceName: cr.PrefixedName(vmv1beta1.ClusterComponentStorage),
 		},
 	}
 	if cr.Spec.VLStorage.PersistentVolumeClaimRetentionPolicy != nil {
@@ -299,15 +286,15 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 	for i := range cr.Spec.VLStorage.TopologySpreadConstraints {
 		if cr.Spec.VLStorage.TopologySpreadConstraints[i].LabelSelector == nil {
 			cr.Spec.VLStorage.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
-				MatchLabels: cr.GetStorageSelectorLabels(),
+				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
 			}
 		}
 	}
 
 	vmStoragePodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      cr.GetStoragePodLabels(),
-			Annotations: cr.GetStoragePodAnnotations(),
+			Labels:      cr.PodLabels(vmv1beta1.ClusterComponentStorage),
+			Annotations: cr.PodAnnotations(vmv1beta1.ClusterComponentStorage),
 		},
 		Spec: corev1.PodSpec{
 			Volumes:            volumes,

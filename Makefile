@@ -13,6 +13,7 @@ NAMESPACE ?= vm
 OVERLAY ?= config/manager
 E2E_TESTS_CONCURRENCY ?= $(shell getconf _NPROCESSORS_ONLN)
 FIPS_VERSION=v1.0.0
+BASEIMAGE ?=scratch
 
 BUILDINFO="operator-$(DATEINFO_TAG)-$(TAG)"
 
@@ -188,6 +189,7 @@ docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg ROOT=$(ROOT) \
 		--build-arg BUILDINFO=$(BUILDINFO) \
+		--build-arg BASEIMAGE=$(BASEIMAGE) \
 		${DOCKER_BUILD_ARGS} \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) .
 

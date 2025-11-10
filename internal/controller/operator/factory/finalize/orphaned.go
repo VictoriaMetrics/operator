@@ -39,6 +39,47 @@ func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedC
 	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
 }
 
+// RemoveOrphanedPDBs removes PDBs detached from given object
+func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "policy",
+		Version: "v1",
+		Kind:    "PodDisruptionBudget",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
+// RemoveOrphanedServices removes Services detached from given object
+func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Version: "v1",
+		Kind:    "Service",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
+// RemoveOrphanedHPAs removes HPAs detached from given object
+func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "autoscaling",
+		Version: "v2",
+		Kind:    "HorizontalPodAutoscaler",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+
+}
+
+// RemoveOrphanedVMServiceScrapes removes VMSeviceScrapes detached from given object
+func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "operator.victoriametrics.com",
+		Version: "v1beta1",
+		Kind:    "VMServiceScrape",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+
+}
+
 // removeOrphaned removes orphaned resources
 func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, gvk schema.GroupVersionKind, keepNames map[string]struct{}) error {
 	var l unstructured.UnstructuredList

@@ -103,22 +103,22 @@ func (cr *VTClusterStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
 
 // VTInsert defines vtinsert component configuration at victoria-traces cluster
 type VTInsert struct {
-	// PodMetadata configures Labels and Annotations which are propagated to the VTSelect pods.
+	// PodMetadata configures Labels and Annotations which are propagated to the VTInsert pods.
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// LogFormat for VTSelect to be configured with.
+	// LogFormat for VTInsert to be configured with.
 	// default or json
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-	// LogLevel for VTSelect to be configured with.
+	// LogLevel for VTInsert to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
 
-	// ServiceSpec that will be added to vtselect service spec
+	// ServiceSpec that will be added to vtinsert service spec
 	// +optional
 	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vtselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vtinsert VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
@@ -325,10 +325,10 @@ type VTStorage struct {
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
 
-	// ServiceSpec that will be added to vtselect service spec
+	// ServiceSpec that will be added to vtstorage service spec
 	// +optional
 	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vtselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vtstorage VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator

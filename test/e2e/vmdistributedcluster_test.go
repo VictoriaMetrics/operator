@@ -650,20 +650,30 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			By("pausing the VMDistributedCluster")
 			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
-			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
-			cr.Spec.Paused = true
-			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, namespacedName, cr)
+				if err != nil {
+					return err
+				}
+				cr.Spec.Paused = true
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 
 			By("attempting to scale the VMCluster while paused")
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
 			initialReplicas := *vmCluster.Spec.VMStorage.ReplicaCount
 
 			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
-			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
-			cr.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
-				Raw: []byte(fmt.Sprintf(`{"vmstorage":{"replicaCount": %d}}`, initialReplicas+1)),
-			}
-			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, namespacedName, cr)
+				if err != nil {
+					return err
+				}
+				cr.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
+					Raw: []byte(fmt.Sprintf(`{"vmstorage":{"replicaCount": %d}}`, initialReplicas+1)),
+				}
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 
 			Consistently(func() int32 {
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
@@ -672,9 +682,15 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			By("unpausing the VMDistributedCluster")
 			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
-			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
-			cr.Spec.Paused = false
-			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, namespacedName, cr)
+				if err != nil {
+					return err
+				}
+				cr.Spec.Paused = false
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())

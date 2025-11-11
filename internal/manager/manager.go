@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -56,13 +55,11 @@ import (
 const defaultMetricsAddr = ":8080"
 const defaultWebhookPort = 9443
 
-var versionRe = regexp.MustCompile(`v\d+\.\d+\.\d+(?:-enterprise)?(?:-cluster)?`)
-
 var (
 	managerFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	startTime    = time.Now()
 	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application",
-		ConstLabels: map[string]string{"version": buildinfo.Version, "short_version": versionRe.FindString(buildinfo.Version)}}, func() float64 {
+		ConstLabels: map[string]string{"version": buildinfo.Version, "short_version": buildinfo.ShortVersion()}}, func() float64 {
 		return 1.0
 	})
 	uptime = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_uptime_seconds", Help: "uptime"}, func() float64 {
@@ -204,7 +201,7 @@ func RunManager(ctx context.Context) error {
 		TLSOpts:       metricServerTLSOpts,
 	}
 
-	setupLog.Info(fmt.Sprintf("starting VictoriaMetrics operator build version: %s, short_version: %s", buildinfo.Version, versionRe.FindString(buildinfo.Version)))
+	setupLog.Info(fmt.Sprintf("starting VictoriaMetrics operator build version: %s, short_version: %s", buildinfo.Version, buildinfo.ShortVersion()))
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt, clientQPSLimit)
 	mustAddRestClientMetrics(r)

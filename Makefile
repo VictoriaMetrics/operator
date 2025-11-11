@@ -2,6 +2,7 @@
 REGISTRY ?= docker.io
 PUBLISH_REGISTRIES ?= docker.io quay.io
 REPO = operator
+COMPONENT ?= operator
 ROOT ?= ./cmd
 ORG ?= victoriametrics
 TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
@@ -15,7 +16,7 @@ E2E_TESTS_CONCURRENCY ?= $(shell getconf _NPROCESSORS_ONLN)
 FIPS_VERSION=v1.0.0
 BASEIMAGE ?=scratch
 
-BUILDINFO="operator-$(DATEINFO_TAG)-$(TAG)"
+BUILDINFO = $(DATEINFO_TAG)-$(TAG)
 
 LOCAL_REGISTRY_NAME ?= kind-registry
 LOCAL_REGISTRY_PORT ?= 5001
@@ -172,13 +173,13 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 .PHONY: build
 build: generate fmt vet ## Build manager binary.
 	go build \
-		-ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=operator-${BUILDINFO}'"\
+		-ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=$(COMPONENT)-${BUILDINFO}'"\
 		-o bin/$(REPO) $(ROOT)/
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run \
-		-ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=operator-${BUILDINFO}'"\
+		-ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=$(COMPONENT)-${BUILDINFO}'"\
      $(ROOT)/
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
@@ -188,7 +189,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg ROOT=$(ROOT) \
-		--build-arg BUILDINFO=$(BUILDINFO) \
+		--build-arg BUILDINFO=$(COMPONENT)-$(BUILDINFO) \
 		--build-arg BASEIMAGE=$(BASEIMAGE) \
 		${DOCKER_BUILD_ARGS} \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) .
@@ -197,6 +198,7 @@ build-operator: ROOT=./cmd
 build-operator: build
 
 build-config-reloader: ROOT=./cmd/config-reloader
+build-config-reloader: COMPONENT=config-reloader
 build-config-reloader: build
 
 .PHONY: docker-push
@@ -220,7 +222,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 		--push \
 		--platform=$(PLATFORMS) \
 		--build-arg ROOT=$(ROOT) \
-		--build-arg BUILDINFO=$(BUILDINFO) \
+		--build-arg BUILDINFO=$(COMPONENT)-$(BUILDINFO) \
 		--build-arg GODEBUG_ARGS="$(GODEBUG_BUILD_ARGS)" \
 		--build-arg FIPS_VERSION="$(FIPS_BUILD_VERSION)" \
 		--build-arg BASEIMAGE="$(BASEIMAGE)" \
@@ -242,8 +244,8 @@ publish:
 	TAG=$(TAG) ROOT=./cmd $(MAKE) docker-buildx
 	TAG=$(TAG)-ubi BASEIMAGE=registry.access.redhat.com/ubi10-micro:latest ROOT=./cmd $(MAKE) docker-buildx
 	TAG=$(TAG)-fips GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd $(MAKE) docker-buildx
-	TAG=config-reloader-$(TAG) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
-	TAG=config-reloader-$(TAG)-fips GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
+	TAG=config-reloader-$(TAG) COMPONENT=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-buildx
+	TAG=config-reloader-$(TAG)-fips COMPONENT=config-reloader GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.

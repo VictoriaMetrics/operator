@@ -37,7 +37,7 @@ RUN \
   --mount=type=cache,target=/root/.cache \
   --mount=type=cache,target=/go/pkg/mod \
   CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} GODEBUG=${GODEBUG_ARGS} GOFIPS140=${FIPS_VERSION} go build -a \
-   -ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=operator-${BUILDINFO}'" \
+   -ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=${BUILDINFO}'" \
    -o app ${ROOT}/
 
 # Use scratch as minimal base image to package the manager binary

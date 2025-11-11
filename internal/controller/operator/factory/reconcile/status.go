@@ -225,16 +225,16 @@ func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ct
 	// make a deep copy before passing object to Patch function
 	// it reload state of the object from API server
 	// which is not desired behaviour
-	objecToUpdate := object.DeepCopy()
+	objectToUpdate := object.DeepCopy()
 	pr, err := buildStatusPatch(currentStatus)
 	if err != nil {
 		return err
 	}
-	if err := rclient.Status().Patch(ctx, objecToUpdate, pr); err != nil {
+	if err := rclient.Status().Patch(ctx, objectToUpdate, pr); err != nil {
 		return fmt.Errorf("cannot update resource status with patch: %w", err)
 	}
 	// Update ResourceVersion in order to resolve future conflicts
-	object.SetResourceVersion(objecToUpdate.GetResourceVersion())
+	object.SetResourceVersion(objectToUpdate.GetResourceVersion())
 
 	return nil
 }

@@ -110,9 +110,8 @@ func (cr *VTCluster) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.Emb
 	case vmv1beta1.ClusterComponentBalancer:
 		return cr.Spec.RequestsLoadBalancer.Spec.PodMetadata
 	default:
-		panic("BUG unsupported cluster kind=%s", string(kind))
+		panic("BUG unsupported cluster kind=" + string(kind))
 	}
-	return nil
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
@@ -139,9 +138,8 @@ func (cr *VTCluster) GetAdditionalService(kind vmv1beta1.ClusterComponent) *vmv1
 	case vmv1beta1.ClusterComponentBalancer:
 		return cr.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec
 	default:
-		panic("BUG unsupported cluster kind=%s", string(kind))
+		panic("BUG unsupported cluster kind=" + string(kind))
 	}
-	return nil
 }
 
 // PodLabels returns pod labels for given component kind
@@ -740,7 +738,7 @@ func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent) string {
 		}
 		extraArgs = cr.Spec.Storage.ExtraArgs
 	default:
-		panic("BUG unsupported cluster kind=%s", string(kind))
+		panic("BUG unsupported cluster kind=" + string(kind))
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), cr.PrefixedName(kind), cr.Namespace, port)
 }

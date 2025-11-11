@@ -2,7 +2,6 @@ package reconcile
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -110,9 +109,7 @@ func mergeObjectMetadataIntoNew(currObj, newObj, prevObj client.Object) {
 	newObj.SetLabels(labels)
 }
 
-// IsErrorWaitTimeout determines if the err is an error which indicates that timeout for app
-// transition into Ready state reached and should be continued at the next reconcile loop
-func IsErrorWaitTimeout(err error) bool {
+func isErrorWaitTimeout(err error) bool {
 	var e *errWaitReady
 	return errors.As(err, &e)
 }
@@ -123,7 +120,7 @@ type errWaitReady struct {
 
 // Error implements errors.Error interface
 func (e *errWaitReady) Error() string {
-	return fmt.Sprintf(": %q", e.origin)
+	return e.origin.Error()
 }
 
 // Unwrap implements error.Unwrap interface
@@ -142,7 +139,7 @@ type errRecreate struct {
 
 // Error implements errors.Error interface
 func (e *errRecreate) Error() string {
-	return fmt.Sprintf(": %q", e.origin)
+	return e.origin.Error()
 }
 
 // Unwrap implements error.Unwrap interface
@@ -150,10 +147,18 @@ func (e *errRecreate) Unwrap() error {
 	return e.origin
 }
 
-func isRetryable(err error) bool {
+// IsRetryable determines one of errors:
+// * error which indicates that timeout for app transition into Ready state reached and should be continued at the next reconcile loop
+// * k8s conflict error
+// * reconciled resource is being deleted
+func IsRetryable(err error) bool {
+	return isConflict(err) || isErrorWaitTimeout(err)
+}
+
+func isConflict(err error) bool {
 	return k8serrors.IsConflict(err) || isRecreate(err)
 }
 
 func retryOnConflict(fn func() error) error {
-	return retry.OnError(retry.DefaultRetry, isRetryable, fn)
+	return retry.OnError(retry.DefaultRetry, isConflict, fn)
 }

@@ -164,6 +164,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Namespace: namespace,
 				},
 				Spec: vmv1beta1.VMAgentSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{
 							URL: "http://vminsert.monitoring:8089/api/v1/write", // Dummy URL to satisfy validation
@@ -172,6 +175,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 			}
 			Expect(k8sClient.Create(ctx, &validVMAgent)).To(Succeed(), "must create managed vm-agent before test")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, types.NamespacedName{Name: validVMAgent.Name, Namespace: namespace})
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 		} else {
 			Expect(err).ToNot(HaveOccurred())
 		}

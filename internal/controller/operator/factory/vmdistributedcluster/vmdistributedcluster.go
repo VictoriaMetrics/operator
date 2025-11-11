@@ -157,9 +157,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			// No further action needed after creation
 			continue
 		}
-		// Apply the updated spec
+		// Apply the updated object
 		if err := rclient.Update(ctx, vmClusterObj); err != nil {
 			return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
+		}
+
+		// Don't switch the cluster off in VMUser unless it was modified
+		if !modifiedSpec {
+			continue
 		}
 
 		// Perform rollout steps for the (now reconciled/updated) VMCluster

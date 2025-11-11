@@ -619,11 +619,32 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}
-			vmclusters := []vmv1beta1.VMCluster{*vmCluster}
+			vmUserName := types.NamespacedName{
+				Namespace: namespace,
+				Name:      "vmuser-paused",
+			}
+			pausedVMUser := vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      vmUserName.Name,
+					Namespace: namespace,
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					TargetRefs: []vmv1beta1.TargetRef{{
+						CRD: &vmv1beta1.CRDRef{
+							Kind:      "VMCluster/vmselect",
+							Name:      "vmcluster-paused",
+							Namespace: namespace,
+						},
+						TargetPathSuffix: "/select/1",
+					}},
+				},
+			}
 			DeferCleanup(func() {
+				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &pausedVMUser)).To(Succeed())
 				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmCluster)).To(Succeed())
 			})
-			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
+			Expect(k8sClient.Create(ctx, &pausedVMUser)).To(Succeed(), "must create managed vm-user before test")
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
 
 			By("creating a VMDistributedCluster")
 			namespacedName.Name = "distributed-paused"
@@ -635,7 +656,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
 					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
+						{Name: vmUserName.Name},
 					},
 					Zones: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
@@ -646,7 +667,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
-			verifyOwnerReferences(ctx, cr, vmclusters, namespace)
+			verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*vmCluster}, namespace)
 
 			By("pausing the VMDistributedCluster")
 			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors

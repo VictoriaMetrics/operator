@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -57,8 +58,8 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 func buildLBConfigSecretMeta(cr *vmv1.VTCluster) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Namespace:       cr.Namespace,
-		Name:            cr.GetVMAuthLBName(),
-		Labels:          cr.FinalLabels(cr.GetVMAuthLBSelectorLabels()),
+		Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+		Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
 		Annotations:     cr.FinalAnnotations(),
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 	}
@@ -86,9 +87,9 @@ func buildVMauthLBSecret(cr *vmv1.VTCluster) *corev1.Secret {
 		}
 	}
 	insertURL := fmt.Sprintf("%s://%s.%s:%s",
-		insertProto, cr.GetInsertLBName(), targetHostSuffix, insertPort)
+		insertProto, cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert), targetHostSuffix, insertPort)
 	selectURL := fmt.Sprintf("%s://%s.%s:%s",
-		selectProto, cr.GetSelectLBName(), targetHostSuffix, selectPort)
+		selectProto, cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort)
 
 	lbScrt := &corev1.Secret{
 		ObjectMeta: buildLBConfigSecretMeta(cr),
@@ -120,7 +121,7 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 			Name: configMountName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.GetVMAuthLBName(),
+					SecretName: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
 				},
 			},
 		},
@@ -192,14 +193,14 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 	lbDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
-			Name:            cr.GetVMAuthLBName(),
-			Labels:          cr.FinalLabels(cr.GetVMAuthLBSelectorLabels()),
+			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.GetVMAuthLBSelectorLabels(),
+				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer),
 			},
 			Strategy: appsv1.DeploymentStrategy{
 				Type:          strategyType,
@@ -207,8 +208,8 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      cr.GetVMAuthLBPodLabels(),
-					Annotations: cr.GetVMAuthLBPodAnnotations(),
+					Labels:      cr.PodLabels(vmv1beta1.ClusterComponentBalancer),
+					Annotations: cr.PodAnnotations(vmv1beta1.ClusterComponentBalancer),
 				},
 				Spec: corev1.PodSpec{
 					Volumes:            volumes,
@@ -226,36 +227,26 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 }
 
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
-	lbls := cr.GetVMAuthLBSelectorLabels()
-
-	// add proxy label directly to the service.labels
-	// it'll be used below for vmservicescrape matcher
-	// otherwise, it could lead to the multiple targets discovery
-	// for the single pod
-	// it's caused by multiple services pointed to the same pods
-	fls := cr.FinalLabels(lbls)
-	fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: "vmauth"})
-	t := &optsBuilder{
-		VTCluster:         cr,
-		prefixedName:      cr.GetVMAuthLBName(),
-		finalLabels:       fls,
-		selectorLabels:    lbls,
-		additionalService: cr.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec,
+	builder := func(r *vmv1.VTCluster) *build.ChildBuilder {
+		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
+		b.SetFinalLabels(labels.Merge(b.AllLabels(), map[string]string{
+			vmv1beta1.VMAuthLBServiceProxyTargetLabel: "vmauth",
+		}))
+		return b
 	}
-	svc := build.Service(t, cr.Spec.RequestsLoadBalancer.Spec.Port, nil)
-
+	b := builder(cr)
+	svc := build.Service(b, cr.Spec.RequestsLoadBalancer.Spec.Port, nil)
 	var prevSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Enabled {
-		t.VTCluster = prevCR
-		t.additionalService = prevCR.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec
-		prevSvc = build.Service(t, prevCR.Spec.RequestsLoadBalancer.Spec.Port, nil)
+		b := builder(prevCR)
+		prevSvc = build.Service(b, prevCR.Spec.RequestsLoadBalancer.Spec.Port, nil)
 	}
 
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb service: %w", err)
 	}
 	svs := build.VMServiceScrapeForServiceWithSpec(svc, &cr.Spec.RequestsLoadBalancer.Spec)
-	svs.Spec.Selector.MatchLabels[vmauthLBServiceProxyTargetLabel] = "vmauth"
+	svs.Spec.Selector.MatchLabels[vmv1beta1.VMAuthLBServiceProxyTargetLabel] = "vmauth"
 	if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
 	}
@@ -263,48 +254,35 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 }
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
-
-	t := newOptsBuilder(cr, cr.GetVMAuthLBName(), cr.GetVMAuthLBSelectorLabels())
-	pdb := build.PodDisruptionBudget(t, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	pdb := build.PodDisruptionBudget(b, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		t = newOptsBuilder(prevCR, prevCR.GetVMAuthLBName(), prevCR.GetVMAuthLBSelectorLabels())
-		prevPDB = build.PodDisruptionBudget(t, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
 // createOrUpdateLBProxyService builds vtinsert and vtselect external services to expose vtcluster components for access by vmauth
-func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster, svcName, port, prevPort, targetName string, svcSelectorLabels map[string]string) error {
-
-	// TODO: check
-	fls := cr.FinalLabels(svcSelectorLabels)
-	fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: targetName})
-	t := &optsBuilder{
-		cr,
-		svcName,
-		fls,
-		cr.GetVMAuthLBSelectorLabels(),
-		nil,
+func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster, kind vmv1beta1.ClusterComponent, port, prevPort string) error {
+	builder := func(r *vmv1.VTCluster) *build.ChildBuilder {
+		b := build.NewChildBuilder(r, kind)
+		b.SetFinalLabels(labels.Merge(b.AllLabels(), map[string]string{
+			vmv1beta1.VMAuthLBServiceProxyTargetLabel: string(kind),
+		}))
+		b.SetSelectorLabels(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer))
+		return b
 	}
-
-	svc := build.Service(t, cr.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
+	b := builder(cr)
+	svc := build.Service(b, cr.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
 		svc.Spec.Ports[0].Port = intstr.Parse(port).IntVal
 	})
 
 	var prevSvc *corev1.Service
 	if prevCR != nil {
-		fls := prevCR.FinalLabels(svcSelectorLabels)
-		fls = labels.Merge(fls, map[string]string{vmauthLBServiceProxyTargetLabel: targetName})
-		t := &optsBuilder{
-			prevCR,
-			svcName,
-			fls,
-			prevCR.GetVMAuthLBSelectorLabels(),
-			nil,
-		}
-
-		prevSvc = build.Service(t, prevCR.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
+		b := builder(prevCR)
+		prevSvc = build.Service(b, prevCR.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
 			svc.Spec.Ports[0].Port = intstr.Parse(prevPort).IntVal
 		})
 	}

@@ -46,7 +46,7 @@ func createOrUpdateVLInsert(ctx context.Context, rclient client.Client, cr, prev
 		svs := build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.VLInsert)
 		if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 			// for backward compatibility we must keep job label value
-			svs.Spec.JobLabel = vmauthLBServiceProxyJobNameLabel
+			svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
 		}
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs)
 		if err != nil {
@@ -61,12 +61,12 @@ func createOrUpdatePodDisruptionBudgetForVLInsert(ctx context.Context, rclient c
 	if cr.Spec.VLInsert.PodDisruptionBudget == nil {
 		return nil
 	}
-	b := newOptsBuilder(cr, cr.GetInsertName(), cr.GetInsertSelectorLabels())
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VLInsert.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VLInsert.PodDisruptionBudget != nil {
-		prevB := newOptsBuilder(prevCR, prevCR.GetInsertName(), prevCR.GetInsertSelectorLabels())
-		prevPDB = build.PodDisruptionBudget(prevB, prevCR.Spec.VLInsert.PodDisruptionBudget)
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VLInsert.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
@@ -101,9 +101,9 @@ func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 	}
 	stsSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetInsertName(),
+			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentInsert),
 			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(cr.GetInsertSelectorLabels()),
+			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentInsert),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
@@ -117,7 +117,7 @@ func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 				RollingUpdate: cr.Spec.VLInsert.RollingUpdate,
 			},
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.GetInsertSelectorLabels(),
+				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentInsert),
 			},
 			Template: *podSpec,
 		},
@@ -148,7 +148,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		storageNodeIds := cr.AvailableStorageNodeIDs("insert")
 		for idx, i := range storageNodeIds {
 			// TODO: introduce TLS webserver config for storage nodes
-			storageNodeFlag.Add(build.PodDNSAddress(cr.GetStorageName(), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
+			storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
 		}
 		totalNodes := len(storageNodeIds)
 		args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
@@ -243,15 +243,15 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	for i := range cr.Spec.VLInsert.TopologySpreadConstraints {
 		if cr.Spec.VLInsert.TopologySpreadConstraints[i].LabelSelector == nil {
 			cr.Spec.VLInsert.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
-				MatchLabels: cr.GetInsertSelectorLabels(),
+				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentInsert),
 			}
 		}
 	}
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      cr.GetInsertPodLabels(),
-			Annotations: cr.GetInsertPodAnnotations(),
+			Labels:      cr.PodLabels(vmv1beta1.ClusterComponentInsert),
+			Annotations: cr.PodAnnotations(vmv1beta1.ClusterComponentInsert),
 		},
 		Spec: corev1.PodSpec{
 			Volumes:            volumes,
@@ -269,16 +269,16 @@ func createOrUpdateVLInsertHPA(ctx context.Context, rclient client.Client, cr, p
 		return nil
 	}
 	targetRef := autoscalingv2.CrossVersionObjectReference{
-		Name:       cr.GetInsertName(),
+		Name:       cr.PrefixedName(vmv1beta1.ClusterComponentInsert),
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	}
-	t := newOptsBuilder(cr, cr.GetInsertName(), cr.GetInsertSelectorLabels())
-	newHPA := build.HPA(t, targetRef, cr.Spec.VLInsert.HPA)
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	newHPA := build.HPA(b, targetRef, cr.Spec.VLInsert.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VLInsert.HPA != nil {
-		t = newOptsBuilder(prevCR, prevCR.GetInsertName(), prevCR.GetInsertSelectorLabels())
-		prevHPA = build.HPA(t, targetRef, prevCR.Spec.VLInsert.HPA)
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VLInsert.HPA)
 	}
 	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
 }
@@ -313,7 +313,8 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 		if prevCR != nil && prevCR.Spec.VLInsert != nil {
 			prevPort = prevCR.Spec.VLInsert.Port
 		}
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, cr.GetInsertName(), cr.Spec.VLInsert.Port, prevPort, "vlinsert", cr.VMAuthLBSelectorLabels()); err != nil {
+		kind := vmv1beta1.ClusterComponentInsert
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, kind, cr.Spec.VLInsert.Port, prevPort); err != nil {
 			return nil, fmt.Errorf("cannot create lb svc for insert: %w", err)
 		}
 	}
@@ -322,15 +323,8 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 }
 
 func buildVLInsertService(cr *vmv1.VLCluster) *corev1.Service {
-	t := &optsBuilder{
-		cr,
-		cr.GetInsertName(),
-		cr.FinalLabels(cr.GetInsertSelectorLabels()),
-		cr.GetInsertSelectorLabels(),
-		cr.Spec.VLInsert.ServiceSpec,
-	}
-
-	svc := build.Service(t, cr.Spec.VLInsert.Port, func(svc *corev1.Service) {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	svc := build.Service(b, cr.Spec.VLInsert.Port, func(svc *corev1.Service) {
 		syslogSpec := cr.Spec.VLInsert.SyslogSpec
 		if syslogSpec == nil || cr.Spec.RequestsLoadBalancer.Enabled {
 			// fast path
@@ -339,10 +333,10 @@ func buildVLInsertService(cr *vmv1.VLCluster) *corev1.Service {
 		build.AddSyslogPortsToService(svc, syslogSpec)
 	})
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
-		svc.Name = cr.GetInsertLBName()
+		svc.Name = cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
-		svc.Labels[vmauthLBServiceProxyJobNameLabel] = cr.GetInsertName()
+		svc.Labels[vmv1beta1.VMAuthLBServiceProxyJobNameLabel] = cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
 	}
 	return svc
 }

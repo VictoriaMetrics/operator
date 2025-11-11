@@ -340,31 +340,31 @@ type unwrapObject interface {
 
 var clusterComponentToURL = map[string]func(obj client.Object) string{
 	"vminsert": func(obj client.Object) string {
-		return obj.(*vmv1beta1.VMCluster).InsertURL()
+		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentInsert)
 	},
 	"vmselect": func(obj client.Object) string {
-		return obj.(*vmv1beta1.VMCluster).SelectURL()
+		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentSelect)
 	},
 	"vmstorage": func(obj client.Object) string {
-		return obj.(*vmv1beta1.VMCluster).StorageURL()
+		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentStorage)
 	},
 	"vlinsert": func(obj client.Object) string {
-		return obj.(*vmv1.VLCluster).InsertURL()
+		return obj.(*vmv1.VLCluster).AsURL(vmv1beta1.ClusterComponentInsert)
 	},
 	"vlselect": func(obj client.Object) string {
-		return obj.(*vmv1.VLCluster).SelectURL()
+		return obj.(*vmv1.VLCluster).AsURL(vmv1beta1.ClusterComponentSelect)
 	},
 	"vlstorage": func(obj client.Object) string {
-		return obj.(*vmv1.VLCluster).StorageURL()
+		return obj.(*vmv1.VLCluster).AsURL(vmv1beta1.ClusterComponentStorage)
 	},
 	"vtinsert": func(obj client.Object) string {
-		return obj.(*vmv1.VTCluster).InsertURL()
+		return obj.(*vmv1.VTCluster).AsURL(vmv1beta1.ClusterComponentInsert)
 	},
 	"vtselect": func(obj client.Object) string {
-		return obj.(*vmv1.VTCluster).SelectURL()
+		return obj.(*vmv1.VTCluster).AsURL(vmv1beta1.ClusterComponentSelect)
 	},
 	"vtstorage": func(obj client.Object) string {
-		return obj.(*vmv1.VTCluster).StorageURL()
+		return obj.(*vmv1.VTCluster).AsURL(vmv1beta1.ClusterComponentStorage)
 	},
 }
 

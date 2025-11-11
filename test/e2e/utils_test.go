@@ -163,10 +163,10 @@ func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, o
 		for k, v := range annotations {
 			gv, ok := gotAnnotations[k]
 			if v == "" {
-				Expect(ok).To(BeFalse(), "annotation key=%q,value=%q must not exist for object at idx=%d, object=%q", k, gv, idx, nss.String())
+				Expect(ok).To(BeFalse(), "annotation key=%q,value=%q must not exist for %T at idx=%d, object=%q", k, gv, obj, idx, nss.String())
 			} else {
-				Expect(ok).To(BeTrue(), "annotation key=%s must present for object at idx=%d, object=%q", k, idx, nss.String())
-				Expect(gv).To(Equal(v), "annotation key=%s must equal for object at idx=%d, object=%q", k, idx, nss.String())
+				Expect(ok).To(BeTrue(), "annotation key=%s must present for %T at idx=%d, object=%q", k, obj, idx, nss.String())
+				Expect(gv).To(Equal(v), "annotation key=%s must equal for %T at idx=%d, object=%q", k, obj, idx, nss.String())
 
 			}
 
@@ -178,14 +178,14 @@ func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, o
 func assertLabelsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, wantLabels map[string]string) {
 	for idx, obj := range objects {
 		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
-		gotAnnotations := obj.GetLabels()
+		gotLabels := obj.GetLabels()
 		for k, v := range wantLabels {
-			gv, ok := gotAnnotations[k]
+			gv, ok := gotLabels[k]
 			if v == "" {
-				Expect(ok).NotTo(BeTrue(), "label key=%s must not exist for object at idx=%d", k, idx)
+				Expect(ok).NotTo(BeTrue(), "label key=%s must not exist for %T at idx=%d", k, obj, idx)
 			} else {
-				Expect(ok).To(BeTrue(), "label key=%s must present for object at idx=%d", k, idx)
-				Expect(gv).To(Equal(v), "label key=%s must equal for object at idx=%d", k, idx)
+				Expect(ok).To(BeTrue(), "label key=%s must present for %T at idx=%d", k, obj, idx)
+				Expect(gv).To(Equal(v), "label key=%s must equal for %T at idx=%d", k, obj, idx)
 
 			}
 

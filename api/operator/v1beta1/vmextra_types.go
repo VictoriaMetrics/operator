@@ -15,6 +15,7 @@ import (
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -29,6 +30,17 @@ const (
 	UpdateStatusOperational UpdateStatus = "operational"
 	UpdateStatusFailed      UpdateStatus = "failed"
 	UpdateStatusPaused      UpdateStatus = "paused"
+)
+
+// ClusterComponent defines component kind for cluster
+type ClusterComponent string
+
+const (
+	ClusterComponentRoot     ClusterComponent = "cluster"
+	ClusterComponentInsert   ClusterComponent = "insert"
+	ClusterComponentSelect   ClusterComponent = "select"
+	ClusterComponentBalancer ClusterComponent = "clusterlb"
+	ClusterComponentStorage  ClusterComponent = "storage"
 )
 
 const (
@@ -49,8 +61,10 @@ const (
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
-	PVCExpandableLabel        = "operator.victoriametrics.com/pvc-allow-volume-expansion"
-	LastAppliedSpecAnnotation = "operator.victoriametrics/last-applied-spec"
+	PVCExpandableLabel               = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+	LastAppliedSpecAnnotation        = "operator.victoriametrics/last-applied-spec"
+	VMAuthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
+	VMAuthLBServiceProxyJobNameLabel = "operator.victoriametrics.com/vmauthlb-proxy-job-name"
 )
 
 const (
@@ -116,6 +130,36 @@ func AddFinalizer(dst, src client.Object) {
 		dst.SetFinalizers(srcFinalizers)
 	}
 	dst.SetFinalizers(srcFinalizers)
+}
+
+// AddClusterLabels adds to given labels cluster specific labels
+func AddClusterLabels(ls map[string]string, prefix string) map[string]string {
+	return labels.Merge(map[string]string{
+		"app.kubernetes.io/part-of": prefix + "cluster",
+	}, ls)
+}
+
+// ClusterSelectorLabels defines selector labels for given cluster component kind
+func ClusterSelectorLabels(kind ClusterComponent, name, prefix string) map[string]string {
+	kindName := string(kind)
+	if kind == ClusterComponentBalancer {
+		kindName = "clusterlb-vmauth-balancer"
+	}
+	return map[string]string{
+		"app.kubernetes.io/name":      prefix + kindName,
+		"app.kubernetes.io/instance":  name,
+		"app.kubernetes.io/component": "monitoring",
+		"managed-by":                  "vm-operator",
+	}
+}
+
+// ClusterPrefixedName defines prefixed name for given cluster component kind
+func ClusterPrefixedName(kind ClusterComponent, name, prefix string, internal bool) string {
+	var suffix string
+	if internal {
+		suffix = "internal"
+	}
+	return fmt.Sprintf("%s%s%s-%s", prefix, string(kind), suffix, name)
 }
 
 // AddFinalizerAndThen conditionally adds vm-operator finalizer to the dst object

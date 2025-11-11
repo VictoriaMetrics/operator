@@ -58,8 +58,14 @@ const defaultWebhookPort = 9443
 var (
 	managerFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	startTime    = time.Now()
-	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application",
-		ConstLabels: map[string]string{"version": buildinfo.Version, "short_version": buildinfo.ShortVersion()}}, func() float64 {
+	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "vm_app_version",
+		Help: "version of application",
+		ConstLabels: map[string]string{
+			"version":       buildinfo.Version,
+			"short_version": buildinfo.ShortVersion(),
+		},
+	}, func() float64 {
 		return 1.0
 	})
 	uptime = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_uptime_seconds", Help: "uptime"}, func() float64 {

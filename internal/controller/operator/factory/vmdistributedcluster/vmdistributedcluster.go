@@ -99,25 +99,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	// Ensure that all vmusers have a read rule for vmcluster and record vmcluster info in VMDistributedCluster status
 	cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
 	for i, vmCluster := range vmClusters {
-		vmClusterInfo := vmv1alpha1.VMClusterStatus{
-			VMClusterName: vmCluster.Name,
-			Generation:    vmCluster.Generation,
-		}
-
-		// Find targetref for the cluster in VMUsers
-		ref, err := findVMUserReadRuleForVMCluster(vmUserObjs, vmCluster)
+		vmClusterInfo, err := setVMClusterInfo(vmCluster, vmUserObjs, currentCRStatus)
 		if err != nil {
-			// Check if targetref already set in vmcluster status
-			// Exit early if targetref is already set
-			idx := slices.IndexFunc(currentCRStatus.VMClusterInfo, func(info vmv1alpha1.VMClusterStatus) bool {
-				return info.VMClusterName == vmCluster.Name
-			})
-			if idx == -1 {
-				return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmCluster.Name, err), false
-			}
-			ref = &currentCRStatus.VMClusterInfo[idx].TargetRef
+			return err
 		}
-		vmClusterInfo.TargetRef = *ref.DeepCopy()
 		cr.Status.VMClusterInfo[i] = vmClusterInfo
 	}
 	cr.Status.Zones = cr.Spec.Zones
@@ -361,6 +346,27 @@ func fetchVMUsers(ctx context.Context, rclient client.Client, namespace string, 
 		vmUsers[i] = vmUserObj
 	}
 	return vmUsers, nil
+}
+
+func setVMClusterInfo(vmCluster *vmv1beta1.VMCluster, vmUserObjs []*vmv1beta1.VMUser, currentCRStatus *vmv1alpha1.VMDistributedClusterStatus) (vmv1alpha1.VMClusterStatus, error) {
+	vmClusterInfo := vmv1alpha1.VMClusterStatus{
+		VMClusterName: vmCluster.Name,
+		Generation:    vmCluster.Generation,
+	}
+	ref, err := findVMUserReadRuleForVMCluster(vmUserObjs, vmCluster)
+	if err != nil {
+		// Check if targetref already set in vmcluster status
+		// Exit early if targetref is already set
+		idx := slices.IndexFunc(currentCRStatus.VMClusterInfo, func(info vmv1alpha1.VMClusterStatus) bool {
+			return info.VMClusterName == vmCluster.Name
+		})
+		if idx == -1 {
+			return vmClusterInfo, fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmCluster.Name, err)
+		}
+		ref = &currentCRStatus.VMClusterInfo[idx].TargetRef
+	}
+	vmClusterInfo.TargetRef = *ref
+	return vmClusterInfo, nil
 }
 
 func fetchVMAgent(ctx context.Context, rclient client.Client, namespace string, ref corev1.LocalObjectReference) (*vmv1beta1.VMAgent, error) {

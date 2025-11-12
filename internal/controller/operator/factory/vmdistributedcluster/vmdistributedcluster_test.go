@@ -1298,3 +1298,191 @@ func TestUpdateVMUserTargetRefs(t *testing.T) {
 
 	}
 }
+
+func TestSetVMClusterInfo(t *testing.T) {
+	type args struct {
+		vmCluster       *vmv1beta1.VMCluster
+		vmUserObjs      []*vmv1beta1.VMUser
+		currentCRStatus *vmv1alpha1.VMDistributedClusterStatus
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    vmv1alpha1.VMClusterStatus
+		wantErr bool
+	}{
+		{
+			name: "successfully set VMClusterInfo with existing VMUser",
+			args: args{
+				vmCluster: &vmv1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-cluster",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMClusterSpec{},
+				},
+				vmUserObjs: []*vmv1beta1.VMUser{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-user",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMUserSpec{
+							TargetRefs: []vmv1beta1.TargetRef{
+								{
+									CRD: &vmv1beta1.CRDRef{
+										Name:      "test-cluster",
+										Kind:      "VMCluster/vmselect",
+										Namespace: "default",
+									},
+									TargetPathSuffix: "/select/1",
+								},
+							},
+						},
+					},
+				},
+				currentCRStatus: &vmv1alpha1.VMDistributedClusterStatus{},
+			},
+			want: vmv1alpha1.VMClusterStatus{
+				VMClusterName: "test-cluster",
+				Generation:    0,
+				TargetRef: vmv1beta1.TargetRef{
+					CRD: &vmv1beta1.CRDRef{
+						Name:      "test-cluster",
+						Kind:      "VMCluster/vmselect",
+						Namespace: "default",
+					},
+					TargetPathSuffix: "/select/1",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "error when no VMUser found for VMCluster and not in status",
+			args: args{
+				vmCluster: &vmv1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-cluster-no-user",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMClusterSpec{},
+				},
+				vmUserObjs:      []*vmv1beta1.VMUser{},
+				currentCRStatus: &vmv1alpha1.VMDistributedClusterStatus{},
+			},
+			want: vmv1alpha1.VMClusterStatus{
+				VMClusterName: "test-cluster-no-user",
+				Generation:    0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "retrieve TargetRef from status when no VMUser found",
+			args: args{
+				vmCluster: &vmv1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-cluster-from-status",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMClusterSpec{},
+				},
+				vmUserObjs: []*vmv1beta1.VMUser{},
+				currentCRStatus: &vmv1alpha1.VMDistributedClusterStatus{
+					VMClusterInfo: []vmv1alpha1.VMClusterStatus{
+						{
+							VMClusterName: "test-cluster-from-status",
+							TargetRef: vmv1beta1.TargetRef{
+								CRD: &vmv1beta1.CRDRef{
+									Name:      "test-cluster-from-status",
+									Kind:      "VMCluster",
+									Namespace: "default",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: vmv1alpha1.VMClusterStatus{
+				VMClusterName: "test-cluster-from-status",
+				Generation:    0,
+				TargetRef: vmv1beta1.TargetRef{
+					CRD: &vmv1beta1.CRDRef{
+						Name:      "test-cluster-from-status",
+						Kind:      "VMCluster",
+						Namespace: "default",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "retrieve TargetRef from status when VMUser no longer has matching entry",
+			args: args{
+				vmCluster: &vmv1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-cluster-from-status",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMClusterSpec{},
+				},
+				vmUserObjs: []*vmv1beta1.VMUser{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-user",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMUserSpec{
+							TargetRefs: []vmv1beta1.TargetRef{
+								{
+									CRD: &vmv1beta1.CRDRef{
+										Name:      "some-other-cluster",
+										Kind:      "VMCluster/vmselect",
+										Namespace: "default",
+									},
+									TargetPathSuffix: "/select/1",
+								},
+							},
+						},
+					},
+				},
+				currentCRStatus: &vmv1alpha1.VMDistributedClusterStatus{
+					VMClusterInfo: []vmv1alpha1.VMClusterStatus{
+						{
+							VMClusterName: "test-cluster-from-status",
+							TargetRef: vmv1beta1.TargetRef{
+								CRD: &vmv1beta1.CRDRef{
+									Name:      "test-cluster-from-status",
+									Kind:      "VMCluster",
+									Namespace: "default",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: vmv1alpha1.VMClusterStatus{
+				VMClusterName: "test-cluster-from-status",
+				Generation:    0,
+				TargetRef: vmv1beta1.TargetRef{
+					CRD: &vmv1beta1.CRDRef{
+						Name:      "test-cluster-from-status",
+						Kind:      "VMCluster",
+						Namespace: "default",
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := setVMClusterInfo(tt.args.vmCluster, tt.args.vmUserObjs, tt.args.currentCRStatus)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, got, tt.want)
+		})
+	}
+}

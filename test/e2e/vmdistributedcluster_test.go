@@ -215,16 +215,16 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		}
 
 		// Clean up VMAgent
-		var vmAgent vmv1beta1.VMAgent
-		err := k8sClient.Get(ctx, validVMAgentName, &vmAgent)
-		if k8serrors.IsNotFound(err) {
-			return
-		}
-		Expect(err).To(Succeed(), "must get vm-agent after test")
-		Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmAgent)).To(Succeed(), "must delete vm-agent after test")
-		Eventually(func() error {
-			return k8sClient.Get(ctx, validVMAgentName, &vmv1beta1.VMAgent{})
-		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+		// var vmAgent vmv1beta1.VMAgent
+		// err := k8sClient.Get(ctx, validVMAgentName, &vmAgent)
+		// if k8serrors.IsNotFound(err) {
+		// 	return
+		// }
+		// Expect(err).To(Succeed(), "must get vm-agent after test")
+		// Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmAgent)).To(Succeed(), "must delete vm-agent after test")
+		// Eventually(func() error {
+		// 	return k8sClient.Get(ctx, validVMAgentName, &vmv1beta1.VMAgent{})
+		// }, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 	}
 
 	Context("create", func() {

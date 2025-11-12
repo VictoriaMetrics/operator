@@ -58,7 +58,7 @@ func (r *VMDistributedClusterReconciler) Init(rclient client.Client, l logr.Logg
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributedclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributedclusters/finalizers,verbs=update
 func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vmdistributed", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues("vmdistributedcluster", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1alpha1.VMDistributedCluster{}
 
@@ -69,11 +69,11 @@ func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl
 
 	// Fetch VMDistributedCluster instance
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmdistributed", req}
+		return result, &getError{err, "vmdistributedcluster", req}
 	}
 
 	// Register metrics
-	RegisterObjectStat(instance, "vmauth")
+	RegisterObjectStat(instance, "vmdistributedcluster")
 
 	// Check if the instance is being deleted
 	// TODO[vrutkovs]: Implement deletion logic or remove it
@@ -85,7 +85,7 @@ func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 	// Check parsing error
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmdistributed"}
+		return result, &parsingError{instance.Spec.ParsingError, "vmdistributedcluster"}
 	}
 
 	// Add finalizer if necessary

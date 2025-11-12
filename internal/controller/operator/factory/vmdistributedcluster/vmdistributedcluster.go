@@ -24,6 +24,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -98,15 +99,26 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	// Ensure that all vmusers have a read rule for vmcluster and record vmcluster info in VMDistributedCluster status
 	cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
 	for i, vmCluster := range vmClusters {
-		ref, err := findVMUserReadRuleForVMCluster(vmUserObjs, vmCluster)
-		if err != nil {
-			return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmCluster.Name, err)
-		}
-		cr.Status.VMClusterInfo[i] = vmv1alpha1.VMClusterStatus{
+		vmClusterInfo := vmv1alpha1.VMClusterStatus{
 			VMClusterName: vmCluster.Name,
 			Generation:    vmCluster.Generation,
-			TargetRef:     *ref.DeepCopy(),
 		}
+
+		// Find targetref for the cluster in VMUsers
+		ref, err := findVMUserReadRuleForVMCluster(vmUserObjs, vmCluster)
+		if err != nil {
+			// Check if targetref already set in vmcluster status
+			// Exit early if targetref is already set
+			idx := slices.IndexFunc(currentCRStatus.VMClusterInfo, func(info vmv1alpha1.VMClusterStatus) bool {
+				return info.VMClusterName == vmCluster.Name
+			})
+			if idx == -1 {
+				return fmt.Errorf("failed to find the rule for vmcluster %s: %w", vmCluster.Name, err), false
+			}
+			ref = &currentCRStatus.VMClusterInfo[idx].TargetRef
+		}
+		vmClusterInfo.TargetRef = *ref.DeepCopy()
+		cr.Status.VMClusterInfo[i] = vmClusterInfo
 	}
 	cr.Status.Zones = cr.Spec.Zones
 

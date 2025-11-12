@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/caarlos0/env/v11"
-	version "github.com/hashicorp/go-version"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -22,6 +22,14 @@ const (
 	UnLimitedResource = "unlimited"
 	prefixVar         = "VM_"
 )
+
+func getVersion(defaultVersion string) string {
+	v := buildinfo.ShortVersion()
+	if len(v) == 0 {
+		return defaultVersion
+	}
+	return v
+}
 
 var (
 	opConf   *BaseOperatorConf
@@ -34,10 +42,11 @@ var (
 	//
 	// DO NOT FORGET TO MODIFY VERSIONS IN BaseOperatorConf
 	defaultEnvs = map[string]string{
-		"VM_METRICS_VERSION": "v1.129.0",
-		"VM_LOGS_VERSION":    "v1.36.1",
-		"VM_ANOMALY_VERSION": "v1.26.1",
-		"VM_TRACES_VERSION":  "v0.5.0",
+		"VM_METRICS_VERSION":  "v1.129.0",
+		"VM_LOGS_VERSION":     "v1.36.1",
+		"VM_ANOMALY_VERSION":  "v1.26.1",
+		"VM_TRACES_VERSION":   "v0.5.0",
+		"VM_OPERATOR_VERSION": getVersion("v0.65.0"),
 	}
 )
 
@@ -111,11 +120,10 @@ type BaseOperatorConf struct {
 	// it should speed-up config reloading process.
 	UseVMConfigReloader bool `default:"true" env:"USECUSTOMCONFIGRELOADER"`
 	// container registry name prefix, e.g. docker.io
-	ContainerRegistry                string `default:"" env:"CONTAINERREGISTRY"`
-	VMConfigReloaderImage            string `default:"victoriametrics/operator:config-reloader-v0.62.0" env:"CUSTOMCONFIGRELOADERIMAGE"`
-	parsedConfigReloaderImageVersion *version.Version
-	PSPAutoCreateEnabled             bool `default:"false" env:"PSPAUTOCREATEENABLED"`
-	EnableTCP6                       bool `default:"false" env:"ENABLETCP6"`
+	ContainerRegistry     string `default:"" env:"CONTAINERREGISTRY"`
+	VMConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:"CUSTOMCONFIGRELOADERIMAGE,expand"`
+	PSPAutoCreateEnabled  bool   `default:"false" env:"PSPAUTOCREATEENABLED"`
+	EnableTCP6            bool   `default:"false" env:"ENABLETCP6"`
 
 	// defines global resource.limits.cpu for all config-reloader containers
 	ConfigReloaderLimitCPU string `default:"unlimited"`
@@ -581,24 +589,6 @@ func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
 	return boc.ForceResyncInterval + time.Duration(p*float64(dv))
 }
 
-// parseAndSetVMConfigReloadImageVersion parses custom config reloader image version and returns result
-// in case of parsing error (if tag was incorrectly set by user), returns empty version 0.0
-func parseAndSetVMConfigReloadImageVersion(boc *BaseOperatorConf) error {
-	reloaderImage := boc.VMConfigReloaderImage
-	idx := strings.LastIndex(reloaderImage, ":")
-	if idx > 0 {
-		imageVersion := reloaderImage[idx+1:]
-		imageVersion = strings.TrimPrefix(imageVersion, "config-reloader-")
-		ver, err := version.NewVersion(imageVersion)
-		if err != nil {
-			return fmt.Errorf("cannot parse version for config-reloader container=%q from imageVersion=%q: %w", reloaderImage, imageVersion, err)
-		}
-		boc.parsedConfigReloaderImageVersion = ver
-		return nil
-	}
-	return fmt.Errorf("cannot find : delimiter at custom config reloader image=%q", reloaderImage)
-}
-
 // Validate - validates config on best effort.
 func (boc BaseOperatorConf) Validate() error {
 	validateResource := func(name string, res Resource) error {
@@ -704,7 +694,6 @@ func (boc BaseOperatorConf) Validate() error {
 	if err := validateResource("vtstorage", Resource(boc.VTClusterDefault.StorageDefault.Resource)); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -716,9 +705,6 @@ func MustGetBaseConfig() *BaseOperatorConf {
 			panic(err)
 		}
 		if err := c.Validate(); err != nil {
-			panic(err)
-		}
-		if err := parseAndSetVMConfigReloadImageVersion(&c); err != nil {
 			panic(err)
 		}
 		opConf = &c

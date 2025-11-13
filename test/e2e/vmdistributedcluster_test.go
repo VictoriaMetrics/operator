@@ -51,15 +51,10 @@ func createVMClusterAndEnsureOperational(ctx context.Context, k8sClient client.C
 	Expect(k8sClient.Create(ctx, vmcluster)).To(Succeed())
 	localVMCluster := vmcluster
 	DeferCleanup(func() {
-		Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, localVMCluster)).To(Succeed())
+		Expect(finalize.SafeDelete(ctx, k8sClient, localVMCluster)).To(Succeed())
 		Eventually(func() error {
-			var fetchedVMCluster vmv1beta1.VMCluster
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: localVMCluster.Name, Namespace: ns}, &fetchedVMCluster)
-			if k8serrors.IsNotFound(err) {
-				return nil
-			}
-			return err
-		}, eventualDeletionTimeout).Should(Succeed())
+			return k8sClient.Get(ctx, types.NamespacedName{Name: localVMCluster.Name, Namespace: ns}, &vmv1beta1.VMCluster{})
+		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 	})
 	Eventually(func() error {
 		return expectObjectStatusOperational(ctx, k8sClient, localVMCluster, types.NamespacedName{Name: localVMCluster.Name, Namespace: ns})
@@ -77,11 +72,11 @@ func updateVMUserTargetRefs(ctx context.Context, k8sClient client.Client, vmUser
 }
 
 // cleanupVMClusters handles the deferred cleanup of VMCluster resources.
-func cleanupVMClusters(ctx context.Context, k8sClient client.Client, vmclusters []vmv1beta1.VMCluster, namespacedName types.NamespacedName) {
+func cleanupVMClusters(ctx context.Context, k8sClient client.Client, vmclusters []vmv1beta1.VMCluster) {
 	for _, vmcluster := range vmclusters {
-		finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmcluster)
+		finalize.SafeDelete(ctx, k8sClient, &vmcluster)
 		Eventually(func() error {
-			return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMCluster{})
+			return k8sClient.Get(ctx, types.NamespacedName{Name: vmcluster.Name, Namespace: vmcluster.Namespace}, &vmv1beta1.VMCluster{})
 		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 	}
 }
@@ -184,44 +179,35 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	}
 
 	afterEach := func() {
-		Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{
+		Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: namespace,
 				Name:      namespacedName.Name,
 			},
 		})).To(Succeed(), "must delete vmdistributedcluster after test")
 		Eventually(func() error {
-			err := k8sClient.Get(ctx, types.NamespacedName{
-				Name:      namespacedName.Name,
-				Namespace: namespace,
-			}, &vmv1alpha1.VMDistributedCluster{})
-			if k8serrors.IsNotFound(err) {
-				return nil
-			}
-			return fmt.Errorf("want NotFound error, got: %w", err)
-		}, eventualDeletionTimeout, 1).WithContext(ctx).Should(Succeed())
+			return k8sClient.Get(ctx, types.NamespacedName{Name: namespacedName.Name, Namespace: namespace}, &vmv1beta1.VMCluster{})
+		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
-		var vmUser vmv1beta1.VMUser
 		for _, vmuserName := range validVMUserNames {
-			err := k8sClient.Get(ctx, vmuserName, &vmUser)
-			if k8serrors.IsNotFound(err) {
-				continue
-			}
-			Expect(err).To(Succeed(), "must get vm-user after test")
-			Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmUser)).To(Succeed(), "must delete vm-user after test")
+			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: vmuserName.Namespace,
+					Name:      vmuserName.Name,
+				},
+			})).To(Succeed(), "must delete vm-user after test")
 			Eventually(func() error {
 				return k8sClient.Get(ctx, vmuserName, &vmv1beta1.VMUser{})
 			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		}
 
-		// Clean up VMAgent
-		// var vmAgent vmv1beta1.VMAgent
-		// err := k8sClient.Get(ctx, validVMAgentName, &vmAgent)
-		// if k8serrors.IsNotFound(err) {
-		// 	return
-		// }
-		// Expect(err).To(Succeed(), "must get vm-agent after test")
-		// Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmAgent)).To(Succeed(), "must delete vm-agent after test")
+		// // Clean up VMAgent
+		// Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMAgent{
+		// 	ObjectMeta: metav1.ObjectMeta{
+		// 		Namespace: validVMAgentName.Namespace,
+		// 		Name:      validVMAgentName.Name,
+		// 	},
+		// })).To(Succeed(), "must delete vm-agent after test")
 		// Eventually(func() error {
 		// 	return k8sClient.Get(ctx, validVMAgentName, &vmv1beta1.VMAgent{})
 		// }, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
@@ -230,18 +216,12 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	Context("create", func() {
 		DescribeTable("should create vmdistributedcluster with VMAgent", func(cr *vmv1alpha1.VMDistributedCluster, vmclusters []vmv1beta1.VMCluster, vmagents map[string]*vmv1beta1.VMAgent, verify func(cr *vmv1alpha1.VMDistributedCluster, createdVMClusters []vmv1beta1.VMCluster)) {
 			beforeEach()
-			DeferCleanup(func() {
-				cleanupVMClusters(ctx, k8sClient, vmclusters, namespacedName)
-				for _, vmagent := range vmagents {
-					finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmagent)
-					Eventually(func() error {
-						return k8sClient.Get(ctx, namespacedName, &vmv1beta1.VMAgent{})
-					}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-				}
-				afterEach()
-			})
+			DeferCleanup(afterEach)
 
 			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
+			DeferCleanup(func() {
+				cleanupVMClusters(ctx, k8sClient, vmclusters)
+			})
 
 			// Create VMAgents
 			for _, vmagent := range vmagents {
@@ -250,6 +230,14 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, types.NamespacedName{Name: vmagent.Name, Namespace: vmagent.Namespace})
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 			}
+			DeferCleanup(func() {
+				for _, vmagent := range vmagents {
+					finalize.SafeDelete(ctx, k8sClient, vmagent)
+					Eventually(func() error {
+						return k8sClient.Get(ctx, types.NamespacedName{Name: vmagent.Name, Namespace: vmagent.Namespace}, &vmv1beta1.VMAgent{})
+					}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+				}
+			})
 
 			namespacedName.Name = cr.Name
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
@@ -526,8 +514,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 			vmclusters := []vmv1beta1.VMCluster{*vmCluster1, *vmCluster2}
 			DeferCleanup(func() {
-				cleanupVMClusters(ctx, k8sClient, vmclusters, namespacedName)
-				afterEach()
+				cleanupVMClusters(ctx, k8sClient, vmclusters)
 			})
 
 			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
@@ -556,7 +543,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			DeferCleanup(func() {
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, cr)).To(Succeed())
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
 			})
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
@@ -646,8 +633,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 			}
 			DeferCleanup(func() {
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &pausedVMUser)).To(Succeed())
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmCluster)).To(Succeed())
+				Expect(finalize.SafeDelete(ctx, k8sClient, &pausedVMUser)).To(Succeed())
+				Expect(finalize.SafeDelete(ctx, k8sClient, vmCluster)).To(Succeed())
 			})
 			Expect(k8sClient.Create(ctx, &pausedVMUser)).To(Succeed(), "must create managed vm-user before test")
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
@@ -764,7 +751,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			vmclusters := []vmv1beta1.VMCluster{*vmCluster1, *vmCluster2}
 			DeferCleanup(func() {
 				for _, vmcluster := range vmclusters {
-					Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmcluster)).To(Succeed())
+					Expect(finalize.SafeDelete(ctx, k8sClient, &vmcluster)).To(Succeed())
 				}
 			})
 
@@ -808,7 +795,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 			DeferCleanup(func() {
 				for _, vmagent := range vmAgents {
-					Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmagent)).To(Succeed())
+					Expect(finalize.SafeDelete(ctx, k8sClient, &vmagent)).To(Succeed())
 				}
 			})
 
@@ -933,7 +920,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, inlineVMClusters, namespace)
 			DeferCleanup(func() {
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, cr)).To(Succeed())
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
 			})
 
 			By("updating the VMUser to target the inline VMClusters")
@@ -959,7 +946,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 			Expect(k8sClient.Update(ctx, &vmUser)).To(Succeed())
 			DeferCleanup(func() {
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmUser)).To(Succeed())
+				Expect(finalize.SafeDelete(ctx, k8sClient, &vmUser)).To(Succeed())
 			})
 
 			By("waiting for VMDistributedCluster to become operational")
@@ -989,8 +976,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Expect(actualReplicaCount).To(Equal(int32(2)))
 
 			DeferCleanup(func() {
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmCluster1)).To(Succeed())
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, &vmCluster2)).To(Succeed())
+				Expect(finalize.SafeDelete(ctx, k8sClient, &vmCluster1)).To(Succeed())
+				Expect(finalize.SafeDelete(ctx, k8sClient, &vmCluster2)).To(Succeed())
 			})
 		})
 
@@ -1015,7 +1002,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 			Expect(k8sClient.Create(ctx, initialCluster)).To(Succeed())
 			DeferCleanup(func() {
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, initialCluster)).To(Succeed())
+				Expect(finalize.SafeDelete(ctx, k8sClient, initialCluster)).To(Succeed())
 			})
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, initialCluster, types.NamespacedName{Name: initialCluster.Name, Namespace: namespace})
@@ -1060,7 +1047,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			DeferCleanup(func() {
-				Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, cr)).To(Succeed())
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
 			})
 
 			By("waiting for VMDistributedCluster to become operational")
@@ -1080,7 +1067,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		DescribeTable("should fail when creating vmdistributedcluster", func(cr *vmv1alpha1.VMDistributedCluster, vmclusters []vmv1beta1.VMCluster) {
 			beforeEach()
 			DeferCleanup(func() {
-				cleanupVMClusters(ctx, k8sClient, vmclusters, namespacedName)
+				cleanupVMClusters(ctx, k8sClient, vmclusters)
 				afterEach()
 			})
 			for _, vmcluster := range vmclusters {
@@ -1423,7 +1410,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		vmclusters := []vmv1beta1.VMCluster{*vmCluster}
 
 		DeferCleanup(func() {
-			Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, vmCluster)).To(Succeed())
+			Expect(finalize.SafeDelete(ctx, k8sClient, vmCluster)).To(Succeed())
 		})
 		createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
@@ -1451,7 +1438,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, types.NamespacedName{Name: namespacedName.Name, Namespace: namespace})
 		}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 
-		Expect(finalize.SafeDeleteWithFinalizer(ctx, k8sClient, cr)).To(Succeed())
+		Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
 		Eventually(func() error {
 			err := k8sClient.Get(ctx, namespacedName, &vmv1alpha1.VMDistributedCluster{})
 			if k8serrors.IsNotFound(err) {

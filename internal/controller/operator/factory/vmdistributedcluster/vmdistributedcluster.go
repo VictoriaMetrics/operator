@@ -108,12 +108,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	cr.Status.Zones = cr.Spec.Zones
 
 	// Compare generations of vmcluster objects from the spec with the previous CR and Zones configuration
-	if !reflect.DeepEqual(getGenerationsFromStatus(currentCRStatus), getGenerationsFromStatus(&cr.Status)) {
+	if diff := deep.Equal(getGenerationsFromStatus(currentCRStatus), getGenerationsFromStatus(&cr.Status)); len(diff) > 0 {
 		// Record new generations and zones config, then exit early if a change is detected
 		if err := rclient.Status().Update(ctx, cr); err != nil {
 			return fmt.Errorf("failed to update status: %w", err)
 		}
-		return fmt.Errorf("unexpected generations or zones config change detected: unexpected generations or zones config change detected")
+		return fmt.Errorf("unexpected generations or zones config change detected: %v", diff)
 	}
 
 	// TODO[vrutkovs]: Mark all VMClusters as paused?

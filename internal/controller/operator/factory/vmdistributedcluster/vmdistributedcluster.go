@@ -155,21 +155,23 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			// No further action needed after creation
 			continue
 		}
+
+		// Disable this VMCluster in vmusers if spec is modified
+		if modifiedSpec {
+			if err := setVMClusterStatusInVMUsers(ctx, rclient, cr, vmClusterObj, vmUserObjs, false); err != nil {
+				return fmt.Errorf("failed to set VMCluster status in VMUsers: %w", err)
+			}
+		}
+
 		// Apply the updated object
 		if err := rclient.Update(ctx, vmClusterObj); err != nil {
 			return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 		}
 
-		// Don't switch the cluster off in VMUser unless it was modified
 		if !modifiedSpec {
 			continue
 		}
 
-		// Perform rollout steps for the (now reconciled/updated) VMCluster
-		// Disable this VMCluster in vmusers
-		if err := setVMClusterStatusInVMUsers(ctx, rclient, cr, vmClusterObj, vmUserObjs, false); err != nil {
-			return fmt.Errorf("failed to set VMCluster status in VMUsers: %w", err)
-		}
 		// Wait for VMCluster to be ready
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)

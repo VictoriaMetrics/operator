@@ -260,13 +260,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
 								Name: "vmcluster-1",
 							},
 						},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -311,7 +311,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "multi-cluster-agent",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
 								Name: "vmcluster-1",
@@ -322,7 +322,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 								Name: "vmcluster-2",
 							},
 						},
-					},
+					}},
 					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
@@ -401,7 +401,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "mixed-cluster-agent",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
 								Name: "vmcluster-1",
@@ -412,7 +412,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 								Name: "vmcluster-2",
 							},
 						},
-					},
+					}},
 					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
 					VMUsers: []corev1.LocalObjectReference{
 						{
@@ -531,13 +531,15 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						{Name: validVMUserNames[0].Name},
 						{Name: validVMUserNames[1].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{
-							Name: vmCluster1.Name,
-						}},
-						{Ref: &corev1.LocalObjectReference{
-							Name: vmCluster2.Name,
-						}},
+					Zones: vmv1alpha1.ZoneSpec{
+						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+							{Ref: &corev1.LocalObjectReference{
+								Name: vmCluster1.Name,
+							}},
+							{Ref: &corev1.LocalObjectReference{
+								Name: vmCluster2.Name,
+							}},
+						},
 					},
 				},
 			}
@@ -552,10 +554,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			// Apply spec update
 			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
-			cr.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
+			cr.Spec.Zones.VMClusters[0].OverrideSpec = &apiextensionsv1.JSON{
 				Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
 			}
-			cr.Spec.Zones[1].OverrideSpec = &apiextensionsv1.JSON{
+			cr.Spec.Zones.VMClusters[1].OverrideSpec = &apiextensionsv1.JSON{
 				Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
 			}
 			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
@@ -651,11 +653,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: vmUserName.Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
 					},
-				},
-			}
+					},
+				}}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
@@ -683,7 +685,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				if err != nil {
 					return err
 				}
-				cr.Spec.Zones[0].OverrideSpec = &apiextensionsv1.JSON{
+				cr.Spec.Zones.VMClusters[0].OverrideSpec = &apiextensionsv1.JSON{
 					Raw: []byte(fmt.Sprintf(`{"vmstorage":{"replicaCount": %d}}`, initialReplicas+1)),
 				}
 				return k8sClient.Update(ctx, cr)
@@ -806,7 +808,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
 								Name: vmCluster1.Name,
@@ -817,7 +819,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 								Name: vmCluster2.Name,
 							},
 						},
-					},
+					}},
 					VMAgent: corev1.LocalObjectReference{Name: vmAgents[0].Name},
 					VMUsers: []corev1.LocalObjectReference{
 						{
@@ -867,7 +869,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Name: "inline-cluster-1",
 							Spec: &vmv1beta1.VMClusterSpec{
@@ -890,13 +892,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 								},
 							},
 						},
-					},
+					}},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			var inlineVMClusters []vmv1beta1.VMCluster
 			var refs []vmv1beta1.TargetRef
-			for _, zone := range cr.Spec.Zones {
+			for _, zone := range cr.Spec.Zones.VMClusters {
 				inlineVMClusters = append(inlineVMClusters, vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      zone.Name,
@@ -1035,7 +1037,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{Name: initialCluster.Name},
 							OverrideSpec: &apiextensionsv1.JSON{
@@ -1043,7 +1045,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							},
 						},
 					},
-				},
+					}},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			DeferCleanup(func() {
@@ -1086,7 +1088,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "no-vmagent-set",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					Zones:   []vmv1alpha1.VMClusterRefOrSpec{},
+					Zones:   vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{}},
 					VMAgent: corev1.LocalObjectReference{Name: "missing-vmagent"},
 				},
 			}, []vmv1beta1.VMCluster{}),
@@ -1101,11 +1103,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						{Name: validVMUserNames[0].Name},
 						{Name: validVMUserNames[1].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{
 							Name: "vmcluster-1",
 						}},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -1131,11 +1133,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: corev1.LocalObjectReference{Name: validVMAgentName.Name},
 					VMUsers: []corev1.LocalObjectReference{},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{
 							Name: "vmcluster-1",
 						}},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -1163,7 +1165,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: "missing-vmuser"},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{},
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with invalid VMCluster", &vmv1alpha1.VMDistributedCluster{
@@ -1177,13 +1179,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						{Name: validVMUserNames[0].Name},
 						{Name: validVMUserNames[1].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
 								Name: "missing-cluster",
 							},
 						},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with zone spec but missing name", &vmv1alpha1.VMDistributedCluster{
@@ -1196,13 +1198,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Spec: &vmv1beta1.VMClusterSpec{
 								ClusterVersion: "v1.126.0-cluster",
 							},
 						},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with zone missing spec and ref", &vmv1alpha1.VMDistributedCluster{
@@ -1215,9 +1217,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with zone having both spec and ref", &vmv1alpha1.VMDistributedCluster{
@@ -1230,7 +1232,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
 								Name: "vmcluster-existing",
@@ -1239,7 +1241,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 								ClusterVersion: "v1.126.0-cluster",
 							},
 						},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with missing global VMAgent", &vmv1alpha1.VMDistributedCluster{
@@ -1252,9 +1254,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -1282,9 +1284,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: "non-existent-vmuser"},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -1312,9 +1314,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: "non-existent-vmcluster"}},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with invalid OverrideSpec for VMCluster", &vmv1alpha1.VMDistributedCluster{
@@ -1327,14 +1329,14 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"},
 							OverrideSpec: &apiextensionsv1.JSON{
 								Raw: []byte(`{"invalidField": "invalidValue"}`), // Invalid override spec
 							},
 						},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -1362,7 +1364,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMUsers: []corev1.LocalObjectReference{
 						{Name: validVMUserNames[0].Name},
 					},
-					Zones: []vmv1alpha1.VMClusterRefOrSpec{
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Name: "existing-vmcluster-for-failure", // This VMCluster name will conflict with the one created below
 							Spec: &vmv1beta1.VMClusterSpec{
@@ -1374,7 +1376,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 								},
 							},
 						},
-					},
+					}},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -1426,11 +1428,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					{Name: validVMUserNames[0].Name},
 					{Name: validVMUserNames[1].Name},
 				},
-				Zones: []vmv1alpha1.VMClusterRefOrSpec{
+				Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 					{Ref: &corev1.LocalObjectReference{
 						Name: vmCluster.Name,
 					}},
-				},
+				}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, cr)).To(Succeed())

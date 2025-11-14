@@ -51,34 +51,35 @@ spec:
     - name: my-read-user-for-zone-a
     - name: my-read-user-for-zone-b
   zones:
-    - name: zone-a
-      spec:
-        vmstorage:
-          replicaCount: 1
-          storage:
-            volumeClaimTemplate:
-              spec:
-                resources:
-                  requests:
-                    storage: 10Gi
-        vmselect:
-          replicaCount: 1
-        vminsert:
-          replicaCount: 1
-    - name: zone-b
-      spec:
-        vmstorage:
-          replicaCount: 1
-          storage:
-            volumeClaimTemplate:
-              spec:
-                resources:
-                  requests:
-                    storage: 10Gi
-        vmselect:
-          replicaCount: 1
-        vminsert:
-          replicaCount: 1
+    vmclusters:
+      - name: zone-a
+        spec:
+          vmstorage:
+            replicaCount: 1
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  resources:
+                    requests:
+                      storage: 10Gi
+          vmselect:
+            replicaCount: 1
+          vminsert:
+            replicaCount: 1
+      - name: zone-b
+        spec:
+          vmstorage:
+            replicaCount: 1
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  resources:
+                    requests:
+                      storage: 10Gi
+          vmselect:
+            replicaCount: 1
+          vminsert:
+            replicaCount: 1
   paused: false
 ```
 
@@ -91,21 +92,23 @@ metadata:
   name: referenced-distributed-cluster
 spec:
   zones:
-    - ref:
-        name: existing-cluster-zone-1
-      overrideSpec:
-        vmstorage: # Increase PVC for vmstorage in this zone
-          storage:
-            volumeClaimTemplate:
-              spec:
-                resources:
-                  requests:
-                    storage: 20Gi
-    - ref:
-        name: existing-cluster-zone-2
-      overrideSpec:
-        vmstorage: # Increase vmstorage replicas for this zone
-          replicaCount: 2
+    - vmclusters:
+        ref:
+          name: existing-cluster-zone-1
+        overrideSpec:
+          vmstorage: # Increase PVC for vmstorage in this zone
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  resources:
+                    requests:
+                      storage: 20Gi
+    - vmclusters:
+        ref:
+          name: existing-cluster-zone-2
+        overrideSpec:
+          vmstorage: # Increase vmstorage replicas for this zone
+            replicaCount: 2
 ```
 
 ### Current shortcomings

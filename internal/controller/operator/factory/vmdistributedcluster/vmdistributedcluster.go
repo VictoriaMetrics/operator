@@ -63,7 +63,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Validate zones, exit early if invalid
-	for i, zone := range cr.Spec.Zones {
+	for i, zone := range cr.Spec.Zones.VMClusters {
 		if zone.Spec != nil && zone.Name == "" {
 			return fmt.Errorf("VMClusterRefOrSpec.Name must be set when Spec is provided for zone at index %d", i)
 		}
@@ -88,7 +88,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Fetch VMCLuster statuses by name
-	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones)
+	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones.VMClusters)
 	if err != nil {
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
@@ -106,7 +106,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 		cr.Status.VMClusterInfo[i] = vmClusterInfo
 	}
-	cr.Status.Zones = cr.Spec.Zones
+	cr.Status.Zones.VMClusters = cr.Spec.Zones.VMClusters
 
 	// Compare generations of vmcluster objects from the spec with the previous CR and Zones configuration
 	if diff := deep.Equal(getGenerationsFromStatus(currentCRStatus), getGenerationsFromStatus(&cr.Status)); len(diff) > 0 {
@@ -125,7 +125,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		Timeout: httpTimeout,
 	}
 	for i, vmClusterObj := range vmClusters {
-		zoneRefOrSpec := cr.Spec.Zones[i]
+		zoneRefOrSpec := cr.Spec.Zones.VMClusters[i]
 
 		needsToBeCreated := false
 		// Get vmClusterObj in case it doesn't exist or has changed

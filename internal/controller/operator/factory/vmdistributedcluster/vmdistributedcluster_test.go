@@ -242,7 +242,7 @@ func newVMDistributedCluster(name, namespace string, zones []vmv1alpha1.VMCluste
 			Namespace: namespace,
 		},
 		Spec: vmv1alpha1.VMDistributedClusterSpec{
-			Zones:   zones,
+			Zones:   vmv1alpha1.ZoneSpec{VMClusters: zones},
 			VMAgent: vmAgentRef,
 			VMUsers: vmUserRefs,
 		},
@@ -362,7 +362,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 
 	t.Run("Missing VMCluster should return error", func(t *testing.T) {
 		data := beforeEach()
-		data.cr.Spec.Zones[0].Ref.Name = "non-existent-vmcluster"
+		data.cr.Spec.Zones.VMClusters[0].Ref.Name = "non-existent-vmcluster"
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
@@ -377,29 +377,29 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		ctx := context.TODO()
 
 		// Both Ref and Spec set
-		data.cr.Spec.Zones = []vmv1alpha1.VMClusterRefOrSpec{
+		data.cr.Spec.Zones = vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 			{
 				Name: "vmcluster-1",
 				Ref:  &corev1.LocalObjectReference{Name: "vmcluster-1"},
 				Spec: &vmv1beta1.VMClusterSpec{},
 			},
-		}
+		}}
 		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index 0")
 
 		// Neither Ref nor Spec set
-		data.cr.Spec.Zones = []vmv1alpha1.VMClusterRefOrSpec{
+		data.cr.Spec.Zones = vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 			{},
-		}
+		}}
 		err = CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index 0")
 
 		// Spec provided but Name missing
-		data.cr.Spec.Zones = []vmv1alpha1.VMClusterRefOrSpec{
+		data.cr.Spec.Zones = vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 			{Spec: &vmv1beta1.VMClusterSpec{}},
-		}
+		}}
 		err = CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Name must be set when Spec is provided for zone at index 0")

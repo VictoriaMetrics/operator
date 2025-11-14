@@ -38,13 +38,20 @@ type VMDistributedClusterSpec struct {
 	// VMUsers is a list of VMUser objects controlling traffic distribution between multiple VMClusters
 	VMUsers []corev1.LocalObjectReference `json:"vmusers,omitempty"`
 	// Zones is a list of VMCluster instances to update. Each VMCluster in the list represents a "zone" within the distributed cluster.
-	Zones []VMClusterRefOrSpec `json:"zones,omitempty"`
+	Zones ZoneSpec `json:"zones,omitempty"`
 	// ClusterVersion defines expected image tag for all components.
 
 	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// ZoneSpec is a list of VMCluster instances to update.
+type ZoneSpec struct {
+	// Each VMClusterRefOrSpec is either defining a new inline VMCluster or referencing an existing one.
+	VMClusters []VMClusterRefOrSpec `json:"vmclusters,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -81,7 +88,7 @@ type VMDistributedClusterStatus struct {
 	VMClusterInfo []VMClusterStatus `json:"vmClusterGenerations,omitempty"`
 	// Zones is a list of VMClusterRefOrSpec instances from the spec.
 	// It's used to detect changes in zones configuration for rolling updates.
-	Zones []VMClusterRefOrSpec `json:"zones,omitempty"`
+	Zones ZoneSpec `json:"zones,omitempty"`
 }
 
 // +k8s:openapi-gen=true

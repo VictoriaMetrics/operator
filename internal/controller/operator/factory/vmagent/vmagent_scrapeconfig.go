@@ -242,11 +242,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		}
 	}
 
-	if err := updateStatusesForScrapeObjects(ctx, rclient, cr, sos, childObject); err != nil {
-		return err
-	}
-
-	return nil
+	return updateStatusesForScrapeObjects(ctx, rclient, cr, sos, childObject)
 }
 
 func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, sos *scrapeObjects, childObject client.Object) error {

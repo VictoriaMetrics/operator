@@ -15,10 +15,12 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
@@ -438,6 +440,9 @@ func TestCreateOrUpdate(t *testing.T) {
 						ReplicaCount: ptr.To[int32](2),
 					},
 					ShardCount: ptr.To(3),
+					PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
+						MinAvailable: ptr.To(intstr.FromInt(1)),
+					},
 					StatefulStorage: &vmv1beta1.StorageSpec{
 						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 							Spec: corev1.PersistentVolumeClaimSpec{
@@ -691,6 +696,23 @@ func TestCreateOrUpdate(t *testing.T) {
 						})
 						if err != nil {
 							t.Errorf("cannot wait sts ready: %s", err)
+						}
+
+						if tt.cr.Spec.PodDisruptionBudget != nil {
+							err = wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, true, func(ctx context.Context) (done bool, err error) {
+								var pdb policyv1.PodDisruptionBudget
+								if err := fclient.Get(ctx, types.NamespacedName{
+									Namespace: "default",
+									Name:      fmt.Sprintf("vmagent-%s-%d", tt.cr.Name, i),
+								}, &pdb); err != nil {
+
+									return false, nil
+								}
+								return true, nil
+							})
+							if err != nil {
+								t.Errorf("pdb vmagent-%s-%d didn't get created: %s", tt.cr.Name, i, err)
+							}
 						}
 					}
 				} else {

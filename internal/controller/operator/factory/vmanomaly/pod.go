@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -18,15 +19,24 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+var reloadMinVersion = semver.MustParse("v1.25.0")
+
 const (
-	secretConfigKey  = "vmanomaly.yaml"
-	anomalyDir       = "/etc/vmanomaly"
-	confDir          = anomalyDir + "/config"
-	confFile         = confDir + "/vmanomaly.yaml"
-	tlsAssetsDir     = anomalyDir + "/tls"
-	storageDir       = "/storage"
-	configVolumeName = "config-volume"
+	anomalyDir             = "/etc/vmanomaly"
+	confDir                = anomalyDir + "/config"
+	tlsAssetsDir           = anomalyDir + "/tls"
+	storageDir             = "/storage"
+	configVolumeName       = "config"
+	configEnvsubstFilename = "vmanomaly.env.yaml"
 )
+
+func reloadSupported(cr *vmv1.VMAnomaly) bool {
+	anomalyVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
+	if err == nil {
+		return anomalyVersion.GreaterThanEqual(reloadMinVersion)
+	}
+	return false
+}
 
 func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, error) {
 	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
@@ -167,9 +177,11 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 			}
 		}
 	}
-
 	// vmanomaly accepts configuration file as a last element of args
-	args = append(args, confFile)
+	if reloadSupported(cr) {
+		args = append(args, "--watch")
+	}
+	args = append(args, path.Join(confDir, configEnvsubstFilename))
 
 	container := corev1.Container{
 		Args:                     args,

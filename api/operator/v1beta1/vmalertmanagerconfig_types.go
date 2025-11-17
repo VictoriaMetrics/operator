@@ -1502,6 +1502,11 @@ func checkRouteReceiver(r *SubRoute, receivers map[string]struct{}, tiNames map[
 			return fmt.Errorf("undefined time interval %q used in route", ti)
 		}
 	}
+	for _, ti := range r.MuteTimeIntervals {
+		if _, ok := tiNames[ti]; !ok {
+			return fmt.Errorf("undefined time interval %q used in route", ti)
+		}
+	}
 	if r.Receiver == "" {
 		return nil
 	}

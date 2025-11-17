@@ -19,6 +19,8 @@ aliases:
 * FEATURE: [config-reloader](https://github.com/VictoriaMetrics/operator/blob/master/cmd/config-reloader/README.md): set default config reloader image version equal to current operator version. See [#2562](https://github.com/VictoriaMetrics/helm-charts/pull/2562).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): do not set `promscrape.cluster.membersCount` and `promscrape.cluster.memberNum` flags in ingestOnly mode. See [#1594](https://github.com/VictoriaMetrics/operator/issues/1594).
 
+* BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): check `mute_time_intervals` in subroutes: See [#1618](https://github.com/VictoriaMetrics/operator/issues/1618).
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.5.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.5.0) version.
 
 ## [v0.65.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.65.0)

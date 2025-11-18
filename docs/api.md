@@ -1393,6 +1393,8 @@ Appears in: [TLSClientConfig](#tlsclientconfig), [TLSServerConfig](#tlsservercon
 | key_secret_ref<a href="#certs-key_secret_ref" id="certs-key_secret_ref">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Key defines reference for secret with certificate key content under given key<br />mutually exclusive with KeyFile |
 
 
+
+
 #### CommonApplicationDeploymentParams
 
 

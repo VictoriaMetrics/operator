@@ -15084,6 +15084,8 @@ spec:
               properties:
                 paused:
                   type: boolean
+                readyDeadline:
+                  type: string
                 vmagent:
                   properties:
                     name:

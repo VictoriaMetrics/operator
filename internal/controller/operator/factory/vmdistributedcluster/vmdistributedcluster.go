@@ -50,6 +50,7 @@ const (
 
 var (
 	defaultVMClusterWaitReadyDeadline = metav1.Duration{Duration: 5 * time.Minute}
+	defaultZoneUpdatePause            = metav1.Duration{Duration: 1 * time.Minute}
 )
 
 // CreateOrUpdate handles VM deployment reconciliation.
@@ -79,9 +80,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 	}
 
+	// Setup deadlines and timeouts
 	vmclusterWaitReadyDeadline := defaultVMClusterWaitReadyDeadline.Duration
 	if cr.Spec.ReadyDeadline != nil {
 		vmclusterWaitReadyDeadline = cr.Spec.ReadyDeadline.Duration
+	}
+	zoneUpdatePause := defaultZoneUpdatePause.Duration
+	if cr.Spec.ZoneUpdatePause != nil {
+		zoneUpdatePause = cr.Spec.ZoneUpdatePause.Duration
 	}
 
 	// Fetch global vmagent
@@ -125,9 +131,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 		return fmt.Errorf("unexpected generations or zones config change detected: %v", diff)
 	}
-
-	// TODO[vrutkovs]: Mark all VMClusters as paused?
-	// This would prevent other reconciliation loops from changing them
 
 	// Disable VMClusters one by one if overrideSpec needs to be applied
 	httpClient := &http.Client{
@@ -196,6 +199,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if err := setVMClusterStatusInVMUsers(ctx, rclient, cr, vmClusterObj, vmUserObjs, true); err != nil {
 			return fmt.Errorf("failed to set VMCluster status in VMUsers: %w", err)
 		}
+
+		// Sleep for zoneUpdatePause time between VMClusters updates
+		time.Sleep(zoneUpdatePause)
 	}
 	return nil
 }

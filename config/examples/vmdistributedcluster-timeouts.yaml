@@ -3,9 +3,10 @@ kind: VMDistributedCluster
 metadata:
   labels:
     app.kubernetes.io/name: victoriametrics-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: vmdistributedcluster-sample-override
+  name: vmdistributedcluster-sample-custom-timeout
 spec:
+  readyDeadline: 10m
+  zoneUpdatePause: 1m
   vmagent:
     name: vmagent-sample
   vmusers:
@@ -14,18 +15,15 @@ spec:
     - name: vmuser-eu-west-1
   zones:
     vmclusters:
-    - ref:
-        name: vmcluster-us-east-1
+    - ref: vmcluster-us-east-1
       overrideSpec:
         vmselect:
-          replicaCount: 2
-    - ref:
-        name: vmcluster-us-west-2
+          replicaCount: 3
+    - ref: vmcluster-us-west-2
       overrideSpec:
         vmselect:
-          replicaCount: 2
-    - ref:
-        name: vmcluster-eu-west-1
+          replicaCount: 4
+    - ref: vmcluster-eu-west-1
       overrideSpec:
         vmselect:
           replicaCount: 2

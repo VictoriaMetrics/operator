@@ -36,6 +36,9 @@ type VMDistributedClusterSpec struct {
 	// ReadyDeadline is the deadline for the VMCluster to be ready.
 	// +optional
 	ReadyDeadline *metav1.Duration `json:"readyDeadline,omitempty"`
+	// ZoneUpdatePause is the time the operator should wait between zone updates to ensure a smooth transition.
+	// +optional
+	ZoneUpdatePause *metav1.Duration `json:"zoneUpdatePause,omitempty"`
 	// VMAgent points to the VMAgent object for collecting metrics from multiple VMClusters
 	VMAgent corev1.LocalObjectReference `json:"vmagent,omitempty"`
 	// VMUsers is a list of VMUser objects controlling traffic distribution between multiple VMClusters

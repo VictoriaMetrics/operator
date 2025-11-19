@@ -15914,6 +15914,8 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   type: array
+                zoneUpdatePause:
+                  type: string
                 zones:
                   properties:
                     vmclusters:

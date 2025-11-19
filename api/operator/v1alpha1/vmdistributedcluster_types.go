@@ -33,6 +33,9 @@ import (
 type VMDistributedClusterSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+	// ReadyDeadline is the deadline for the VMCluster to be ready.
+	// +optional
+	ReadyDeadline *metav1.Duration `json:"readyDeadline,omitempty"`
 	// VMAgent points to the VMAgent object for collecting metrics from multiple VMClusters
 	VMAgent corev1.LocalObjectReference `json:"vmagent,omitempty"`
 	// VMUsers is a list of VMUser objects controlling traffic distribution between multiple VMClusters

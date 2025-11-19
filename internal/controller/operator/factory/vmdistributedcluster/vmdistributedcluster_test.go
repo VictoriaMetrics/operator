@@ -333,7 +333,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
+		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
 		assert.NoError(t, err) // No error as it's paused
 		assert.Empty(t, rclient.Actions)
 	})
@@ -344,7 +344,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
+		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to fetch global vmagent")
 	})
@@ -355,7 +355,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
+		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to fetch vmusers")
 	})
@@ -366,7 +366,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
+		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to fetch vmclusters")
 	})
@@ -384,7 +384,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 				Spec: &vmv1beta1.VMClusterSpec{},
 			},
 		}}
-		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
+		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index 0")
 
@@ -392,7 +392,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		data.cr.Spec.Zones = vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 			{},
 		}}
-		err = CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
+		err = CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index 0")
 
@@ -400,7 +400,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		data.cr.Spec.Zones = vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 			{Spec: &vmv1beta1.VMClusterSpec{}},
 		}}
-		err = CreateOrUpdate(ctx, data.cr, rclient, scheme, vmclusterWaitReadyDeadline, httpTimeout)
+		err = CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Name must be set when Spec is provided for zone at index 0")
 	})

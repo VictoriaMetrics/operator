@@ -48,8 +48,12 @@ const (
 	VMAgentQueueMetricName = "vm_persistentqueue_bytes_pending"
 )
 
+var (
+	defaultVMClusterWaitReadyDeadline = metav1.Duration{Duration: 5 * time.Minute}
+)
+
 // CreateOrUpdate handles VM deployment reconciliation.
-func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, scheme *runtime.Scheme, vmclusterWaitReadyDeadline, httpTimeout time.Duration) error {
+func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, scheme *runtime.Scheme, httpTimeout time.Duration) error {
 	// Store the previous CR for comparison
 	var prevCR *vmv1alpha1.VMDistributedCluster
 	if cr.ParsedLastAppliedSpec != nil {
@@ -73,6 +77,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if zone.Spec != nil && zone.Ref != nil {
 			return fmt.Errorf("either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
 		}
+	}
+
+	vmclusterWaitReadyDeadline := defaultVMClusterWaitReadyDeadline.Duration
+	if cr.Spec.ReadyDeadline != nil {
+		vmclusterWaitReadyDeadline = cr.Spec.ReadyDeadline.Duration
 	}
 
 	// Fetch global vmagent

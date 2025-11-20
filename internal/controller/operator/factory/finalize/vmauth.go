@@ -3,14 +3,14 @@ package finalize
 import (
 	"context"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // OnVMAuthDelete deletes all vmauth related resources
@@ -58,6 +58,26 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 	// check ingress
 	if err := removeFinalizeObjByName(ctx, rclient, &networkingv1.Ingress{}, cr.PrefixedName(), cr.Namespace); err != nil {
+		return err
+	}
+
+	if cr.Spec.HTTPRoute != nil {
+		httpRoute := &gwapiv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      cr.PrefixedName(),
+				Namespace: cr.Namespace,
+			},
+		}
+		if err := removeFinalizeObjByName(ctx, rclient, httpRoute, cr.PrefixedName(), cr.Namespace); err != nil {
+			return err
+		}
+		if err := SafeDelete(ctx, rclient, httpRoute); err != nil {
+			return err
+		}
+	}
+
+	// check ingress
+	if err := removeFinalizeObjByName(ctx, rclient, &gwapiv1.HTTPRoute{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
 

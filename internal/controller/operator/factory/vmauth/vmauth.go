@@ -765,6 +765,11 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		}
 	}
 
+	if cr.Spec.HTTPRoute == nil && prevCR.Spec.HTTPRoute != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &gwapiv1.HTTPRoute{ObjectMeta: objMeta}); err != nil {
+			return fmt.Errorf("cannot delete httproute from prev state: %w", err)
+		}
+	}
 	if cr.Spec.Ingress == nil && prevCR.Spec.Ingress != nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &networkingv1.Ingress{ObjectMeta: objMeta}); err != nil {
 			return fmt.Errorf("cannot delete ingress from prev state: %w", err)

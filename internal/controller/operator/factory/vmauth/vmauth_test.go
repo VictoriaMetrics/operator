@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -40,6 +41,127 @@ func TestCreateOrUpdate(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "default",
+					},
+				},
+				c: config.MustGetBaseConfig(),
+			},
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmauth-test", "default"),
+			},
+		},
+		{
+			name: "simple-with-httproute",
+			args: args{
+				cr: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAuthSpec{
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							Port: "8427",
+						},
+						HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+							Spec: gwapiv1.HTTPRouteSpec{
+								CommonRouteSpec: gwapiv1.CommonRouteSpec{
+									ParentRefs: []gwapiv1.ParentReference{
+										{
+											Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+											Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+											Namespace: ptr.To(gwapiv1.Namespace("default")),
+											Name:      gwapiv1.ObjectName("test"),
+										},
+									},
+								},
+								Rules: []gwapiv1.HTTPRouteRule{{
+									Matches: []gwapiv1.HTTPRouteMatch{
+										{
+											Path: &gwapiv1.HTTPPathMatch{
+												Type:  ptr.To(gwapiv1.PathMatchPathPrefix),
+												Value: ptr.To("/"),
+											},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+				c: config.MustGetBaseConfig(),
+			},
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmauth-test", "default"),
+				&gwapiv1.HTTPRoute{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmauth-test",
+						Namespace: "default",
+					},
+					Spec: gwapiv1.HTTPRouteSpec{
+						CommonRouteSpec: gwapiv1.CommonRouteSpec{
+							ParentRefs: []gwapiv1.ParentReference{
+								{
+									Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+									Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+									Namespace: ptr.To(gwapiv1.Namespace("default")),
+									Name:      gwapiv1.ObjectName("test"),
+								},
+							},
+						},
+						Rules: []gwapiv1.HTTPRouteRule{{
+							Matches: []gwapiv1.HTTPRouteMatch{
+								{
+									Path: &gwapiv1.HTTPPathMatch{
+										Type:  ptr.To(gwapiv1.PathMatchPathPrefix),
+										Value: ptr.To("/"),
+									},
+								},
+							},
+						}},
+					},
+				},
+			},
+		},
+		{
+			name: "simple-remove-httproute",
+			args: args{
+				cr: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAuthSpec{
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							Port: "8427",
+						},
+					},
+					ParsedLastAppliedSpec: &vmv1beta1.VMAuthSpec{
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							Port: "8427",
+						},
+						HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+							Spec: gwapiv1.HTTPRouteSpec{
+								CommonRouteSpec: gwapiv1.CommonRouteSpec{
+									ParentRefs: []gwapiv1.ParentReference{
+										{
+											Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+											Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+											Namespace: ptr.To(gwapiv1.Namespace("default")),
+											Name:      gwapiv1.ObjectName("test"),
+										},
+									},
+								},
+								Rules: []gwapiv1.HTTPRouteRule{{
+									Matches: []gwapiv1.HTTPRouteMatch{
+										{
+											Path: &gwapiv1.HTTPPathMatch{
+												Type:  ptr.To(gwapiv1.PathMatchPathPrefix),
+												Value: ptr.To("/"),
+											},
+										},
+									},
+								}},
+							},
+						},
 					},
 				},
 				c: config.MustGetBaseConfig(),

@@ -24738,7 +24738,9 @@ spec:
                       More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
                     type: string
                   spec:
-                    description: HTTPRouteSpec defines the desired state of HTTPRoute
+                    description: |-
+                      Spec describes the attributes that a user creates on a httproute.
+                      More info: https://gateway-api.sigs.k8s.io/api-types/httproute/
                     properties:
                       hostnames:
                         description: |-

@@ -49,6 +49,15 @@ func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr orphanedC
 	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
 }
 
+// RemoveOrphanedServices removes Services detached from given object
+func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Version: "v1",
+		Kind:    "Service",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
 // removeOrphaned removes orphaned resources
 func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, gvk schema.GroupVersionKind, keepNames map[string]struct{}) error {
 	var l unstructured.UnstructuredList

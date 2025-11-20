@@ -111,8 +111,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, cr.Spec.HPA != nil); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth deployment: %w", err)
 	}
-	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
-		return err
+	if prevCR != nil {
+		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -722,46 +724,50 @@ func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
 }
 
-func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
-	if prevCR == nil {
-		return nil
-	}
-
-	prevSvc, currSvc := prevCR.Spec.ServiceSpec, cr.Spec.ServiceSpec
-	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
-		return fmt.Errorf("cannot remove additional service: %w", err)
-	}
-
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
+	owner := cr.AsOwner()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil && prevCR.Spec.PodDisruptionBudget != nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
+	if cr.Spec.PodDisruptionBudget == nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 		}
 	}
 
-	if cr.Spec.Ingress == nil && prevCR.Spec.Ingress != nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &networkingv1.Ingress{ObjectMeta: objMeta}); err != nil {
+	if cr.Spec.Ingress == nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &networkingv1.Ingress{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot delete ingress from prev state: %w", err)
 		}
 	}
-	if cr.Spec.HPA == nil && prevCR.Spec.HPA != nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta}); err != nil {
+	if cr.Spec.HPA == nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot remove HPA from prev state: %w", err)
 		}
 	}
 	cfg := config.MustGetBaseConfig()
 	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
 	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels()); err != nil {
+		if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels(), &owner); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}
 	}
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 		if useProxyProtocol(cr) && len(cr.Spec.InternalListenPort) == 0 {
-			if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels()); err != nil {
+			if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels(), &owner); err != nil {
 				return fmt.Errorf("cannot remove serviceScrape: %w", err)
 			}
 		}
+	}
+
+	svcName := cr.PrefixedName()
+	keepServices := map[string]struct{}{
+		svcName: {},
+	}
+	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
+		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
+		keepServices[extraSvcName] = struct{}{}
+	}
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 
 	return nil

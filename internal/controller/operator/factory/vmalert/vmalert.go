@@ -88,10 +88,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		if err := discoverNotifiersIfNeeded(ctx, rclient, prevCR); err != nil {
 			return fmt.Errorf("cannot discover notifiers for prev spec: %w", err)
 		}
-
-	}
-	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
-		return fmt.Errorf("cannot delete objects from previous state: %w", err)
+		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("cannot delete objects from previous state: %w", err)
+		}
 	}
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
@@ -765,28 +764,34 @@ func discoverNotifiersIfNeeded(ctx context.Context, rclient client.Client, cr *v
 	return nil
 }
 
-func deletePrevStateResources(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) error {
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
 	cfg := config.MustGetBaseConfig()
-	if cr.ParsedLastAppliedSpec == nil {
-		return nil
-	}
-	prevSvc, currSvc := cr.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
-	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
-		return fmt.Errorf("cannot remove additional service: %w", err)
-	}
+	owner := cr.AsOwner()
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil && cr.ParsedLastAppliedSpec.PodDisruptionBudget != nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
+	if cr.Spec.PodDisruptionBudget == nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 		}
 	}
 
 	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, disableSelfScrape) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}
+	}
+
+	svcName := cr.PrefixedName()
+	keepServices := map[string]struct{}{
+		svcName: {},
+	}
+	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
+		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
+		keepServices[extraSvcName] = struct{}{}
+	}
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 
 	return nil

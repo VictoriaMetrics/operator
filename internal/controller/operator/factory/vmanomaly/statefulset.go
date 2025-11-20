@@ -31,9 +31,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
-	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
-		return fmt.Errorf("cannot delete objects from prev state: %w", err)
+		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("cannot delete orphaned resources: %w", err)
+		}
 	}
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
@@ -159,14 +159,12 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 	return app, nil
 }
 
-func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly) error {
-	if prevCR == nil {
-		return nil
-	}
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
+	owner := cr.AsOwner()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	cfg := config.MustGetBaseConfig()
 	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot remove podScrape: %w", err)
 		}
 	}

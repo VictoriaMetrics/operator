@@ -65,9 +65,9 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
-	if err := deletePrevStateResources(ctx, cr, rclient); err != nil {
-		return err
+		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+			return err
+		}
 	}
 	if cr.Spec.Storage != nil && cr.Spec.StorageDataPath == "" {
 		if err := createOrUpdatePVC(ctx, rclient, cr, prevCR); err != nil {
@@ -327,22 +327,28 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	return newService, nil
 }
 
-func deletePrevStateResources(ctx context.Context, cr *vmv1.VTSingle, rclient client.Client) error {
-	if cr.ParsedLastAppliedSpec == nil {
-		return nil
-	}
-	prevSvc, currSvc := cr.ParsedLastAppliedSpec.ServiceSpec, cr.Spec.ServiceSpec
-	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
-		return fmt.Errorf("cannot remove additional service: %w", err)
-	}
-
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTSingle) error {
+	owner := cr.AsOwner()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	cfg := config.MustGetBaseConfig()
 	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, disableSelfScrape) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}
+	}
+
+	svcName := cr.PrefixedName()
+	keepServices := map[string]struct{}{
+		svcName: {},
+	}
+	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
+		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
+		keepServices[extraSvcName] = struct{}{}
+	}
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 
 	return nil

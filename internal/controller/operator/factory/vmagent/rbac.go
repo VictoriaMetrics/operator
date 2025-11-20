@@ -162,6 +162,7 @@ func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAge
 	const prevNamingPrefix = "monitoring:vmagent-cluster-access-"
 	prevVersionName := prevNamingPrefix + cr.Name
 	currentVersionName := cr.GetClusterRoleName()
+	owner := cr.AsOwner()
 
 	// explicitly set namespace via ObjetMeta for unit tests
 	toMigrateObjects := []client.Object{
@@ -182,7 +183,7 @@ func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAge
 			}
 			// update name with prev version formatting
 			obj.SetName(prevVersionName)
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, obj); err != nil {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, obj, &owner); err != nil {
 				return fmt.Errorf("cannot safe delete obj : %w", err)
 			}
 		}

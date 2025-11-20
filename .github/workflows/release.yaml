@@ -13,14 +13,14 @@ jobs:
       pages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Restore binaries from cache
         uses: actions/cache/restore@v4
         with:
           path: ./bin
           key: binary
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
           check-latest: true
@@ -44,7 +44,7 @@ jobs:
         with:
           path: ./bin
           key: binary
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: olm
           path: bundle

@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out ops
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: VictoriaMetrics/ops
           ref: main
@@ -46,7 +46,7 @@ jobs:
         working-directory: __vm-ops-repo
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           add-paths: ${{ steps.update.outputs.OPERATOR_PATH }}
           commit-message: Automatic update operator version on sandbox from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}

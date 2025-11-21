@@ -1171,6 +1171,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 
 	cfg := config.MustGetBaseConfig()
 	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+	owner := cr.AsOwner()
 
 	if prevSt != nil {
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
@@ -1181,17 +1182,17 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		} else {
 			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: commonName}
 			if vmst.PodDisruptionBudget == nil && prevSt.PodDisruptionBudget != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}, &owner); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev storage: %w", err)
 				}
 			}
 			if ptr.Deref(vmst.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevSt.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}, &owner); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev storage: %w", err)
 				}
 			}
 			prevSvc, currSvc := prevSt.ServiceSpec, vmst.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, commonName, cr.Namespace, prevSvc, currSvc); err != nil {
+			if err := reconcile.AdditionalServices(ctx, rclient, commonName, cr.Namespace, prevSvc, currSvc, &owner); err != nil {
 				return fmt.Errorf("cannot remove vmstorage additional service: %w", err)
 			}
 		}
@@ -1208,22 +1209,22 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			commonObjMeta := metav1.ObjectMeta{
 				Namespace: cr.Namespace, Name: commonName}
 			if vmse.PodDisruptionBudget == nil && prevSe.PodDisruptionBudget != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}, &owner); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev select: %w", err)
 				}
 			}
 			if vmse.HPA == nil && prevSe.HPA != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}, &owner); err != nil {
 					return fmt.Errorf("cannot remove HPA from prev select: %w", err)
 				}
 			}
 			if ptr.Deref(vmse.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevSe.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}, &owner); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev select: %w", err)
 				}
 			}
 			prevSvc, currSvc := prevSe.ServiceSpec, vmse.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, commonName, cr.Namespace, prevSvc, currSvc); err != nil {
+			if err := reconcile.AdditionalServices(ctx, rclient, commonName, cr.Namespace, prevSvc, currSvc, &owner); err != nil {
 				return fmt.Errorf("cannot remove vmselect additional service: %w", err)
 			}
 		}
@@ -1234,7 +1235,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: commonName, Namespace: cr.Namespace},
-				}); err != nil {
+				}, &owner); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for non-lb select svc: %w", err)
 				}
 			}
@@ -1245,7 +1246,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 				Name:      commonInternalName,
 				Namespace: cr.Namespace,
-			}}); err != nil {
+			}}, &owner); err != nil {
 				return fmt.Errorf("cannot remove vmselect lb service: %w", err)
 			}
 			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, disableSelfScrape) {
@@ -1254,7 +1255,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 						Name:      commonInternalName,
 						Namespace: cr.Namespace,
 					},
-				}); err != nil {
+				}, &owner); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for lb select svc: %w", err)
 				}
 			}
@@ -1271,22 +1272,22 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 		} else {
 			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: commonName}
 			if vmis.PodDisruptionBudget == nil && prevIs.PodDisruptionBudget != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}, &owner); err != nil {
 					return fmt.Errorf("cannot remove PDB from prev insert: %w", err)
 				}
 			}
 			if vmis.HPA == nil && prevIs.HPA != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}, &owner); err != nil {
 					return fmt.Errorf("cannot remove HPA from prev insert: %w", err)
 				}
 			}
 			if ptr.Deref(vmis.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevIs.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
+				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}, &owner); err != nil {
 					return fmt.Errorf("cannot remove serviceScrape from prev insert: %w", err)
 				}
 			}
 			prevSvc, currSvc := prevIs.ServiceSpec, vmis.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, commonName, cr.Namespace, prevSvc, currSvc); err != nil {
+			if err := reconcile.AdditionalServices(ctx, rclient, commonName, cr.Namespace, prevSvc, currSvc, &owner); err != nil {
 				return fmt.Errorf("cannot remove vminsert additional service: %w", err)
 			}
 		}
@@ -1297,7 +1298,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, disableSelfScrape) {
 				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Name: commonName, Namespace: cr.Namespace},
-				}); err != nil {
+				}, &owner); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for non-lb insert svc: %w", err)
 				}
 			}
@@ -1308,7 +1309,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
 				Name:      commonInternalName,
 				Namespace: cr.Namespace,
-			}}); err != nil {
+			}}, &owner); err != nil {
 				return fmt.Errorf("cannot remove vminsert lb service: %w", err)
 			}
 			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, disableSelfScrape) {
@@ -1317,7 +1318,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 						Name:      commonInternalName,
 						Namespace: cr.Namespace,
 					},
-				}); err != nil {
+				}, &owner); err != nil {
 					return fmt.Errorf("cannot delete vmservicescrape for lb vminsert svc: %w", err)
 				}
 			}
@@ -1338,7 +1339,7 @@ func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, pr
 					Name:      commonName,
 					Namespace: cr.Namespace,
 				},
-			}); err != nil {
+			}, &owner); err != nil {
 				return fmt.Errorf("cannot delete PodDisruptionBudget for cluster lb: %w", err)
 			}
 		}

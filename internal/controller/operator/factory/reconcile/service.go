@@ -153,7 +153,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 // by conditionally removing service from previous state
 func AdditionalServices(ctx context.Context, rclient client.Client,
 	defaultName, namespace string,
-	prevSvc, currSvc *vmv1beta1.AdditionalServiceSpec) error {
+	prevSvc, currSvc *vmv1beta1.AdditionalServiceSpec, owner *metav1.OwnerReference) error {
 
 	if currSvc == nil &&
 		prevSvc != nil &&
@@ -162,7 +162,7 @@ func AdditionalServices(ctx context.Context, rclient client.Client,
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient,
 			&corev1.Service{ObjectMeta: metav1.ObjectMeta{
 				Namespace: namespace,
-				Name:      prevSvc.NameOrDefault(defaultName)}}); err != nil {
+				Name:      prevSvc.NameOrDefault(defaultName)}}, owner); err != nil {
 			return fmt.Errorf("cannot remove additional service: %w", err)
 		}
 	}
@@ -176,7 +176,7 @@ func AdditionalServices(ctx context.Context, rclient client.Client,
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient,
 				&corev1.Service{ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      prevSvc.NameOrDefault(defaultName)}}); err != nil {
+					Name:      prevSvc.NameOrDefault(defaultName)}}, owner); err != nil {
 				return fmt.Errorf("cannot remove additional service: %w", err)
 			}
 		}

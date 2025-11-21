@@ -84,8 +84,9 @@ func OnVTInsertDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: commonInternalName, Namespace: cr.Namespace}})
 	}
+	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}
@@ -125,8 +126,9 @@ func OnVTSelectDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTClu
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: commonInternalName, Namespace: cr.Namespace}})
 	}
+	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}
@@ -158,9 +160,9 @@ func OnVTStorageDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTCl
 	if !ptr.Deref(obj.DisableSelfServiceScrape, getCfg().DisableSelfServiceScrapeCreation) {
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta})
 	}
-
+	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}
@@ -209,9 +211,9 @@ func OnVTClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, c
 			Namespace: cr.Namespace,
 		}})
 	}
-
+	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove lb object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}

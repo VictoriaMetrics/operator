@@ -129,6 +129,14 @@ func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr, pre
 	if cr.Spec.HTTPRoute == nil {
 		return nil
 	}
+
+	if err := k8stools.GetCRD(ctx, rclient, "httproutes.gateway.networking.k8s.io"); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
 	newHTTPRoute, err := build.HTTPRoute(cr, cr.Spec.Port, cr.Spec.HTTPRoute)
 	if err != nil {
 		return err

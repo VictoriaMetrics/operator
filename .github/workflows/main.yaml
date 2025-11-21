@@ -51,14 +51,14 @@ jobs:
           SAVED=$((AFTER-BEFORE))
           echo "Saved $(formatByteCount $SAVED)"
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Restore binaries from cache
         uses: actions/cache/restore@v4
         with:
           path: ./bin
           key: binary
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
           check-latest: true
@@ -74,7 +74,7 @@ jobs:
           output: "trivy-results.sarif"
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-results.sarif"
 
@@ -99,7 +99,7 @@ jobs:
           make test
           TAG=${TAG} make test-e2e
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         if: success() || failure()
         with:
           report_paths: 'report.xml'

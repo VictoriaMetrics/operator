@@ -108,6 +108,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
 
+	// Throw error if VMCluster has any other owner - that means it is managed by one instance of VMDistributedCluster only
+	for i, vmCluster := range vmClusters {
+		err := ensureNoVMClusterOwners(cr, vmCluster, i, scheme)
+		if err != nil {
+			return fmt.Errorf("failed to validate owner references for unreferenced vmcluster %s at index %d: %w", vmCluster.Name, i, err)
+		}
+	}
+
 	// Store current CR status
 	currentCRStatus := cr.Status.DeepCopy()
 	cr.Status = vmv1alpha1.VMDistributedClusterStatus{}
@@ -635,4 +643,18 @@ func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1
 		return true, nil
 	}
 	return false, nil
+}
+
+// ensureNoVMClusterOwners validates that vmClusterObj has no owner references other than cr.
+func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster, index int, scheme *runtime.Scheme) error {
+	for _, owner := range vmClusterObj.GetOwnerReferences() {
+		isCROwner := owner.APIVersion == cr.APIVersion &&
+			owner.Kind == cr.Kind &&
+			owner.Name == cr.GetName()
+
+		if !isCROwner {
+			return fmt.Errorf("vmcluster %s at index %d has unexpected owner reference: %s/%s/%s", vmClusterObj.Name, index, owner.APIVersion, owner.Kind, owner.Name)
+		}
+	}
+	return nil
 }

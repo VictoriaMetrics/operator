@@ -60,8 +60,9 @@ func OnVMInsertDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.
 			},
 		})
 	}
+	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}
@@ -111,8 +112,9 @@ func OnVMSelectDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.
 			},
 		})
 	}
+	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}
@@ -145,8 +147,9 @@ func OnVMStorageDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta})
 	}
 
+	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}
@@ -236,9 +239,9 @@ func OnVMClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, c
 			Namespace: cr.Namespace,
 		}})
 	}
-
+	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove); err != nil {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove lb object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}

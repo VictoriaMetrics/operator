@@ -92,9 +92,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
-	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
-		return fmt.Errorf("cannot delete objects from prev state: %w", err)
+		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("cannot delete objects from prev state: %w", err)
+		}
 	}
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
@@ -1314,42 +1314,43 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAgent, c
 	return []corev1.Container{initReloader}
 }
 
-func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
-	if prevCR == nil {
-		return nil
-	}
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
 	// TODO check for stream aggr removed
 
-	prevSvc, currSvc := prevCR.Spec.ServiceSpec, cr.Spec.ServiceSpec
-	if err := reconcile.AdditionalServices(ctx, rclient, cr.PrefixedName(), cr.Namespace, prevSvc, currSvc); err != nil {
-		return fmt.Errorf("cannot remove additional service: %w", err)
-	}
+	owner := cr.AsOwner()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 
 	cfg := config.MustGetBaseConfig()
 	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-	if !prevCR.Spec.DaemonSetMode && cr.Spec.DaemonSetMode {
+	if cr.Spec.DaemonSetMode {
 		// transit into DaemonSetMode
 		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, &owner); err != nil {
 				return fmt.Errorf("cannot delete VMServiceScrape during daemonset transition: %w", err)
 			}
 		}
-	}
-
-	if prevCR.Spec.DaemonSetMode && !cr.Spec.DaemonSetMode {
-		// transit into non DaemonSetMode
-		if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
-				return fmt.Errorf("cannot delete VMPodScrape during transition for non-daemonsetMode: %w", err)
-			}
+	} else if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot delete VMPodScrape during transition for non-daemonsetMode: %w", err)
 		}
 	}
 
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(cr.ParsedLastAppliedSpec.DisableSelfServiceScrape, disableSelfScrape) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}); err != nil {
+	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot remove serviceScrape: %w", err)
 		}
+	}
+
+	svcName := cr.PrefixedName()
+	keepServices := map[string]struct{}{
+		svcName: {},
+	}
+	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
+		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
+		keepServices[extraSvcName] = struct{}{}
+	}
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 
 	return nil
@@ -1365,5 +1366,6 @@ func removeStaleDaemonSet(ctx context.Context, rclient client.Client, cr *vmv1be
 			Namespace: cr.Namespace,
 		},
 	}
-	return finalize.SafeDeleteWithFinalizer(ctx, rclient, &ds)
+	owner := cr.AsOwner()
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, &ds, &owner)
 }

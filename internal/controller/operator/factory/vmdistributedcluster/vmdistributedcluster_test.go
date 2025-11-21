@@ -22,6 +22,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/VictoriaMetrics/operator/api/client/versioned/scheme"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -237,6 +238,10 @@ func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 
 func newVMDistributedCluster(name, namespace string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgentRef corev1.LocalObjectReference, vmUserRefs []corev1.LocalObjectReference) *vmv1alpha1.VMDistributedCluster {
 	return &vmv1alpha1.VMDistributedCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "VMDistributedCluster",
+			APIVersion: vmv1alpha1.GroupVersion.String(),
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
@@ -1483,6 +1488,123 @@ func TestSetVMClusterInfo(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, got, tt.want)
+		})
+	}
+}
+
+func TestEnsureNoVMClusterOwners(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = vmv1alpha1.AddToScheme(scheme)
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	type args struct {
+		cr           *vmv1alpha1.VMDistributedCluster
+		vmClusterObj *vmv1beta1.VMCluster
+		index        int
+		scheme       *runtime.Scheme
+	}
+	tests := []struct {
+		name    string
+		args    args
+		setup   func(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster, scheme *runtime.Scheme)
+		wantErr bool
+	}{
+		{
+			name: "owner ref exists and is the cr, no error",
+			args: args{
+				cr:           newVMDistributedCluster("test-vmdc", "default", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, corev1.LocalObjectReference{}, []corev1.LocalObjectReference{}),
+				vmClusterObj: newVMCluster("cluster-1", "default"),
+				index:        0,
+				scheme:       scheme,
+			},
+			setup: func(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster, scheme *runtime.Scheme) {
+				_ = controllerutil.SetOwnerReference(cr, vmClusterObj, scheme)
+			},
+			wantErr: false,
+		},
+		{
+			name: "owner ref does not exist and nothing changes",
+			args: args{
+				cr:           newVMDistributedCluster("test-vmdc", "default", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, corev1.LocalObjectReference{}, []corev1.LocalObjectReference{}),
+				vmClusterObj: newVMCluster("cluster-1", "default"),
+				index:        0,
+				scheme:       scheme,
+			},
+			setup:   func(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster, scheme *runtime.Scheme) {},
+			wantErr: false,
+		},
+		{
+			name: "vmcluster has unexpected owner ref, should return error",
+			args: args{
+				cr:           newVMDistributedCluster("test-vmdc", "default", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, corev1.LocalObjectReference{}, []corev1.LocalObjectReference{}),
+				vmClusterObj: newVMCluster("cluster-1", "default"),
+				index:        0,
+				scheme:       scheme,
+			},
+			setup: func(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster, scheme *runtime.Scheme) {
+				// Set an owner reference that is NOT the 'cr'
+				otherCR := &vmv1alpha1.VMDistributedCluster{}
+				otherCR.SetName("other-vmdc")
+				otherCR.SetNamespace("default")
+				otherCR.APIVersion = "operator.victoriametrics.com/v1alpha1"
+				otherCR.Kind = "VMDistributedCluster"
+				_ = controllerutil.SetOwnerReference(otherCR, vmClusterObj, scheme)
+			},
+			wantErr: true,
+		},
+		{
+			name: "vmcluster has cr and another unexpected owner ref, should return error",
+			args: args{
+				cr:           newVMDistributedCluster("test-vmdc", "default", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, corev1.LocalObjectReference{}, []corev1.LocalObjectReference{}),
+				vmClusterObj: newVMCluster("cluster-1", "default"),
+				index:        0,
+				scheme:       scheme,
+			},
+			setup: func(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster, scheme *runtime.Scheme) {
+				// Set the primary CR as an owner
+				_ = controllerutil.SetOwnerReference(cr, vmClusterObj, scheme)
+
+				// Set another different CR as an owner
+				otherCR := &vmv1alpha1.VMDistributedCluster{}
+				otherCR.SetName("other-vmdc-2")
+				otherCR.SetNamespace("default")
+				otherCR.APIVersion = "operator.victoriametrics.com/v1alpha1"
+				otherCR.Kind = "VMDistributedCluster"
+				_ = controllerutil.SetOwnerReference(otherCR, vmClusterObj, scheme)
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset owner references for each test case
+			tt.args.vmClusterObj.SetOwnerReferences(nil)
+			if tt.setup != nil {
+				tt.setup(tt.args.cr, tt.args.vmClusterObj, tt.args.scheme)
+			}
+
+			err := ensureNoVMClusterOwners(tt.args.cr, tt.args.vmClusterObj, tt.args.index, tt.args.scheme)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			// Verify if no unexpected owner references exist
+			if !tt.wantErr {
+				ref := metav1.OwnerReference{
+					APIVersion: tt.args.cr.APIVersion,
+					Kind:       tt.args.cr.Kind,
+					Name:       tt.args.cr.GetName(),
+				}
+				for _, owner := range tt.args.vmClusterObj.GetOwnerReferences() {
+					isCROwner := owner.APIVersion == ref.APIVersion &&
+						owner.Kind == ref.Kind &&
+						owner.Name == ref.Name
+					assert.True(t, isCROwner, "vmcluster %s should not have unexpected owner reference: %s/%s/%s", tt.args.vmClusterObj.Name, owner.APIVersion, owner.Kind, owner.Name)
+				}
+			}
 		})
 	}
 }

@@ -421,7 +421,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 var patchAnnotationPredicate = predicate.Funcs{
 	UpdateFunc: func(e event.UpdateEvent) bool {
 		if e.ObjectOld == nil || e.ObjectNew == nil {
-			return true
+			return false
 		}
 		oldAnnotations := e.ObjectOld.GetAnnotations()
 		newAnnotations := e.ObjectNew.GetAnnotations()

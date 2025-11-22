@@ -211,16 +211,13 @@ func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ct
 	}
 
 	currMeta.ObservedGeneration = object.GetGeneration()
-	object.DefaultStatusFields(currentStatus)
-	// if opts.mutateCurrentBeforeCompare != nil {
-	// 	opts.mutateCurrentBeforeCompare(opts.crStatus.(ST))
-	// }
 	// compare before send update request
 	// it reduces load at kubernetes api-server
 	if equality.Semantic.DeepEqual(currentStatus, prevStatus) && currMeta.UpdateStatus == actualStatus {
 		return nil
 	}
 	currMeta.UpdateStatus = newUpdateStatus
+	object.DefaultStatusFields(currentStatus)
 
 	// make a deep copy before passing object to Patch function
 	// it reload state of the object from API server

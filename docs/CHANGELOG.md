@@ -72,6 +72,7 @@ This change could be reverted by providing env variable `VM_USECUSTOMCONFIGRELOA
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix an issue where the return value from a couple of controllers was always `nil`. See [#1532](https://github.com/VictoriaMetrics/operator/pull/1532) for details.
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): emit warning if `vmcluster.spec.vmselect.persistentVolume` is set, previously it was emitted for `vmcluster.spec.vmselect.storage`.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): Prevent endless Service reconcile loop by correctly track changes to Service.spec.LoadBalancerClass. See this issue [#1550](https://github.com/VictoriaMetrics/operator/issues/1550) for details.
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/) and [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): create PDB per shard to guarantee proper application protection. See [#1548](https://github.com/VictoriaMetrics/operator/issues/1548).
 
 
 ## [v0.63.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.63.0)

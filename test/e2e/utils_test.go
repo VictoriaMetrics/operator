@@ -23,6 +23,7 @@ import (
 )
 
 func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]string) string {
+	GinkgoHelper()
 	podList := &corev1.PodList{}
 	if err := rclient.List(context.TODO(), podList, &client.ListOptions{
 		Namespace:     ns,
@@ -76,6 +77,7 @@ type httpRequestCRDObject interface {
 
 //nolint:dupl,lll
 func expectHTTPRequestToSucceed(ctx context.Context, object httpRequestCRDObject, opts httpRequestOpts) {
+	GinkgoHelper()
 	By("making http request to: " + opts.dstURL)
 	if opts.method == "" {
 		opts.method = "GET"
@@ -157,6 +159,7 @@ fi
 
 //nolint:dupl,lll
 func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, annotations map[string]string) {
+	GinkgoHelper()
 	for idx, obj := range objects {
 		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
 		gotAnnotations := obj.GetAnnotations()
@@ -176,6 +179,7 @@ func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, o
 
 //nolint:dupl,lll
 func assertLabelsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, wantLabels map[string]string) {
+	GinkgoHelper()
 	for idx, obj := range objects {
 		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
 		gotLabels := obj.GetLabels()
@@ -195,6 +199,7 @@ func assertLabelsOnObjects(ctx context.Context, nss types.NamespacedName, object
 
 //nolint:dupl,lll,unparam
 func hasVolume(volumes []corev1.Volume, volumeName string) error {
+	GinkgoHelper()
 	var existVolumes []string
 	for _, v := range volumes {
 		if v.Name == volumeName {
@@ -207,6 +212,7 @@ func hasVolume(volumes []corev1.Volume, volumeName string) error {
 
 //nolint:dupl,lll,unparam
 func hasVolumeMount(volumeMounts []corev1.VolumeMount, volumeMountName string) error {
+	GinkgoHelper()
 	var existVolumes []string
 	for _, vm := range volumeMounts {
 		if vm.MountPath == volumeMountName {
@@ -219,6 +225,7 @@ func hasVolumeMount(volumeMounts []corev1.VolumeMount, volumeMountName string) e
 
 //nolint:dupl,lll
 func mustGetFirstPod(rclient client.Client, ns string, lbs map[string]string) *corev1.Pod {
+	GinkgoHelper()
 	var podList corev1.PodList
 	Expect(rclient.List(context.TODO(), &podList, &client.ListOptions{
 		Namespace:     ns,

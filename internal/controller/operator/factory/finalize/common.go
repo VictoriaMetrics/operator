@@ -14,12 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 )
-
-func getCfg() *config.BaseOperatorConf {
-	return config.MustGetBaseConfig()
-}
 
 type crObject interface {
 	AnnotationsFiltered() map[string]string
@@ -208,7 +203,6 @@ func removeConfigReloaderRole(ctx context.Context, rclient client.Client, cr crO
 	if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.GetNamespace()}}); err != nil {
 		return err
 	}
-
 	if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.GetNamespace()}}); err != nil {
 		return err
 	}

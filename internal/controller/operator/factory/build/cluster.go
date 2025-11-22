@@ -7,8 +7,9 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-type parentOpts interface {
+type ParentOpts interface {
 	client.Object
+	PrefixedInternalName(vmv1beta1.ClusterComponent) string
 	PrefixedName(vmv1beta1.ClusterComponent) string
 	SelectorLabels(vmv1beta1.ClusterComponent) map[string]string
 	GetServiceAccountName() string
@@ -20,7 +21,7 @@ type parentOpts interface {
 }
 
 type ChildBuilder struct {
-	parentOpts
+	ParentOpts
 	kind           vmv1beta1.ClusterComponent
 	finalLabels    map[string]string
 	selectorLabels map[string]string
@@ -28,7 +29,7 @@ type ChildBuilder struct {
 
 // PrefixedName implements build.svcBuilderArgs interface
 func (b *ChildBuilder) PrefixedName() string {
-	return b.parentOpts.PrefixedName(b.kind)
+	return b.ParentOpts.PrefixedName(b.kind)
 }
 
 // AllLabels implements build.svcBuilderArgs interface
@@ -48,7 +49,7 @@ func (b *ChildBuilder) SelectorLabels() map[string]string {
 
 // GetAdditionalService implements build.svcBuilderArgs interface
 func (b *ChildBuilder) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
-	return b.parentOpts.GetAdditionalService(b.kind)
+	return b.ParentOpts.GetAdditionalService(b.kind)
 }
 
 func (b *ChildBuilder) SetFinalLabels(ls map[string]string) {
@@ -59,9 +60,9 @@ func (b *ChildBuilder) SetSelectorLabels(ls map[string]string) {
 	b.selectorLabels = ls
 }
 
-func NewChildBuilder(cr parentOpts, kind vmv1beta1.ClusterComponent) *ChildBuilder {
+func NewChildBuilder(cr ParentOpts, kind vmv1beta1.ClusterComponent) *ChildBuilder {
 	return &ChildBuilder{
-		parentOpts:     cr,
+		ParentOpts:     cr,
 		kind:           kind,
 		finalLabels:    cr.FinalLabels(kind),
 		selectorLabels: cr.SelectorLabels(kind),

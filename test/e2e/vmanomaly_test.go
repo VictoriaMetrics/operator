@@ -87,7 +87,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 			},
 		)).To(Succeed())
 
-		Expect(k8sClient.Create(ctx, &anomalySingle)).To(Succeed())
+		Expect(k8sClient.Create(ctx, anomalySingle.DeepCopy())).To(Succeed())
 		Eventually(func() error {
 			return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace})
 		}, eventualDeploymentAppReadyTimeout,
@@ -311,12 +311,10 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						step.setup(initCR)
 					}
 					// update and wait ready
-					Eventually(func() error {
-						var toUpdate vmv1.VMAnomaly
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-						step.modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, anomalyExpandTimeout).Should(Succeed())
+					var toUpdate vmv1.VMAnomaly
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					step.modify(&toUpdate)
+					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
 					}, anomalyExpandTimeout).Should(Succeed())

@@ -23,6 +23,8 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.5.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.5.0) version.
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `VMDistributedCluster` CR to apply changes to zone-distributed VictoriaMetrics clusters.
+
 ## [v0.65.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.65.0)
 
 **Release date:** 31 October 2025

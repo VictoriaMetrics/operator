@@ -1,0 +1,51 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributedCluster
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+  name: vmdistributedcluster-sample-override-versions
+spec:
+  vmagent:
+    name: vmagent-sample
+  vmusers:
+    - name: vmuser-us-east-1
+    - name: vmuser-us-west-2
+    - name: vmuser-eu-west-1
+  zones:
+    vmclusters:
+    - ref:
+        name: vmcluster-us-east-1
+      overrideSpec:
+        vmselect:
+          image:
+            tag: v1.90.0
+        vminsert:
+          image:
+            tag: v1.90.0
+        vmstorage:
+          image:
+            tag: v1.90.0
+    - ref:
+        name: vmcluster-us-west-2
+      overrideSpec:
+        vmselect:
+          image:
+            tag: v1.90.0
+        vminsert:
+          image:
+            tag: v1.90.0
+        vmstorage:
+          image:
+            tag: v1.90.0
+    - ref:
+        name: vmcluster-eu-west-1
+      overrideSpec:
+        vmselect:
+          image:
+            tag: v1.111.0
+        vminsert:
+          image:
+            tag: v1.111.0
+        vmstorage:
+          image:
+            tag: v1.111.0

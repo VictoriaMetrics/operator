@@ -59,7 +59,7 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	RegisterObjectStat(instance, "vmcluster")
 
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMClusterDelete(ctx, r.Client, instance); err != nil {
+		if err := finalize.OnClusterDelete(ctx, r.Client, instance); err != nil {
 			return result, err
 		}
 		return result, nil

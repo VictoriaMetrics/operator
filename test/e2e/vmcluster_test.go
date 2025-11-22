@@ -362,14 +362,10 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 						step.setup(initCR)
 					}
 					// update and wait ready
-					Eventually(func() error {
-						var toUpdate vmv1beta1.VMCluster
-						if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
-							return err
-						}
-						step.modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).WithContext(ctx).Should(Succeed())
+					var toUpdate vmv1beta1.VMCluster
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					step.modify(&toUpdate)
+					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusExpanding(ctx, k8sClient, initCR, nsn)
 					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
@@ -1347,14 +1343,10 @@ up{baz="bar"} 123
 						step.setup(initCR)
 					}
 					// update and verify immediately
-					Eventually(func() error {
-						var toUpdate vmv1beta1.VMCluster
-						if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
-							return err
-						}
-						step.modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).WithContext(ctx).Should(Succeed())
+					var toUpdate vmv1beta1.VMCluster
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					step.modify(&toUpdate)
+					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 					var updated vmv1beta1.VMCluster
 					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
 					step.verify(&updated)

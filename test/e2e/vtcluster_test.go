@@ -76,12 +76,10 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						step.setup(initCR)
 					}
 					// perform update
-					Eventually(func() error {
-						var toUpdate vmv1.VTCluster
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-						step.modify(&toUpdate)
-						return k8sClient.Update(ctx, &toUpdate)
-					}, eventualExpandingTimeout).Should(Succeed())
+					var toUpdate vmv1.VTCluster
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					step.modify(&toUpdate)
+					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTCluster{}, nsn)
 					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
@@ -254,7 +252,7 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						dep := &appsv1.Deployment{}
 						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
-						// vtselect must be removed
+						// vtinsert must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}
 						waitResourceDeleted(ctx, k8sClient, nsn, dep)
 					},

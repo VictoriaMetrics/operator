@@ -58,6 +58,28 @@ func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr orpha
 	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
 }
 
+// RemoveOrphanedHPAs removes HPAs detached from given object
+func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "autoscaling",
+		Version: "v2",
+		Kind:    "HorizontalPodAutoscaler",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+
+}
+
+// RemoveOrphanedVMServiceScrapes removes VMSeviceScrapes detached from given object
+func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "operator.victoriametrics.com",
+		Version: "v1beta1",
+		Kind:    "VMServiceScrape",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+
+}
+
 // removeOrphaned removes orphaned resources
 func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, gvk schema.GroupVersionKind, keepNames map[string]struct{}) error {
 	var l unstructured.UnstructuredList

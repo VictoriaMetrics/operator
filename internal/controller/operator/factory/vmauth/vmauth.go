@@ -131,9 +131,6 @@ func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr, pre
 	}
 
 	if err := k8stools.GetCRD(ctx, rclient, "httproutes.gateway.networking.k8s.io"); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil
-		}
 		return err
 	}
 
@@ -767,12 +764,12 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 	}
 
-  if cr.Spec.HTTPRoute == nil {
+	if cr.Spec.HTTPRoute == nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &gwapiv1.HTTPRoute{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot delete httproute from prev state: %w", err)
 		}
 	}
-  
+
 	if cr.Spec.Ingress == nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &networkingv1.Ingress{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot delete ingress from prev state: %w", err)

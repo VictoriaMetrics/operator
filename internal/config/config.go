@@ -523,8 +523,6 @@ type BaseOperatorConf struct {
 		AlertmanagerConfig bool `default:"true" env:"ALERTMANAGERCONFIG"`
 		ScrapeConfig       bool `default:"true" env:"SCRAPECONFIG"`
 	} `prefix:"ENABLEDPROMETHEUSCONVERTER_"`
-	FilterChildLabelPrefixes      []string `default:"" env:"FILTERCHILDLABELPREFIXES"`
-	FilterChildAnnotationPrefixes []string `default:"" env:"FILTERCHILDANNOTATIONPREFIXES"`
 	// adds compare-options and sync-options for prometheus objects converted by operator.
 	// It helps to properly use converter with ArgoCD
 	PrometheusConverterAddArgoCDIgnoreAnnotations bool `default:"false" env:"PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS"`

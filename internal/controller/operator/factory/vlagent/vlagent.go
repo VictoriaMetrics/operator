@@ -150,8 +150,8 @@ func newDeploy(cr *vmv1.VLAgent) (*appsv1.StatefulSet, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
+			Labels:          cr.FinalLabels(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},

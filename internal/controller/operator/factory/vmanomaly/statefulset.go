@@ -127,8 +127,8 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            build.ShardName(cr),
 			Namespace:       cr.GetNamespace(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
+			Labels:          cr.FinalLabels(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},

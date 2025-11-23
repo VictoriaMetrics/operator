@@ -120,8 +120,8 @@ func newVLogsDeployment(r *vmv1beta1.VLogs) (*appsv1.Deployment, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            r.PrefixedName(),
 			Namespace:       r.Namespace,
-			Labels:          r.AllLabels(),
-			Annotations:     r.AnnotationsFiltered(),
+			Labels:          r.FinalLabels(),
+			Annotations:     r.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},

@@ -306,8 +306,6 @@ func RunManager(ctx context.Context) error {
 		build.SetSkipRuntimeValidation(true)
 	}
 
-	vmv1beta1.SetLabelAndAnnotationPrefixes(baseConfig.FilterChildLabelPrefixes, baseConfig.FilterChildAnnotationPrefixes)
-
 	if err := initControllers(mgr, ctrl.Log, baseConfig); err != nil {
 		return err
 	}

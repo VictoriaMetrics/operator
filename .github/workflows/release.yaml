@@ -14,8 +14,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      - name: Restore binaries from cache
-        uses: actions/cache/restore@v4
+      - name: Prepare binary cache
+        uses: actions/cache@v4
         with:
           path: ./bin
           key: binary
@@ -39,11 +39,6 @@ jobs:
           gh release upload ${{github.event.release.tag_name}} ./dist/install-no-webhook.yaml#install-no-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./dist/install-with-webhook.yaml#install-with-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./config/crd/overlay/crd.yaml#crd.yaml --clobber || echo "fix me NOT enough security permissions"
-      - name: Prepare binary cache
-        uses: actions/cache@v4
-        with:
-          path: ./bin
-          key: binary
       - uses: actions/upload-artifact@v5
         with:
           name: olm

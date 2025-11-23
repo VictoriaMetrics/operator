@@ -350,20 +350,6 @@ func (cr *VMAlert) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr *VMAlert) AnnotationsFiltered() map[string]string {
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.Annotations, annotationFilterPrefixes)
-	if cr.Spec.ManagedMetadata != nil {
-		if dst == nil {
-			dst = make(map[string]string)
-		}
-		for k, v := range cr.Spec.ManagedMetadata.Annotations {
-			dst[k] = v
-		}
-	}
-	return dst
-}
-
 // Validate checks VMAlert spec
 func (cr *VMAlert) Validate() error {
 	if MustSkipCRValidation(cr) {
@@ -422,21 +408,22 @@ func (cr *VMAlert) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr *VMAlert) AllLabels() map[string]string {
-	selectorLabels := cr.SelectorLabels()
-	// fast path
-	if cr.Labels == nil && cr.Spec.ManagedMetadata == nil {
-		return selectorLabels
-	}
-	var result map[string]string
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.Labels, labelFilterPrefixes)
-	}
+// FinalLabels returns combination of selector and managed labels
+func (cr *VMAlert) FinalLabels() map[string]string {
+	v := cr.SelectorLabels()
 	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+		v = labels.Merge(cr.Spec.ManagedMetadata.Labels, v)
 	}
-	return labels.Merge(result, selectorLabels)
+	return v
+}
+
+// FinalAnnotations returns annotations to be applied for created objects
+func (cr *VMAlert) FinalAnnotations() map[string]string {
+	var v map[string]string
+	if cr.Spec.ManagedMetadata != nil {
+		v = labels.Merge(cr.Spec.ManagedMetadata.Annotations, v)
+	}
+	return v
 }
 
 func (cr *VMAlert) PrefixedName() string {

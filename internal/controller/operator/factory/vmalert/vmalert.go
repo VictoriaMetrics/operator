@@ -163,8 +163,8 @@ func newDeploy(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
+			Labels:          cr.FinalLabels(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},

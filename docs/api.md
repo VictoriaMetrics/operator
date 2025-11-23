@@ -2209,7 +2209,7 @@ Appears in: [Receiver](#receiver)
 
 ManagedObjectsMetadata contains Labels and Annotations
 
-Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec), [VTClusterSpec](#vtclusterspec), [VTSingleSpec](#vtsinglespec)
+Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec), [VMUserSpec](#vmuserspec), [VTClusterSpec](#vtclusterspec), [VTSingleSpec](#vtsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -4859,6 +4859,7 @@ Appears in: [VMUser](#vmuser)
 | headers<a href="#vmuserspec-headers" id="vmuserspec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth |
 | ip_filters<a href="#vmuserspec-ip_filters" id="vmuserspec-ip_filters">#</a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters) |
 | load_balancing_policy<a href="#vmuserspec-load_balancing_policy" id="vmuserspec-load_balancing_policy">#</a><br/>_string_ | _(Optional)_<br/>LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded") |
+| managedMetadata<a href="#vmuserspec-managedmetadata" id="vmuserspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
 | max_concurrent_requests<a href="#vmuserspec-max_concurrent_requests" id="vmuserspec-max_concurrent_requests">#</a><br/>_integer_ | _(Optional)_<br/>MaxConcurrentRequests defines max concurrent requests per user<br />300 is default value for vmauth |
 | metric_labels<a href="#vmuserspec-metric_labels" id="vmuserspec-metric_labels">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>MetricLabels - additional labels for metrics exported by vmauth for given user. |
 | name<a href="#vmuserspec-name" id="vmuserspec-name">#</a><br/>_string_ | _(Optional)_<br/>Name of the VMUser object. |

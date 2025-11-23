@@ -197,8 +197,8 @@ func buildClusterRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
 			Namespace:   cr.GetNamespace(),
-			Labels:      cr.AllLabels(),
-			Annotations: cr.AnnotationsFiltered(),
+			Labels:      cr.FinalLabels(),
+			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
 			// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
 			// use crd instead
@@ -224,8 +224,8 @@ func buildClusterRole(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
 			Namespace:   cr.GetNamespace(),
-			Labels:      cr.AllLabels(),
-			Annotations: cr.AnnotationsFiltered(),
+			Labels:      cr.FinalLabels(),
+			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
 			// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
 			// use crd instead
@@ -258,8 +258,8 @@ func buildNamespacedRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
 			Namespace:       cr.GetNamespace(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
+			Labels:          cr.FinalLabels(),
+			Annotations:     cr.FinalAnnotations(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
@@ -272,8 +272,8 @@ func buildNamespacedRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.RoleBinding {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
 			Namespace:       cr.GetNamespace(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
+			Labels:          cr.FinalLabels(),
+			Annotations:     cr.FinalAnnotations(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},

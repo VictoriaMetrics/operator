@@ -52,8 +52,8 @@ jobs:
           echo "Saved $(formatByteCount $SAVED)"
       - name: Checkout code
         uses: actions/checkout@v5
-      - name: Restore binaries from cache
-        uses: actions/cache/restore@v4
+      - name: Prepare binary cache
+        uses: actions/cache@v4
         with:
           path: ./bin
           key: binary
@@ -103,8 +103,3 @@ jobs:
         if: success() || failure()
         with:
           report_paths: 'report.xml'
-      - name: Prepare binary cache
-        uses: actions/cache@v4
-        with:
-          path: ./bin
-          key: binary

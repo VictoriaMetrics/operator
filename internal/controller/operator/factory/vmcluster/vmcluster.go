@@ -247,7 +247,7 @@ func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, c
 func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, kind vmv1beta1.ClusterComponent, port, prevPort string) error {
 	builder := func(r *vmv1beta1.VMCluster) *build.ChildBuilder {
 		b := build.NewChildBuilder(r, kind)
-		b.SetFinalLabels(labels.Merge(b.AllLabels(), map[string]string{
+		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: string(kind),
 		}))
 		b.SetSelectorLabels(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer))
@@ -446,7 +446,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 			Name:            commonName,
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentSelect),
-			Annotations:     cr.AnnotationsFiltered(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
@@ -679,7 +679,7 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 			Name:            commonName,
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentInsert),
-			Annotations:     cr.AnnotationsFiltered(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
@@ -879,7 +879,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 			Name:            commonName,
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentStorage),
-			Annotations:     cr.AnnotationsFiltered(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
@@ -1259,7 +1259,7 @@ func buildLBConfigSecretMeta(cr *vmv1beta1.VMCluster) metav1.ObjectMeta {
 		Namespace:       cr.Namespace,
 		Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
 		Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
-		Annotations:     cr.AnnotationsFiltered(),
+		Annotations:     cr.FinalAnnotations(),
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 	}
 }
@@ -1381,7 +1381,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 			Namespace:       cr.Namespace,
 			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
 			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
-			Annotations:     cr.AnnotationsFiltered(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -1414,7 +1414,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	builder := func(r *vmv1beta1.VMCluster) *build.ChildBuilder {
 		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
-		b.SetFinalLabels(labels.Merge(b.AllLabels(), map[string]string{
+		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: "vmauth",
 		}))
 		return b

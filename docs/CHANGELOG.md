@@ -13,11 +13,16 @@ aliases:
 
 ## tip
 
+**Update note 1: `labels` and `annotations` inheritance is removed. It was deprecated in v0.51.0. Consider moving all needed labels and annotations to the `spec.managedMetadata` fields.**
+
+**Update node 2: removed VMCluster's `status.clusterStatus` and VMSingle's `status.singleStatus`, that were deprecated in v0.51.0.**
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.130.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.130.0) version
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `VM_ENABLETCP6` variable that runs all operator CRs in IPv6 mode. See [#1581](https://github.com/VictoriaMetrics/operator/issues/1581).
 * FEATURE: [config-reloader](https://github.com/VictoriaMetrics/operator/blob/master/cmd/config-reloader/README.md): set default config reloader image version equal to current operator version. See [#2562](https://github.com/VictoriaMetrics/helm-charts/pull/2562).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): do not set `promscrape.cluster.membersCount` and `promscrape.cluster.memberNum` flags in ingestOnly mode. See [#1594](https://github.com/VictoriaMetrics/operator/issues/1594).
+* FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): introduce `spec.managedMetadata` for custom labels and annotations that should be attached to a Secret.
 
 * BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): check `mute_time_intervals` in subroutes: See [#1618](https://github.com/VictoriaMetrics/operator/issues/1618).
 
@@ -454,7 +459,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 ![AppVersion: v1.3.2](https://img.shields.io/badge/v1.3.2-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%2F%23v132)
 
 **Update note 1: `labels` and `annotations` inheritance is deprecated and will be remove at upcoming `v0.52.0` release. It's recommend to move all needed labels and annotations to the `spec.managedMetadata` fields.
-Operator will preserve `annotations`, but any changes to it will be ignored. `labels` inherited from `CRD.metata.labels` will be removed after upgrade to `v0.52.0`.**
+Operator will preserve `annotations`, but any changes to it will be ignored. `labels` inherited from `CRD.metadata.labels` will be removed after upgrade to `v0.52.0`.**
 
 **Update note 2: `VMAuth.spec.unauthorizedAccessConfig` is deprecated in favour of `VMAuth.spec.unauthorizedUserAccessSpec`. Operator still serves deprecated fields until `v1.0` release.**
 

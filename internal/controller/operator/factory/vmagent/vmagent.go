@@ -362,8 +362,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            cr.PrefixedName(),
 				Namespace:       cr.Namespace,
-				Labels:          cr.AllLabels(),
-				Annotations:     cr.AnnotationsFiltered(),
+				Labels:          cr.FinalLabels(),
+				Annotations:     cr.FinalAnnotations(),
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 				Finalizers:      []string{vmv1beta1.FinalizerName},
 			},
@@ -392,8 +392,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            build.ShardName(cr),
 				Namespace:       cr.Namespace,
-				Labels:          cr.AllLabels(),
-				Annotations:     cr.AnnotationsFiltered(),
+				Labels:          cr.FinalLabels(),
+				Annotations:     cr.FinalAnnotations(),
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 				Finalizers:      []string{vmv1beta1.FinalizerName},
 			},
@@ -433,8 +433,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            build.ShardName(cr),
 			Namespace:       cr.Namespace,
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
+			Labels:          cr.FinalLabels(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
@@ -761,8 +761,8 @@ func buildRelabelingsAssetsMeta(cr *vmv1beta1.VMAgent) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Namespace:       cr.Namespace,
 		Name:            cr.RelabelingAssetName(),
-		Labels:          cr.AllLabels(),
-		Annotations:     cr.AnnotationsFiltered(),
+		Labels:          cr.FinalLabels(),
+		Annotations:     cr.FinalAnnotations(),
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 	}
 }

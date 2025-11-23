@@ -190,8 +190,6 @@
 | VM_ENABLEDPROMETHEUSCONVERTER_PROBE: `true` <a href="#variables-vm-enabledprometheusconverter-probe" id="variables-vm-enabledprometheusconverter-probe">#</a> |
 | VM_ENABLEDPROMETHEUSCONVERTER_ALERTMANAGERCONFIG: `true` <a href="#variables-vm-enabledprometheusconverter-alertmanagerconfig" id="variables-vm-enabledprometheusconverter-alertmanagerconfig">#</a> |
 | VM_ENABLEDPROMETHEUSCONVERTER_SCRAPECONFIG: `true` <a href="#variables-vm-enabledprometheusconverter-scrapeconfig" id="variables-vm-enabledprometheusconverter-scrapeconfig">#</a> |
-| VM_FILTERCHILDLABELPREFIXES: `-` <a href="#variables-vm-filterchildlabelprefixes" id="variables-vm-filterchildlabelprefixes">#</a> |
-| VM_FILTERCHILDANNOTATIONPREFIXES: `-` <a href="#variables-vm-filterchildannotationprefixes" id="variables-vm-filterchildannotationprefixes">#</a> |
 | VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS: `false` <a href="#variables-vm-prometheusconverteraddargocdignoreannotations" id="variables-vm-prometheusconverteraddargocdignoreannotations">#</a><br>adds compare-options and sync-options for prometheus objects converted by operator. It helps to properly use converter with ArgoCD |
 | VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES: `false` <a href="#variables-vm-enabledprometheusconverterownerreferences" id="variables-vm-enabledprometheusconverterownerreferences">#</a> |
 | VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES: `-` <a href="#variables-vm-filterprometheusconverterlabelprefixes" id="variables-vm-filterprometheusconverterlabelprefixes">#</a><br>allows filtering for converted labels, labels with matched prefix will be ignored |

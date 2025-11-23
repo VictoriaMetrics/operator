@@ -217,20 +217,6 @@ func (cr *VLogs) ProbeNeedLiveness() bool {
 	return false
 }
 
-func (cr *VLogs) AnnotationsFiltered() map[string]string {
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.Annotations, annotationFilterPrefixes)
-	if cr.Spec.ManagedMetadata != nil {
-		if dst == nil {
-			dst = make(map[string]string)
-		}
-		for k, v := range cr.Spec.ManagedMetadata.Annotations {
-			dst[k] = v
-		}
-	}
-	return dst
-}
-
 func (cr *VLogs) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vlogs",
@@ -248,21 +234,22 @@ func (cr *VLogs) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr *VLogs) AllLabels() map[string]string {
-	selectorLabels := cr.SelectorLabels()
-	// fast path
-	if cr.Labels == nil && cr.Spec.ManagedMetadata == nil {
-		return selectorLabels
-	}
-	var result map[string]string
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.Labels, labelFilterPrefixes)
-	}
+// FinalLabels returns combination of selector and managed labels
+func (cr *VLogs) FinalLabels() map[string]string {
+	v := cr.SelectorLabels()
 	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+		v = labels.Merge(cr.Spec.ManagedMetadata.Labels, v)
 	}
-	return labels.Merge(result, selectorLabels)
+	return v
+}
+
+// FinalAnnotations returns annotations to be applied for created objects
+func (cr *VLogs) FinalAnnotations() map[string]string {
+	var v map[string]string
+	if cr.Spec.ManagedMetadata != nil {
+		v = labels.Merge(cr.Spec.ManagedMetadata.Annotations, v)
+	}
+	return v
 }
 
 func (cr *VLogs) PrefixedName() string {

@@ -17,7 +17,7 @@ import (
 )
 
 type crObject interface {
-	AnnotationsFiltered() map[string]string
+	FinalAnnotations() map[string]string
 	GetLabels() map[string]string
 	PrefixedName() string
 	GetServiceAccountName() string

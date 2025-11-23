@@ -1521,10 +1521,6 @@ spec:
           status:
             description: VMClusterStatus defines the observed state of VMCluster
             properties:
-              clusterStatus:
-                description: LegacyStatus is deprecated and will be removed at v0.52.0
-                  version
-                type: string
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
                   and "Degraded"'
@@ -2576,10 +2572,6 @@ spec:
                 type: integer
               reason:
                 description: Reason defines human readable error reason
-                type: string
-              singleStatus:
-                description: LegacyStatus is deprecated and will be removed at v0.52.0
-                  version
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout

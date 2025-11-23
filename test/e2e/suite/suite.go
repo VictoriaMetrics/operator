@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -47,6 +48,8 @@ func GetClient() client.Client {
 	err = promv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	build.AddDefaults(scheme.Scheme)
+	err = gwapiv1.Install(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
 	//+kubebuilder:scaffold:scheme
 
 	testEnv = &envtest.Environment{
@@ -97,6 +100,7 @@ func InitOperatorProcess() {
 		CRDDirectoryPaths: []string{
 			filepath.Join(root, "config", "crd", "overlay"),
 			filepath.Join(root, "hack", "crd", "prometheus"),
+			filepath.Join(root, "hack", "crd", "gatewayapi"),
 		},
 		UseExistingCluster:       ptr.To(true),
 		AttachControlPlaneOutput: true,

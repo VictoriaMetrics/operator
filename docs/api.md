@@ -1726,6 +1726,14 @@ Appears in: [VMAuthSpec](#vmauthspec)
 | tlsSecretName<a href="#embeddedingress-tlssecretname" id="embeddedingress-tlssecretname">#</a><br/>_string_ | _(Optional)_<br/>TlsSecretName defines secretname at the VMAuth namespace with cert and key<br />https://kubernetes.io/docs/concepts/services-networking/ingress/#tls |
 
 
+#### EmbeddedHTTPRoute
+
+
+| Field                                                                                                                                                   | Description                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **spec**<a href="#embeddedhttproute-spec" id="embeddedhttproute-spec">#</a><br/>*[HTTPRouteSpec](https://gateway-api.sigs.k8s.io/reference/spec/#httproutespec)* | *(Required)*<br/>The specification of the HTTPRoute resource. This field defines routing rules, matches, filters, backend references, and other HTTP-level behaviors.<br/>See: [https://gateway-api.sigs.k8s.io/api-types/httproute/](https://gateway-api.sigs.k8s.io/api-types/httproute/)                                                   |
+
+
 #### EmbeddedObjectMetadata
 
 

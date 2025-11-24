@@ -96,6 +96,9 @@ type VMAgentNameAndSpec struct {
 	// Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator.
 	// +optional
 	Spec *vmv1beta1.VMAgentSpec `json:"spec,omitempty"`
+	// Optional tenant ID. Only required with the OAuth authentication method.
+	// +optional
+	TenantID *string `json:"tenantID,omitempty"`
 }
 
 // +k8s:openapi-gen=true

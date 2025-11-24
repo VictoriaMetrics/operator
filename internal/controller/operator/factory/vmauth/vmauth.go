@@ -131,7 +131,12 @@ func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr, pre
 	}
 
 	if err := k8stools.GetCRD(ctx, rclient, "httproutes.gateway.networking.k8s.io"); err != nil {
-		return err
+		if k8serrors.IsNotFound(err) {
+			return fmt.Errorf(
+				"HTTPRoute CRD is not installed. Please install the Gateway API CRDs before using vmauth.spec.httpRoute",
+			)
+		}
+		return fmt.Errorf("failed to check HTTPRoute CRD: %w", err)
 	}
 
 	newHTTPRoute, err := build.HTTPRoute(cr, cr.Spec.Port, cr.Spec.HTTPRoute)

@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -140,7 +141,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Update or create the VMAgent
-	vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme)
+	vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme, vmClusters)
 	if err != nil {
 		return fmt.Errorf("failed to update or create VMAgent: %w", err)
 	}
@@ -363,7 +364,7 @@ func mergeMapsRecursive(baseMap, overrideMap map[string]interface{}) bool {
 	return modified
 }
 
-func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme) (*vmv1beta1.VMAgent, error) {
+func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmClusters []*vmv1beta1.VMCluster) (*vmv1beta1.VMAgent, error) {
 	// Get existing vmagent obj using Name and cr namespace
 	vmAgentExists := true
 	vmAgentNeedsUpdate := false
@@ -390,7 +391,22 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 		desiredVMAgentSpec = *cr.Spec.VMAgent.Spec.DeepCopy()
 	}
 
-	// TODO[vrutkovs]: Write remotewrite config here
+	tenantID := cr.Spec.VMAgent.TenantID
+	if tenantID == nil {
+		tenantID = ptr.To("0")
+	}
+
+	// Point VMAgent to all VMClusters
+	for i, vmCluster := range vmClusters {
+		if i > len(desiredVMAgentSpec.RemoteWrite)-1 {
+			// Append new item
+			desiredVMAgentSpec.RemoteWrite = append(desiredVMAgentSpec.RemoteWrite, vmv1beta1.VMAgentRemoteWriteSpec{
+				URL: remoteWriteURL(vmCluster, tenantID),
+			})
+		}
+		// Replace RemoteWrite URL
+		desiredVMAgentSpec.RemoteWrite[i].URL = remoteWriteURL(vmCluster, tenantID)
+	}
 
 	// Compare current spec with desired spec and apply if different
 	if !reflect.DeepEqual(vmAgentObj.Spec, desiredVMAgentSpec) {
@@ -418,6 +434,10 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 		}
 	}
 	return vmAgentObj, nil
+}
+
+func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
+	return fmt.Sprintf("http://%s.%s.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.Name, vmCluster.Namespace, *tenant)
 }
 
 func fetchVMUsers(ctx context.Context, rclient client.Client, namespace string, refs []corev1.LocalObjectReference) ([]*vmv1beta1.VMUser, error) {

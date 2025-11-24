@@ -22540,6 +22540,8 @@ spec:
                       required:
                         - remoteWrite
                       type: object
+                    tenantID:
+                      type: string
                   type: object
                 vmusers:
                   items:

@@ -80,6 +80,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 	}
 
+	// Validate VMAgent
+	if cr.Spec.VMAgent.Name == "" {
+		return fmt.Errorf("VMAgent.Name must be set")
+	}
+
 	// Setup deadlines and timeouts
 	vmclusterWaitReadyDeadline := defaultVMClusterWaitReadyDeadline.Duration
 	if cr.Spec.ReadyDeadline != nil {
@@ -88,12 +93,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	zoneUpdatePause := defaultZoneUpdatePause.Duration
 	if cr.Spec.ZoneUpdatePause != nil {
 		zoneUpdatePause = cr.Spec.ZoneUpdatePause.Duration
-	}
-
-	// Fetch global vmagent
-	vmAgentObj, err := fetchVMAgent(ctx, rclient, cr.Namespace, cr.Spec.VMAgent)
-	if err != nil {
-		return fmt.Errorf("failed to fetch global vmagent: %w", err)
 	}
 
 	// Fetch all vmusers
@@ -109,10 +108,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Throw error if VMCluster has any other owner - that means it is managed by one instance of VMDistributedCluster only
-	for i, vmCluster := range vmClusters {
-		err := ensureNoVMClusterOwners(cr, vmCluster, i, scheme)
+	for _, vmCluster := range vmClusters {
+		err := ensureNoVMClusterOwners(cr, vmCluster)
 		if err != nil {
-			return fmt.Errorf("failed to validate owner references for unreferenced vmcluster %s at index %d: %w", vmCluster.Name, i, err)
+			return fmt.Errorf("failed to validate owner references for unreferenced vmcluster %s: %w", vmCluster.Name, err)
 		}
 	}
 
@@ -140,6 +139,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("unexpected generations or zones config change detected: %v", diff)
 	}
 
+	// Update or create the VMAgent
+	vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme)
+	if err != nil {
+		return fmt.Errorf("failed to update or create VMAgent: %w", err)
+	}
+
 	// Disable VMClusters one by one if overrideSpec needs to be applied
 	httpClient := &http.Client{
 		Timeout: httpTimeout,
@@ -158,9 +163,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if err != nil {
 			return fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 		}
-		modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmClusterObj, i, scheme)
+		modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmClusterObj, scheme)
 		if err != nil {
-			return fmt.Errorf("failed to set owner reference for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+			return fmt.Errorf("failed to set owner reference for vmcluster %s: %w", vmClusterObj.Name, err)
 		}
 		if !needsToBeCreated && !modifiedSpec && !modifiedOwnerRef {
 			continue
@@ -358,6 +363,63 @@ func mergeMapsRecursive(baseMap, overrideMap map[string]interface{}) bool {
 	return modified
 }
 
+func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme) (*vmv1beta1.VMAgent, error) {
+	// Get existing vmagent obj using Name and cr namespace
+	vmAgentExists := true
+	vmAgentNeedsUpdate := false
+	vmAgentObj := &vmv1beta1.VMAgent{}
+	namespacedName := types.NamespacedName{Name: cr.Spec.VMAgent.Name, Namespace: cr.Namespace}
+	if err := rclient.Get(ctx, namespacedName, vmAgentObj); err != nil {
+		if k8serrors.IsNotFound(err) {
+			vmAgentExists = false
+			// If it doesn't exist, it needs to be created later. Initialize object for creation.
+			vmAgentObj = &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cr.Spec.VMAgent.Name,
+					Namespace: cr.Namespace,
+				},
+			}
+		} else {
+			return nil, fmt.Errorf("failed to get VMAgent %s/%s: %w", cr.Namespace, cr.Spec.VMAgent.Name, err)
+		}
+	}
+
+	// Prepare the desired spec for VMAgent.
+	desiredVMAgentSpec := vmv1beta1.VMAgentSpec{}
+	if cr.Spec.VMAgent.Spec != nil {
+		desiredVMAgentSpec = *cr.Spec.VMAgent.Spec.DeepCopy()
+	}
+
+	// TODO[vrutkovs]: Write remotewrite config here
+
+	// Compare current spec with desired spec and apply if different
+	if !reflect.DeepEqual(vmAgentObj.Spec, desiredVMAgentSpec) {
+		vmAgentObj.Spec = desiredVMAgentSpec
+		vmAgentNeedsUpdate = true
+	}
+
+	// Set owner to current CR using setOwnerRefIfNeeded
+	modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmAgentObj, scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set owner reference for VMAgent %s: %w", vmAgentObj.Name, err)
+	}
+	if modifiedOwnerRef {
+		vmAgentNeedsUpdate = true
+	}
+
+	// Create or update the vmagent object if spec has changed or it doesn't exist yet
+	if !vmAgentExists {
+		if err := rclient.Create(ctx, vmAgentObj); err != nil {
+			return nil, fmt.Errorf("failed to create VMAgent %s/%s: %w", vmAgentObj.Namespace, vmAgentObj.Name, err)
+		}
+	} else if vmAgentNeedsUpdate {
+		if err := rclient.Update(ctx, vmAgentObj); err != nil {
+			return nil, fmt.Errorf("failed to update VMAgent %s/%s: %w", vmAgentObj.Namespace, vmAgentObj.Name, err)
+		}
+	}
+	return vmAgentObj, nil
+}
+
 func fetchVMUsers(ctx context.Context, rclient client.Client, namespace string, refs []corev1.LocalObjectReference) ([]*vmv1beta1.VMUser, error) {
 	vmUsers := make([]*vmv1beta1.VMUser, len(refs))
 	for i, ref := range refs {
@@ -395,16 +457,27 @@ func setVMClusterInfo(vmCluster *vmv1beta1.VMCluster, vmUserObjs []*vmv1beta1.VM
 	return vmClusterInfo, nil
 }
 
-func fetchVMAgent(ctx context.Context, rclient client.Client, namespace string, ref corev1.LocalObjectReference) (*vmv1beta1.VMAgent, error) {
-	if ref.Name == "" {
-		return nil, errors.New("global vmagent name is not specified")
+func fetchVMAgent(ctx context.Context, rclient client.Client, namespace string, vmAgentNameAndSpec vmv1alpha1.VMAgentNameAndSpec) (*vmv1beta1.VMAgent, error) {
+	if vmAgentNameAndSpec.Spec != nil {
+		// Create VMAgent from spec
+		return &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmAgentNameAndSpec.Name,
+				Namespace: namespace,
+			},
+			Spec: *vmAgentNameAndSpec.Spec,
+		}, nil
+	} else if vmAgentNameAndSpec.Name != "" {
+		// Fetch existing VMAgent by name
+		vmAgentObj := &vmv1beta1.VMAgent{}
+		namespacedName := types.NamespacedName{Name: vmAgentNameAndSpec.Name, Namespace: namespace}
+		if err := rclient.Get(ctx, namespacedName, vmAgentObj); err != nil {
+			return nil, fmt.Errorf("failed to get VMAgent %s/%s: %w", namespace, vmAgentNameAndSpec.Name, err)
+		}
+		return vmAgentObj, nil
 	}
-	vmAgentObj := &vmv1beta1.VMAgent{}
-	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
-	if err := rclient.Get(ctx, namespacedName, vmAgentObj); err != nil {
-		return nil, fmt.Errorf("failed to get global VMAgent %s/%s: %w", namespace, ref.Name, err)
-	}
-	return vmAgentObj, nil
+	// No VMAgent defined
+	return nil, nil
 }
 
 func getGenerationsFromStatus(status *vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {
@@ -626,19 +699,19 @@ func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, 
 	return 0, fmt.Errorf("metric %s not found", VMAgentQueueMetricName)
 }
 
-func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster, index int, scheme *runtime.Scheme) (bool, error) {
+func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributedCluster, obj client.Object, scheme *runtime.Scheme) (bool, error) {
 	ref := metav1.OwnerReference{
 		APIVersion: cr.APIVersion,
 		Kind:       cr.Kind,
 		UID:        cr.GetUID(),
 		Name:       cr.GetName(),
 	}
-	if ok, err := controllerutil.HasOwnerReference([]metav1.OwnerReference{ref}, vmClusterObj, scheme); err != nil {
-		return false, fmt.Errorf("failed to check owner reference for vmcluster %s at index %d: %w", vmClusterObj.Name, index, err)
+	if ok, err := controllerutil.HasOwnerReference([]metav1.OwnerReference{ref}, obj, scheme); err != nil {
+		return false, fmt.Errorf("failed to check owner reference for %s %s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), err)
 	} else if !ok {
 		// Set owner reference for the VMCluster to the VMDistributedCluster
-		if err := controllerutil.SetOwnerReference(cr, vmClusterObj, scheme); err != nil {
-			return false, fmt.Errorf("failed to set owner reference for vmcluster %s at index %d: %w", vmClusterObj.Name, index, err)
+		if err := controllerutil.SetOwnerReference(cr, obj, scheme); err != nil {
+			return false, fmt.Errorf("failed to set owner reference for %s %s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), err)
 		}
 		return true, nil
 	}
@@ -646,14 +719,14 @@ func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1
 }
 
 // ensureNoVMClusterOwners validates that vmClusterObj has no owner references other than cr.
-func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster, index int, scheme *runtime.Scheme) error {
+func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster) error {
 	for _, owner := range vmClusterObj.GetOwnerReferences() {
 		isCROwner := owner.APIVersion == cr.APIVersion &&
 			owner.Kind == cr.Kind &&
 			owner.Name == cr.GetName()
 
 		if !isCROwner {
-			return fmt.Errorf("vmcluster %s at index %d has unexpected owner reference: %s/%s/%s", vmClusterObj.Name, index, owner.APIVersion, owner.Kind, owner.Name)
+			return fmt.Errorf("vmcluster %s has unexpected owner reference: %s/%s/%s", vmClusterObj.Name, owner.APIVersion, owner.Kind, owner.Name)
 		}
 	}
 	return nil

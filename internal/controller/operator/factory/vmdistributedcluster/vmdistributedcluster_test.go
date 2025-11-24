@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -24,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/VictoriaMetrics/operator/api/client/versioned/scheme"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
@@ -64,16 +64,21 @@ func (tc *trackingClient) Get(ctx context.Context, key client.ObjectKey, obj cli
 	defer tc.mu.Unlock()
 	tc.Actions = append(tc.Actions, action{Method: "Get", ObjectKey: key, Object: obj})
 
-	// Try to get from our internal map first
-	if storedObj, found := tc.objects[key]; found {
-		// Use scheme.Scheme.Convert to safely copy the stored object into the provided empty shell
-		if err := scheme.Scheme.Convert(storedObj, obj, nil); err != nil {
-			return err
+	// If we have a stored copy in the internal map, use it and avoid calling the
+	// underlying fake client (which may try to use managedFields/structured-merge-diff).
+	if stored, ok := tc.objects[key]; ok && stored != nil {
+		// Deep-copy stored into obj via JSON marshal/unmarshal to avoid aliasing.
+		b, err := json.Marshal(stored)
+		if err != nil {
+			return fmt.Errorf("failed to marshal stored object for Get: %w", err)
+		}
+		if err := json.Unmarshal(b, obj); err != nil {
+			return fmt.Errorf("failed to unmarshal stored object into target for Get: %w", err)
 		}
 		return nil
 	}
 
-	// Fallback to the underlying fake client
+	// Fallback to underlying client if not present in the internal map.
 	return tc.Client.Get(ctx, key, obj, opts...)
 }
 
@@ -81,23 +86,64 @@ func (tc *trackingClient) Update(ctx context.Context, obj client.Object, opts ..
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
 	tc.Actions = append(tc.Actions, action{Method: "Update", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
-	// Update the object in our internal map as well
-	objCopy := obj.DeepCopyObject().(client.Object)
-	tc.objects[client.ObjectKeyFromObject(objCopy)] = objCopy
-	return tc.Client.Update(ctx, obj, opts...)
+
+	// Deep copy the provided object and store it in the internal map. This avoids
+	// invoking the fake client's Update logic which may interact with managedFields
+	// and cause reflect panics if TypeMeta is not present or other edge cases.
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return fmt.Errorf("failed to marshal object for Update: %w", err)
+	}
+	stored := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(client.Object)
+	if err := json.Unmarshal(b, stored); err != nil {
+		return fmt.Errorf("failed to unmarshal object for Update: %w", err)
+	}
+	tc.objects[client.ObjectKeyFromObject(stored)] = stored
+	return nil
 }
 
 func (tc *trackingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
+
+	// Ensure TypeMeta is set for objects created in tests. The fake client can
+	// attempt to use structured-merge-diff/managed fields which expects TypeMeta
+	// to be populated. Tests often construct objects without TypeMeta, which
+	// leads to reflect panics inside the fake client. Populate TypeMeta for
+	// common types used in these tests to avoid that where possible.
+	switch o := obj.(type) {
+	case *vmv1beta1.VMAgent:
+		if o.TypeMeta.Kind == "" {
+			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMAgent"}
+		}
+	case *vmv1beta1.VMCluster:
+		if o.TypeMeta.Kind == "" {
+			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMCluster"}
+		}
+	case *vmv1beta1.VMUser:
+		if o.TypeMeta.Kind == "" {
+			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMUser"}
+		}
+	case *corev1.ConfigMap:
+		if o.TypeMeta.Kind == "" {
+			o.TypeMeta = metav1.TypeMeta{APIVersion: corev1.SchemeGroupVersion.String(), Kind: "ConfigMap"}
+		}
+	}
+
+	// Deep copy the object via JSON marshal/unmarshal and store in internal map.
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return fmt.Errorf("failed to marshal object for Create: %w", err)
+	}
+	stored := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(client.Object)
+	if err := json.Unmarshal(b, stored); err != nil {
+		return fmt.Errorf("failed to unmarshal object for Create: %w", err)
+	}
+	tc.objects[client.ObjectKeyFromObject(stored)] = stored
+
 	tc.Actions = append(tc.Actions, action{Method: "Create", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
-
-	// Store a deep copy of the created object in our internal map
-	// This makes it available for subsequent Get calls
-	objCopy := obj.DeepCopyObject().(client.Object)
-	tc.objects[client.ObjectKeyFromObject(objCopy)] = objCopy
-
-	return tc.Client.Create(ctx, obj, opts...)
+	// Do not call underlying client's Create to avoid managedFields/structured-merge interactions in tests.
+	return nil
 }
 
 func (tc *trackingClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
@@ -341,17 +387,6 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
 		assert.NoError(t, err) // No error as it's paused
 		assert.Empty(t, rclient.Actions)
-	})
-
-	t.Run("Missing VMAgent should return error", func(t *testing.T) {
-		data := beforeEach()
-		data.cr.Spec.VMAgent.Name = "non-existent"
-		rclient := data.trackingClient
-		ctx := context.TODO()
-
-		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to fetch global vmagent")
 	})
 
 	t.Run("Missing VMUser should return error", func(t *testing.T) {
@@ -755,88 +790,6 @@ func TestApplyOverrideSpec(t *testing.T) {
 		assert.Equal(t, "updated_value", merged.VMSelect.ExtraArgs["foo"])
 		assert.Equal(t, "baz", merged.VMSelect.ExtraArgs["bar"]) // Unchanged key remains
 	})
-}
-
-func TestGetReferencedVMCluster(t *testing.T) {
-	tests := []struct {
-		name               string
-		namespace          string
-		ref                *corev1.LocalObjectReference
-		existingVMClusters []*vmv1beta1.VMCluster
-		expectedErr        string
-		expectedVMCluster  *vmv1beta1.VMCluster
-	}{
-		{
-			name:      "Successfully get VMCluster",
-			namespace: "default",
-			ref:       &corev1.LocalObjectReference{Name: "my-vmcluster"},
-			existingVMClusters: []*vmv1beta1.VMCluster{
-				newVMCluster("my-vmcluster", "v1"),
-			},
-			expectedErr:       "",
-			expectedVMCluster: newVMCluster("my-vmcluster", "v1"),
-		},
-		{
-			name:      "VMCluster not found",
-			namespace: "default",
-			ref:       &corev1.LocalObjectReference{Name: "non-existent-vmcluster"},
-			existingVMClusters: []*vmv1beta1.VMCluster{
-				newVMCluster("my-vmcluster", "v1"),
-			},
-			expectedErr:       "referenced VMCluster default/non-existent-vmcluster not found: vmclusters.operator.victoriametrics.com \"non-existent-vmcluster\" not found",
-			expectedVMCluster: nil,
-		},
-		{
-			name:               "Client get error",
-			namespace:          "default",
-			ref:                &corev1.LocalObjectReference{Name: "error-vmcluster"},
-			existingVMClusters: []*vmv1beta1.VMCluster{},
-			expectedErr:        "failed to get referenced VMCluster default/error-vmcluster: some arbitrary error",
-			expectedVMCluster:  nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			td := beforeEach()
-			ctx := context.Background()
-
-			var rclient client.Client
-			if tt.name == "Client get error" {
-				rclient = &customErrorClient{
-					Client:      td.trackingClient,
-					customError: fmt.Errorf("some arbitrary error"),
-				}
-			} else {
-
-				td.trackingClient.mu.Lock()
-				td.trackingClient.objects = make(map[client.ObjectKey]client.Object)
-				for _, obj := range tt.existingVMClusters {
-					td.trackingClient.objects[client.ObjectKey{Name: obj.Name, Namespace: obj.Namespace}] = obj
-				}
-				td.trackingClient.mu.Unlock()
-
-				rclient = td.trackingClient
-			}
-
-			vmCluster, err := getReferencedVMCluster(ctx, rclient, tt.namespace, tt.ref)
-
-			if tt.expectedErr != "" {
-				if err == nil {
-					t.Fatalf("expected error %q, got nil", tt.expectedErr)
-				}
-				if err.Error() != tt.expectedErr {
-					t.Errorf("expected error %q, got %q", tt.expectedErr, err.Error())
-				}
-			} else if err != nil {
-				t.Fatalf("expected no error, got %v", err)
-			}
-
-			if !reflect.DeepEqual(vmCluster, tt.expectedVMCluster) {
-				t.Errorf("expected VMCluster %+v, got %+v", tt.expectedVMCluster, vmCluster)
-			}
-		})
-	}
 }
 
 func TestWaitForVMClusterReady(t *testing.T) {
@@ -1598,6 +1551,292 @@ func TestEnsureNoVMClusterOwners(t *testing.T) {
 						owner.Kind == ref.Kind &&
 						owner.Name == ref.Name
 					assert.True(t, isCROwner, "vmcluster %s should not have unexpected owner reference: %s/%s/%s", tt.args.vmClusterObj.Name, owner.APIVersion, owner.Kind, owner.Name)
+				}
+			}
+		})
+	}
+}
+
+func TestUpdateOrCreateVMAgent(t *testing.T) {
+	s := runtime.NewScheme()
+	_ = vmv1alpha1.AddToScheme(s)
+	_ = vmv1beta1.AddToScheme(s)
+	_ = corev1.AddToScheme(s)
+
+	// Prepare a CR and a VMCluster referenced by the CR
+	cr := newVMDistributedCluster(
+		"test-vmdc", "default",
+		[]vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}}},
+		vmv1alpha1.VMAgentNameAndSpec{
+			Name: "test-vmagent",
+		},
+		[]corev1.LocalObjectReference{})
+	vmCluster := newVMCluster("vmcluster-1", "default")
+
+	t.Run("creates VMAgent when missing", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().WithScheme(s).WithObjects(cr, vmCluster).Build()
+		tc := &trackingClient{Client: fakeClient, Actions: []action{}, objects: make(map[client.ObjectKey]client.Object)}
+		ctx := context.Background()
+
+		vmAgent, err := updateOrCreateVMAgent(ctx, tc, cr, s, []*vmv1beta1.VMCluster{vmCluster})
+		assert.NoError(t, err)
+		// The function returns the vmAgent object; ensure it's present in the API server
+		created := &vmv1beta1.VMAgent{}
+		err = tc.Get(ctx, types.NamespacedName{Name: "test-vmagent", Namespace: "default"}, created)
+		assert.NoError(t, err)
+		assert.Equal(t, "test-vmagent", created.Name)
+		// Ensure that at least Get then Create were called
+		if assert.GreaterOrEqual(t, len(tc.Actions), 2) {
+			assert.Equal(t, "Get", tc.Actions[0].Method)
+			assert.Equal(t, "Create", tc.Actions[1].Method)
+		}
+		// Ensure returned object has expected name/namespace
+		assert.Equal(t, "test-vmagent", vmAgent.Name)
+		assert.Equal(t, "default", vmAgent.Namespace)
+	})
+
+	t.Run("returns existing VMAgent when present and no update needed", func(t *testing.T) {
+		// existing VMAgent already has desired RemoteWrite for vmCluster and owner reference, so no update expected
+		tenant := "0"
+		existing := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-vmagent",
+				Namespace: "default",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: cr.APIVersion,
+						Kind:       cr.Kind,
+						Name:       cr.Name,
+						Controller: ptr.To(true),
+					},
+				},
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{
+						URL: remoteWriteURL(vmCluster, &tenant),
+					},
+				},
+			},
+		}
+		fakeClient := fake.NewClientBuilder().WithScheme(s).WithObjects(existing, cr, vmCluster).Build()
+		tc := &trackingClient{Client: fakeClient, Actions: []action{}, objects: make(map[client.ObjectKey]client.Object)}
+		ctx := context.Background()
+
+		vmAgent, err := updateOrCreateVMAgent(ctx, tc, cr, s, []*vmv1beta1.VMCluster{vmCluster})
+		assert.NoError(t, err)
+		assert.Equal(t, existing.Name, vmAgent.Name)
+
+		// Only Get should be performed (no Create/Update)
+		assert.Len(t, tc.Actions, 1)
+		assert.Equal(t, "Get", tc.Actions[0].Method)
+	})
+
+	t.Run("updates existing VMAgent when spec differs", func(t *testing.T) {
+		// Existing vmagent with empty spec
+		existing := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-vmagent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{},
+		}
+
+		// Create a CR that contains a VMAgent.Spec which should cause an update
+		vmAgentSpec := &vmv1beta1.VMAgentSpec{
+			PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
+				Labels: map[string]string{"foo": "bar"},
+			},
+		}
+		crWithSpec := newVMDistributedCluster(
+			"test-vmdc-update", "default",
+			[]vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}}},
+			vmv1alpha1.VMAgentNameAndSpec{
+				Name: "test-vmagent",
+				Spec: vmAgentSpec,
+			},
+			[]corev1.LocalObjectReference{},
+		)
+
+		fakeClient := fake.NewClientBuilder().WithScheme(s).WithObjects(existing, crWithSpec, vmCluster).Build()
+		tc := &trackingClient{Client: fakeClient, Actions: []action{}, objects: make(map[client.ObjectKey]client.Object)}
+		ctx := context.Background()
+
+		updatedAgent, err := updateOrCreateVMAgent(ctx, tc, crWithSpec, s, []*vmv1beta1.VMCluster{vmCluster})
+		assert.NoError(t, err)
+		assert.NotNil(t, updatedAgent)
+		assert.Equal(t, "test-vmagent", updatedAgent.Name)
+
+		// Ensure Update was called (Get then Update)
+		if assert.GreaterOrEqual(t, len(tc.Actions), 2) {
+			assert.Equal(t, "Get", tc.Actions[0].Method)
+			assert.Equal(t, "Update", tc.Actions[1].Method)
+		}
+
+		// Verify that the in-memory stored object reflects the updated spec (label present)
+		got := &vmv1beta1.VMAgent{}
+		err = tc.Get(ctx, types.NamespacedName{Name: "test-vmagent", Namespace: "default"}, got)
+		assert.NoError(t, err)
+		if assert.NotNil(t, got.Spec.PodMetadata) {
+			assert.Equal(t, "bar", got.Spec.PodMetadata.Labels["foo"])
+		}
+	})
+
+	t.Run("propagates Get error from client", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().WithScheme(s).WithObjects(cr, vmCluster).Build()
+		custom := &customErrorClient{Client: fakeClient, customError: fmt.Errorf("simulated error")}
+		ctx := context.Background()
+
+		_, err := updateOrCreateVMAgent(ctx, custom, cr, s, []*vmv1beta1.VMCluster{vmCluster})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get VMAgent")
+	})
+}
+
+func TestRemoteWriteURL(t *testing.T) {
+	vmCluster := newVMCluster("my-cluster", "default")
+
+	tenantID := ptr.To("123")
+	expectedURL := "http://my-cluster.default.cluster.local.:8480/insert/123/prometheus/api/v1/write"
+	if url := remoteWriteURL(vmCluster, tenantID); url != expectedURL {
+		t.Errorf("RemoteWriteURL() got = %v, want %v", url, expectedURL)
+	}
+
+	tenantID = ptr.To("my-tenant")
+	expectedURL = "http://my-cluster.default.cluster.local.:8480/insert/my-tenant/prometheus/api/v1/write"
+	if url := remoteWriteURL(vmCluster, tenantID); url != expectedURL {
+		t.Errorf("RemoteWriteURL() got = %v, want %v", url, expectedURL)
+	}
+}
+
+func TestSetOwnerRefIfNeeded(t *testing.T) {
+	s := runtime.NewScheme()
+	_ = vmv1alpha1.AddToScheme(s)
+	_ = vmv1beta1.AddToScheme(s)
+	_ = appsv1.AddToScheme(s)
+	_ = corev1.AddToScheme(s)
+
+	ownerCR := newVMDistributedCluster(
+		"owner-vmdc", "test-ns",
+		[]vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}},
+		vmv1alpha1.VMAgentNameAndSpec{
+			Name: "test-vmagent",
+		},
+		[]corev1.LocalObjectReference{})
+	ownerCR.UID = "owner-uid" // Ensure UID is set for owner reference
+
+	tests := []struct {
+		name          string
+		ownerCR       *vmv1alpha1.VMDistributedCluster
+		controlledObj client.Object
+		existingRef   bool // Indicates if the controlledObj already has the ownerCR as an ownerRef
+		expectChange  bool // Indicates if SetOwnerRefIfNeeded should return true (i.e., it added/updated the ref)
+		expectErr     bool
+	}{
+		{
+			name:    "Add owner ref to new object",
+			ownerCR: ownerCR,
+			controlledObj: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-agent",
+					Namespace: "test-ns",
+				},
+			},
+			existingRef:  false,
+			expectChange: true,
+			expectErr:    false,
+		},
+		{
+			name:    "Object already has owner ref",
+			ownerCR: ownerCR,
+			controlledObj: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-agent",
+					Namespace: "test-ns",
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: ownerCR.APIVersion,
+							Kind:       ownerCR.Kind,
+							Name:       ownerCR.Name,
+							UID:        ownerCR.UID,
+						},
+					},
+				},
+			},
+			existingRef:  true,
+			expectChange: false,
+			expectErr:    false,
+		},
+		{
+			name:    "Object has different owner ref, add new one",
+			ownerCR: ownerCR,
+			controlledObj: &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-agent",
+					Namespace: "test-ns",
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "some.api/v1",
+							Kind:       "SomeOtherCRD",
+							Name:       "other-owner",
+							UID:        "other-uid",
+						},
+					},
+				},
+			},
+			existingRef:  false, // It doesn't have *this* owner ref
+			expectChange: true,
+			expectErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			changed, err := setOwnerRefIfNeeded(tt.ownerCR, tt.controlledObj, s)
+
+			if (err != nil) != tt.expectErr {
+				t.Fatalf("SetOwnerRefIfNeeded() error = %v, wantErr %v", err, tt.expectErr)
+			}
+			if changed != tt.expectChange {
+				t.Errorf("SetOwnerRefIfNeeded() changed = %v, wantChange %v", changed, tt.expectChange)
+			}
+
+			if !tt.expectErr && tt.expectChange {
+				// Verify owner reference is correctly set
+				foundRef := false
+				expectedOwnerRef := metav1.OwnerReference{
+					APIVersion: tt.ownerCR.APIVersion,
+					Kind:       tt.ownerCR.Kind,
+					Name:       tt.ownerCR.Name,
+					UID:        tt.ownerCR.UID,
+				}
+				for _, ref := range tt.controlledObj.GetOwnerReferences() {
+					// Use DeepEqual for comparison of OwnerReference fields
+					if reflect.DeepEqual(ref, expectedOwnerRef) {
+						foundRef = true
+						break
+					}
+				}
+				if !foundRef {
+					t.Errorf("owner reference was not set on controlled object")
+				}
+			}
+			if !tt.expectErr && !tt.expectChange && tt.existingRef {
+				// Verify owner reference is still there and not duplicated
+				ownerRef := metav1.OwnerReference{
+					APIVersion: tt.ownerCR.APIVersion,
+					Kind:       tt.ownerCR.Kind,
+					Name:       tt.ownerCR.Name,
+					UID:        tt.ownerCR.UID,
+				}
+				count := 0
+				for _, ref := range tt.controlledObj.GetOwnerReferences() {
+					if reflect.DeepEqual(ref, ownerRef) {
+						count++
+					}
+				}
+				if count != 1 {
+					t.Errorf("expected exactly one owner reference, got %d", count)
 				}
 			}
 		})

@@ -171,12 +171,10 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
 				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
 				// update and wait ready
-				Eventually(func() error {
-					var toUpdate vmv1beta1.VMAlertmanager
-					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-					modify(&toUpdate)
-					return k8sClient.Update(ctx, &toUpdate)
-				}, eventualExpandingTimeout).Should(Succeed())
+				var toUpdate vmv1beta1.VMAlertmanager
+				Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+				modify(&toUpdate)
+				Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 				Eventually(func() error {
 					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
 				}, eventualExpandingTimeout).Should(Succeed())

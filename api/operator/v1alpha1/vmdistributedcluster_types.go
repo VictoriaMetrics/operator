@@ -39,8 +39,8 @@ type VMDistributedClusterSpec struct {
 	// ZoneUpdatePause is the time the operator should wait between zone updates to ensure a smooth transition.
 	// +optional
 	ZoneUpdatePause *metav1.Duration `json:"zoneUpdatePause,omitempty"`
-	// VMAgent points to the VMAgent object for collecting metrics from multiple VMClusters
-	VMAgent corev1.LocalObjectReference `json:"vmagent,omitempty"`
+	// VMAgent is the name and spec of the VM agent to balance traffic between VMClusters.
+	VMAgent VMAgentNameAndSpec `json:"vmagent,omitempty"`
 	// VMUsers is a list of VMUser objects controlling traffic distribution between multiple VMClusters
 	VMUsers []corev1.LocalObjectReference `json:"vmusers,omitempty"`
 	// Zones is a list of VMCluster instances to update. Each VMCluster in the list represents a "zone" within the distributed cluster.
@@ -84,6 +84,18 @@ type VMClusterRefOrSpec struct {
 	// This field is ignored if `Ref` is specified.
 	// +optional
 	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// VMAgentNameAndSpec is a name and a specification of a new VMAgent.
+type VMAgentNameAndSpec struct {
+	// Name specifies the static name to be used for the VMAgent when Spec is provided.
+	// +optional
+	Name string `json:"name,omitempty"`
+	// Spec defines the desired state of a new VMCluster.
+	// Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator.
+	// +optional
+	Spec *vmv1beta1.VMAgentSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true

@@ -37,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -373,7 +372,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	if err := rclient.Get(ctx, namespacedName, vmAgentObj); err != nil {
 		if k8serrors.IsNotFound(err) {
 			vmAgentExists = false
-			// If it doesn't exist, it needs to be created later. Initialize object for creation.
+			// If it doesn't exist, initialize object for creation.
 			vmAgentObj = &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      cr.Spec.VMAgent.Name,
@@ -386,26 +385,24 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 
 	// Prepare the desired spec for VMAgent.
-	desiredVMAgentSpec := vmv1beta1.VMAgentSpec{}
+	var desiredVMAgentSpec vmv1beta1.VMAgentSpec
 	if cr.Spec.VMAgent.Spec != nil {
 		desiredVMAgentSpec = *cr.Spec.VMAgent.Spec.DeepCopy()
 	}
 
-	tenantID := cr.Spec.VMAgent.TenantID
-	if tenantID == nil {
-		tenantID = ptr.To("0")
+	// Determine tenant id (default to \"0\" when not provided)
+	tenantID := "0"
+	if cr.Spec.VMAgent.TenantID != nil && *cr.Spec.VMAgent.TenantID != "" {
+		tenantID = *cr.Spec.VMAgent.TenantID
 	}
+	tenantPtr := &tenantID
 
-	// Point VMAgent to all VMClusters
-	for i, vmCluster := range vmClusters {
-		if i > len(desiredVMAgentSpec.RemoteWrite)-1 {
-			// Append new item
-			desiredVMAgentSpec.RemoteWrite = append(desiredVMAgentSpec.RemoteWrite, vmv1beta1.VMAgentRemoteWriteSpec{
-				URL: remoteWriteURL(vmCluster, tenantID),
-			})
+	// Point VMAgent to all VMClusters by constructing RemoteWrite entries
+	if len(vmClusters) > 0 {
+		desiredVMAgentSpec.RemoteWrite = make([]vmv1beta1.VMAgentRemoteWriteSpec, len(vmClusters))
+		for i, vmCluster := range vmClusters {
+			desiredVMAgentSpec.RemoteWrite[i].URL = remoteWriteURL(vmCluster, tenantPtr)
 		}
-		// Replace RemoteWrite URL
-		desiredVMAgentSpec.RemoteWrite[i].URL = remoteWriteURL(vmCluster, tenantID)
 	}
 
 	// Compare current spec with desired spec and apply if different
@@ -414,13 +411,13 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 		vmAgentNeedsUpdate = true
 	}
 
-	// Set owner to current CR using setOwnerRefIfNeeded
-	modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmAgentObj, scheme)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set owner reference for VMAgent %s: %w", vmAgentObj.Name, err)
-	}
-	if modifiedOwnerRef {
-		vmAgentNeedsUpdate = true
+	// Ensure owner reference is set to current CR
+	if scheme != nil {
+		if modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmAgentObj, scheme); err != nil {
+			return nil, fmt.Errorf("failed to set owner reference for VMAgent %s: %w", vmAgentObj.Name, err)
+		} else if modifiedOwnerRef {
+			vmAgentNeedsUpdate = true
+		}
 	}
 
 	// Create or update the vmagent object if spec has changed or it doesn't exist yet
@@ -475,29 +472,6 @@ func setVMClusterInfo(vmCluster *vmv1beta1.VMCluster, vmUserObjs []*vmv1beta1.VM
 	}
 	vmClusterInfo.TargetRef = *ref
 	return vmClusterInfo, nil
-}
-
-func fetchVMAgent(ctx context.Context, rclient client.Client, namespace string, vmAgentNameAndSpec vmv1alpha1.VMAgentNameAndSpec) (*vmv1beta1.VMAgent, error) {
-	if vmAgentNameAndSpec.Spec != nil {
-		// Create VMAgent from spec
-		return &vmv1beta1.VMAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmAgentNameAndSpec.Name,
-				Namespace: namespace,
-			},
-			Spec: *vmAgentNameAndSpec.Spec,
-		}, nil
-	} else if vmAgentNameAndSpec.Name != "" {
-		// Fetch existing VMAgent by name
-		vmAgentObj := &vmv1beta1.VMAgent{}
-		namespacedName := types.NamespacedName{Name: vmAgentNameAndSpec.Name, Namespace: namespace}
-		if err := rclient.Get(ctx, namespacedName, vmAgentObj); err != nil {
-			return nil, fmt.Errorf("failed to get VMAgent %s/%s: %w", namespace, vmAgentNameAndSpec.Name, err)
-		}
-		return vmAgentObj, nil
-	}
-	// No VMAgent defined
-	return nil, nil
 }
 
 func getGenerationsFromStatus(status *vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {
@@ -720,13 +694,7 @@ func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, 
 }
 
 func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributedCluster, obj client.Object, scheme *runtime.Scheme) (bool, error) {
-	ref := metav1.OwnerReference{
-		APIVersion: cr.APIVersion,
-		Kind:       cr.Kind,
-		UID:        cr.GetUID(),
-		Name:       cr.GetName(),
-	}
-	if ok, err := controllerutil.HasOwnerReference([]metav1.OwnerReference{ref}, obj, scheme); err != nil {
+	if ok, err := controllerutil.HasOwnerReference(obj.GetOwnerReferences(), cr, scheme); err != nil {
 		return false, fmt.Errorf("failed to check owner reference for %s %s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), err)
 	} else if !ok {
 		// Set owner reference for the VMCluster to the VMDistributedCluster

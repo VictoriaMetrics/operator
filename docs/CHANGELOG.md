@@ -21,6 +21,7 @@ aliases:
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): support incident.io receiver. See [#1637](https://github.com/VictoriaMetrics/operator/issues/1637).
 
 * BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): check `mute_time_intervals` in subroutes: See [#1618](https://github.com/VictoriaMetrics/operator/issues/1618).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove incorrect key argument in structured log for when the actual PVC storage size is larger than the currently configured size and properly indicate which is the new and which is the existing size: See PR [#1636](https://github.com/VictoriaMetrics/operator/pull/1636) for details.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.5.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.5.0) version.
 

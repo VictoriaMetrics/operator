@@ -260,9 +260,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:          vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
@@ -329,10 +327,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						},
 					}},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-						{Name: validVMUserNames[1].Name},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -421,14 +416,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						},
 					}},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{
-							Name: validVMUserNames[0].Name,
-						},
-						{
-							Name: validVMUserNames[1].Name,
-						},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -536,10 +524,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-						{Name: validVMUserNames[1].Name},
-					},
+					VMUser:          vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{
 						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 							{Ref: &corev1.LocalObjectReference{
@@ -661,9 +646,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: vmUserName.Name},
-					},
+					VMUser:          vmv1alpha1.VMUserNameAndSpec{Name: vmUserName.Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
 					},
@@ -834,14 +817,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						},
 					}},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: vmAgents[0].Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{
-							Name: validVMUserNames[0].Name,
-						},
-						{
-							Name: validVMUserNames[1].Name,
-						},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
@@ -881,9 +857,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:          vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Name: "inline-cluster-1",
@@ -1051,9 +1025,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:          vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{Name: initialCluster.Name},
@@ -1108,7 +1080,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers:         []corev1.LocalObjectReference{},
+					VMUser:          vmv1alpha1.VMUserNameAndSpec{},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{
 							Name: "vmcluster-1",
@@ -1138,10 +1110,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: "missing-vmuser"},
-					},
-					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{}},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: "missing-vmuser"},
+					Zones:   vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with invalid VMCluster", &vmv1alpha1.VMDistributedCluster{
@@ -1151,10 +1121,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-						{Name: validVMUserNames[1].Name},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
@@ -1171,9 +1138,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Spec: &vmv1beta1.VMClusterSpec{
@@ -1190,9 +1155,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{},
 					}},
@@ -1205,9 +1168,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
@@ -1227,9 +1188,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: "non-existent-vmagent"},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
 					}},
@@ -1257,9 +1216,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: "non-existent-vmuser"},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: "non-existent-vmuser"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
 					}},
@@ -1287,9 +1244,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: "non-existent-vmcluster"}},
 					}},
@@ -1302,9 +1257,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"},
@@ -1337,9 +1290,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMUsers: []corev1.LocalObjectReference{
-						{Name: validVMUserNames[0].Name},
-					},
+					VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Name: "existing-vmcluster-for-failure", // This VMCluster name will conflict with the one created below
@@ -1400,10 +1351,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			},
 			Spec: vmv1alpha1.VMDistributedClusterSpec{
 				VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-				VMUsers: []corev1.LocalObjectReference{
-					{Name: validVMUserNames[0].Name},
-					{Name: validVMUserNames[1].Name},
-				},
+				VMUser:  vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 				Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 					{Ref: &corev1.LocalObjectReference{
 						Name: vmCluster.Name,

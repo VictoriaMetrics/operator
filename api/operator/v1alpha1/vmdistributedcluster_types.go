@@ -41,8 +41,9 @@ type VMDistributedClusterSpec struct {
 	ZoneUpdatePause *metav1.Duration `json:"zoneUpdatePause,omitempty"`
 	// VMAgent is the name and spec of the VM agent to balance traffic between VMClusters.
 	VMAgent VMAgentNameAndSpec `json:"vmagent,omitempty"`
-	// VMUsers is a list of VMUser objects controlling traffic distribution between multiple VMClusters
-	VMUsers []corev1.LocalObjectReference `json:"vmusers,omitempty"`
+	// VMUser is a VMUser definition (name + optional spec) controlling traffic distribution between VMClusters.
+	// Use an inline spec to define a VMUser object in-place or provide a name to reference an existing VMUser.
+	VMUser VMUserNameAndSpec `json:"vmuser,omitempty"`
 	// Zones is a list of VMCluster instances to update. Each VMCluster in the list represents a "zone" within the distributed cluster.
 	Zones ZoneSpec `json:"zones,omitempty"`
 	// ClusterVersion defines expected image tag for all components.
@@ -99,6 +100,18 @@ type VMAgentNameAndSpec struct {
 	// Optional tenant ID. Only required with the OAuth authentication method.
 	// +optional
 	TenantID *string `json:"tenantID,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// VMUserNameAndSpec is a name and an optional specification of a VMUser.
+// This allows inline definition of VMUser objects (similar to VMAgentNameAndSpec).
+type VMUserNameAndSpec struct {
+	// Name specifies the static name to be used for the VMUser when Spec is provided.
+	// +optional
+	Name string `json:"name,omitempty"`
+	// Spec defines the desired state of a new VMUser.
+	// +optional
+	Spec *vmv1beta1.VMUserSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true

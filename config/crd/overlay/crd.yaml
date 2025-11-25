@@ -22543,15 +22543,299 @@ spec:
                     tenantID:
                       type: string
                   type: object
-                vmusers:
-                  items:
-                    properties:
-                      name:
-                        default: ""
-                        type: string
-                    type: object
-                    x-kubernetes-map-type: atomic
-                  type: array
+                vmuser:
+                  properties:
+                    name:
+                      type: string
+                    spec:
+                      properties:
+                        bearerToken:
+                          type: string
+                        default_url:
+                          items:
+                            type: string
+                          type: array
+                        disable_secret_creation:
+                          type: boolean
+                        discover_backend_ips:
+                          type: boolean
+                        drop_src_path_prefix_parts:
+                          type: integer
+                        dump_request_on_errors:
+                          type: boolean
+                        generatePassword:
+                          type: boolean
+                        headers:
+                          items:
+                            type: string
+                          type: array
+                        ip_filters:
+                          properties:
+                            allow_list:
+                              items:
+                                type: string
+                              type: array
+                            deny_list:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        load_balancing_policy:
+                          enum:
+                            - least_loaded
+                            - first_available
+                          type: string
+                        max_concurrent_requests:
+                          type: integer
+                        metric_labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                        password:
+                          type: string
+                        passwordRef:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                            - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        response_headers:
+                          items:
+                            type: string
+                          type: array
+                        retry_status_codes:
+                          items:
+                            type: integer
+                          type: array
+                        targetRefs:
+                          items:
+                            properties:
+                              crd:
+                                properties:
+                                  kind:
+                                    enum:
+                                      - VMAgent
+                                      - VMAlert
+                                      - VMSingle
+                                      - VLogs
+                                      - VMAlertManager
+                                      - VMAlertmanager
+                                      - VMCluster/vmselect
+                                      - VMCluster/vmstorage
+                                      - VMCluster/vminsert
+                                      - VLSingle
+                                      - VLCluster/vlinsert
+                                      - VLCluster/vlselect
+                                      - VLCluster/vlstorage
+                                      - VLAgent
+                                      - VTCluster/vtinsert
+                                      - VTCluster/vtselect
+                                      - VTCluster/vtstorage
+                                      - VTSingle
+                                    type: string
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                required:
+                                  - kind
+                                  - name
+                                  - namespace
+                                type: object
+                              discover_backend_ips:
+                                type: boolean
+                              drop_src_path_prefix_parts:
+                                type: integer
+                              headers:
+                                items:
+                                  type: string
+                                type: array
+                              hosts:
+                                items:
+                                  type: string
+                                type: array
+                              load_balancing_policy:
+                                enum:
+                                  - least_loaded
+                                  - first_available
+                                type: string
+                              paths:
+                                items:
+                                  type: string
+                                type: array
+                              response_headers:
+                                items:
+                                  type: string
+                                type: array
+                              retry_status_codes:
+                                items:
+                                  type: integer
+                                type: array
+                              src_headers:
+                                items:
+                                  type: string
+                                type: array
+                              src_query_args:
+                                items:
+                                  type: string
+                                type: array
+                              static:
+                                properties:
+                                  url:
+                                    type: string
+                                  urls:
+                                    items:
+                                      type: string
+                                    type: array
+                                type: object
+                              target_path_suffix:
+                                type: string
+                              targetRefBasicAuth:
+                                properties:
+                                  password:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        default: ""
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                      - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  username:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        default: ""
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                      - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                required:
+                                  - password
+                                  - username
+                                type: object
+                            type: object
+                          type: array
+                        tlsConfig:
+                          properties:
+                            ca:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                    - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                    - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            caFile:
+                              type: string
+                            cert:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                    - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                    - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            certFile:
+                              type: string
+                            insecureSkipVerify:
+                              type: boolean
+                            keyFile:
+                              type: string
+                            keySecret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            serverName:
+                              type: string
+                          type: object
+                        tokenRef:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                            - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        username:
+                          type: string
+                      required:
+                        - targetRefs
+                      type: object
+                  type: object
                 zoneUpdatePause:
                   type: string
                 zones:

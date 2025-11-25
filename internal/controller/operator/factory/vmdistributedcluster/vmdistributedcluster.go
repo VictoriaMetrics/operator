@@ -95,10 +95,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		zoneUpdatePause = cr.Spec.ZoneUpdatePause.Duration
 	}
 
-	// Fetch all vmusers
-	vmUserObjs, err := fetchVMUsers(ctx, rclient, cr.Namespace, cr.Spec.VMUsers)
+	// Update or create vmuser (single entry in the spec)
+	vmUserObjs, err := updateOrCreateVMuser(ctx, rclient, cr, cr.Namespace, cr.Spec.VMUser, scheme)
 	if err != nil {
-		return fmt.Errorf("failed to fetch vmusers: %w", err)
+		return fmt.Errorf("failed to update or create vmuser: %w", err)
 	}
 
 	// Fetch VMCLuster statuses by name
@@ -437,20 +437,71 @@ func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
 	return fmt.Sprintf("http://%s.%s.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.Name, vmCluster.Namespace, *tenant)
 }
 
-func fetchVMUsers(ctx context.Context, rclient client.Client, namespace string, refs []corev1.LocalObjectReference) ([]*vmv1beta1.VMUser, error) {
-	vmUsers := make([]*vmv1beta1.VMUser, len(refs))
-	for i, ref := range refs {
-		if ref.Name == "" {
-			return nil, errors.New("vmuser name is not specified")
-		}
+func updateOrCreateVMuser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, namespace string, ref vmv1alpha1.VMUserNameAndSpec, scheme *runtime.Scheme) ([]*vmv1beta1.VMUser, error) {
+	// Name must be provided either for fetching an existing object or for creating an inline one.
+	if ref.Name == "" {
+		return nil, errors.New("vmuser name is not specified")
+	}
+
+	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+	// If Spec is not provided inline, simply fetch the named VMUser from the API server.
+	if ref.Spec == nil {
 		vmUserObj := &vmv1beta1.VMUser{}
-		namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
 		if err := rclient.Get(ctx, namespacedName, vmUserObj); err != nil {
 			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, ref.Name, err)
 		}
-		vmUsers[i] = vmUserObj
+		return []*vmv1beta1.VMUser{vmUserObj}, nil
 	}
-	return vmUsers, nil
+
+	// Spec is provided inline: ensure the VMUser exists and matches the provided spec.
+	vmUserObj := &vmv1beta1.VMUser{}
+	vmUserExists := true
+	if err := rclient.Get(ctx, namespacedName, vmUserObj); err != nil {
+		if k8serrors.IsNotFound(err) {
+			vmUserExists = false
+			// Initialize object for creation with the provided inline spec.
+			vmUserObj = &vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      ref.Name,
+					Namespace: namespace,
+				},
+				Spec: *ref.Spec.DeepCopy(),
+			}
+		} else {
+			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, ref.Name, err)
+		}
+	}
+
+	// Determine if an update is needed (spec or ownerRef changes).
+	vmUserNeedsUpdate := false
+	if vmUserExists {
+		if !reflect.DeepEqual(vmUserObj.Spec, *ref.Spec) {
+			vmUserObj.Spec = *ref.Spec.DeepCopy()
+			vmUserNeedsUpdate = true
+		}
+	}
+
+	// Ensure owner reference is set to current CR if scheme provided.
+	if scheme != nil {
+		if modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmUserObj, scheme); err != nil {
+			return nil, fmt.Errorf("failed to set owner reference for VMUser %s: %w", vmUserObj.Name, err)
+		} else if modifiedOwnerRef {
+			vmUserNeedsUpdate = true
+		}
+	}
+
+	// Create or update the VMUser resource as needed.
+	if !vmUserExists {
+		if err := rclient.Create(ctx, vmUserObj); err != nil {
+			return nil, fmt.Errorf("failed to create VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
+		}
+	} else if vmUserNeedsUpdate {
+		if err := rclient.Update(ctx, vmUserObj); err != nil {
+			return nil, fmt.Errorf("failed to update VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
+		}
+	}
+
+	return []*vmv1beta1.VMUser{vmUserObj}, nil
 }
 
 func setVMClusterInfo(vmCluster *vmv1beta1.VMCluster, vmUserObjs []*vmv1beta1.VMUser, currentCRStatus *vmv1alpha1.VMDistributedClusterStatus) (vmv1alpha1.VMClusterStatus, error) {

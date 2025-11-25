@@ -41,9 +41,13 @@ type VMDistributedClusterSpec struct {
 	ZoneUpdatePause *metav1.Duration `json:"zoneUpdatePause,omitempty"`
 	// VMAgent is the name and spec of the VM agent to balance traffic between VMClusters.
 	VMAgent VMAgentNameAndSpec `json:"vmagent,omitempty"`
-	// VMUser is a VMUser definition (name + optional spec) controlling traffic distribution between VMClusters.
+	// VMAuthUser is a VMUser definition (name + optional spec) controlling traffic distribution between VMClusters.
+	// This VMUser object will be selected by the VMAuth proxy.
 	// Use an inline spec to define a VMUser object in-place or provide a name to reference an existing VMUser.
-	VMUser VMUserNameAndSpec `json:"vmuser,omitempty"`
+	VMAuthUser VMUserNameAndSpec `json:"vmauthUser,omitempty"`
+	// VMAuth is a VMAuth definition (name + optional spec) acting as a proxy for the VMAuthUser.
+	// Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth.
+	VMAuth VMAuthNameAndSpec `json:"vmauth,omitempty"`
 	// Zones is a list of VMCluster instances to update. Each VMCluster in the list represents a "zone" within the distributed cluster.
 	Zones ZoneSpec `json:"zones,omitempty"`
 	// ClusterVersion defines expected image tag for all components.
@@ -93,7 +97,7 @@ type VMAgentNameAndSpec struct {
 	// Name specifies the static name to be used for the VMAgent when Spec is provided.
 	// +optional
 	Name string `json:"name,omitempty"`
-	// Spec defines the desired state of a new VMCluster.
+	// Spec defines the desired state of a new VMAgent.
 	// Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator.
 	// +optional
 	Spec *vmv1beta1.VMAgentSpec `json:"spec,omitempty"`
@@ -104,7 +108,6 @@ type VMAgentNameAndSpec struct {
 
 // +k8s:openapi-gen=true
 // VMUserNameAndSpec is a name and an optional specification of a VMUser.
-// This allows inline definition of VMUser objects (similar to VMAgentNameAndSpec).
 type VMUserNameAndSpec struct {
 	// Name specifies the static name to be used for the VMUser when Spec is provided.
 	// +optional
@@ -112,6 +115,17 @@ type VMUserNameAndSpec struct {
 	// Spec defines the desired state of a new VMUser.
 	// +optional
 	Spec *vmv1beta1.VMUserSpec `json:"spec,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// VMAuthNameAndSpec defines a VMAuth by name or inline spec
+type VMAuthNameAndSpec struct {
+	// Name specifies the static name to be used for the VMAuthNameAndSpec when Spec is provided.
+	// +optional
+	Name string `json:"name,omitempty"`
+	// Spec defines the desired state of a new VMAuth.
+	// +optional
+	Spec *vmv1beta1.VMAuthSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true

@@ -4,7 +4,7 @@ go 1.25.3
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/VictoriaMetrics/VictoriaMetrics v1.128.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.129.1
 	github.com/VictoriaMetrics/metrics v1.40.2
 	github.com/VictoriaMetrics/metricsql v0.84.8
 	github.com/VictoriaMetrics/operator/api v0.51.3

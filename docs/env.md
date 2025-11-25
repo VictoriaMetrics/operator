@@ -114,7 +114,7 @@
 | VM_VMALERTMANAGER_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertmanager-configreloadercpu" id="variables-vm-vmalertmanager-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
 | VM_VMALERTMANAGER_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertmanager-configreloadermemory" id="variables-vm-vmalertmanager-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE: `prom/alertmanager` <a href="#variables-vm-vmalertmanager-alertmanagerdefaultbaseimage" id="variables-vm-vmalertmanager-alertmanagerdefaultbaseimage">#</a> |
-| VM_VMALERTMANAGER_ALERTMANAGERVERSION: `v0.28.1` <a href="#variables-vm-vmalertmanager-alertmanagerversion" id="variables-vm-vmalertmanager-alertmanagerversion">#</a> |
+| VM_VMALERTMANAGER_ALERTMANAGERVERSION: `v0.29.0` <a href="#variables-vm-vmalertmanager-alertmanagerversion" id="variables-vm-vmalertmanager-alertmanagerversion">#</a> |
 | VM_VMALERTMANAGER_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmalertmanager-usedefaultresources" id="variables-vm-vmalertmanager-usedefaultresources">#</a> |
 | VM_VMALERTMANAGER_RESOURCE_LIMIT_MEM: `256Mi` <a href="#variables-vm-vmalertmanager-resource-limit-mem" id="variables-vm-vmalertmanager-resource-limit-mem">#</a> |
 | VM_VMALERTMANAGER_RESOURCE_LIMIT_CPU: `100m` <a href="#variables-vm-vmalertmanager-resource-limit-cpu" id="variables-vm-vmalertmanager-resource-limit-cpu">#</a> |

@@ -12859,6 +12859,60 @@ spec:
                             type: string
                         type: object
                       type: array
+                    incidentio_configs:
+                      items:
+                        description: |-
+                          IncidentIOConfig configures notifications via incident.io.
+                          https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
+                          available from v0.66.0 operator version
+                          and v0.29.0 alertmanager version
+                        properties:
+                          alert_source_token:
+                            description: AlertSourceToken is used to authenticate
+                              with incident.io
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must
+                                  be a valid secret key.
+                                type: string
+                              name:
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                              optional:
+                                description: Specify whether the Secret or its key
+                                  must be defined
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          http_config:
+                            x-kubernetes-preserve-unknown-fields: true
+                          max_alerts:
+                            description: MaxAlerts defines maximum number of alerts
+                              to be sent per incident.io message.
+                            type: integer
+                          send_resolved:
+                            description: SendResolved controls notify about resolved
+                              alerts.
+                            type: boolean
+                          timeout:
+                            description: Timeout is the maximum time allowed to invoke
+                              incident.io
+                            type: string
+                          url:
+                            description: |-
+                              The URL to send the incident.io alert. This would typically be provided by the
+                              incident.io team when setting up an alert source.
+                            type: string
+                        type: object
+                      type: array
                     jira_configs:
                       items:
                         description: |-

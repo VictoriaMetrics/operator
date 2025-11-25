@@ -191,12 +191,10 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							step.setup(initCR)
 						}
 						// perform update
-						Eventually(func() error {
-							var toUpdate vmv1beta1.VMAuth
-							Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-							step.modify(&toUpdate)
-							return k8sClient.Update(ctx, &toUpdate)
-						}, eventualExpandingTimeout).Should(Succeed())
+						var toUpdate vmv1beta1.VMAuth
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						step.modify(&toUpdate)
+						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, nsn)
 						}, eventualDeploymentAppReadyTimeout).Should(Succeed())

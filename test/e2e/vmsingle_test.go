@@ -360,11 +360,12 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							step.setup(initCR)
 						}
 						// perform update
+						var toUpdate vmv1beta1.VMSingle
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						step.modify(&toUpdate)
+						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
 						Eventually(func() error {
-							var toUpdate vmv1beta1.VMSingle
-							Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
-							step.modify(&toUpdate)
-							return k8sClient.Update(ctx, &toUpdate)
+							return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
 						}, eventualExpandingTimeout).Should(Succeed())
 						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)

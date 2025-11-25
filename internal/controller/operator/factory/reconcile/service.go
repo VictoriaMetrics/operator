@@ -7,7 +7,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -146,40 +145,5 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		return err
 	}
 
-	return nil
-}
-
-// AdditionalServices reconcile AdditionalServices
-// by conditionally removing service from previous state
-func AdditionalServices(ctx context.Context, rclient client.Client,
-	defaultName, namespace string,
-	prevSvc, currSvc *vmv1beta1.AdditionalServiceSpec, owner *metav1.OwnerReference) error {
-
-	if currSvc == nil &&
-		prevSvc != nil &&
-		!prevSvc.UseAsDefault {
-		// services was removed from previous state
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient,
-			&corev1.Service{ObjectMeta: metav1.ObjectMeta{
-				Namespace: namespace,
-				Name:      prevSvc.NameOrDefault(defaultName)}}, owner); err != nil {
-			return fmt.Errorf("cannot remove additional service: %w", err)
-		}
-	}
-
-	if currSvc != nil &&
-		prevSvc != nil {
-		// service name was changed
-		// or service was marked as default
-		if prevSvc.NameOrDefault(defaultName) != currSvc.NameOrDefault(defaultName) ||
-			(!prevSvc.UseAsDefault && currSvc.UseAsDefault) {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient,
-				&corev1.Service{ObjectMeta: metav1.ObjectMeta{
-					Namespace: namespace,
-					Name:      prevSvc.NameOrDefault(defaultName)}}, owner); err != nil {
-				return fmt.Errorf("cannot remove additional service: %w", err)
-			}
-		}
-	}
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,6 +47,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1.VMAnomalyList{},
 		&vmv1.VLAgentList{},
 		&gwapiv1.HTTPRouteList{},
+		&apiextensionsv1.CustomResourceDefinitionList{},
 	)
 	s.AddKnownTypes(vmv1beta1.GroupVersion,
 		&vmv1beta1.VMPodScrape{},
@@ -72,6 +74,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1.VMAnomaly{},
 		&vmv1.VLAgent{},
 		&gwapiv1.HTTPRoute{},
+		&apiextensionsv1.CustomResourceDefinition{},
 	)
 	return s
 }

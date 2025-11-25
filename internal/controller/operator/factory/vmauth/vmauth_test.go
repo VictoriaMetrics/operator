@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -91,6 +92,11 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 			predefinedObjects: []runtime.Object{
 				k8stools.NewReadyDeployment("vmauth-test", "default"),
+				&apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "httproutes.gateway.networking.k8s.io",
+					},
+				},
 				&gwapiv1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmauth-test",
@@ -168,6 +174,11 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 			predefinedObjects: []runtime.Object{
 				k8stools.NewReadyDeployment("vmauth-test", "default"),
+				&apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "httproutes.gateway.networking.k8s.io",
+					},
+				},
 			},
 		},
 		{

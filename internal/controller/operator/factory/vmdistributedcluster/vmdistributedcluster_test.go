@@ -337,6 +337,13 @@ func beforeEach() testData {
 	})
 	vmcluster1 := newVMCluster("vmcluster-1", "v1.0.0")
 	vmcluster2 := newVMCluster("vmcluster-2", "v1.0.0")
+	vmAuth := &vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vmauth-proxy",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAuthSpec{},
+	}
 
 	zones := []vmv1alpha1.VMClusterRefOrSpec{
 		{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
@@ -344,7 +351,7 @@ func beforeEach() testData {
 	}
 	vmAgentSpec := vmv1alpha1.VMAgentNameAndSpec{Name: vmagent.Name}
 	vmUserRef := vmv1alpha1.VMUserNameAndSpec{Name: vmuser1.Name}
-	cr := newVMDistributedCluster("test-vdc", "default", zones, vmAgentSpec, vmUserRef, vmv1alpha1.VMAuthNameAndSpec{})
+	cr := newVMDistributedCluster("test-vdc", "default", zones, vmAgentSpec, vmUserRef, vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"})
 
 	// Create a new trackingClient
 	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
@@ -353,6 +360,7 @@ func beforeEach() testData {
 		vmuser2,
 		vmcluster1,
 		vmcluster2,
+		vmAuth,
 		cr,
 	).Build()
 	tc := &trackingClient{
@@ -1862,7 +1870,7 @@ func TestUpdateOrCreateVMuser(t *testing.T) {
 			"test-vmdc-user-addowner", "default",
 			[]vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}}},
 			vmv1alpha1.VMAgentNameAndSpec{Name: "test-vmagent"},
-			vmv1alpha1.VMUserNameAndSpec{Name: existing.Name},
+			vmv1alpha1.VMUserNameAndSpec{Name: existing.Name, Spec: &existing.Spec},
 			vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 		)
 		cr.UID = "owner-uid-add"

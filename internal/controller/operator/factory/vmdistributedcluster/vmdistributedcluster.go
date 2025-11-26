@@ -87,6 +87,17 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("VMAgent.Name must be set")
 	}
 
+	// Extract tenantID from VMAgent spec or use default
+	tenantID := "0"
+	if cr.Spec.VMAgent.TenantID != nil {
+		tenantID = *cr.Spec.VMAgent.TenantID
+	}
+
+	// Validate VMAuth
+	if cr.Spec.VMAuth.Name == "" {
+		return fmt.Errorf("VMAuth.Name must be set")
+	}
+
 	// Setup deadlines and timeouts
 	vmclusterWaitReadyDeadline := defaultVMClusterWaitReadyDeadline.Duration
 	if cr.Spec.ReadyDeadline != nil {
@@ -95,12 +106,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	zoneUpdatePause := defaultZoneUpdatePause.Duration
 	if cr.Spec.ZoneUpdatePause != nil {
 		zoneUpdatePause = cr.Spec.ZoneUpdatePause.Duration
-	}
-
-	// Extract tenantID from VMAgent spec or use default
-	tenantID := "0"
-	if cr.Spec.VMAgent.TenantID != nil {
-		tenantID = *cr.Spec.VMAgent.TenantID
 	}
 
 	// Ensure VMAuth exists first so we can set it as the owner for the automatically-created VMUser.
@@ -115,91 +120,21 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
 
-	// Build TargetRefs for all VMClusters in the zones.
-	vmUserTargetRefs := buildVMUserTargetRefs(vmClusters, tenantID)
-
-	// Create or update an operator-managed VMUser named "<cr.Name>-user".
-	vmUserName := fmt.Sprintf("%s-user", cr.Name)
-	vmUserObj := &vmv1beta1.VMUser{}
-	vmUserExists := true
-	if err := rclient.Get(ctx, types.NamespacedName{Name: vmUserName, Namespace: cr.Namespace}, vmUserObj); err != nil {
-		if k8serrors.IsNotFound(err) {
-			vmUserExists = false
-			vmUserObj = &vmv1beta1.VMUser{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmUserName,
-					Namespace: cr.Namespace,
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "vm-operator",
-						"app.kubernetes.io/component":  "vmdistributedcluster",
-						"vmdistributedcluster":         cr.Name,
-					},
-				},
-				Spec: vmv1beta1.VMUserSpec{
-					TargetRefs: vmUserTargetRefs,
-				},
-			}
-		} else {
-			return fmt.Errorf("failed to get VMUser %s/%s: %w", cr.Namespace, vmUserName, err)
-		}
-	} else {
-		// Update spec.targetRefs if they differ.
-		if !reflect.DeepEqual(vmUserObj.Spec.TargetRefs, vmUserTargetRefs) {
-			vmUserObj.Spec.TargetRefs = vmUserTargetRefs
-		}
-		// Ensure labels used by VMAuth selection are present.
-		if vmUserObj.Labels == nil {
-			vmUserObj.Labels = map[string]string{}
-		}
-		if vmUserObj.Labels["app.kubernetes.io/managed-by"] != "vm-operator" {
-			vmUserObj.Labels["app.kubernetes.io/managed-by"] = "vm-operator"
-		}
-		if vmUserObj.Labels["app.kubernetes.io/component"] != "vmdistributedcluster" {
-			vmUserObj.Labels["app.kubernetes.io/component"] = "vmdistributedcluster"
-		}
-		if vmUserObj.Labels["vmdistributedcluster"] != cr.Name {
-			vmUserObj.Labels["vmdistributedcluster"] = cr.Name
-		}
-	}
-
-	// Set owner reference to VMAuth if available and scheme provided.
-	if scheme != nil && len(vmAuthObjs) > 0 {
-		vmAuthObj := vmAuthObjs[0]
-		// Check whether ownerRef already present for VMAuth
-		if ok, err := controllerutil.HasOwnerReference(vmUserObj.GetOwnerReferences(), vmAuthObj, scheme); err != nil {
-			return fmt.Errorf("failed to check owner reference for VMUser %s: %w", vmUserObj.Name, err)
-		} else if !ok {
-			if err := controllerutil.SetOwnerReference(vmAuthObj, vmUserObj, scheme); err != nil {
-				return fmt.Errorf("failed to set owner reference for VMUser %s: %w", vmUserObj.Name, err)
-			}
-		}
-	}
-
-	// Create or update the VMUser resource as needed.
-	if !vmUserExists {
-		if err := rclient.Create(ctx, vmUserObj); err != nil {
-			return fmt.Errorf("failed to create VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
-		}
-	} else {
-		if err := rclient.Update(ctx, vmUserObj); err != nil {
-			return fmt.Errorf("failed to update VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
-		}
-	}
-
-	// Prepare vmUserObjs slice for downstream logic.
-	vmUserObjs := []*vmv1beta1.VMUser{vmUserObj}
-
-	// Ensure VMUser TargetRefs are present/consistent (idempotent).
-	if err := ensureVMUsersTargetRefs(ctx, rclient, vmClusters, vmUserObjs, tenantID); err != nil {
-		return fmt.Errorf("failed to ensure vmuser target refs: %w", err)
-	}
-
 	// Throw error if VMCluster has any other owner - that means it is managed by one instance of VMDistributedCluster only
 	for _, vmCluster := range vmClusters {
 		err := ensureNoVMClusterOwners(cr, vmCluster)
 		if err != nil {
 			return fmt.Errorf("failed to validate owner references for unreferenced vmcluster %s: %w", vmCluster.Name, err)
 		}
+	}
+
+	// Build TargetRefs for all VMClusters in the zones.
+	vmUserTargetRefs := buildVMUserTargetRefs(vmClusters, tenantID)
+
+	// Create or update an operator-managed VMUser named "<cr.Name>-user".
+	vmUserObjs, err := createOrUpdateOperatorVMUser(ctx, rclient, cr, scheme, vmAuthObjs, vmUserTargetRefs, vmClusters, tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to create or update operator-managed VMUser: %w", err)
 	}
 
 	// Store current CR status
@@ -339,6 +274,7 @@ func getReferencedVMCluster(ctx context.Context, rclient client.Client, namespac
 	return vmClusterObj, nil
 }
 
+// fetchVMClusters ensures that referenced VMClusters are fetched and validated.
 func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []vmv1alpha1.VMClusterRefOrSpec) ([]*vmv1beta1.VMCluster, error) {
 	var err error
 	vmClusters := make([]*vmv1beta1.VMCluster, len(refs))
@@ -450,6 +386,7 @@ func mergeMapsRecursive(baseMap, overrideMap map[string]interface{}) bool {
 	return modified
 }
 
+// updateOrCreateVMAgent ensures that the VMAgent is updated or created based on the provided VMDistributedCluster.
 func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmClusters []*vmv1beta1.VMCluster) (*vmv1beta1.VMAgent, error) {
 	// Get existing vmagent obj using Name and cr namespace
 	vmAgentExists := true
@@ -520,77 +457,12 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	return vmAgentObj, nil
 }
 
+// remoteWriteURL generates the remote write URL based on the provided VMCluster and tenant.
 func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
 	return fmt.Sprintf("http://%s.%s.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.Name, vmCluster.Namespace, *tenant)
 }
 
-func updateOrCreateVMuser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, namespace string, name string, spec *vmv1beta1.VMUserSpec, scheme *runtime.Scheme) ([]*vmv1beta1.VMUser, error) {
-	// Name must be provided either for fetching an existing object or for creating an inline one.
-	if name == "" {
-		return nil, errors.New("vmuser name is not specified")
-	}
-
-	namespacedName := types.NamespacedName{Name: name, Namespace: namespace}
-	// If Spec is not provided inline, simply fetch the named VMUser from the API server.
-	if spec == nil {
-		vmUserObj := &vmv1beta1.VMUser{}
-		if err := rclient.Get(ctx, namespacedName, vmUserObj); err != nil {
-			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, name, err)
-		}
-		return []*vmv1beta1.VMUser{vmUserObj}, nil
-	}
-
-	// Spec is provided inline: ensure the VMUser exists and matches the provided spec.
-	vmUserObj := &vmv1beta1.VMUser{}
-	vmUserExists := true
-	if err := rclient.Get(ctx, namespacedName, vmUserObj); err != nil {
-		if k8serrors.IsNotFound(err) {
-			vmUserExists = false
-			// Initialize object for creation with the provided inline spec.
-			vmUserObj = &vmv1beta1.VMUser{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: namespace,
-				},
-				Spec: *spec.DeepCopy(),
-			}
-		} else {
-			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, name, err)
-		}
-	}
-
-	// Determine if an update is needed (spec or ownerRef changes).
-	vmUserNeedsUpdate := false
-	if vmUserExists {
-		if !reflect.DeepEqual(vmUserObj.Spec, *spec) {
-			vmUserObj.Spec = *spec.DeepCopy()
-			vmUserNeedsUpdate = true
-		}
-	}
-
-	// Ensure owner reference is set to current CR if scheme provided.
-	if scheme != nil {
-		if modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmUserObj, scheme); err != nil {
-			return nil, fmt.Errorf("failed to set owner reference for VMUser %s: %w", vmUserObj.Name, err)
-		} else if modifiedOwnerRef {
-			vmUserNeedsUpdate = true
-		}
-	}
-
-	// Create or update the VMUser resource as needed.
-	if !vmUserExists {
-		if err := rclient.Create(ctx, vmUserObj); err != nil {
-			return nil, fmt.Errorf("failed to create VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
-		}
-	} else if vmUserNeedsUpdate {
-		if err := rclient.Update(ctx, vmUserObj); err != nil {
-			return nil, fmt.Errorf("failed to update VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
-		}
-	}
-
-	return []*vmv1beta1.VMUser{vmUserObj}, nil
-}
-
+// updateOrCreateVMAuth updates or creates a VMAuth object based on the provided VMCluster and tenant.
 func updateOrCreateVMAuth(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, namespace string, ref vmv1alpha1.VMAuthNameAndSpec, scheme *runtime.Scheme, vmUserObjs []*vmv1beta1.VMUser) ([]*vmv1beta1.VMAuth, error) {
 	// Name must be provided either for fetching an existing object or for creating an inline one.
 	if ref.Name == "" {
@@ -1100,4 +972,80 @@ func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *
 		}
 	}
 	return nil
+}
+
+func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmAuthObjs []*vmv1beta1.VMAuth, vmUserTargetRefs []vmv1beta1.TargetRef, vmClusters []*vmv1beta1.VMCluster, tenantID string) ([]*vmv1beta1.VMUser, error) {
+	// Build the VMUser name
+	vmUserName := fmt.Sprintf("%s-user", cr.Name)
+	namespacedName := types.NamespacedName{Name: vmUserName, Namespace: cr.Namespace}
+
+	// Try to fetch existing VMUser
+	vmUserObj := &vmv1beta1.VMUser{}
+	vmUserExists := true
+	if err := rclient.Get(ctx, namespacedName, vmUserObj); err != nil {
+		if k8serrors.IsNotFound(err) {
+			vmUserExists = false
+			// Initialize a new VMUser for creation
+			vmUserObj = &vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      vmUserName,
+					Namespace: cr.Namespace,
+					Labels: map[string]string{
+						"vmdistributedcluster": cr.Name,
+					},
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					TargetRefs: vmUserTargetRefs,
+				},
+			}
+		} else {
+			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", cr.Namespace, vmUserName, err)
+		}
+	} else {
+		// Ensure TargetRefs are up-to-date.
+		if !reflect.DeepEqual(vmUserObj.Spec.TargetRefs, vmUserTargetRefs) {
+			vmUserObj.Spec.TargetRefs = vmUserTargetRefs
+		}
+		// Ensure labels used by VMAuth selection are present.
+		if vmUserObj.Labels == nil {
+			vmUserObj.Labels = map[string]string{}
+		}
+		if vmUserObj.Labels["vmdistributedcluster"] != cr.Name {
+			vmUserObj.Labels["vmdistributedcluster"] = cr.Name
+		}
+	}
+
+	// Set owner reference to VMAuth if available and scheme provided.
+	if scheme != nil && len(vmAuthObjs) > 0 {
+		vmAuthObj := vmAuthObjs[0]
+		// Check whether ownerRef already present for VMAuth
+		if ok, err := controllerutil.HasOwnerReference(vmUserObj.GetOwnerReferences(), vmAuthObj, scheme); err != nil {
+			return nil, fmt.Errorf("failed to check owner reference for VMUser %s: %w", vmUserObj.Name, err)
+		} else if !ok {
+			if err := controllerutil.SetOwnerReference(vmAuthObj, vmUserObj, scheme); err != nil {
+				return nil, fmt.Errorf("failed to set owner reference for VMUser %s: %w", vmUserObj.Name, err)
+			}
+		}
+	}
+
+	// Create or update the VMUser resource as needed.
+	if !vmUserExists {
+		if err := rclient.Create(ctx, vmUserObj); err != nil {
+			return nil, fmt.Errorf("failed to create VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
+		}
+	} else {
+		if err := rclient.Update(ctx, vmUserObj); err != nil {
+			return nil, fmt.Errorf("failed to update VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
+		}
+	}
+
+	// Prepare vmUserObjs slice for downstream logic.
+	vmUserObjs := []*vmv1beta1.VMUser{vmUserObj}
+
+	// Ensure VMUser TargetRefs are present/consistent (idempotent).
+	if err := ensureVMUsersTargetRefs(ctx, rclient, vmClusters, vmUserObjs, tenantID); err != nil {
+		return nil, fmt.Errorf("failed to ensure vmuser target refs: %w", err)
+	}
+
+	return vmUserObjs, nil
 }

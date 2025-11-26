@@ -114,19 +114,19 @@ func (tc *trackingClient) Create(ctx context.Context, obj client.Object, opts ..
 	// common types used in these tests to avoid that where possible.
 	switch o := obj.(type) {
 	case *vmv1beta1.VMAgent:
-		if o.TypeMeta.Kind == "" {
+		if o.Kind == "" {
 			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMAgent"}
 		}
 	case *vmv1beta1.VMCluster:
-		if o.TypeMeta.Kind == "" {
+		if o.Kind == "" {
 			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMCluster"}
 		}
 	case *vmv1beta1.VMUser:
-		if o.TypeMeta.Kind == "" {
+		if o.Kind == "" {
 			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMUser"}
 		}
 	case *corev1.ConfigMap:
-		if o.TypeMeta.Kind == "" {
+		if o.Kind == "" {
 			o.TypeMeta = metav1.TypeMeta{APIVersion: corev1.SchemeGroupVersion.String(), Kind: "ConfigMap"}
 		}
 	}
@@ -316,7 +316,7 @@ func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 // It accepts an optional VMUser parameter (legacy callers may supply a VMUserNameAndSpec),
 // and/or a VMAuth parameter. Any supplied VMUser values are ignored (kept for compatibility).
 // The VMAuth value, if provided among extras, will be used to populate the CR's Spec.VMAuth.
-func newVMDistributedCluster(name, namespace string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgentSpec vmv1alpha1.VMAgentNameAndSpec, extras ...interface{}) *vmv1alpha1.VMDistributedCluster {
+func newVMDistributedCluster(name string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgentSpec vmv1alpha1.VMAgentNameAndSpec, extras ...interface{}) *vmv1alpha1.VMDistributedCluster {
 	var vmAuth vmv1alpha1.VMAuthNameAndSpec
 
 	// Parse extras to find VMAuth (ignore any legacy VMUser parameters).
@@ -340,7 +340,7 @@ func newVMDistributedCluster(name, namespace string, zones []vmv1alpha1.VMCluste
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: "default",
 		},
 		Spec: vmv1alpha1.VMDistributedClusterSpec{
 			Zones:   vmv1alpha1.ZoneSpec{VMClusters: zones},
@@ -400,7 +400,7 @@ func beforeEach() testData {
 		{Ref: &corev1.LocalObjectReference{Name: "vmcluster-2"}},
 	}
 	vmAgentSpec := vmv1alpha1.VMAgentNameAndSpec{Name: vmagent.Name}
-	cr := newVMDistributedCluster("test-vdc", "default", zones, vmAgentSpec, vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"})
+	cr := newVMDistributedCluster("test-vdc", zones, vmAgentSpec, vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"})
 
 	// Create a new trackingClient
 	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
@@ -1633,7 +1633,7 @@ func TestEnsureNoVMClusterOwners(t *testing.T) {
 		{
 			name: "owner ref exists and is the cr, no error",
 			args: args{
-				cr:           newVMDistributedCluster("test-vmdc", "default", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, vmv1alpha1.VMAgentNameAndSpec{}, vmv1alpha1.VMAuthNameAndSpec{}),
+				cr:           newVMDistributedCluster("test-vmdc", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, vmv1alpha1.VMAgentNameAndSpec{}, vmv1alpha1.VMAuthNameAndSpec{}),
 				vmClusterObj: newVMCluster("cluster-1", "default"),
 				scheme:       scheme,
 			},
@@ -1645,7 +1645,7 @@ func TestEnsureNoVMClusterOwners(t *testing.T) {
 		{
 			name: "owner ref does not exist and nothing changes",
 			args: args{
-				cr:           newVMDistributedCluster("test-vmdc", "default", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, vmv1alpha1.VMAgentNameAndSpec{}, vmv1alpha1.VMAuthNameAndSpec{}),
+				cr:           newVMDistributedCluster("test-vmdc", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, vmv1alpha1.VMAgentNameAndSpec{}, vmv1alpha1.VMAuthNameAndSpec{}),
 				vmClusterObj: newVMCluster("cluster-1", "default"),
 				scheme:       scheme,
 			},
@@ -1655,7 +1655,7 @@ func TestEnsureNoVMClusterOwners(t *testing.T) {
 		{
 			name: "vmcluster has unexpected owner ref, should return error",
 			args: args{
-				cr:           newVMDistributedCluster("test-vmdc", "default", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, vmv1alpha1.VMAgentNameAndSpec{}, vmv1alpha1.VMAuthNameAndSpec{}),
+				cr:           newVMDistributedCluster("test-vmdc", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, vmv1alpha1.VMAgentNameAndSpec{}, vmv1alpha1.VMAuthNameAndSpec{}),
 				vmClusterObj: newVMCluster("cluster-1", "default"),
 				scheme:       scheme,
 			},
@@ -1673,7 +1673,7 @@ func TestEnsureNoVMClusterOwners(t *testing.T) {
 		{
 			name: "vmcluster has cr and another unexpected owner ref, should return error",
 			args: args{
-				cr:           newVMDistributedCluster("test-vmdc", "default", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, vmv1alpha1.VMAgentNameAndSpec{}, vmv1alpha1.VMAuthNameAndSpec{}),
+				cr:           newVMDistributedCluster("test-vmdc", []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}}}, vmv1alpha1.VMAgentNameAndSpec{}, vmv1alpha1.VMAuthNameAndSpec{}),
 				vmClusterObj: newVMCluster("cluster-1", "default"),
 				scheme:       scheme,
 			},
@@ -1734,7 +1734,7 @@ func TestUpdateOrCreateVMAgent(t *testing.T) {
 
 	// Prepare a CR and a VMCluster referenced by the CR
 	cr := newVMDistributedCluster(
-		"test-vmdc", "default",
+		"test-vmdc",
 		[]vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}}},
 		vmv1alpha1.VMAgentNameAndSpec{
 			Name: "test-vmagent",
@@ -1818,7 +1818,7 @@ func TestUpdateOrCreateVMAgent(t *testing.T) {
 			},
 		}
 		crWithSpec := newVMDistributedCluster(
-			"test-vmdc-update", "default",
+			"test-vmdc-update",
 			[]vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}}},
 			vmv1alpha1.VMAgentNameAndSpec{
 				Name: "test-vmagent",
@@ -1860,53 +1860,4 @@ func TestUpdateOrCreateVMAgent(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get VMAgent")
 	})
-}
-
-func TestUpdateOrCreateVMuser(t *testing.T) {
-	s := runtime.NewScheme()
-	_ = vmv1alpha1.AddToScheme(s)
-	_ = vmv1beta1.AddToScheme(s)
-	_ = corev1.AddToScheme(s)
-
-	// Prepare a VMCluster referenced by the CR
-	vmCluster := newVMCluster("vmcluster-1", "v1.0.0")
-
-	t.Run("creates VMUser when inline spec provided and missing", func(t *testing.T) {
-		// Inline VMUser spec
-		inlineSpec := &vmv1beta1.VMUserSpec{
-			TargetRefs: []vmv1beta1.TargetRef{
-				{
-					CRD:              &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "vmcluster-1", Namespace: "default"},
-					TargetPathSuffix: "/select/0",
-				},
-			},
-		}
-		cr := newVMDistributedCluster(
-			"test-vmdc-user-create", "default",
-			[]vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}}},
-			vmv1alpha1.VMAgentNameAndSpec{Name: "test-vmagent"},
-			vmv1alpha1.VMAuthNameAndSpec{},
-		)
-
-		fakeClient := fake.NewClientBuilder().WithScheme(s).WithObjects(cr, vmCluster).Build()
-		tc := &trackingClient{Client: fakeClient, Actions: []action{}, objects: make(map[client.ObjectKey]client.Object)}
-		ctx := context.Background()
-
-		vmUsers, err := updateOrCreateVMuser(ctx, tc, cr, cr.Namespace, "vmuser-create", inlineSpec, s)
-		assert.NoError(t, err)
-		assert.Len(t, vmUsers, 1)
-		created := &vmv1beta1.VMUser{}
-		err = tc.Get(ctx, types.NamespacedName{Name: "vmuser-create", Namespace: "default"}, created)
-		assert.NoError(t, err)
-		assert.Equal(t, "vmuser-create", created.Name)
-		assert.Equal(t, inlineSpec.TargetRefs, created.Spec.TargetRefs)
-
-		// Ensure Get then Create
-		if assert.GreaterOrEqual(t, len(tc.Actions), 2) {
-			assert.Equal(t, "Get", tc.Actions[0].Method)
-			assert.Equal(t, "Create", tc.Actions[1].Method)
-		}
-	})
-
-	// ... rest of file unchanged ...
 }

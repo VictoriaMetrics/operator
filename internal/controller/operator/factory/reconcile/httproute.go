@@ -23,7 +23,7 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newHTTPRoute, prevHTT
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating HTTPRoute %s configuration", newHTTPRoute.Name))
 				return rclient.Create(ctx, newHTTPRoute)
 			}
-			return fmt.Errorf("cannot get exist HTTPRoute object: %w", err)
+			return fmt.Errorf("cannot get existing HTTPRoute object: %w", err)
 		}
 		if !curHTTPRoute.DeletionTimestamp.IsZero() {
 			return &errRecreate{

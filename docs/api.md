@@ -1969,7 +1969,7 @@ Appears in: [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpe
 HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 
-Appears in: [DiscordConfig](#discordconfig), [JiraConfig](#jiraconfig), [MSTeamsConfig](#msteamsconfig), [MSTeamsV2Config](#msteamsv2config), [OpsGenieConfig](#opsgenieconfig), [PagerDutyConfig](#pagerdutyconfig), [PushoverConfig](#pushoverconfig), [RocketchatConfig](#rocketchatconfig), [SlackConfig](#slackconfig), [SnsConfig](#snsconfig), [TelegramConfig](#telegramconfig), [VictorOpsConfig](#victoropsconfig), [WeChatConfig](#wechatconfig), [WebexConfig](#webexconfig), [WebhookConfig](#webhookconfig)
+Appears in: [DiscordConfig](#discordconfig), [IncidentIOConfig](#incidentioconfig), [JiraConfig](#jiraconfig), [MSTeamsConfig](#msteamsconfig), [MSTeamsV2Config](#msteamsv2config), [OpsGenieConfig](#opsgenieconfig), [PagerDutyConfig](#pagerdutyconfig), [PushoverConfig](#pushoverconfig), [RocketchatConfig](#rocketchatconfig), [SlackConfig](#slackconfig), [SnsConfig](#snsconfig), [TelegramConfig](#telegramconfig), [VictorOpsConfig](#victoropsconfig), [WeChatConfig](#wechatconfig), [WebexConfig](#webexconfig), [WebhookConfig](#webhookconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2031,6 +2031,27 @@ Appears in: [PagerDutyConfig](#pagerdutyconfig)
 | alt<a href="#imageconfig-alt" id="imageconfig-alt">#</a><br/>_string_ | _(Optional)_<br/> |
 | href<a href="#imageconfig-href" id="imageconfig-href">#</a><br/>_string_ | _(Optional)_<br/> |
 | source<a href="#imageconfig-source" id="imageconfig-source">#</a><br/>_string_ | _(Required)_<br/> |
+
+
+#### IncidentIOConfig
+
+
+
+IncidentIOConfig configures notifications via incident.io.
+https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
+available from v0.66.0 operator version
+and v0.29.0 alertmanager version
+
+Appears in: [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| alert_source_token<a href="#incidentioconfig-alert_source_token" id="incidentioconfig-alert_source_token">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>AlertSourceToken is used to authenticate with incident.io |
+| http_config<a href="#incidentioconfig-http_config" id="incidentioconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
+| max_alerts<a href="#incidentioconfig-max_alerts" id="incidentioconfig-max_alerts">#</a><br/>_integer_ | _(Optional)_<br/>MaxAlerts defines maximum number of alerts to be sent per incident.io message. |
+| send_resolved<a href="#incidentioconfig-send_resolved" id="incidentioconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| timeout<a href="#incidentioconfig-timeout" id="incidentioconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout is the maximum time allowed to invoke incident.io |
+| url<a href="#incidentioconfig-url" id="incidentioconfig-url">#</a><br/>_string_ | _(Required)_<br/>The URL to send the incident.io alert. This would typically be provided by the<br />incident.io team when setting up an alert source. |
 
 
 #### InhibitRule
@@ -2488,6 +2509,7 @@ Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 | --- | --- |
 | discord_configs<a href="#receiver-discord_configs" id="receiver-discord_configs">#</a><br/>_[DiscordConfig](#discordconfig) array_ | _(Optional)_<br/> |
 | email_configs<a href="#receiver-email_configs" id="receiver-email_configs">#</a><br/>_[EmailConfig](#emailconfig) array_ | _(Optional)_<br/>EmailConfigs defines email notification configurations. |
+| incidentio_configs<a href="#receiver-incidentio_configs" id="receiver-incidentio_configs">#</a><br/>_[IncidentIOConfig](#incidentioconfig) array_ | _(Optional)_<br/> |
 | jira_configs<a href="#receiver-jira_configs" id="receiver-jira_configs">#</a><br/>_[JiraConfig](#jiraconfig) array_ | _(Optional)_<br/> |
 | msteams_configs<a href="#receiver-msteams_configs" id="receiver-msteams_configs">#</a><br/>_[MSTeamsConfig](#msteamsconfig) array_ | _(Optional)_<br/> |
 | msteamsv2_configs<a href="#receiver-msteamsv2_configs" id="receiver-msteamsv2_configs">#</a><br/>_[MSTeamsV2Config](#msteamsv2config) array_ | _(Optional)_<br/> |

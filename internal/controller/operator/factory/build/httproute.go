@@ -12,14 +12,11 @@ import (
 
 // HTTPRoute creates HTTPRoute object
 func HTTPRoute(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTTPRoute) (*gwapiv1.HTTPRoute, error) {
-	var (
-		defaultPort gwapiv1.PortNumber
-	)
-	if defaultPortVal, err := strconv.Atoi(port); err != nil {
+	defaultPortVal, err := strconv.Atoi(port)
+	if err != nil {
 		return nil, err
-	} else {
-		defaultPort = gwapiv1.PortNumber(defaultPortVal)
 	}
+	defaultPort = gwapiv1.PortNumber(defaultPortVal)
 
 	defaultBackendRef := gwapiv1.HTTPBackendRef{
 		BackendRef: gwapiv1.BackendRef{

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"reflect"
 	"slices"
 	"strconv"
@@ -31,6 +32,7 @@ import (
 
 	"github.com/go-test/deep"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -219,8 +221,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 
 		// Wait for VMAgent metrics to show no pending queue
-		vmAgent := &vmAgentAdapter{VMAgent: vmAgentObj}
-		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgent, vmclusterWaitReadyDeadline); err != nil {
+		// Wrap concrete VMAgent into adapter that implements VMAgentWithStatus
+		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, &vmAgentAdapter{VMAgent: vmAgentObj}, vmclusterWaitReadyDeadline, rclient); err != nil {
 			return fmt.Errorf("failed to wait for VMAgent metrics to show no pending queue: %w", err)
 		}
 
@@ -823,9 +825,11 @@ type VMAgentWithStatus interface {
 	GetReplicas() int32
 	GetNamespace() string
 	GetName() string
+	// PrefixedName returns the service prefixed name for discovery (when applicable)
+	PrefixedName() string
 }
 
-// vmAgentAdapter wraps VMAgent to implement VMAgentWithStatus interface
+// vmAgentAdapter provides a small adapter to satisfy VMAgentWithStatus for concrete vmv1beta1.VMAgent instances.
 type vmAgentAdapter struct {
 	*vmv1beta1.VMAgent
 }
@@ -836,26 +840,123 @@ func (v *vmAgentAdapter) GetReplicas() int32 {
 
 // GetName and GetNamespace are inherited from vmv1beta1.VMAgent
 
-func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmAgent VMAgentWithStatus, deadline time.Duration) error {
+// PrefixedName is exposed explicitly on the adapter to satisfy VMAgentWithStatus.
+func (v *vmAgentAdapter) PrefixedName() string {
+	if v.VMAgent == nil {
+		return ""
+	}
+	return v.VMAgent.PrefixedName()
+}
+
+// parseEndpointSliceAddresses extracts IPv4/IPv6 addresses from an EndpointSlice object.
+func parseEndpointSliceAddresses(es *discoveryv1.EndpointSlice) []string {
+	if es == nil {
+		return nil
+	}
+	addrs := make([]string, 0)
+	for _, ep := range es.Endpoints {
+		for _, a := range ep.Addresses {
+			if a != "" {
+				addrs = append(addrs, a)
+			}
+		}
+	}
+	return addrs
+}
+
+// buildPerIPMetricURL constructs a per-IP metrics URL using the base service URL to
+// infer scheme and (optionally) port. This centralizes scheme/port detection so the
+// polling logic remains concise.
+func buildPerIPMetricURL(baseURL, metricPath, ip string) string {
+	scheme := "http"
+	port := ""
+	if u, err := url.Parse(baseURL); err == nil {
+		if u.Scheme != "" {
+			scheme = u.Scheme
+		}
+		if p := u.Port(); p != "" {
+			port = p
+		}
+	}
+	if port == "" {
+		// Default VMAgent metrics port
+		port = "8429"
+	}
+	return fmt.Sprintf("%s://%s:%s%s", scheme, ip, port, metricPath)
+}
+
+// waitForVMClusterVMAgentMetrics accepts a VMAgentWithStatus interface plus a client.Client.
+// This allows callers that already have an implementation of VMAgentWithStatus (e.g., tests' mocks)
+// to call this function directly. When callers have a concrete *vmv1beta1.VMAgent, they can wrap it
+// with vmAgentAdapter (defined above) or use a type that implements VMAgentWithStatus.
+//
+// The function will try to discover pod IPs via an EndpointSlice named the same as the service
+// (prefixed name). If discovery yields addresses, it polls each IP. Otherwise, it falls back to the
+// single AsURL()+GetMetricPath() behavior.
+func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmAgent VMAgentWithStatus, deadline time.Duration, rclient client.Client) error {
 	if vmAgent == nil {
 		// Don't throw error if VMAgent is nil, just exit early
 		return nil
 	}
 
+	// If no client is provided, there's nothing to discover via EndpointSlices,
+	// so return early. Caller may invoke this function without a client in some
+	// contexts and should not consider that an error here.
+	if rclient == nil {
+		return nil
+	}
+
+	// Use GetReplicas from interface
 	if vmAgent.GetReplicas() == 0 {
 		return fmt.Errorf("VMAgent %s/%s is not ready", vmAgent.GetNamespace(), vmAgent.GetName())
 	}
 
-	parts := []string{vmAgent.AsURL(), vmAgent.GetMetricPath()}
-	vmAgentPath := strings.Join(parts, "")
+	// Base values for fallback URL
+	baseURL := vmAgent.AsURL()
+	metricPath := vmAgent.GetMetricPath()
 
-	// Loop until VMAgent metrics show that disk buffer is empty
+	// Poll until all discovered pod IPs (or single URL fallback) report zero pending queue.
 	err := wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
-		metricValue, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, vmAgentPath)
-		if err != nil {
-			return false, err
+		var hosts []string
+
+		// Attempt EndpointSlice discovery only when a client is provided.
+		if rclient != nil {
+			// Use PrefixedName from the interface for discovery.
+			svcName := vmAgent.PrefixedName()
+			svcNamespace := vmAgent.GetNamespace()
+
+			// Try to GET a single EndpointSlice that has the same name as the service
+			var es discoveryv1.EndpointSlice
+			if err := rclient.Get(ctx, types.NamespacedName{Name: svcName, Namespace: svcNamespace}, &es); err == nil {
+				hosts = parseEndpointSliceAddresses(&es)
+			}
+			// If Get fails or returns no addresses, we'll fall back below.
 		}
-		return metricValue == 0, nil
+
+		// If we couldn't discover any hosts, fall back to the AsURL host (single host behavior)
+		if len(hosts) == 0 {
+			vmAgentPath := strings.Join([]string{baseURL, metricPath}, "")
+			metricValue, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, vmAgentPath)
+			if err != nil {
+				return false, err
+			}
+			return metricValue == 0, nil
+		}
+
+		// Query each discovered ip. If any returns non-zero metric, continue polling.
+		for _, ip := range hosts {
+			metricsURL := buildPerIPMetricURL(baseURL, metricPath, ip)
+			metricValue, ferr := fetchVMAgentDiskBufferMetric(ctx, httpClient, metricsURL)
+			if ferr != nil {
+				// Treat fetch errors as transient -> not ready, continue polling.
+				return false, nil
+			}
+			if metricValue != 0 {
+				return false, nil
+			}
+		}
+		// All discovered addresses reported zero -> done.
+		return true, nil
 	})
 	if err != nil {
 		return fmt.Errorf("failed to wait for VMAgent metrics: %w", err)

@@ -14,7 +14,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// HTTPRoute creates or update HTTPRoute object
+// HTTPRoute creates or updates HTTPRoute object
 func HTTPRoute(ctx context.Context, rclient client.Client, newHTTPRoute, prevHTTPRoute *gwapiv1.HTTPRoute) error {
 	return retryOnConflict(func() error {
 		var curHTTPRoute gwapiv1.HTTPRoute

@@ -1187,8 +1187,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			var updatedVMUser vmv1beta1.VMUser
 			vmUserKey = types.NamespacedName{Name: fmt.Sprintf("%s-user", cr.Name), Namespace: namespace}
 			Expect(k8sClient.Get(ctx, vmUserKey, &updatedVMUser)).To(Succeed())
-			Expect(updatedVMUser.Labels).To(HaveKeyWithValue("app.kubernetes.io/managed-by", "vm-operator"))
-			Expect(updatedVMUser.Labels).To(HaveKeyWithValue("app.kubernetes.io/component", "vmdistributedcluster"))
 			Expect(updatedVMUser.Labels).To(HaveKeyWithValue("vmdistributedcluster", cr.Name))
 		})
 

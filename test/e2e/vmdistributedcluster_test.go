@@ -233,17 +233,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 		}
 
-		// // Clean up VMAgent
-		// Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMAgent{
-		// 	ObjectMeta: metav1.ObjectMeta{
-		// 		Namespace: validVMAgentName.Namespace,
-		// 		Name:      validVMAgentName.Name,
-		// 	},
-		// })).To(Succeed(), "must delete vm-agent after test")
-		// Eventually(func() error {
-		// 	return k8sClient.Get(ctx, validVMAgentName, &vmv1beta1.VMAgent{})
-		// }, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-
 		// Clean up VMAuth
 		Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{
@@ -302,7 +291,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser:      vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
@@ -369,9 +357,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							},
 						},
 					}},
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -459,9 +446,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							},
 						},
 					}},
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -569,7 +555,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser:      vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{
 						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
@@ -654,13 +639,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}
-			vmUserName := types.NamespacedName{
+			vmUserKey := types.NamespacedName{
 				Namespace: namespace,
 				Name:      "vmuser-paused",
 			}
 			pausedVMUser := vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmUserName.Name,
+					Name:      vmUserKey.Name,
 					Namespace: namespace,
 				},
 				Spec: vmv1beta1.VMUserSpec{
@@ -692,7 +677,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser:      vmv1alpha1.VMUserNameAndSpec{Name: vmUserName.Name},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
@@ -863,9 +847,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							},
 						},
 					}},
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: vmAgents[0].Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: vmAgents[0].Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
@@ -905,7 +888,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser:      vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
@@ -965,7 +947,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			By("updating the VMUser to target the inline VMClusters")
 			var vmUser vmv1beta1.VMUser
-			Expect(k8sClient.Get(ctx, validVMUserNames[0], &vmUser)).To(Succeed())
+			vmUserKey := types.NamespacedName{Name: fmt.Sprintf("%s-user", cr.Name), Namespace: namespace}
+			Expect(k8sClient.Get(ctx, vmUserKey, &vmUser)).To(Succeed())
 			vmUser.Spec.TargetRefs = []vmv1beta1.TargetRef{
 				{
 					CRD: &vmv1beta1.CRDRef{
@@ -1060,7 +1043,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser:      vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
 						Name: inlineVMAuthName,
 						Spec: &vmv1beta1.VMAuthSpec{
@@ -1084,7 +1066,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			// Update VMUser with target refs
 			var vmUser vmv1beta1.VMUser
-			Expect(k8sClient.Get(ctx, validVMUserNames[0], &vmUser)).To(Succeed())
+			vmUserKey := types.NamespacedName{Name: fmt.Sprintf("%s-user", cr.Name), Namespace: namespace}
+			Expect(k8sClient.Get(ctx, vmUserKey, &vmUser)).To(Succeed())
 			vmUser.Spec.TargetRefs = []vmv1beta1.TargetRef{
 				{
 					CRD: &vmv1beta1.CRDRef{
@@ -1167,7 +1150,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser:      vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: validVMAuthName.Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
@@ -1177,7 +1159,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			// Update VMUser with target refs
 			var vmUser vmv1beta1.VMUser
-			Expect(k8sClient.Get(ctx, validVMUserNames[0], &vmUser)).To(Succeed())
+			vmUserKey := types.NamespacedName{Name: fmt.Sprintf("%s-user", cr.Name), Namespace: namespace}
+			Expect(k8sClient.Get(ctx, vmUserKey, &vmUser)).To(Succeed())
 			vmUser.Spec.TargetRefs = []vmv1beta1.TargetRef{
 				{
 					CRD: &vmv1beta1.CRDRef{
@@ -1202,7 +1185,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			By("verifying VMUser has correct labels for VMAuth selection")
 			var updatedVMUser vmv1beta1.VMUser
-			Expect(k8sClient.Get(ctx, validVMUserNames[0], &updatedVMUser)).To(Succeed())
+			vmUserKey = types.NamespacedName{Name: fmt.Sprintf("%s-user", cr.Name), Namespace: namespace}
+			Expect(k8sClient.Get(ctx, vmUserKey, &updatedVMUser)).To(Succeed())
 			Expect(updatedVMUser.Labels).To(HaveKeyWithValue("app.kubernetes.io/managed-by", "vm-operator"))
 			Expect(updatedVMUser.Labels).To(HaveKeyWithValue("app.kubernetes.io/component", "vmdistributedcluster"))
 			Expect(updatedVMUser.Labels).To(HaveKeyWithValue("vmdistributedcluster", cr.Name))
@@ -1250,8 +1234,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						Name:     validVMAgentName.Name,
 						TenantID: ptr.To(customTenantID),
 					},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: validVMAuthName.Name},
+					VMAuth: vmv1alpha1.VMAuthNameAndSpec{Name: validVMAuthName.Name},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
 					}},
@@ -1260,7 +1243,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			// Create initial VMUser with empty targetRefs
 			var vmUser vmv1beta1.VMUser
-			Expect(k8sClient.Get(ctx, validVMUserNames[0], &vmUser)).To(Succeed())
+			vmUserKey := types.NamespacedName{Name: fmt.Sprintf("%s-user", cr.Name), Namespace: namespace}
+			Expect(k8sClient.Get(ctx, vmUserKey, &vmUser)).To(Succeed())
 			vmUser.Spec.TargetRefs = []vmv1beta1.TargetRef{}
 			Expect(k8sClient.Update(ctx, &vmUser)).To(Succeed())
 
@@ -1276,7 +1260,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			By("verifying VMUser targetRefs have tenant-aware paths")
 			var updatedVMUser vmv1beta1.VMUser
-			Expect(k8sClient.Get(ctx, validVMUserNames[0], &updatedVMUser)).To(Succeed())
+			vmUserKey = types.NamespacedName{Name: fmt.Sprintf("%s-user", cr.Name), Namespace: namespace}
+			Expect(k8sClient.Get(ctx, vmUserKey, &updatedVMUser)).To(Succeed())
 			Expect(updatedVMUser.Spec.TargetRefs).ToNot(BeEmpty())
 
 			// Find the targetRef for our cluster
@@ -1321,7 +1306,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			By("updating the VMUser to target the initial VMCluster")
 			var vmUser vmv1beta1.VMUser
-			Expect(k8sClient.Get(ctx, validVMUserNames[0], &vmUser)).To(Succeed())
+			vmUserKey := types.NamespacedName{Name: "ref-override-cluster-user", Namespace: namespace}
+			Expect(k8sClient.Get(ctx, vmUserKey, &vmUser)).To(Succeed())
 			vmUser.Spec.TargetRefs = []vmv1beta1.TargetRef{
 				{
 					CRD: &vmv1beta1.CRDRef{
@@ -1345,7 +1331,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser:      vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
@@ -1401,7 +1386,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser:      vmv1alpha1.VMUserNameAndSpec{},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{
@@ -1431,10 +1415,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "invalid-vmuser",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: "missing-vmuser"},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
-					Zones:      vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{}},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					Zones:   vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with invalid VMCluster", &vmv1alpha1.VMDistributedCluster{
@@ -1443,9 +1426,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "missing-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
@@ -1461,9 +1443,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "zone-spec-missing-name",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Spec: &vmv1beta1.VMClusterSpec{
@@ -1479,12 +1460,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "zone-missing-spec-ref",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
-					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{},
-					}},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					Zones:   vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{}}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with zone having both spec and ref", &vmv1alpha1.VMDistributedCluster{
@@ -1493,9 +1471,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "zone-both-spec-ref",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
@@ -1514,12 +1491,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "missing-global-vmagent",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: "non-existent-vmagent"},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
-					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
-					}},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: "non-existent-vmagent"},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					Zones:   vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}}}},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -1543,41 +1517,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "missing-vmauth-fail",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "non-existent-vmauth"},
-					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
-					}},
-				},
-			}, []vmv1beta1.VMCluster{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      "vmcluster-1",
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod: "1",
-						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-						},
-					},
-				},
-			}),
-			Entry("with missing VMUser", &vmv1alpha1.VMDistributedCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: namespace,
-					Name:      "missing-vmuser-fail",
-				},
-				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: "non-existent-vmuser"},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: validVMAuthName.Name},
-					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
-					}},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "non-existent-vmauth"},
+					Zones:   vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}}}},
 				},
 			}, []vmv1beta1.VMCluster{
 				{
@@ -1601,12 +1543,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "missing-vmcluster-fail",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
-					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{Name: "non-existent-vmcluster"}},
-					}},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					Zones:   vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: "non-existent-vmcluster"}}}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with invalid OverrideSpec for VMCluster", &vmv1alpha1.VMDistributedCluster{
@@ -1615,9 +1554,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "invalid-override-spec",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"},
@@ -1649,9 +1587,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "vmcluster-create-fail",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-					VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Name: "existing-vmcluster-for-failure", // This VMCluster name will conflict with the one created below
@@ -1711,14 +1648,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				Name:      namespacedName.Name,
 			},
 			Spec: vmv1alpha1.VMDistributedClusterSpec{
-				VMAgent:    vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-				VMAuthUser: vmv1alpha1.VMUserNameAndSpec{Name: validVMUserNames[0].Name},
-				VMAuth:     vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
-				Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-					{Ref: &corev1.LocalObjectReference{
-						Name: vmCluster.Name,
-					}},
-				}},
+				VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
+				VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+				Zones:   vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}}}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, cr)).To(Succeed())

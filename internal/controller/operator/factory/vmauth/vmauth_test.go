@@ -63,27 +63,13 @@ func TestCreateOrUpdate(t *testing.T) {
 							Port: "8427",
 						},
 						HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
-							Spec: gwapiv1.HTTPRouteSpec{
-								CommonRouteSpec: gwapiv1.CommonRouteSpec{
-									ParentRefs: []gwapiv1.ParentReference{
-										{
-											Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
-											Kind:      ptr.To(gwapiv1.Kind("Gateway")),
-											Namespace: ptr.To(gwapiv1.Namespace("default")),
-											Name:      gwapiv1.ObjectName("test"),
-										},
-									},
+							ParentRefs: []gwapiv1.ParentReference{
+								{
+									Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+									Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+									Namespace: ptr.To(gwapiv1.Namespace("default")),
+									Name:      gwapiv1.ObjectName("test"),
 								},
-								Rules: []gwapiv1.HTTPRouteRule{{
-									Matches: []gwapiv1.HTTPRouteMatch{
-										{
-											Path: &gwapiv1.HTTPPathMatch{
-												Type:  ptr.To(gwapiv1.PathMatchPathPrefix),
-												Value: ptr.To("/"),
-											},
-										},
-									},
-								}},
 							},
 						},
 					},
@@ -95,34 +81,6 @@ func TestCreateOrUpdate(t *testing.T) {
 				&apiextensionsv1.CustomResourceDefinition{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "httproutes.gateway.networking.k8s.io",
-					},
-				},
-				&gwapiv1.HTTPRoute{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmauth-test",
-						Namespace: "default",
-					},
-					Spec: gwapiv1.HTTPRouteSpec{
-						CommonRouteSpec: gwapiv1.CommonRouteSpec{
-							ParentRefs: []gwapiv1.ParentReference{
-								{
-									Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
-									Kind:      ptr.To(gwapiv1.Kind("Gateway")),
-									Namespace: ptr.To(gwapiv1.Namespace("default")),
-									Name:      gwapiv1.ObjectName("test"),
-								},
-							},
-						},
-						Rules: []gwapiv1.HTTPRouteRule{{
-							Matches: []gwapiv1.HTTPRouteMatch{
-								{
-									Path: &gwapiv1.HTTPPathMatch{
-										Type:  ptr.To(gwapiv1.PathMatchPathPrefix),
-										Value: ptr.To("/"),
-									},
-								},
-							},
-						}},
 					},
 				},
 			},
@@ -145,27 +103,13 @@ func TestCreateOrUpdate(t *testing.T) {
 							Port: "8427",
 						},
 						HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
-							Spec: gwapiv1.HTTPRouteSpec{
-								CommonRouteSpec: gwapiv1.CommonRouteSpec{
-									ParentRefs: []gwapiv1.ParentReference{
-										{
-											Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
-											Kind:      ptr.To(gwapiv1.Kind("Gateway")),
-											Namespace: ptr.To(gwapiv1.Namespace("default")),
-											Name:      gwapiv1.ObjectName("test"),
-										},
-									},
+							ParentRefs: []gwapiv1.ParentReference{
+								{
+									Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+									Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+									Namespace: ptr.To(gwapiv1.Namespace("default")),
+									Name:      gwapiv1.ObjectName("test"),
 								},
-								Rules: []gwapiv1.HTTPRouteRule{{
-									Matches: []gwapiv1.HTTPRouteMatch{
-										{
-											Path: &gwapiv1.HTTPPathMatch{
-												Type:  ptr.To(gwapiv1.PathMatchPathPrefix),
-												Value: ptr.To("/"),
-											},
-										},
-									},
-								}},
 							},
 						},
 					},

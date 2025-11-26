@@ -11,6 +11,7 @@ import (
 	v12 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -476,9 +477,16 @@ func (cr *VMAuthSpec) UnmarshalJSON(src []byte) error {
 type EmbeddedHTTPRoute struct {
 	//  EmbeddedObjectMetadata adds labels and annotations for object.
 	EmbeddedObjectMetadata `json:",inline"`
-	// Spec describes the attributes that a user creates on a httproute.
-	// More info: https://gateway-api.sigs.k8s.io/api-types/httproute/
-	Spec gwapiv1.HTTPRouteSpec `json:"spec"`
+	// Hostnames defines a set of hostnames that should match against the HTTP Host
+	// header to select a HTTPRoute used to process the request.
+	// +optional
+	Hostnames []gwapiv1.Hostname `json:"hostnames,omitempty"`
+	// ParentRefs references the resources (usually Gateways) that a Route wants to be attached to.
+	ParentRefs []gwapiv1.ParentReference `json:"parentRefs,omitempty"`
+	// ExtraRules defines custom HTTPRouteRule in raw form, bypassing Gateway API CEL validations.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	ExtraRules []runtime.RawExtension `json:"extraRules,omitempty"`
 }
 
 // EmbeddedIngress describes ingress configuration options.

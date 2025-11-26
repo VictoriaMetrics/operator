@@ -103,24 +103,93 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		tenantID = *cr.Spec.VMAgent.TenantID
 	}
 
-	// Update or create vmuser (single entry in the spec) that will be selected by VMAuth
-	vmUserObjs, err := updateOrCreateVMuser(ctx, rclient, cr, cr.Namespace, cr.Spec.VMAuthUser, scheme)
-	if err != nil {
-		return fmt.Errorf("failed to update or create vmuser: %w", err)
-	}
-
-	// Update or create vmauth (single entry in the spec)
-	_, err = updateOrCreateVMAuth(ctx, rclient, cr, cr.Namespace, cr.Spec.VMAuth, scheme, vmUserObjs)
+	// Ensure VMAuth exists first so we can set it as the owner for the automatically-created VMUser.
+	vmAuthObjs, err := updateOrCreateVMAuth(ctx, rclient, cr, cr.Namespace, cr.Spec.VMAuth, scheme, nil)
 	if err != nil {
 		return fmt.Errorf("failed to update or create vmauth: %w", err)
 	}
 
-	// Fetch VMCLuster statuses by name
+	// Fetch VMCluster statuses by name (needed to build target refs for the VMUser).
 	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones.VMClusters)
 	if err != nil {
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
 
+	// Build TargetRefs for all VMClusters in the zones.
+	vmUserTargetRefs := buildVMUserTargetRefs(vmClusters, tenantID)
+
+	// Create or update an operator-managed VMUser named "<cr.Name>-user".
+	vmUserName := fmt.Sprintf("%s-user", cr.Name)
+	vmUserObj := &vmv1beta1.VMUser{}
+	vmUserExists := true
+	if err := rclient.Get(ctx, types.NamespacedName{Name: vmUserName, Namespace: cr.Namespace}, vmUserObj); err != nil {
+		if k8serrors.IsNotFound(err) {
+			vmUserExists = false
+			vmUserObj = &vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      vmUserName,
+					Namespace: cr.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/managed-by": "vm-operator",
+						"app.kubernetes.io/component":  "vmdistributedcluster",
+						"vmdistributedcluster":         cr.Name,
+					},
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					TargetRefs: vmUserTargetRefs,
+				},
+			}
+		} else {
+			return fmt.Errorf("failed to get VMUser %s/%s: %w", cr.Namespace, vmUserName, err)
+		}
+	} else {
+		// Update spec.targetRefs if they differ.
+		if !reflect.DeepEqual(vmUserObj.Spec.TargetRefs, vmUserTargetRefs) {
+			vmUserObj.Spec.TargetRefs = vmUserTargetRefs
+		}
+		// Ensure labels used by VMAuth selection are present.
+		if vmUserObj.Labels == nil {
+			vmUserObj.Labels = map[string]string{}
+		}
+		if vmUserObj.Labels["app.kubernetes.io/managed-by"] != "vm-operator" {
+			vmUserObj.Labels["app.kubernetes.io/managed-by"] = "vm-operator"
+		}
+		if vmUserObj.Labels["app.kubernetes.io/component"] != "vmdistributedcluster" {
+			vmUserObj.Labels["app.kubernetes.io/component"] = "vmdistributedcluster"
+		}
+		if vmUserObj.Labels["vmdistributedcluster"] != cr.Name {
+			vmUserObj.Labels["vmdistributedcluster"] = cr.Name
+		}
+	}
+
+	// Set owner reference to VMAuth if available and scheme provided.
+	if scheme != nil && len(vmAuthObjs) > 0 {
+		vmAuthObj := vmAuthObjs[0]
+		// Check whether ownerRef already present for VMAuth
+		if ok, err := controllerutil.HasOwnerReference(vmUserObj.GetOwnerReferences(), vmAuthObj, scheme); err != nil {
+			return fmt.Errorf("failed to check owner reference for VMUser %s: %w", vmUserObj.Name, err)
+		} else if !ok {
+			if err := controllerutil.SetOwnerReference(vmAuthObj, vmUserObj, scheme); err != nil {
+				return fmt.Errorf("failed to set owner reference for VMUser %s: %w", vmUserObj.Name, err)
+			}
+		}
+	}
+
+	// Create or update the VMUser resource as needed.
+	if !vmUserExists {
+		if err := rclient.Create(ctx, vmUserObj); err != nil {
+			return fmt.Errorf("failed to create VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
+		}
+	} else {
+		if err := rclient.Update(ctx, vmUserObj); err != nil {
+			return fmt.Errorf("failed to update VMUser %s/%s: %w", vmUserObj.Namespace, vmUserObj.Name, err)
+		}
+	}
+
+	// Prepare vmUserObjs slice for downstream logic.
+	vmUserObjs := []*vmv1beta1.VMUser{vmUserObj}
+
+	// Ensure VMUser TargetRefs are present/consistent (idempotent).
 	if err := ensureVMUsersTargetRefs(ctx, rclient, vmClusters, vmUserObjs, tenantID); err != nil {
 		return fmt.Errorf("failed to ensure vmuser target refs: %w", err)
 	}
@@ -455,18 +524,18 @@ func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
 	return fmt.Sprintf("http://%s.%s.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.Name, vmCluster.Namespace, *tenant)
 }
 
-func updateOrCreateVMuser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, namespace string, ref vmv1alpha1.VMUserNameAndSpec, scheme *runtime.Scheme) ([]*vmv1beta1.VMUser, error) {
+func updateOrCreateVMuser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, namespace string, name string, spec *vmv1beta1.VMUserSpec, scheme *runtime.Scheme) ([]*vmv1beta1.VMUser, error) {
 	// Name must be provided either for fetching an existing object or for creating an inline one.
-	if ref.Name == "" {
+	if name == "" {
 		return nil, errors.New("vmuser name is not specified")
 	}
 
-	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+	namespacedName := types.NamespacedName{Name: name, Namespace: namespace}
 	// If Spec is not provided inline, simply fetch the named VMUser from the API server.
-	if ref.Spec == nil {
+	if spec == nil {
 		vmUserObj := &vmv1beta1.VMUser{}
 		if err := rclient.Get(ctx, namespacedName, vmUserObj); err != nil {
-			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, ref.Name, err)
+			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, name, err)
 		}
 		return []*vmv1beta1.VMUser{vmUserObj}, nil
 	}
@@ -480,21 +549,21 @@ func updateOrCreateVMuser(ctx context.Context, rclient client.Client, cr *vmv1al
 			// Initialize object for creation with the provided inline spec.
 			vmUserObj = &vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ref.Name,
+					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: *ref.Spec.DeepCopy(),
+				Spec: *spec.DeepCopy(),
 			}
 		} else {
-			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, ref.Name, err)
+			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", namespace, name, err)
 		}
 	}
 
 	// Determine if an update is needed (spec or ownerRef changes).
 	vmUserNeedsUpdate := false
 	if vmUserExists {
-		if !reflect.DeepEqual(vmUserObj.Spec, *ref.Spec) {
-			vmUserObj.Spec = *ref.Spec.DeepCopy()
+		if !reflect.DeepEqual(vmUserObj.Spec, *spec) {
+			vmUserObj.Spec = *spec.DeepCopy()
 			vmUserNeedsUpdate = true
 		}
 	}
@@ -629,6 +698,21 @@ func updateOrCreateVMAuth(ctx context.Context, rclient client.Client, cr *vmv1al
 	}
 
 	return []*vmv1beta1.VMAuth{vmAuthObj}, nil
+}
+
+func buildVMUserTargetRefs(vmClusters []*vmv1beta1.VMCluster, tenantID string) []vmv1beta1.TargetRef {
+	targets := make([]vmv1beta1.TargetRef, 0, len(vmClusters))
+	for _, vmCluster := range vmClusters {
+		targets = append(targets, vmv1beta1.TargetRef{
+			CRD: &vmv1beta1.CRDRef{
+				Kind:      "VMCluster/vmselect",
+				Name:      vmCluster.Name,
+				Namespace: vmCluster.Namespace,
+			},
+			TargetPathSuffix: fmt.Sprintf("/select/%s/prometheus/api/v1", tenantID),
+		})
+	}
+	return targets
 }
 
 func ensureVMUsersTargetRefs(ctx context.Context, rclient client.Client, vmClusters []*vmv1beta1.VMCluster, vmUserObjs []*vmv1beta1.VMUser, tenantID string) error {
@@ -900,11 +984,9 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 	}
 
 	// If no client is provided, there's nothing to discover via EndpointSlices,
-	// so return early. Caller may invoke this function without a client in some
-	// contexts and should not consider that an error here.
-	if rclient == nil {
-		return nil
-	}
+	// so we should fallback to the single-URL polling behavior instead of returning early.
+	// Caller may invoke this function without a client in some contexts; do not treat that
+	// as an error — continue and poll vmAgent.AsURL()+GetMetricPath().
 
 	// Use GetReplicas from interface
 	if vmAgent.GetReplicas() == 0 {

@@ -364,7 +364,7 @@ type BaseOperatorConf struct {
 		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory         string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
-		AlertManagerVersion          string `default:"v0.28.1" env:"ALERTMANAGERVERSION"`
+		AlertManagerVersion          string `default:"v0.29.0" env:"ALERTMANAGERVERSION"`
 		UseDefaultResources          bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource                     struct {
 			Limit struct {

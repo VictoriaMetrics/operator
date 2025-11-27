@@ -1705,6 +1705,24 @@ Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VMAuthSpec](#vmauthsp
 | minReplicas<a href="#embeddedhpa-minreplicas" id="embeddedhpa-minreplicas">#</a><br/>_integer_ | _(Required)_<br/> |
 
 
+#### EmbeddedHTTPRoute
+
+
+
+EmbeddedHTTPRoute describes httproute configuration options.
+
+Appears in: [VMAuthSpec](#vmauthspec)
+
+| Field | Description |
+| --- | --- |
+| annotations<a href="#embeddedhttproute-annotations" id="embeddedhttproute-annotations">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Annotations is an unstructured key value map stored with a resource that may be<br />set by external tools to store and retrieve arbitrary metadata. They are not<br />queryable and should be preserved when modifying objects.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations |
+| extraRules<a href="#embeddedhttproute-extrarules" id="embeddedhttproute-extrarules">#</a><br/>_[RawExtension](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#rawextension-runtime-pkg) array_ | _(Optional)_<br/>ExtraRules defines custom HTTPRouteRule in raw form, bypassing Gateway API CEL validations. |
+| hostnames<a href="#embeddedhttproute-hostnames" id="embeddedhttproute-hostnames">#</a><br/>_Hostname array_ | _(Optional)_<br/>Hostnames defines a set of hostnames that should match against the HTTP Host<br />header to select a HTTPRoute used to process the request. |
+| labels<a href="#embeddedhttproute-labels" id="embeddedhttproute-labels">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Labels Map of string keys and values that can be used to organize and categorize<br />(scope and select) objects. May match selectors of replication controllers<br />and services.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels |
+| name<a href="#embeddedhttproute-name" id="embeddedhttproute-name">#</a><br/>_string_ | _(Optional)_<br/>Name must be unique within a namespace. Is required when creating resources, although<br />some resources may allow a client to request the generation of an appropriate name<br />automatically. Name is primarily intended for creation idempotence and configuration<br />definition.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names |
+| parentRefs<a href="#embeddedhttproute-parentrefs" id="embeddedhttproute-parentrefs">#</a><br/>_ParentReference array_ | _(Required)_<br/>ParentRefs references the resources (usually Gateways) that a Route wants to be attached to. |
+
+
 #### EmbeddedIngress
 
 
@@ -1722,6 +1740,7 @@ Appears in: [VMAuthSpec](#vmauthspec)
 | host<a href="#embeddedingress-host" id="embeddedingress-host">#</a><br/>_string_ | _(Optional)_<br/>Host defines ingress host parameter for default rule<br />It will be used, only if TlsHosts is empty |
 | labels<a href="#embeddedingress-labels" id="embeddedingress-labels">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Labels Map of string keys and values that can be used to organize and categorize<br />(scope and select) objects. May match selectors of replication controllers<br />and services.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels |
 | name<a href="#embeddedingress-name" id="embeddedingress-name">#</a><br/>_string_ | _(Optional)_<br/>Name must be unique within a namespace. Is required when creating resources, although<br />some resources may allow a client to request the generation of an appropriate name<br />automatically. Name is primarily intended for creation idempotence and configuration<br />definition.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names |
+| paths<a href="#embeddedingress-paths" id="embeddedingress-paths">#</a><br/>_string array_ | _(Optional)_<br/>Paths defines ingress paths parameter for default rule |
 | tlsHosts<a href="#embeddedingress-tlshosts" id="embeddedingress-tlshosts">#</a><br/>_string array_ | _(Required)_<br/>TlsHosts configures TLS access for ingress, tlsSecretName must be defined for it. |
 | tlsSecretName<a href="#embeddedingress-tlssecretname" id="embeddedingress-tlssecretname">#</a><br/>_string_ | _(Optional)_<br/>TlsSecretName defines secretname at the VMAuth namespace with cert and key<br />https://kubernetes.io/docs/concepts/services-networking/ingress/#tls |
 
@@ -1733,7 +1752,7 @@ Appears in: [VMAuthSpec](#vmauthspec)
 EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
 Only fields which are relevant to embedded resources are included.
 
-Appears in: [AdditionalServiceSpec](#additionalservicespec), [EmbeddedIngress](#embeddedingress), [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [AdditionalServiceSpec](#additionalservicespec), [EmbeddedHTTPRoute](#embeddedhttproute), [EmbeddedIngress](#embeddedingress), [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -1961,7 +1980,7 @@ Appears in: [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpe
 HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 
-Appears in: [DiscordConfig](#discordconfig), [JiraConfig](#jiraconfig), [MSTeamsConfig](#msteamsconfig), [MSTeamsV2Config](#msteamsv2config), [OpsGenieConfig](#opsgenieconfig), [PagerDutyConfig](#pagerdutyconfig), [PushoverConfig](#pushoverconfig), [RocketchatConfig](#rocketchatconfig), [SlackConfig](#slackconfig), [SnsConfig](#snsconfig), [TelegramConfig](#telegramconfig), [VictorOpsConfig](#victoropsconfig), [WeChatConfig](#wechatconfig), [WebexConfig](#webexconfig), [WebhookConfig](#webhookconfig)
+Appears in: [DiscordConfig](#discordconfig), [IncidentIOConfig](#incidentioconfig), [JiraConfig](#jiraconfig), [MSTeamsConfig](#msteamsconfig), [MSTeamsV2Config](#msteamsv2config), [OpsGenieConfig](#opsgenieconfig), [PagerDutyConfig](#pagerdutyconfig), [PushoverConfig](#pushoverconfig), [RocketchatConfig](#rocketchatconfig), [SlackConfig](#slackconfig), [SnsConfig](#snsconfig), [TelegramConfig](#telegramconfig), [VictorOpsConfig](#victoropsconfig), [WeChatConfig](#wechatconfig), [WebexConfig](#webexconfig), [WebhookConfig](#webhookconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2023,6 +2042,27 @@ Appears in: [PagerDutyConfig](#pagerdutyconfig)
 | alt<a href="#imageconfig-alt" id="imageconfig-alt">#</a><br/>_string_ | _(Optional)_<br/> |
 | href<a href="#imageconfig-href" id="imageconfig-href">#</a><br/>_string_ | _(Optional)_<br/> |
 | source<a href="#imageconfig-source" id="imageconfig-source">#</a><br/>_string_ | _(Required)_<br/> |
+
+
+#### IncidentIOConfig
+
+
+
+IncidentIOConfig configures notifications via incident.io.
+https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
+available from v0.66.0 operator version
+and v0.29.0 alertmanager version
+
+Appears in: [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| alert_source_token<a href="#incidentioconfig-alert_source_token" id="incidentioconfig-alert_source_token">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>AlertSourceToken is used to authenticate with incident.io |
+| http_config<a href="#incidentioconfig-http_config" id="incidentioconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
+| max_alerts<a href="#incidentioconfig-max_alerts" id="incidentioconfig-max_alerts">#</a><br/>_integer_ | _(Optional)_<br/>MaxAlerts defines maximum number of alerts to be sent per incident.io message. |
+| send_resolved<a href="#incidentioconfig-send_resolved" id="incidentioconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| timeout<a href="#incidentioconfig-timeout" id="incidentioconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout is the maximum time allowed to invoke incident.io |
+| url<a href="#incidentioconfig-url" id="incidentioconfig-url">#</a><br/>_string_ | _(Required)_<br/>The URL to send the incident.io alert. This would typically be provided by the<br />incident.io team when setting up an alert source. |
 
 
 #### InhibitRule
@@ -2480,6 +2520,7 @@ Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 | --- | --- |
 | discord_configs<a href="#receiver-discord_configs" id="receiver-discord_configs">#</a><br/>_[DiscordConfig](#discordconfig) array_ | _(Optional)_<br/> |
 | email_configs<a href="#receiver-email_configs" id="receiver-email_configs">#</a><br/>_[EmailConfig](#emailconfig) array_ | _(Optional)_<br/>EmailConfigs defines email notification configurations. |
+| incidentio_configs<a href="#receiver-incidentio_configs" id="receiver-incidentio_configs">#</a><br/>_[IncidentIOConfig](#incidentioconfig) array_ | _(Optional)_<br/> |
 | jira_configs<a href="#receiver-jira_configs" id="receiver-jira_configs">#</a><br/>_[JiraConfig](#jiraconfig) array_ | _(Optional)_<br/> |
 | msteams_configs<a href="#receiver-msteams_configs" id="receiver-msteams_configs">#</a><br/>_[MSTeamsConfig](#msteamsconfig) array_ | _(Optional)_<br/> |
 | msteamsv2_configs<a href="#receiver-msteamsv2_configs" id="receiver-msteamsv2_configs">#</a><br/>_[MSTeamsV2Config](#msteamsv2config) array_ | _(Optional)_<br/> |
@@ -3947,6 +3988,7 @@ Appears in: [VMAuth](#vmauth)
 | hostNetwork<a href="#vmauthspec-hostnetwork" id="vmauthspec-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | host_aliases<a href="#vmauthspec-host_aliases" id="vmauthspec-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
 | hpa<a href="#vmauthspec-hpa" id="vmauthspec-hpa">#</a><br/>_[EmbeddedHPA](#embeddedhpa)_ | _(Optional)_<br/>Configures horizontal pod autoscaling. |
+| httpRoute<a href="#vmauthspec-httproute" id="vmauthspec-httproute">#</a><br/>_[EmbeddedHTTPRoute](#embeddedhttproute)_ | _(Required)_<br/>HTTPRoute enables httproute configuration for VMAuth. |
 | image<a href="#vmauthspec-image" id="vmauthspec-image">#</a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
 | imagePullSecrets<a href="#vmauthspec-imagepullsecrets" id="vmauthspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
 | ingress<a href="#vmauthspec-ingress" id="vmauthspec-ingress">#</a><br/>_[EmbeddedIngress](#embeddedingress)_ | _(Required)_<br/>Ingress enables ingress configuration for VMAuth. |

@@ -8,11 +8,13 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
-	v12 "k8s.io/api/networking/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 var labelNameRegexp = regexp.MustCompile("^[a-zA-Z_:.][a-zA-Z0-9_:.]*$")
@@ -66,6 +68,8 @@ type VMAuthSpec struct {
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty" yaml:"podDisruptionBudget,omitempty"`
 	// Ingress enables ingress configuration for VMAuth.
 	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
+	// HTTPRoute enables httproute configuration for VMAuth.
+	HTTPRoute *EmbeddedHTTPRoute `json:"httpRoute,omitempty"`
 	// LivenessProbe that will be added to VMAuth pod
 	*EmbeddedProbes `json:",inline"`
 	// UnauthorizedAccessConfig configures access for un authorized users
@@ -469,6 +473,22 @@ func (cr *VMAuthSpec) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
+// EmbeddedHTTPRoute describes httproute configuration options.
+type EmbeddedHTTPRoute struct {
+	//  EmbeddedObjectMetadata adds labels and annotations for object.
+	EmbeddedObjectMetadata `json:",inline"`
+	// Hostnames defines a set of hostnames that should match against the HTTP Host
+	// header to select a HTTPRoute used to process the request.
+	// +optional
+	Hostnames []gwapiv1.Hostname `json:"hostnames,omitempty"`
+	// ParentRefs references the resources (usually Gateways) that a Route wants to be attached to.
+	ParentRefs []gwapiv1.ParentReference `json:"parentRefs,omitempty"`
+	// ExtraRules defines custom HTTPRouteRule in raw form, bypassing Gateway API CEL validations.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	ExtraRules []runtime.RawExtension `json:"extraRules,omitempty"`
+}
+
 // EmbeddedIngress describes ingress configuration options.
 type EmbeddedIngress struct {
 	// ClassName defines ingress class name for VMAuth
@@ -485,15 +505,18 @@ type EmbeddedIngress struct {
 	// ExtraRules - additional rules for ingress,
 	// must be checked for correctness by user.
 	// +optional
-	ExtraRules []v12.IngressRule `json:"extraRules,omitempty" yaml:"extraRules,omitempty"`
+	ExtraRules []networkingv1.IngressRule `json:"extraRules,omitempty" yaml:"extraRules,omitempty"`
 	// ExtraTLS - additional TLS configuration for ingress
 	// must be checked for correctness by user.
 	// +optional
-	ExtraTLS []v12.IngressTLS `json:"extraTls,omitempty" yaml:"extraTls,omitempty"`
+	ExtraTLS []networkingv1.IngressTLS `json:"extraTls,omitempty" yaml:"extraTls,omitempty"`
 	// Host defines ingress host parameter for default rule
 	// It will be used, only if TlsHosts is empty
 	// +optional
 	Host string `json:"host,omitempty"`
+	// Paths defines ingress paths parameter for default rule
+	// +optional
+	Paths []string `json:"paths,omitempty" yaml:"paths,omitempty"`
 }
 
 // VMAuthStatus defines the observed state of VMAuth

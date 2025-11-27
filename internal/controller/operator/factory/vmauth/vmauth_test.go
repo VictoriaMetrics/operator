@@ -7,9 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -23,151 +26,199 @@ func TestCreateOrUpdate(t *testing.T) {
 		cb(c)
 		return c
 	}
-	type args struct {
-		cr *vmv1beta1.VMAuth
-		c  *config.BaseOperatorConf
-	}
-	tests := []struct {
-		name              string
-		args              args
+	type opts struct {
+		cr                *vmv1beta1.VMAuth
+		c                 *config.BaseOperatorConf
 		wantErr           bool
 		predefinedObjects []runtime.Object
-	}{
-		{
-			name: "simple-unmanaged",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-				},
-				c: config.MustGetBaseConfig(),
-			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-			},
-		},
-		{
-			name: "simple-with-external-config",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						ExternalConfig: vmv1beta1.ExternalConfig{
-							SecretRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "external-cfg",
-								},
-							},
-						},
-					},
-				},
-				c: config.MustGetBaseConfig(),
-			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "external-cfg",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"config.yaml": {},
-					},
-				},
-			},
-		},
-		{
-			name: "with-match-all",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
-				},
-				c: config.MustGetBaseConfig(),
-			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-				&vmv1beta1.VMUser{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "user-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{
-						UserName: ptr.To("user-1"),
-						Password: ptr.To("password-1"),
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								Static: &vmv1beta1.StaticRef{
-									URLs: []string{"http://url-1", "http://url-2"},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "with customer config reloader",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						SelectAllByDefault: true,
-					},
-				},
-				c: mutateConf(func(c *config.BaseOperatorConf) {
-					c.UseVMConfigReloader = true
-				}),
-			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-				&vmv1beta1.VMUser{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "user-1",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{
-						UserName: ptr.To("user-1"),
-						Password: ptr.To("password-1"),
-						TargetRefs: []vmv1beta1.TargetRef{
-							{
-								Static: &vmv1beta1.StaticRef{
-									URLs: []string{"http://url-1", "http://url-2"},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			tc := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			// TODO fix
-			if err := CreateOrUpdate(ctx, tt.args.cr, tc); (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+
+	f := func(o opts) {
+		ctx := context.Background()
+		tc := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		if err := CreateOrUpdate(ctx, o.cr, tc); (err != nil) != o.wantErr {
+			t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, o.wantErr)
+		}
 	}
+
+	// simple-with-httproute
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+					Port: "8427",
+				},
+				HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+					ParentRefs: []gwapiv1.ParentReference{
+						{
+							Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+							Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+							Namespace: ptr.To(gwapiv1.Namespace("default")),
+							Name:      gwapiv1.ObjectName("test"),
+						},
+					},
+				},
+			},
+		},
+		c: config.MustGetBaseConfig(),
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "httproutes.gateway.networking.k8s.io",
+				},
+			},
+		},
+	})
+
+	// simple-remove-httproute
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+					Port: "8427",
+				},
+			},
+			ParsedLastAppliedSpec: &vmv1beta1.VMAuthSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+					Port: "8427",
+				},
+				HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+					ParentRefs: []gwapiv1.ParentReference{
+						{
+							Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+							Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+							Namespace: ptr.To(gwapiv1.Namespace("default")),
+							Name:      gwapiv1.ObjectName("test"),
+						},
+					},
+				},
+			},
+		},
+		c: config.MustGetBaseConfig(),
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "httproutes.gateway.networking.k8s.io",
+				},
+			},
+		},
+	})
+
+	// simple-with-external-config
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				ExternalConfig: vmv1beta1.ExternalConfig{
+					SecretRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "external-cfg",
+						},
+					},
+				},
+			},
+		},
+		c: config.MustGetBaseConfig(),
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "external-cfg",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"config.yaml": {},
+				},
+			},
+		},
+	})
+
+	// with-match-all
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				SelectAllByDefault: true,
+			},
+		},
+		c: config.MustGetBaseConfig(),
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					UserName: ptr.To("user-1"),
+					Password: ptr.To("password-1"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: &vmv1beta1.StaticRef{
+								URLs: []string{"http://url-1", "http://url-2"},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	// with customer config reloader
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				SelectAllByDefault: true,
+			},
+		},
+		c: mutateConf(func(c *config.BaseOperatorConf) {
+			c.UseVMConfigReloader = true
+		}),
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					UserName: ptr.To("user-1"),
+					Password: ptr.To("password-1"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: &vmv1beta1.StaticRef{
+								URLs: []string{"http://url-1", "http://url-2"},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
 }
 
 func TestMakeSpecForAuthOk(t *testing.T) {
-	f := func(t *testing.T, cr *vmv1beta1.VMAuth, wantYaml string) {
+	f := func(cr *vmv1beta1.VMAuth, wantYaml string) {
 		t.Helper()
 
 		scheme := k8stools.GetTestClientWithObjects(nil).Scheme()
@@ -192,24 +243,24 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
 	}
 
-	t.Run("custom-loader", func(t *testing.T) {
-		f(t, &vmv1beta1.VMAuth{
-			ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
-			Spec: vmv1beta1.VMAuthSpec{
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					UseDefaultResources: ptr.To(false),
-					Image: vmv1beta1.Image{
-						Repository: "vm-repo",
-						Tag:        "v1.97.1",
-					},
-					Port: "8429",
+	// with custom-loader
+	f(&vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				UseDefaultResources: ptr.To(false),
+				Image: vmv1beta1.Image{
+					Repository: "vm-repo",
+					Tag:        "v1.97.1",
 				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
-					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
-				},
+				Port: "8429",
 			},
-		}, `
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				UseVMConfigReloader:    ptr.To(true),
+				ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+			},
+		},
+	}, `
 volumes:
   - name: config-out
     volumesource:
@@ -328,25 +379,25 @@ containers:
 serviceaccountname: vmauth-auth
 
 `)
-	})
-	t.Run("no-custom-loader", func(t *testing.T) {
-		f(t, &vmv1beta1.VMAuth{
-			ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
-			Spec: vmv1beta1.VMAuthSpec{
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					UseDefaultResources: ptr.To(false),
-					Image: vmv1beta1.Image{
-						Repository: "vm-repo",
-						Tag:        "v1.97.1",
-					},
-					Port: "8429",
+
+	// without custom-loader
+	f(&vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				UseDefaultResources: ptr.To(false),
+				Image: vmv1beta1.Image{
+					Repository: "vm-repo",
+					Tag:        "v1.97.1",
 				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImageTag: "quay.io/prometheus-operator/prometheus-config-reloader:v1",
-					UseVMConfigReloader:    ptr.To(false),
-				},
+				Port: "8429",
 			},
-		}, `
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImageTag: "quay.io/prometheus-operator/prometheus-config-reloader:v1",
+				UseVMConfigReloader:    ptr.To(false),
+			},
+		},
+	}, `
 volumes:
   - name: config-out
     volumesource:
@@ -446,5 +497,105 @@ containers:
 serviceaccountname: vmauth-auth
 
 `)
-	})
+}
+
+func TestBuildIngressForAuthOk(t *testing.T) {
+	f := func(cr *vmv1beta1.VMAuth, wantYaml string) {
+		t.Helper()
+
+		scheme := k8stools.GetTestClientWithObjects(nil).Scheme()
+		build.AddDefaults(scheme)
+		scheme.Default(cr)
+		var wantSpec networkingv1.IngressSpec
+		if err := yaml.Unmarshal([]byte(wantYaml), &wantSpec); err != nil {
+			t.Fatalf("not expected wantYaml: %q: \n%q", wantYaml, err)
+		}
+		wantYAMLForCompare, err := yaml.Marshal(wantSpec)
+		if err != nil {
+			t.Fatalf("BUG: cannot parse as yaml: %q", err)
+		}
+		got := buildIngressConfig(cr)
+		gotYAML, err := yaml.Marshal(got.Spec)
+		if err != nil {
+			t.Fatalf("cannot parse got as yaml: %q", err)
+		}
+		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
+	}
+
+	// with default paths
+	f(&vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				UseDefaultResources: ptr.To(false),
+				Image: vmv1beta1.Image{
+					Repository: "vm-repo",
+					Tag:        "v1.97.1",
+				},
+				Port: "8429",
+			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImageTag: "quay.io/prometheus-operator/prometheus-config-reloader:v1",
+				UseVMConfigReloader:    ptr.To(false),
+			},
+			Ingress: &vmv1beta1.EmbeddedIngress{
+				Host: "example.com",
+			},
+		},
+	}, `
+rules:
+- host: example.com
+  ingressrulevalue:
+    http:
+      paths:
+      - path: /
+        pathtype: Prefix
+        backend:
+          service:
+            name: vmauth-auth
+            port:
+              name: http
+              number: 0
+          resource: null
+`)
+
+	// with custom paths
+	f(&vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				UseDefaultResources: ptr.To(false),
+				Image: vmv1beta1.Image{
+					Repository: "vm-repo",
+					Tag:        "v1.97.1",
+				},
+				Port: "8429",
+			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImageTag: "quay.io/prometheus-operator/prometheus-config-reloader:v1",
+				UseVMConfigReloader:    ptr.To(false),
+			},
+			Ingress: &vmv1beta1.EmbeddedIngress{
+				Host: "example.com",
+				Paths: []string{
+					"/test",
+				},
+			},
+		},
+	}, `
+rules:
+- host: example.com
+  ingressrulevalue:
+    http:
+      paths:
+      - path: /test
+        pathtype: Prefix
+        backend:
+          service:
+            name: vmauth-auth
+            port:
+              name: http
+              number: 0
+          resource: null
+`)
 }

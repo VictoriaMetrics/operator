@@ -1235,6 +1235,66 @@ templates: []
 `,
 		},
 		{
+			name: "incidentio",
+			args: args{
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "incidentio-dev",
+							Namespace: "default",
+						},
+						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+							Route: &vmv1beta1.Route{
+								Receiver: "incidentio",
+							},
+							Receivers: []vmv1beta1.Receiver{
+								{
+									Name: "incidentio",
+									IncidentIOConfigs: []vmv1beta1.IncidentIOConfig{
+										{
+											URL: "http://example.com/",
+											AlertSourceToken: &corev1.SecretKeySelector{
+												Key: "TOKEN",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "incidentio-access",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "incidentio-access",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"TOKEN": []byte(`token value`),
+					},
+				},
+			},
+			want: `route:
+  receiver: blackhole
+  routes:
+  - matchers:
+    - namespace = "default"
+    receiver: default-incidentio-dev-incidentio
+    continue: true
+receivers:
+- name: blackhole
+- name: default-incidentio-dev-incidentio
+  incidentio_configs:
+  - alert_source_token: token value
+    url: http://example.com/
+templates: []
+`,
+		},
+		{
 			name: "msteamsv2",
 			args: args{
 				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{

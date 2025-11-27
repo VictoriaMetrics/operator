@@ -39,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -128,6 +129,7 @@ func init() {
 	utilruntime.Must(metav1.AddToScheme(scheme))
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(promv1.AddToScheme(scheme))
+	utilruntime.Must(gwapiv1.Install(scheme))
 	build.AddDefaults(scheme)
 	// +kubebuilder:scaffold:scheme
 }

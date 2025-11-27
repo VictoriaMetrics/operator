@@ -50,6 +50,8 @@ linters:
           alias: k8serrors
         - pkg: sigs.k8s.io/gateway-api/apis/v1
           alias: gwapiv1
+        - pkg: k8s.io/api/networking/v1
+          alias: networkingv1
 formatters:
   enable:
     - gofmt

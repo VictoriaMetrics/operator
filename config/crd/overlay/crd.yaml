@@ -25231,6 +25231,12 @@ spec:
                       Cannot be updated.
                       More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
                     type: string
+                  paths:
+                    description: Paths defines ingress paths parameter for default
+                      rule
+                    items:
+                      type: string
+                    type: array
                   tlsHosts:
                     description: TlsHosts configures TLS access for ingress, tlsSecretName
                       must be defined for it.

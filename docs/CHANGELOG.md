@@ -19,6 +19,7 @@ aliases:
 * FEATURE: [config-reloader](https://github.com/VictoriaMetrics/operator/blob/master/cmd/config-reloader/README.md): set default config reloader image version equal to current operator version. See [#2562](https://github.com/VictoriaMetrics/helm-charts/pull/2562).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): do not set `promscrape.cluster.membersCount` and `promscrape.cluster.memberNum` flags in ingestOnly mode. See [#1594](https://github.com/VictoriaMetrics/operator/issues/1594).
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): Add httproute support for vmauth. See[#1625](https://github.com/VictoriaMetrics/operator/issues/1625)
+* FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): allow overriding default path for embedded ingress. See [#1617](https://github.com/VictoriaMetrics/operator/issues/1617).
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): support incident.io receiver. See [#1637](https://github.com/VictoriaMetrics/operator/issues/1637).
 
 

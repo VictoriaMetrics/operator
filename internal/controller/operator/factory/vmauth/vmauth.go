@@ -504,25 +504,36 @@ func createOrUpdateIngress(ctx context.Context, rclient client.Client, cr *vmv1b
 	return rclient.Update(ctx, newIngress)
 }
 
-var defaultPt = networkingv1.PathTypePrefix
-
 func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
+	var paths []networkingv1.HTTPIngressPath
+	defaultBackend := networkingv1.IngressBackend{
+		Service: &networkingv1.IngressServiceBackend{
+			Name: cr.PrefixedName(),
+			Port: networkingv1.ServiceBackendPort{Name: "http"},
+		},
+	}
+	if len(cr.Spec.Ingress.Paths) == 0 {
+		paths = []networkingv1.HTTPIngressPath{
+			{
+				Path:     "/",
+				PathType: ptr.To(networkingv1.PathTypePrefix),
+				Backend:  defaultBackend,
+			},
+		}
+	} else {
+		for _, p := range cr.Spec.Ingress.Paths {
+			paths = append(paths, networkingv1.HTTPIngressPath{
+				Path:     p,
+				PathType: ptr.To(networkingv1.PathTypePrefix),
+				Backend:  defaultBackend,
+			})
+		}
+	}
 	defaultRule := networkingv1.IngressRule{
 		Host: cr.Spec.Ingress.Host,
 		IngressRuleValue: networkingv1.IngressRuleValue{
 			HTTP: &networkingv1.HTTPIngressRuleValue{
-				Paths: []networkingv1.HTTPIngressPath{
-					{
-						Path: "/",
-						Backend: networkingv1.IngressBackend{
-							Service: &networkingv1.IngressServiceBackend{
-								Name: cr.PrefixedName(),
-								Port: networkingv1.ServiceBackendPort{Name: "http"},
-							},
-						},
-						PathType: &defaultPt,
-					},
-				},
+				Paths: paths,
 			},
 		},
 	}

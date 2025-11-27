@@ -708,16 +708,6 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 
 // Unit tests for helper functions and adapter behavior
 func TestVmAgentAdapterAndURLHelpers(t *testing.T) {
-	t.Run("vmAgentAdapter.PrefixedName returns same as concrete", func(t *testing.T) {
-		ag := &vmv1beta1.VMAgent{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
-		}
-		adapter := &vmAgentAdapter{VMAgent: ag}
-		expected := ag.PrefixedName()
-		got := adapter.PrefixedName()
-		assert.Equal(t, expected, got)
-	})
-
 	t.Run("buildPerIPMetricURL builds proper URL with scheme and port", func(t *testing.T) {
 		baseURL := "http://my-svc.default.svc:1234"
 		metricPath := "/metrics"

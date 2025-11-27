@@ -20,6 +20,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -420,12 +421,10 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 
 	// Ensure owner reference is set to current CR
-	if scheme != nil {
-		if modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmAgentObj, scheme); err != nil {
-			return nil, fmt.Errorf("failed to set owner reference for VMAgent %s: %w", vmAgentObj.Name, err)
-		} else if modifiedOwnerRef {
-			vmAgentNeedsUpdate = true
-		}
+	if modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmAgentObj, scheme); err != nil {
+		return nil, fmt.Errorf("failed to set owner reference for VMAgent %s: %w", vmAgentObj.Name, err)
+	} else if modifiedOwnerRef {
+		vmAgentNeedsUpdate = true
 	}
 
 	// Create or update the vmagent object if spec has changed or it doesn't exist yet
@@ -762,30 +761,14 @@ type VMAgentMetrics interface {
 // VMAgentWithStatus extends VMAgentMetrics to include status checking
 type VMAgentWithStatus interface {
 	VMAgentMetrics
-	GetReplicas() int32
-	GetNamespace() string
-	GetName() string
-	// PrefixedName returns the service prefixed name for discovery (when applicable)
 	PrefixedName() string
+	GetName() string
+	GetNamespace() string
 }
 
 // vmAgentAdapter provides a small adapter to satisfy VMAgentWithStatus for concrete vmv1beta1.VMAgent instances.
 type vmAgentAdapter struct {
 	*vmv1beta1.VMAgent
-}
-
-func (v *vmAgentAdapter) GetReplicas() int32 {
-	return v.Status.Replicas
-}
-
-// GetName and GetNamespace are inherited from vmv1beta1.VMAgent
-
-// PrefixedName is exposed explicitly on the adapter to satisfy VMAgentWithStatus.
-func (v *vmAgentAdapter) PrefixedName() string {
-	if v.VMAgent == nil {
-		return ""
-	}
-	return v.VMAgent.PrefixedName()
 }
 
 // parseEndpointSliceAddresses extracts IPv4/IPv6 addresses from an EndpointSlice object.
@@ -835,7 +818,7 @@ func buildPerIPMetricURL(baseURL, metricPath, ip string) string {
 // single AsURL()+GetMetricPath() behavior.
 func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmAgent VMAgentWithStatus, deadline time.Duration, rclient client.Client) error {
 	// Wait for vmAgent to become ready
-	err := wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		vmAgentObj := &vmv1beta1.VMAgent{}
 		err = rclient.Get(ctx, types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}, vmAgentObj)
 		if err != nil {
@@ -854,15 +837,16 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 	var hosts []string
 	// Poll until pod IPs are discovered
 	err = wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
-		// Use PrefixedName from the interface for discovery.
-		svcName := vmAgent.PrefixedName()
-		svcNamespace := vmAgent.GetNamespace()
-
-		// Try to GET a single EndpointSlice that has the same name as the service
-		var es discoveryv1.EndpointSlice
-		if err := rclient.Get(ctx, types.NamespacedName{Name: svcName, Namespace: svcNamespace}, &es); err == nil {
-			hosts = parseEndpointSliceAddresses(&es)
+		endpointList := &discoveryv1.EndpointSliceList{}
+		if err := rclient.List(ctx, endpointList, &client.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{"kubernetes.io/service-name": vmAgent.PrefixedName()}),
+		}); err != nil {
+			return false, err
 		}
+		if len(endpointList.Items) == 0 {
+			return false, nil
+		}
+		hosts = parseEndpointSliceAddresses(&endpointList.Items[0])
 		return len(hosts) > 0, nil
 	})
 	if err != nil {

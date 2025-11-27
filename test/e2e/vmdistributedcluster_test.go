@@ -223,6 +223,80 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	}
 
 	Context("create", func() {
+		It("should successfully create a VMDistributedCluster with inline VMAgent spec", func() {
+			beforeEach()
+			DeferCleanup(afterEach)
+
+			By("creating a VMDistributedCluster with inline VMAgent spec")
+			namespacedName.Name = "distributed-cluster-with-inline-vmagent"
+			vmAgentName := "inline-vmagent"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      namespacedName.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
+						Name: vmAgentName,
+						Spec: &vmv1beta1.VMAgentSpec{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](2),
+							},
+							RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+								{
+									URL: "http://example.com",
+								},
+							},
+						},
+					},
+					VMAuth: vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Name: "inline-cluster-1",
+							Spec: &vmv1beta1.VMClusterSpec{
+								VMStorage: &vmv1beta1.VMStorage{
+									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To[int32](1),
+									},
+								},
+							},
+						},
+						{
+							Name: "inline-cluster-2",
+							Spec: &vmv1beta1.VMClusterSpec{
+								VMStorage: &vmv1beta1.VMStorage{
+									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To[int32](2),
+									},
+								},
+							},
+						},
+					}},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+			})
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+
+			var vmagent vmv1beta1.VMAgent
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: namespace}, &vmagent)
+			}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, types.NamespacedName{Name: vmAgentName, Namespace: namespace})
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+			Expect(vmagent.Spec.ReplicaCount).To(Equal(ptr.To[int32](2)))
+			Expect(vmagent.OwnerReferences).To(HaveLen(1))
+			Expect(vmagent.OwnerReferences[0].Name).To(Equal(cr.Name))
+			Expect(vmagent.OwnerReferences[0].Kind).To(Equal("VMDistributedCluster"))
+			Expect(vmagent.OwnerReferences[0].UID).To(Equal(cr.UID))
+		})
+
 		It("should successfully create a VMDistributedCluster with inline VMCluster specs", func() {
 			beforeEach()
 			DeferCleanup(afterEach)
@@ -235,7 +309,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
@@ -390,7 +463,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
@@ -481,7 +553,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
@@ -553,56 +624,14 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
-			vmAgents := []vmv1beta1.VMAgent{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      "vmagent-1",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-							{URL: "http://localhost:8428/api/v1/write"},
-						},
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      "vmagent-2",
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-							{URL: "http://localhost:8428/api/v1/write"},
-						},
-					},
-				},
-			}
-			for _, vmagent := range vmAgents {
-				Expect(k8sClient.Create(ctx, &vmagent)).To(Succeed())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, types.NamespacedName{Name: vmagent.Name, Namespace: vmagent.Namespace})
-				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
-			}
-			DeferCleanup(func() {
-				for _, vmagent := range vmAgents {
-					Expect(finalize.SafeDelete(ctx, k8sClient, &vmagent)).To(Succeed())
-				}
-			})
-
 			namespacedName.Name = "distributed-agent-upgrade"
+			vmAgentName := "global-vmagent"
 			cr := &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
@@ -616,7 +645,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							},
 						},
 					}},
-					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: vmAgents[0].Name},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 				},
 			}
@@ -626,13 +655,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, vmclusters, namespace)
 
-			// Update to update VMAgent
+			// Update VMAgent
 			Eventually(func() error {
 				var obj vmv1alpha1.VMDistributedCluster
 				if err := k8sClient.Get(ctx, namespacedName, &obj); err != nil {
 					return err
 				}
-				obj.Spec.VMAgent = vmv1alpha1.VMAgentNameAndSpec{Name: vmAgents[1].Name}
+				obj.Spec.VMAgent = vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName}
 				return k8sClient.Update(ctx, &obj)
 			}, eventualDeploymentAppReadyTimeout).Should(Succeed())
 
@@ -685,16 +714,28 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			createVMClustersAndUpdateTargetRefs(ctx, k8sClient, vmclusters, namespace, validVMUserNames)
 
 			namespacedName.Name = "distributed-upgrade"
+			vmAgentName := "vmagent-proxy"
 			cr := &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
+						Name: vmAgentName,
+						Spec: &vmv1beta1.VMAgentSpec{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](2),
+							},
+							RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+								{
+									URL: "http://example.com",
+								},
+							},
+						},
+					},
+					VMAuth: vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},
 					Zones: vmv1alpha1.ZoneSpec{
 						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 							{Ref: &corev1.LocalObjectReference{
@@ -813,7 +854,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: validVMAgentName.Name},
 					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"},

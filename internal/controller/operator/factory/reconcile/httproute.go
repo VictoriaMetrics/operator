@@ -35,7 +35,6 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newHTTPRoute, prevHTT
 		}
 
 		if equality.Semantic.DeepEqual(newHTTPRoute.Spec, curHTTPRoute.Spec) &&
-			equality.Semantic.DeepEqual(newHTTPRoute.Labels, curHTTPRoute.Labels) &&
 			isObjectMetaEqual(&curHTTPRoute, newHTTPRoute, prevHTTPRoute) {
 			return nil
 		}

@@ -220,29 +220,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		Eventually(func() error {
 			return k8sClient.Get(ctx, types.NamespacedName{Name: namespacedName.Name, Namespace: namespace}, &vmv1beta1.VMCluster{})
 		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-
-		for _, vmuserName := range validVMUserNames {
-			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMUser{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: vmuserName.Namespace,
-					Name:      vmuserName.Name,
-				},
-			})).To(Succeed(), "must delete vm-user after test")
-			Eventually(func() error {
-				return k8sClient.Get(ctx, vmuserName, &vmv1beta1.VMUser{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-		}
-
-		// Clean up VMAuth
-		Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMAuth{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: validVMAuthName.Namespace,
-				Name:      validVMAuthName.Name,
-			},
-		})).To(Succeed(), "must delete vm-auth after test")
-		Eventually(func() error {
-			return k8sClient.Get(ctx, validVMAuthName, &vmv1beta1.VMAuth{})
-		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 	}
 
 	Context("create", func() {

@@ -834,53 +834,43 @@ func buildPerIPMetricURL(baseURL, metricPath, ip string) string {
 // (prefixed name). If discovery yields addresses, it polls each IP. Otherwise, it falls back to the
 // single AsURL()+GetMetricPath() behavior.
 func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmAgent VMAgentWithStatus, deadline time.Duration, rclient client.Client) error {
-	if vmAgent == nil {
-		// Don't throw error if VMAgent is nil, just exit early
-		return nil
-	}
-
-	// If no client is provided, there's nothing to discover via EndpointSlices,
-	// so we should fallback to the single-URL polling behavior instead of returning early.
-	// Caller may invoke this function without a client in some contexts; do not treat that
-	// as an error — continue and poll vmAgent.AsURL()+GetMetricPath().
-
-	// Use GetReplicas from interface
-	if vmAgent.GetReplicas() == 0 {
-		return fmt.Errorf("VMAgent %s/%s is not ready", vmAgent.GetNamespace(), vmAgent.GetName())
+	// Wait for vmAgent to become ready
+	err := wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
+		vmAgentObj := &vmv1beta1.VMAgent{}
+		err = rclient.Get(ctx, types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}, vmAgentObj)
+		if err != nil {
+			return false, err
+		}
+		return vmAgentObj.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Base values for fallback URL
 	baseURL := vmAgent.AsURL()
 	metricPath := vmAgent.GetMetricPath()
 
-	// Poll until all discovered pod IPs (or single URL fallback) report zero pending queue.
-	err := wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
-		var hosts []string
+	var hosts []string
+	// Poll until pod IPs are discovered
+	err = wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
+		// Use PrefixedName from the interface for discovery.
+		svcName := vmAgent.PrefixedName()
+		svcNamespace := vmAgent.GetNamespace()
 
-		// Attempt EndpointSlice discovery only when a client is provided.
-		if rclient != nil {
-			// Use PrefixedName from the interface for discovery.
-			svcName := vmAgent.PrefixedName()
-			svcNamespace := vmAgent.GetNamespace()
-
-			// Try to GET a single EndpointSlice that has the same name as the service
-			var es discoveryv1.EndpointSlice
-			if err := rclient.Get(ctx, types.NamespacedName{Name: svcName, Namespace: svcNamespace}, &es); err == nil {
-				hosts = parseEndpointSliceAddresses(&es)
-			}
-			// If Get fails or returns no addresses, we'll fall back below.
+		// Try to GET a single EndpointSlice that has the same name as the service
+		var es discoveryv1.EndpointSlice
+		if err := rclient.Get(ctx, types.NamespacedName{Name: svcName, Namespace: svcNamespace}, &es); err == nil {
+			hosts = parseEndpointSliceAddresses(&es)
 		}
+		return len(hosts) > 0, nil
+	})
+	if err != nil {
+		return err
+	}
 
-		// If we couldn't discover any hosts, fall back to the AsURL host (single host behavior)
-		if len(hosts) == 0 {
-			vmAgentPath := strings.Join([]string{baseURL, metricPath}, "")
-			metricValue, err := fetchVMAgentDiskBufferMetric(ctx, httpClient, vmAgentPath)
-			if err != nil {
-				return false, err
-			}
-			return metricValue == 0, nil
-		}
-
+	// Poll until all pod IPs return empty query metric
+	err = wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		// Query each discovered ip. If any returns non-zero metric, continue polling.
 		for _, ip := range hosts {
 			metricsURL := buildPerIPMetricURL(baseURL, metricPath, ip)

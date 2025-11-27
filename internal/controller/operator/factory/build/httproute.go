@@ -60,24 +60,21 @@ func httpRouteRule(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTT
 		},
 	}
 
+	var rules []gwapiv1.HTTPRouteRule
 	if httpRoute.ExtraRules != nil {
-		var rules []gwapiv1.HTTPRouteRule
+		var r gwapiv1.HTTPRouteRule
 		for _, ext := range httpRoute.ExtraRules {
 			if len(ext.Raw) == 0 {
 				continue
 			}
-
-			var r gwapiv1.HTTPRouteRule
 			if err := json.Unmarshal(ext.Raw, &r); err != nil {
 				return nil, fmt.Errorf("failed to decode extraRule: %w", err)
 			}
 			r.BackendRefs = append([]gwapiv1.HTTPBackendRef{}, refs...)
 			rules = append(rules, r)
 		}
-		return rules, nil
 	} else {
-
-		return []gwapiv1.HTTPRouteRule{
+		rules = []gwapiv1.HTTPRouteRule{
 			{
 				Matches: []gwapiv1.HTTPRouteMatch{
 					{
@@ -89,7 +86,8 @@ func httpRouteRule(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTT
 				},
 				BackendRefs: refs,
 			},
-		}, nil
+		}
 	}
+	return rules, nil
 
 }

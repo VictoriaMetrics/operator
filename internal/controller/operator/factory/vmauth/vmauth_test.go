@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -41,107 +41,76 @@ func TestCreateOrUpdate(t *testing.T) {
 		}
 	}
 
-	// simple-unmanaged
+	// simple-with-httproute
 	f(opts{
 		cr: &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "default",
 			},
-		},
-		{
-			name: "simple-with-httproute",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							Port: "8427",
-						},
-						HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
-							ParentRefs: []gwapiv1.ParentReference{
-								{
-									Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
-									Kind:      ptr.To(gwapiv1.Kind("Gateway")),
-									Namespace: ptr.To(gwapiv1.Namespace("default")),
-									Name:      gwapiv1.ObjectName("test"),
-								},
-							},
-						},
-					},
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+					Port: "8427",
 				},
-				c: config.MustGetBaseConfig(),
-			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-				&apiextensionsv1.CustomResourceDefinition{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "httproutes.gateway.networking.k8s.io",
+				HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+					ParentRefs: []gwapiv1.ParentReference{
+						{
+							Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+							Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+							Namespace: ptr.To(gwapiv1.Namespace("default")),
+							Name:      gwapiv1.ObjectName("test"),
+						},
 					},
 				},
 			},
 		},
-		{
-			name: "simple-remove-httproute",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							Port: "8427",
-						},
-					},
-					ParsedLastAppliedSpec: &vmv1beta1.VMAuthSpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							Port: "8427",
-						},
-						HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
-							ParentRefs: []gwapiv1.ParentReference{
-								{
-									Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
-									Kind:      ptr.To(gwapiv1.Kind("Gateway")),
-									Namespace: ptr.To(gwapiv1.Namespace("default")),
-									Name:      gwapiv1.ObjectName("test"),
-								},
-							},
-						},
-					},
-				},
-				c: config.MustGetBaseConfig(),
-			},
-			predefinedObjects: []runtime.Object{
-				k8stools.NewReadyDeployment("vmauth-test", "default"),
-				&apiextensionsv1.CustomResourceDefinition{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "httproutes.gateway.networking.k8s.io",
-					},
-				},
-			},
-		},
-		{
-			name: "simple-with-external-config",
-			args: args{
-				cr: &vmv1beta1.VMAuth{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMAuthSpec{
-						ExternalConfig: vmv1beta1.ExternalConfig{
-							SecretRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "external-cfg",
-								},
-							},
 		c: config.MustGetBaseConfig(),
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "httproutes.gateway.networking.k8s.io",
+				},
+			},
+		},
+	})
+
+	// simple-remove-httproute
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+					Port: "8427",
+				},
+			},
+			ParsedLastAppliedSpec: &vmv1beta1.VMAuthSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+					Port: "8427",
+				},
+				HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+					ParentRefs: []gwapiv1.ParentReference{
+						{
+							Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+							Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+							Namespace: ptr.To(gwapiv1.Namespace("default")),
+							Name:      gwapiv1.ObjectName("test"),
+						},
+					},
+				},
+			},
+		},
+		c: config.MustGetBaseConfig(),
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmauth-test", "default"),
+			&apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "httproutes.gateway.networking.k8s.io",
+				},
+			},
 		},
 	})
 

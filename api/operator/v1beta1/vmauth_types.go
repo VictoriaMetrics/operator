@@ -11,8 +11,10 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 var labelNameRegexp = regexp.MustCompile("^[a-zA-Z_:.][a-zA-Z0-9_:.]*$")
@@ -66,6 +68,8 @@ type VMAuthSpec struct {
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty" yaml:"podDisruptionBudget,omitempty"`
 	// Ingress enables ingress configuration for VMAuth.
 	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
+	// HTTPRoute enables httproute configuration for VMAuth.
+	HTTPRoute *EmbeddedHTTPRoute `json:"httpRoute,omitempty"`
 	// LivenessProbe that will be added to VMAuth pod
 	*EmbeddedProbes `json:",inline"`
 	// UnauthorizedAccessConfig configures access for un authorized users
@@ -467,6 +471,22 @@ func (cr *VMAuthSpec) UnmarshalJSON(src []byte) error {
 		return nil
 	}
 	return nil
+}
+
+// EmbeddedHTTPRoute describes httproute configuration options.
+type EmbeddedHTTPRoute struct {
+	//  EmbeddedObjectMetadata adds labels and annotations for object.
+	EmbeddedObjectMetadata `json:",inline"`
+	// Hostnames defines a set of hostnames that should match against the HTTP Host
+	// header to select a HTTPRoute used to process the request.
+	// +optional
+	Hostnames []gwapiv1.Hostname `json:"hostnames,omitempty"`
+	// ParentRefs references the resources (usually Gateways) that a Route wants to be attached to.
+	ParentRefs []gwapiv1.ParentReference `json:"parentRefs,omitempty"`
+	// ExtraRules defines custom HTTPRouteRule in raw form, bypassing Gateway API CEL validations.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	ExtraRules []runtime.RawExtension `json:"extraRules,omitempty"`
 }
 
 // EmbeddedIngress describes ingress configuration options.

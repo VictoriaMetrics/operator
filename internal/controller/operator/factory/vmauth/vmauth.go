@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -71,6 +72,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err := createOrUpdateIngress(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
+
+	if err := createOrUpdateHTTPRoute(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot create or update httpRoute for vmauth: %w", err)
+	}
+
 	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update hpa for vmauth: %w", err)
 	}
@@ -117,6 +123,27 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 		}
 	}
 	return nil
+}
+
+func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr, prevCr *vmv1beta1.VMAuth) error {
+	if cr.Spec.HTTPRoute == nil {
+		return nil
+	}
+
+	newHTTPRoute, err := build.HTTPRoute(cr, cr.Spec.Port, cr.Spec.HTTPRoute)
+	if err != nil {
+		return err
+	}
+
+	var prevHTTPRoute *gwapiv1.HTTPRoute
+	if prevCr != nil && prevCr.Spec.HTTPRoute != nil {
+		prevHTTPRoute, err = build.HTTPRoute(cr, cr.Spec.Port, prevCr.Spec.HTTPRoute)
+		if err != nil {
+			return err
+		}
+	}
+
+	return reconcile.HTTPRoute(ctx, rclient, newHTTPRoute, prevHTTPRoute)
 }
 
 func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
@@ -741,6 +768,12 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if cr.Spec.PodDisruptionBudget == nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
+		}
+	}
+
+	if cr.Spec.HTTPRoute == nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &gwapiv1.HTTPRoute{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot delete httproute from prev state: %w", err)
 		}
 	}
 

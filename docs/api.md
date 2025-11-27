@@ -1727,6 +1727,14 @@ Appears in: [VMAuthSpec](#vmauthspec)
 | tlsSecretName<a href="#embeddedingress-tlssecretname" id="embeddedingress-tlssecretname">#</a><br/>_string_ | _(Optional)_<br/>TlsSecretName defines secretname at the VMAuth namespace with cert and key<br />https://kubernetes.io/docs/concepts/services-networking/ingress/#tls |
 
 
+#### EmbeddedHTTPRoute
+
+
+| Field                                                                                                                                                   | Description                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **spec**<a href="#embeddedhttproute-spec" id="embeddedhttproute-spec">#</a><br/>*[HTTPRouteSpec](https://gateway-api.sigs.k8s.io/reference/spec/#httproutespec)* | *(Required)*<br/>The specification of the HTTPRoute resource. This field defines routing rules, matches, filters, backend references, and other HTTP-level behaviors.<br/>See: [https://gateway-api.sigs.k8s.io/api-types/httproute/](https://gateway-api.sigs.k8s.io/api-types/httproute/)                                                   |
+
+
 #### EmbeddedObjectMetadata
 
 
@@ -3973,6 +3981,7 @@ Appears in: [VMAuth](#vmauth)
 | image<a href="#vmauthspec-image" id="vmauthspec-image">#</a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
 | imagePullSecrets<a href="#vmauthspec-imagepullsecrets" id="vmauthspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
 | ingress<a href="#vmauthspec-ingress" id="vmauthspec-ingress">#</a><br/>_[EmbeddedIngress](#embeddedingress)_ | _(Required)_<br/>Ingress enables ingress configuration for VMAuth. |
+| httproute<a href="#vmauthspec-httproute" id="vmauthspec-httproute">#</a><br/>_[EmbeddedHTTPRoute](#embeddedhttproute)_ | _(Optional)_<br/>HTTPRoute enables httproute configuration for VMAuth. |
 | initContainers<a href="#vmauthspec-initcontainers" id="vmauthspec-initcontainers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
 | internalListenPort<a href="#vmauthspec-internallistenport" id="vmauthspec-internallistenport">#</a><br/>_string_ | _(Optional)_<br/>InternalListenPort instructs vmauth to serve internal routes at given port<br />available from v0.56.0 operator<br />and v1.111.0 vmauth version<br />related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security |
 | ip_filters<a href="#vmauthspec-ip_filters" id="vmauthspec-ip_filters">#</a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters) |

@@ -200,3 +200,9 @@ rules:
   - vmanomalies/status
   verbs:
   - '*'
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes
+  verbs:
+  - '*'

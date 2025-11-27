@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -12,9 +13,11 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
@@ -76,6 +79,104 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 					Expect(reloaderContainer.Resources.Limits.Memory().CmpInt64(0)).To(Equal(0))
 					Expect(reloaderContainer.Resources.Requests.Cpu()).To(Equal(ptr.To(resource.MustParse("10m"))))
 					Expect(reloaderContainer.Resources.Requests.Memory()).To(Equal(ptr.To(resource.MustParse("25Mi"))))
+				}),
+				Entry("with httproute", "httproute", &vmv1beta1.VMAuth{
+					Spec: vmv1beta1.VMAuthSpec{
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							Port: "8427",
+						},
+						HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+							ParentRefs: []gwapiv1.ParentReference{
+								{
+									Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+									Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+									Namespace: ptr.To(gwapiv1.Namespace("default")),
+									Name:      "test",
+								},
+							},
+						},
+					},
+				}, func(cr *vmv1beta1.VMAuth) {
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
+					var httproute gwapiv1.HTTPRoute
+					Expect(k8sClient.Get(ctx, types.NamespacedName{
+						Namespace: cr.Namespace,
+						Name:      cr.PrefixedName(),
+					}, &httproute)).To(Succeed())
+					spec := httproute.Spec
+					Expect(spec.Rules).To(HaveLen(1))
+					Expect(spec.Rules[0].Matches).To(HaveLen(1))
+					Expect(spec.Rules[0].BackendRefs).To(HaveLen(1))
+					Expect(spec.Rules[0].BackendRefs[0].Port).To(Equal(ptr.To(gwapiv1.PortNumber(8427))))
+					Expect(spec.Rules[0].BackendRefs[0].Name).To(Equal(gwapiv1.ObjectName(cr.PrefixedName())))
+					Expect(spec.Rules[0].BackendRefs[0].Kind).To(Equal(ptr.To(gwapiv1.Kind("Service"))))
+				}),
+				Entry("with httproute extrarules", "httproute-extrarules", &vmv1beta1.VMAuth{
+					Spec: vmv1beta1.VMAuthSpec{
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							Port: "8427",
+						},
+						HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+							ParentRefs: []gwapiv1.ParentReference{
+								{
+									Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+									Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+									Namespace: ptr.To(gwapiv1.Namespace("default")),
+									Name:      "test",
+								},
+							},
+							ExtraRules: func() []runtime.RawExtension {
+								rule := gwapiv1.HTTPRouteRule{
+									Matches: []gwapiv1.HTTPRouteMatch{
+										{
+											Path: &gwapiv1.HTTPPathMatch{
+												Type:  ptr.To(gwapiv1.PathMatchPathPrefix),
+												Value: ptr.To("/"),
+											},
+										},
+									},
+									BackendRefs: []gwapiv1.HTTPBackendRef{
+										{
+											BackendRef: gwapiv1.BackendRef{
+												BackendObjectReference: gwapiv1.BackendObjectReference{
+													Name:  "vmauth-httproute-extrarules",
+													Port:  ptr.To(gwapiv1.PortNumber(8427)),
+													Kind:  ptr.To(gwapiv1.Kind("Service")),
+													Group: ptr.To(gwapiv1.Group("")),
+												},
+												Weight: ptr.To(int32(1)),
+											},
+										},
+									},
+								}
+								// encode into RawExtension
+								raw, _ := json.Marshal(rule)
+								return []runtime.RawExtension{
+									{
+										Raw: raw,
+									},
+								}
+							}(),
+						},
+					},
+				}, func(cr *vmv1beta1.VMAuth) {
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
+					var httproute gwapiv1.HTTPRoute
+					Expect(k8sClient.Get(ctx, types.NamespacedName{
+						Namespace: cr.Namespace,
+						Name:      cr.PrefixedName(),
+					}, &httproute)).To(Succeed())
+					spec := httproute.Spec
+					Expect(spec.Rules).To(HaveLen(1))
+					Expect(spec.Rules[0].Matches).To(HaveLen(1))
+					Expect(spec.Rules[0].BackendRefs).To(HaveLen(1))
+					var decoded []gwapiv1.HTTPRouteRule
+					for _, ext := range cr.Spec.HTTPRoute.ExtraRules {
+						var r gwapiv1.HTTPRouteRule
+						_ = json.Unmarshal(ext.Raw, &r)
+						decoded = append(decoded, r)
+					}
+					Expect(spec.Rules).To(Equal(decoded))
 				}),
 				Entry("with strict security and vm config-reloader", "strict-with-reloader", &vmv1beta1.VMAuth{
 					Spec: vmv1beta1.VMAuthSpec{

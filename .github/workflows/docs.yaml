@@ -20,12 +20,12 @@ jobs:
       url: https://docs.victoriametrics.com/operator
     steps:
       - name: Checkout operator repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: __vm-operator
 
       - name: Checkout docs repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: VictoriaMetrics/vmdocs
           ref: main
@@ -33,7 +33,7 @@ jobs:
           path: __vm-docs
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: '__vm-operator/go.mod'
           check-latest: true

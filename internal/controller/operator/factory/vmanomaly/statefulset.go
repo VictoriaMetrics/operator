@@ -31,9 +31,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
-	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
-		return fmt.Errorf("cannot delete objects from prev state: %w", err)
+		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("cannot delete orphaned resources: %w", err)
+		}
 	}
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
@@ -60,20 +60,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		},
 	}
 	ac := build.NewAssetsCache(ctx, rclient, rcfg)
-
 	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, ac)
 	if err != nil {
 		return err
-	}
-
-	if cr.Spec.PodDisruptionBudget != nil {
-		var prevPDB *policyv1.PodDisruptionBudget
-		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
-			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
-		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
-			return err
-		}
 	}
 
 	var prevAppTpl *appsv1.StatefulSet
@@ -89,7 +78,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 	if err != nil {
 		return fmt.Errorf("cannot build new statefulSet for vmanomaly: %w", err)
 	}
-
 	return createOrUpdateApp(ctx, rclient, cr, prevCR, newAppTpl, prevAppTpl)
 }
 
@@ -120,7 +108,7 @@ func patchShardContainers(containers []corev1.Container, shardNum, shardCount in
 	}
 }
 
-// newK8sApp builds vmanomaly statefulSet
+// newK8sApp builds vmanomaly StatefulSet
 func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*appsv1.StatefulSet, error) {
 	podSpec, err := newPodSpec(cr, ac)
 	if err != nil {
@@ -171,28 +159,21 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 	return app, nil
 }
 
-func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly) error {
-	if prevCR == nil {
-		return nil
-	}
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
+	owner := cr.AsOwner()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil && prevCR.Spec.PodDisruptionBudget != nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}); err != nil {
-			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
-		}
-	}
 	cfg := config.MustGetBaseConfig()
 	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}); err != nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot remove podScrape: %w", err)
 		}
 	}
-
 	return nil
 }
 
 func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, newAppTpl, prevAppTpl *appsv1.StatefulSet) error {
-	statefulSetNames := make(map[string]struct{})
+	stsToKeep := make(map[string]struct{})
+	pdbToKeep := make(map[string]struct{})
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
 
@@ -219,6 +200,17 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			rtCh <- &rv
 			wg.Done()
 		}()
+		if cr.Spec.PodDisruptionBudget != nil {
+			pdb := build.ShardPodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget, num)
+			var prevPDB *policyv1.PodDisruptionBudget
+			if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
+				prevPDB = build.ShardPodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget, num)
+			}
+			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB); err != nil {
+				rv.err = err
+				return
+			}
+		}
 		newApp, err := getShard(cr, newAppTpl, num)
 		if err != nil {
 			rv.err = fmt.Errorf("failed to get new StatefulSet: %w", err)
@@ -258,13 +250,19 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			errs = append(errs, r.err)
 		}
 		if r.name != "" {
-			statefulSetNames[r.name] = struct{}{}
+			stsToKeep[r.name] = struct{}{}
+			if cr.Spec.PodDisruptionBudget != nil {
+				pdbToKeep[r.name] = struct{}{}
+			}
 		}
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
-	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, statefulSetNames); err != nil {
+	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep); err != nil {
+		return err
+	}
+	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep); err != nil {
 		return err
 	}
 	return nil

@@ -13,12 +13,16 @@ aliases:
 
 ## tip
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.129.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.129.0) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.130.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.130.0) version
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `VM_ENABLETCP6` variable that runs all operator CRs in IPv6 mode. See [#1581](https://github.com/VictoriaMetrics/operator/issues/1581).
 * FEATURE: [config-reloader](https://github.com/VictoriaMetrics/operator/blob/master/cmd/config-reloader/README.md): set default config reloader image version equal to current operator version. See [#2562](https://github.com/VictoriaMetrics/helm-charts/pull/2562).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): do not set `promscrape.cluster.membersCount` and `promscrape.cluster.memberNum` flags in ingestOnly mode. See [#1594](https://github.com/VictoriaMetrics/operator/issues/1594).
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): allow overriding default path for embedded ingress. See [#1617](https://github.com/VictoriaMetrics/operator/issues/1617).
+* FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): support incident.io receiver. See [#1637](https://github.com/VictoriaMetrics/operator/issues/1637).
+
+* BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): check `mute_time_intervals` in subroutes: See [#1618](https://github.com/VictoriaMetrics/operator/issues/1618).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove incorrect key argument in structured log for when the actual PVC storage size is larger than the currently configured size and properly indicate which is the new and which is the existing size: See PR [#1636](https://github.com/VictoriaMetrics/operator/pull/1636) for details.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.5.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.5.0) version.
 
@@ -32,6 +36,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly set default `useVMConfigReloader` value. See [#1589](https://github.com/VictoriaMetrics/operator/issues/1589).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): properly check `StatefulSet` ready status for `rollingUpdateStrategy: RollingUpdate`. See this issue [#1579](https://github.com/VictoriaMetrics/operator/issues/1579) for details.
 * BUGFIX: [vmpodscrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/), [vmnodescrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape/), [vmservicescrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/), [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/), [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/) and [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): use int type instead of uint64 for scrapes `seriesLimit` and `sampleLimit` parameters.
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/) and [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): create PDB per shard to guarantee proper application protection. See [#1548](https://github.com/VictoriaMetrics/operator/issues/1548).
 
 ## [v0.64.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.64.1)
 
@@ -2297,7 +2302,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 28 Aug 2020
 
-![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1400)
+![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaMetrics%2Freleases%2Ftag%2Fv1.40.0)
 
 - [#78](https://github.com/VictoriaMetrics/operator/issues/78) fixed bug with rbac - without access to vmsingles api resource, operator wasn't able to start reconciliation loop.
 - [#76](https://github.com/VictoriaMetrics/operator/issues/76) added path prefix support if extraArgs was specified.
@@ -2307,7 +2312,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 23 Aug 2020
 
-![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1400)
+![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaMetrics%2Freleases%2Ftag%2Fv1.40.0)
 
 - Added VMProbe [#59](https://github.com/VictoriaMetrics/operator/issues/59)
 - Fixed various bug with prometheus api objects conversion.
@@ -2317,7 +2322,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 21 Aug 2020
 
-![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1400)
+![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaMetrics%2Freleases%2Ftag%2Fv1.40.0)
 
 - [#66](https://github.com/VictoriaMetrics/operator/issues/66) added path replacement for `CAfile`, `Certfile`, `KeyFile`, `BearerTokenFile` at prometheus api converter.
 - [#65](https://github.com/VictoriaMetrics/operator/issues/65) fixed tlsConfig logic, now configuration file renders correctly, if empty value for Cert, Ca or KeySecret defined at tlsConf
@@ -2327,7 +2332,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 18 Aug 2020
 
-![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1400)
+![AppVersion: v1.40.0](https://img.shields.io/badge/v1.40.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaMetrics%2Freleases%2Ftag%2Fv1.40.0)
 
 - fixed issues with crd patching for 1.18 kubernetes version
 - fixed issue with rbac roles
@@ -2338,7 +2343,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 **Release date:** 12 Aug 2020
 
-![AppVersion: v1.39.2](https://img.shields.io/badge/v1.39.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1392)
+![AppVersion: v1.39.2](https://img.shields.io/badge/v1.39.2-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaMetrics%2Freleases%2Ftag%2Fv1.39.2)
 
 Starting point of operator releases
 
@@ -2348,7 +2353,7 @@ Starting point of operator releases
 
 **Release date:** 26 Jul 2020
 
-![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1370)
+![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaMetrics%2Freleases%2Ftag%2Fv1.37.0)
 
 - breaking changes to api (changed group name to operator.victoriametrics.com)
 - changed build and release process
@@ -2358,7 +2363,7 @@ Starting point of operator releases
 
 **Release date:** 12 Jun 2020
 
-![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1370)
+![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaMetrics%2Freleases%2Ftag%2Fv1.37.0)
 
 - fixed panic at vmSingle update
 - added support for scraping tls targets with ServiceMonitor TLSConfig
@@ -2367,7 +2372,7 @@ Starting point of operator releases
 
 **Release date:** 06 Jun 2020
 
-![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1370)
+![AppVersion: v1.37.0](https://img.shields.io/badge/v1.37.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaMetrics%2Freleases%2Ftag%2Fv1.37.0)
 
 it contains basic api objects support:
 

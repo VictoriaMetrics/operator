@@ -365,14 +365,21 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		resultErr = fmt.Errorf("cannot parse exist spec changes")
 		return
 	}
-	var diffPatch client.Patch
-	if specChanged {
-		diffPatch, err = object.LastAppliedSpecAsPatch()
-		if err != nil {
-			resultErr = fmt.Errorf("cannot parse last applied spec for cluster: %w", err)
+
+	resultStatus := vmv1beta1.UpdateStatusOperational
+	defer func() {
+		if err := reconcile.UpdateObjectStatus(ctx, c, object, resultStatus, resultErr); err != nil {
+			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
+	}()
 
+	if specChanged {
+		newPatch, err := object.LastAppliedSpecAsPatch()
+		if err != nil {
+			resultErr = fmt.Errorf("cannot parse last applied spec: %w", err)
+			return
+		}
 		if err := reconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusExpanding, nil); err != nil {
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
@@ -380,7 +387,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		// update lastAppliedSpec as soon as operator receives it
 		// it allows to properly build diff with previous object state
 		// and rollback bad configurations
-		if err := c.Patch(ctx, object, diffPatch); err != nil {
+		if err := c.Patch(ctx, object, newPatch); err != nil {
 			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
 			return
 		}
@@ -394,20 +401,13 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 	if err != nil {
 		// do not change status on conflict to failed
 		// it should be retried on the next loop
-		if k8serrors.IsConflict(err) {
-			return
+		if reconcile.IsRetryable(err) {
+			resultStatus = vmv1beta1.UpdateStatusExpanding
+		} else {
+			resultStatus = vmv1beta1.UpdateStatusFailed
+			resultErr = err
 		}
-		desiredStatus := vmv1beta1.UpdateStatusFailed
-		if reconcile.IsErrorWaitTimeout(err) {
-			desiredStatus = vmv1beta1.UpdateStatusExpanding
-			err = nil
-		}
-		if updateErr := reconcile.UpdateObjectStatus(ctx, c, object, desiredStatus, err); updateErr != nil {
-			resultErr = fmt.Errorf("failed to update object status: %q, origin err: %w", updateErr, err)
-			return
-		}
-
-		return result, err
+		return
 	}
 	if specChanged {
 		if err := createGenericEventForObject(ctx, c, object, "reconcile of object finished successfully"); err != nil {
@@ -415,18 +415,13 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		}
 		logger.WithContext(ctx).Info("object was successfully reconciled")
 	}
-	if err := reconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusOperational, nil); err != nil {
-		resultErr = fmt.Errorf("failed to update object status: %w", err)
-		return
-	}
-
 	return result, nil
 }
 
 var patchAnnotationPredicate = predicate.Funcs{
 	UpdateFunc: func(e event.UpdateEvent) bool {
 		if e.ObjectOld == nil || e.ObjectNew == nil {
-			return true
+			return false
 		}
 		oldAnnotations := e.ObjectOld.GetAnnotations()
 		newAnnotations := e.ObjectNew.GetAnnotations()

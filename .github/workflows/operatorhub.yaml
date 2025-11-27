@@ -31,7 +31,7 @@ jobs:
           GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
 
       - name: Check out OperatorHub operators repo fork
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ matrix.repo.upstream }}
           ref: main
@@ -48,7 +48,7 @@ jobs:
           git_commit_gpgsign: true
           workdir: __k8s-operatorhub-repo
       
-      - uses: dawidd6/action-download-artifact@v6
+      - uses: dawidd6/action-download-artifact@v11
         with:
           name: olm
           workflow: main.yaml
@@ -93,7 +93,7 @@ jobs:
 
       - name: Create Pull Request
         if: ${{ steps.update.outputs.VERSION != '' }}
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           add-paths: operators/victoriametrics-operator,catalogs
           commit-message: 'victoriametrics-operator: ${{ steps.update.outputs.VERSION }}'

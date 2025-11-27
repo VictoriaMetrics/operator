@@ -356,6 +356,8 @@ type Receiver struct {
 	// +optional
 	JiraConfigs []JiraConfig `json:"jira_configs,omitempty" yaml:"jira_configs,omitempty"`
 	// +optional
+	IncidentIOConfigs []IncidentIOConfig `json:"incidentio_configs,omitempty" yaml:"incidentio_configs,omitempty"`
+	// +optional
 	RocketchatConfigs []RocketchatConfig `json:"rocketchat_configs,omitempty" yaml:"rocketchat_configs,omitempty"`
 	// +optional
 	MSTeamsV2Configs []MSTeamsV2Config `json:"msteamsv2_configs,omitempty" yaml:"msteamsv2_configs,omitempty"`
@@ -1038,6 +1040,32 @@ type JiraConfig struct {
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
+// IncidentIOConfig configures notifications via incident.io.
+// https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
+// available from v0.66.0 operator version
+// and v0.29.0 alertmanager version
+type IncidentIOConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
+	// The URL to send the incident.io alert. This would typically be provided by the
+	// incident.io team when setting up an alert source.
+	URL string `json:"url,omitempty" yaml:"url,omitempty"`
+	// AlertSourceToken is used to authenticate with incident.io
+	// +optional
+	AlertSourceToken *corev1.SecretKeySelector `yaml:"alert_source_token,omitempty" json:"alert_source_token,omitempty"`
+	// MaxAlerts defines maximum number of alerts to be sent per incident.io message.
+	// +optional
+	MaxAlerts int `json:"max_alerts,omitempty" yaml:"max_alerts,omitempty"`
+	// Timeout is the maximum time allowed to invoke incident.io
+	// +optional
+	Timeout string `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
 // RocketchatConfig configures notifications via Rocketchat.
 // https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
 // available from v0.55.0 operator version
@@ -1502,6 +1530,11 @@ func checkRouteReceiver(r *SubRoute, receivers map[string]struct{}, tiNames map[
 			return fmt.Errorf("undefined time interval %q used in route", ti)
 		}
 	}
+	for _, ti := range r.MuteTimeIntervals {
+		if _, ok := tiNames[ti]; !ok {
+			return fmt.Errorf("undefined time interval %q used in route", ti)
+		}
+	}
 	if r.Receiver == "" {
 		return nil
 	}
@@ -1821,10 +1854,18 @@ func validateReceiver(recv Receiver) error {
 		}
 	}
 
+	for idx, cfg := range recv.IncidentIOConfigs {
+		if len(cfg.URL) != 0 {
+			if _, err := url.Parse(cfg.URL); err != nil {
+				return fmt.Errorf("at idx=%d for incidentio_configs incorrect url=%q: %w", idx, cfg.URL, err)
+			}
+		}
+	}
+
 	for idx, cfg := range recv.RocketchatConfigs {
 		if cfg.APIURL != nil && *cfg.APIURL != "" {
 			if _, err := url.Parse(*cfg.APIURL); err != nil {
-				return fmt.Errorf("at idx=%d for jira_configs incorrect url=%q: %w", idx, *cfg.APIURL, err)
+				return fmt.Errorf("at idx=%d for rocketchat_configs incorrect url=%q: %w", idx, *cfg.APIURL, err)
 			}
 		}
 	}

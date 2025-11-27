@@ -143,8 +143,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		}
 	}
 
-	if err := deletePrevStateResources(ctx, rclient, cr, prevCR); err != nil {
-		return fmt.Errorf("failed to remove objects from previous cluster state: %w", err)
+	if prevCR != nil {
+		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("failed to remove objects from previous cluster state: %w", err)
+		}
 	}
 	return nil
 }
@@ -1153,198 +1155,103 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
 }
 
-func deletePrevStateResources(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	if prevCR == nil {
-		// fast path
-		return nil
-	}
-	vmst := cr.Spec.VMStorage
-	vmse := cr.Spec.VMSelect
-	vmis := cr.Spec.VMInsert
-	prevSpec := prevCR.Spec
-	prevSt := prevSpec.VMStorage
-	prevSe := prevSpec.VMSelect
-	prevIs := prevSpec.VMInsert
-
-	prevLB := prevSpec.RequestsLoadBalancer
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
+	newStorage := cr.Spec.VMStorage
+	newSelect := cr.Spec.VMSelect
+	newInsert := cr.Spec.VMInsert
 	newLB := cr.Spec.RequestsLoadBalancer
 
 	cfg := config.MustGetBaseConfig()
 	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
+	cc := finalize.NewChildCleaner()
 
-	if prevSt != nil {
+	if newStorage == nil {
+		if err := finalize.OnStorageDelete(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("cannot remove orphaned storage resources: %w", err)
+		}
+	} else {
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-		if vmst == nil {
-			if err := finalize.OnVMStorageDelete(ctx, rclient, cr, prevSt); err != nil {
-				return fmt.Errorf("cannot remove storage from prev state: %w", err)
-			}
-		} else {
-			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: commonName}
-			if vmst.PodDisruptionBudget == nil && prevSt.PodDisruptionBudget != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
-					return fmt.Errorf("cannot remove PDB from prev storage: %w", err)
-				}
-			}
-			if ptr.Deref(vmst.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevSt.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
-					return fmt.Errorf("cannot remove serviceScrape from prev storage: %w", err)
-				}
-			}
-			prevSvc, currSvc := prevSt.ServiceSpec, vmst.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, commonName, cr.Namespace, prevSvc, currSvc); err != nil {
-				return fmt.Errorf("cannot remove vmstorage additional service: %w", err)
-			}
+		if newStorage.PodDisruptionBudget != nil {
+			cc.KeepPDB(commonName)
+		}
+		if !ptr.Deref(newStorage.DisableSelfServiceScrape, disableSelfScrape) {
+			cc.KeepScrape(commonName)
+		}
+		cc.KeepService(commonName)
+		if newStorage.ServiceSpec != nil && !newStorage.ServiceSpec.UseAsDefault {
+			cc.KeepService(newStorage.ServiceSpec.NameOrDefault(commonName))
 		}
 	}
 
-	if prevSe != nil {
+	if newSelect == nil {
+		if err := finalize.OnSelectDelete(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("cannot remove orphaned select resources: %w", err)
+		}
+	} else {
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		commonInternalName := cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)
-		if vmse == nil {
-			if err := finalize.OnVMSelectDelete(ctx, rclient, cr, prevSe); err != nil {
-				return fmt.Errorf("cannot remove select from prev state: %w", err)
-			}
-		} else {
-			commonObjMeta := metav1.ObjectMeta{
-				Namespace: cr.Namespace, Name: commonName}
-			if vmse.PodDisruptionBudget == nil && prevSe.PodDisruptionBudget != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
-					return fmt.Errorf("cannot remove PDB from prev select: %w", err)
-				}
-			}
-			if vmse.HPA == nil && prevSe.HPA != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
-					return fmt.Errorf("cannot remove HPA from prev select: %w", err)
-				}
-			}
-			if ptr.Deref(vmse.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevSe.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
-					return fmt.Errorf("cannot remove serviceScrape from prev select: %w", err)
-				}
-			}
-			prevSvc, currSvc := prevSe.ServiceSpec, vmse.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, commonName, cr.Namespace, prevSvc, currSvc); err != nil {
-				return fmt.Errorf("cannot remove vmselect additional service: %w", err)
-			}
+		if newSelect.PodDisruptionBudget != nil {
+			cc.KeepPDB(commonName)
 		}
-		// transition to load-balancer state
-		// have to remove prev service scrape
-		if newLB.Enabled && !newLB.DisableSelectBalancing && (!prevLB.Enabled || prevLB.DisableSelectBalancing) {
-			// remove service scrape because service was renamed
-			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: commonName, Namespace: cr.Namespace},
-				}); err != nil {
-					return fmt.Errorf("cannot delete vmservicescrape for non-lb select svc: %w", err)
-				}
-			}
+		if newSelect.HPA == nil {
+			cc.KeepHPA(commonName)
 		}
-		// disabled loadbalancer only for component
-		// transit to the k8s service balancing mode
-		if prevLB.Enabled && !prevLB.DisableSelectBalancing && (!newLB.Enabled || newLB.DisableSelectBalancing) {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-				Name:      commonInternalName,
-				Namespace: cr.Namespace,
-			}}); err != nil {
-				return fmt.Errorf("cannot remove vmselect lb service: %w", err)
-			}
-			if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      commonInternalName,
-						Namespace: cr.Namespace,
-					},
-				}); err != nil {
-					return fmt.Errorf("cannot delete vmservicescrape for lb select svc: %w", err)
-				}
-			}
+		cc.KeepService(commonName)
+		if newSelect.ServiceSpec != nil && !newSelect.ServiceSpec.UseAsDefault {
+			cc.KeepService(newSelect.ServiceSpec.NameOrDefault(commonName))
+		}
+		scrapeName := commonName
+		if newLB.Enabled && !newLB.DisableSelectBalancing {
+			scrapeName = cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)
+			cc.KeepService(scrapeName)
+		}
+		if !ptr.Deref(newSelect.DisableSelfServiceScrape, disableSelfScrape) {
+			cc.KeepScrape(scrapeName)
 		}
 	}
 
-	if prevIs != nil {
+	if newInsert == nil {
+		if err := finalize.OnInsertDelete(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("cannot remove orphaned insert resources: %w", err)
+		}
+	} else {
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
-		commonInternalName := cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)
-		if vmis == nil {
-			if err := finalize.OnVMInsertDelete(ctx, rclient, cr, prevIs); err != nil {
-				return fmt.Errorf("cannot remove insert from prev state: %w", err)
-			}
-		} else {
-			commonObjMeta := metav1.ObjectMeta{Namespace: cr.Namespace, Name: commonName}
-			if vmis.PodDisruptionBudget == nil && prevIs.PodDisruptionBudget != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: commonObjMeta}); err != nil {
-					return fmt.Errorf("cannot remove PDB from prev insert: %w", err)
-				}
-			}
-			if vmis.HPA == nil && prevIs.HPA != nil {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: commonObjMeta}); err != nil {
-					return fmt.Errorf("cannot remove HPA from prev insert: %w", err)
-				}
-			}
-			if ptr.Deref(vmis.DisableSelfServiceScrape, disableSelfScrape) && !ptr.Deref(prevIs.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: commonObjMeta}); err != nil {
-					return fmt.Errorf("cannot remove serviceScrape from prev insert: %w", err)
-				}
-			}
-			prevSvc, currSvc := prevIs.ServiceSpec, vmis.ServiceSpec
-			if err := reconcile.AdditionalServices(ctx, rclient, commonName, cr.Namespace, prevSvc, currSvc); err != nil {
-				return fmt.Errorf("cannot remove vminsert additional service: %w", err)
-			}
+		if newInsert.PodDisruptionBudget != nil {
+			cc.KeepPDB(commonName)
 		}
-		// transition to load-balancer state
-		// have to remove prev service scrape
-		if newLB.Enabled && !newLB.DisableInsertBalancing && (!prevLB.Enabled || prevLB.DisableInsertBalancing) {
-			// remove service scrape because service was renamed
-			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{Name: commonName, Namespace: cr.Namespace},
-				}); err != nil {
-					return fmt.Errorf("cannot delete vmservicescrape for non-lb insert svc: %w", err)
-				}
-			}
+		if newInsert.HPA == nil {
+			cc.KeepHPA(commonName)
 		}
-		// disabled loadbalancer only for component
-		// transit to the k8s service balancing mode
-		if prevLB.Enabled && !prevLB.DisableInsertBalancing && (!newLB.Enabled || newLB.DisableInsertBalancing) {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-				Name:      commonInternalName,
-				Namespace: cr.Namespace,
-			}}); err != nil {
-				return fmt.Errorf("cannot remove vminsert lb service: %w", err)
-			}
-			if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, disableSelfScrape) {
-				if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      commonInternalName,
-						Namespace: cr.Namespace,
-					},
-				}); err != nil {
-					return fmt.Errorf("cannot delete vmservicescrape for lb vminsert svc: %w", err)
-				}
-			}
+		cc.KeepService(commonName)
+		if newInsert.ServiceSpec != nil && !newInsert.ServiceSpec.UseAsDefault {
+			cc.KeepService(newInsert.ServiceSpec.NameOrDefault(commonName))
 		}
-	}
-
-	if prevLB.Enabled && !newLB.Enabled {
-		if err := finalize.OnVMClusterLoadBalancerDelete(ctx, rclient, prevCR); err != nil {
-			return fmt.Errorf("failed to remove loadbalancer components enabled at prev state: %w", err)
+		scrapeName := commonName
+		if newLB.Enabled && !newLB.DisableInsertBalancing {
+			scrapeName = cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)
+			cc.KeepService(scrapeName)
+		}
+		if !ptr.Deref(newInsert.DisableSelfServiceScrape, disableSelfScrape) {
+			cc.KeepScrape(scrapeName)
 		}
 	}
 	if newLB.Enabled {
-		// case for child objects
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
-		if prevLB.Spec.PodDisruptionBudget != nil && newLB.Spec.PodDisruptionBudget == nil {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      commonName,
-					Namespace: cr.Namespace,
-				},
-			}); err != nil {
-				return fmt.Errorf("cannot delete PodDisruptionBudget for cluster lb: %w", err)
-			}
+		if newLB.Spec.PodDisruptionBudget != nil {
+			cc.KeepPDB(commonName)
+		}
+		if !ptr.Deref(newLB.Spec.DisableSelfServiceScrape, disableSelfScrape) {
+			cc.KeepScrape(commonName)
+		}
+		cc.KeepService(commonName)
+		if newLB.Spec.AdditionalServiceSpec != nil && !newLB.Spec.AdditionalServiceSpec.UseAsDefault {
+			cc.KeepService(newLB.Spec.AdditionalServiceSpec.NameOrDefault(commonName))
+		}
+	} else {
+		if err := finalize.OnClusterLoadBalancerDelete(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("cannot remove orphaned loadbalancer components: %w", err)
 		}
 	}
-
-	return nil
+	return cc.RemoveOrphaned(ctx, rclient, cr)
 }
 
 func buildLBConfigSecretMeta(cr *vmv1beta1.VMCluster) metav1.ObjectMeta {

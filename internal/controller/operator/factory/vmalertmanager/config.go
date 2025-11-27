@@ -513,6 +513,13 @@ func (cb *configBuilder) buildCfg(receiver vmv1beta1.Receiver) error {
 	}
 	cb.finalizeSection("rocketchat_configs")
 
+	for _, c := range receiver.IncidentIOConfigs {
+		if err := cb.buildIncidentIO(c); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("incidentio_configs")
+
 	for _, rcCfg := range receiver.MSTeamsV2Configs {
 		if err := cb.buildTeamsV2(rcCfg); err != nil {
 			return err
@@ -757,6 +764,43 @@ func (cb *configBuilder) buildJira(jira vmv1beta1.JiraConfig) error {
 		})
 	}
 
+	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
+}
+
+func (cb *configBuilder) buildIncidentIO(rc vmv1beta1.IncidentIOConfig) error {
+	var temp yaml.MapSlice
+	if rc.HTTPConfig != nil {
+		c, err := cb.buildHTTPConfig(rc.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
+	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	if rc.AlertSourceToken != nil {
+		secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, rc.AlertSourceToken)
+		if err != nil {
+			return err
+		}
+		toYaml("alert_source_token", secret)
+	}
+	if rc.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *rc.SendResolved})
+	}
+	if len(rc.URL) > 0 {
+		toYaml("url", rc.URL)
+	}
+	if len(rc.Timeout) > 0 {
+		toYaml("timeout", rc.Timeout)
+	}
+	if rc.MaxAlerts > 0 {
+		temp = append(temp, yaml.MapItem{Key: "max_alerts", Value: rc.MaxAlerts})
+	}
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }

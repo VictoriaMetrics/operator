@@ -2,31 +2,103 @@ package finalize
 
 import (
 	"context"
+	"slices"
 
-	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 type orphanedCRD interface {
+	AsOwner() metav1.OwnerReference
 	SelectorLabels() map[string]string
 	GetNamespace() string
 }
 
-// RemoveOrphanedDeployments removes deployments detached from given object
-func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr orphanedCRD, keepDeployments map[string]struct{}) error {
-	deployToRemove, err := discoverDeploymentsByLabels(ctx, rclient, cr.GetNamespace(), cr.SelectorLabels())
-	if err != nil {
+// RemoveOrphanedDeployments removes Deployments detached from given object
+func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "Deployment",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
+// RemoveOrphanedSTSs removes StatefulSets detached from given object
+func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "StatefulSet",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
+// RemoveOrphanedPDBs removes PDBs detached from given object
+func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "policy",
+		Version: "v1",
+		Kind:    "PodDisruptionBudget",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
+// RemoveOrphanedServices removes Services detached from given object
+func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Version: "v1",
+		Kind:    "Service",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
+// RemoveOrphanedHPAs removes HPAs detached from given object
+func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "autoscaling",
+		Version: "v2",
+		Kind:    "HorizontalPodAutoscaler",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+
+}
+
+// RemoveOrphanedVMServiceScrapes removes VMSeviceScrapes detached from given object
+func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "operator.victoriametrics.com",
+		Version: "v1beta1",
+		Kind:    "VMServiceScrape",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+
+}
+
+// removeOrphaned removes orphaned resources
+func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, gvk schema.GroupVersionKind, keepNames map[string]struct{}) error {
+	var l unstructured.UnstructuredList
+	l.SetGroupVersionKind(gvk)
+	opts := client.ListOptions{
+		Namespace:     cr.GetNamespace(),
+		LabelSelector: labels.SelectorFromSet(cr.SelectorLabels()),
+	}
+	if err := rclient.List(ctx, &l, &opts); err != nil {
 		return err
 	}
-	for i := range deployToRemove {
-		dep := deployToRemove[i]
-		if _, ok := keepDeployments[dep.Name]; !ok {
-			// need to remove
-			if err := RemoveFinalizer(ctx, rclient, dep); err != nil {
+	owner := cr.AsOwner()
+	for i := range l.Items {
+		item := &l.Items[i]
+		if _, ok := keepNames[item.GetName()]; !ok && canBeRemoved(item, &owner) {
+			if err := RemoveFinalizer(ctx, rclient, item); err != nil {
 				return err
 			}
-			if err := SafeDelete(ctx, rclient, dep); err != nil {
+			if err := SafeDelete(ctx, rclient, item); err != nil {
 				return err
 			}
 		}
@@ -34,64 +106,12 @@ func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr or
 	return nil
 }
 
-// discoverDeploymentsByLabels - returns deployments with given args.
-func discoverDeploymentsByLabels(ctx context.Context, rclient client.Client, ns string, selector map[string]string) ([]*appsv1.Deployment, error) {
-	var deps appsv1.DeploymentList
-	opts := client.ListOptions{
-		Namespace:     ns,
-		LabelSelector: labels.SelectorFromSet(selector),
+func canBeRemoved(o client.Object, owner *metav1.OwnerReference) bool {
+	if owner == nil {
+		return slices.Contains(o.GetFinalizers(), vmv1beta1.FinalizerName)
 	}
-	if err := rclient.List(ctx, &deps, &opts); err != nil {
-		return nil, err
-	}
-	resp := make([]*appsv1.Deployment, 0, len(deps.Items))
-	for i := range deps.Items {
-		resp = append(resp, &deps.Items[i])
-	}
-	return resp, nil
-}
-
-// RemoveSvcArgs defines interface for service deletion
-type RemoveSvcArgs struct {
-	PrefixedName   func() string
-	SelectorLabels func() map[string]string
-	GetNameSpace   func() string
-}
-
-// RemoveOrphanedSTSs removes deployments detached from given object
-func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepSTSNames map[string]struct{}) error {
-	deployToRemove, err := discoverSTSsByLabels(ctx, rclient, cr.GetNamespace(), cr.SelectorLabels())
-	if err != nil {
-		return err
-	}
-	for i := range deployToRemove {
-		dep := deployToRemove[i]
-		if _, ok := keepSTSNames[dep.Name]; !ok {
-			// need to remove
-			if err := RemoveFinalizer(ctx, rclient, dep); err != nil {
-				return err
-			}
-			if err := SafeDelete(ctx, rclient, dep); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// discoverDeploymentsByLabels - returns deployments with given args.
-func discoverSTSsByLabels(ctx context.Context, rclient client.Client, ns string, selector map[string]string) ([]*appsv1.StatefulSet, error) {
-	var deps appsv1.StatefulSetList
-	opts := client.ListOptions{
-		Namespace:     ns,
-		LabelSelector: labels.SelectorFromSet(selector),
-	}
-	if err := rclient.List(ctx, &deps, &opts); err != nil {
-		return nil, err
-	}
-	resp := make([]*appsv1.StatefulSet, 0, len(deps.Items))
-	for i := range deps.Items {
-		resp = append(resp, &deps.Items[i])
-	}
-	return resp, nil
+	owners := o.GetOwnerReferences()
+	return slices.Contains(o.GetFinalizers(), vmv1beta1.FinalizerName) || slices.ContainsFunc(owners, func(r metav1.OwnerReference) bool {
+		return r.APIVersion == owner.APIVersion && r.Kind == owner.Kind && r.Name == owner.Name
+	})
 }

@@ -14,12 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 )
-
-func getCfg() *config.BaseOperatorConf {
-	return config.MustGetBaseConfig()
-}
 
 type crObject interface {
 	AnnotationsFiltered() map[string]string
@@ -97,7 +92,7 @@ func SafeDelete(ctx context.Context, rclient client.Client, r client.Object) err
 }
 
 // SafeDeleteForSelectorsWithFinalizer removes given object if it matches provided label selectors
-func SafeDeleteForSelectorsWithFinalizer(ctx context.Context, rclient client.Client, r client.Object, selectors map[string]string) error {
+func SafeDeleteForSelectorsWithFinalizer(ctx context.Context, rclient client.Client, r client.Object, selectors map[string]string, owner *metav1.OwnerReference) error {
 	objName, objNs := r.GetName(), r.GetNamespace()
 	if objName == "" || objNs == "" {
 		return fmt.Errorf("BUG: object name=%q or object namespace=%q cannot be empty", objName, objNs)
@@ -116,6 +111,9 @@ func SafeDeleteForSelectorsWithFinalizer(ctx context.Context, rclient client.Cli
 	if !isLabelsMatchSelectors(r.GetLabels(), selectors) {
 		// object has a different set of labels
 		// most probably it is not managed by operator
+		return nil
+	}
+	if !canBeRemoved(r, owner) {
 		return nil
 	}
 	if err := RemoveFinalizer(ctx, rclient, r); err != nil {
@@ -149,7 +147,7 @@ func isLabelsMatchSelectors(objLabels map[string]string, selectorLabels map[stri
 }
 
 // SafeDeleteWithFinalizer removes object, ignores notfound error.
-func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r client.Object) error {
+func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r client.Object, owner *metav1.OwnerReference) error {
 	objName, objNs := r.GetName(), r.GetNamespace()
 	if objName == "" || objNs == "" {
 		return fmt.Errorf("BUG: object name=%q or object namespace=%q cannot be empty", objName, objNs)
@@ -164,6 +162,9 @@ func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r clien
 			return nil
 		}
 		return err
+	}
+	if !canBeRemoved(r, owner) {
+		return nil
 	}
 	if err := RemoveFinalizer(ctx, rclient, r); err != nil {
 		if !k8serrors.IsNotFound(err) {
@@ -202,7 +203,6 @@ func removeConfigReloaderRole(ctx context.Context, rclient client.Client, cr crO
 	if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.GetNamespace()}}); err != nil {
 		return err
 	}
-
 	if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.GetNamespace()}}); err != nil {
 		return err
 	}

@@ -3,7 +3,7 @@ module github.com/VictoriaMetrics/operator/api
 go 1.25.3
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.128.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.129.1
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
 	github.com/prometheus/alertmanager v0.28.0

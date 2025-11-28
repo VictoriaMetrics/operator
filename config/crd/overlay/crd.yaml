@@ -40826,6 +40826,25 @@ spec:
                       items:
                         type: string
                       type: array
+                    query_args:
+                      description: QueryArgs appends list of query arguments to generated
+                        URL
+                      items:
+                        description: QueryArg defines item for query arguments
+                        properties:
+                          name:
+                            description: Name of query argument
+                            type: string
+                          values:
+                            description: Values of query argument
+                            items:
+                              type: string
+                            type: array
+                        required:
+                        - name
+                        - values
+                        type: object
+                      type: array
                     response_headers:
                       description: |-
                         ResponseHeaders represent additional http headers, that vmauth adds for request response

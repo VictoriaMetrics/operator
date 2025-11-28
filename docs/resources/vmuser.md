@@ -88,6 +88,9 @@ Operator supports following kinds in `kind` field:
 - `VMAlertmanager` for [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/)
 - `VMSingle` for [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/)
 - `VMCluster/vmselect`, `VMCluster/vminsert` and `VMCluster/vmstorage` for [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/)
+- `VLCluster/vmselect`, `VLCluster/vlinsert` and `VLCluster/vlstorage` for [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/)
+- `VTCluster/vtselect`, `VTCluster/vtinsert` and `VTCluster/vtstorage` for [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/)
+- `VLAgent` for [VLAgent](https://docs.victoriametrics.com/operator/resources/vlagent/)
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmuser/#examples) section.
 

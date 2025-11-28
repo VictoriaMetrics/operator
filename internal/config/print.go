@@ -62,9 +62,16 @@ func (boc *BaseOperatorConf) PrintDefaults(format string) error {
 	if !ok {
 		return fmt.Errorf("unknown print format %q", format)
 	}
-	params, err := env.GetFieldParamsWithOptions(boc, getEnvOpts())
+	opts := getEnvOpts()
+	params, err := env.GetFieldParamsWithOptions(boc, opts)
 	if err != nil {
 		return fmt.Errorf("failed to get field params: %w", err)
+	}
+	for i := range params {
+		p := &params[i]
+		if v, ok := opts.Environment[p.Key]; ok {
+			p.DefaultValue = v
+		}
 	}
 	tmpl, err := template.New("env").Funcs(map[string]any{
 		"anchorize": func(val string) string {

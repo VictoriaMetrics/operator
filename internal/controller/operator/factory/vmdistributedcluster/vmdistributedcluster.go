@@ -123,13 +123,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Store current CR status
-	currentCRStatus := cr.Status.DeepCopy()
+	previousCRStatus := cr.Status.DeepCopy()
 	cr.Status = vmv1alpha1.VMDistributedClusterStatus{}
 
 	// Ensure that all vmusers have a read rule for vmcluster and record vmcluster info in VMDistributedCluster status
 	cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
 	for i, vmCluster := range vmClusters {
-		vmClusterInfo, err := setVMClusterInfo(vmCluster, vmUserObjs, currentCRStatus)
+		vmClusterInfo, err := setVMClusterInfo(vmCluster, vmUserObjs, previousCRStatus)
 		if err != nil {
 			return err
 		}
@@ -138,7 +138,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	cr.Status.Zones.VMClusters = cr.Spec.Zones.VMClusters
 
 	// Compare generations of vmcluster objects from the spec with the previous CR and Zones configuration
-	if diff := deep.Equal(getGenerationsFromStatus(currentCRStatus), getGenerationsFromStatus(&cr.Status)); len(diff) > 0 {
+	previousGenerations := getGenerationsFromStatus(previousCRStatus)
+	currentGenerations := getGenerationsFromStatus(&cr.Status)
+	if len(previousGenerations) != len(currentGenerations) {
+		// Set status to expanding until all clusters have reported their status
+		cr.Status.UpdateStatus = vmv1beta1.UpdateStatusExpanding
+	}
+
+	if diff := deep.Equal(previousGenerations, currentGenerations); len(diff) > 0 {
 		// Record new generations and zones config, then exit early if a change is detected
 		if err := rclient.Status().Update(ctx, cr); err != nil {
 			return fmt.Errorf("failed to update status: %w", err)

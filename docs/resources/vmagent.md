@@ -378,7 +378,8 @@ spec:
 
 ## Relabeling
 
-`VMAgent` supports global relabeling for all metrics and per remoteWrite target relabel config.
+`VMAgent` supports global [service discovery relabeling](https://docs.victoriametrics.com/victoriametrics/relabeling/#service-discovery-relabeling), global remote write relabeling for all remoteWrite targets and relabeling per remoteWrite target.
+See [these](https://docs.victoriametrics.com/vmagent/#life-of-a-sample) docs for details about stages of relabeling in vmagent.
 
 Note in some cases, you don't need relabeling, `key=value` label pairs can be added to the all scrapped metrics with `spec.externalLabels` for `VMAgent`:
 
@@ -406,7 +407,7 @@ kind: ConfigMap
 metadata:
   name: vmagent-relabel
 data:
-  global-relabel.yaml: |
+  remote-write-relabel.yaml: |
     - target_label: bar
     - source_labels: [aa]
       separator: "foobar"
@@ -424,10 +425,10 @@ data:
       source_labels: [foo, bar]
 ```
 
-Second, add `relabelConfig` to `VMagent` spec for global relabeling with name of `Configmap` - `vmagent-relabel` and key `global-relabel.yaml`.
+Second, add `relabelConfig` to `VMagent` spec for global relabeling for all remoteWrite targets with name of `Configmap` - `vmagent-relabel` and key `remote-write-relabel.yaml`.
 
-For relabeling per remoteWrite target, add   `urlRelabelConfig` name of `Configmap` - `vmagent-relabel` 
-and key `target-1-relabel.yaml` to one of remoteWrite target for relabeling only for those target:
+For relabeling per remoteWrite target, add `urlRelabelConfig` name of `Configmap` - `vmagent-relabel` 
+and key `target-1-relabel.yaml` to one of remoteWrite target for relabeling only for this target:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -439,7 +440,7 @@ spec:
   selectAllByDefault: true
   relabelConfig:
    name: "vmagent-relabel"
-   key: "global-relabel.yaml"
+   key: "remote-write-relabel.yaml"
   remoteWrite:
     - url: "http://vmsingle-example-persisted.default.svc:8428/api/v1/write"
     - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
@@ -479,11 +480,32 @@ spec:
          source_labels: [foo, bar]
 ```
 
-###  Combined example
+### Global service discovery relabeling rules
+
+It is possible to define relabeling rules which will be used at service discovery stage for all scrape configs of `VMAgent`.
+This is useful in order to add global metadata such as tenant information based on labels of discovered targets.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example
+spec:
+  # ...
+  globalScrapeRelabelConfigs:
+    - source_labels: [__meta_kubernetes_service_label_tenant]
+      target_label: vm_account_id
+  remoteWrite:
+    - url: "http://vminsert-example.default.svc:8480/insert/multitenant/api/v1/write"
+```
+
+This example uses [multitenancy via labels](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#multitenancy-via-labels) in order to route metrics to a specific tenant based on target labels.
+
+### Combined example
 
 It's also possible to use both features in combination.
 
-First will be added relabeling configs from  `inlineRelabelConfig`, then `relabelConfig` from configmap.
+First will be added relabeling configs from `inlineRelabelConfig`, then `relabelConfig` from configmap.
 
  ```yaml
 apiVersion: v1
@@ -491,8 +513,7 @@ kind: ConfigMap
 metadata:
   name: vmagent-relabel
 data:
-  global-relabel.yaml: |
-    - target_label: bar
+  remote-write-relabel.yaml: |
     - source_labels: [aa]
       separator: "foobar"
       regex: "foo.+bar"
@@ -522,7 +543,7 @@ spec:
    - source_labels: [aa]
   relabelConfig:
    name: "vmagent-relabel"
-   key: "global-relabel.yaml"
+   key: "remote-write-relabel.yaml"
   remoteWrite:
     - url: "http://vmsingle-example-persisted.default.svc:8428/api/v1/write"
     - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
@@ -540,7 +561,6 @@ Resulted configmap, mounted to `VMAgent` pod:
 apiVersion: v1
 data:
   global_relabeling.yaml: |
-    - target_label: bar1
     - source_labels:
       - aa
     - target_label: bar

@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -49,6 +50,8 @@ func verifyOwnerReferences(ctx context.Context, cr *vmv1alpha1.VMDistributedClus
 
 var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster"), func() {
 	var ctx context.Context
+
+	os.Setenv("E2E_TEST", "true")
 
 	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	namespacedName := types.NamespacedName{

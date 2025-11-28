@@ -387,13 +387,6 @@ func beforeEach() testData {
 	})
 	vmcluster1 := newVMCluster("vmcluster-1", "v1.0.0")
 	vmcluster2 := newVMCluster("vmcluster-2", "v1.0.0")
-	vmAuth := &vmv1beta1.VMAuth{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "vmauth-proxy",
-			Namespace: "default",
-		},
-		Spec: vmv1beta1.VMAuthSpec{},
-	}
 
 	zones := []vmv1alpha1.VMClusterRefOrSpec{
 		{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
@@ -409,7 +402,6 @@ func beforeEach() testData {
 		vmuser2,
 		vmcluster1,
 		vmcluster2,
-		vmAuth,
 		cr,
 	).Build()
 	tc := &trackingClient{

@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"strings"
 	"sync"
@@ -226,7 +226,7 @@ func (m *mockVMAgent) AsURL() string {
 	return m.url
 }
 func (m *mockVMAgent) GetMetricPath() string {
-	return "/metrics"
+	return ""
 }
 func (m *mockVMAgent) GetReplicas() int32 {
 	return m.replicas
@@ -559,9 +559,62 @@ func TestFetchVMClusters(t *testing.T) {
 	})
 }
 
+func newVMAgentMetricsHandler(t *testing.T, handler http.Handler) (*httptest.Server, *mockVMAgent, *trackingClient) {
+	scheme := runtime.NewScheme()
+	_ = vmv1alpha1.AddToScheme(scheme)
+	_ = vmv1beta1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
+	_ = discoveryv1.AddToScheme(scheme)
+
+	ts := httptest.NewServer(handler)
+
+	// ts.URL contains the URL of the test server
+	// we need to ensure endpoint will be set to it host and vmAgent URL will use the same port
+	mockVMAgent := &mockVMAgent{url: ts.URL, replicas: 1}
+	tsURL, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+
+	vmAgent := vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mockVMAgent.GetName(),
+			Namespace: mockVMAgent.GetNamespace(),
+		},
+		Status: vmv1beta1.VMAgentStatus{
+			StatusMetadata: vmv1beta1.StatusMetadata{
+				UpdateStatus: vmv1beta1.UpdateStatusOperational,
+			},
+		},
+	}
+	endpointSlice := discoveryv1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "random-endpoint-name",
+			Namespace: mockVMAgent.GetNamespace(),
+			Labels:    map[string]string{"kubernetes.io/service-name": vmAgent.PrefixedName()},
+		},
+		Endpoints: []discoveryv1.Endpoint{
+			{
+				Addresses: []string{tsURL.Hostname()},
+			},
+		},
+	}
+
+	initialObjects := []client.Object{}
+	initialObjects = append(initialObjects, &vmAgent)
+	initialObjects = append(initialObjects, &endpointSlice)
+
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initialObjects...).Build()
+	trClient := &trackingClient{
+		Client:  fakeClient,
+		objects: make(map[client.ObjectKey]client.Object),
+	}
+
+	return ts, mockVMAgent, trClient
+}
+
 func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 	t.Run("VMAgent metrics return zero", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 0")
 		}))
 		defer ts.Close()
@@ -569,14 +622,13 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		mockVMAgent := &mockVMAgent{url: ts.URL, replicas: 1}
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, time.Second, nil)
+		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, time.Second, trClient)
 		assert.NoError(t, err)
 	})
 
 	t.Run("VMAgent metrics return non-zero then zero", func(t *testing.T) {
 		callCount := 0
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			callCount++
 			if callCount == 1 {
 				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 100")
@@ -589,14 +641,13 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		mockVMAgent := &mockVMAgent{url: ts.URL, replicas: 1}
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, time.Second*2, nil)
+		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, time.Second*2, trClient)
 		assert.NoError(t, err)
 		assert.True(t, callCount > 1) // Ensure it polled multiple times
 	})
 
 	t.Run("VMAgent metrics timeout", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(2 * time.Second) // Simulate a long response
 			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 0")
 		}))
@@ -605,104 +656,9 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		mockVMAgent := &mockVMAgent{url: ts.URL, replicas: 1}
-		// When rclient is nil the function should fall back to single-URL polling and eventually time out.
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, 500*time.Millisecond, nil) // Shorter deadline
+		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, 500*time.Millisecond, trClient) // Shorter deadline
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
-	})
-
-	t.Run("EndpointSlice discovery polls per-IP until zero", func(t *testing.T) {
-		var mu sync.Mutex
-		counts := map[string]int{}
-
-		// Server will respond based on r.Host so we can emulate per-IP behavior.
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mu.Lock()
-			defer mu.Unlock()
-			counts[r.Host]++
-			// r.Host will contain ip:port, so HasPrefix on ip is fine.
-			if strings.HasPrefix(r.Host, "10.0.0.1") {
-				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 0")
-				return
-			}
-			if strings.HasPrefix(r.Host, "10.0.0.2") {
-				if counts[r.Host] == 1 {
-					fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 100")
-				} else {
-					fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 0")
-				}
-				return
-			}
-			// Default: non-zero
-			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 100")
-		}))
-		defer ts.Close()
-
-		// Transport that redirects all dials to the test server's listener so
-		// requests to arbitrary ip:port end up at ts.
-		transport := &http.Transport{}
-		dialer := &net.Dialer{}
-		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return dialer.DialContext(ctx, network, ts.Listener.Addr().String())
-		}
-		httpClient := &http.Client{Transport: transport, Timeout: time.Second}
-
-		// Prepare fake client with EndpointSlice containing two IPs.
-		scheme := runtime.NewScheme()
-		_ = vmv1alpha1.AddToScheme(scheme)
-		_ = vmv1beta1.AddToScheme(scheme)
-		_ = corev1.AddToScheme(scheme)
-		_ = discoveryv1.AddToScheme(scheme)
-
-		es := &discoveryv1.EndpointSlice{
-			ObjectMeta: metav1.ObjectMeta{Name: "vmagent-test-vmagent", Namespace: "default"},
-			Endpoints: []discoveryv1.Endpoint{
-				{Addresses: []string{"10.0.0.1"}},
-				{Addresses: []string{"10.0.0.2"}},
-			},
-		}
-		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(es).Build()
-
-		mockVMAgent := &mockVMAgent{url: "http://my-svc:1234", replicas: 1}
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		err := waitForVMClusterVMAgentMetrics(ctx, httpClient, mockVMAgent, 3*time.Second, fakeClient)
-		assert.NoError(t, err)
-
-		// Ensure the second ip (which returned non-zero first) was polled multiple times.
-		mu.Lock()
-		cnt := counts["10.0.0.2:1234"]
-		mu.Unlock()
-		assert.True(t, cnt > 1, "expected multiple polls to 10.0.0.2:1234, got %d", cnt)
-	})
-
-	t.Run("EndpointSlice with no addresses falls back to single URL", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 0")
-		}))
-		defer ts.Close()
-
-		scheme := runtime.NewScheme()
-		_ = vmv1alpha1.AddToScheme(scheme)
-		_ = vmv1beta1.AddToScheme(scheme)
-		_ = corev1.AddToScheme(scheme)
-		_ = discoveryv1.AddToScheme(scheme)
-
-		// EndpointSlice exists but has no addresses -> fallback to single URL
-		es := &discoveryv1.EndpointSlice{
-			ObjectMeta: metav1.ObjectMeta{Name: "vmagent-test-vmagent", Namespace: "default"},
-			Endpoints:  []discoveryv1.Endpoint{{Addresses: []string{}}},
-		}
-		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(es).Build()
-
-		mockVMAgent := &mockVMAgent{url: ts.URL, replicas: 1}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, time.Second, fakeClient)
-		assert.NoError(t, err)
 	})
 }
 

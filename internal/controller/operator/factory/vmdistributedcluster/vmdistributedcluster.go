@@ -93,12 +93,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		zoneUpdatePause = cr.Spec.ZoneUpdatePause.Duration
 	}
 
-	// Ensure VMAuth exists first so we can set it as the owner for the automatically-created VMUser.
-	vmAuthObj, err := updateOrCreateVMAuth(ctx, rclient, cr, cr.Namespace, cr.Spec.VMAuth, scheme)
-	if err != nil {
-		return fmt.Errorf("failed to update or create vmauth: %w", err)
-	}
-
 	// Fetch VMCluster statuses by name (needed to build target refs for the VMUser).
 	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones.VMClusters)
 	if err != nil {
@@ -111,6 +105,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if err != nil {
 			return fmt.Errorf("failed to validate owner references for unreferenced vmcluster %s: %w", vmCluster.Name, err)
 		}
+	}
+
+	// Ensure VMAuth exists first so we can set it as the owner for the automatically-created VMUser.
+	vmAuthObj, err := updateOrCreateVMAuth(ctx, rclient, cr, cr.Namespace, cr.Spec.VMAuth, scheme)
+	if err != nil {
+		return fmt.Errorf("failed to update or create vmauth: %w", err)
 	}
 
 	// Build TargetRefs for all VMClusters in the zones.
@@ -919,8 +919,7 @@ func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *
 
 func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmAuthObj *vmv1beta1.VMAuth, vmUserTargetRefs []vmv1beta1.TargetRef, vmClusters []*vmv1beta1.VMCluster, tenantID string) ([]*vmv1beta1.VMUser, error) {
 	// Build the VMUser name
-	vmUserName := fmt.Sprintf("%s-user", cr.Name)
-	namespacedName := types.NamespacedName{Name: vmUserName, Namespace: cr.Namespace}
+	namespacedName := types.NamespacedName{Name: cr.GetVMUserName(), Namespace: cr.Namespace}
 
 	// Try to fetch existing VMUser
 	vmUserObj := &vmv1beta1.VMUser{}
@@ -931,7 +930,7 @@ func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr
 			// Initialize a new VMUser for creation
 			vmUserObj = &vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmUserName,
+					Name:      cr.GetVMUserName(),
 					Namespace: cr.Namespace,
 					Labels: map[string]string{
 						"vmdistributedcluster": cr.Name,
@@ -942,7 +941,7 @@ func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr
 				},
 			}
 		} else {
-			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", cr.Namespace, vmUserName, err)
+			return nil, fmt.Errorf("failed to get VMUser %s/%s: %w", cr.Namespace, cr.GetVMUserName(), err)
 		}
 	} else {
 		// Ensure TargetRefs are up-to-date.

@@ -206,6 +206,10 @@ func (cr *VMDistributedCluster) Paused() bool {
 	return cr.Spec.Paused
 }
 
+func (cr *VMDistributedCluster) GetVMUserName() string {
+	return fmt.Sprintf("%s-user", cr.Name)
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMDistributedClusterSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMDistributedClusterSpec

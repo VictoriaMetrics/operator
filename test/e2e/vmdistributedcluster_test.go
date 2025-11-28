@@ -721,6 +721,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmAgentName,
@@ -754,7 +755,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			})
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualOperationalTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, vmclusters, namespace)
 
 			// Apply spec update
@@ -769,7 +770,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			// Wait for VMDistributedCluster to become operational after its own upgrade
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualOperationalTimeout).WithContext(ctx).Should(Succeed())
 
 			// Verify VMDistributedCluster status reflects both clusters are upgraded/operational
 			var upgradedCluster vmv1alpha1.VMDistributedCluster

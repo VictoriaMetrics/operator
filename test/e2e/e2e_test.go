@@ -34,6 +34,7 @@ var (
 	eventualDeletionTimeout            = 45 * time.Second
 	eventualDeploymentPodTimeout       = 25 * time.Second
 	eventualExpandingTimeout           = 25 * time.Second
+	eventualOperationalTimeout         = 1 * time.Minute
 )
 
 // Run e2e tests using the Ginkgo runner.

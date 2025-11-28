@@ -378,7 +378,7 @@ spec:
 
 ## Relabeling
 
-`VMAgent` supports global [service discovery relabeling](https://docs.victoriametrics.com/victoriametrics/relabeling/#service-discovery-relabeling), global remote write relabeling for all metrics and per remoteWrite target relabel config.
+`VMAgent` supports global [service discovery relabeling](https://docs.victoriametrics.com/victoriametrics/relabeling/#service-discovery-relabeling), global remote write relabeling for all remoteWrite targets and relabeling per remoteWrite target.
 See [these](https://docs.victoriametrics.com/vmagent/#life-of-a-sample) docs for details about stages of relabeling in vmagent.
 
 Note in some cases, you don't need relabeling, `key=value` label pairs can be added to the all scrapped metrics with `spec.externalLabels` for `VMAgent`:
@@ -425,10 +425,10 @@ data:
       source_labels: [foo, bar]
 ```
 
-Second, add `relabelConfig` to `VMagent` spec for global remote write relabeling with name of `Configmap` - `vmagent-relabel` and key `remote-write-relabel.yaml`.
+Second, add `relabelConfig` to `VMagent` spec for global relabeling for all remoteWrite targets with name of `Configmap` - `vmagent-relabel` and key `remote-write-relabel.yaml`.
 
-For relabeling per remoteWrite target, add   `urlRelabelConfig` name of `Configmap` - `vmagent-relabel` 
-and key `target-1-relabel.yaml` to one of remoteWrite target for relabeling only for those target:
+For relabeling per remoteWrite target, add `urlRelabelConfig` name of `Configmap` - `vmagent-relabel` 
+and key `target-1-relabel.yaml` to one of remoteWrite target for relabeling only for this target:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -505,7 +505,7 @@ This example uses [multitenancy via labels](https://docs.victoriametrics.com/vic
 
 It's also possible to use both features in combination.
 
-First will be added relabeling configs from  `inlineRelabelConfig`, then `relabelConfig` from configmap.
+First will be added relabeling configs from `inlineRelabelConfig`, then `relabelConfig` from configmap.
 
  ```yaml
 apiVersion: v1

@@ -908,7 +908,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
 
-			namespacedName.Name = "vmdistributedcluster-1"
+			namespacedName.Name = "vmdistributedcluster-remove"
 			cr := &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -939,15 +939,201 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should remove vmagent created by vmdistributedcluster", func() {
+			beforeEach()
+			DeferCleanup(afterEach)
 
+			vmCluster := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-1",
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+
+			namespacedName.Name = "vmdistributedcluster-agent-remove"
+			vmagentName := namespacedName.Name + "-agent"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      namespacedName.Name,
+					Namespace: namespacedName.Namespace,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAuth: vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
+						Name: vmagentName,
+						Spec: &vmv1beta1.VMAgentSpec{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+								{
+									URL: "http://example.com",
+								},
+							},
+						},
+					},
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}}}},
+				},
+			}
+
+			By("creating the VMDistributedCluster")
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+			})
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+
+			By("waiting for it to become operational")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, types.NamespacedName{Name: namespacedName.Name, Namespace: namespace})
+			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
+
+			By("ensuring VMAgent was created")
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmagentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})).To(Succeed())
+
+			By("deleting the VMDistributedCluster")
+			Expect(k8sClient.Delete(ctx, cr)).To(Succeed())
+
+			By("ensuring VMAgent is eventually removed")
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: vmagentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})
+				return k8serrors.IsNotFound(err)
+			}, eventualDeletionTimeout).Should(BeTrue())
 		})
 
 		It("should remove vmauth created by vmdistributedcluster", func() {
+			beforeEach()
+			DeferCleanup(afterEach)
 
+			vmCluster := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-1",
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+
+			namespacedName.Name = "vmdistributedcluster-vmauth-remove"
+			vmauthName := namespacedName.Name + "-vmauth"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      namespacedName.Name,
+					Namespace: namespace,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
+						Name: vmauthName,
+						Spec: &vmv1beta1.VMAuthSpec{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+					},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					Zones:   vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}}}},
+				},
+			}
+
+			By("creating the VMDistributedCluster")
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+			})
+
+			By("waiting for it to become operational")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, types.NamespacedName{Name: namespacedName.Name, Namespace: namespace})
+			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
+
+			By("ensuring VMAuth was created")
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmauthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})).To(Succeed())
+
+			By("deleting the VMDistributedCluster")
+			Expect(k8sClient.Delete(ctx, cr)).To(Succeed())
+
+			By("ensuring VMAuth is eventually removed")
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: vmauthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})
+				return k8serrors.IsNotFound(err)
+			}, eventualDeletionTimeout).Should(BeTrue())
 		})
 
 		It("should remove vmclusters created by vmdistributedcluster", func() {
+			beforeEach()
+			DeferCleanup(afterEach)
 
+			namespacedName.Name = "vmdistributed-vmcluster-removal"
+			vmc1Name := namespacedName.Name + "-c1"
+			vmc2Name := namespacedName.Name + "-c2"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      namespacedName.Name,
+					Namespace: namespace,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:  vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					Zones: vmv1alpha1.ZoneSpec{
+						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+							{
+								Name: vmc1Name,
+								Spec: &vmv1beta1.VMClusterSpec{
+									VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To[int32](1),
+									}},
+									VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To[int32](1),
+									}},
+									VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To[int32](1),
+									}},
+								},
+							},
+							{
+								Name: vmc2Name,
+								Spec: &vmv1beta1.VMClusterSpec{
+									VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To[int32](1),
+									}},
+									VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To[int32](1),
+									}},
+									VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To[int32](1),
+									}},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			By("creating the VMDistributedCluster")
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+			})
+
+			By("waiting for it to become operational")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, types.NamespacedName{Name: namespacedName.Name, Namespace: namespace})
+			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
+
+			vmclusters := []string{vmc1Name, vmc2Name}
+			By("ensuring VMClusters were created")
+			for _, vmclusterName := range vmclusters {
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmclusterName, Namespace: namespace}, &vmv1beta1.VMCluster{})).To(Succeed())
+			}
+
+			By("deleting the VMDistributedCluster")
+			Expect(k8sClient.Delete(ctx, cr)).To(Succeed())
+
+			By("ensuring VMClusters are eventually removed")
+			for _, vmclusterName := range vmclusters {
+				Eventually(func() bool {
+					err := k8sClient.Get(ctx, types.NamespacedName{Name: vmclusterName, Namespace: namespace}, &vmv1beta1.VMCluster{})
+					return k8serrors.IsNotFound(err)
+				}, eventualDeletionTimeout).Should(BeTrue())
+			}
 		})
 	})
 })

@@ -75,7 +75,6 @@ func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl
 	RegisterObjectStat(instance, "vmdistributedcluster")
 
 	// Check if the instance is being deleted
-	// TODO[vrutkovs]: Implement deletion logic or remove it
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMDistributedClusterDelete(ctx, r, instance); err != nil {
 			return result, fmt.Errorf("cannot remove finalizer from vmdistributed: %w", err)

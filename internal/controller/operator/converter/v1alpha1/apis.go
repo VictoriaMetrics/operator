@@ -145,6 +145,9 @@ func ConvertScrapeConfig(promscrapeConfig *promv1alpha1.ScrapeConfig, conf *conf
 	cs.Spec.RelabelConfigs = converter.ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs)
 	cs.Spec.MetricRelabelConfigs = converter.ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs)
 	cs.Spec.Path = ptr.Deref(promscrapeConfig.Spec.MetricsPath, "")
+	if promscrapeConfig.Spec.ScrapeInterval != nil {
+		cs.Spec.ScrapeInterval = string(*promscrapeConfig.Spec.ScrapeInterval)
+	}
 
 	if promscrapeConfig.Spec.EnableCompression != nil {
 		cs.Spec.VMScrapeParams = &vmv1beta1.VMScrapeParams{

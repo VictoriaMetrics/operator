@@ -130,6 +130,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Millisecond},
 					ZoneUpdatePause: &metav1.Duration{Duration: 0 * time.Second},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmAgentName,
@@ -394,64 +395,65 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Expect(ownerRef.Name).To(Equal(cr.Name))
 		})
 
-		// It("should successfully create a VMDistributedCluster with VMCluster references and override spec", func() {
-		// 	beforeEach()
-		// 	DeferCleanup(afterEach)
+		It("should successfully create a VMDistributedCluster with VMCluster references and override spec", func() {
+			beforeEach()
+			DeferCleanup(afterEach)
 
-		// 	By("creating an initial VMCluster")
-		// 	initialCluster := &vmv1beta1.VMCluster{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Namespace: namespace,
-		// 			Name:      "referenced-cluster",
-		// 		},
-		// 		Spec: vmv1beta1.VMClusterSpec{
-		// 			ClusterVersion: "v1.126.0-cluster",
-		// 			VMStorage: &vmv1beta1.VMStorage{
-		// 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-		// 					ReplicaCount: ptr.To[int32](1),
-		// 				},
-		// 			},
-		// 		},
-		// 	}
-		// 	createVMClusterAndEnsureOperational(ctx, k8sClient, initialCluster, namespace)
+			By("creating an initial VMCluster")
+			initialCluster := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "referenced-cluster",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: "v1.126.0-cluster",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, initialCluster, namespace)
 
-		// 	By("creating a VMDistributedCluster referencing the existing VMCluster with an override spec")
-		// 	namespacedName.Name = "ref-override-cluster"
-		// 	cr := &vmv1alpha1.VMDistributedCluster{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Namespace: namespace,
-		// 			Name:      namespacedName.Name,
-		// 		},
-		// 		Spec: vmv1alpha1.VMDistributedClusterSpec{
-		// 			ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
-		// 			VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-		// 			VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
-		// 			Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-		// 				{
-		// 					Ref: &corev1.LocalObjectReference{Name: initialCluster.Name},
-		// 					OverrideSpec: &apiextensionsv1.JSON{
-		// 						Raw: []byte(`{"retentionPeriod": "10h"}`),
-		// 					},
-		// 				},
-		// 			}},
-		// 		},
-		// 	}
-		// 	DeferCleanup(func() {
-		// 		Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
-		// 	})
-		// 	Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			By("creating a VMDistributedCluster referencing the existing VMCluster with an override spec")
+			namespacedName.Name = "ref-override-cluster"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      namespacedName.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Millisecond},
+					ZoneUpdatePause: &metav1.Duration{Duration: 0 * time.Second},
+					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Ref: &corev1.LocalObjectReference{Name: initialCluster.Name},
+							OverrideSpec: &apiextensionsv1.JSON{
+								Raw: []byte(`{"retentionPeriod": "10h"}`),
+							},
+						},
+					}},
+				},
+			}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+			})
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 
-		// 	By("waiting for VMDistributedCluster to become operational")
-		// 	Eventually(func() error {
-		// 		return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
-		// 	}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
-		// 	verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*initialCluster}, namespace)
+			By("waiting for VMDistributedCluster to become operational")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
+			verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*initialCluster}, namespace)
 
-		// 	By("verifying that the referenced VMCluster has the override applied")
-		// 	var updatedCluster vmv1beta1.VMCluster
-		// 	Expect(k8sClient.Get(ctx, types.NamespacedName{Name: initialCluster.Name, Namespace: namespace}, &updatedCluster)).To(Succeed())
-		// 	Expect(updatedCluster.Spec.RetentionPeriod).To(Equal("10h"))
-		// })
+			By("verifying that the referenced VMCluster has the override applied")
+			var updatedCluster vmv1beta1.VMCluster
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: initialCluster.Name, Namespace: namespace}, &updatedCluster)).To(Succeed())
+			Expect(updatedCluster.Spec.RetentionPeriod).To(Equal("10h"))
+		})
 
 		It("should handle rolling updates with VMAgent configuration changes", func() {
 			beforeEach()
@@ -518,256 +520,257 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
 		})
 
-		// It("should wait for VMCluster upgrade completion", func() {
-		// 	beforeEach()
-		// 	DeferCleanup(afterEach)
+		It("should wait for VMCluster upgrade completion", func() {
+			beforeEach()
+			DeferCleanup(afterEach)
 
-		// 	initialVersion := "v1.126.0-cluster"
-		// 	updateVersion := "v1.127.0-cluster"
+			initialVersion := "v1.126.0-cluster"
+			updateVersion := "v1.127.0-cluster"
 
-		// 	vmCluster1 := &vmv1beta1.VMCluster{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Namespace: namespace,
-		// 			Name:      "vmcluster-1",
-		// 		},
-		// 		Spec: vmv1beta1.VMClusterSpec{
-		// 			ClusterVersion: initialVersion,
-		// 			VMStorage: &vmv1beta1.VMStorage{
-		// 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-		// 					ReplicaCount: ptr.To[int32](1),
-		// 				},
-		// 			},
-		// 		},
-		// 	}
-		// 	createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
-		// 	vmCluster2 := &vmv1beta1.VMCluster{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Namespace: namespace,
-		// 			Name:      "vmcluster-2",
-		// 		},
-		// 		Spec: vmv1beta1.VMClusterSpec{
-		// 			ClusterVersion: initialVersion,
-		// 			VMStorage: &vmv1beta1.VMStorage{
-		// 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-		// 					ReplicaCount: ptr.To[int32](1),
-		// 				},
-		// 			},
-		// 		},
-		// 	}
-		// 	createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
-		// 	vmclusters := []vmv1beta1.VMCluster{*vmCluster1, *vmCluster2}
+			vmCluster1 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-1",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: initialVersion,
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-2",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: initialVersion,
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
+			vmclusters := []vmv1beta1.VMCluster{*vmCluster1, *vmCluster2}
 
-		// 	namespacedName.Name = "distributed-upgrade"
-		// 	vmAgentName := existingVMAgentName
-		// 	cr := &vmv1alpha1.VMDistributedCluster{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Namespace: namespace,
-		// 			Name:      namespacedName.Name,
-		// 		},
-		// 		Spec: vmv1alpha1.VMDistributedClusterSpec{
-		// 			ReadyDeadline:   &metav1.Duration{Duration: 5 * time.Second},
-		// 			ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
-		// 			VMAgent: vmv1alpha1.VMAgentNameAndSpec{
-		// 				Name: vmAgentName,
-		// 				Spec: &vmv1beta1.VMAgentSpec{
-		// 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-		// 						ReplicaCount: ptr.To[int32](2),
-		// 					},
-		// 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-		// 						{
-		// 							URL: "http://example.com",
-		// 						},
-		// 					},
-		// 				},
-		// 			},
-		// 			VMAuth: vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
-		// 			Zones: vmv1alpha1.ZoneSpec{
-		// 				VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-		// 					{Ref: &corev1.LocalObjectReference{
-		// 						Name: vmCluster1.Name,
-		// 					}},
-		// 					{Ref: &corev1.LocalObjectReference{
-		// 						Name: vmCluster2.Name,
-		// 					}},
-		// 				},
-		// 			},
-		// 		},
-		// 	}
-		// 	DeferCleanup(func() {
-		// 		Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
-		// 	})
-		// 	Expect(k8sClient.Create(ctx, cr)).To(Succeed())
-		// 	Eventually(func() error {
-		// 		return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
-		// 	}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
-		// 	verifyOwnerReferences(ctx, cr, vmclusters, namespace)
+			namespacedName.Name = "distributed-upgrade"
+			vmAgentName := existingVMAgentName
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      namespacedName.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Millisecond},
+					ZoneUpdatePause: &metav1.Duration{Duration: 0 * time.Second},
+					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
+						Name: vmAgentName,
+						Spec: &vmv1beta1.VMAgentSpec{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+								{
+									URL: "http://example.com",
+								},
+							},
+						},
+					},
+					VMAuth: vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					Zones: vmv1alpha1.ZoneSpec{
+						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+							{Ref: &corev1.LocalObjectReference{
+								Name: vmCluster1.Name,
+							}},
+							{Ref: &corev1.LocalObjectReference{
+								Name: vmCluster2.Name,
+							}},
+						},
+					},
+				},
+			}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+			})
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
+			verifyOwnerReferences(ctx, cr, vmclusters, namespace)
 
-		// 	// Apply spec update
-		// 	Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
-		// 	cr.Spec.Zones.VMClusters[0].OverrideSpec = &apiextensionsv1.JSON{
-		// 		Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
-		// 	}
-		// 	cr.Spec.Zones.VMClusters[1].OverrideSpec = &apiextensionsv1.JSON{
-		// 		Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
-		// 	}
-		// 	Expect(k8sClient.Update(ctx, cr)).To(Succeed())
-		// 	// Wait for VMDistributedCluster to become operational after its own upgrade
-		// 	Eventually(func() error {
-		// 		return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
-		// 	}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
+			// Apply spec update
+			Expect(k8sClient.Get(ctx, namespacedName, cr)).To(Succeed())
+			cr.Spec.Zones.VMClusters[0].OverrideSpec = &apiextensionsv1.JSON{
+				Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
+			}
+			cr.Spec.Zones.VMClusters[1].OverrideSpec = &apiextensionsv1.JSON{
+				Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
+			}
+			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
+			// Wait for VMDistributedCluster to become operational after its own upgrade
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
 
-		// 	// Verify VMDistributedCluster status reflects both clusters are upgraded/operational
-		// 	var upgradedCluster vmv1alpha1.VMDistributedCluster
-		// 	Expect(k8sClient.Get(ctx, namespacedName, &upgradedCluster)).To(Succeed())
-		// 	Expect(upgradedCluster.Status.VMClusterInfo).To(HaveLen(2))
-		// 	names := []string{
-		// 		upgradedCluster.Status.VMClusterInfo[0].VMClusterName,
-		// 		upgradedCluster.Status.VMClusterInfo[1].VMClusterName,
-		// 	}
-		// 	Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
+			// Verify VMDistributedCluster status reflects both clusters are upgraded/operational
+			var upgradedCluster vmv1alpha1.VMDistributedCluster
+			Expect(k8sClient.Get(ctx, namespacedName, &upgradedCluster)).To(Succeed())
+			Expect(upgradedCluster.Status.VMClusterInfo).To(HaveLen(2))
+			names := []string{
+				upgradedCluster.Status.VMClusterInfo[0].VMClusterName,
+				upgradedCluster.Status.VMClusterInfo[1].VMClusterName,
+			}
+			Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
 
-		// 	// Verify both clusters have desired version set
-		// 	Eventually(func() error {
-		// 		vmCluster1 := &vmv1beta1.VMCluster{}
-		// 		vmCluster2 := &vmv1beta1.VMCluster{}
-		// 		err := k8sClient.Get(ctx, types.NamespacedName{Name: names[0], Namespace: namespace}, vmCluster1)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 		err = k8sClient.Get(ctx, types.NamespacedName{Name: names[1], Namespace: namespace}, vmCluster2)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 		if vmCluster1.Spec.ClusterVersion != updateVersion || vmCluster2.Spec.ClusterVersion != updateVersion {
-		// 			return fmt.Errorf("expected both clusters to have version %s, but got %s and %s", updateVersion, vmCluster1.Spec.ClusterVersion, vmCluster2.Spec.ClusterVersion)
-		// 		}
-		// 		return nil
-		// 	}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
-		// })
+			// Verify both clusters have desired version set
+			Eventually(func() error {
+				vmCluster1 := &vmv1beta1.VMCluster{}
+				vmCluster2 := &vmv1beta1.VMCluster{}
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: names[0], Namespace: namespace}, vmCluster1)
+				if err != nil {
+					return err
+				}
+				err = k8sClient.Get(ctx, types.NamespacedName{Name: names[1], Namespace: namespace}, vmCluster2)
+				if err != nil {
+					return err
+				}
+				if vmCluster1.Spec.ClusterVersion != updateVersion || vmCluster2.Spec.ClusterVersion != updateVersion {
+					return fmt.Errorf("expected both clusters to have version %s, but got %s and %s", updateVersion, vmCluster1.Spec.ClusterVersion, vmCluster2.Spec.ClusterVersion)
+				}
+				return nil
+			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
+		})
 
-		// It("should skip reconciliation when VMDistributedCluster is paused", func() {
-		// 	beforeEach()
-		// 	DeferCleanup(afterEach)
+		It("should skip reconciliation when VMDistributedCluster is paused", func() {
+			beforeEach()
+			DeferCleanup(afterEach)
 
-		// 	By("creating a VMCluster")
-		// 	vmCluster := &vmv1beta1.VMCluster{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Namespace: namespace,
-		// 			Name:      "vmcluster-paused",
-		// 		},
-		// 		Spec: vmv1beta1.VMClusterSpec{
-		// 			ClusterVersion: "v1.126.0-cluster",
-		// 			VMStorage: &vmv1beta1.VMStorage{
-		// 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-		// 					ReplicaCount: ptr.To[int32](1),
-		// 				},
-		// 			},
-		// 		},
-		// 	}
-		// 	vmUserKey := types.NamespacedName{
-		// 		Namespace: namespace,
-		// 		Name:      "vmuser-paused",
-		// 	}
-		// 	pausedVMUser := vmv1beta1.VMUser{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      vmUserKey.Name,
-		// 			Namespace: namespace,
-		// 		},
-		// 		Spec: vmv1beta1.VMUserSpec{
-		// 			TargetRefs: []vmv1beta1.TargetRef{{
-		// 				CRD: &vmv1beta1.CRDRef{
-		// 					Kind:      "VMCluster/vmselect",
-		// 					Name:      "vmcluster-paused",
-		// 					Namespace: namespace,
-		// 				},
-		// 				TargetPathSuffix: "/select/1",
-		// 			}},
-		// 		},
-		// 	}
-		// 	DeferCleanup(func() {
-		// 		Expect(finalize.SafeDelete(ctx, k8sClient, &pausedVMUser)).To(Succeed())
-		// 	})
-		// 	Expect(k8sClient.Create(ctx, &pausedVMUser)).To(Succeed(), "must create managed vmuser before test")
-		// 	createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+			By("creating a VMCluster")
+			vmCluster := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-paused",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: "v1.126.0-cluster",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			vmUserKey := types.NamespacedName{
+				Namespace: namespace,
+				Name:      "vmuser-paused",
+			}
+			pausedVMUser := vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      vmUserKey.Name,
+					Namespace: namespace,
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					TargetRefs: []vmv1beta1.TargetRef{{
+						CRD: &vmv1beta1.CRDRef{
+							Kind:      "VMCluster/vmselect",
+							Name:      "vmcluster-paused",
+							Namespace: namespace,
+						},
+						TargetPathSuffix: "/select/1",
+					}},
+				},
+			}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, &pausedVMUser)).To(Succeed())
+			})
+			Expect(k8sClient.Create(ctx, &pausedVMUser)).To(Succeed(), "must create managed vmuser before test")
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
 
-		// 	By("creating a VMDistributedCluster")
-		// 	namespacedName.Name = "distributed-paused"
-		// 	cr := &vmv1alpha1.VMDistributedCluster{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Namespace: namespace,
-		// 			Name:      namespacedName.Name,
-		// 		},
-		// 		Spec: vmv1alpha1.VMDistributedClusterSpec{
-		// 			ZoneUpdatePause: &metav1.Duration{Duration: 2 * time.Second},
-		// 			VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-		// 			VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
-		// 			Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-		// 				{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
-		// 			},
-		// 			},
-		// 		}}
-		// 	DeferCleanup(func() {
-		// 		Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
-		// 	})
-		// 	Expect(k8sClient.Create(ctx, cr)).To(Succeed())
-		// 	Eventually(func() error {
-		// 		return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
-		// 	}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
-		// 	verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*vmCluster}, namespace)
+			By("creating a VMDistributedCluster")
+			namespacedName.Name = "distributed-paused"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      namespacedName.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Millisecond},
+					ZoneUpdatePause: &metav1.Duration{Duration: 0 * time.Second},
+					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
+					},
+					},
+				}}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+			})
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
+			verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*vmCluster}, namespace)
 
-		// 	By("pausing the VMDistributedCluster")
-		// 	// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
-		// 	Eventually(func() error {
-		// 		err := k8sClient.Get(ctx, namespacedName, cr)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 		cr.Spec.Paused = true
-		// 		return k8sClient.Update(ctx, cr)
-		// 	}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
+			By("pausing the VMDistributedCluster")
+			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, namespacedName, cr)
+				if err != nil {
+					return err
+				}
+				cr.Spec.Paused = true
+				return k8sClient.Update(ctx, cr)
+			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
 
-		// 	By("attempting to scale the VMCluster while paused")
-		// 	Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
-		// 	initialReplicas := *vmCluster.Spec.VMStorage.ReplicaCount
+			By("attempting to scale the VMCluster while paused")
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
+			initialReplicas := *vmCluster.Spec.VMStorage.ReplicaCount
 
-		// 	// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
-		// 	Eventually(func() error {
-		// 		err := k8sClient.Get(ctx, namespacedName, cr)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 		cr.Spec.Zones.VMClusters[0].OverrideSpec = &apiextensionsv1.JSON{
-		// 			Raw: []byte(fmt.Sprintf(`{"vmstorage":{"replicaCount": %d}}`, initialReplicas+1)),
-		// 		}
-		// 		return k8sClient.Update(ctx, cr)
-		// 	}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
+			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, namespacedName, cr)
+				if err != nil {
+					return err
+				}
+				cr.Spec.Zones.VMClusters[0].OverrideSpec = &apiextensionsv1.JSON{
+					Raw: []byte(fmt.Sprintf(`{"vmstorage":{"replicaCount": %d}}`, initialReplicas+1)),
+				}
+				return k8sClient.Update(ctx, cr)
+			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
 
-		// 	Consistently(func() int32 {
-		// 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
-		// 		return *vmCluster.Spec.VMStorage.ReplicaCount
-		// 	}, "10s", "1s").Should(Equal(initialReplicas))
+			Consistently(func() int32 {
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
+				return *vmCluster.Spec.VMStorage.ReplicaCount
+			}, "10s", "1s").Should(Equal(initialReplicas))
 
-		// 	By("unpausing the VMDistributedCluster")
-		// 	// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
-		// 	Eventually(func() error {
-		// 		err := k8sClient.Get(ctx, namespacedName, cr)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 		cr.Spec.Paused = false
-		// 		return k8sClient.Update(ctx, cr)
-		// 	}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
+			By("unpausing the VMDistributedCluster")
+			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, namespacedName, cr)
+				if err != nil {
+					return err
+				}
+				cr.Spec.Paused = false
+				return k8sClient.Update(ctx, cr)
+			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
 
-		// 	Eventually(func() error {
-		// 		return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
-		// 	}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
 
-		// 	By("verifying reconciliation resumes after unpausing")
-		// 	Eventually(func() int32 {
-		// 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
-		// 		return *vmCluster.Spec.VMStorage.ReplicaCount
-		// 	}, eventualDeploymentAppReadyTimeout).Should(Equal(initialReplicas + 1))
-		// })
+			By("verifying reconciliation resumes after unpausing")
+			Eventually(func() int32 {
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
+				return *vmCluster.Spec.VMStorage.ReplicaCount
+			}, eventualDeploymentAppReadyTimeout).Should(Equal(initialReplicas + 1))
+		})
 	})
 
 	Context("fail", func() {

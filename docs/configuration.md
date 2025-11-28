@@ -109,6 +109,19 @@ kubectl get deployment -n vm vm-operator \
 # VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_CPU
 ```
 
+## Labels
+
+Each managed by operator CRs resource has a set of labels, which is a result of `spec.managedMetadata.labels` and predefined immutable labels merge.
+Immutable labels are needed to simplify dependent resources discovery and guarantee predictability in resources interconnection. List of immutable labels:
+
+* `app.kubernetes.io/name`
+* `app.kubernetes.io/instance`
+* `app.kubernetes.io/component`
+* `app.kubernetes.io/part-of`
+* `managed-by`
+
+In case if `spec.managedMetadata.labels` and immutable labels collision, least ones have higher priority.
+
 ## Flags
 
 Run this command to see all flags your operator supports:

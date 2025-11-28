@@ -94,7 +94,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Ensure VMAuth exists first so we can set it as the owner for the automatically-created VMUser.
-	vmAuthObjs, err := updateOrCreateVMAuth(ctx, rclient, cr, cr.Namespace, cr.Spec.VMAuth, scheme, nil)
+	vmAuthObj, err := updateOrCreateVMAuth(ctx, rclient, cr, cr.Namespace, cr.Spec.VMAuth, scheme)
 	if err != nil {
 		return fmt.Errorf("failed to update or create vmauth: %w", err)
 	}
@@ -117,7 +117,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	vmUserTargetRefs := buildVMUserTargetRefs(vmClusters, tenantID)
 
 	// Create or update an operator-managed VMUser named "<cr.Name>-user".
-	vmUserObjs, err := createOrUpdateOperatorVMUser(ctx, rclient, cr, scheme, vmAuthObjs, vmUserTargetRefs, vmClusters, tenantID)
+	vmUserObjs, err := createOrUpdateOperatorVMUser(ctx, rclient, cr, scheme, vmAuthObj, vmUserTargetRefs, vmClusters, tenantID)
 	if err != nil {
 		return fmt.Errorf("failed to create or update operator-managed VMUser: %w", err)
 	}
@@ -446,7 +446,7 @@ func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
 }
 
 // updateOrCreateVMAuth updates or creates a VMAuth object based on the provided VMCluster and tenant.
-func updateOrCreateVMAuth(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, namespace string, ref vmv1alpha1.VMAuthNameAndSpec, scheme *runtime.Scheme, vmUserObjs []*vmv1beta1.VMUser) ([]*vmv1beta1.VMAuth, error) {
+func updateOrCreateVMAuth(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, namespace string, ref vmv1alpha1.VMAuthNameAndSpec, scheme *runtime.Scheme) (*vmv1beta1.VMAuth, error) {
 	// Name must be provided either for fetching an existing object or for creating an inline one.
 	if ref.Name == "" {
 		return nil, errors.New("vmauth name is not specified")
@@ -456,30 +456,7 @@ func updateOrCreateVMAuth(ctx context.Context, rclient client.Client, cr *vmv1al
 
 	// First ensure VMUser objects have proper labels for VMAuth selection
 	vmUserLabels := map[string]string{
-		"app.kubernetes.io/managed-by": "vm-operator",
-		"app.kubernetes.io/component":  "vmdistributedcluster",
-		"vmdistributedcluster":         cr.Name,
-	}
-
-	for _, vmUser := range vmUserObjs {
-		vmUserCopy := vmUser.DeepCopy()
-		if vmUserCopy.Labels == nil {
-			vmUserCopy.Labels = make(map[string]string)
-		}
-		needsUpdate := false
-		for k, v := range vmUserLabels {
-			if vmUserCopy.Labels[k] != v {
-				vmUserCopy.Labels[k] = v
-				needsUpdate = true
-			}
-		}
-		if needsUpdate {
-			if err := rclient.Update(ctx, vmUserCopy); err != nil {
-				return nil, fmt.Errorf("failed to update VMUser %s labels: %w", vmUser.Name, err)
-			}
-			// Update the object in slice as well to reflect changes
-			*vmUser = *vmUserCopy
-		}
+		"vmdistributedcluster": cr.Name,
 	}
 
 	// If Spec is not provided inline, simply fetch the named VMAuth from the API server.
@@ -488,7 +465,7 @@ func updateOrCreateVMAuth(ctx context.Context, rclient client.Client, cr *vmv1al
 		if err := rclient.Get(ctx, namespacedName, vmAuthObj); err != nil {
 			return nil, fmt.Errorf("failed to get VMAuth %s/%s: %w", namespace, ref.Name, err)
 		}
-		return []*vmv1beta1.VMAuth{vmAuthObj}, nil
+		return vmAuthObj, nil
 	}
 
 	// Spec is provided inline: ensure the VMAuth exists and matches the provided spec.
@@ -552,7 +529,7 @@ func updateOrCreateVMAuth(ctx context.Context, rclient client.Client, cr *vmv1al
 		}
 	}
 
-	return []*vmv1beta1.VMAuth{vmAuthObj}, nil
+	return vmAuthObj, nil
 }
 
 func buildVMUserTargetRefs(vmClusters []*vmv1beta1.VMCluster, tenantID string) []vmv1beta1.TargetRef {
@@ -820,7 +797,8 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 	// Wait for vmAgent to become ready
 	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		vmAgentObj := &vmv1beta1.VMAgent{}
-		err = rclient.Get(ctx, types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}, vmAgentObj)
+		namespacedName := types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}
+		err = rclient.Get(ctx, namespacedName, vmAgentObj)
 		if err != nil {
 			return false, err
 		}
@@ -932,7 +910,7 @@ func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *
 	return nil
 }
 
-func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmAuthObjs []*vmv1beta1.VMAuth, vmUserTargetRefs []vmv1beta1.TargetRef, vmClusters []*vmv1beta1.VMCluster, tenantID string) ([]*vmv1beta1.VMUser, error) {
+func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmAuthObj *vmv1beta1.VMAuth, vmUserTargetRefs []vmv1beta1.TargetRef, vmClusters []*vmv1beta1.VMCluster, tenantID string) ([]*vmv1beta1.VMUser, error) {
 	// Build the VMUser name
 	vmUserName := fmt.Sprintf("%s-user", cr.Name)
 	namespacedName := types.NamespacedName{Name: vmUserName, Namespace: cr.Namespace}
@@ -973,16 +951,12 @@ func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr
 		}
 	}
 
-	// Set owner reference to VMAuth if available and scheme provided.
-	if scheme != nil && len(vmAuthObjs) > 0 {
-		vmAuthObj := vmAuthObjs[0]
-		// Check whether ownerRef already present for VMAuth
-		if ok, err := controllerutil.HasOwnerReference(vmUserObj.GetOwnerReferences(), vmAuthObj, scheme); err != nil {
-			return nil, fmt.Errorf("failed to check owner reference for VMUser %s: %w", vmUserObj.Name, err)
-		} else if !ok {
-			if err := controllerutil.SetOwnerReference(vmAuthObj, vmUserObj, scheme); err != nil {
-				return nil, fmt.Errorf("failed to set owner reference for VMUser %s: %w", vmUserObj.Name, err)
-			}
+	// Set owner reference to VMAuth
+	if ok, err := controllerutil.HasOwnerReference(vmUserObj.GetOwnerReferences(), vmAuthObj, scheme); err != nil {
+		return nil, fmt.Errorf("failed to check owner reference for VMUser %s: %w", vmUserObj.Name, err)
+	} else if !ok {
+		if err := controllerutil.SetOwnerReference(vmAuthObj, vmUserObj, scheme); err != nil {
+			return nil, fmt.Errorf("failed to set owner reference for VMUser %s: %w", vmUserObj.Name, err)
 		}
 	}
 

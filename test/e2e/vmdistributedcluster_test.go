@@ -349,16 +349,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
 						Name: inlineVMAuthName,
-						Spec: &vmv1beta1.VMAuthSpec{
+						Spec: &vmv1beta1.VMAuthLoadBalancerSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
-							},
-							SelectAllByDefault: true,
-							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-								{
-									URLPrefix: []string{"http://localhost:8490"},
-									SrcPaths:  []string{"/.*"},
-								},
 							},
 						},
 					},
@@ -1007,7 +1000,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
 						Name: vmauthName,
-						Spec: &vmv1beta1.VMAuthSpec{
+						Spec: &vmv1beta1.VMAuthLoadBalancerSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},

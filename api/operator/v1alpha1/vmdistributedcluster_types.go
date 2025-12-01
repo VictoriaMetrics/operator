@@ -24,6 +24,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -249,7 +251,7 @@ type VMAuthNameAndSpec struct {
 	Name string `json:"name,omitempty"`
 	// Spec defines the desired state of a new VMAuth.
 	// +optional
-	Spec *vmv1beta1.VMAuthSpec `json:"spec,omitempty"`
+	Spec *vmv1beta1.VMAuthLoadBalancerSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -301,6 +303,89 @@ type VMDistributedCluster struct {
 
 	// ParsedLastAppliedSpec contains last-applied configuration spec
 	ParsedLastAppliedSpec *VMDistributedClusterSpec `json:"-" yaml:"-"`
+}
+
+// SelectorLabels defines selector labels for given component kind
+func (cr *VMDistributedCluster) SelectorLabels(kind vmv1beta1.ClusterComponent) map[string]string {
+	return vmv1beta1.ClusterSelectorLabels(kind, cr.Name, "vmd")
+}
+
+// PrefixedName returns prefixed name for the given component kind
+func (cr *VMDistributedCluster) PrefixedName(kind vmv1beta1.ClusterComponent) string {
+	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, "vmd", false)
+}
+
+// FinalLabels adds cluster labels to the base labels and filters by prefix if needed
+func (cr *VMDistributedCluster) FinalLabels(kind vmv1beta1.ClusterComponent) map[string]string {
+	return vmv1beta1.AddClusterLabels(cr.SelectorLabels(kind), "vmd")
+}
+
+// AnnotationsFiltered returns global annotations to be applied by objects generate for vmcluster
+func (cr *VMDistributedCluster) AnnotationsFiltered() map[string]string {
+	return map[string]string{}
+}
+
+// AsOwner returns owner references with current object as owner
+func (cr *VMDistributedCluster) AsOwner() metav1.OwnerReference {
+	return metav1.OwnerReference{
+		APIVersion:         cr.APIVersion,
+		Kind:               cr.Kind,
+		Name:               cr.Name,
+		UID:                cr.UID,
+		Controller:         ptr.To(true),
+		BlockOwnerDeletion: ptr.To(true),
+	}
+}
+
+// PodLabels returns pod labels for given component kind
+func (cr *VMDistributedCluster) PodLabels(kind vmv1beta1.ClusterComponent) map[string]string {
+	selectorLabels := cr.SelectorLabels(kind)
+	podMetadata := cr.PodMetadata(kind)
+	if podMetadata == nil {
+		return selectorLabels
+	}
+	return labels.Merge(podMetadata.Labels, selectorLabels)
+}
+
+// PodMetadata returns pod metadata for given component kind
+func (cr *VMDistributedCluster) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.EmbeddedObjectMetadata {
+	if cr == nil {
+		return nil
+	}
+	return cr.Spec.VMAuth.Spec.PodMetadata
+}
+
+// FinalAnnotations returns global annotations to be applied by objects generate for vmcluster
+func (cr *VMDistributedCluster) FinalAnnotations() map[string]string {
+	return map[string]string{}
+}
+
+// GetAdditionalService returns AdditionalServiceSpec settings
+func (cr *VMDistributedCluster) GetAdditionalService(kind vmv1beta1.ClusterComponent) *vmv1beta1.AdditionalServiceSpec {
+	return nil
+}
+
+// GetServiceAccountName returns service account name for all vmcluster components
+func (cr *VMDistributedCluster) GetServiceAccountName() string {
+	return cr.PrefixedName(vmv1beta1.ClusterComponentRoot)
+}
+
+// PodAnnotations returns pod annotations for given component kind
+func (cr *VMDistributedCluster) PodAnnotations(kind vmv1beta1.ClusterComponent) map[string]string {
+	podMetadata := cr.PodMetadata(kind)
+	if podMetadata == nil {
+		return nil
+	}
+	return podMetadata.Annotations
+}
+
+func (cr *VMDistributedCluster) IsOwnsServiceAccount() bool {
+	return false
+}
+
+// PrefixedInternalName returns prefixed name for the given component kind
+func (cr *VMDistributedCluster) PrefixedInternalName(kind vmv1beta1.ClusterComponent) string {
+	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, "vmd", true)
 }
 
 // +kubebuilder:object:root=true

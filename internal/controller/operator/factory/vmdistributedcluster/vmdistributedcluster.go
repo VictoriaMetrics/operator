@@ -3,7 +3,6 @@ package vmdistributedcluster
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,25 +10,34 @@ import (
 	"os"
 	"reflect"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-test/deep"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 const (
@@ -109,7 +117,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Ensure VMAuth exists first so we can set it as the owner for the automatically-created VMUser.
-	vmAuthObj, err := updateOrCreateVMAuth(ctx, rclient, cr, cr.Namespace, cr.Spec.VMAuth, scheme)
+	err = createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters)
 	if err != nil {
 		return fmt.Errorf("failed to update or create vmauth: %w", err)
 	}
@@ -118,7 +126,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	vmUserTargetRefs := buildVMUserTargetRefs(vmClusters, tenantID)
 
 	// Create or update an operator-managed VMUser named "<cr.Name>-user".
-	vmUserObjs, err := createOrUpdateOperatorVMUser(ctx, rclient, cr, scheme, vmAuthObj, vmUserTargetRefs, vmClusters, tenantID)
+	vmUserObjs, err := createOrUpdateOperatorVMUser(ctx, rclient, cr, scheme, vmUserTargetRefs, vmClusters, tenantID)
 	if err != nil {
 		return fmt.Errorf("failed to create or update operator-managed VMUser: %w", err)
 	}
@@ -501,91 +509,229 @@ func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
 	return fmt.Sprintf("http://%s.%s.svc.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert), vmCluster.Namespace, *tenant)
 }
 
-// updateOrCreateVMAuth updates or creates a VMAuth object based on the provided VMCluster and tenant.
-func updateOrCreateVMAuth(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, namespace string, ref vmv1alpha1.VMAuthNameAndSpec, scheme *runtime.Scheme) (*vmv1beta1.VMAuth, error) {
-	// Name must be provided either for fetching an existing object or for creating an inline one.
-	if ref.Name == "" {
-		return nil, errors.New("vmauth name is not specified")
+func buildLBConfigSecretMeta(cr *vmv1alpha1.VMDistributedCluster) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Namespace:       cr.Namespace,
+		Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+		Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
+		Annotations:     cr.AnnotationsFiltered(),
+		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 	}
+}
 
-	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
-
-	// First ensure VMUser objects have proper labels for VMAuth selection
-	vmUserLabels := map[string]string{
-		"vmdistributedcluster": cr.Name,
-	}
-
-	// If Spec is not provided inline, simply fetch the named VMAuth from the API server.
-	if ref.Spec == nil {
-		vmAuthObj := &vmv1beta1.VMAuth{}
-		if err := rclient.Get(ctx, namespacedName, vmAuthObj); err != nil {
-			return nil, fmt.Errorf("failed to get VMAuth %s/%s: %w", namespace, ref.Name, err)
+func buildVMAuthVMSelectRefs(vmClusters []*vmv1beta1.VMCluster) []string {
+	result := make([]string, 0, len(vmClusters))
+	for _, vmCluster := range vmClusters {
+		targetHostSuffix := fmt.Sprintf("%s.svc", vmCluster.Namespace)
+		if vmCluster.Spec.ClusterDomainName != "" {
+			targetHostSuffix += fmt.Sprintf(".%s", vmCluster.Spec.ClusterDomainName)
 		}
-		return vmAuthObj, nil
+		selectPort := "8481"
+		if vmCluster.Spec.VMSelect != nil {
+			selectPort = vmCluster.Spec.VMSelect.Port
+		}
+		result = append(result, fmt.Sprintf(`
+  - src_paths:
+    - "/.*"
+    url_prefix: "http://srv+%s.%s:%s"
+    discover_backend_ips: true
+      `, vmCluster.PrefixedInternalName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort))
 	}
+	return result
+}
 
-	// Spec is provided inline: ensure the VMAuth exists and matches the provided spec.
-	vmAuthObj := &vmv1beta1.VMAuth{}
-	vmAuthExists := true
-	if err := rclient.Get(ctx, namespacedName, vmAuthObj); err != nil {
-		if k8serrors.IsNotFound(err) {
-			vmAuthExists = false
-			// Initialize object for creation with the provided inline spec.
-			vmAuthObj = &vmv1beta1.VMAuth{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      ref.Name,
-					Namespace: namespace,
+func buildVMAuthLBSecret(cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) *corev1.Secret {
+	lbScrt := &corev1.Secret{
+		ObjectMeta: buildLBConfigSecretMeta(cr),
+		StringData: map[string]string{"config.yaml": fmt.Sprintf(`
+unauthorized_user:
+  url_map:
+  %s
+      `, strings.Join(buildVMAuthVMSelectRefs(vmClusters), "\n"))},
+	}
+	return lbScrt
+}
+
+func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deployment, error) {
+	spec := cr.Spec.VMAuth.Spec
+	const configMountName = "vmauth-lb-config"
+	volumes := []corev1.Volume{
+		{
+			Name: configMountName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
 				},
-				Spec: *ref.Spec.DeepCopy(),
-			}
+			},
+		},
+	}
+	volumes = append(volumes, spec.Volumes...)
+	vmounts := []corev1.VolumeMount{
+		{
+			MountPath: "/opt/vmauth-config/",
+			Name:      configMountName,
+		},
+	}
+	vmounts = append(vmounts, spec.VolumeMounts...)
 
-			// Ensure VMAuth selects our VMUser objects if no explicit selector provided
-			if vmAuthObj.Spec.UserSelector == nil && !vmAuthObj.Spec.SelectAllByDefault {
-				vmAuthObj.Spec.UserSelector = &metav1.LabelSelector{
-					MatchLabels: vmUserLabels,
-				}
-			}
-		} else {
-			return nil, fmt.Errorf("failed to get VMAuth %s/%s: %w", namespace, ref.Name, err)
-		}
+	args := []string{
+		"-auth.config=/opt/vmauth-config/config.yaml",
+		"-configCheckInterval=30s",
+	}
+	if spec.LogLevel != "" {
+		args = append(args, fmt.Sprintf("-loggerLevel=%s", spec.LogLevel))
+
+	}
+	if spec.LogFormat != "" {
+		args = append(args, fmt.Sprintf("-loggerFormat=%s", spec.LogFormat))
 	}
 
-	// Determine if an update is needed (spec or ownerRef changes).
-	vmAuthNeedsUpdate := false
-	if vmAuthExists {
-		if !reflect.DeepEqual(vmAuthObj.Spec, *ref.Spec) {
-			vmAuthObj.Spec = *ref.Spec.DeepCopy()
-			// Ensure VMAuth selects our VMUser objects if no explicit selector provided
-			if vmAuthObj.Spec.UserSelector == nil && !vmAuthObj.Spec.SelectAllByDefault {
-				vmAuthObj.Spec.UserSelector = &metav1.LabelSelector{
-					MatchLabels: vmUserLabels,
-				}
-			}
-			vmAuthNeedsUpdate = true
-		}
+	cfg := config.MustGetBaseConfig()
+	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", spec.Port))
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
+	if len(spec.ExtraEnvs) > 0 || len(spec.ExtraEnvsFrom) > 0 {
+		args = append(args, "-envflag.enable=true")
 	}
 
-	// Ensure owner reference is set to current CR if scheme provided.
-	if scheme != nil {
-		if modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmAuthObj, scheme); err != nil {
-			return nil, fmt.Errorf("failed to set owner reference for VMAuth %s: %w", vmAuthObj.Name, err)
-		} else if modifiedOwnerRef {
-			vmAuthNeedsUpdate = true
-		}
+	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
+	sort.Strings(args)
+	vmauthLBCnt := corev1.Container{
+		Name: "vmauth",
+		Ports: []corev1.ContainerPort{
+			{
+				Protocol:      corev1.ProtocolTCP,
+				Name:          "http",
+				ContainerPort: intstr.Parse(spec.Port).IntVal,
+			},
+		},
+		Args:            args,
+		Env:             spec.ExtraEnvs,
+		EnvFrom:         spec.ExtraEnvsFrom,
+		Resources:       spec.Resources,
+		Image:           fmt.Sprintf("%s:%s", spec.Image.Repository, spec.Image.Tag),
+		ImagePullPolicy: spec.Image.PullPolicy,
+		VolumeMounts:    vmounts,
+	}
+	vmauthLBCnt = build.Probe(vmauthLBCnt, spec)
+	containers := []corev1.Container{
+		vmauthLBCnt,
+	}
+	var err error
+
+	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, cfg.EnableStrictSecurity))
+	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)
+	if err != nil {
+		return nil, fmt.Errorf("cannot patch containers: %w", err)
+	}
+	strategyType := appsv1.RollingUpdateDeploymentStrategyType
+	if cr.Spec.VMAuth.Spec.UpdateStrategy != nil {
+		strategyType = *cr.Spec.VMAuth.Spec.UpdateStrategy
+	}
+	lbDep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       cr.Namespace,
+			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
+			Annotations:     cr.AnnotationsFiltered(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer),
+			},
+			Strategy: appsv1.DeploymentStrategy{
+				Type:          strategyType,
+				RollingUpdate: cr.Spec.VMAuth.Spec.RollingUpdate,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      cr.PodLabels(vmv1beta1.ClusterComponentBalancer),
+					Annotations: cr.PodAnnotations(vmv1beta1.ClusterComponentBalancer),
+				},
+				Spec: corev1.PodSpec{
+					Volumes:            volumes,
+					InitContainers:     spec.InitContainers,
+					Containers:         containers,
+					ServiceAccountName: cr.GetServiceAccountName(),
+				},
+			},
+		},
+	}
+	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.VMAuth.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &spec.CommonApplicationDeploymentParams)
+	return lbDep, nil
+}
+
+func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
+	builder := func(r *vmv1alpha1.VMDistributedCluster) *build.ChildBuilder {
+		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
+		b.SetFinalLabels(labels.Merge(b.AllLabels(), map[string]string{
+			vmv1beta1.VMAuthLBServiceProxyTargetLabel: "vmauth",
+		}))
+		return b
+	}
+	b := builder(cr)
+	svc := build.Service(b, cr.Spec.VMAuth.Spec.Port, nil)
+	var prevSvc *corev1.Service
+	if prevCR != nil {
+		b = builder(prevCR)
+		prevSvc = build.Service(b, prevCR.Spec.VMAuth.Spec.Port, nil)
 	}
 
-	// Create or update the VMAuth resource as needed.
-	if !vmAuthExists {
-		if err := rclient.Create(ctx, vmAuthObj); err != nil {
-			return nil, fmt.Errorf("failed to create VMAuth %s/%s: %w", vmAuthObj.Namespace, vmAuthObj.Name, err)
-		}
-	} else if vmAuthNeedsUpdate {
-		if err := rclient.Update(ctx, vmAuthObj); err != nil {
-			return nil, fmt.Errorf("failed to update VMAuth %s/%s: %w", vmAuthObj.Namespace, vmAuthObj.Name, err)
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
+		return fmt.Errorf("cannot reconcile vmauthlb service: %w", err)
+	}
+	svs := build.VMServiceScrapeForServiceWithSpec(svc, cr.Spec.VMAuth.Spec)
+	svs.Spec.Selector.MatchLabels[vmv1beta1.VMAuthLBServiceProxyTargetLabel] = "vmauth"
+	if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
+		return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
+	}
+	return nil
+}
+
+func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	pdb := build.PodDisruptionBudget(b, cr.Spec.VMAuth.Spec.PodDisruptionBudget)
+	var prevPDB *policyv1.PodDisruptionBudget
+	if prevCR != nil && prevCR.Spec.VMAuth.Spec.PodDisruptionBudget != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMAuth.Spec.PodDisruptionBudget)
+	}
+	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+}
+
+func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
+	var prevSecretMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		prevSecretMeta = ptr.To(buildLBConfigSecretMeta(prevCR))
+	}
+	if err := reconcile.Secret(ctx, rclient, buildVMAuthLBSecret(cr, vmClusters), prevSecretMeta); err != nil {
+		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
+	}
+	lbDep, err := buildVMAuthLBDeployment(cr)
+	if err != nil {
+		return fmt.Errorf("cannot build deployment for vmauth loadbalancing: %w", err)
+	}
+	var prevLB *appsv1.Deployment
+	if prevCR != nil {
+		prevLB, err = buildVMAuthLBDeployment(prevCR)
+		if err != nil {
+			return fmt.Errorf("cannot build prev deployment for vmauth loadbalancing: %w", err)
 		}
 	}
-
-	return vmAuthObj, nil
+	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, false); err != nil {
+		return fmt.Errorf("cannot reconcile vmauth lb deployment: %w", err)
+	}
+	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {
+		return err
+	}
+	if cr.Spec.VMAuth.Spec.PodDisruptionBudget != nil {
+		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
+			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
+		}
+	}
+	return nil
 }
 
 func buildVMUserTargetRefs(vmClusters []*vmv1beta1.VMCluster, tenantID string) []vmv1beta1.TargetRef {
@@ -966,7 +1112,7 @@ func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *
 	return nil
 }
 
-func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmAuthObj *vmv1beta1.VMAuth, vmUserTargetRefs []vmv1beta1.TargetRef, vmClusters []*vmv1beta1.VMCluster, tenantID string) ([]*vmv1beta1.VMUser, error) {
+func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmUserTargetRefs []vmv1beta1.TargetRef, vmClusters []*vmv1beta1.VMCluster, tenantID string) ([]*vmv1beta1.VMUser, error) {
 	// Build the VMUser name
 	namespacedName := types.NamespacedName{Name: cr.GetVMUserName(), Namespace: cr.Namespace}
 
@@ -1006,13 +1152,10 @@ func createOrUpdateOperatorVMUser(ctx context.Context, rclient client.Client, cr
 		}
 	}
 
-	// Set owner reference to VMAuth
-	if ok, err := controllerutil.HasOwnerReference(vmUserObj.GetOwnerReferences(), vmAuthObj, scheme); err != nil {
-		return nil, fmt.Errorf("failed to check owner reference for VMUser %s: %w", vmUserObj.Name, err)
-	} else if !ok {
-		if err := controllerutil.SetOwnerReference(vmAuthObj, vmUserObj, scheme); err != nil {
-			return nil, fmt.Errorf("failed to set owner reference for VMUser %s: %w", vmUserObj.Name, err)
-		}
+	// Set owner reference to VMDistributedCluster
+	_, err := setOwnerRefIfNeeded(cr, vmUserObj, scheme)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set owner reference for vmuser %s: %w", vmUserObj.Name, err)
 	}
 
 	// Create or update the VMUser resource as needed.

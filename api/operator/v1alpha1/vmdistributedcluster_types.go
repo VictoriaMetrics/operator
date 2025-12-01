@@ -388,6 +388,11 @@ func (cr *VMDistributedCluster) PrefixedInternalName(kind vmv1beta1.ClusterCompo
 	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, "vmd", true)
 }
 
+// PrefixedInternalName returns prefixed name for the given component kind
+func (cr *VMDistributedCluster) AllLabels() map[string]string {
+	return cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)
+}
+
 // +kubebuilder:object:root=true
 
 // VMDistributedClusterList contains a list of VMDistributedCluster

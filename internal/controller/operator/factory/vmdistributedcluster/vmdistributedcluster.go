@@ -509,7 +509,7 @@ func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
 	return fmt.Sprintf("http://%s.%s.svc.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert), vmCluster.Namespace, *tenant)
 }
 
-func buildLBConfigSecretMeta(cr *vmv1alpha1.VMDistributedCluster) metav1.ObjectMeta {
+func buildLBConfigMeta(cr *vmv1alpha1.VMDistributedCluster) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Namespace:       cr.Namespace,
 		Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
@@ -542,7 +542,7 @@ func buildVMAuthVMSelectRefs(vmClusters []*vmv1beta1.VMCluster) []string {
 
 func buildVMAuthLBSecret(cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) *corev1.Secret {
 	lbScrt := &corev1.Secret{
-		ObjectMeta: buildLBConfigSecretMeta(cr),
+		ObjectMeta: buildLBConfigMeta(cr),
 		StringData: map[string]string{"config.yaml": fmt.Sprintf(`
 unauthorized_user:
   url_map:
@@ -673,6 +673,9 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	}
 	b := builder(cr)
 	svc := build.Service(b, cr.Spec.VMAuth.Spec.Port, nil)
+	// Set custom name
+	svc.Name = cr.Spec.VMAgent.Name
+
 	var prevSvc *corev1.Service
 	if prevCR != nil {
 		b = builder(prevCR)
@@ -704,11 +707,40 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
-		prevSecretMeta = ptr.To(buildLBConfigSecretMeta(prevCR))
+		prevSecretMeta = ptr.To(buildLBConfigMeta(prevCR))
 	}
 	if err := reconcile.Secret(ctx, rclient, buildVMAuthLBSecret(cr, vmClusters), prevSecretMeta); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
+
+	var prevSA *corev1.ServiceAccount
+	if prevCR != nil {
+		prevSA = &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.GetServiceAccountName(),
+				Namespace:       cr.GetNamespace(),
+				Labels:          cr.AllLabels(),
+				Annotations:     cr.AnnotationsFiltered(),
+				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+				Finalizers:      []string{vmv1beta1.FinalizerName},
+			},
+		}
+	}
+	serviceAccount := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.GetServiceAccountName(),
+			Namespace:       cr.GetNamespace(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+			Finalizers:      []string{vmv1beta1.FinalizerName},
+		},
+	}
+
+	if err := reconcile.ServiceAccount(ctx, rclient, serviceAccount, prevSA); err != nil {
+		return fmt.Errorf("failed create service account: %w", err)
+	}
+
 	lbDep, err := buildVMAuthLBDeployment(cr)
 	if err != nil {
 		return fmt.Errorf("cannot build deployment for vmauth loadbalancing: %w", err)

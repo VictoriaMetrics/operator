@@ -406,7 +406,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 
 	// Prepare the desired spec for VMAgent.
-	var desiredVMAgentSpec vmv1beta1.VMAgentSpec
+	desiredVMAgentSpec := vmv1alpha1.CustomVMAgentSpec{}
 	if cr.Spec.VMAgent.Spec != nil {
 		desiredVMAgentSpec = *cr.Spec.VMAgent.Spec.DeepCopy()
 	}
@@ -420,15 +420,59 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 
 	// Point VMAgent to all VMClusters by constructing RemoteWrite entries
 	if len(vmClusters) > 0 {
-		desiredVMAgentSpec.RemoteWrite = make([]vmv1beta1.VMAgentRemoteWriteSpec, len(vmClusters))
+		desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.CustomVMAgentRemoteWriteSpec, len(vmClusters))
 		for i, vmCluster := range vmClusters {
 			desiredVMAgentSpec.RemoteWrite[i].URL = remoteWriteURL(vmCluster, tenantPtr)
 		}
 	}
 
+	// Assemble new VMAgentSpec
+	newVMAgentSpec := vmv1beta1.VMAgentSpec{}
+	newVMAgentSpec.PodMetadata = desiredVMAgentSpec.PodMetadata
+	newVMAgentSpec.ManagedMetadata = desiredVMAgentSpec.ManagedMetadata
+	newVMAgentSpec.LogLevel = desiredVMAgentSpec.LogLevel
+	newVMAgentSpec.LogFormat = desiredVMAgentSpec.LogFormat
+	newVMAgentSpec.RemoteWriteSettings = desiredVMAgentSpec.RemoteWriteSettings
+	newVMAgentSpec.ShardCount = desiredVMAgentSpec.ShardCount
+	newVMAgentSpec.UpdateStrategy = desiredVMAgentSpec.UpdateStrategy
+	newVMAgentSpec.RollingUpdate = desiredVMAgentSpec.RollingUpdate
+	newVMAgentSpec.PodDisruptionBudget = desiredVMAgentSpec.PodDisruptionBudget
+	newVMAgentSpec.EmbeddedProbes = desiredVMAgentSpec.EmbeddedProbes
+	newVMAgentSpec.DaemonSetMode = desiredVMAgentSpec.DaemonSetMode
+	newVMAgentSpec.StatefulMode = desiredVMAgentSpec.StatefulMode
+	newVMAgentSpec.StatefulStorage = desiredVMAgentSpec.StatefulStorage
+	newVMAgentSpec.StatefulRollingUpdateStrategy = desiredVMAgentSpec.StatefulRollingUpdateStrategy
+	newVMAgentSpec.PersistentVolumeClaimRetentionPolicy = desiredVMAgentSpec.PersistentVolumeClaimRetentionPolicy
+	newVMAgentSpec.ClaimTemplates = desiredVMAgentSpec.ClaimTemplates
+	newVMAgentSpec.License = desiredVMAgentSpec.License
+	newVMAgentSpec.ServiceAccountName = desiredVMAgentSpec.ServiceAccountName
+	newVMAgentSpec.VMAgentSecurityEnforcements = desiredVMAgentSpec.VMAgentSecurityEnforcements
+	newVMAgentSpec.CommonDefaultableParams = desiredVMAgentSpec.CommonDefaultableParams
+	newVMAgentSpec.CommonConfigReloaderParams = desiredVMAgentSpec.CommonConfigReloaderParams
+	newVMAgentSpec.CommonApplicationDeploymentParams = desiredVMAgentSpec.CommonApplicationDeploymentParams
+
+	if len(desiredVMAgentSpec.RemoteWrite) > 0 {
+		newVMAgentSpec.RemoteWrite = make([]vmv1beta1.VMAgentRemoteWriteSpec, len(desiredVMAgentSpec.RemoteWrite))
+		for i, remoteWrite := range desiredVMAgentSpec.RemoteWrite {
+			vmAgentRemoteWrite := vmv1beta1.VMAgentRemoteWriteSpec{}
+			vmAgentRemoteWrite.URL = remoteWrite.URL
+			vmAgentRemoteWrite.BasicAuth = remoteWrite.BasicAuth
+			vmAgentRemoteWrite.BearerTokenSecret = remoteWrite.BearerTokenSecret
+			vmAgentRemoteWrite.OAuth2 = remoteWrite.OAuth2
+			vmAgentRemoteWrite.TLSConfig = remoteWrite.TLSConfig
+			vmAgentRemoteWrite.SendTimeout = remoteWrite.SendTimeout
+			vmAgentRemoteWrite.Headers = remoteWrite.Headers
+			vmAgentRemoteWrite.MaxDiskUsage = remoteWrite.MaxDiskUsage
+			vmAgentRemoteWrite.ForceVMProto = remoteWrite.ForceVMProto
+			vmAgentRemoteWrite.ProxyURL = remoteWrite.ProxyURL
+			vmAgentRemoteWrite.AWS = remoteWrite.AWS
+			newVMAgentSpec.RemoteWrite[i] = vmAgentRemoteWrite
+		}
+	}
+
 	// Compare current spec with desired spec and apply if different
-	if !reflect.DeepEqual(vmAgentObj.Spec, desiredVMAgentSpec) {
-		vmAgentObj.Spec = desiredVMAgentSpec
+	if !reflect.DeepEqual(vmAgentObj.Spec, newVMAgentSpec) {
+		vmAgentObj.Spec = *newVMAgentSpec.DeepCopy()
 		vmAgentNeedsUpdate = true
 	}
 

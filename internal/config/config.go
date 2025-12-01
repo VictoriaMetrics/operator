@@ -21,6 +21,7 @@ import (
 const (
 	UnLimitedResource = "unlimited"
 	prefixVar         = "VM_"
+	HTTPRouteCRD      = "httproutes.gateway.networking.k8s.io"
 )
 
 func getVersion(defaultVersion string) string {
@@ -112,9 +113,10 @@ type BaseOperatorConf struct {
 	//
 	// DO NOT FORGET TO MODIFY VERSIONS IN defaultEnvs
 
-	MetricsVersion string `default:"v1.130.0" env:"METRICS_VERSION"`
-	LogsVersion    string `default:"v1.36.1" env:"LOGS_VERSION"`
-	AnomalyVersion string `default:"v1.25.2" env:"ANOMALY_VERSION"`
+	MetricsVersion string          `default:"v1.130.0" env:"METRICS_VERSION"`
+	LogsVersion    string          `default:"v1.36.1" env:"LOGS_VERSION"`
+	AnomalyVersion string          `default:"v1.25.2" env:"ANOMALY_VERSION"`
+	InstalledCRDs  map[string]bool `env:"-"`
 
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.

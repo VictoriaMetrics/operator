@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -485,6 +486,21 @@ var controllersByName = map[string]crdController{
 }
 
 func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorConf) error {
+	crds := map[string]bool{
+		config.HTTPRouteCRD: false,
+	}
+	c := mgr.GetClient()
+	for crd := range crds {
+		err := c.Get(context.TODO(), client.ObjectKey{Name: crd}, &metav1.CustomResourceDefinition{})
+		if err != nil {
+			if !k8serrors.IsNotFound(err) {
+				return fmt.Errorf("unexpectedly failed to get CRD=%q: %w", crd, err)
+			}
+			continue
+		}
+		crds[crd] = true
+	}
+	bs.InstalledCRDs = crds
 	var disabledControllerNames map[string]struct{}
 	if len(*disableControllerForCRD) > 0 {
 		disabledControllerNames = make(map[string]struct{})

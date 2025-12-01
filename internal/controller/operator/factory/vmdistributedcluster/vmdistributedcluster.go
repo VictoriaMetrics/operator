@@ -535,7 +535,7 @@ func buildVMAuthVMSelectRefs(vmClusters []*vmv1beta1.VMCluster) []string {
     - "/.*"
     url_prefix: "http://srv+%s.%s:%s"
     discover_backend_ips: true
-      `, vmCluster.PrefixedInternalName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort))
+      `, vmCluster.PrefixedName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort))
 	}
 	return result
 }

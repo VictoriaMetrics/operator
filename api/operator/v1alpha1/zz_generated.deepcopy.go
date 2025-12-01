@@ -207,7 +207,7 @@ func (in *VMAuthNameAndSpec) DeepCopyInto(out *VMAuthNameAndSpec) {
 	*out = *in
 	if in.Spec != nil {
 		in, out := &in.Spec, &out.Spec
-		*out = new(v1beta1.VMAuthSpec)
+		*out = new(v1beta1.VMAuthLoadBalancerSpec)
 		(*in).DeepCopyInto(*out)
 	}
 }

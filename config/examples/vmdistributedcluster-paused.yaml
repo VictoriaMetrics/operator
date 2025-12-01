@@ -1,10 +1,9 @@
 apiVersion: operator.victoriametrics.com/v1alpha1
 kind: VMDistributedCluster
 metadata:
-  name: vmdistributedcluster-sample-custom-timeout
+  name: vmdistributedcluster-sample-paused
 spec:
-  readyDeadline: 10m
-  zoneUpdatePause: 1m
+  paused: true
   vmagent:
     name: global-write-vmagent
     spec:

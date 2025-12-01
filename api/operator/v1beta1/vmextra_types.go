@@ -1326,7 +1326,7 @@ type CommonApplicationDeploymentParams struct {
 	// +optional
 	Paused bool `json:"paused,omitempty"`
 	// DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
-	// Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
+	// Operator will conditionally create volumes and volumeMounts for containers if it requires ks API access.
 	// For example, vmagent and vm-config-reloader requires k8s API access.
 	// Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
 	// And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount.

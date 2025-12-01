@@ -579,39 +579,6 @@ func buildLBConfigMeta(cr *vmv1alpha1.VMDistributedCluster) metav1.ObjectMeta {
 	}
 }
 
-func buildVMAuthVMSelectRefs(vmClusters []*vmv1beta1.VMCluster) []string {
-	result := make([]string, 0, len(vmClusters))
-	for _, vmCluster := range vmClusters {
-		targetHostSuffix := fmt.Sprintf("%s.svc", vmCluster.Namespace)
-		if vmCluster.Spec.ClusterDomainName != "" {
-			targetHostSuffix += fmt.Sprintf(".%s", vmCluster.Spec.ClusterDomainName)
-		}
-		selectPort := "8481"
-		if vmCluster.Spec.VMSelect != nil {
-			selectPort = vmCluster.Spec.VMSelect.Port
-		}
-		result = append(result, fmt.Sprintf(`
-  - src_paths:
-    - "/.*"
-    url_prefix: "http://srv+%s.%s:%s"
-    discover_backend_ips: true
-      `, vmCluster.PrefixedName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort))
-	}
-	return result
-}
-
-func buildVMAuthLBSecret(cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) *corev1.Secret {
-	lbScrt := &corev1.Secret{
-		ObjectMeta: buildLBConfigMeta(cr),
-		StringData: map[string]string{"config.yaml": fmt.Sprintf(`
-unauthorized_user:
-  url_map:
-  %s
-      `, strings.Join(buildVMAuthVMSelectRefs(vmClusters), "\n"))},
-	}
-	return lbScrt
-}
-
 func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deployment, error) {
 	spec := cr.Spec.VMAuth.Spec
 	const configMountName = "vmauth-lb-config"
@@ -769,7 +736,11 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildLBConfigMeta(prevCR))
 	}
-	if err := reconcile.Secret(ctx, rclient, buildVMAuthLBSecret(cr, vmClusters), prevSecretMeta); err != nil {
+	secret, err := buildVMAuthLBSecret(cr, vmClusters)
+	if err != nil {
+		return fmt.Errorf("cannot build vmauth lb secret: %w", err)
+	}
+	if err := reconcile.Secret(ctx, rclient, secret, prevSecretMeta); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
 

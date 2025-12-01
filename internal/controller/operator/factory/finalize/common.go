@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -158,7 +159,7 @@ func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r clien
 		Name:      objName,
 	}, r); err != nil {
 		// fast path
-		if k8serrors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) || strings.Contains(err.Error(), "no matches for kind") {
 			return nil
 		}
 		return err

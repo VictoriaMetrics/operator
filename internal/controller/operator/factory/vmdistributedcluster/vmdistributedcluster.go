@@ -182,10 +182,26 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 
 		// Update the VMCluster when overrideSpec needs to be applied or ownerref set
-		mergedSpec, modifiedSpec, err := ApplyOverrideSpec(vmClusterObj.Spec, zoneRefOrSpec.OverrideSpec)
-		if err != nil {
-			return fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+		var mergedSpec vmv1beta1.VMClusterSpec
+		var modifiedSpec bool
+
+		if zoneRefOrSpec.Ref != nil {
+			mergedSpec, modifiedSpec, err = ApplyOverrideSpec(vmClusterObj.Spec, zoneRefOrSpec.OverrideSpec)
+			if err != nil {
+				return fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+			}
 		}
+		if zoneRefOrSpec.Spec != nil {
+			var specModified bool
+			mergedSpec, specModified, err = mergeVMClusterSpecs(vmClusterObj.Spec, *zoneRefOrSpec.Spec)
+			if err != nil {
+				return fmt.Errorf("failed to merge spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+			}
+			if specModified {
+				modifiedSpec = true
+			}
+		}
+
 		modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmClusterObj, scheme)
 		if err != nil {
 			return fmt.Errorf("failed to set owner reference for vmcluster %s: %w", vmClusterObj.Name, err)
@@ -389,6 +405,45 @@ func mergeMapsRecursive(baseMap, overrideMap map[string]interface{}) bool {
 		}
 	}
 	return modified
+}
+
+// mergeVMClusterSpecs merges the zoneSpec into baseSpec and returns the merged result
+// along with a boolean indicating whether any modifications were made.
+func mergeVMClusterSpecs(baseSpec, zoneSpec vmv1beta1.VMClusterSpec) (vmv1beta1.VMClusterSpec, bool, error) {
+	baseSpecJSON, err := json.Marshal(baseSpec)
+	if err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to marshal base VMClusterSpec: %w", err)
+	}
+
+	zoneSpecJSON, err := json.Marshal(zoneSpec)
+	if err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to marshal zone VMClusterSpec: %w", err)
+	}
+
+	var baseMap map[string]interface{}
+	if err := json.Unmarshal(baseSpecJSON, &baseMap); err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to unmarshal base VMClusterSpec to map: %w", err)
+	}
+
+	var zoneMap map[string]interface{}
+	if err := json.Unmarshal(zoneSpecJSON, &zoneMap); err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to unmarshal zone VMClusterSpec to map: %w", err)
+	}
+
+	// Perform a deep merge: fields from zoneMap recursively overwrite corresponding fields in baseMap.
+	modified := mergeMapsRecursive(baseMap, zoneMap)
+
+	mergedSpecJSON, err := json.Marshal(baseMap)
+	if err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to marshal merged VMClusterSpec map: %w", err)
+	}
+
+	mergedSpec := vmv1beta1.VMClusterSpec{}
+	if err := json.Unmarshal(mergedSpecJSON, &mergedSpec); err != nil {
+		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to unmarshal merged VMClusterSpec JSON: %w", err)
+	}
+
+	return mergedSpec, modified, nil
 }
 
 // updateOrCreateVMAgent ensures that the VMAgent is updated or created based on the provided VMDistributedCluster.

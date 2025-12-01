@@ -1903,3 +1903,415 @@ func TestUpdateOrCreateVMAgent(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to get VMAgent")
 	})
 }
+
+func TestMergeVMClusterSpecs(t *testing.T) {
+	baseSpec := vmv1beta1.VMClusterSpec{
+		ClusterVersion: "v1.0.0",
+		VMSelect: &vmv1beta1.VMSelect{
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ReplicaCount: ptr.To(int32(1)),
+				ExtraArgs:    map[string]string{"base": "value"},
+			},
+		},
+		VMInsert: &vmv1beta1.VMInsert{
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ReplicaCount: ptr.To(int32(1)),
+			},
+		},
+		VMStorage: &vmv1beta1.VMStorage{
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ReplicaCount: ptr.To(int32(1)),
+			},
+		},
+		ServiceAccountName: "default-sa",
+		RetentionPeriod:    "1d",
+	}
+
+	t.Run("No changes when specs are identical", func(t *testing.T) {
+		zoneSpec := baseSpec
+
+		merged, modified, err := mergeVMClusterSpecs(baseSpec, zoneSpec)
+		assert.NoError(t, err)
+		assert.False(t, modified, "should not be modified when specs are identical")
+
+		// Compare individual fields since JSON marshaling can change empty maps to nil
+		assert.Equal(t, baseSpec.ClusterVersion, merged.ClusterVersion)
+		assert.Equal(t, baseSpec.ServiceAccountName, merged.ServiceAccountName)
+		assert.Equal(t, baseSpec.RetentionPeriod, merged.RetentionPeriod)
+		assert.Equal(t, *baseSpec.VMSelect.ReplicaCount, *merged.VMSelect.ReplicaCount)
+		assert.Equal(t, baseSpec.VMSelect.ExtraArgs["base"], merged.VMSelect.ExtraArgs["base"])
+		assert.Equal(t, *baseSpec.VMInsert.ReplicaCount, *merged.VMInsert.ReplicaCount)
+		assert.Equal(t, *baseSpec.VMStorage.ReplicaCount, *merged.VMStorage.ReplicaCount)
+	})
+
+	t.Run("Full override with different values", func(t *testing.T) {
+		zoneSpec := vmv1beta1.VMClusterSpec{
+			ClusterVersion: "v1.1.0",
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(2)),
+					ExtraArgs:    map[string]string{"zone": "eu-west"},
+				},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(3)),
+				},
+			},
+			ServiceAccountName: "zone-sa",
+			RetentionPeriod:    "7d",
+		}
+
+		merged, modified, err := mergeVMClusterSpecs(baseSpec, zoneSpec)
+		assert.NoError(t, err)
+		assert.True(t, modified, "should be modified when specs are different")
+
+		// Check overridden fields
+		assert.Equal(t, "v1.1.0", merged.ClusterVersion)
+		assert.Equal(t, "zone-sa", merged.ServiceAccountName)
+		assert.Equal(t, "7d", merged.RetentionPeriod)
+		assert.Equal(t, int32(2), *merged.VMSelect.ReplicaCount)
+		assert.Equal(t, int32(3), *merged.VMInsert.ReplicaCount)
+		assert.Equal(t, "eu-west", merged.VMSelect.ExtraArgs["zone"])
+
+		// Check that unspecified fields remain from base
+		assert.NotNil(t, merged.VMStorage)
+		assert.Equal(t, *baseSpec.VMStorage.ReplicaCount, *merged.VMStorage.ReplicaCount)
+	})
+
+	t.Run("Partial override - only some fields changed", func(t *testing.T) {
+		zoneSpec := vmv1beta1.VMClusterSpec{
+			ClusterVersion: "v1.2.0",
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(3)),
+				},
+			},
+		}
+
+		merged, modified, err := mergeVMClusterSpecs(baseSpec, zoneSpec)
+		assert.NoError(t, err)
+		assert.True(t, modified, "should be modified when some specs are different")
+
+		// Check changed fields
+		assert.Equal(t, "v1.2.0", merged.ClusterVersion)
+		assert.Equal(t, int32(3), *merged.VMSelect.ReplicaCount)
+
+		// Check unchanged fields remain from base
+		assert.Equal(t, baseSpec.ServiceAccountName, merged.ServiceAccountName)
+		assert.Equal(t, baseSpec.RetentionPeriod, merged.RetentionPeriod)
+		assert.Equal(t, *baseSpec.VMInsert.ReplicaCount, *merged.VMInsert.ReplicaCount)
+		assert.Equal(t, *baseSpec.VMStorage.ReplicaCount, *merged.VMStorage.ReplicaCount)
+
+		// Check that existing ExtraArgs are preserved and merged
+		assert.Equal(t, "value", merged.VMSelect.ExtraArgs["base"])
+	})
+
+	t.Run("Merge nested maps - ExtraArgs", func(t *testing.T) {
+		baseSpecWithExtraArgs := baseSpec
+		baseSpecWithExtraArgs.VMSelect.ExtraArgs = map[string]string{
+			"existing": "value",
+			"common":   "base_value",
+		}
+
+		zoneSpec := vmv1beta1.VMClusterSpec{
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ExtraArgs: map[string]string{
+						"new":    "zone_value",
+						"common": "zone_value", // This should override base value
+					},
+				},
+			},
+		}
+
+		merged, modified, err := mergeVMClusterSpecs(baseSpecWithExtraArgs, zoneSpec)
+		assert.NoError(t, err)
+		assert.True(t, modified, "should be modified when ExtraArgs are different")
+
+		// Check merged ExtraArgs
+		assert.Equal(t, "value", merged.VMSelect.ExtraArgs["existing"])    // from base
+		assert.Equal(t, "zone_value", merged.VMSelect.ExtraArgs["new"])    // from zone
+		assert.Equal(t, "zone_value", merged.VMSelect.ExtraArgs["common"]) // overridden by zone
+
+		// Check other fields remain unchanged
+		assert.Equal(t, baseSpecWithExtraArgs.ClusterVersion, merged.ClusterVersion)
+		assert.Equal(t, *baseSpecWithExtraArgs.VMSelect.ReplicaCount, *merged.VMSelect.ReplicaCount)
+	})
+
+	t.Run("Empty zone spec should not modify base", func(t *testing.T) {
+		zoneSpec := vmv1beta1.VMClusterSpec{}
+
+		merged, modified, err := mergeVMClusterSpecs(baseSpec, zoneSpec)
+		assert.NoError(t, err)
+		assert.False(t, modified, "should not be modified when zone spec is empty")
+
+		// Compare individual fields since JSON marshaling can change empty maps to nil
+		assert.Equal(t, baseSpec.ClusterVersion, merged.ClusterVersion)
+		assert.Equal(t, baseSpec.ServiceAccountName, merged.ServiceAccountName)
+		assert.Equal(t, baseSpec.RetentionPeriod, merged.RetentionPeriod)
+		assert.Equal(t, *baseSpec.VMSelect.ReplicaCount, *merged.VMSelect.ReplicaCount)
+		assert.Equal(t, baseSpec.VMSelect.ExtraArgs["base"], merged.VMSelect.ExtraArgs["base"])
+		assert.Equal(t, *baseSpec.VMInsert.ReplicaCount, *merged.VMInsert.ReplicaCount)
+		assert.Equal(t, *baseSpec.VMStorage.ReplicaCount, *merged.VMStorage.ReplicaCount)
+	})
+
+	t.Run("Zone spec with nil components", func(t *testing.T) {
+		zoneSpec := vmv1beta1.VMClusterSpec{
+			ClusterVersion: "v1.3.0",
+			VMSelect:       nil, // Should not affect base VMSelect
+			VMInsert:       nil, // Should not affect base VMInsert
+		}
+
+		merged, modified, err := mergeVMClusterSpecs(baseSpec, zoneSpec)
+		assert.NoError(t, err)
+		assert.True(t, modified, "should be modified due to ClusterVersion change")
+
+		// Check that ClusterVersion is updated
+		assert.Equal(t, "v1.3.0", merged.ClusterVersion)
+
+		// Check that nil components don't affect base components
+		assert.NotNil(t, merged.VMSelect)
+		assert.Equal(t, *baseSpec.VMSelect.ReplicaCount, *merged.VMSelect.ReplicaCount)
+		assert.NotNil(t, merged.VMInsert)
+		assert.Equal(t, *baseSpec.VMInsert.ReplicaCount, *merged.VMInsert.ReplicaCount)
+		assert.NotNil(t, merged.VMStorage)
+		assert.Equal(t, *baseSpec.VMStorage.ReplicaCount, *merged.VMStorage.ReplicaCount)
+	})
+
+	t.Run("Override with new components", func(t *testing.T) {
+		baseSpecMinimal := vmv1beta1.VMClusterSpec{
+			ClusterVersion: "v1.0.0",
+		}
+
+		zoneSpec := vmv1beta1.VMClusterSpec{
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(5)),
+					ExtraArgs:    map[string]string{"new": "component"},
+				},
+			},
+			ServiceAccountName: "new-sa",
+		}
+
+		merged, modified, err := mergeVMClusterSpecs(baseSpecMinimal, zoneSpec)
+		assert.NoError(t, err)
+		assert.True(t, modified, "should be modified when new components are added")
+
+		// Check that new components are added
+		assert.NotNil(t, merged.VMSelect)
+		assert.Equal(t, int32(5), *merged.VMSelect.ReplicaCount)
+		assert.Equal(t, "component", merged.VMSelect.ExtraArgs["new"])
+		assert.Equal(t, "new-sa", merged.ServiceAccountName)
+
+		// Check that base fields are preserved
+		assert.Equal(t, baseSpecMinimal.ClusterVersion, merged.ClusterVersion)
+	})
+
+	t.Run("Complex nested merge", func(t *testing.T) {
+		baseSpecComplex := vmv1beta1.VMClusterSpec{
+			ClusterVersion: "v1.0.0",
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+					ExtraArgs: map[string]string{
+						"selectTimeout": "30s",
+						"cacheSize":     "1GB",
+					},
+				},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(2)),
+					ExtraArgs: map[string]string{
+						"maxInsertRequestSize": "32MB",
+					},
+				},
+			},
+		}
+
+		zoneSpec := vmv1beta1.VMClusterSpec{
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(3)), // Override replica count
+					ExtraArgs: map[string]string{
+						"cacheSize": "2GB",      // Override existing
+						"newArg":    "newValue", // Add new
+					},
+				},
+			},
+			// VMInsert not specified - should remain from base
+		}
+
+		merged, modified, err := mergeVMClusterSpecs(baseSpecComplex, zoneSpec)
+		assert.NoError(t, err)
+		assert.True(t, modified, "should be modified due to VMSelect changes")
+
+		// Check VMSelect changes
+		assert.Equal(t, int32(3), *merged.VMSelect.ReplicaCount)
+		assert.Equal(t, "30s", merged.VMSelect.ExtraArgs["selectTimeout"]) // preserved from base
+		assert.Equal(t, "2GB", merged.VMSelect.ExtraArgs["cacheSize"])     // overridden by zone
+		assert.Equal(t, "newValue", merged.VMSelect.ExtraArgs["newArg"])   // added by zone
+
+		// Check VMInsert remains unchanged from base
+		assert.NotNil(t, merged.VMInsert)
+		assert.Equal(t, int32(2), *merged.VMInsert.ReplicaCount)
+		assert.Equal(t, "32MB", merged.VMInsert.ExtraArgs["maxInsertRequestSize"])
+
+		// Check other base fields are preserved
+		assert.Equal(t, baseSpecComplex.ClusterVersion, merged.ClusterVersion)
+	})
+}
+
+func TestCreateOrUpdateWithMerging(t *testing.T) {
+	baseVMCluster := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cluster",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMClusterSpec{
+			ClusterVersion: "v1.0.0",
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(2)),
+					ExtraArgs:    map[string]string{"baseArg": "baseValue"},
+				},
+			},
+			ServiceAccountName: "base-sa",
+			RetentionPeriod:    "7d",
+		},
+	}
+
+	cr := &vmv1alpha1.VMDistributedCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-distributed",
+			Namespace: "default",
+		},
+		Spec: vmv1alpha1.VMDistributedClusterSpec{
+			VMAgent: vmv1alpha1.VMAgentNameAndSpec{
+				Name: "test-vmagent",
+			},
+			Zones: vmv1alpha1.ZoneSpec{
+				VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+					{
+						Name: "test-cluster",
+						Spec: &vmv1beta1.VMClusterSpec{
+							ClusterVersion: "v1.1.0", // This should merge/override
+							VMSelect: &vmv1beta1.VMSelect{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To(int32(3)),                          // This should merge/override
+									ExtraArgs:    map[string]string{"zoneArg": "zoneValue"}, // This should merge
+								},
+							},
+							ServiceAccountName: "zone-sa", // This should merge/override
+							// RetentionPeriod not specified - should remain from base
+						},
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+	_ = vmv1alpha1.AddToScheme(scheme)
+
+	// Create a client with the existing base VMCluster
+	client := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(baseVMCluster).
+		Build()
+
+	ctx := context.Background()
+
+	t.Run("Merge zone spec into existing VMCluster", func(t *testing.T) {
+		err := CreateOrUpdate(ctx, cr, client, scheme, httpTimeout)
+		assert.NoError(t, err)
+
+		// Retrieve the updated VMCluster
+		updatedCluster := &vmv1beta1.VMCluster{}
+		err = client.Get(ctx, types.NamespacedName{Name: "test-cluster", Namespace: "default"}, updatedCluster)
+		assert.NoError(t, err)
+
+		// Verify that the spec was properly merged
+		assert.Equal(t, "v1.1.0", updatedCluster.Spec.ClusterVersion, "ClusterVersion should be overridden from zone")
+		assert.Equal(t, "zone-sa", updatedCluster.Spec.ServiceAccountName, "ServiceAccountName should be overridden from zone")
+		assert.Equal(t, "7d", updatedCluster.Spec.RetentionPeriod, "RetentionPeriod should remain from base")
+
+		// Verify VMSelect merging
+		assert.NotNil(t, updatedCluster.Spec.VMSelect)
+		assert.Equal(t, int32(3), *updatedCluster.Spec.VMSelect.ReplicaCount, "ReplicaCount should be overridden from zone")
+
+		// Verify ExtraArgs merging
+		assert.Equal(t, "baseValue", updatedCluster.Spec.VMSelect.ExtraArgs["baseArg"], "Base ExtraArgs should be preserved")
+		assert.Equal(t, "zoneValue", updatedCluster.Spec.VMSelect.ExtraArgs["zoneArg"], "Zone ExtraArgs should be added")
+	})
+
+	t.Run("No modification when zone spec identical to base", func(t *testing.T) {
+		// Reset the cluster to base state
+		baseVMCluster.Spec = vmv1beta1.VMClusterSpec{
+			ClusterVersion: "v1.0.0",
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(2)),
+					ExtraArgs:    map[string]string{"baseArg": "baseValue"},
+				},
+			},
+			ServiceAccountName: "base-sa",
+			RetentionPeriod:    "7d",
+		}
+
+		clientReset := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(baseVMCluster).
+			Build()
+
+		// Create CR with zone spec identical to base
+		crIdentical := &vmv1alpha1.VMDistributedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-distributed-identical",
+				Namespace: "default",
+			},
+			Spec: vmv1alpha1.VMDistributedClusterSpec{
+				VMAgent: vmv1alpha1.VMAgentNameAndSpec{
+					Name: "test-vmagent",
+				},
+				Zones: vmv1alpha1.ZoneSpec{
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Name: "test-cluster",
+							Spec: &vmv1beta1.VMClusterSpec{
+								ClusterVersion: "v1.0.0", // Same as base
+								VMSelect: &vmv1beta1.VMSelect{
+									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To(int32(2)),                          // Same as base
+										ExtraArgs:    map[string]string{"baseArg": "baseValue"}, // Same as base
+									},
+								},
+								ServiceAccountName: "base-sa", // Same as base
+								RetentionPeriod:    "7d",      // Same as base
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// Get initial generation/resourceVersion
+		initialCluster := &vmv1beta1.VMCluster{}
+		err := clientReset.Get(ctx, types.NamespacedName{Name: "test-cluster", Namespace: "default"}, initialCluster)
+		assert.NoError(t, err)
+		initialResourceVersion := initialCluster.ResourceVersion
+
+		err = CreateOrUpdate(ctx, crIdentical, clientReset, scheme, httpTimeout)
+		assert.NoError(t, err)
+
+		// Retrieve the cluster after operation
+		finalCluster := &vmv1beta1.VMCluster{}
+		err = clientReset.Get(ctx, types.NamespacedName{Name: "test-cluster", Namespace: "default"}, finalCluster)
+		assert.NoError(t, err)
+
+		// ResourceVersion should be the same since no modification was needed
+		assert.Equal(t, initialResourceVersion, finalCluster.ResourceVersion, "ResourceVersion should not change when no modifications are needed")
+	})
+}

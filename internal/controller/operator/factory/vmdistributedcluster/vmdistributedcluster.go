@@ -498,7 +498,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 
 // remoteWriteURL generates the remote write URL based on the provided VMCluster and tenant.
 func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
-	return fmt.Sprintf("http://%s.%s.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.Name, vmCluster.Namespace, *tenant)
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert), vmCluster.Namespace, *tenant)
 }
 
 // updateOrCreateVMAuth updates or creates a VMAuth object based on the provided VMCluster and tenant.

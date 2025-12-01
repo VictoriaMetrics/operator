@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,10 +97,148 @@ type VMAgentNameAndSpec struct {
 	// Spec defines the desired state of a new VMAgent.
 	// Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator.
 	// +optional
-	Spec *vmv1beta1.VMAgentSpec `json:"spec,omitempty"`
+	Spec *CustomVMAgentSpec `json:"spec,omitempty"`
 	// Optional tenant ID. Only required with the OAuth authentication method.
 	// +optional
 	TenantID *string `json:"tenantID,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// CustomVMAgentSpec is a customized specification of a new VMAgent.
+// It includes selected options from the original VMAgentSpec.
+type CustomVMAgentSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-" yaml:"-"`
+	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
+	// +optional
+	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	// ManagedMetadata defines metadata that will be added to the all objects
+	// created by operator for the given CustomResource
+	ManagedMetadata *vmv1beta1.ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+	// LogLevel for VMAgent to be configured with.
+	// INFO, WARN, ERROR, FATAL, PANIC
+	// +optional
+	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
+	LogLevel string `json:"logLevel,omitempty"`
+	// LogFormat for VMAgent to be configured with.
+	// +optional
+	// +kubebuilder:validation:Enum=default;json
+	LogFormat string `json:"logFormat,omitempty"`
+
+	// RemoteWrite list of victoria metrics /some other remote write system
+	// for vm it must looks like: http://victoria-metrics-single:8428/api/v1/write
+	// or for cluster different url
+	// https://docs.victoriametrics.com/victoriametrics/vmagent/#splitting-data-streams-among-multiple-systems
+	// +optional
+	RemoteWrite []CustomVMAgentRemoteWriteSpec `json:"remoteWrite"`
+	// RemoteWriteSettings defines global settings for all remoteWrite urls.
+	// +optional
+	RemoteWriteSettings *vmv1beta1.VMAgentRemoteWriteSettings `json:"remoteWriteSettings,omitempty"`
+
+	// ShardCount - numbers of shards of VMAgent
+	// in this case operator will use 1 deployment/sts per shard with
+	// replicas count according to spec.replicas,
+	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)
+	// +optional
+	ShardCount *int `json:"shardCount,omitempty"`
+
+	// UpdateStrategy - overrides default update strategy.
+	// works only for deployments, statefulset always use OnDelete.
+	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
+	// +optional
+	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
+	// RollingUpdate - overrides deployment update params.
+	// +optional
+	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
+	// Supports only VMPodScrape
+	// (available from v0.55.0).
+	// Cannot be used with statefulMode
+	// +optional
+	DaemonSetMode bool `json:"daemonSetMode,omitempty"`
+	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
+	// it allows using persistent storage for vmagent's persistentQueue
+	// +optional
+	StatefulMode bool `json:"statefulMode,omitempty"`
+	// StatefulStorage configures storage for StatefulSet
+	// +optional
+	StatefulStorage *vmv1beta1.StorageSpec `json:"statefulStorage,omitempty"`
+	// StatefulRollingUpdateStrategy allows configuration for strategyType
+	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
+	// +optional
+	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
+	// +optional
+	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
+	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
+	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+
+	// License allows to configure license key to be used for enterprise features.
+	// Using license key is supported starting from VictoriaMetrics v1.94.0.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
+	// +optional
+	License *vmv1beta1.License `json:"license,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	vmv1beta1.VMAgentSecurityEnforcements       `json:",inline"`
+	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
+	vmv1beta1.CommonConfigReloaderParams        `json:",inline,omitempty"`
+	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+}
+
+// CustomVMAgentRemoteWriteSpec is a copy of VMAgentRemoteWriteSpec, but allows empty URLs
+// These urls will be overwritten by the controller
+// +k8s:openapi-gen=true
+type CustomVMAgentRemoteWriteSpec struct {
+	// URL is the URL of the remote write system.
+	// +optional
+	URL string `json:"url,omitempty"`
+	// BasicAuth allow an endpoint to authenticate over basic authentication
+	// +optional
+	BasicAuth *vmv1beta1.BasicAuth `json:"basicAuth,omitempty"`
+	// Optional bearer auth token to use for -remoteWrite.url
+	// +optional
+	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *vmv1beta1.OAuth2 `json:"oauth2,omitempty"`
+	// TLSConfig describes tls configuration for remote write target
+	// +optional
+	TLSConfig *vmv1beta1.TLSConfig `json:"tlsConfig,omitempty"`
+	// Timeout for sending a single block of data to -remoteWrite.url (default 1m0s)
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	SendTimeout *string `json:"sendTimeout,omitempty"`
+	// Headers allow configuring custom http headers
+	// Must be in form of semicolon separated header with value
+	// e.g.
+	// headerName: headerValue
+	// vmagent supports since 1.79.0 version
+	// +optional
+	Headers []string `json:"headers,omitempty"`
+
+	// MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite
+	// It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	MaxDiskUsage *vmv1beta1.BytesString `json:"maxDiskUsage,omitempty"`
+	// ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url
+	// +optional
+	ForceVMProto bool `json:"forceVMProto,omitempty"`
+	// ProxyURL for -remoteWrite.url. Supported proxies: http, https, socks5. Example: socks5://proxy:1234
+	// +optional
+	ProxyURL *string `json:"proxyURL,omitempty"`
+	// AWS describes params specific to AWS cloud
+	AWS *vmv1beta1.AWS `json:"aws,omitempty"`
 }
 
 // +k8s:openapi-gen=true

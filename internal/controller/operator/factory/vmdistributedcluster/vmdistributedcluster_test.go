@@ -1714,7 +1714,6 @@ func TestUpdateOrCreateVMAgent(t *testing.T) {
 						APIVersion: cr.APIVersion,
 						Kind:       cr.Kind,
 						Name:       cr.Name,
-						Controller: ptr.To(true),
 					},
 				},
 			},
@@ -1750,7 +1749,7 @@ func TestUpdateOrCreateVMAgent(t *testing.T) {
 		}
 
 		// Create a CR that contains a VMAgent.Spec which should cause an update
-		vmAgentSpec := &vmv1beta1.VMAgentSpec{
+		vmAgentSpec := &vmv1alpha1.CustomVMAgentSpec{
 			PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
 				Labels: map[string]string{"foo": "bar"},
 			},

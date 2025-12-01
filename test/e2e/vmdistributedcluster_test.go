@@ -79,11 +79,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
-					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-						{
-							URL: "http://vminsert.monitoring:8089/api/v1/write", // Dummy URL to satisfy validation
-						},
-					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, vmAgent)).To(Succeed(), "must create managed vm-agent before test")
@@ -137,14 +132,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ZoneUpdatePause: &metav1.Duration{Duration: 0 * time.Second},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmAgentName,
-						Spec: &vmv1beta1.VMAgentSpec{
+						Spec: &vmv1alpha1.CustomVMAgentSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](2),
-							},
-							RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-								{
-									URL: "http://example.com",
-								},
 							},
 						},
 					},
@@ -574,14 +564,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ZoneUpdatePause: &metav1.Duration{Duration: 0 * time.Second},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmAgentName,
-						Spec: &vmv1beta1.VMAgentSpec{
+						Spec: &vmv1alpha1.CustomVMAgentSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
-							},
-							RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-								{
-									URL: "http://example.com",
-								},
 							},
 						},
 					},
@@ -961,14 +946,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmagentName,
-						Spec: &vmv1beta1.VMAgentSpec{
+						Spec: &vmv1alpha1.CustomVMAgentSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
-							},
-							RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-								{
-									URL: "http://example.com",
-								},
 							},
 						},
 					},

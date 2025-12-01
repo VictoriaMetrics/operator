@@ -12,6 +12,7 @@ import (
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 // OnVMAuthDelete deletes all vmauth related resources
@@ -61,8 +62,8 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if err := removeFinalizeObjByName(ctx, rclient, &networkingv1.Ingress{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
 	}
-
-	if cr.Spec.HTTPRoute != nil {
+	cfg := config.MustGetBaseConfig()
+	if cfg.GatewayAPIEnabled && cr.Spec.HTTPRoute != nil {
 		httpRoute := &gwapiv1.HTTPRoute{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      cr.PrefixedName(),

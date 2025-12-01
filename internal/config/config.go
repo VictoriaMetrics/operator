@@ -112,9 +112,10 @@ type BaseOperatorConf struct {
 	//
 	// DO NOT FORGET TO MODIFY VERSIONS IN defaultEnvs
 
-	MetricsVersion string `default:"v1.130.0" env:"METRICS_VERSION"`
-	LogsVersion    string `default:"v1.36.1" env:"LOGS_VERSION"`
-	AnomalyVersion string `default:"v1.25.2" env:"ANOMALY_VERSION"`
+	MetricsVersion    string `default:"v1.130.0" env:"METRICS_VERSION"`
+	LogsVersion       string `default:"v1.36.1" env:"LOGS_VERSION"`
+	AnomalyVersion    string `default:"v1.25.2" env:"ANOMALY_VERSION"`
+	GatewayAPIEnabled bool   `default:"false" env:"GATEWAY_API_ENABLED"`
 
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.

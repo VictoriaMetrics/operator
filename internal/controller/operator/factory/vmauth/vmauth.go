@@ -73,6 +73,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
 
+	if cr.Spec.HTTPRoute != nil && !cfg.GatewayAPIEnabled {
+		return fmt.Errorf("spec.httpRoute is set but Gateway API support is not enabled")
+	}
 	if err := createOrUpdateHTTPRoute(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update httpRoute for vmauth: %w", err)
 	}
@@ -771,7 +774,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 	}
 
-	if cr.Spec.HTTPRoute == nil {
+	cfg := config.MustGetBaseConfig()
+	if cfg.GatewayAPIEnabled && cr.Spec.HTTPRoute == nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &gwapiv1.HTTPRoute{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot delete httproute from prev state: %w", err)
 		}
@@ -787,7 +791,6 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			return fmt.Errorf("cannot remove HPA from prev state: %w", err)
 		}
 	}
-	cfg := config.MustGetBaseConfig()
 	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
 	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
 		if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels(), &owner); err != nil {

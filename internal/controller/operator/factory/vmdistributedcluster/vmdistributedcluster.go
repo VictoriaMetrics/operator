@@ -193,6 +193,18 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			continue
 		}
 
+		// update vmauth lb with excluded cluster
+		activeVMClusters := make([]*vmv1beta1.VMCluster, 0, len(vmClusters)-1)
+		for _, vmc := range vmClusters {
+			if vmc.Name == vmClusterObj.Name {
+				continue
+			}
+			activeVMClusters = append(activeVMClusters, vmc)
+		}
+		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, activeVMClusters); err != nil {
+			return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
+		}
+
 		vmClusterObj.Spec = mergedSpec
 
 		if needsToBeCreated {
@@ -200,6 +212,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 				return fmt.Errorf("failed to create vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 			}
 			cr.Status.VMClusterInfo[i].Generation = vmClusterObj.Generation
+			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
+				return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
+			}
 			// No further action needed after creation
 			continue
 		}
@@ -216,6 +231,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 
 		if !modifiedSpec {
+			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
+				return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
+			}
 			continue
 		}
 
@@ -228,10 +246,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		// Wrap concrete VMAgent into adapter that implements VMAgentWithStatus
 		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, &vmAgentAdapter{VMAgent: vmAgentObj}, vmclusterWaitReadyDeadline, rclient); err != nil {
 			// Ignore this error when running e2e tests - these need to run in the same network as pods
-			if os.Getenv("E2E_TEST") == "true" {
-				continue
+			if os.Getenv("E2E_TEST") != "true" {
+				return fmt.Errorf("failed to wait for VMAgent metrics to show no pending queue: %w", err)
 			}
-			return fmt.Errorf("failed to wait for VMAgent metrics to show no pending queue: %w", err)
+		}
+
+		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
+			return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
 		}
 
 		// Sleep for zoneUpdatePause time between VMClusters updates

@@ -268,9 +268,8 @@ type VMDistributedClusterStatus struct {
 // +k8s:openapi-gen=true
 // VMClusterStatus is a pair of VMCluster and its generation
 type VMClusterStatus struct {
-	VMClusterName string              `json:"vmClusterName"`
-	TargetRef     vmv1beta1.TargetRef `json:"targetRef"`
-	Generation    int64               `json:"generation"`
+	VMClusterName string `json:"vmClusterName"`
+	Generation    int64  `json:"generation"`
 }
 
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMDistributedCluster App"

@@ -1628,7 +1628,12 @@ func TestMergeVMClusterSpecs(t *testing.T) {
 }
 
 func TestCreateOrUpdateWithMerging(t *testing.T) {
+	t.Setenv("E2E_TEST", "true")
 	baseVMCluster := &vmv1beta1.VMCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "VMCluster",
+			APIVersion: vmv1beta1.GroupVersion.String(),
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-cluster",
 			Namespace: "default",
@@ -1647,6 +1652,10 @@ func TestCreateOrUpdateWithMerging(t *testing.T) {
 	}
 
 	cr := &vmv1alpha1.VMDistributedCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "VMDistributedCluster",
+			APIVersion: vmv1alpha1.GroupVersion.String(),
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-distributed",
 			Namespace: "default",
@@ -1655,6 +1664,12 @@ func TestCreateOrUpdateWithMerging(t *testing.T) {
 			VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 				Name: "test-vmagent",
 			},
+			VMAuth: vmv1alpha1.VMAuthNameAndSpec{
+				Name: "test-vmauth",
+				Spec: &vmv1beta1.VMAuthLoadBalancerSpec{},
+			},
+			ReadyDeadline:   &metav1.Duration{Duration: time.Millisecond},
+			ZoneUpdatePause: &metav1.Duration{Duration: time.Millisecond},
 			Zones: vmv1alpha1.ZoneSpec{
 				VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 					{
@@ -1674,17 +1689,24 @@ func TestCreateOrUpdateWithMerging(t *testing.T) {
 				},
 			},
 		},
+		Status: vmv1alpha1.VMDistributedClusterStatus{
+			VMClusterInfo: []vmv1alpha1.VMClusterStatus{
+				{
+					VMClusterName: "test-cluster",
+					Generation:    0,
+				},
+			},
+		},
 	}
 
 	scheme := runtime.NewScheme()
 	_ = vmv1beta1.AddToScheme(scheme)
 	_ = vmv1alpha1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
+	_ = appsv1.AddToScheme(scheme)
 
 	// Create a client with the existing base VMCluster
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(baseVMCluster).
-		Build()
+	client := newMockClient(scheme, baseVMCluster, cr)
 
 	ctx := context.Background()
 
@@ -1725,13 +1747,12 @@ func TestCreateOrUpdateWithMerging(t *testing.T) {
 			RetentionPeriod:    "7d",
 		}
 
-		clientReset := fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(baseVMCluster).
-			Build()
-
 		// Create CR with zone spec identical to base
 		crIdentical := &vmv1alpha1.VMDistributedCluster{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "VMDistributedCluster",
+				APIVersion: vmv1alpha1.GroupVersion.String(),
+			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-distributed-identical",
 				Namespace: "default",
@@ -1740,6 +1761,12 @@ func TestCreateOrUpdateWithMerging(t *testing.T) {
 				VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 					Name: "test-vmagent",
 				},
+				VMAuth: vmv1alpha1.VMAuthNameAndSpec{
+					Name: "test-vmauth",
+					Spec: &vmv1beta1.VMAuthLoadBalancerSpec{},
+				},
+				ReadyDeadline:   &metav1.Duration{Duration: time.Millisecond},
+				ZoneUpdatePause: &metav1.Duration{Duration: time.Millisecond},
 				Zones: vmv1alpha1.ZoneSpec{
 					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
@@ -1759,7 +1786,16 @@ func TestCreateOrUpdateWithMerging(t *testing.T) {
 					},
 				},
 			},
+			Status: vmv1alpha1.VMDistributedClusterStatus{
+				VMClusterInfo: []vmv1alpha1.VMClusterStatus{
+					{
+						VMClusterName: "test-cluster",
+						Generation:    0,
+					},
+				},
+			},
 		}
+		clientReset := newMockClient(scheme, baseVMCluster, crIdentical)
 
 		// Get initial generation/resourceVersion
 		initialCluster := &vmv1beta1.VMCluster{}
@@ -1914,6 +1950,17 @@ func (c *mockClient) Update(ctx context.Context, obj client.Object, opts ...clie
 }
 
 func (c *mockClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	return nil
+}
+
+func (c *mockClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	k := c.getKeyFromObj(obj)
+	delete(c.db, k)
+	return nil
+}
+
+func (c *mockClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	c.create(obj)
 	return nil
 }
 

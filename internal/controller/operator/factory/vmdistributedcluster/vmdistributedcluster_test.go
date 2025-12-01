@@ -1664,6 +1664,111 @@ func TestEnsureNoVMClusterOwners(t *testing.T) {
 	}
 }
 
+func TestRemoteWriteURL(t *testing.T) {
+	tests := []struct {
+		name          string
+		vmClusterName string
+		namespace     string
+		tenant        string
+		expectedURL   string
+	}{
+		{
+			name:          "default tenant format (numeric only)",
+			vmClusterName: "test-cluster",
+			namespace:     "default",
+			tenant:        "0",
+			expectedURL:   "http://vminsert-test-cluster.default.svc.cluster.local.:8480/insert/0/prometheus/api/v1/write",
+		},
+		{
+			name:          "tenant with retention format",
+			vmClusterName: "test-cluster",
+			namespace:     "default",
+			tenant:        "5:10",
+			expectedURL:   "http://vminsert-test-cluster.default.svc.cluster.local.:8480/insert/5:10/prometheus/api/v1/write",
+		},
+		{
+			name:          "different namespace with simple tenant",
+			vmClusterName: "my-cluster",
+			namespace:     "monitoring",
+			tenant:        "1",
+			expectedURL:   "http://vminsert-my-cluster.monitoring.svc.cluster.local.:8480/insert/1/prometheus/api/v1/write",
+		},
+		{
+			name:          "different namespace with retention format",
+			vmClusterName: "my-cluster",
+			namespace:     "monitoring",
+			tenant:        "1:30",
+			expectedURL:   "http://vminsert-my-cluster.monitoring.svc.cluster.local.:8480/insert/1:30/prometheus/api/v1/write",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vmCluster := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      tt.vmClusterName,
+					Namespace: tt.namespace,
+				},
+			}
+			tenant := tt.tenant
+
+			result := remoteWriteURL(vmCluster, &tenant)
+			assert.Equal(t, tt.expectedURL, result)
+		})
+	}
+}
+
+func TestRemoteWriteURL_NilTenant(t *testing.T) {
+	vmCluster := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cluster",
+			Namespace: "default",
+		},
+	}
+
+	// This should panic since the function dereferences the tenant pointer
+	assert.Panics(t, func() {
+		remoteWriteURL(vmCluster, nil)
+	})
+}
+
+func TestRemoteWriteURL_EmptyTenant(t *testing.T) {
+	vmCluster := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cluster",
+			Namespace: "default",
+		},
+	}
+	emptyTenant := ""
+
+	result := remoteWriteURL(vmCluster, &emptyTenant)
+	expected := "http://vminsert-test-cluster.default.svc.cluster.local.:8480/insert//prometheus/api/v1/write"
+	assert.Equal(t, expected, result)
+}
+
+func TestRemoteWriteURL_PrefixedNameBehavior(t *testing.T) {
+	// Test that the function correctly uses PrefixedName with ClusterComponentInsert
+	vmCluster := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example",
+			Namespace: "test-ns",
+		},
+	}
+	tenant := "0"
+
+	result := remoteWriteURL(vmCluster, &tenant)
+
+	// Verify that the URL contains the expected prefixed name format
+	expectedPrefixedName := "vminsert-example" // Based on ClusterPrefixedName("insert", "example", "vm", false)
+	assert.Contains(t, result, expectedPrefixedName)
+	assert.Contains(t, result, "test-ns")
+	assert.Contains(t, result, "0")
+
+	// Verify the complete expected URL
+	expectedURL := "http://vminsert-example.test-ns.svc.cluster.local.:8480/insert/0/prometheus/api/v1/write"
+	assert.Equal(t, expectedURL, result)
+}
+
 func TestUpdateOrCreateVMAgent(t *testing.T) {
 	s := runtime.NewScheme()
 	_ = vmv1alpha1.AddToScheme(s)

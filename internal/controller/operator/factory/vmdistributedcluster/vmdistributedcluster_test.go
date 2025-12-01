@@ -13,12 +13,16 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1773,5 +1777,369 @@ func TestCreateOrUpdateWithMerging(t *testing.T) {
 
 		// ResourceVersion should be the same since no modification was needed
 		assert.Equal(t, initialResourceVersion, finalCluster.ResourceVersion, "ResourceVersion should not change when no modifications are needed")
+	})
+}
+
+type mockClient struct {
+	client.Client
+	db     map[string]client.Object
+	scheme *runtime.Scheme
+}
+
+func newMockClient(scheme *runtime.Scheme, initObjs ...client.Object) *mockClient {
+	c := &mockClient{
+		db:     make(map[string]client.Object),
+		scheme: scheme,
+	}
+	for _, obj := range initObjs {
+		c.create(obj)
+	}
+	return c
+}
+
+func (c *mockClient) Scheme() *runtime.Scheme {
+	return c.scheme
+}
+
+func (c *mockClient) key(kind, ns, name string) string {
+	return fmt.Sprintf("%s/%s/%s", kind, ns, name)
+}
+
+func (c *mockClient) resolveKind(obj client.Object) string {
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	if gvk.Kind != "" {
+		return gvk.Kind
+	}
+	switch obj.(type) {
+	case *vmv1beta1.VMCluster:
+		return "VMCluster"
+	case *vmv1alpha1.VMDistributedCluster:
+		return "VMDistributedCluster"
+	case *vmv1beta1.VMAgent:
+		return "VMAgent"
+	case *corev1.Secret:
+		return "Secret"
+	case *corev1.ServiceAccount:
+		return "ServiceAccount"
+	case *appsv1.Deployment:
+		return "Deployment"
+	case *corev1.Service:
+		return "Service"
+	case *policyv1.PodDisruptionBudget:
+		return "PodDisruptionBudget"
+	case *rbacv1.Role:
+		return "Role"
+	case *rbacv1.RoleBinding:
+		return "RoleBinding"
+	}
+	return ""
+}
+
+func (c *mockClient) getKeyFromObj(obj client.Object) string {
+	return c.key(c.resolveKind(obj), obj.GetNamespace(), obj.GetName())
+}
+
+func (c *mockClient) getKeyFromKey(obj client.Object, key client.ObjectKey) string {
+	return c.key(c.resolveKind(obj), key.Namespace, key.Name)
+}
+
+func (c *mockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	k := c.getKeyFromKey(obj, key)
+	found, ok := c.db[k]
+	if !ok {
+		return k8serrors.NewNotFound(schema.GroupResource{Group: "test", Resource: c.resolveKind(obj)}, key.Name)
+	}
+
+	if deepCopier, ok := found.(interface{ DeepCopyInto(client.Object) }); ok {
+		deepCopier.DeepCopyInto(obj)
+		return nil
+	}
+
+	// Fallback for known types where we know the concrete type
+	switch dst := obj.(type) {
+	case *vmv1beta1.VMCluster:
+		if src, ok := found.(*vmv1beta1.VMCluster); ok {
+			src.DeepCopyInto(dst)
+			return nil
+		}
+	case *vmv1alpha1.VMDistributedCluster:
+		if src, ok := found.(*vmv1alpha1.VMDistributedCluster); ok {
+			src.DeepCopyInto(dst)
+			return nil
+		}
+	}
+
+	return nil
+}
+
+func (c *mockClient) create(obj client.Object) {
+	k := c.getKeyFromObj(obj)
+	if deepCopier, ok := obj.(interface{ DeepCopyObject() runtime.Object }); ok {
+		c.db[k] = deepCopier.DeepCopyObject().(client.Object)
+	} else {
+		c.db[k] = obj
+	}
+}
+
+func (c *mockClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	obj.SetGeneration(1)
+	if deploy, ok := obj.(*appsv1.Deployment); ok && deploy.Spec.Replicas != nil {
+		deploy.Status.Replicas = *deploy.Spec.Replicas
+		deploy.Status.ReadyReplicas = *deploy.Spec.Replicas
+		deploy.Status.AvailableReplicas = *deploy.Spec.Replicas
+		deploy.Status.UpdatedReplicas = *deploy.Spec.Replicas
+		deploy.Status.ObservedGeneration = deploy.Generation
+	}
+	if vmc, ok := obj.(*vmv1beta1.VMCluster); ok {
+		vmc.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+	}
+	c.create(obj)
+	return nil
+}
+
+func (c *mockClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	obj.SetGeneration(obj.GetGeneration() + 1)
+	if deploy, ok := obj.(*appsv1.Deployment); ok && deploy.Spec.Replicas != nil {
+		deploy.Status.Replicas = *deploy.Spec.Replicas
+		deploy.Status.ReadyReplicas = *deploy.Spec.Replicas
+		deploy.Status.AvailableReplicas = *deploy.Spec.Replicas
+		deploy.Status.UpdatedReplicas = *deploy.Spec.Replicas
+		deploy.Status.ObservedGeneration = deploy.Generation
+	}
+	if vmc, ok := obj.(*vmv1beta1.VMCluster); ok {
+		vmc.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+	}
+	c.create(obj)
+	return nil
+}
+
+func (c *mockClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	return nil
+}
+
+func (c *mockClient) Status() client.StatusWriter {
+	return &mockStatusWriter{client: c}
+}
+
+type mockStatusWriter struct {
+	client *mockClient
+}
+
+func (w *mockStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	w.client.create(obj)
+	return nil
+}
+
+func (w *mockStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	return nil
+}
+
+func (w *mockStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	return nil
+}
+
+func TestCreateOrUpdate_StatusGenerationUpdate(t *testing.T) {
+	// Skip waiting for metrics which requires network access to pods
+	t.Setenv("E2E_TEST", "true")
+
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+	_ = vmv1alpha1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
+	_ = appsv1.AddToScheme(scheme)
+
+	ctx := context.Background()
+
+	t.Run("updates generation in status after update", func(t *testing.T) {
+		vmCluster := &vmv1beta1.VMCluster{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "VMCluster",
+				APIVersion: vmv1beta1.GroupVersion.String(),
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "test-cluster",
+				Namespace:  "default",
+				Generation: 0,
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod: "1d",
+			},
+		}
+
+		cr := &vmv1alpha1.VMDistributedCluster{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "VMDistributedCluster",
+				APIVersion: vmv1alpha1.GroupVersion.String(),
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-distributed",
+				Namespace: "default",
+			},
+			Spec: vmv1alpha1.VMDistributedClusterSpec{
+				VMAgent: vmv1alpha1.VMAgentNameAndSpec{
+					Name: "test-vmagent",
+				},
+				VMAuth: vmv1alpha1.VMAuthNameAndSpec{
+					Name: "test-vmauth",
+					Spec: &vmv1beta1.VMAuthLoadBalancerSpec{},
+				},
+				ReadyDeadline:   &metav1.Duration{Duration: time.Millisecond},
+				ZoneUpdatePause: &metav1.Duration{Duration: time.Millisecond},
+				Zones: vmv1alpha1.ZoneSpec{
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Name: "test-cluster",
+							Spec: &vmv1beta1.VMClusterSpec{
+								RetentionPeriod: "2d", // Changed to trigger update
+							},
+						},
+					},
+				},
+			},
+			Status: vmv1alpha1.VMDistributedClusterStatus{
+				VMClusterInfo: []vmv1alpha1.VMClusterStatus{
+					{
+						VMClusterName: "test-cluster",
+						Generation:    0,
+					},
+				},
+			},
+		}
+
+		client := newMockClient(scheme, vmCluster, cr)
+
+		// Call CreateOrUpdate
+		err := CreateOrUpdate(ctx, cr, client, scheme, time.Second)
+		assert.NoError(t, err)
+
+		// Check if the in-memory CR status has the correct generation
+		if assert.Len(t, cr.Status.VMClusterInfo, 1) {
+			assert.Equal(t, "test-cluster", cr.Status.VMClusterInfo[0].VMClusterName)
+			assert.Equal(t, int64(1), cr.Status.VMClusterInfo[0].Generation)
+		}
+	})
+
+	t.Run("updates generation in status after create", func(t *testing.T) {
+		cr := &vmv1alpha1.VMDistributedCluster{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "VMDistributedCluster",
+				APIVersion: vmv1alpha1.GroupVersion.String(),
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-distributed-create",
+				Namespace: "default",
+			},
+			Spec: vmv1alpha1.VMDistributedClusterSpec{
+				VMAgent: vmv1alpha1.VMAgentNameAndSpec{
+					Name: "test-vmagent",
+				},
+				VMAuth: vmv1alpha1.VMAuthNameAndSpec{
+					Name: "test-vmauth",
+					Spec: &vmv1beta1.VMAuthLoadBalancerSpec{},
+				},
+				ReadyDeadline:   &metav1.Duration{Duration: time.Millisecond},
+				ZoneUpdatePause: &metav1.Duration{Duration: time.Millisecond},
+				Zones: vmv1alpha1.ZoneSpec{
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Name: "test-cluster-new",
+							Spec: &vmv1beta1.VMClusterSpec{
+								RetentionPeriod: "1d",
+							},
+						},
+					},
+				},
+			},
+			Status: vmv1alpha1.VMDistributedClusterStatus{
+				VMClusterInfo: []vmv1alpha1.VMClusterStatus{
+					{
+						VMClusterName: "test-cluster-new",
+						Generation:    0,
+					},
+				},
+			},
+		}
+
+		client := newMockClient(scheme, cr)
+
+		// Call CreateOrUpdate
+		err := CreateOrUpdate(ctx, cr, client, scheme, time.Second)
+		assert.NoError(t, err)
+
+		if assert.Len(t, cr.Status.VMClusterInfo, 1) {
+			assert.Equal(t, "test-cluster-new", cr.Status.VMClusterInfo[0].VMClusterName)
+			// For a newly created object in mock client, generation is 1
+			assert.Equal(t, int64(1), cr.Status.VMClusterInfo[0].Generation)
+		}
+	})
+
+	t.Run("updates status when generation mismatch detected", func(t *testing.T) {
+		vmCluster := &vmv1beta1.VMCluster{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "VMCluster",
+				APIVersion: vmv1beta1.GroupVersion.String(),
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "test-cluster",
+				Namespace:  "default",
+				Generation: 5,
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod: "1d",
+			},
+		}
+
+		cr := &vmv1alpha1.VMDistributedCluster{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "VMDistributedCluster",
+				APIVersion: vmv1alpha1.GroupVersion.String(),
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-distributed",
+				Namespace: "default",
+			},
+			Spec: vmv1alpha1.VMDistributedClusterSpec{
+				VMAgent: vmv1alpha1.VMAgentNameAndSpec{
+					Name: "test-vmagent",
+				},
+				VMAuth: vmv1alpha1.VMAuthNameAndSpec{
+					Name: "test-vmauth",
+					Spec: &vmv1beta1.VMAuthLoadBalancerSpec{},
+				},
+				ReadyDeadline:   &metav1.Duration{Duration: time.Millisecond},
+				ZoneUpdatePause: &metav1.Duration{Duration: time.Millisecond},
+				Zones: vmv1alpha1.ZoneSpec{
+					VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+						{
+							Name: "test-cluster",
+							Spec: &vmv1beta1.VMClusterSpec{
+								RetentionPeriod: "1d",
+							},
+						},
+					},
+				},
+			},
+			Status: vmv1alpha1.VMDistributedClusterStatus{
+				VMClusterInfo: []vmv1alpha1.VMClusterStatus{
+					{
+						VMClusterName: "test-cluster",
+						Generation:    2, // Old generation
+					},
+				},
+			},
+		}
+
+		client := newMockClient(scheme, vmCluster, cr)
+
+		// Call CreateOrUpdate
+		err := CreateOrUpdate(ctx, cr, client, scheme, time.Second)
+		// We expect an error here because generation changed
+		assert.ErrorContains(t, err, "unexpected generations or zones config change detected")
+
+		// Check if the in-memory CR status has the correct generation
+		if assert.Len(t, cr.Status.VMClusterInfo, 1) {
+			assert.Equal(t, "test-cluster", cr.Status.VMClusterInfo[0].VMClusterName)
+			assert.Equal(t, int64(5), cr.Status.VMClusterInfo[0].Generation)
+		}
 	})
 }

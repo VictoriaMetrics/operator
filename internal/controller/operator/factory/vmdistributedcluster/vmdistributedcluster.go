@@ -199,6 +199,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			if err := rclient.Create(ctx, vmClusterObj); err != nil {
 				return fmt.Errorf("failed to create vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 			}
+			cr.Status.VMClusterInfo[i].Generation = vmClusterObj.Generation
 			// No further action needed after creation
 			continue
 		}
@@ -206,6 +207,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		// Apply the updated object
 		if err := rclient.Update(ctx, vmClusterObj); err != nil {
 			return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
+		}
+		cr.Status.VMClusterInfo[i].Generation = vmClusterObj.Generation
+
+		// Record new vmcluster generations
+		if err := rclient.Status().Update(ctx, cr); err != nil {
+			return fmt.Errorf("failed to update status: %w", err)
 		}
 
 		if !modifiedSpec {
@@ -289,6 +296,12 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 					Namespace: namespace,
 				},
 				Spec: *vmClusterObjOrRef.Spec.DeepCopy(),
+			}
+			// We try to fetch the object to get the current state (Generation, etc)
+			if err := rclient.Get(ctx, types.NamespacedName{Name: vmClusterObjOrRef.Name, Namespace: namespace}, vmClusters[i]); err != nil {
+				if !k8serrors.IsNotFound(err) {
+					return nil, fmt.Errorf("failed to fetch vmcluster %s: %w", vmClusterObjOrRef.Name, err)
+				}
 			}
 		default:
 			return nil, fmt.Errorf("invalid VMClusterRefOrSpec at index %d: neither Ref nor Spec is set", i)

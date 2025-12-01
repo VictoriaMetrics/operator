@@ -1,16 +1,16 @@
 apiVersion: operator.victoriametrics.com/v1alpha1
 kind: VMDistributedCluster
 metadata:
-  labels:
-    app.kubernetes.io/name: victoriametrics-operator
   name: vmdistributedcluster-sample-override-versions
 spec:
   vmagent:
-    name: vmagent-sample
-  vmusers:
-    - name: vmuser-us-east-1
-    - name: vmuser-us-west-2
-    - name: vmuser-eu-west-1
+    name: global-write-vmagent
+    spec:
+      replicaCount: 1
+  vmauth:
+    name: global-read-vmauth
+    spec:
+      replicaCount: 1
   zones:
     vmclusters:
     - ref:

@@ -79,6 +79,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "http://victoria-metrics-single:8428/api/v1/write",
+						},
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, vmAgent)).To(Succeed(), "must create managed vm-agent before test")

@@ -1,7 +1,6 @@
 package build
 
 import (
-	"fmt"
 	"sort"
 	"testing"
 
@@ -41,220 +40,168 @@ func (t testBuildProbeCR) ProbeNeedLiveness() bool {
 }
 
 func Test_buildProbe(t *testing.T) {
-	type args struct {
+	type opts struct {
 		container corev1.Container
 		cr        testBuildProbeCR
+		validate  func(corev1.Container) error
 	}
-	tests := []struct {
-		name     string
-		args     args
-		validate func(corev1.Container) error
-	}{
-		{
-			name: "build default probe with empty ep",
-			args: args{
-				cr: testBuildProbeCR{
-					probePath: func() string {
-						return "/health"
-					},
-					port:            "8051",
-					needAddLiveness: true,
-					scheme:          "HTTP",
-				},
-				container: corev1.Container{},
+
+	f := func(o opts) {
+		t.Helper()
+		got := Probe(o.container, o.cr)
+		assert.NoError(t, o.validate(got))
+	}
+
+	// build default probe with empty ep
+	f(opts{
+		cr: testBuildProbeCR{
+			probePath: func() string {
+				return "/health"
 			},
-			validate: func(container corev1.Container) error {
-				if container.LivenessProbe == nil {
-					return fmt.Errorf("want liveness to be not nil")
-				}
-				if container.ReadinessProbe == nil {
-					return fmt.Errorf("want readinessProbe to be not nil")
-				}
-				if container.ReadinessProbe.HTTPGet.Scheme != "HTTP" {
-					return fmt.Errorf("expect scheme to be HTTP got: %s", container.ReadinessProbe.HTTPGet.Scheme)
-				}
-				return nil
-			},
+			port:            "8051",
+			needAddLiveness: true,
+			scheme:          "HTTP",
 		},
-		{
-			name: "build default probe with empty ep using HTTPS",
-			args: args{
-				cr: testBuildProbeCR{
-					probePath: func() string {
-						return "/health"
-					},
-					port:            "8051",
-					needAddLiveness: true,
-					scheme:          "HTTPS",
-				},
-				container: corev1.Container{},
-			},
-			validate: func(container corev1.Container) error {
-				if container.LivenessProbe == nil {
-					return fmt.Errorf("want liveness to be not nil")
-				}
-				if container.ReadinessProbe == nil {
-					return fmt.Errorf("want readinessProbe to be not nil")
-				}
-				if container.LivenessProbe.HTTPGet.Scheme != "HTTPS" {
-					return fmt.Errorf("expect scheme to be HTTPS got: %s", container.LivenessProbe.HTTPGet.Scheme)
-				}
-				if container.ReadinessProbe.HTTPGet.Scheme != "HTTPS" {
-					return fmt.Errorf("expect scheme to be HTTPS got: %s", container.ReadinessProbe.HTTPGet.Scheme)
-				}
-				return nil
-			},
+		container: corev1.Container{},
+		validate: func(container corev1.Container) error {
+			assert.NotNil(t, container.LivenessProbe)
+			assert.NotNil(t, container.ReadinessProbe)
+			assert.Equal(t, corev1.URIScheme("HTTP"), container.ReadinessProbe.HTTPGet.Scheme)
+			return nil
 		},
-		{
-			name: "build default probe with ep",
-			args: args{
-				cr: testBuildProbeCR{
-					probePath: func() string {
-						return "/health"
-					},
-					port:            "8051",
-					needAddLiveness: true,
-					ep: &vmv1beta1.EmbeddedProbes{
-						ReadinessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								Exec: &corev1.ExecAction{
-									Command: []string{"echo", "1"},
-								},
-							},
-						},
-						StartupProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Host: "some",
-								},
-							},
-						},
-						LivenessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Path: "/live1",
-								},
-							},
-							TimeoutSeconds:      15,
-							InitialDelaySeconds: 20,
+	})
+
+	// build default probe with empty ep using HTTPS
+	f(opts{
+		cr: testBuildProbeCR{
+			probePath: func() string {
+				return "/health"
+			},
+			port:            "8051",
+			needAddLiveness: true,
+			scheme:          "HTTPS",
+		},
+		container: corev1.Container{},
+		validate: func(container corev1.Container) error {
+			assert.NotNil(t, container.LivenessProbe)
+			assert.Equal(t, corev1.URIScheme("HTTPS"), container.LivenessProbe.HTTPGet.Scheme)
+			assert.NotNil(t, container.ReadinessProbe)
+			assert.Equal(t, corev1.URIScheme("HTTPS"), container.ReadinessProbe.HTTPGet.Scheme)
+			return nil
+		},
+	})
+
+	// build default probe with ep
+	f(opts{
+		cr: testBuildProbeCR{
+			probePath: func() string {
+				return "/health"
+			},
+			port:            "8051",
+			needAddLiveness: true,
+			ep: &vmv1beta1.EmbeddedProbes{
+				ReadinessProbe: &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						Exec: &corev1.ExecAction{
+							Command: []string{"echo", "1"},
 						},
 					},
 				},
-				container: corev1.Container{},
-			},
-			validate: func(container corev1.Container) error {
-				if container.LivenessProbe == nil {
-					return fmt.Errorf("want liveness to be not nil")
-				}
-				if container.ReadinessProbe == nil {
-					return fmt.Errorf("want readinessProbe to be not nil")
-				}
-				if container.StartupProbe == nil {
-					return fmt.Errorf("want startupProbe to be not nil")
-				}
-				if len(container.ReadinessProbe.Exec.Command) != 2 {
-					return fmt.Errorf("want exec args: %d, got: %v", 2, container.ReadinessProbe.Exec.Command)
-				}
-				if container.StartupProbe.HTTPGet.Host != "some" {
-					return fmt.Errorf("want host: %s, got: %s", "some", container.StartupProbe.HTTPGet.Host)
-				}
-				if container.LivenessProbe.HTTPGet.Path != "/live1" {
-					return fmt.Errorf("unexpected path, got: %s, want: %v", container.LivenessProbe.HTTPGet.Path, "/live1")
-				}
-				if container.LivenessProbe.InitialDelaySeconds != 20 {
-					return fmt.Errorf("unexpected delay, got: %d, want: %d", container.LivenessProbe.InitialDelaySeconds, 20)
-				}
-				if container.LivenessProbe.TimeoutSeconds != 15 {
-					return fmt.Errorf("unexpected timeout, got: %d, want: %d", container.LivenessProbe.TimeoutSeconds, 15)
-				}
-				return nil
+				StartupProbe: &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Host: "some",
+						},
+					},
+				},
+				LivenessProbe: &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/live1",
+						},
+					},
+					TimeoutSeconds:      15,
+					InitialDelaySeconds: 20,
+				},
 			},
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := Probe(tt.args.container, tt.args.cr)
-			if err := tt.validate(got); err != nil {
-				t.Errorf("buildProbe() unexpected error: %v", err)
-			}
-		})
-	}
+		container: corev1.Container{},
+		validate: func(container corev1.Container) error {
+			assert.NotNil(t, container.LivenessProbe)
+			assert.Equal(t, "/live1", container.LivenessProbe.HTTPGet.Path)
+			assert.Equal(t, int32(20), container.LivenessProbe.InitialDelaySeconds)
+			assert.Equal(t, int32(15), container.LivenessProbe.TimeoutSeconds)
+			assert.NotNil(t, container.ReadinessProbe)
+			assert.Len(t, container.ReadinessProbe.Exec.Command, 2)
+			assert.NotNil(t, container.StartupProbe)
+			assert.Equal(t, "some", container.StartupProbe.HTTPGet.Host)
+			return nil
+		},
+	})
 }
 
 func Test_addExtraArgsOverrideDefaults(t *testing.T) {
-	type args struct {
+	type opts struct {
 		args      []string
 		extraArgs map[string]string
 		dashes    string
+		want      []string
 	}
-	tests := []struct {
-		name string
-		args args
-		want []string
-	}{
-		{
-			name: "no changes",
-			args: args{
-				args:   []string{"-http.ListenAddr=:8081"},
-				dashes: "-",
-			},
-			want: []string{"-http.ListenAddr=:8081"},
-		},
-		{
-			name: "override default",
-			args: args{
-				args:      []string{"-http.ListenAddr=:8081"},
-				extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
-				dashes:    "-",
-			},
-			want: []string{"-http.ListenAddr=127.0.0.1:8085"},
-		},
-		{
-			name: "override default, add to the end",
-			args: args{
-				args:      []string{"-http.ListenAddr=:8081", "-promscrape.config=/opt/vmagent.yml"},
-				extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
-				dashes:    "-",
-			},
-			want: []string{"-promscrape.config=/opt/vmagent.yml", "-http.ListenAddr=127.0.0.1:8085"},
-		},
-		{
-			name: "two dashes, extend",
-			args: args{
-				args:      []string{"--web.timeout=0"},
-				extraArgs: map[string]string{"log.level": "debug"},
-				dashes:    "--",
-			},
-			want: []string{"--web.timeout=0", "--log.level=debug"},
-		},
-		{
-			name: "two dashes, override default",
-			args: args{
-				args:      []string{"--log.level=info"},
-				extraArgs: map[string]string{"log.level": "debug"},
-				dashes:    "--",
-			},
-			want: []string{"--log.level=debug"},
-		},
-		{
-			name: "two dashes, alertmanager migration",
-			args: args{
-				args:      []string{"--log.level=info"},
-				extraArgs: map[string]string{"-web.externalURL": "http://domain.example"},
-				dashes:    "--",
-			},
-			want: []string{"--log.level=info", "--web.externalURL=http://domain.example"},
-		},
+	f := func(o opts) {
+		t.Helper()
+		assert.Equalf(
+			t,
+			o.want,
+			AddExtraArgsOverrideDefaults(o.args, o.extraArgs, o.dashes),
+			"addExtraArgsOverrideDefaults(%v, %v)", o.args, o.extraArgs)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(
-				t,
-				tt.want,
-				AddExtraArgsOverrideDefaults(tt.args.args, tt.args.extraArgs, tt.args.dashes),
-				"addExtraArgsOverrideDefaults(%v, %v)", tt.args.args, tt.args.extraArgs)
-		})
-	}
+
+	// no changes
+	f(opts{
+		args:   []string{"-http.ListenAddr=:8081"},
+		dashes: "-",
+		want:   []string{"-http.ListenAddr=:8081"},
+	})
+
+	// override default
+	f(opts{
+		args:      []string{"-http.ListenAddr=:8081"},
+		extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
+		dashes:    "-",
+		want:      []string{"-http.ListenAddr=127.0.0.1:8085"},
+	})
+
+	// override default, add to the end
+	f(opts{
+		args:      []string{"-http.ListenAddr=:8081", "-promscrape.config=/opt/vmagent.yml"},
+		extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
+		dashes:    "-",
+		want:      []string{"-promscrape.config=/opt/vmagent.yml", "-http.ListenAddr=127.0.0.1:8085"},
+	})
+
+	// two dashes, extend
+	f(opts{
+		args:      []string{"--web.timeout=0"},
+		extraArgs: map[string]string{"log.level": "debug"},
+		dashes:    "--",
+		want:      []string{"--web.timeout=0", "--log.level=debug"},
+	})
+
+	// two dashes, override default
+	f(opts{
+		args:      []string{"--log.level=info"},
+		extraArgs: map[string]string{"log.level": "debug"},
+		dashes:    "--",
+		want:      []string{"--log.level=debug"},
+	})
+
+	// two dashes, alertmanager migration
+	f(opts{
+		args:      []string{"--log.level=info"},
+		extraArgs: map[string]string{"-web.externalURL": "http://domain.example"},
+		dashes:    "--",
+		want:      []string{"--log.level=info", "--web.externalURL=http://domain.example"},
+	})
 }
 
 func TestFormatContainerImage(t *testing.T) {

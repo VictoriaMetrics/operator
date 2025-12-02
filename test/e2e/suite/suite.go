@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
+	"github.com/onsi/gomega/format"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"go.uber.org/zap/zapcore"
@@ -80,6 +81,7 @@ func StopClient() {
 //
 // Must be called once
 func InitOperatorProcess() {
+	format.MaxLength = 50000
 	l := zap.New(zap.WriteTo(GinkgoWriter), zap.Level(zapcore.DebugLevel))
 	logf.SetLogger(l)
 

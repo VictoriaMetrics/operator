@@ -263,7 +263,6 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 	}
 	var prevSA *corev1.ServiceAccount

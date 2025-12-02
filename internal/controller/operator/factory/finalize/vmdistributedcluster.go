@@ -2,10 +2,12 @@ package finalize
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -13,76 +15,54 @@ import (
 )
 
 // OnVMDistributedClusterDelete removes all objects related to vmdistributedcluster component
-func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, obj *vmv1alpha1.VMDistributedCluster) error {
-	// Remove created VMAgent
-	vmagent := &vmv1beta1.VMAgent{}
-	if err := rclient.Get(ctx, client.ObjectKey{Name: obj.Spec.VMAgent.Name, Namespace: obj.Namespace}, vmagent); err == nil {
-		if err := rclient.Delete(ctx, vmagent); err != nil {
-			return err
-		}
+func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster) error {
+	ns := cr.GetNamespace()
+	vmAgentMeta := metav1.ObjectMeta{
+		Namespace: ns,
+		Name:      cr.Spec.VMAgent.Name,
 	}
-
-	lbPrefixedName := obj.PrefixedName(vmv1beta1.ClusterComponentBalancer)
-	// Remove vmauthlb deployment
-	vmauthlb := &appsv1.Deployment{}
-	if err := rclient.Get(ctx, client.ObjectKey{Name: lbPrefixedName, Namespace: obj.Namespace}, vmauthlb); err == nil {
-		if err := rclient.Delete(ctx, vmauthlb); err != nil {
-			return err
-		}
+	vmAuthLBMeta := metav1.ObjectMeta{
+		Namespace: ns,
+		Name:      cr.Spec.VMAuth.Name,
 	}
-
-	// Remove vmauthlb service
-	vmauthlbService := &corev1.Service{}
-	if err := rclient.Get(ctx, client.ObjectKey{Name: obj.Spec.VMAuth.Name, Namespace: obj.Namespace}, vmauthlbService); err == nil {
-		if err := rclient.Delete(ctx, vmauthlbService); err != nil {
-			return err
-		}
+	vmAuthLBPrefixedMeta := metav1.ObjectMeta{
+		Namespace: ns,
+		Name:      cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
 	}
-
-	// Remove vmauthlb serviceaccount
-	vmauthlbServiceAccount := &corev1.ServiceAccount{}
-	if err := rclient.Get(ctx, client.ObjectKey{Name: obj.GetServiceAccountName(), Namespace: obj.Namespace}, vmauthlbServiceAccount); err == nil {
-		if err := rclient.Delete(ctx, vmauthlbServiceAccount); err != nil {
-			return err
-		}
+	objsToRemove := []client.Object{
+		&vmv1beta1.VMAgent{ObjectMeta: vmAgentMeta},
+		&appsv1.Deployment{ObjectMeta: vmAuthLBPrefixedMeta},
+		&corev1.Service{ObjectMeta: vmAuthLBMeta},
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.GetServiceAccountName(),
+			Namespace: ns,
+		}},
+		&corev1.Secret{ObjectMeta: vmAuthLBPrefixedMeta},
+		&vmv1beta1.VMServiceScrape{ObjectMeta: vmAuthLBMeta},
+		&policyv1.PodDisruptionBudget{ObjectMeta: vmAuthLBPrefixedMeta},
 	}
-
-	// Remove vmauthlb secret
-	vmauthlbSecret := &corev1.Secret{}
-	if err := rclient.Get(ctx, client.ObjectKey{Name: lbPrefixedName, Namespace: obj.Namespace}, vmauthlbSecret); err == nil {
-		if err := rclient.Delete(ctx, vmauthlbSecret); err != nil {
-			return err
-		}
-	}
-
-	// Remove vmauthlb servicescraper
-	vmauthlbServiceScraper := &vmv1beta1.VMServiceScrape{}
-	if err := rclient.Get(ctx, client.ObjectKey{Name: obj.Spec.VMAuth.Name, Namespace: obj.Namespace}, vmauthlbServiceScraper); err == nil {
-		if err := rclient.Delete(ctx, vmauthlbServiceScraper); err != nil {
-			return err
-		}
-	}
-
-	// Remove vmauthlb PDB
-	vmauthlbPDB := &policyv1.PodDisruptionBudget{}
-	if err := rclient.Get(ctx, client.ObjectKey{Name: lbPrefixedName, Namespace: obj.Namespace}, vmauthlbPDB); err == nil {
-		if err := rclient.Delete(ctx, vmauthlbPDB); err != nil {
-			return err
+	owner := cr.AsOwner()
+	for _, objToRemove := range objsToRemove {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
+			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}
 
 	// Remove created VMClusters
-	for _, vmclusterSpec := range obj.Spec.Zones.VMClusters {
+	for _, vmclusterSpec := range cr.Spec.Zones.VMClusters {
 		if vmclusterSpec.Ref != nil {
 			continue
 		}
-		vmcluster := &vmv1beta1.VMCluster{}
-		if err := rclient.Get(ctx, client.ObjectKey{Name: vmclusterSpec.Name, Namespace: obj.Namespace}, vmcluster); err == nil {
-			if err := rclient.Delete(ctx, vmcluster); err != nil {
-				return err
-			}
+		vmcluster := &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmclusterSpec.Name,
+				Namespace: cr.Namespace,
+			},
+		}
+		if err := SafeDeleteWithFinalizer(ctx, rclient, vmcluster, &owner); err != nil {
+			return fmt.Errorf("failed to remove vmcluster %s: %w", vmclusterSpec.Name, err)
 		}
 	}
 
-	return nil
+	return removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace)
 }

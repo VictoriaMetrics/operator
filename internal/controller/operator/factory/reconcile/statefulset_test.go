@@ -19,375 +19,340 @@ import (
 )
 
 func Test_waitForPodReady(t *testing.T) {
-	type args struct {
-		ns             string
-		podName        string
-		desiredVersion string
-	}
-	tests := []struct {
-		name              string
-		args              args
+	type opts struct {
+		ns                string
+		podName           string
+		desiredVersion    string
 		wantErr           bool
 		predefinedObjects []runtime.Object
-	}{
-		{
-			name: "testing pod with unready status",
-			args: args{
-				ns:      "default",
-				podName: "vmselect-example-0",
-			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-example-0",
-						Namespace: "default",
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{},
-						Phase:      corev1.PodPending,
-					},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-example-1",
-						Namespace: "default",
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{},
-						Phase:      corev1.PodPending,
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "testing pod with ready status",
-			args: args{
-				ns:      "default",
-				podName: "vmselect-example-0",
-			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-example-0",
-						Namespace: "default",
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{Status: "True", Type: corev1.PodReady},
-						},
-						Phase: corev1.PodRunning,
-					},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-example-1",
-						Namespace: "default",
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{},
-						Phase:      corev1.PodPending,
-					},
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "with desiredVersion",
-			args: args{
-				ns:             "default",
-				podName:        "vmselect-example-0",
-				desiredVersion: "some-version",
-			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-example-0",
-						Namespace: "default",
-						Labels: map[string]string{
-							podRevisionLabel: "some-version",
-						},
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{Status: "True", Type: corev1.PodReady},
-						},
-						Phase: corev1.PodRunning,
-					},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-example-1",
-						Namespace: "default",
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{},
-						Phase:      corev1.PodPending,
-					},
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "with missing desiredVersion",
-			args: args{
-				ns:             "default",
-				podName:        "vmselect-example-0",
-				desiredVersion: "some-version",
-			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-example-0",
-						Namespace: "default",
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{Status: "True", Type: corev1.PodReady},
-						},
-						Phase: corev1.PodRunning,
-					},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-example-1",
-						Namespace: "default",
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{},
-						Phase:      corev1.PodPending,
-					},
-				},
-			},
-			wantErr: true,
-		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+	f := func(o opts) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 
-			nsn := types.NamespacedName{Namespace: tt.args.ns, Name: tt.args.podName}
-			if err := waitForPodReady(context.Background(), fclient, nsn, tt.args.desiredVersion, 0); (err != nil) != tt.wantErr {
-				t.Errorf("waitForPodReady() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+		nsn := types.NamespacedName{Namespace: o.ns, Name: o.podName}
+		if err := waitForPodReady(context.Background(), fclient, nsn, o.desiredVersion, 0); (err != nil) != o.wantErr {
+			t.Errorf("waitForPodReady() error = %v, wantErr %v", err, o.wantErr)
+		}
 	}
+
+	// testing pod with unready status
+	f(opts{
+		ns:      "default",
+		podName: "vmselect-example-0",
+		predefinedObjects: []runtime.Object{
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-example-0",
+					Namespace: "default",
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{},
+					Phase:      corev1.PodPending,
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-example-1",
+					Namespace: "default",
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{},
+					Phase:      corev1.PodPending,
+				},
+			},
+		},
+		wantErr: true,
+	})
+
+	// testing pod with ready status
+	f(opts{
+		ns:      "default",
+		podName: "vmselect-example-0",
+		predefinedObjects: []runtime.Object{
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-example-0",
+					Namespace: "default",
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{Status: "True", Type: corev1.PodReady},
+					},
+					Phase: corev1.PodRunning,
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-example-1",
+					Namespace: "default",
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{},
+					Phase:      corev1.PodPending,
+				},
+			},
+		},
+	})
+
+	// with desiredVersion
+	f(opts{
+		ns:             "default",
+		podName:        "vmselect-example-0",
+		desiredVersion: "some-version",
+		predefinedObjects: []runtime.Object{
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-example-0",
+					Namespace: "default",
+					Labels: map[string]string{
+						podRevisionLabel: "some-version",
+					},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{Status: "True", Type: corev1.PodReady},
+					},
+					Phase: corev1.PodRunning,
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-example-1",
+					Namespace: "default",
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{},
+					Phase:      corev1.PodPending,
+				},
+			},
+		},
+	})
+
+	// with missing desiredVersion
+	f(opts{
+		ns:             "default",
+		podName:        "vmselect-example-0",
+		desiredVersion: "some-version",
+		predefinedObjects: []runtime.Object{
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-example-0",
+					Namespace: "default",
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{Status: "True", Type: corev1.PodReady},
+					},
+					Phase: corev1.PodRunning,
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-example-1",
+					Namespace: "default",
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{},
+					Phase:      corev1.PodPending,
+				},
+			},
+		},
+		wantErr: true,
+	})
 }
 
 func Test_podIsReady(t *testing.T) {
-	type args struct {
+	type opts struct {
 		pod             corev1.Pod
 		minReadySeconds int32
+		want            bool
 	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "pod is ready",
-			args: args{
-				pod: corev1.Pod{
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodInitialized,
-								Status: "False",
-							},
-							{
-								Type:   corev1.PodReady,
-								Status: "True",
-							},
-						},
-						Phase: corev1.PodRunning,
-					},
-				},
-			},
-			want: true,
-		},
-		{
-			name: "pod is unready",
-			args: args{
-				pod: corev1.Pod{
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodInitialized,
-								Status: "False",
-							},
-							{
-								Type:   corev1.PodReady,
-								Status: "True",
-							},
-						},
-						Phase: corev1.PodPending,
-					},
-				},
-			},
-			want: false,
-		},
-		{
-			name: "pod is deleted",
-			args: args{
-				pod: corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						DeletionTimestamp: &metav1.Time{},
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodInitialized,
-								Status: "False",
-							},
-							{
-								Type:   corev1.PodReady,
-								Status: "True",
-							},
-						},
-						Phase: corev1.PodSucceeded,
-					},
-				},
-			},
-			want: false,
-		},
-		{
-			name: "pod is not min ready",
-			args: args{
-				pod: corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						DeletionTimestamp: &metav1.Time{},
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodInitialized,
-								Status: "False",
-							},
-							{
-								Type:               corev1.PodReady,
-								Status:             "True",
-								LastTransitionTime: metav1.Time{Time: time.Now().Add(time.Hour)},
-							},
-						},
-						Phase: corev1.PodSucceeded,
-					},
-				},
-				minReadySeconds: 45,
-			},
-			want: false,
-		},
+	f := func(o opts) {
+		t.Helper()
+		if got := PodIsReady(&o.pod, o.minReadySeconds); got != o.want {
+			t.Errorf("PodIsReady() = %v, want %v", got, o.want)
+		}
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := PodIsReady(&tt.args.pod, tt.args.minReadySeconds); got != tt.want {
-				t.Errorf("PodIsReady() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+
+	// pod is ready
+	f(opts{
+		pod: corev1.Pod{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodInitialized,
+						Status: "False",
+					},
+					{
+						Type:   corev1.PodReady,
+						Status: "True",
+					},
+				},
+				Phase: corev1.PodRunning,
+			},
+		},
+		want: true,
+	})
+
+	// pod is unready
+	f(opts{
+		pod: corev1.Pod{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodInitialized,
+						Status: "False",
+					},
+					{
+						Type:   corev1.PodReady,
+						Status: "True",
+					},
+				},
+				Phase: corev1.PodPending,
+			},
+		},
+	})
+
+	// pod is deleted
+	f(opts{
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				DeletionTimestamp: &metav1.Time{},
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodInitialized,
+						Status: "False",
+					},
+					{
+						Type:   corev1.PodReady,
+						Status: "True",
+					},
+				},
+				Phase: corev1.PodSucceeded,
+			},
+		},
+	})
+	// pod is not min ready
+	f(opts{
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				DeletionTimestamp: &metav1.Time{},
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodInitialized,
+						Status: "False",
+					},
+					{
+						Type:               corev1.PodReady,
+						Status:             "True",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(time.Hour)},
+					},
+				},
+				Phase: corev1.PodSucceeded,
+			},
+		},
+		minReadySeconds: 45,
+	})
 }
 
 func Test_performRollingUpdateOnSts(t *testing.T) {
-	type args struct {
+	type opts struct {
 		stsName           string
 		ns                string
 		podLabels         map[string]string
 		podMaxUnavailable int
-	}
-	tests := []struct {
-		name              string
-		args              args
 		wantErr           bool
 		predefinedObjects []runtime.Object
-		neededPodRev      string
-	}{
-		{
-			name: "rolling update is not needed",
-			args: args{
-				stsName:           "vmselect-sts",
-				ns:                "default",
-				podLabels:         map[string]string{"app": "vmselect"},
-				podMaxUnavailable: 1,
-			},
-			predefinedObjects: []runtime.Object{
-				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-sts",
-						Namespace: "default",
-						Labels:    map[string]string{"app": "vmselect"},
-					},
-					Status: appsv1.StatefulSetStatus{
-						CurrentRevision: "rev1",
-						UpdateRevision:  "rev1",
-					},
+	}
+	f := func(o opts) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+
+		if err := performRollingUpdateOnSts(context.Background(), false, fclient, o.stsName, o.ns, o.podLabels, o.podMaxUnavailable); (err != nil) != o.wantErr {
+			t.Errorf("performRollingUpdateOnSts() error = %v, wantErr %v", err, o.wantErr)
+		}
+	}
+
+	// rolling update is not needed
+	f(opts{
+		stsName:           "vmselect-sts",
+		ns:                "default",
+		podLabels:         map[string]string{"app": "vmselect"},
+		podMaxUnavailable: 1,
+		predefinedObjects: []runtime.Object{
+			&appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
 				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-sts-0",
-						Namespace: "default",
-						Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
-					},
-					Status: corev1.PodStatus{
-						Phase: corev1.PodRunning,
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodReady,
-								Status: "True",
-							},
+				Status: appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev1",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
 						},
 					},
 				},
 			},
 		},
-		{
-			name: "rolling update is timeout",
-			args: args{
-				stsName:           "vmselect-sts",
-				ns:                "default",
-				podLabels:         map[string]string{"app": "vmselect"},
-				podMaxUnavailable: 1,
-			},
-			predefinedObjects: []runtime.Object{
-				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-sts",
-						Namespace: "default",
-						Labels:    map[string]string{"app": "vmselect"},
-					},
-					Spec: appsv1.StatefulSetSpec{Replicas: ptr.To(int32(4))},
-					Status: appsv1.StatefulSetStatus{
-						CurrentRevision: "rev1",
-						UpdateRevision:  "rev2",
-					},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-sts-0",
-						Namespace: "default",
-						Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
-					},
-					Status: corev1.PodStatus{},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect-sts-1",
-						Namespace: "default",
-						Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev2"},
-					},
-					Status: corev1.PodStatus{},
-				},
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+	})
 
-			if err := performRollingUpdateOnSts(context.Background(), false, fclient, tt.args.stsName, tt.args.ns, tt.args.podLabels, tt.args.podMaxUnavailable); (err != nil) != tt.wantErr {
-				t.Errorf("performRollingUpdateOnSts() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	// rolling update is timeout
+	f(opts{
+		stsName:           "vmselect-sts",
+		ns:                "default",
+		podLabels:         map[string]string{"app": "vmselect"},
+		podMaxUnavailable: 1,
+		predefinedObjects: []runtime.Object{
+			&appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: appsv1.StatefulSetSpec{Replicas: ptr.To(int32(4))},
+				Status: appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev2",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+				},
+				Status: corev1.PodStatus{},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-1",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev2"},
+				},
+				Status: corev1.PodStatus{},
+			},
+		},
+		wantErr: true,
+	})
 }
 
 func TestSortPodsByID(t *testing.T) {
@@ -411,10 +376,12 @@ func TestSortPodsByID(t *testing.T) {
 	}
 	f(
 		podsFromNames([]string{"sts-id-15", "sts-id-13", "sts-id-1", "sts-id-0", "sts-id-2", "sts-id-25"}),
-		podsFromNames([]string{"sts-id-0", "sts-id-1", "sts-id-2", "sts-id-13", "sts-id-15", "sts-id-25"}))
+		podsFromNames([]string{"sts-id-0", "sts-id-1", "sts-id-2", "sts-id-13", "sts-id-15", "sts-id-25"}),
+	)
 	f(
 		podsFromNames([]string{"pod-1", "pod-0"}),
-		podsFromNames([]string{"pod-0", "pod-1"}))
+		podsFromNames([]string{"pod-0", "pod-1"}),
+	)
 }
 
 func TestStatefulsetReconcileOk(t *testing.T) {

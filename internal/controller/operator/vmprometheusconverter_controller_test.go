@@ -3,79 +3,69 @@ package operator
 import (
 	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func Test_mergeLabelsWithStrategy(t *testing.T) {
-	type args struct {
+	type opts struct {
 		old           map[string]string
 		new           map[string]string
 		mergeStrategy string
+		want          map[string]string
 	}
-	tests := []struct {
-		name string
-		args args
-		want map[string]string
-	}{
-		{
-			name: "delete not existing label",
-			args: args{
-				old:           map[string]string{"label1": "value1", "label2": "value2", "missinglabel": "value3"},
-				new:           map[string]string{"label1": "value1", "label2": "value4"},
-				mergeStrategy: MetaPreferProm,
-			},
-			want: map[string]string{"label1": "value1", "label2": "value4"},
-		},
-		{
-			name: "add new label",
-			args: args{
-				old:           map[string]string{"label1": "value1", "label2": "value2", "missinglabel": "value3"},
-				new:           map[string]string{"label1": "value1", "label2": "value4", "label5": "value10"},
-				mergeStrategy: MetaPreferProm,
-			},
-			want: map[string]string{"label1": "value1", "label2": "value4", "label5": "value10"},
-		},
-		{
-			name: "add new label with VM priority",
-			args: args{
-				old:           map[string]string{"label1": "value1", "label2": "value2", "label5": "value3"},
-				new:           map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
-				mergeStrategy: MetaPreferVM,
-			},
-			want: map[string]string{"label1": "value1", "label2": "value2", "label5": "value3"},
-		},
-		{
-			name: "remove all labels",
-			args: args{
-				old:           nil,
-				new:           map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
-				mergeStrategy: MetaPreferVM,
-			},
-			want: nil,
-		},
-		{
-			name: "remove keep old labels",
-			args: args{
-				old:           map[string]string{"label1": "value1", "label2": "value4"},
-				new:           nil,
-				mergeStrategy: MetaPreferVM,
-			},
-			want: map[string]string{"label1": "value1", "label2": "value4"},
-		},
-		{
-			name: "merge all labels with VMPriority",
-			args: args{
-				old:           map[string]string{"label1": "value1", "label2": "value4"},
-				new:           map[string]string{"label1": "value2", "label2": "value4", "missinglabel": "value10"},
-				mergeStrategy: MetaMergeLabelsVMPriority,
-			},
-			want: map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
-		},
+	f := func(o opts) {
+		t.Helper()
+		if got := mergeLabelsWithStrategy(o.old, o.new, o.mergeStrategy); !reflect.DeepEqual(got, o.want) {
+			t.Errorf("mergeLabelsWithStrategy(): %s", cmp.Diff(got, o.want))
+		}
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := mergeLabelsWithStrategy(tt.args.old, tt.args.new, tt.args.mergeStrategy); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("mergeLabelsWithStrategy() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+
+	// delete not existing label
+	f(opts{
+		old:           map[string]string{"label1": "value1", "label2": "value2", "missinglabel": "value3"},
+		new:           map[string]string{"label1": "value1", "label2": "value4"},
+		mergeStrategy: MetaPreferProm,
+		want:          map[string]string{"label1": "value1", "label2": "value4"},
+	})
+
+	// add new label
+	f(opts{
+		old:           map[string]string{"label1": "value1", "label2": "value2", "missinglabel": "value3"},
+		new:           map[string]string{"label1": "value1", "label2": "value4", "label5": "value10"},
+		mergeStrategy: MetaPreferProm,
+		want:          map[string]string{"label1": "value1", "label2": "value4", "label5": "value10"},
+	})
+
+	// add new label with VM priority
+	f(opts{
+		old:           map[string]string{"label1": "value1", "label2": "value2", "label5": "value3"},
+		new:           map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
+		mergeStrategy: MetaPreferVM,
+		want:          map[string]string{"label1": "value1", "label2": "value2", "label5": "value3"},
+	})
+
+	// remove all labels
+	f(opts{
+		old:           nil,
+		new:           map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
+		mergeStrategy: MetaPreferVM,
+		want:          nil,
+	})
+
+	// remove keep old labels
+	f(opts{
+		old:           map[string]string{"label1": "value1", "label2": "value4"},
+		new:           nil,
+		mergeStrategy: MetaPreferVM,
+		want:          map[string]string{"label1": "value1", "label2": "value4"},
+	})
+
+	// merge all labels with VMPriority
+	f(opts{
+		old:           map[string]string{"label1": "value1", "label2": "value4"},
+		new:           map[string]string{"label1": "value2", "label2": "value4", "missinglabel": "value10"},
+		mergeStrategy: MetaMergeLabelsVMPriority,
+		want:          map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
+	})
 }

@@ -17,27 +17,52 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	tests := []struct {
-		name              string
+	type opts struct {
 		cr                *vmv1.VMAnomaly
 		wantErr           bool
 		predefinedObjects []runtime.Object
 		expected          string
-	}{
-		{
-			name: "no custom readers and writers",
-			cr: &vmv1.VMAnomaly{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        "test-anomaly",
-					Namespace:   "monitoring",
-					Annotations: map[string]string{"not": "touch"},
-					Labels:      map[string]string{"main": "system"},
+	}
+	f := func(o opts) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(o.cr)
+		ctx := context.TODO()
+
+		cfg := map[build.ResourceKind]*build.ResourceCfg{
+			build.TLSAssetsResourceKind: {
+				MountDir:   "/test",
+				SecretName: build.ResourceName(build.TLSAssetsResourceKind, o.cr),
+			},
+		}
+		ac := build.NewAssetsCache(ctx, fclient, cfg)
+		loaded, err := Load(o.cr, ac)
+		if (err != nil) != o.wantErr {
+			t.Fatalf("Load() error = %v, wantErr %v", err, o.wantErr)
+		}
+		expected := strings.TrimSpace(o.expected)
+		got := strings.TrimSpace(string(loaded))
+		if got != expected {
+			t.Fatalf("unexpected config produced by Load(): \nexpected:\n%s\ngot:\n%s", expected, got)
+		}
+	}
+
+	// no custom readers and writers
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-anomaly",
+				Namespace:   "monitoring",
+				Annotations: map[string]string{"not": "touch"},
+				Labels:      map[string]string{"main": "system"},
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
 				},
-				Spec: vmv1.VMAnomalySpec{
-					License: &vmv1beta1.License{
-						Key: ptr.To("test"),
-					},
-					ConfigRawYaml: `
+				ConfigRawYaml: `
 models:
   model_univariate_1:
     class: 'zscore'
@@ -60,25 +85,25 @@ writer:
   class: vm
   datasource_url: "http://test.com"
 `,
-				},
 			},
-			expected: ``,
-			wantErr:  true,
 		},
-		{
-			name: "with reader, writer, monitoring and settings",
-			cr: &vmv1.VMAnomaly{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        "test-anomaly",
-					Namespace:   "monitoring",
-					Annotations: map[string]string{"not": "touch"},
-					Labels:      map[string]string{"main": "system"},
+		wantErr: true,
+	})
+
+	// with reader, writer, monitoring and settings
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-anomaly",
+				Namespace:   "monitoring",
+				Annotations: map[string]string{"not": "touch"},
+				Labels:      map[string]string{"main": "system"},
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
 				},
-				Spec: vmv1.VMAnomalySpec{
-					License: &vmv1beta1.License{
-						Key: ptr.To("test"),
-					},
-					ConfigRawYaml: `
+				ConfigRawYaml: `
 reader:
   class: vm
   datasource_url: "http://test.com"
@@ -104,89 +129,18 @@ schedulers:
 settings:
   restore_state: true
 `,
-					Monitoring: &vmv1.VMAnomalyMonitoringSpec{
-						Pull: &vmv1.VMAnomalyMonitoringPullSpec{
-							Port: "8888",
-						},
-						Push: &vmv1.VMAnomalyMonitoringPushSpec{
-							URL:           "http://monitoring",
-							PushFrequency: "20s",
-							ExtraLabels: map[string]string{
-								"label1": "value1",
-							},
-							VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-								TenantID: "0:3",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls",
-											},
-											Key: "remote-ca",
-										},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls",
-											},
-											Key: "remote-cert",
-										},
-									},
-									KeySecret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls",
-										},
-										Key: "remote-key",
-									},
-								},
-							},
-						},
+				Monitoring: &vmv1.VMAnomalyMonitoringSpec{
+					Pull: &vmv1.VMAnomalyMonitoringPullSpec{
+						Port: "8888",
 					},
-					Writer: &vmv1.VMAnomalyWritersSpec{
-						DatasourceURL: "http://write.endpoint",
-						MetricFormat: vmv1.VMAnomalyVMWriterMetricFormatSpec{
-							Name: "metrics_$VAR",
-							For:  "custom_$QUERY_KEY",
-							ExtraLabels: map[string]string{
-								"label1": "value1",
-								"label2": "value2",
-							},
+					Push: &vmv1.VMAnomalyMonitoringPushSpec{
+						URL:           "http://monitoring",
+						PushFrequency: "20s",
+						ExtraLabels: map[string]string{
+							"label1": "value1",
 						},
 						VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-							TenantID: "0:2",
-							TLSConfig: &vmv1beta1.TLSConfig{
-								CA: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls",
-										},
-										Key: "remote-ca",
-									},
-								},
-								Cert: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls",
-										},
-										Key: "remote-cert",
-									},
-								},
-								KeySecret: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "tls",
-									},
-									Key: "remote-key",
-								},
-							},
-						},
-					},
-					Reader: &vmv1.VMAnomalyReadersSpec{
-						DatasourceURL:  "http://custom.ds",
-						QueryRangePath: "/api/v1/query_range",
-						SamplingPeriod: "10s",
-						VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
-							TenantID: "0:1",
+							TenantID: "0:3",
 							TLSConfig: &vmv1beta1.TLSConfig{
 								CA: vmv1beta1.SecretOrConfigMap{
 									Secret: &corev1.SecretKeySelector{
@@ -214,21 +168,92 @@ settings:
 						},
 					},
 				},
-			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "tls",
-						Namespace: "monitoring",
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://write.endpoint",
+					MetricFormat: vmv1.VMAnomalyVMWriterMetricFormatSpec{
+						Name: "metrics_$VAR",
+						For:  "custom_$QUERY_KEY",
+						ExtraLabels: map[string]string{
+							"label1": "value1",
+							"label2": "value2",
+						},
 					},
-					Data: map[string][]byte{
-						"remote-ca":   []byte("ca"),
-						"remote-cert": []byte("cert"),
-						"remote-key":  []byte("key"),
+					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+						TenantID: "0:2",
+						TLSConfig: &vmv1beta1.TLSConfig{
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls",
+									},
+									Key: "remote-ca",
+								},
+							},
+							Cert: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls",
+									},
+									Key: "remote-cert",
+								},
+							},
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "tls",
+								},
+								Key: "remote-key",
+							},
+						},
+					},
+				},
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://custom.ds",
+					QueryRangePath: "/api/v1/query_range",
+					SamplingPeriod: "10s",
+					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+						TenantID: "0:1",
+						TLSConfig: &vmv1beta1.TLSConfig{
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls",
+									},
+									Key: "remote-ca",
+								},
+							},
+							Cert: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls",
+									},
+									Key: "remote-cert",
+								},
+							},
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "tls",
+								},
+								Key: "remote-key",
+							},
+						},
 					},
 				},
 			},
-			expected: `
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls",
+					Namespace: "monitoring",
+				},
+				Data: map[string][]byte{
+					"remote-ca":   []byte("ca"),
+					"remote-cert": []byte("cert"),
+					"remote-key":  []byte("key"),
+				},
+			},
+		},
+		expected: `
 models:
   model_univariate_1:
     class: zscore
@@ -283,33 +308,5 @@ monitoring:
 settings:
   restore_state: true
 `,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-
-			build.AddDefaults(fclient.Scheme())
-			fclient.Scheme().Default(tt.cr)
-			ctx := context.TODO()
-
-			cfg := map[build.ResourceKind]*build.ResourceCfg{
-				build.TLSAssetsResourceKind: {
-					MountDir:   "/test",
-					SecretName: build.ResourceName(build.TLSAssetsResourceKind, tt.cr),
-				},
-			}
-			ac := build.NewAssetsCache(ctx, fclient, cfg)
-			loaded, err := Load(tt.cr, ac)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("Load() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			expected := strings.TrimSpace(tt.expected)
-			got := strings.TrimSpace(string(loaded))
-			if got != expected {
-				t.Fatalf("unexpected config produced by Load(): \nexpected:\n%s\ngot:\n%s", expected, got)
-			}
-		})
-	}
+	})
 }

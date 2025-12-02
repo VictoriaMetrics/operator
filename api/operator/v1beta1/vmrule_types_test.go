@@ -75,7 +75,7 @@ var _ = Describe("VMRule Webhook", func() {
               value: "{{ $value }}"
               description: 'kafka coordinator is down'
 
-        `, `validation failed for VMRule: / group: kafka err: invalid labels for rule  "coordinator down": errors(1): key "job", template "{{ $labls.job }}": error parsing annotation template: template: :1: undefined variable "$labls"`),
+        `, `validation failed for VMRule: / group: kafka err: invalid labels for rule  "coordinator down": errors(1): (key: "job", value: "{{ $labls.job }}"): error parsing template: template: :1: undefined variable "$labls"`),
 			Entry("duplicate rules", `
       apiVersion: operator.victoriametrics.com/v1beta1
       kind: VMRule

@@ -24,449 +24,437 @@ import (
 )
 
 func TestCreateOrUpdate(t *testing.T) {
-	type args struct {
-		cr *vmv1beta1.VMCluster
-	}
-	tests := []struct {
-		name              string
-		args              args
+	type opts struct {
+		cr                *vmv1beta1.VMCluster
 		want              string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 		validate          func(vminsert *appsv1.Deployment, vmselect, vmstorage *appsv1.StatefulSet) error
-	}{
-		{
-			name: "base-vmstorage-test",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
-						Labels:    map[string]string{"label": "value"},
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(0)),
-						VMInsert: &vmv1beta1.VMInsert{
-							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
-								Annotations: map[string]string{"key": "value"},
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0)),
-							},
-						},
-						VMStorage: &vmv1beta1.VMStorage{
-							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
-								Annotations: map[string]string{"key": "value"},
-								Labels:      map[string]string{"label": "value2"},
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-
-								ReplicaCount: ptr.To(int32(2))},
-						},
-						VMSelect: &vmv1beta1.VMSelect{
-							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
-								Annotations: map[string]string{"key": "value"},
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-
-								ReplicaCount: ptr.To(int32(2))},
-						},
-					},
-				},
-			},
-			want: string(vmv1beta1.UpdateStatusExpanding),
-			predefinedObjects: []runtime.Object{
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-1", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-			},
-		},
-		{
-			name: "base-vminsert-with-ports",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-							InsertPorts: &vmv1beta1.InsertPorts{
-								GraphitePort:     "8025",
-								OpenTSDBHTTPPort: "3311",
-								InfluxPort:       "5511",
-							},
-							HPA: &vmv1beta1.EmbeddedHPA{
-								MinReplicas: ptr.To(int32(0)),
-								MaxReplicas: 3,
-							},
-						},
-					},
-				},
-			},
-			want: string(vmv1beta1.UpdateStatusExpanding),
-		},
-		{
-			name: "base-vmselect",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(2))},
-							HPA: &vmv1beta1.EmbeddedHPA{
-								MinReplicas: ptr.To(int32(1)),
-								MaxReplicas: 3,
-							},
-						},
-					},
-				},
-			},
-			want: string(vmv1beta1.UpdateStatusExpanding),
-			predefinedObjects: []runtime.Object{
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "select-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmselect", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "select-1", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmselect", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-			},
-		},
-		{
-			name: "base-vmstorage-with-maintenance",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-						},
-						VMStorage: &vmv1beta1.VMStorage{
-							MaintenanceSelectNodeIDs: []int32{1, 3},
-							MaintenanceInsertNodeIDs: []int32{0, 1, 2},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(10))},
-						},
-						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(2))},
-						},
-					},
-				},
-			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-1", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-2", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-3", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-4", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-5", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-6", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-7", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-8", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-9", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-			},
-			want: string(vmv1beta1.UpdateStatusExpanding),
-		},
-		{
-			name: "base-vmstorage-with-maintenance",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-						},
-						VMStorage: &vmv1beta1.VMStorage{
-							MaintenanceSelectNodeIDs: []int32{1, 3},
-							MaintenanceInsertNodeIDs: []int32{0, 1, 2},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(10))},
-						},
-						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(2))},
-						},
-					},
-				},
-			},
-			predefinedObjects: []runtime.Object{
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-1", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-2", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-3", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-4", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-5", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-6", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-7", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-8", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-9", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
-					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
-				},
-			},
-			want: string(vmv1beta1.UpdateStatusExpanding),
-		},
-		{
-			name: "vmcluster with load-balancing",
-			args: args{
-				cr: &vmv1beta1.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "cluster-1",
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod:   "2",
-						ReplicationFactor: ptr.To(int32(2)),
-						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
-							Enabled: true,
-							Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To(int32(0))},
-							},
-						},
-						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-						},
-						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-						},
-						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To(int32(0))},
-							InsertPorts: &vmv1beta1.InsertPorts{
-								GraphitePort:     "8025",
-								OpenTSDBHTTPPort: "3311",
-								InfluxPort:       "5511",
-							},
-						},
-					},
-				},
-			},
-			want: string(vmv1beta1.UpdateStatusExpanding),
-		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			var wg sync.WaitGroup
-			eventuallyUpdateStatusToOk := func(cb func() error) {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					tc := time.NewTicker(time.Millisecond * 100)
-					for {
-						select {
-						case <-ctx.Done():
-							return
-						case <-tc.C:
-							if err := cb(); err != nil {
-								if k8serrors.IsNotFound(err) {
-									continue
-								}
-								t.Errorf("callback error: %s", err)
-								return
+
+	f := func(o opts) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		var wg sync.WaitGroup
+		eventuallyUpdateStatusToOk := func(cb func() error) {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				tc := time.NewTicker(time.Millisecond * 100)
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-tc.C:
+						if err := cb(); err != nil {
+							if k8serrors.IsNotFound(err) {
+								continue
 							}
+							t.Errorf("callback error: %s", err)
 							return
 						}
-					}
-				}()
-			}
-			if tt.args.cr.Spec.RequestsLoadBalancer.Enabled {
-				var vmauthLB appsv1.Deployment
-				name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
-				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmauthLB); err != nil {
-						return err
-					}
-					vmauthLB.Status.Conditions = append(vmauthLB.Status.Conditions, appsv1.DeploymentCondition{
-						Type:   appsv1.DeploymentProgressing,
-						Reason: "NewReplicaSetAvailable",
-						Status: "True",
-					})
-					if err := fclient.Status().Update(ctx, &vmauthLB); err != nil {
-						return err
-					}
-
-					return nil
-				})
-
-			}
-			if tt.args.cr.Spec.VMInsert != nil {
-				var vminsert appsv1.Deployment
-				name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
-				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
-						return err
-					}
-					vminsert.Status.Conditions = append(vminsert.Status.Conditions, appsv1.DeploymentCondition{
-						Type:   appsv1.DeploymentProgressing,
-						Reason: "NewReplicaSetAvailable",
-						Status: "True",
-					})
-					if err := fclient.Status().Update(ctx, &vminsert); err != nil {
-						return err
-					}
-
-					return nil
-				})
-			}
-			if tt.args.cr.Spec.VMSelect != nil {
-				var vmselect appsv1.StatefulSet
-				name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-				eventuallyUpdateStatusToOk(func() error {
-					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
-						return err
-					}
-					vmselect.Status.ReadyReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
-					vmselect.Status.UpdatedReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
-					if err := fclient.Status().Update(ctx, &vmselect); err != nil {
-						return err
-					}
-					return nil
-				})
-			}
-			if tt.args.cr.Spec.VMStorage != nil {
-				var vmstorage appsv1.StatefulSet
-				eventuallyUpdateStatusToOk(func() error {
-					name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
-						return err
-					}
-					vmstorage.Status.ReadyReplicas = *tt.args.cr.Spec.VMStorage.ReplicaCount
-					vmstorage.Status.UpdatedReplicas = *tt.args.cr.Spec.VMStorage.ReplicaCount
-					if err := fclient.Status().Update(ctx, &vmstorage); err != nil {
-						return err
-					}
-
-					return nil
-				})
-			}
-
-			err := CreateOrUpdate(ctx, tt.args.cr, fclient)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.validate != nil {
-				var vmselect, vmstorage appsv1.StatefulSet
-				var vminsert appsv1.Deployment
-				if tt.args.cr.Spec.VMInsert != nil {
-					name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
-						t.Fatalf("unexpected error: %v", err)
+						return
 					}
 				}
-				if tt.args.cr.Spec.VMSelect != nil {
-					name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
-						t.Fatalf("unexpected error: %v", err)
-					}
+			}()
+		}
+		if o.cr.Spec.RequestsLoadBalancer.Enabled {
+			var vmauthLB appsv1.Deployment
+			name := o.cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
+			eventuallyUpdateStatusToOk(func() error {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: o.cr.Namespace}, &vmauthLB); err != nil {
+					return err
 				}
-				if tt.args.cr.Spec.VMStorage != nil {
-					name := tt.args.cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-					if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
-						t.Fatalf("unexpected error: %v", err)
-					}
+				vmauthLB.Status.Conditions = append(vmauthLB.Status.Conditions, appsv1.DeploymentCondition{
+					Type:   appsv1.DeploymentProgressing,
+					Reason: "NewReplicaSetAvailable",
+					Status: "True",
+				})
+				if err := fclient.Status().Update(ctx, &vmauthLB); err != nil {
+					return err
 				}
 
-				if err := tt.validate(&vminsert, &vmselect, &vmstorage); err != nil {
-					t.Fatalf("validation for cluster failed: %v", err)
+				return nil
+			})
+
+		}
+		if o.cr.Spec.VMInsert != nil {
+			var vminsert appsv1.Deployment
+			name := o.cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
+			eventuallyUpdateStatusToOk(func() error {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: o.cr.Namespace}, &vminsert); err != nil {
+					return err
+				}
+				vminsert.Status.Conditions = append(vminsert.Status.Conditions, appsv1.DeploymentCondition{
+					Type:   appsv1.DeploymentProgressing,
+					Reason: "NewReplicaSetAvailable",
+					Status: "True",
+				})
+				if err := fclient.Status().Update(ctx, &vminsert); err != nil {
+					return err
+				}
+
+				return nil
+			})
+		}
+		if o.cr.Spec.VMSelect != nil {
+			var vmselect appsv1.StatefulSet
+			name := o.cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+			eventuallyUpdateStatusToOk(func() error {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: o.cr.Namespace}, &vmselect); err != nil {
+					return err
+				}
+				vmselect.Status.ReadyReplicas = *o.cr.Spec.VMSelect.ReplicaCount
+				vmselect.Status.UpdatedReplicas = *o.cr.Spec.VMSelect.ReplicaCount
+				if err := fclient.Status().Update(ctx, &vmselect); err != nil {
+					return err
+				}
+				return nil
+			})
+		}
+		if o.cr.Spec.VMStorage != nil {
+			var vmstorage appsv1.StatefulSet
+			eventuallyUpdateStatusToOk(func() error {
+				name := o.cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+				if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: o.cr.Namespace}, &vmstorage); err != nil {
+					return err
+				}
+				vmstorage.Status.ReadyReplicas = *o.cr.Spec.VMStorage.ReplicaCount
+				vmstorage.Status.UpdatedReplicas = *o.cr.Spec.VMStorage.ReplicaCount
+				if err := fclient.Status().Update(ctx, &vmstorage); err != nil {
+					return err
+				}
+
+				return nil
+			})
+		}
+		err := CreateOrUpdate(ctx, o.cr, fclient)
+		if (err != nil) != o.wantErr {
+			t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, o.wantErr)
+			return
+		}
+		if o.validate != nil {
+			var vmselect, vmstorage appsv1.StatefulSet
+			var vminsert appsv1.Deployment
+			if o.cr.Spec.VMInsert != nil {
+				name := o.cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+				if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: o.cr.Namespace}, &vminsert); err != nil {
+					t.Fatalf("unexpected error: %v", err)
 				}
 			}
-		})
+			if o.cr.Spec.VMSelect != nil {
+				name := o.cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+				if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: o.cr.Namespace}, &vmselect); err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+			if o.cr.Spec.VMStorage != nil {
+				name := o.cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+				if err := fclient.Get(ctx, types.NamespacedName{Name: name, Namespace: o.cr.Namespace}, &vmstorage); err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+
+			if err := o.validate(&vminsert, &vmselect, &vmstorage); err != nil {
+				t.Fatalf("validation for cluster failed: %v", err)
+			}
+		}
 	}
+
+	// base-vmstorage-test
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "cluster-1",
+				Labels:    map[string]string{"label": "value"},
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod:   "2",
+				ReplicationFactor: ptr.To(int32(0)),
+				VMInsert: &vmv1beta1.VMInsert{
+					PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
+						Annotations: map[string]string{"key": "value"},
+					},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
+						Annotations: map[string]string{"key": "value"},
+						Labels:      map[string]string{"label": "value2"},
+					},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+
+						ReplicaCount: ptr.To(int32(2))},
+				},
+				VMSelect: &vmv1beta1.VMSelect{
+					PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
+						Annotations: map[string]string{"key": "value"},
+					},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+
+						ReplicaCount: ptr.To(int32(2))},
+				},
+			},
+		},
+		want: string(vmv1beta1.UpdateStatusExpanding),
+		predefinedObjects: []runtime.Object{
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-1", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+		},
+	})
+
+	// base-vminsert-with-ports
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "cluster-1",
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod:   "2",
+				ReplicationFactor: ptr.To(int32(2)),
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0))},
+					InsertPorts: &vmv1beta1.InsertPorts{
+						GraphitePort:     "8025",
+						OpenTSDBHTTPPort: "3311",
+						InfluxPort:       "5511",
+					},
+					HPA: &vmv1beta1.EmbeddedHPA{
+						MinReplicas: ptr.To(int32(0)),
+						MaxReplicas: 3,
+					},
+				},
+			},
+		},
+		want: string(vmv1beta1.UpdateStatusExpanding),
+	})
+
+	// base-vmselect
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "cluster-1",
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod:   "2",
+				ReplicationFactor: ptr.To(int32(2)),
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(2))},
+					HPA: &vmv1beta1.EmbeddedHPA{
+						MinReplicas: ptr.To(int32(1)),
+						MaxReplicas: 3,
+					},
+				},
+			},
+		},
+		want: string(vmv1beta1.UpdateStatusExpanding),
+		predefinedObjects: []runtime.Object{
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "select-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmselect", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "select-1", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmselect", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+		},
+	})
+
+	// base-vmstorage-with-maintenance
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "cluster-1",
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod:   "2",
+				ReplicationFactor: ptr.To(int32(2)),
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0))},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					MaintenanceSelectNodeIDs: []int32{1, 3},
+					MaintenanceInsertNodeIDs: []int32{0, 1, 2},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(10))},
+				},
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(2))},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-1", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-2", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-3", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-4", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-5", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-6", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-7", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-8", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-9", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+		},
+		want: string(vmv1beta1.UpdateStatusExpanding),
+	})
+
+	// base-vmstorage-with-maintenance
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "cluster-1",
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod:   "2",
+				ReplicationFactor: ptr.To(int32(2)),
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0))},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					MaintenanceSelectNodeIDs: []int32{1, 3},
+					MaintenanceInsertNodeIDs: []int32{0, 1, 2},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(10))},
+				},
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(2))},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-1", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-2", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-3", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-4", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-5", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-6", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-7", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-8", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-9", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
+			},
+		},
+		want: string(vmv1beta1.UpdateStatusExpanding),
+	})
+
+	// vmcluster with load-balancing
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "cluster-1",
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod:   "2",
+				ReplicationFactor: ptr.To(int32(2)),
+				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+					Enabled: true,
+					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(0))},
+					},
+				},
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0))},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0))},
+				},
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0))},
+					InsertPorts: &vmv1beta1.InsertPorts{
+						GraphitePort:     "8025",
+						OpenTSDBHTTPPort: "3311",
+						InfluxPort:       "5511",
+					},
+				},
+			},
+		},
+		want: string(vmv1beta1.UpdateStatusExpanding),
+	})
 }
 
 func TestCreatOrUpdateClusterServices(t *testing.T) {

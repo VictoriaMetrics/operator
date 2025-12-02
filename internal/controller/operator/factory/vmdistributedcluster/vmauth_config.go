@@ -40,6 +40,10 @@ type URLMap struct {
 	DiscoverBackendIPs bool     `yaml:"discover_backend_ips"`
 }
 
+const (
+	defaultPort = "8417"
+)
+
 // buildVMAuthVMSelectRefs builds the URLMap entries for each vmselect in the vmclusters.
 func buildVMAuthVMSelectURLMaps(vmClusters []*vmv1beta1.VMCluster) []URLMap {
 	maps := make([]URLMap, 0, len(vmClusters))
@@ -92,7 +96,7 @@ func buildLBConfigMeta(cr *vmv1alpha1.VMDistributedCluster) metav1.ObjectMeta {
 }
 
 func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deployment, error) {
-	spec := cr.Spec.VMAuth.Spec
+	spec := cr.GetVMAuthSpec()
 	const configMountName = "vmauth-lb-config"
 	volumes := []corev1.Volume{
 		{
@@ -165,8 +169,8 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
 	}
 	strategyType := appsv1.RollingUpdateDeploymentStrategyType
-	if cr.Spec.VMAuth.Spec.UpdateStrategy != nil {
-		strategyType = *cr.Spec.VMAuth.Spec.UpdateStrategy
+	if spec.UpdateStrategy != nil {
+		strategyType = *spec.UpdateStrategy
 	}
 	lbDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -182,7 +186,7 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 			},
 			Strategy: appsv1.DeploymentStrategy{
 				Type:          strategyType,
-				RollingUpdate: cr.Spec.VMAuth.Spec.RollingUpdate,
+				RollingUpdate: spec.RollingUpdate,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -198,11 +202,13 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.VMAuth.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(lbDep, ptr.Deref(spec.UseStrictSecurity, cfg.EnableStrictSecurity), &spec.CommonApplicationDeploymentParams)
 	return lbDep, nil
 }
 
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
+	spec := cr.GetVMAuthSpec()
+
 	builder := func(r *vmv1alpha1.VMDistributedCluster) *build.ChildBuilder {
 		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
 		b.SetFinalLabels(labels.Merge(b.AllLabels(), map[string]string{
@@ -211,20 +217,20 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 		return b
 	}
 	b := builder(cr)
-	svc := build.Service(b, cr.Spec.VMAuth.Spec.Port, nil)
+	svc := build.Service(b, spec.Port, nil)
 	// Set custom name
 	svc.Name = cr.Spec.VMAuth.Name
 
 	var prevSvc *corev1.Service
 	if prevCR != nil {
 		b = builder(prevCR)
-		prevSvc = build.Service(b, prevCR.Spec.VMAuth.Spec.Port, nil)
+		prevSvc = build.Service(b, prevCR.GetVMAuthSpec().Port, nil)
 	}
 
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb service: %w", err)
 	}
-	svs := build.VMServiceScrapeForServiceWithSpec(svc, cr.Spec.VMAuth.Spec)
+	svs := build.VMServiceScrapeForServiceWithSpec(svc, spec)
 	svs.Spec.Selector.MatchLabels[vmv1beta1.VMAuthLBServiceProxyTargetLabel] = "vmauth"
 	if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
@@ -233,12 +239,14 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 }
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
+	spec := cr.GetVMAuthSpec()
+
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
-	pdb := build.PodDisruptionBudget(b, cr.Spec.VMAuth.Spec.PodDisruptionBudget)
+	pdb := build.PodDisruptionBudget(b, spec.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VMAuth.Spec.PodDisruptionBudget != nil {
+	if prevCR != nil && prevCR.GetVMAuthSpec().PodDisruptionBudget != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
-		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMAuth.Spec.PodDisruptionBudget)
+		prevPDB = build.PodDisruptionBudget(b, prevCR.GetVMAuthSpec().PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
@@ -299,7 +307,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	if cr.Spec.VMAuth.Spec.PodDisruptionBudget != nil {
+	if spec.PodDisruptionBudget != nil {
 		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
 		}

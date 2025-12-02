@@ -346,12 +346,28 @@ func (cr *VMDistributedCluster) PodLabels(kind vmv1beta1.ClusterComponent) map[s
 	return labels.Merge(podMetadata.Labels, selectorLabels)
 }
 
-// PodMetadata returns pod metadata for given component kind
-func (cr *VMDistributedCluster) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.EmbeddedObjectMetadata {
+func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthLoadBalancerSpec {
 	if cr == nil {
 		return nil
 	}
-	return cr.Spec.VMAuth.Spec.PodMetadata
+	spec := cr.Spec.VMAuth.Spec
+	if spec == nil {
+		spec = &vmv1beta1.VMAuthLoadBalancerSpec{
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				Port: "8417",
+				Image: vmv1beta1.Image{
+					Repository: "docker.io/victoriametrics/vmauth",
+					Tag:        "latest",
+				},
+			},
+		}
+	}
+	return spec
+}
+
+// PodMetadata returns pod metadata for given component kind
+func (cr *VMDistributedCluster) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.EmbeddedObjectMetadata {
+	return cr.GetVMAuthSpec().PodMetadata
 }
 
 // FinalAnnotations returns global annotations to be applied by objects generate for vmcluster

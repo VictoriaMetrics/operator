@@ -974,8 +974,8 @@ func buildVMUserSecret(src *vmv1beta1.VMUser) (*corev1.Secret, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            src.SecretName(),
 			Namespace:       src.Namespace,
-			Labels:          src.AllLabels(),
-			Annotations:     src.AnnotationsFiltered(),
+			Labels:          src.FinalLabels(),
+			Annotations:     src.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{src.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},

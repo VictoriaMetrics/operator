@@ -163,10 +163,11 @@ func (cr *VTCluster) PodAnnotations(kind vmv1beta1.ClusterComponent) map[string]
 
 // FinalAnnotations returns global annotations to be applied by objects generate for vtcluster
 func (cr *VTCluster) FinalAnnotations() map[string]string {
-	if cr.Spec.ManagedMetadata == nil {
-		return nil
+	var v map[string]string
+	if cr.Spec.ManagedMetadata != nil {
+		v = labels.Merge(cr.Spec.ManagedMetadata.Annotations, v)
 	}
-	return cr.Spec.ManagedMetadata.Annotations
+	return v
 }
 
 // PrefixedName returns prefixed name for the given component kind
@@ -181,12 +182,11 @@ func (cr *VTCluster) PrefixedInternalName(kind vmv1beta1.ClusterComponent) strin
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr *VTCluster) FinalLabels(kind vmv1beta1.ClusterComponent) map[string]string {
-	baseLabels := vmv1beta1.AddClusterLabels(cr.SelectorLabels(kind), "vt")
-	if cr.Spec.ManagedMetadata == nil {
-		// fast path
-		return baseLabels
+	v := vmv1beta1.AddClusterLabels(cr.SelectorLabels(kind), "vt")
+	if cr.Spec.ManagedMetadata != nil {
+		v = labels.Merge(cr.Spec.ManagedMetadata.Labels, v)
 	}
-	return labels.Merge(cr.Spec.ManagedMetadata.Labels, baseLabels)
+	return v
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -650,11 +650,6 @@ func (cr *VTCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 		result = append(result, i)
 	}
 	return result
-}
-
-// AnnotationsFiltered implements finalize.crdObject interface
-func (cr *VTCluster) AnnotationsFiltered() map[string]string {
-	return cr.FinalAnnotations()
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation

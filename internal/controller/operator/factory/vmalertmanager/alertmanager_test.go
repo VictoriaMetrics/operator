@@ -40,12 +40,14 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				ctx: context.TODO(),
 				cr: &vmv1beta1.VMAlertmanager{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        "test-am",
-						Namespace:   "monitoring",
-						Annotations: map[string]string{"not": "touch"},
-						Labels:      map[string]string{"main": "system"},
+						Name:      "test-am",
+						Namespace: "monitoring",
 					},
 					Spec: vmv1beta1.VMAlertmanagerSpec{
+						ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+							Annotations: map[string]string{"not": "touch"},
+							Labels:      map[string]string{"main": "system"},
+						},
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To(int32(1)),
 						},

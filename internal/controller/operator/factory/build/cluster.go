@@ -32,14 +32,9 @@ func (b *ChildBuilder) PrefixedName() string {
 	return b.ParentOpts.PrefixedName(b.kind)
 }
 
-// AllLabels implements build.svcBuilderArgs interface
-func (b *ChildBuilder) AllLabels() map[string]string {
+// FinalLabels implements build.svcBuilderArgs interface
+func (b *ChildBuilder) FinalLabels() map[string]string {
 	return b.finalLabels
-}
-
-// AnnotationsFiltered implements build.svcBuilderArgs interface
-func (b *ChildBuilder) AnnotationsFiltered() map[string]string {
-	return b.FinalAnnotations()
 }
 
 // SelectorLabels implements build.svcBuilderArgs interface

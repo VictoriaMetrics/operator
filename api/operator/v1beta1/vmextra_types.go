@@ -85,37 +85,6 @@ const (
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 
-var (
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	labelFilterPrefixes []string
-	// default ignored annotations
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/", "operator.victoriametrics/"}
-)
-
-// SetLabelAndAnnotationPrefixes configures global filtering for child labels and annotations
-// cannot be used concurrently and should be called only once at lib init
-// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-func SetLabelAndAnnotationPrefixes(labelPrefixes, annotationPrefixes []string) {
-	labelFilterPrefixes = labelPrefixes
-	annotationFilterPrefixes = append(annotationFilterPrefixes, annotationPrefixes...)
-}
-
-// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-func filterMapKeysByPrefixes(src map[string]string, prefixes []string) map[string]string {
-	dst := make(map[string]string, len(src))
-OUTER:
-	for key, value := range src {
-		for _, matchPrefix := range prefixes {
-			if strings.HasPrefix(key, matchPrefix) {
-				continue OUTER
-			}
-		}
-		dst[key] = value
-	}
-	return dst
-}
-
 // skip validation, if object has annotation.
 func MustSkipCRValidation(cr client.Object) bool {
 	return cr.GetAnnotations()[SkipValidationAnnotation] == SkipValidationValue

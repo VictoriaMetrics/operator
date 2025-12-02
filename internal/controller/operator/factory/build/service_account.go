@@ -9,8 +9,8 @@ import (
 )
 
 type objectForServiceAccountBuilder interface {
-	AllLabels() map[string]string
-	AnnotationsFiltered() map[string]string
+	FinalLabels() map[string]string
+	FinalAnnotations() map[string]string
 	AsOwner() metav1.OwnerReference
 	GetNamespace() string
 	GetServiceAccountName() string
@@ -24,8 +24,8 @@ func ServiceAccount(cr objectForServiceAccountBuilder) *corev1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetServiceAccountName(),
 			Namespace:       cr.GetNamespace(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
+			Labels:          cr.FinalLabels(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},

@@ -13,8 +13,8 @@ func HPA(opts builderOpts, targetRef autoscalingv2.CrossVersionObjectReference, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            targetRef.Name,
 			Namespace:       opts.GetNamespace(),
-			Annotations:     opts.AnnotationsFiltered(),
-			Labels:          opts.AllLabels(),
+			Annotations:     opts.FinalAnnotations(),
+			Labels:          opts.FinalLabels(),
 			OwnerReferences: []metav1.OwnerReference{opts.AsOwner()},
 		},
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{

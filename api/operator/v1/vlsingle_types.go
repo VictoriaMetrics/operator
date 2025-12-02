@@ -227,15 +227,13 @@ func (cr *VLSingle) ProbeNeedLiveness() bool {
 	return false
 }
 
-func (cr *VLSingle) AnnotationsFiltered() map[string]string {
-	if cr.Spec.ManagedMetadata == nil {
-		return nil
+// FinalAnnotations returns annotations to be applied for created objects
+func (cr *VLSingle) FinalAnnotations() map[string]string {
+	var v map[string]string
+	if cr.Spec.ManagedMetadata != nil {
+		v = labels.Merge(cr.Spec.ManagedMetadata.Annotations, v)
 	}
-	dst := make(map[string]string, len(cr.Spec.ManagedMetadata.Annotations))
-	for k, v := range cr.Spec.ManagedMetadata.Annotations {
-		dst[k] = v
-	}
-	return dst
+	return v
 }
 
 // SelectorLabels returns unique labels for object
@@ -257,15 +255,13 @@ func (cr *VLSingle) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-// AllLabels returns combination of selector and managed labels
-func (cr *VLSingle) AllLabels() map[string]string {
-	selectorLabels := cr.SelectorLabels()
-	// fast path
-	if cr.Spec.ManagedMetadata == nil {
-		return selectorLabels
+// FinalLabels returns combination of selector and managed labels
+func (cr *VLSingle) FinalLabels() map[string]string {
+	v := cr.SelectorLabels()
+	if cr.Spec.ManagedMetadata != nil {
+		v = labels.Merge(cr.Spec.ManagedMetadata.Labels, v)
 	}
-
-	return labels.Merge(selectorLabels, cr.Spec.ManagedMetadata.Labels)
+	return v
 }
 
 func (cr *VLSingle) PrefixedName() string {

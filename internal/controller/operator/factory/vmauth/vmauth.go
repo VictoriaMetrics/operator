@@ -165,8 +165,8 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
+			Labels:          cr.FinalLabels(),
+			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -473,7 +473,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:   cr.ConfigSecretName(),
-		Labels: cr.AllLabels(),
+		Labels: cr.FinalLabels(),
 		Annotations: map[string]string{
 			"generated": "true",
 		},

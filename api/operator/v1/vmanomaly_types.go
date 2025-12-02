@@ -252,16 +252,13 @@ func (cr *VMAnomaly) AsOwner() metav1.OwnerReference {
 	}
 }
 
-// AnnotationsFiltered returns global annotations to be applied for created objects
-func (cr *VMAnomaly) AnnotationsFiltered() map[string]string {
-	if cr.Spec.ManagedMetadata == nil {
-		return nil
+// FinalAnnotations returns global annotations to be applied for created objects
+func (cr *VMAnomaly) FinalAnnotations() map[string]string {
+	var v map[string]string
+	if cr.Spec.ManagedMetadata != nil {
+		v = labels.Merge(cr.Spec.ManagedMetadata.Annotations, v)
 	}
-	dst := make(map[string]string, len(cr.Spec.ManagedMetadata.Annotations))
-	for k, v := range cr.Spec.ManagedMetadata.Annotations {
-		dst[k] = v
-	}
-	return dst
+	return v
 }
 
 // PodAnnotations returns annotations to be applied to Pod
@@ -309,18 +306,13 @@ func (cr *VMAnomaly) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-// AllLabels returns global labels to be applied for created objects
-func (cr *VMAnomaly) AllLabels() map[string]string {
-	selectorLabels := cr.SelectorLabels()
-	// fast path
-	if cr.Labels == nil && cr.Spec.ManagedMetadata == nil {
-		return selectorLabels
-	}
-	var result map[string]string
+// FinalLabels returns global labels to be applied for created objects
+func (cr *VMAnomaly) FinalLabels() map[string]string {
+	v := cr.SelectorLabels()
 	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+		v = labels.Merge(cr.Spec.ManagedMetadata.Labels, v)
 	}
-	return labels.Merge(result, selectorLabels)
+	return v
 }
 
 // PrefixedName format name of the component with hard-coded prefix

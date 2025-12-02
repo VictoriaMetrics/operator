@@ -165,14 +165,6 @@ func (cr *VMCluster) PodAnnotations(kind ClusterComponent) map[string]string {
 	return podMetadata.Annotations
 }
 
-// FinalAnnotations returns global annotations to be applied by objects generate for vmcluster
-func (cr *VMCluster) FinalAnnotations() map[string]string {
-	if cr.Spec.ManagedMetadata == nil {
-		return nil
-	}
-	return cr.Spec.ManagedMetadata.Annotations
-}
-
 // PrefixedName returns prefixed name for the given component kind
 func (cr *VMCluster) PrefixedName(kind ClusterComponent) string {
 	return ClusterPrefixedName(kind, cr.Name, "vm", false)
@@ -245,9 +237,7 @@ func (cr *VMCluster) GetStatus() *VMClusterStatus {
 }
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
-func (cr *VMCluster) DefaultStatusFields(vs *VMClusterStatus) {
-	vs.LegacyStatus = vs.UpdateStatus
-}
+func (cr *VMCluster) DefaultStatusFields(vs *VMClusterStatus) {}
 
 // AsOwner returns owner references with current object as owner
 func (cr *VMCluster) AsOwner() metav1.OwnerReference {
@@ -264,8 +254,6 @@ func (cr *VMCluster) AsOwner() metav1.OwnerReference {
 // VMClusterStatus defines the observed state of VMCluster
 type VMClusterStatus struct {
 	StatusMetadata `json:",inline"`
-	// LegacyStatus is deprecated and will be removed at v0.52.0 version
-	LegacyStatus UpdateStatus `json:"clusterStatus,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -724,36 +712,20 @@ func (cr *VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr *VMCluster) FinalLabels(kind ClusterComponent) map[string]string {
-	baseLabels := AddClusterLabels(cr.SelectorLabels(kind), "vm")
-	if cr.Labels == nil && cr.Spec.ManagedMetadata == nil {
-		// fast path
-		return baseLabels
-	}
-	var result map[string]string
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	if cr.Labels != nil {
-		result = filterMapKeysByPrefixes(cr.Labels, labelFilterPrefixes)
-	}
+	v := AddClusterLabels(cr.SelectorLabels(kind), "vm")
 	if cr.Spec.ManagedMetadata != nil {
-		result = labels.Merge(result, cr.Spec.ManagedMetadata.Labels)
+		v = labels.Merge(cr.Spec.ManagedMetadata.Labels, v)
 	}
-	return labels.Merge(result, baseLabels)
+	return v
 }
 
-// AnnotationsFiltered returns global annotations to be applied by objects generate for vmcluster
-func (cr *VMCluster) AnnotationsFiltered() map[string]string {
-	// TODO: @f41gh7 deprecated at will be removed at v0.52.0 release
-	dst := filterMapKeysByPrefixes(cr.Annotations, annotationFilterPrefixes)
+// FinalAnnotations returns global annotations to be applied by objects generate for vmcluster
+func (cr *VMCluster) FinalAnnotations() map[string]string {
+	var v map[string]string
 	if cr.Spec.ManagedMetadata != nil {
-		if dst == nil {
-			dst = make(map[string]string)
-		}
-		for k, v := range cr.Spec.ManagedMetadata.Annotations {
-			dst[k] = v
-		}
+		v = labels.Merge(cr.Spec.ManagedMetadata.Annotations, v)
 	}
-	return dst
-
+	return v
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation

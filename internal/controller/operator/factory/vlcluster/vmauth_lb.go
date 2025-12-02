@@ -230,7 +230,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	builder := func(r *vmv1.VLCluster) *build.ChildBuilder {
 		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
-		b.SetFinalLabels(labels.Merge(b.AllLabels(), map[string]string{
+		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: "vmauth",
 		}))
 		return b
@@ -270,7 +270,7 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster, kind vmv1beta1.ClusterComponent, port, prevPort string) error {
 	builder := func(r *vmv1.VLCluster) *build.ChildBuilder {
 		b := build.NewChildBuilder(r, kind)
-		b.SetFinalLabels(labels.Merge(b.AllLabels(), map[string]string{
+		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: string(kind),
 		}))
 		b.SetSelectorLabels(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer))

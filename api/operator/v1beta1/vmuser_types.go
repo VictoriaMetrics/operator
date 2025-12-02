@@ -2,10 +2,10 @@ package v1beta1
 
 import (
 	"fmt"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -46,6 +46,10 @@ type VMUserSpec struct {
 
 	// DisableSecretCreation skips related secret creation for vmuser
 	DisableSecretCreation bool `json:"disable_secret_creation,omitempty"`
+
+	// ManagedMetadata defines metadata that will be added to the all objects
+	// created by operator for the given CustomResource
+	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 }
 
 // TargetRef describes target for user traffic forwarding.
@@ -196,14 +200,13 @@ func (cr *VMUser) AsOwner() metav1.OwnerReference {
 	}
 }
 
-func (cr *VMUser) AnnotationsFiltered() map[string]string {
-	annotations := make(map[string]string)
-	for annotation, value := range cr.Annotations {
-		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
-			annotations[annotation] = value
-		}
+// FinalAnnotations returns annotations to be applied for created objects
+func (cr *VMUser) FinalAnnotations() map[string]string {
+	var v map[string]string
+	if cr.Spec.ManagedMetadata != nil {
+		v = labels.Merge(cr.Spec.ManagedMetadata.Annotations, v)
 	}
-	return annotations
+	return v
 }
 
 func (cr *VMUser) SelectorLabels() map[string]string {
@@ -215,19 +218,13 @@ func (cr *VMUser) SelectorLabels() map[string]string {
 	}
 }
 
-// AllLabels returns combined labels for VMUser
-func (cr *VMUser) AllLabels() map[string]string {
-	labels := cr.SelectorLabels()
-	if cr.Labels != nil {
-		for label, value := range cr.Labels {
-			if _, ok := labels[label]; ok {
-				// forbid changes for selector labels
-				continue
-			}
-			labels[label] = value
-		}
+// FinalLabels returns combination of selector and managed labels
+func (cr *VMUser) FinalLabels() map[string]string {
+	v := cr.SelectorLabels()
+	if cr.Spec.ManagedMetadata != nil {
+		v = labels.Merge(cr.Spec.ManagedMetadata.Labels, v)
 	}
-	return labels
+	return v
 }
 
 // GetStatusMetadata implements reconcile.objectWithStatus interface

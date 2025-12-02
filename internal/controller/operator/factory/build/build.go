@@ -25,8 +25,8 @@ func SetSkipRuntimeValidation(mustSkip bool) {
 type builderOpts interface {
 	client.Object
 	PrefixedName() string
-	AnnotationsFiltered() map[string]string
-	AllLabels() map[string]string
+	FinalAnnotations() map[string]string
+	FinalLabels() map[string]string
 	SelectorLabels() map[string]string
 	AsOwner() metav1.OwnerReference
 	GetNamespace() string

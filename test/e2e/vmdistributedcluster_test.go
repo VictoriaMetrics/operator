@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -224,33 +225,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, inlineVMClusters, namespace)
 
-			By("updating the VMUser to target the inline VMClusters")
-			var vmUser vmv1beta1.VMUser
-			vmUserKey := types.NamespacedName{Name: fmt.Sprintf("%s-user", cr.Name), Namespace: namespace}
-			Expect(k8sClient.Get(ctx, vmUserKey, &vmUser)).To(Succeed())
-			vmUser.Spec.TargetRefs = []vmv1beta1.TargetRef{
-				{
-					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster/vmselect",
-						Name:      "inline-cluster-1",
-						Namespace: namespace,
-					},
-					TargetPathSuffix: "/select/1",
-				},
-				{
-					CRD: &vmv1beta1.CRDRef{
-						Kind:      "VMCluster/vmselect",
-						Name:      "inline-cluster-2",
-						Namespace: namespace,
-					},
-					TargetPathSuffix: "/select/1",
-				},
-			}
-			Expect(k8sClient.Update(ctx, &vmUser)).To(Succeed())
-			DeferCleanup(func() {
-				Expect(finalize.SafeDelete(ctx, k8sClient, &vmUser)).To(Succeed())
-			})
-
 			By("waiting for VMDistributedCluster to become operational")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
@@ -326,6 +300,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+								Port: "8417",
+								Image: vmv1beta1.Image{
+									Repository: "docker.io/victoriametrics/vmauth",
+									Tag:        "latest",
+								},
+							},
 						},
 					},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
@@ -345,16 +326,16 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			By("verifying that the inline VMAuth is created and operational")
-			var createdVMAuth vmv1beta1.VMAuth
-			vmAuthNsn := types.NamespacedName{Name: inlineVMAuthName, Namespace: namespace}
-			Expect(k8sClient.Get(ctx, vmAuthNsn, &createdVMAuth)).To(Succeed())
+			var createdVMAuthLBDeployment appsv1.Deployment
+			vmAuthNsn := types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: namespace}
+			Expect(k8sClient.Get(ctx, vmAuthNsn, &createdVMAuthLBDeployment)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, vmAuthNsn)
 			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
 
 			By("verifying VMAuth has correct owner reference")
-			Expect(createdVMAuth.GetOwnerReferences()).To(HaveLen(1))
-			ownerRef := createdVMAuth.GetOwnerReferences()[0]
+			Expect(createdVMAuthLBDeployment.GetOwnerReferences()).To(HaveLen(1))
+			ownerRef := createdVMAuthLBDeployment.GetOwnerReferences()[0]
 			Expect(ownerRef.Kind).To(Equal("VMDistributedCluster"))
 			Expect(ownerRef.Name).To(Equal(cr.Name))
 		})
@@ -621,30 +602,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}
-			vmUserKey := types.NamespacedName{
-				Namespace: namespace,
-				Name:      "vmuser-paused",
-			}
-			pausedVMUser := vmv1beta1.VMUser{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmUserKey.Name,
-					Namespace: namespace,
-				},
-				Spec: vmv1beta1.VMUserSpec{
-					TargetRefs: []vmv1beta1.TargetRef{{
-						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMCluster/vmselect",
-							Name:      "vmcluster-paused",
-							Namespace: namespace,
-						},
-						TargetPathSuffix: "/select/1",
-					}},
-				},
-			}
-			DeferCleanup(func() {
-				Expect(finalize.SafeDelete(ctx, k8sClient, &pausedVMUser)).To(Succeed())
-			})
-			Expect(k8sClient.Create(ctx, &pausedVMUser)).To(Succeed(), "must create managed vmuser before test")
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
 
 			By("creating a VMDistributedCluster")
@@ -969,6 +926,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						Spec: &vmv1beta1.VMAuthLoadBalancerSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
+							},
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+								Port: "8417",
+								Image: vmv1beta1.Image{
+									Repository: "docker.io/victoriametrics/vmauth",
+									Tag:        "latest",
+								},
 							},
 						},
 					},

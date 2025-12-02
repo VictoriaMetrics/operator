@@ -211,7 +211,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 
 	builder := func(r *vmv1alpha1.VMDistributedCluster) *build.ChildBuilder {
 		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
-		b.SetFinalLabels(labels.Merge(b.AllLabels(), map[string]string{
+		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: "vmauth",
 		}))
 		return b

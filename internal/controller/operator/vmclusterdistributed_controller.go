@@ -87,10 +87,9 @@ func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 
 	// Add finalizer if necessary
-	// TODO[vrutkovs]: Implement finalizer logic or remove it
-	// if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-	// 	return result, err
-	// }
+	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
+		return result, err
+	}
 	r.Client.Scheme().Default(instance)
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
 		if err := vmdistributedcluster.CreateOrUpdate(ctx, instance, r, r.OriginScheme, httpTimeout); err != nil {

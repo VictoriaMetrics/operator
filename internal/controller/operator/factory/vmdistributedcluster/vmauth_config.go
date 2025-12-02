@@ -40,10 +40,6 @@ type URLMap struct {
 	DiscoverBackendIPs bool     `yaml:"discover_backend_ips"`
 }
 
-const (
-	defaultPort = "8417"
-)
-
 // buildVMAuthVMSelectRefs builds the URLMap entries for each vmselect in the vmclusters.
 func buildVMAuthVMSelectURLMaps(vmClusters []*vmv1beta1.VMCluster) []URLMap {
 	maps := make([]URLMap, 0, len(vmClusters))

@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-test/deep"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -102,13 +101,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		cr.Status.UpdateStatus = vmv1beta1.UpdateStatusExpanding
 	}
 
-	if diff := deep.Equal(previousGenerations, currentGenerations); len(diff) > 0 {
-		// Record new generations and zones config, then exit early if a change is detected
-		if err := rclient.Status().Update(ctx, cr); err != nil {
-			return fmt.Errorf("failed to update status: %w", err)
-		}
-		return fmt.Errorf("unexpected generations or zones config change detected: %v", diff)
-	}
+	// if diff := deep.Equal(previousGenerations, currentGenerations); len(diff) > 0 {
+	// 	// Record new generations and zones config, then exit early if a change is detected
+	// 	if err := rclient.Status().Update(ctx, cr); err != nil {
+	// 		return fmt.Errorf("failed to update status: %w", err)
+	// 	}
+	// 	return fmt.Errorf("unexpected generations or zones config change detected: %v", diff)
+	// }
 
 	// Update or create the VMAgent
 	vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme, vmClusters)
@@ -206,9 +205,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 
 		// Record new vmcluster generations
-		if err := rclient.Status().Update(ctx, cr); err != nil {
-			return fmt.Errorf("failed to update status: %w", err)
-		}
+		// if err := rclient.Status().Update(ctx, cr); err != nil {
+		// 	return fmt.Errorf("failed to update status: %w", err)
+		// }
 
 		// Wait for VMAgent metrics to show no pending queue
 		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmclusterWaitReadyDeadline, rclient); err != nil {

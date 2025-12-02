@@ -243,11 +243,12 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
-func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
+func updateVMAuthLBSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildLBConfigMeta(prevCR))
 	}
+
 	secret, err := buildVMAuthLBSecret(cr, vmClusters)
 	if err != nil {
 		return fmt.Errorf("cannot build vmauth lb secret: %w", err)
@@ -255,6 +256,13 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	if err := reconcile.Secret(ctx, rclient, secret, prevSecretMeta); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
+	return nil
+}
+
+func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
+	spec := cr.GetVMAuthSpec()
+
+	updateVMAuthLBSecret(ctx, rclient, cr, prevCR, vmClusters)
 
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{

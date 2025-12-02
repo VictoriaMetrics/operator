@@ -42,7 +42,7 @@ var (
 	//
 	// DO NOT FORGET TO MODIFY VERSIONS IN BaseOperatorConf
 	defaultEnvs = map[string]string{
-		"VM_METRICS_VERSION":  "v1.130.0",
+		"VM_METRICS_VERSION":  "v1.131.0",
 		"VM_LOGS_VERSION":     "v1.36.1",
 		"VM_ANOMALY_VERSION":  "v1.26.1",
 		"VM_TRACES_VERSION":   "v0.5.0",
@@ -112,9 +112,9 @@ type BaseOperatorConf struct {
 	//
 	// DO NOT FORGET TO MODIFY VERSIONS IN defaultEnvs
 
-	MetricsVersion    string `default:"v1.130.0" env:"METRICS_VERSION"`
-	LogsVersion       string `default:"v1.36.1" env:"LOGS_VERSION"`
-	AnomalyVersion    string `default:"v1.25.2" env:"ANOMALY_VERSION"`
+	MetricsVersion string `default:"v1.131.0" env:"METRICS_VERSION"`
+	LogsVersion    string `default:"v1.36.1" env:"LOGS_VERSION"`
+	AnomalyVersion string `default:"v1.25.2" env:"ANOMALY_VERSION"`
 	GatewayAPIEnabled bool   `default:"false" env:"GATEWAY_API_ENABLED"`
 
 	// enables custom config reloader for vmauth and vmagent,
@@ -595,22 +595,22 @@ func (boc BaseOperatorConf) Validate() error {
 	validateResource := func(name string, res Resource) error {
 		if res.Request.Mem != UnLimitedResource {
 			if _, err := resource.ParseQuantity(res.Request.Mem); err != nil {
-				return fmt.Errorf("cannot parse resource request memory for %q, err :%w", name, err)
+				return fmt.Errorf("cannot parse resource request memory for %q: %w", name, err)
 			}
 		}
 		if res.Request.Cpu != UnLimitedResource {
 			if _, err := resource.ParseQuantity(res.Request.Cpu); err != nil {
-				return fmt.Errorf("cannot parse resource request cpu for %q, err :%w", name, err)
+				return fmt.Errorf("cannot parse resource request cpu for %q: %w", name, err)
 			}
 		}
 		if res.Limit.Mem != UnLimitedResource {
 			if _, err := resource.ParseQuantity(res.Limit.Mem); err != nil {
-				return fmt.Errorf("cannot parse resource limit memory for %q, err :%w", name, err)
+				return fmt.Errorf("cannot parse resource limit memory for %q: %w", name, err)
 			}
 		}
 		if res.Limit.Cpu != UnLimitedResource {
 			if _, err := resource.ParseQuantity(res.Limit.Cpu); err != nil {
-				return fmt.Errorf("cannot parse resource limit cpu for %q, err :%w", name, err)
+				return fmt.Errorf("cannot parse resource limit cpu for %q: %w", name, err)
 			}
 		}
 		return nil
@@ -618,23 +618,23 @@ func (boc BaseOperatorConf) Validate() error {
 
 	if boc.ConfigReloaderLimitMemory != UnLimitedResource {
 		if _, err := resource.ParseQuantity(boc.ConfigReloaderLimitMemory); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource limit memory :%w", err)
+			return fmt.Errorf("cannot parse global config-reloader resource limit memory: %w", err)
 		}
 	}
 	if boc.ConfigReloaderLimitCPU != UnLimitedResource {
 		if _, err := resource.ParseQuantity(boc.ConfigReloaderLimitCPU); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource limit cpu :%w", err)
+			return fmt.Errorf("cannot parse global config-reloader resource limit cpu: %w", err)
 		}
 	}
 
 	if len(boc.ConfigReloaderRequestMemory) > 0 && boc.ConfigReloaderRequestMemory != UnLimitedResource {
 		if _, err := resource.ParseQuantity(boc.ConfigReloaderRequestMemory); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource request memory :%w", err)
+			return fmt.Errorf("cannot parse global config-reloader resource request memory: %w", err)
 		}
 	}
 	if len(boc.ConfigReloaderRequestCPU) > 0 && boc.ConfigReloaderRequestCPU != UnLimitedResource {
 		if _, err := resource.ParseQuantity(boc.ConfigReloaderRequestCPU); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource request cpu :%w", err)
+			return fmt.Errorf("cannot parse global config-reloader resource request cpu: %w", err)
 		}
 	}
 

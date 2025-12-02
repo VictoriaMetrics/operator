@@ -103,13 +103,13 @@ type Resource struct {
 
 //genvars:true
 type BaseOperatorConf struct {
-	MetricsVersion  string `default:"${VM_METRICS_VERSION}" env:"METRICS_VERSION,expand"`
-	LogsVersion     string `default:"${VM_LOGS_VERSION}" env:"LOGS_VERSION,expand"`
-	AnomalyVersion  string `default:"${VM_ANOMALY_VERSION}" env:"ANOMALY_VERSION,expand"`
-	TracesVertsion  string `default:"${VM_TRACES_VERSION}" env:"TRACES_VERSION,expand"`
-	OperatorVersion string `default:"${VM_OPERATOR_VERSION}" env:"OPERATOR_VERSION,expand"`
+	MetricsVersion    string `default:"${VM_METRICS_VERSION}" env:"METRICS_VERSION,expand"`
+	LogsVersion       string `default:"${VM_LOGS_VERSION}" env:"LOGS_VERSION,expand"`
+	AnomalyVersion    string `default:"${VM_ANOMALY_VERSION}" env:"ANOMALY_VERSION,expand"`
+	TracesVertsion    string `default:"${VM_TRACES_VERSION}" env:"TRACES_VERSION,expand"`
+	OperatorVersion   string `default:"${VM_OPERATOR_VERSION}" env:"OPERATOR_VERSION,expand"`
 	GatewayAPIEnabled bool   `default:"false" env:"GATEWAY_API_ENABLED"`
-  
+
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
 	UseVMConfigReloader bool `default:"true" env:"USECUSTOMCONFIGRELOADER"`

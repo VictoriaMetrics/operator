@@ -42,11 +42,6 @@ type VMAgentWithStatus interface {
 	GetNamespace() string
 }
 
-// vmAgentAdapter provides a small adapter to satisfy VMAgentWithStatus for concrete vmv1beta1.VMAgent instances.
-type vmAgentAdapter struct {
-	*vmv1beta1.VMAgent
-}
-
 // parseEndpointSliceAddresses extracts IPv4/IPv6 addresses from an EndpointSlice object.
 func parseEndpointSliceAddresses(es *discoveryv1.EndpointSlice) []string {
 	if es == nil {
@@ -86,8 +81,8 @@ func buildPerIPMetricURL(baseURL, metricPath, ip string) string {
 
 // waitForVMClusterVMAgentMetrics accepts a VMAgentWithStatus interface plus a client.Client.
 // This allows callers that already have an implementation of VMAgentWithStatus (e.g., tests' mocks)
-// to call this function directly. When callers have a concrete *vmv1beta1.VMAgent, they can wrap it
-// with vmAgentAdapter (defined above) or use a type that implements VMAgentWithStatus.
+// to call this function directly. Callers with a concrete *vmv1beta1.VMAgent can pass it directly
+// since it implements the required methods.
 //
 // The function will try to discover pod IPs via an EndpointSlice named the same as the service
 // (prefixed name). If discovery yields addresses, it polls each IP. Otherwise, it falls back to the

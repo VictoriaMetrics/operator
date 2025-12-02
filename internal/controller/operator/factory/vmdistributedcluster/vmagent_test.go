@@ -152,7 +152,7 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 }
 
 // Unit tests for helper functions and adapter behavior
-func TestVmAgentAdapterAndURLHelpers(t *testing.T) {
+func TestVMAgentURLHelpers(t *testing.T) {
 	t.Run("buildPerIPMetricURL builds proper URL with scheme and port", func(t *testing.T) {
 		baseURL := "http://my-svc.default.svc:1234"
 		metricPath := "/metrics"

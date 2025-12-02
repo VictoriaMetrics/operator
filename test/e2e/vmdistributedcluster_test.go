@@ -502,7 +502,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			vmclusters := []vmv1beta1.VMCluster{*vmCluster1, *vmCluster2}
 
 			namespacedName.Name = "distributed-upgrade"
-			vmAgentName := existingVMAgentName
 			cr := &vmv1alpha1.VMDistributedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -512,7 +511,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
-						Name: vmAgentName,
+						Name: existingVMAgentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),

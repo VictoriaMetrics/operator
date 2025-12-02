@@ -1711,6 +1711,10 @@ Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VMAuthSpec](#vmauthsp
 
 EmbeddedHTTPRoute describes httproute configuration options.
 
+
+Requires gateway-controller CRD installed and VM_GATEWAY_API_ENABLED=true env var
+See https://gateway-api.sigs.k8s.io/guides/#installing-a-gateway-controller
+
 Appears in: [VMAuthSpec](#vmauthspec)
 
 | Field | Description |
@@ -2508,6 +2512,20 @@ Appears in: [Receiver](#receiver)
 | user_key<a href="#pushoverconfig-user_key" id="pushoverconfig-user_key">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Required)_<br/>The secret's key that contains the recipient user’s user key.<br />It must be at them same namespace as CRD |
 
 
+#### QueryArg
+
+
+
+QueryArg defines item for query arguments
+
+Appears in: [TargetRef](#targetref)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#queryarg-name" id="queryarg-name">#</a><br/>_string_ | _(Required)_<br/>Name of query argument |
+| values<a href="#queryarg-values" id="queryarg-values">#</a><br/>_string array_ | _(Required)_<br/>Values of query argument |
+
+
 #### Receiver
 
 
@@ -3140,6 +3158,7 @@ Appears in: [VMUserSpec](#vmuserspec)
 | crd<a href="#targetref-crd" id="targetref-crd">#</a><br/>_[CRDRef](#crdref)_ | _(Optional)_<br/>CRD describes exist operator's CRD object,<br />operator generates access url based on CRD params. |
 | hosts<a href="#targetref-hosts" id="targetref-hosts">#</a><br/>_string array_ | _(Required)_<br/> |
 | paths<a href="#targetref-paths" id="targetref-paths">#</a><br/>_string array_ | _(Optional)_<br/>Paths - matched path to route. |
+| query_args<a href="#targetref-query_args" id="targetref-query_args">#</a><br/>_[QueryArg](#queryarg) array_ | _(Optional)_<br/>QueryArgs appends list of query arguments to generated URL |
 | static<a href="#targetref-static" id="targetref-static">#</a><br/>_[StaticRef](#staticref)_ | _(Optional)_<br/>Static - user defined url for traffic forward,<br />for instance http://vmsingle:8428 |
 | targetRefBasicAuth<a href="#targetref-targetrefbasicauth" id="targetref-targetrefbasicauth">#</a><br/>_[TargetRefBasicAuth](#targetrefbasicauth)_ | _(Optional)_<br/>TargetRefBasicAuth allow an target endpoint to authenticate over basic authentication |
 | target_path_suffix<a href="#targetref-target_path_suffix" id="targetref-target_path_suffix">#</a><br/>_string_ | _(Optional)_<br/>TargetPathSuffix allows to add some suffix to the target path<br />It allows to hide tenant configuration from user with crd as ref.<br />it also may contain any url encoded params. |

@@ -77,6 +77,9 @@ type TargetRef struct {
 	// it also may contain any url encoded params.
 	// +optional
 	TargetPathSuffix string `json:"target_path_suffix,omitempty"`
+	// QueryArgs appends list of query arguments to generated URL
+	// +optional
+	QueryArgs []QueryArg `json:"query_args,omitempty"`
 	// TargetRefBasicAuth allow an target endpoint to authenticate over basic authentication
 	// +optional
 	TargetRefBasicAuth *TargetRefBasicAuth `json:"targetRefBasicAuth,omitempty"`
@@ -87,6 +90,14 @@ type TargetRef struct {
 type VMUserIPFilters struct {
 	DenyList  []string `json:"deny_list,omitempty"`
 	AllowList []string `json:"allow_list,omitempty"`
+}
+
+// QueryArg defines item for query arguments
+type QueryArg struct {
+	// Name of query argument
+	Name string `json:"name"`
+	// Values of query argument
+	Values []string `json:"values"`
 }
 
 // CRDRef describe CRD target reference.

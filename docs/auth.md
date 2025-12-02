@@ -132,6 +132,10 @@ spec:
     paths:
       - /
     target_path_suffix: "/insert/1"
+    query_args:
+      - name: extra_filters
+        values:
+          - '{__name__!="service_info"}'
   - crd:
      kind: VMCluster/vmselect
      name: test-persistent

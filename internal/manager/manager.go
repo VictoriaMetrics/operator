@@ -22,6 +22,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -414,6 +415,9 @@ var cacheClientObjectsByName = map[string]client.Object{
 	"pod":         &corev1.Pod{},
 	"deployment":  &appsv1.Deployment{},
 	"statefulset": &appsv1.StatefulSet{},
+	"daemonset":   &appsv1.DaemonSet{},
+	"httproute":   &gwapiv1.HTTPRoute{},
+	"ingress":     &networkingv1.Ingress{},
 }
 
 // runtime-controller doesn't expose this metric

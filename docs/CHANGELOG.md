@@ -18,6 +18,7 @@ aliases:
 **Update node 2: removed VMCluster's `status.clusterStatus` and VMSingle's `status.singleStatus`, that were deprecated in v0.51.0.**
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.130.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.130.0) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.131.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.131.0) version
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `VM_ENABLETCP6` variable that runs all operator CRs in IPv6 mode. See [#1581](https://github.com/VictoriaMetrics/operator/issues/1581).
 * FEATURE: [config-reloader](https://github.com/VictoriaMetrics/operator/blob/master/cmd/config-reloader/README.md): set default config reloader image version equal to current operator version. See [#2562](https://github.com/VictoriaMetrics/helm-charts/pull/2562).
@@ -26,9 +27,11 @@ aliases:
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): allow overriding default path for embedded ingress. See [#1617](https://github.com/VictoriaMetrics/operator/issues/1617).
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): support incident.io receiver. See [#1637](https://github.com/VictoriaMetrics/operator/issues/1637).
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): introduce `spec.managedMetadata` for custom labels and annotations that should be attached to a Secret.
+* FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): introduce `query_args` parameter that allows to append query arguments for backend url generation
 
 * BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): check `mute_time_intervals` in subroutes: See [#1618](https://github.com/VictoriaMetrics/operator/issues/1618).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove incorrect key argument in structured log for when the actual PVC storage size is larger than the currently configured size and properly indicate which is the new and which is the existing size: See PR [#1636](https://github.com/VictoriaMetrics/operator/pull/1636) for details.
+* BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): properly convert Prometheus ScrapeConfig `scrapeInterval` into VM ScrapeConfig `scrape_interval`. Before it was ignored. See [#1645](https://github.com/VictoriaMetrics/operator/issues/1645).
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.5.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.5.0) version.
 

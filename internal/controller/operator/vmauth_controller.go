@@ -23,9 +23,11 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -105,11 +107,17 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 
 // SetupWithManager inits object.
 func (r *VMAuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	controller := ctrl.NewControllerManagedBy(mgr).
 		For(&vmv1beta1.VMAuth{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&networkingv1.Ingress{}).
+		Owns(&gwapiv1.HTTPRoute{}).
 		Owns(&corev1.ServiceAccount{}).
 		WithOptions(getDefaultOptions()).
-		WithEventFilter(patchAnnotationPredicate).
-		Complete(r)
+		WithEventFilter(patchAnnotationPredicate)
+	cfg := config.MustGetBaseConfig()
+	if cfg.GatewayAPIEnabled {
+		controller = controller.Owns(&gwapiv1.HTTPRoute{})
+	}
+	return controller.Complete(r)
 }

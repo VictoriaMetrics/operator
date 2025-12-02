@@ -412,7 +412,8 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVM
 			if ref.CRD == nil {
 				continue
 			}
-			if _, ok := crdCacheURLCache[ref.CRD.AsKey()]; ok {
+			key := ref.CRD.AsKey()
+			if _, ok := crdCacheURLCache[key]; ok {
 				continue
 			}
 			crdObj, ok := crdNameToObject[ref.CRD.Kind]
@@ -431,7 +432,7 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVM
 				user.Status.CurrentSyncError = fmt.Sprintf("cannot fined CRD link for kind=%q at ref idx=%d: %q", ref.CRD.Kind, j, err)
 				return false
 			}
-			crdCacheURLCache[ref.CRD.AsKey()] = url
+			crdCacheURLCache[key] = url
 		}
 		return true
 	})
@@ -685,22 +686,33 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 			return nil, fmt.Errorf("static.url, static.urls and ref.crd cannot be empty for user: %s", userName)
 		}
 
-		if ref.TargetPathSuffix != "" {
-			parsedSuffix, err := url.Parse(ref.TargetPathSuffix)
-			if err != nil {
-				return nil, fmt.Errorf("cannot parse targetPath: %q, err: %w", ref.TargetPathSuffix, err)
+		if ref.TargetPathSuffix != "" || len(ref.QueryArgs) > 0 {
+			urlParsed := &url.URL{}
+			if ref.TargetPathSuffix != "" {
+				var err error
+				urlParsed, err = url.Parse(ref.TargetPathSuffix)
+				if err != nil {
+					return nil, fmt.Errorf("cannot parse targetPath: %q, err: %w", ref.TargetPathSuffix, err)
+				}
+			}
+			if len(ref.QueryArgs) > 0 {
+				qs := urlParsed.Query()
+				for _, q := range ref.QueryArgs {
+					qs[q.Name] = q.Values
+				}
+				urlParsed.RawQuery = qs.Encode()
 			}
 			for idx, urlPrefix := range urlPrefixes {
 				parsedURLPrefix, err := url.Parse(urlPrefix)
 				if err != nil {
 					return nil, fmt.Errorf("cannot parse urlPrefix: %q,err: %w", urlPrefix, err)
 				}
-				parsedURLPrefix.Path = path.Join(parsedURLPrefix.Path, parsedSuffix.Path)
-				suffixQuery := parsedSuffix.Query()
+				parsedURLPrefix.Path = path.Join(parsedURLPrefix.Path, urlParsed.Path)
+				qs := urlParsed.Query()
 				// update query params if needed.
-				if len(suffixQuery) > 0 {
+				if len(qs) > 0 {
 					urlQ := parsedURLPrefix.Query()
-					for k, v := range suffixQuery {
+					for k, v := range qs {
 						urlQ[k] = v
 					}
 					parsedURLPrefix.RawQuery = urlQ.Encode()

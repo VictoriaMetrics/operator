@@ -108,7 +108,8 @@ type BaseOperatorConf struct {
 	AnomalyVersion  string `default:"${VM_ANOMALY_VERSION}" env:"ANOMALY_VERSION,expand"`
 	TracesVertsion  string `default:"${VM_TRACES_VERSION}" env:"TRACES_VERSION,expand"`
 	OperatorVersion string `default:"${VM_OPERATOR_VERSION}" env:"OPERATOR_VERSION,expand"`
-
+	GatewayAPIEnabled bool   `default:"false" env:"GATEWAY_API_ENABLED"`
+  
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
 	UseVMConfigReloader bool `default:"true" env:"USECUSTOMCONFIGRELOADER"`

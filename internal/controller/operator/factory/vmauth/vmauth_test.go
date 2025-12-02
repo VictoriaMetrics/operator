@@ -64,7 +64,9 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		c: config.MustGetBaseConfig(),
+		c: mutateConf(func(c *config.BaseOperatorConf) {
+			c.GatewayAPIEnabled = true
+		}),
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmauth-test", "default"),
 			&apiextensionsv1.CustomResourceDefinition{

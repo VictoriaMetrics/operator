@@ -474,6 +474,9 @@ func (cr *VMAuthSpec) UnmarshalJSON(src []byte) error {
 }
 
 // EmbeddedHTTPRoute describes httproute configuration options.
+//
+// Requires gateway-controller CRD installed and VM_GATEWAY_API_ENABLED=true env var
+// See https://gateway-api.sigs.k8s.io/guides/#installing-a-gateway-controller
 type EmbeddedHTTPRoute struct {
 	//  EmbeddedObjectMetadata adds labels and annotations for object.
 	EmbeddedObjectMetadata `json:",inline"`

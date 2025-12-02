@@ -60,16 +60,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("VMAuth.Name must be set")
 	}
 
-	// Setup deadlines and timeouts
-	vmclusterWaitReadyDeadline := defaultVMClusterWaitReadyDeadline.Duration
-	if cr.Spec.ReadyDeadline != nil {
-		vmclusterWaitReadyDeadline = cr.Spec.ReadyDeadline.Duration
-	}
-	zoneUpdatePause := defaultZoneUpdatePause.Duration
-	if cr.Spec.ZoneUpdatePause != nil {
-		zoneUpdatePause = cr.Spec.ZoneUpdatePause.Duration
-	}
-
 	// Fetch VMCluster statuses by name (needed to build target refs for the VMUser).
 	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones.VMClusters)
 	if err != nil {
@@ -126,10 +116,22 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("failed to update or create VMAgent: %w", err)
 	}
 
-	// Disable VMClusters one by one if overrideSpec needs to be applied
+	// Setup deadlines and timeouts
+	vmclusterWaitReadyDeadline := defaultVMClusterWaitReadyDeadline.Duration
+	if cr.Spec.ReadyDeadline != nil {
+		vmclusterWaitReadyDeadline = cr.Spec.ReadyDeadline.Duration
+	}
+	zoneUpdatePause := defaultZoneUpdatePause.Duration
+	if cr.Spec.ZoneUpdatePause != nil {
+		zoneUpdatePause = cr.Spec.ZoneUpdatePause.Duration
+	}
+
+	// Setup custom HTTP client
 	httpClient := &http.Client{
 		Timeout: httpTimeout,
 	}
+
+	// Apply changes to VMClusters one by one if new spec needs to be applied
 	for i, vmClusterObj := range vmClusters {
 		zoneRefOrSpec := cr.Spec.Zones.VMClusters[i]
 
@@ -150,34 +152,20 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			}
 		}
 		if zoneRefOrSpec.Spec != nil {
-			var specModified bool
-			mergedSpec, specModified, err = mergeVMClusterSpecs(vmClusterObj.Spec, *zoneRefOrSpec.Spec)
+			mergedSpec, modifiedSpec, err = mergeVMClusterSpecs(vmClusterObj.Spec, *zoneRefOrSpec.Spec)
 			if err != nil {
 				return fmt.Errorf("failed to merge spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
-			if specModified {
-				modifiedSpec = true
-			}
 		}
 
+		// Set owner reference for this vmcluster
 		modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmClusterObj, scheme)
 		if err != nil {
 			return fmt.Errorf("failed to set owner reference for vmcluster %s: %w", vmClusterObj.Name, err)
 		}
 		if !needsToBeCreated && !modifiedSpec && !modifiedOwnerRef {
+			// No changes required
 			continue
-		}
-
-		// update vmauth lb with excluded cluster
-		activeVMClusters := make([]*vmv1beta1.VMCluster, 0, len(vmClusters)-1)
-		for _, vmc := range vmClusters {
-			if vmc.Name == vmClusterObj.Name {
-				continue
-			}
-			activeVMClusters = append(activeVMClusters, vmc)
-		}
-		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, activeVMClusters); err != nil {
-			return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
 		}
 
 		vmClusterObj.Spec = mergedSpec
@@ -194,27 +182,32 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			continue
 		}
 
+		// Update vmauth lb with excluded cluster
+		activeVMClusters := make([]*vmv1beta1.VMCluster, 0, len(vmClusters)-1)
+		for _, vmc := range vmClusters {
+			if vmc.Name == vmClusterObj.Name {
+				continue
+			}
+			activeVMClusters = append(activeVMClusters, vmc)
+		}
+		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, activeVMClusters); err != nil {
+			return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
+		}
+
 		// Apply the updated object
 		if err := rclient.Update(ctx, vmClusterObj); err != nil {
 			return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 		}
 		cr.Status.VMClusterInfo[i].Generation = vmClusterObj.Generation
 
-		// Record new vmcluster generations
-		if err := rclient.Status().Update(ctx, cr); err != nil {
-			return fmt.Errorf("failed to update status: %w", err)
-		}
-
-		if !modifiedSpec {
-			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
-				return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
-			}
-			continue
-		}
-
 		// Wait for VMCluster to be ready
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
+		}
+
+		// Record new vmcluster generations
+		if err := rclient.Status().Update(ctx, cr); err != nil {
+			return fmt.Errorf("failed to update status: %w", err)
 		}
 
 		// Wait for VMAgent metrics to show no pending queue

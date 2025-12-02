@@ -148,35 +148,6 @@ func (tc *trackingClient) Delete(ctx context.Context, obj client.Object, opts ..
 
 var _ client.StatusClient = (*trackingClient)(nil)
 
-type customErrorClient struct {
-	client.Client
-	customError error
-}
-
-func (tc *customErrorClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-	return tc.customError
-}
-
-func (tc *customErrorClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	return tc.customError
-}
-
-func (tc *customErrorClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	return tc.customError
-}
-
-func (tc *customErrorClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	return tc.customError
-}
-
-func (tc *customErrorClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	return tc.customError
-}
-
-func (tc *customErrorClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	return tc.customError
-}
-
 func (tsw *trackingStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
 	tsw.mu.Lock()
 	defer tsw.mu.Unlock()

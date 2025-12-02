@@ -74,7 +74,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	}
 
 	if cr.Spec.HTTPRoute != nil && !cfg.GatewayAPIEnabled {
-		return fmt.Errorf("spec.httpRoute is set but Gateway API support is not enabled")
+		return fmt.Errorf("spec.httpRoute is set but VM_GATEWAY_API_ENABLED=true env var was not provided")
 	}
 	if err := createOrUpdateHTTPRoute(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update httpRoute for vmauth: %w", err)

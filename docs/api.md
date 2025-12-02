@@ -1711,6 +1711,10 @@ Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VMAuthSpec](#vmauthsp
 
 EmbeddedHTTPRoute describes httproute configuration options.
 
+
+Requires gateway-controller CRD installed and VM_GATEWAY_API_ENABLED=true env var
+See https://gateway-api.sigs.k8s.io/guides/#installing-a-gateway-controller
+
 Appears in: [VMAuthSpec](#vmauthspec)
 
 | Field | Description |

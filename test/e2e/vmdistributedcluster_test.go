@@ -93,27 +93,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		} else {
 			Expect(err).ToNot(HaveOccurred())
 		}
-
-		// Create predefined VMAuth
-		vmAuth := &vmv1beta1.VMAuth{}
-		err = k8sClient.Get(ctx, types.NamespacedName{
-			Namespace: namespace,
-			Name:      existingVMAuthName,
-		}, vmAuth)
-		if k8serrors.IsNotFound(err) {
-			vmAuth = &vmv1beta1.VMAuth{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      existingVMAuthName,
-					Namespace: namespace,
-				},
-			}
-			Expect(k8sClient.Create(ctx, vmAuth)).To(Succeed(), "must create managed vmauth before test")
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, types.NamespacedName{Name: existingVMAuthName, Namespace: namespace})
-			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
-		} else {
-			Expect(err).ToNot(HaveOccurred())
-		}
 	}
 
 	afterEach := func() {

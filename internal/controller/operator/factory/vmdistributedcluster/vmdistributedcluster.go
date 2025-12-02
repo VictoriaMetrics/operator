@@ -211,8 +211,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 
 		// Wait for VMAgent metrics to show no pending queue
-		// Wrap concrete VMAgent into adapter that implements VMAgentWithStatus
-		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, &vmAgentAdapter{VMAgent: vmAgentObj}, vmclusterWaitReadyDeadline, rclient); err != nil {
+		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmclusterWaitReadyDeadline, rclient); err != nil {
 			// Ignore this error when running e2e tests - these need to run in the same network as pods
 			if os.Getenv("E2E_TEST") != "true" {
 				return fmt.Errorf("failed to wait for VMAgent metrics to show no pending queue: %w", err)

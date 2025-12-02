@@ -136,6 +136,7 @@ func InitOperatorProcess() {
 		Expect(os.Setenv("VM_CONTAINERREGISTRY", "quay.io")).To(Succeed())
 		Expect(os.Setenv("VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE", "prometheus/alertmanager")).To(Succeed())
 		Expect(os.Setenv("VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES", "true")).To(Succeed())
+		Expect(os.Setenv("VM_GATEWAY_API_ENABLED", "true")).To(Succeed())
 		Expect(os.Setenv("VM_PODWAITREADYTIMEOUT", "20s")).To(Succeed())
 		Expect(os.Setenv("VM_PODWAITREADYINTERVALCHECK", "1s")).To(Succeed())
 		Expect(os.Setenv("VM_APPREADYTIMEOUT", "50s")).To(Succeed())

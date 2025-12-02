@@ -1,0 +1,39 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: vmauth-sample
+spec:
+  selectAllByDefault: true
+  # requires VM_GATEWAY_API_ENABLED=true
+  # and CRD installed https://gateway-api.sigs.k8s.io/guides/
+  httpRoute:
+    hostnames:
+      - vmauth.example.com
+      - vmauth-internal.example.com
+    parentRefs:
+      - name: example
+  image:
+    repository: victoriametrics/vmauth
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "350Mi"
+    limits:
+      cpu: "500m"
+      memory: "850Mi"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: example
+spec:
+  gatewayClassName: nginx
+  listeners:
+    - protocol: HTTP
+      port: 80
+      name: example-port
+      allowedRoutes:
+        namespaces:
+          from: Same

@@ -213,7 +213,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	b := builder(cr)
 	svc := build.Service(b, cr.Spec.VMAuth.Spec.Port, nil)
 	// Set custom name
-	svc.Name = cr.Spec.VMAgent.Name
+	svc.Name = cr.Spec.VMAuth.Name
 
 	var prevSvc *corev1.Service
 	if prevCR != nil {
@@ -256,19 +256,6 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
 
-	var prevSA *corev1.ServiceAccount
-	if prevCR != nil {
-		prevSA = &corev1.ServiceAccount{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            cr.GetServiceAccountName(),
-				Namespace:       cr.GetNamespace(),
-				Labels:          cr.AllLabels(),
-				Annotations:     cr.AnnotationsFiltered(),
-				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-				Finalizers:      []string{vmv1beta1.FinalizerName},
-			},
-		}
-	}
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetServiceAccountName(),
@@ -278,6 +265,10 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
+	}
+	var prevSA *corev1.ServiceAccount
+	if prevCR != nil {
+		prevSA = serviceAccount.DeepCopy()
 	}
 
 	if err := reconcile.ServiceAccount(ctx, rclient, serviceAccount, prevSA); err != nil {

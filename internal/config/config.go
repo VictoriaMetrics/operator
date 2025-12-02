@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -37,11 +36,7 @@ var (
 
 	opNamespace   []string
 	initNamespace sync.Once
-	// this values are used by env expand logic here:
-	// https://github.com/caarlos0/env/blob/0669e014efa158a19b690c908bf39a3081a9fdc9/env.go#L607
-	//
-	// DO NOT FORGET TO MODIFY VERSIONS IN BaseOperatorConf
-	defaultEnvs = map[string]string{
+	defaultEnvs   = map[string]string{
 		"VM_METRICS_VERSION":  "v1.131.0",
 		"VM_LOGS_VERSION":     "v1.36.1",
 		"VM_ANOMALY_VERSION":  "v1.26.1",
@@ -108,15 +103,13 @@ type Resource struct {
 
 //genvars:true
 type BaseOperatorConf struct {
-	// this values are printed when -printDefaults is called
-	//
-	// DO NOT FORGET TO MODIFY VERSIONS IN defaultEnvs
-
-	MetricsVersion    string `default:"v1.131.0" env:"METRICS_VERSION"`
-	LogsVersion       string `default:"v1.36.1" env:"LOGS_VERSION"`
-	AnomalyVersion    string `default:"v1.25.2" env:"ANOMALY_VERSION"`
+	MetricsVersion  string `default:"${VM_METRICS_VERSION}" env:"METRICS_VERSION,expand"`
+	LogsVersion     string `default:"${VM_LOGS_VERSION}" env:"LOGS_VERSION,expand"`
+	AnomalyVersion  string `default:"${VM_ANOMALY_VERSION}" env:"ANOMALY_VERSION,expand"`
+	TracesVertsion  string `default:"${VM_TRACES_VERSION}" env:"TRACES_VERSION,expand"`
+	OperatorVersion string `default:"${VM_OPERATOR_VERSION}" env:"OPERATOR_VERSION,expand"`
 	GatewayAPIEnabled bool   `default:"false" env:"GATEWAY_API_ENABLED"`
-
+  
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
 	UseVMConfigReloader bool `default:"true" env:"USECUSTOMCONFIGRELOADER"`
@@ -792,94 +785,24 @@ func (labels *Labels) Set(value string) error {
 
 // ConfigAsMetrics exposes major configuration params as prometheus metrics
 func ConfigAsMetrics(r metrics.RegistererGatherer, cfg *BaseOperatorConf) {
-	metric := prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "config parameter"}, []string{"name", "is_set", "value"})
-
-	boolTagAsMetricWithPrefix := func(namePrefix, fieldName string, t reflect.Type, value bool) {
-		v, ok := t.FieldByName(fieldName)
-		if !ok {
-			panic(fmt.Sprintf("BUG: fieldName: %q is missing at : %s", fieldName, t.Name()))
-		}
-		dvS := v.Tag.Get("default")
-		dv, err := strconv.ParseBool(dvS)
-		if err != nil {
-			panic(fmt.Sprintf("BUG: unexpected boolean value: %q for fieldName: %q", dvS, fieldName))
-		}
-		name := v.Tag.Get("env")
-		if len(name) == 0 {
-			panic(fmt.Sprintf("BUG: env tag for fieldName: %q cannot be empty", fieldName))
-		}
-		metric.WithLabelValues(prefixVar+namePrefix+name, strconv.FormatBool(dv != value), strconv.FormatBool(value)).Set(1)
+	opts := getEnvOpts()
+	mapper := func(v string) string {
+		return opts.Environment[v]
 	}
-	boolTagAsMetric := func(fieldName string, t reflect.Type, value bool) {
-		boolTagAsMetricWithPrefix("", fieldName, t, value)
+	params, err := env.GetFieldParamsWithOptions(cfg, opts)
+	if err != nil {
+		panic(fmt.Sprintf("BUG: failed to get global variables: %s", err))
 	}
-
-	strTagAsMetric := func(fieldName string, t reflect.Type, value string) {
-		v, ok := t.FieldByName(fieldName)
-		if !ok {
-			panic(fmt.Sprintf("BUG: fieldName: %q is missing at : %s", fieldName, t.Name()))
+	ms := prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "config parameter"}, []string{"name", "is_set", "value"})
+	for _, p := range params {
+		_, isSet := os.LookupEnv(p.Key)
+		value := p.DefaultValue
+		if v, ok := opts.Environment[p.Key]; ok {
+			value = v
+		} else if p.Expand {
+			value = os.Expand(value, mapper)
 		}
-		dvS := v.Tag.Get("default")
-		name := v.Tag.Get("env")
-		if len(name) == 0 {
-			panic(fmt.Sprintf("BUG: env tag for fieldName: %q cannot be empty", fieldName))
-		}
-		isSet := false
-		if dvS != value && value == "" {
-			value = dvS
-			isSet = true
-		}
-		metric.WithLabelValues(prefixVar+name, strconv.FormatBool(isSet), value).Set(1)
+		ms.WithLabelValues(p.Key, strconv.FormatBool(isSet), value).Set(1)
 	}
-
-	durationTagAsMetric := func(fieldName string, t reflect.Type, value time.Duration) {
-		v, ok := t.FieldByName(fieldName)
-		if !ok {
-			panic(fmt.Sprintf("BUG: fieldName: %q is missing at : %s", fieldName, t.Name()))
-		}
-		dvS := v.Tag.Get("default")
-		dv, err := time.ParseDuration(dvS)
-		if err != nil {
-			panic(fmt.Sprintf("BUG: unexpected duration value: %q for fieldName: %q", dvS, fieldName))
-		}
-		name := v.Tag.Get("env")
-		if len(name) == 0 {
-			panic(fmt.Sprintf("BUG: env tag for fieldName: %q cannot be empty", fieldName))
-		}
-		isSet := false
-		if dv != value && value == 0 {
-			value = dv
-			isSet = true
-		}
-		metric.WithLabelValues(prefixVar+name, strconv.FormatBool(isSet), value.String()).Set(1)
-	}
-
-	cfgRootElems := reflect.TypeOf(cfg).Elem()
-	strTagAsMetric("ContainerRegistry", cfgRootElems, cfg.ContainerRegistry)
-	strTagAsMetric("ClusterDomainName", cfgRootElems, cfg.ClusterDomainName)
-
-	boolTagAsMetric("EnableStrictSecurity", cfgRootElems, cfg.EnableStrictSecurity)
-	boolTagAsMetric("UseVMConfigReloader", cfgRootElems, cfg.UseVMConfigReloader)
-	boolTagAsMetric("EnableTCP6", cfgRootElems, cfg.EnableTCP6)
-
-	boolTagAsMetric("EnabledPrometheusConverterOwnerReferences", cfgRootElems, cfg.EnabledPrometheusConverterOwnerReferences)
-	cfgPromElems := reflect.TypeOf(&cfg.EnabledPrometheusConverter).Elem()
-	boolTagAsMetricWithPrefix("ENABLEDPROMETHEUSCONVERTER_", "PodMonitor", cfgPromElems, cfg.EnabledPrometheusConverter.PodMonitor)
-	boolTagAsMetricWithPrefix("ENABLEDPROMETHEUSCONVERTER_", "ServiceScrape", cfgPromElems, cfg.EnabledPrometheusConverter.ServiceScrape)
-	boolTagAsMetricWithPrefix("ENABLEDPROMETHEUSCONVERTER_", "ScrapeConfig", cfgPromElems, cfg.EnabledPrometheusConverter.ScrapeConfig)
-	boolTagAsMetricWithPrefix("ENABLEDPROMETHEUSCONVERTER_", "Probe", cfgPromElems, cfg.EnabledPrometheusConverter.Probe)
-	boolTagAsMetricWithPrefix("ENABLEDPROMETHEUSCONVERTER_", "PrometheusRule", cfgPromElems, cfg.EnabledPrometheusConverter.PrometheusRule)
-	boolTagAsMetricWithPrefix("ENABLEDPROMETHEUSCONVERTER_", "AlertmanagerConfig", cfgPromElems, cfg.EnabledPrometheusConverter.AlertmanagerConfig)
-
-	durationTagAsMetric("AppReadyTimeout", cfgRootElems, cfg.AppReadyTimeout)
-	durationTagAsMetric("ForceResyncInterval", cfgRootElems, cfg.ForceResyncInterval)
-	durationTagAsMetric("PodWaitReadyIntervalCheck", cfgRootElems, cfg.PodWaitReadyIntervalCheck)
-	durationTagAsMetric("PodWaitReadyTimeout", cfgRootElems, cfg.PodWaitReadyTimeout)
-
-	strTagAsMetric("AnomalyVersion", cfgRootElems, cfg.AnomalyVersion)
-	strTagAsMetric("LogsVersion", cfgRootElems, cfg.LogsVersion)
-	strTagAsMetric("MetricsVersion", cfgRootElems, cfg.MetricsVersion)
-	strTagAsMetric("VMConfigReloaderImage", cfgRootElems, cfg.VMConfigReloaderImage)
-
-	r.MustRegister(metric)
+	r.MustRegister(ms)
 }

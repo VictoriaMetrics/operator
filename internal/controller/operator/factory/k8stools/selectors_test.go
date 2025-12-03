@@ -9,6 +9,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 func Test_discoverNamespacesOk(t *testing.T) {
@@ -102,13 +104,12 @@ func TestVisitSelected(t *testing.T) {
 	ignoreDiffOpts := cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
 
 	f := func(opts opts) {
+		cfg := config.MustGetBaseConfig()
 		if len(opts.watchNamespaces) > 0 {
-			origin := getWatchNamespaces
-			getWatchNamespaces = func() []string {
-				return opts.watchNamespaces
-			}
+			defaultCfg := *cfg
+			cfg.WatchNamespaces = opts.watchNamespaces
 			defer func() {
-				getWatchNamespaces = origin
+				*config.MustGetBaseConfig() = defaultCfg
 			}()
 		}
 		t.Helper()

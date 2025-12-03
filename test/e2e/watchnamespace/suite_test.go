@@ -12,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
@@ -31,7 +30,7 @@ func TestAPIs(t *testing.T) {
 var k8sClient client.Client
 var _ = SynchronizedBeforeSuite(
 	func() {
-		Expect(os.Setenv(config.WatchNamespaceEnvVar, "default")).NotTo(HaveOccurred())
+		Expect(os.Setenv("WATCH_NAMESPACE", "default")).NotTo(HaveOccurred())
 		suite.InitOperatorProcess()
 	},
 	func() {

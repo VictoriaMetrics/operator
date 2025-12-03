@@ -6,6 +6,7 @@
 | VM_TRACES_VERSION: `v0.5.0` <a href="#variables-vm-traces-version" id="variables-vm-traces-version">#</a> |
 | VM_OPERATOR_VERSION: `v0.65.0` <a href="#variables-vm-operator-version" id="variables-vm-operator-version">#</a> |
 | VM_GATEWAY_API_ENABLED: `false` <a href="#variables-vm-gateway-api-enabled" id="variables-vm-gateway-api-enabled">#</a> |
+| WATCH_NAMESPACE: `-` <a href="#variables-watch-namespace" id="variables-watch-namespace">#</a><br>Defines a list of namespaces to be watched by operator. Operator don't perform any cluster wide API calls if namespaces not empty. In case of empty list it performs only clusterwide api calls. |
 | VM_USECUSTOMCONFIGRELOADER: `true` <a href="#variables-vm-usecustomconfigreloader" id="variables-vm-usecustomconfigreloader">#</a><br>enables custom config reloader for vmauth and vmagent, it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |
 | VM_CUSTOMCONFIGRELOADERIMAGE: `victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a> |
@@ -56,8 +57,8 @@
 | VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmalertdefault-resource-limit-cpu" id="variables-vm-vmalertdefault-resource-limit-cpu">#</a> |
 | VM_VMALERTDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmalertdefault-resource-request-mem" id="variables-vm-vmalertdefault-resource-request-mem">#</a> |
 | VM_VMALERTDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmalertdefault-resource-request-cpu" id="variables-vm-vmalertdefault-resource-request-cpu">#</a> |
-| VM_VMALERTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertdefault-configreloadercpu" id="variables-vm-vmalertdefault-configreloadercpu">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VMALERTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertdefault-configreloadermemory" id="variables-vm-vmalertdefault-configreloadermemory">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
+| VM_VMALERTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmalertdefault-configreloadercpu" id="variables-vm-vmalertdefault-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMALERTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmalertdefault-configreloadermemory" id="variables-vm-vmalertdefault-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMSERVICESCRAPEDEFAULT_ENFORCEENDPOINTSLICES: `false` <a href="#variables-vm-vmservicescrapedefault-enforceendpointslices" id="variables-vm-vmservicescrapedefault-enforceendpointslices">#</a><br>Use endpointslices instead of endpoints as discovery role for vmservicescrape when generate scrape config for vmagent. |
 | VM_VMAGENTDEFAULT_IMAGE: `victoriametrics/vmagent` <a href="#variables-vm-vmagentdefault-image" id="variables-vm-vmagentdefault-image">#</a> |
 | VM_VMAGENTDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmagentdefault-version" id="variables-vm-vmagentdefault-version">#</a> |
@@ -68,8 +69,8 @@
 | VM_VMAGENTDEFAULT_RESOURCE_LIMIT_CPU: `200m` <a href="#variables-vm-vmagentdefault-resource-limit-cpu" id="variables-vm-vmagentdefault-resource-limit-cpu">#</a> |
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_MEM: `200Mi` <a href="#variables-vm-vmagentdefault-resource-request-mem" id="variables-vm-vmagentdefault-resource-request-mem">#</a> |
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmagentdefault-resource-request-cpu" id="variables-vm-vmagentdefault-resource-request-cpu">#</a> |
-| VM_VMAGENTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmagentdefault-configreloadercpu" id="variables-vm-vmagentdefault-configreloadercpu">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
-| VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmagentdefault-configreloadermemory" id="variables-vm-vmagentdefault-configreloadermemory">#</a><br>Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
+| VM_VMAGENTDEFAULT_CONFIGRELOADERCPU: `10m` <a href="#variables-vm-vmagentdefault-configreloadercpu" id="variables-vm-vmagentdefault-configreloadercpu">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead |
+| VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY: `25Mi` <a href="#variables-vm-vmagentdefault-configreloadermemory" id="variables-vm-vmagentdefault-configreloadermemory">#</a><br>Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead |
 | VM_VMANOMALYDEFAULT_IMAGE: `victoriametrics/vmanomaly` <a href="#variables-vm-vmanomalydefault-image" id="variables-vm-vmanomalydefault-image">#</a> |
 | VM_VMANOMALYDEFAULT_VERSION: `${VM_ANOMALY_VERSION}` <a href="#variables-vm-vmanomalydefault-version" id="variables-vm-vmanomalydefault-version">#</a> |
 | VM_VMANOMALYDEFAULT_CONFIGRELOADIMAGE: `quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1` <a href="#variables-vm-vmanomalydefault-configreloadimage" id="variables-vm-vmanomalydefault-configreloadimage">#</a> |

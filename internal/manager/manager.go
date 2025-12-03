@@ -219,11 +219,10 @@ func RunManager(ctx context.Context) error {
 
 	setupLog.Info("Registering Components.")
 	var watchNsCacheByName map[string]cache.Config
-	watchNss := config.MustGetWatchNamespaces()
-	if len(watchNss) > 0 {
-		setupLog.Info("operator configured with watching for subset of namespaces, cluster wide access is disabled", "namespaces", strings.Join(watchNss, ","))
+	if len(baseConfig.WatchNamespaces) > 0 {
+		setupLog.Info("operator configured with watching for subset of namespaces, cluster wide access is disabled", "namespaces", strings.Join(baseConfig.WatchNamespaces, ","))
 		watchNsCacheByName = make(map[string]cache.Config)
-		for _, ns := range watchNss {
+		for _, ns := range baseConfig.WatchNamespaces {
 			watchNsCacheByName[ns] = cache.Config{}
 		}
 	}
@@ -288,7 +287,7 @@ func RunManager(ctx context.Context) error {
 		return fmt.Errorf("cannot register health endpoint: %w", err)
 	}
 
-	if !*disableCRDOwnership && len(watchNss) == 0 {
+	if !*disableCRDOwnership && len(baseConfig.WatchNamespaces) == 0 {
 		initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
 		if err != nil {
 			return err

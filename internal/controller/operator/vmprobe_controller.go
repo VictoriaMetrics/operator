@@ -38,6 +38,7 @@ type VMProbeReconciler struct {
 	client.Client
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
+	BaseConf     *config.BaseOperatorConf
 }
 
 // Init implements crdController interface
@@ -45,6 +46,7 @@ func (r *VMProbeReconciler) Init(rclient client.Client, l logr.Logger, sc *runti
 	r.Client = rclient
 	r.Log = l.WithName("controller.VMProbe")
 	r.OriginScheme = sc
+	r.BaseConf = cf
 }
 
 // Scheme implements interface.
@@ -81,7 +83,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	defer agentSync.Unlock()
 
 	var objects vmv1beta1.VMAgentList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAgentList) {
+	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAgentList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		return result, fmt.Errorf("cannot list vmagents for vmprobe: %w", err)

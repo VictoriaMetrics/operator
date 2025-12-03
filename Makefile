@@ -308,26 +308,30 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 
 # builds image and loads it into kind.
 load-kind: docker-build kind operator-sdk
-	if [ "$$($(CONTAINER_TOOL) inspect -f '{{.State.Running}}' "$(LOCAL_REGISTRY_NAME)" 2>/dev/null || true)" != 'true' ]; then \
-		$(CONTAINER_TOOL) run \
-			-d --restart=always \
-			-p "127.0.0.1:${LOCAL_REGISTRY_PORT}:5000" \
-			--network bridge --name "$(LOCAL_REGISTRY_NAME)" \
-			registry:2; \
+	if [ -n "$(LOCAL_REGISTRY_NAME)" ]; then \
+		if [ "$$($(CONTAINER_TOOL) inspect -f '{{.State.Running}}' "$(LOCAL_REGISTRY_NAME)" 2>/dev/null || true)" != 'true' ]; then \
+			$(CONTAINER_TOOL) run \
+				-d --restart=always \
+				-p "127.0.0.1:${LOCAL_REGISTRY_PORT}:5000" \
+				--network bridge --name "$(LOCAL_REGISTRY_NAME)" \
+				registry:2; \
+		fi; \
 	fi;
 	if [ "`$(KIND) get clusters`" != "kind" ]; then \
 		$(KIND) create cluster --config=./config/olm/kind.yaml; \
 	else \
 		$(KUBECTL) cluster-info --context kind-kind; \
 	fi; \
-        $(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG);
-	for node in $$($(KIND) get nodes); do \
-		$(CONTAINER_TOOL) exec "$${node}" mkdir -p "${LOCAL_REGISTRY_DIR}"; \
-		$(CONTAINER_TOOL) exec -i "$${node}" sh -c "echo '[host.\"http://$(LOCAL_REGISTRY_NAME):5000\"]' > $(LOCAL_REGISTRY_DIR)/hosts.toml"; \
-	done;
-	if [ "$$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' $(LOCAL_REGISTRY_NAME))" = 'null' ]; then \
-		$(CONTAINER_TOOL) network connect "kind" "$(LOCAL_REGISTRY_NAME)"; \
-	fi
+	if [ -n "$(LOCAL_REGISTRY_NAME)" ]; then \
+		$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
+		for node in $$($(KIND) get nodes); do \
+			$(CONTAINER_TOOL) exec "$${node}" mkdir -p "${LOCAL_REGISTRY_DIR}"; \
+			$(CONTAINER_TOOL) exec -i "$${node}" sh -c "echo '[host.\"http://$(LOCAL_REGISTRY_NAME):5000\"]' > $(LOCAL_REGISTRY_DIR)/hosts.toml"; \
+		done; \
+		if [ "$$($(CONTAINER_TOOL) inspect -f='{{json .NetworkSettings.Networks.kind}}' $(LOCAL_REGISTRY_NAME))" = 'null' ]; then \
+			$(CONTAINER_TOOL) network connect "kind" "$(LOCAL_REGISTRY_NAME)"; \
+		fi; \
+	fi;
 	if ! $(OPERATOR_SDK) olm status; then \
 		$(OPERATOR_SDK) olm install --version $(OLM_VERSION); \
 	fi

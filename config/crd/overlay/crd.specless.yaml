@@ -2876,15 +2876,15 @@ spec:
   versions:
   - additionalPrinterColumns:
     - description: replicas of VTInsert
-      jsonPath: .spec.vtinsert.replicaCount
+      jsonPath: .spec.insert.replicaCount
       name: Insert Count
       type: string
     - description: replicas of VTStorage
-      jsonPath: .spec.vtstorage.replicaCount
+      jsonPath: .spec.storage.replicaCount
       name: Storage Count
       type: string
     - description: replicas of VTSelect
-      jsonPath: .spec.vtselect.replicaCount
+      jsonPath: .spec.select.replicaCount
       name: Select Count
       type: string
     - jsonPath: .metadata.creationTimestamp

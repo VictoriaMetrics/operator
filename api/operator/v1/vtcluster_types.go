@@ -523,9 +523,9 @@ func (*VTStorage) ProbeNeedLiveness() bool {
 // +kubebuilder:subresource:status
 
 // VTCluster is fast, cost-effective and scalable traces database.
-// +kubebuilder:printcolumn:name="Insert Count",type="string",JSONPath=".spec.vtinsert.replicaCount",description="replicas of VTInsert"
-// +kubebuilder:printcolumn:name="Storage Count",type="string",JSONPath=".spec.vtstorage.replicaCount",description="replicas of VTStorage"
-// +kubebuilder:printcolumn:name="Select Count",type="string",JSONPath=".spec.vtselect.replicaCount",description="replicas of VTSelect"
+// +kubebuilder:printcolumn:name="Insert Count",type="string",JSONPath=".spec.insert.replicaCount",description="replicas of VTInsert"
+// +kubebuilder:printcolumn:name="Storage Count",type="string",JSONPath=".spec.storage.replicaCount",description="replicas of VTStorage"
+// +kubebuilder:printcolumn:name="Select Count",type="string",JSONPath=".spec.select.replicaCount",description="replicas of VTSelect"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of cluster"
 // +genclient

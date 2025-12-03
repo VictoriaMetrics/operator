@@ -79,8 +79,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmAgentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](2),
+							CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](2),
+								},
 							},
 						},
 					},
@@ -468,8 +470,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: existingVMAgentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+							CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](2),
+								},
 							},
 						},
 					},
@@ -829,8 +833,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmagentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+							CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](2),
+								},
 							},
 						},
 					},

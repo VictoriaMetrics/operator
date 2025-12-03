@@ -273,7 +273,9 @@ func beforeEach() testData {
 	vmagent := &vmv1beta1.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-vmagent", Namespace: "default"},
 		Spec: vmv1beta1.VMAgentSpec{
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{ReplicaCount: ptr.To(int32(1))},
+			CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{ReplicaCount: ptr.To(int32(1))},
+			},
 		},
 		Status: vmv1beta1.VMAgentStatus{Replicas: 1},
 	}

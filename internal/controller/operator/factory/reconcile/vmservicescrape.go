@@ -41,10 +41,11 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 			return nil
 		}
 		// TODO: @f41gh7 allow 3rd party applications to add annotations for generated VMServiceScrape
+		specDiff := diffDeep(vss.Spec, existVSS.Spec)
 		existVSS.Annotations = vss.Annotations
 		existVSS.Spec = vss.Spec
 		existVSS.Labels = vss.Labels
-		logMsg := fmt.Sprintf("updating VMServiceScrape %s for CRD object spec_diff: %s", vss.Name, diffDeep(vss.Spec, existVSS.Spec))
+		logMsg := fmt.Sprintf("updating VMServiceScrape %s for CRD object spec_diff: %s", vss.Name, specDiff)
 		logger.WithContext(ctx).Info(logMsg)
 
 		return rclient.Update(ctx, &existVSS)

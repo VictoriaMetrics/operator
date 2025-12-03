@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +16,7 @@ import (
 )
 
 const probeTimeoutSeconds int32 = 5
+const DataVolumeName = "data"
 
 type probeCRD interface {
 	Probe() *vmv1beta1.EmbeddedProbes
@@ -536,46 +538,48 @@ func AddSyslogTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.
 	return dstVolumes, dstMounts
 }
 
-func StorageVolumeMountsTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, pvcSrc *corev1.PersistentVolumeClaimVolumeSource, volumeName, storagePath string) ([]corev1.Volume, []corev1.VolumeMount) {
-	var alreadyMounted bool
+func StorageVolumeMountsTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, pvcSrc *corev1.PersistentVolumeClaimVolumeSource, storagePath, dataVolumeName string) ([]corev1.Volume, []corev1.VolumeMount, error) {
+	foundMount := false
 	for _, volumeMount := range mounts {
-		if volumeMount.Name == volumeName {
-			alreadyMounted = true
-			break
+		rel, err := filepath.Rel(volumeMount.MountPath, storagePath)
+		if err == nil && !strings.HasPrefix(rel, "..") {
+			if volumeMount.Name == dataVolumeName {
+				foundMount = true
+				break
+			}
+			return nil, nil, fmt.Errorf(
+				"unexpected volume=%q mounted to path=%q, which is reserved for volume=%q, path=%q",
+				volumeMount.Name, volumeMount.MountPath, dataVolumeName, storagePath)
+		} else {
+			if volumeMount.Name != dataVolumeName {
+				continue
+			}
+			return nil, nil, fmt.Errorf(
+				"unexpected volume=%q mounted to path=%q, expected path=%q",
+				volumeMount.Name, volumeMount.MountPath, dataVolumeName)
 		}
 	}
-	if !alreadyMounted {
-		mounts = append(mounts, corev1.VolumeMount{
-			Name:      volumeName,
+	if !foundMount {
+		mounts = append([]corev1.VolumeMount{{
+			Name:      dataVolumeName,
 			MountPath: storagePath,
-		})
-	}
-	if pvcSrc != nil {
-		volumes = append(volumes, corev1.Volume{
-			Name: volumeName,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: pvcSrc,
-			},
-		})
-		return volumes, mounts
+		}}, mounts...)
 	}
 
-	var volumePresent bool
 	for _, volume := range volumes {
-		if volume.Name == volumeName {
-			volumePresent = true
-			break
+		if volume.Name == dataVolumeName {
+			return volumes, mounts, nil
 		}
 	}
-	if volumePresent {
-		return volumes, mounts
+	var source corev1.VolumeSource
+	if pvcSrc != nil {
+		source.PersistentVolumeClaim = pvcSrc
+	} else {
+		source.EmptyDir = &corev1.EmptyDirVolumeSource{}
 	}
-
-	volumes = append(volumes, corev1.Volume{
-		Name: volumeName,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
-	return volumes, mounts
+	volumes = append([]corev1.Volume{{
+		Name:         dataVolumeName,
+		VolumeSource: source,
+	}}, volumes...)
+	return volumes, mounts, nil
 }

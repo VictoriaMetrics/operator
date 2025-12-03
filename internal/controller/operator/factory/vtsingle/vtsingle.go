@@ -25,7 +25,6 @@ import (
 
 const (
 	dataDataDir              = "/victoria-traces-data"
-	dataVolumeName           = "data"
 	tlsServerConfigMountPath = "/etc/vm/tls-server-secrets"
 )
 
@@ -190,17 +189,16 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(r.Spec.Port).IntVal})
-	var volumes []corev1.Volume
-	var vmMounts []corev1.VolumeMount
-	volumes = append(volumes, r.Spec.Volumes...)
-	vmMounts = append(vmMounts, r.Spec.VolumeMounts...)
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
 	if r.Spec.Storage != nil {
 		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: r.PrefixedName(),
 		}
 	}
-	volumes, vmMounts = build.StorageVolumeMountsTo(volumes, vmMounts, pvcSrc, dataVolumeName, storagePath)
+	volumes, vmMounts, err := build.StorageVolumeMountsTo(r.Spec.Volumes, r.Spec.VolumeMounts, pvcSrc, storagePath, build.DataVolumeName)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, s := range r.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{

@@ -41,16 +41,9 @@ func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr
 		&vmv1beta1.VMServiceScrape{ObjectMeta: vmAuthLBMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: vmAuthLBPrefixedMeta},
 	}
-	owner := cr.AsOwner()
-	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
-			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
-		}
-	}
-
-	// Remove created VMClusters
 	for _, vmclusterSpec := range cr.Spec.Zones.VMClusters {
-		if vmclusterSpec.Ref != nil {
+		// Don't attempt to delete referenced or plain invalid clusters
+		if vmclusterSpec.Ref != nil || len(vmclusterSpec.Name) == 0 {
 			continue
 		}
 		vmcluster := &vmv1beta1.VMCluster{
@@ -59,10 +52,14 @@ func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr
 				Namespace: cr.Namespace,
 			},
 		}
-		if err := SafeDeleteWithFinalizer(ctx, rclient, vmcluster, &owner); err != nil {
-			return fmt.Errorf("failed to remove vmcluster %s: %w", vmclusterSpec.Name, err)
+		objsToRemove = append(objsToRemove, vmcluster)
+	}
+	owner := cr.AsOwner()
+	for _, objToRemove := range objsToRemove {
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
+			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
 	}
-
+	// Remove the CR
 	return removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace)
 }

@@ -77,7 +77,7 @@ func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl
 	// Check if the instance is being deleted
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMDistributedClusterDelete(ctx, r, instance); err != nil {
-			return result, fmt.Errorf("cannot remove finalizer from vmdistributed: %w", err)
+			return result, fmt.Errorf("cannot remove finalizer from vmdistributedcluster: %w", err)
 		}
 		return result, nil
 	}
@@ -98,10 +98,9 @@ func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl
 
 		return result, nil
 	})
-	if err != nil {
-		return
+	if err == nil {
+		result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 	}
-	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 	return
 }
 

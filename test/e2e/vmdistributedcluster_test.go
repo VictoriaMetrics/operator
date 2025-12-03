@@ -50,7 +50,7 @@ func verifyOwnerReferences(ctx context.Context, cr *vmv1alpha1.VMDistributedClus
 }
 
 var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster"), func() {
-	var ctx context.Context
+	ctx := context.Background()
 
 	// This env var is required to make vmagent metrics checker ignore errors
 	// as the test runs outside of the cluster and has no access to pod metrics
@@ -63,45 +63,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	existingVMAgentName := "existing-vmagent"
 	existingVMAuthName := "existing-vmauth"
 
-	beforeEach := func() {
-		ctx = context.Background()
-
-		// Create predefined VMAgent
-		vmAgent := &vmv1beta1.VMAgent{}
-		err := k8sClient.Get(ctx, types.NamespacedName{
-			Namespace: namespace,
-			Name:      existingVMAgentName,
-		}, vmAgent)
-		if k8serrors.IsNotFound(err) {
-			vmAgent = &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      existingVMAgentName,
-					Namespace: namespace,
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					},
-					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-						{
-							URL: "http://victoria-metrics-single:8428/api/v1/write",
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, vmAgent)).To(Succeed(), "must create managed vm-agent before test")
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, types.NamespacedName{Name: existingVMAgentName, Namespace: namespace})
-			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
-		} else {
-			Expect(err).ToNot(HaveOccurred())
-		}
-	}
-
 	Context("create", func() {
 		It("should successfully create a VMDistributedCluster with inline VMAgent spec", func() {
-			beforeEach()
-
 			By("creating a VMDistributedCluster with inline VMAgent spec")
 			namespacedName.Name = "distributed-cluster-with-inline-vmagent"
 			vmAgentName := "inline-vmagent"
@@ -169,8 +132,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should successfully create a VMDistributedCluster with inline VMCluster specs", func() {
-			beforeEach()
-
 			By("creating a VMDistributedCluster with inline VMCluster specs")
 			namespacedName.Name = "inline-vmcluster"
 			cr := &vmv1alpha1.VMDistributedCluster{
@@ -261,8 +222,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should successfully create a VMDistributedCluster with inline VMAuth spec", func() {
-			beforeEach()
-
 			By("creating a VMCluster")
 			vmCluster := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -342,8 +301,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should successfully create a VMDistributedCluster with VMCluster references and override spec", func() {
-			beforeEach()
-
 			By("creating an initial VMCluster")
 			initialCluster := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -401,8 +358,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should handle rolling updates with VMAgent configuration changes", func() {
-			beforeEach()
-
 			vmCluster1 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -466,8 +421,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should wait for VMCluster upgrade completion", func() {
-			beforeEach()
-
 			initialVersion := "v1.126.0-cluster"
 			updateVersion := "v1.127.0-cluster"
 
@@ -586,8 +539,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should skip reconciliation when VMDistributedCluster is paused", func() {
-			beforeEach()
-
 			By("creating a VMCluster")
 			vmCluster := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -688,8 +639,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 	Context("fail", func() {
 		DescribeTable("should fail when creating vmdistributedcluster", func(cr *vmv1alpha1.VMDistributedCluster, vmclusters []vmv1beta1.VMCluster) {
-			beforeEach()
-
 			for _, vmcluster := range vmclusters {
 				createVMClusterAndEnsureOperational(ctx, k8sClient, &vmcluster, namespace)
 			}
@@ -817,8 +766,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 	Context("delete", func() {
 
 		It("should delete VMDistributedCluster and remove it from the cluster", func() {
-			beforeEach()
-
 			vmCluster := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -860,8 +807,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should remove vmagent created by vmdistributedcluster", func() {
-			beforeEach()
-
 			vmCluster := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -918,8 +863,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should remove vmauth created by vmdistributedcluster", func() {
-			beforeEach()
-
 			vmCluster := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -984,8 +927,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 		})
 
 		It("should remove vmclusters created by vmdistributedcluster", func() {
-			beforeEach()
-
 			namespacedName.Name = "vmdistributed-vmcluster-removal"
 			vmc1Name := namespacedName.Name + "-c1"
 			vmc2Name := namespacedName.Name + "-c2"

@@ -78,11 +78,6 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 	}
 
-	// check ingress
-	if err := removeFinalizeObjByName(ctx, rclient, &gwapiv1.HTTPRoute{}, cr.PrefixedName(), cr.Namespace); err != nil {
-		return err
-	}
-
 	// check HPA
 	if err := removeFinalizeObjByName(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err

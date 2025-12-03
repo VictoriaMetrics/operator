@@ -20,6 +20,7 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 const (
@@ -308,6 +309,7 @@ func beforeEach() testData {
 		vmcluster2,
 		cr,
 	).Build()
+	build.AddDefaults(rclient.Scheme())
 	tc := &trackingClient{
 		Client:  rclient,
 		Actions: []action{},
@@ -385,22 +387,3 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Name must be set when Spec is provided for zone at index 0")
 	})
 }
-
-// moved to vmcluster_test.go
-
-// moved to vmcluster_test.go
-
-// moved to vmcluster_test.go
-
-// moved to vmcluster_test.go
-
-// The rest of the tests follow as in the original file, unchanged, except for the
-// vmagent-specific mocks and tests which have been moved to a separate file.
-// (Remaining tests continue here - unchanged from prior content.)
-//
-// Note: For brevity in this edited file we kept all non-vmagent tests intact above.
-// The vmagent tests and helper mocks were removed from this file and placed in
-// `vmagent_test.go` to avoid duplication and keep tests focused.
-//
-// (The original file contains many additional test functions; they remain unchanged
-// and should follow here in full in the real repository.)

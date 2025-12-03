@@ -353,13 +353,7 @@ func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthLoadBalancerSpe
 	spec := cr.Spec.VMAuth.Spec
 	if spec == nil {
 		spec = &vmv1beta1.VMAuthLoadBalancerSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-				Port: "8417",
-				Image: vmv1beta1.Image{
-					Repository: "docker.io/victoriametrics/vmauth",
-					Tag:        "latest",
-				},
-			},
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
 		}
 	}
 	return spec
@@ -367,7 +361,7 @@ func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthLoadBalancerSpe
 
 // PodMetadata returns pod metadata for given component kind
 func (cr *VMDistributedCluster) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.EmbeddedObjectMetadata {
-	return cr.GetVMAuthSpec().PodMetadata
+	return cr.Spec.VMAuth.Spec.PodMetadata
 }
 
 // FinalAnnotations returns global annotations to be applied by objects generate for vmcluster

@@ -329,11 +329,14 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						Expect(ts.Containers).To(HaveLen(2))
 						Expect(ts.Volumes).To(HaveLen(4))
 						Expect(ts.Containers[0].VolumeMounts).To(HaveLen(3))
-						Expect(ts.Containers[0].VolumeMounts[0].Name).To(Equal("unused"))
-						Expect(ts.Containers[0].VolumeMounts[1].Name).To(Equal("data"))
-						Expect(ts.Containers[1].VolumeMounts).To(HaveLen(3))
+						Expect(ts.Containers[0].VolumeMounts[0].Name).To(Equal("data"))
+						Expect(ts.Containers[0].VolumeMounts[1].Name).To(Equal("unused"))
+						Expect(ts.Containers[0].VolumeMounts[2].Name).To(Equal("license"))
+						Expect(ts.Containers[1].VolumeMounts).To(HaveLen(4))
 						Expect(ts.Containers[1].VolumeMounts[0].Name).To(Equal("data"))
-						Expect(ts.Containers[1].VolumeMounts[1].Name).To(Equal("backup"))
+						Expect(ts.Containers[1].VolumeMounts[1].Name).To(Equal("unused"))
+						Expect(ts.Containers[1].VolumeMounts[2].Name).To(Equal("backup"))
+						Expect(ts.Containers[1].VolumeMounts[3].Name).To(Equal("license"))
 					}),
 			)
 

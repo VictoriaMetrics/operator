@@ -29,6 +29,7 @@ aliases:
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed HPA cleanup logic for all cluster resources, before it was constantly recreated. Bug introduced in [this commit](https://github.com/VictoriaMetrics/operator/commit/983d1678c37497a7d03d2f57821219fd4975deec).
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): prevent cluster load balancer secret from infinite reconcile.
+* BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/) and [vtsingle](https://docs.victoriametrics.com/operator/resources/vtsingle): do not mount emptydir if storage data volume is already present in volumes list. Before it was impossible to mount external PVC without overriding default storageDataPath using `spec.extraArgs` and without having unneeded emptydir listed among pod volumes. Related issues [#1477](https://github.com/VictoriaMetrics/operator/issues/1477).
 
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 
@@ -39,7 +40,6 @@ SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove orphaned ServiceAccount and RBAC resources. See [#1665](https://github.com/VictoriaMetrics/operator/issues/1665).
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): properly handle configuration which is missing `reader.queries` in either `configRawYaml` or `configSecret`. Previously, it would lead to panic.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix configuration parsing when running in [UI mode](https://docs.victoriametrics.com/anomaly-detection/ui/). Previously, configuration required to use `preset: ui:version` instead of `preset: ui`.
-* BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/) and [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): do not mount emptydir if storage data volume is already present in volumes list. Before it was impossible to mount external PVC without overriding default storageDataPath using `spec.extraArgs` and without having unneeded emptydir listed among pod volumes. Related issues [#1477](https://github.com/VictoriaMetrics/operator/issues/1477).
 
 ## [v0.66.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.0)
 

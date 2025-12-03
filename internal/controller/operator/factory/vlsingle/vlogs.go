@@ -147,9 +147,6 @@ func makeVLogsPodSpec(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 		fmt.Sprintf("-retentionPeriod=%s", r.Spec.RetentionPeriod),
 	}
 
-	// if customStorageDataPath is not empty, do not add pvc.
-	shouldAddPVC := r.Spec.StorageDataPath == ""
-
 	storagePath := dataDataDir
 	if r.Spec.StorageDataPath != "" {
 		storagePath = r.Spec.StorageDataPath
@@ -180,36 +177,17 @@ func makeVLogsPodSpec(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(r.Spec.Port).IntVal})
-	volumes := []corev1.Volume{}
 
-	storageSpec := r.Spec.Storage
-
-	if storageSpec == nil {
-		volumes = append(volumes, corev1.Volume{
-			Name: dataVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-	} else if shouldAddPVC {
-		volumes = append(volumes, corev1.Volume{
-			Name: dataVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: r.PrefixedName(),
-				},
-			},
-		})
+	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
+	if r.Spec.Storage != nil {
+		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: r.PrefixedName(),
+		}
 	}
-	volumes = append(volumes, r.Spec.Volumes...)
-	vmMounts := []corev1.VolumeMount{
-		{
-			Name:      dataVolumeName,
-			MountPath: storagePath,
-		},
+	volumes, vmMounts, err := build.StorageVolumeMountsTo(r.Spec.Volumes, r.Spec.VolumeMounts, pvcSrc, storagePath, build.DataVolumeName)
+	if err != nil {
+		return nil, err
 	}
-
-	vmMounts = append(vmMounts, r.Spec.VolumeMounts...)
 
 	for _, s := range r.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{

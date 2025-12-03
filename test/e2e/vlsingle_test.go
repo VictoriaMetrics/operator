@@ -155,8 +155,8 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 						Expect(ts.Containers).To(HaveLen(1))
 						Expect(ts.Volumes).To(HaveLen(2))
 						Expect(ts.Containers[0].VolumeMounts).To(HaveLen(2))
-						Expect(ts.Containers[0].VolumeMounts[0].Name).To(Equal("unused"))
-						Expect(ts.Containers[0].VolumeMounts[1].Name).To(Equal("data"))
+						Expect(ts.Containers[0].VolumeMounts[0].Name).To(Equal("data"))
+						Expect(ts.Containers[0].VolumeMounts[1].Name).To(Equal("unused"))
 
 					}),
 			)

@@ -25,7 +25,6 @@ import (
 
 const (
 	dataDataDir         = "/victoria-metrics-data"
-	dataVolumeName      = "data"
 	streamAggrSecretKey = "config.yaml"
 )
 
@@ -184,20 +183,19 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
-	var volumes []corev1.Volume
-	var vmMounts []corev1.VolumeMount
-
-	volumes = append(volumes, cr.Spec.Volumes...)
-	vmMounts = append(vmMounts, cr.Spec.VolumeMounts...)
-
-	var pvcSpec *corev1.PersistentVolumeClaimVolumeSource
+	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
 	if cr.Spec.Storage != nil {
-		pvcSpec = &corev1.PersistentVolumeClaimVolumeSource{
+		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: cr.PrefixedName(),
 		}
 	}
 
-	volumes, vmMounts = build.StorageVolumeMountsTo(volumes, vmMounts, pvcSpec, dataVolumeName, storagePath)
+	volumes, vmMounts, err := build.StorageVolumeMountsTo(cr.Spec.Volumes, cr.Spec.VolumeMounts, pvcSrc, storagePath, build.DataVolumeName)
+	if err != nil {
+		return nil, err
+	}
+	commonMounts := vmMounts
+
 	if cr.Spec.VMBackup != nil && cr.Spec.VMBackup.CredentialsSecret != nil {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("secret-" + cr.Spec.VMBackup.CredentialsSecret.Name),
@@ -277,7 +275,7 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 	var initContainers []corev1.Container
 
 	if cr.Spec.VMBackup != nil {
-		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMBackup, cr.Spec.Port, storagePath, dataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
+		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMBackup, cr.Spec.Port, storagePath, commonMounts, cr.Spec.ExtraArgs, false, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -287,7 +285,7 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 		if cr.Spec.VMBackup.Restore != nil &&
 			cr.Spec.VMBackup.Restore.OnStart != nil &&
 			cr.Spec.VMBackup.Restore.OnStart.Enabled {
-			vmRestore, err := build.VMRestore(cr.Spec.VMBackup, storagePath, dataVolumeName)
+			vmRestore, err := build.VMRestore(cr.Spec.VMBackup, storagePath, commonMounts)
 			if err != nil {
 				return nil, err
 			}

@@ -22,7 +22,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -407,6 +406,15 @@ func getClientCacheOptions(disabledCacheObjects string) (*client.CacheOptions, e
 	return &co, nil
 }
 
+// cacheClientObjectsByName defines objects for which cache could be disabled via flag controller.disableCacheFor
+//
+// It's needed to reduce memory usage by operator.
+// Operator client caches objects in memory at the following conditions:
+// 1) if controller Owns resource - explicit init
+// 2) if resource is requested by code - lazy init
+//
+// by default cache is disabled for configmap and secrets,
+// which may occupy a lot of memory.
 var cacheClientObjectsByName = map[string]client.Object{
 	"secret":      &corev1.Secret{},
 	"configmap":   &corev1.ConfigMap{},
@@ -415,9 +423,6 @@ var cacheClientObjectsByName = map[string]client.Object{
 	"pod":         &corev1.Pod{},
 	"deployment":  &appsv1.Deployment{},
 	"statefulset": &appsv1.StatefulSet{},
-	"daemonset":   &appsv1.DaemonSet{},
-	"httproute":   &gwapiv1.HTTPRoute{},
-	"ingress":     &networkingv1.Ingress{},
 }
 
 // runtime-controller doesn't expose this metric

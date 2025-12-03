@@ -188,12 +188,7 @@ func (cc *ChildCleaner) KeepScrape(v string) {
 
 // RemoveOrphaned removes cr dependent resources excluding ones, which are defined in cleaner's maps
 func (cc *ChildCleaner) RemoveOrphaned(ctx context.Context, rclient client.Client, cr build.ParentOpts) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
-	ls := b.SelectorLabels()
-
-	// removing label, which may be different for all dependent resources
-	delete(ls, "app.kubernetes.io/name")
-	b.SetSelectorLabels(ls)
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentCommon)
 	if err := RemoveOrphanedPDBs(ctx, rclient, b, cc.pdbs); err != nil {
 		return fmt.Errorf("cannot remove orphaned PDBs: %w", err)
 	}

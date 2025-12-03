@@ -107,11 +107,11 @@ func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, 
 }
 
 func canBeRemoved(o client.Object, owner *metav1.OwnerReference) bool {
-	if owner == nil {
+	if owner == nil || len(o.GetNamespace()) == 0 {
 		return slices.Contains(o.GetFinalizers(), vmv1beta1.FinalizerName)
 	}
 	owners := o.GetOwnerReferences()
-	return slices.Contains(o.GetFinalizers(), vmv1beta1.FinalizerName) || slices.ContainsFunc(owners, func(r metav1.OwnerReference) bool {
+	return slices.ContainsFunc(owners, func(r metav1.OwnerReference) bool {
 		return r.APIVersion == owner.APIVersion && r.Kind == owner.Kind && r.Name == owner.Name
 	})
 }

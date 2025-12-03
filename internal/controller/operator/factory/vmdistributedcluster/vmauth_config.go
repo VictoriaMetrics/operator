@@ -92,7 +92,7 @@ func buildLBConfigMeta(cr *vmv1alpha1.VMDistributedCluster) metav1.ObjectMeta {
 }
 
 func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deployment, error) {
-	spec := cr.GetVMAuthSpec()
+	spec := cr.Spec.VMAuth.Spec
 	const configMountName = "vmauth-lb-config"
 	volumes := []corev1.Volume{
 		{
@@ -203,7 +203,7 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 }
 
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
-	spec := cr.GetVMAuthSpec()
+	spec := cr.Spec.VMAuth.Spec
 
 	builder := func(r *vmv1alpha1.VMDistributedCluster) *build.ChildBuilder {
 		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
@@ -220,7 +220,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	var prevSvc *corev1.Service
 	if prevCR != nil {
 		b = builder(prevCR)
-		prevSvc = build.Service(b, prevCR.GetVMAuthSpec().Port, nil)
+		prevSvc = build.Service(b, prevCR.Spec.VMAuth.Spec.Port, nil)
 	}
 
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
@@ -235,14 +235,14 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 }
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
-	spec := cr.GetVMAuthSpec()
+	spec := cr.Spec.VMAuth.Spec
 
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	pdb := build.PodDisruptionBudget(b, spec.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.GetVMAuthSpec().PodDisruptionBudget != nil {
+	if prevCR != nil && prevCR.Spec.VMAuth.Spec.PodDisruptionBudget != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
-		prevPDB = build.PodDisruptionBudget(b, prevCR.GetVMAuthSpec().PodDisruptionBudget)
+		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMAuth.Spec.PodDisruptionBudget)
 	}
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
@@ -264,7 +264,7 @@ func updateVMAuthLBSecret(ctx context.Context, rclient client.Client, cr, prevCR
 }
 
 func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
-	spec := cr.GetVMAuthSpec()
+	spec := cr.Spec.VMAuth.Spec
 
 	updateVMAuthLBSecret(ctx, rclient, cr, prevCR, vmClusters)
 

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): add `app.kubernetes.io/part-of` label to orphaned resources cleaner selector.
+
 ## [v0.66.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.0)
 
 **Release date:** 03 December 2025

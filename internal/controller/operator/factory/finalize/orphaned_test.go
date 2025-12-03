@@ -68,6 +68,10 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 	// remove 1 orphaned
 	f(opts{
 		cr: &vmv1beta1.VMAgent{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "VMAgent",
+				APIVersion: "v1beta1",
+			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "base",
 				Namespace: "default",

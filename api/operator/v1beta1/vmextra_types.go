@@ -36,6 +36,7 @@ const (
 type ClusterComponent string
 
 const (
+	ClusterComponentCommon   ClusterComponent = "common"
 	ClusterComponentRoot     ClusterComponent = "cluster"
 	ClusterComponentInsert   ClusterComponent = "insert"
 	ClusterComponentSelect   ClusterComponent = "select"
@@ -110,16 +111,21 @@ func AddClusterLabels(ls map[string]string, prefix string) map[string]string {
 
 // ClusterSelectorLabels defines selector labels for given cluster component kind
 func ClusterSelectorLabels(kind ClusterComponent, name, prefix string) map[string]string {
-	kindName := string(kind)
-	if kind == ClusterComponentBalancer {
-		kindName = "clusterlb-vmauth-balancer"
-	}
-	return map[string]string{
-		"app.kubernetes.io/name":      prefix + kindName,
+	ls := map[string]string{
 		"app.kubernetes.io/instance":  name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
+	if kind == ClusterComponentCommon {
+		return AddClusterLabels(ls, prefix)
+	} else {
+		kindName := string(kind)
+		if kind == ClusterComponentBalancer {
+			kindName = "clusterlb-vmauth-balancer"
+		}
+		ls["app.kubernetes.io/name"] = prefix + kindName
+	}
+	return ls
 }
 
 // ClusterPrefixedName defines prefixed name for given cluster component kind

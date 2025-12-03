@@ -277,7 +277,7 @@ func (cr *VMAlertStatus) GetStatusMetadata() *StatusMetadata {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmalerts,scope=Namespaced
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of update rollout"
-// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicaCount",description="The desired replicas number of Alertmanagers"
+// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicaCount",description="The desired replicas number of VMAlerts"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMAlert struct {
 	metav1.TypeMeta   `json:",inline"`

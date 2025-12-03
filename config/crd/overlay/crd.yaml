@@ -18987,7 +18987,7 @@ spec:
       jsonPath: .status.updateStatus
       name: Status
       type: string
-    - description: The desired replicas number of Alertmanagers
+    - description: The desired replicas number of VMAlerts
       jsonPath: .spec.replicaCount
       name: ReplicaCount
       type: integer
@@ -23738,7 +23738,7 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
-    - description: The desired replicas number of Alertmanagers
+    - description: The desired replicas number of VMAuth
       jsonPath: .spec.replicaCount
       name: ReplicaCount
       type: integer

@@ -52,6 +52,8 @@ func verifyOwnerReferences(ctx context.Context, cr *vmv1alpha1.VMDistributedClus
 var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster"), func() {
 	var ctx context.Context
 
+	// This env var is required to make vmagent metrics checker ignore errors
+	// as the test runs outside of the cluster and has no access to pod metrics
 	os.Setenv("E2E_TEST", "true")
 
 	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())

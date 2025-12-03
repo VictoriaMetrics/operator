@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+## [v0.66.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.0)
+
+**Release date:** 03 December 2025
+
 **Update note 1: `labels` and `annotations` inheritance is removed. It was deprecated in v0.51.0. Consider moving all needed labels and annotations to the `spec.managedMetadata` fields.**
 
 **Update node 2: removed VMCluster's `status.clusterStatus` and VMSingle's `status.singleStatus`, that were deprecated in v0.51.0.**

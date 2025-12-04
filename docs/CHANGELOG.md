@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove orphaned ServiceAccount and RBAC resources. See [#1665](https://github.com/VictoriaMetrics/operator/issues/1665).
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): properly handle configuration which is missing `reader.queries` in either `configRawYaml` or `configSecret`. Previously, it would lead to panic.
 
 ## [v0.66.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.0)
 

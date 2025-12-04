@@ -76,39 +76,44 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 		}
 		return nil
 	}
+	crCanonicalName := strings.Join([]string{cr.Namespace, cr.Name}, "/")
 	if cr.Spec.Reader == nil {
-		return fmt.Errorf("reader is required for anomaly name=%s/%s", cr.Namespace, cr.Name)
+		return fmt.Errorf("reader is required for anomaly name=%q", crCanonicalName)
+	}
+	if c.Reader == nil || len(c.Reader.Queries) == 0 {
+		return fmt.Errorf("reader.queries must be provided via configRawYaml or configSecret, name=%q", crCanonicalName)
 	}
 	if cr.Spec.Writer == nil {
-		return fmt.Errorf("writer is required for anomaly name=%s/%s", cr.Namespace, cr.Name)
+		return fmt.Errorf("writer is required for anomaly name=%q", crCanonicalName)
 	}
 	// override reader
 	data, err := yaml.Marshal(cr.Spec.Reader)
 	if err != nil {
-		return fmt.Errorf("failed to marshal anomaly CR reader config, name=%q: %w", cr.Name, err)
+		return fmt.Errorf("failed to marshal anomaly CR reader config, name=%q: %w", crCanonicalName, err)
 	}
 	var r reader
 	if err := yaml.UnmarshalStrict(data, &r); err != nil {
-		return fmt.Errorf("failed to unmarshal anomaly CR reader config, name=%q: %w", cr.Name, err)
+		return fmt.Errorf("failed to unmarshal anomaly CR reader config, name=%q: %w", crCanonicalName, err)
 	}
 	if err = r.ClientConfig.override(cr, &cr.Spec.Reader.VMAnomalyHTTPClientSpec, ac); err != nil {
-		return fmt.Errorf("failed to update HTTP client for anomaly reader, name=%q: %w", cr.Name, err)
+		return fmt.Errorf("failed to update HTTP client for anomaly reader, name=%q: %w", crCanonicalName, err)
 	}
 	r.Class = "vm"
+
 	r.Queries = c.Reader.Queries
 	c.Reader = &r
 
 	// override writer
 	data, err = yaml.Marshal(cr.Spec.Writer)
 	if err != nil {
-		return fmt.Errorf("failed to marshal anomaly CR writer config, name=%q: %w", cr.Name, err)
+		return fmt.Errorf("failed to marshal anomaly CR writer config, name=%q: %w", crCanonicalName, err)
 	}
 	var w writer
 	if err = yaml.UnmarshalStrict(data, &w); err != nil {
-		return fmt.Errorf("failed to unmarshal anomaly CR writer config, name=%q: %w", cr.Name, err)
+		return fmt.Errorf("failed to unmarshal anomaly CR writer config, name=%q: %w", crCanonicalName, err)
 	}
 	if err = w.ClientConfig.override(cr, &cr.Spec.Writer.VMAnomalyHTTPClientSpec, ac); err != nil {
-		return fmt.Errorf("failed to update HTTP client for anomaly writer, name=%q: %w", cr.Name, err)
+		return fmt.Errorf("failed to update HTTP client for anomaly writer, name=%q: %w", crCanonicalName, err)
 	}
 	if w.MetricFormat != nil && len(w.MetricFormat.ExtraLabels) > 0 {
 		w.MetricFormat.Labels = w.MetricFormat.ExtraLabels
@@ -122,15 +127,15 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 		mon := cr.Spec.Monitoring
 		data, err := yaml.Marshal(mon)
 		if err != nil {
-			return fmt.Errorf("failed to marshal anomaly CR monitoring config, name=%q: %w", cr.Name, err)
+			return fmt.Errorf("failed to marshal anomaly CR monitoring config, name=%q: %w", crCanonicalName, err)
 		}
 		var m monitoring
 		if err = yaml.UnmarshalStrict(data, &m); err != nil {
-			return fmt.Errorf("failed to unmarshal anomaly CR monitoring config, name=%q: %w", cr.Name, err)
+			return fmt.Errorf("failed to unmarshal anomaly CR monitoring config, name=%q: %w", crCanonicalName, err)
 		}
 		if mon.Push != nil {
 			if err = m.Push.ClientConfig.override(cr, &mon.Push.VMAnomalyHTTPClientSpec, ac); err != nil {
-				return fmt.Errorf("failed to update HTTP client for anomaly monitoring, name=%q: %w", cr.Name, err)
+				return fmt.Errorf("failed to update HTTP client for anomaly monitoring, name=%q: %w", crCanonicalName, err)
 			}
 		}
 		c.Monitoring = &m

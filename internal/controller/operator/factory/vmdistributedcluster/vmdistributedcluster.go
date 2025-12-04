@@ -19,8 +19,9 @@ import (
 )
 
 var (
-	defaultVMClusterWaitReadyDeadline = metav1.Duration{Duration: 5 * time.Minute}
-	defaultZoneUpdatePause            = metav1.Duration{Duration: 1 * time.Minute}
+	defaultVMClusterWaitReadyDeadline   = metav1.Duration{Duration: 5 * time.Minute}
+	defaultVMAgentFlushDeadlineDeadline = metav1.Duration{Duration: 1 * time.Minute}
+	defaultZoneUpdatePause              = metav1.Duration{Duration: 1 * time.Minute}
 )
 
 // CreateOrUpdate handles VM deployment reconciliation.
@@ -80,36 +81,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("failed to update or create vmauth: %w", err)
 	}
 
-	// Store current CR status
-	// previousCRStatus := cr.Status.DeepCopy()
-	// cr.Status = vmv1alpha1.VMDistributedClusterStatus{}
-
-	// // Record vmcluster info in VMDistributedCluster status
-	// cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
-	// for i, vmCluster := range vmClusters {
-	// 	cr.Status.VMClusterInfo[i] = vmv1alpha1.VMClusterStatus{
-	// 		VMClusterName: vmCluster.Name,
-	// 		Generation:    vmCluster.Generation,
-	// 	}
-	// }
-	// cr.Status.Zones.VMClusters = cr.Spec.Zones.VMClusters
-
-	// // Compare generations of vmcluster objects from the spec with the previous CR and Zones configuration
-	// previousGenerations := getGenerationsFromStatus(previousCRStatus)
-	// currentGenerations := getGenerationsFromStatus(&cr.Status)
-	// if len(previousGenerations) != len(currentGenerations) {
-	// 	// Set status to expanding until all clusters have reported their status
-	// 	cr.Status.UpdateStatus = vmv1beta1.UpdateStatusExpanding
-	// }
-
-	// if diff := deep.Equal(previousGenerations, currentGenerations); len(diff) > 0 {
-	// 	// Record new generations and zones config, then exit early if a change is detected
-	// 	// if err := rclient.Status().Update(ctx, cr); err != nil {
-	// 	// 	return fmt.Errorf("failed to update status: %w", err)
-	// 	// }
-	// 	return fmt.Errorf("unexpected generations or zones config change detected: %v", diff)
-	// }
-
 	// Update or create the VMAgent
 	vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme, vmClusters)
 	if err != nil {
@@ -120,6 +91,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	vmclusterWaitReadyDeadline := defaultVMClusterWaitReadyDeadline.Duration
 	if cr.Spec.ReadyDeadline != nil {
 		vmclusterWaitReadyDeadline = cr.Spec.ReadyDeadline.Duration
+	}
+	vmAgentFlushDeadlineDeadline := defaultVMAgentFlushDeadlineDeadline.Duration
+	if cr.Spec.VMAgentFlushDeadline != nil {
+		vmAgentFlushDeadlineDeadline = cr.Spec.VMAgentFlushDeadline.Duration
 	}
 	zoneUpdatePause := defaultZoneUpdatePause.Duration
 	if cr.Spec.ZoneUpdatePause != nil {
@@ -209,7 +184,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 
 		// Wait for VMAgent metrics to show no pending queue
-		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmclusterWaitReadyDeadline, rclient); err != nil {
+		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmAgentFlushDeadlineDeadline, rclient); err != nil {
 			// Ignore this error when running e2e tests - these need to run in the same network as pods
 			if os.Getenv("E2E_TEST") != "true" {
 				return fmt.Errorf("failed to wait for VMAgent metrics to show no pending queue: %w", err)

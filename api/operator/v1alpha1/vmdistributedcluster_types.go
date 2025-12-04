@@ -63,6 +63,13 @@ type VMDistributedClusterSpec struct {
 // +k8s:openapi-gen=true
 // ZoneSpec is a list of VMCluster instances to update.
 type ZoneSpec struct {
+	// GlobalOverrideSpec specifies an override to all VMClusters.
+	// These overrides are applied to the referenced object if `Ref` is specified.
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:XPreserveUnknownFields
+	// +optional
+	GlobalOverrideSpec *apiextensionsv1.JSON `json:"globalOverrideSpec,omitempty"`
+
 	// Each VMClusterRefOrSpec is either defining a new inline VMCluster or referencing an existing one.
 	VMClusters []VMClusterRefOrSpec `json:"vmclusters,omitempty"`
 }
@@ -75,6 +82,7 @@ type VMClusterRefOrSpec struct {
 	// If Ref is specified, Name and Spec are ignored.
 	// +optional
 	Ref *corev1.LocalObjectReference `json:"ref,omitempty"`
+
 	// OverrideSpec specifies an override to the VMClusterSpec of the referenced object.
 	// This override is applied to the referenced object if `Ref` is specified.
 	// This field is ignored if `Spec` is specified.

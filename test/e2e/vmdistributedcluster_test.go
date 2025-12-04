@@ -1003,4 +1003,102 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			}
 		})
 	})
+
+	Describe("GlobalOverrideSpec", func() {
+		It("should apply global overrides before cluster-specific overrides", func() {
+			By("creating initial VMClusters")
+			vmCluster1 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-global-1",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion:  "v1.126.0-cluster",
+					RetentionPeriod: "30d",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
+
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-global-2",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion:  "v1.126.0-cluster",
+					RetentionPeriod: "30d",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
+
+			By("creating a VMDistributedCluster with GlobalOverrideSpec and cluster-specific overrides")
+			namespacedName.Name = "global-override-cluster"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      namespacedName.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					Zones: vmv1alpha1.ZoneSpec{
+						GlobalOverrideSpec: &apiextensionsv1.JSON{
+							Raw: []byte(`{"clusterVersion": "v1.127.0-cluster", "retentionPeriod": "60d"}`),
+						},
+						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+							{
+								Ref: &corev1.LocalObjectReference{Name: vmCluster1.Name},
+								OverrideSpec: &apiextensionsv1.JSON{
+									Raw: []byte(`{"vmStorage": {"replicaCount": 2}}`),
+								},
+							},
+							{
+								Ref: &corev1.LocalObjectReference{Name: vmCluster2.Name},
+								OverrideSpec: &apiextensionsv1.JSON{
+									Raw: []byte(`{"vmStorage": {"replicaCount": 3}}`),
+								},
+							},
+						},
+					},
+				},
+			}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+			})
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+
+			By("waiting for VMDistributedCluster to become operational")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
+			verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*vmCluster1, *vmCluster2}, namespace)
+
+			By("verifying that both VMClusters have the global override applied")
+			var updatedCluster1, updatedCluster2 vmv1beta1.VMCluster
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, &updatedCluster1)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster2.Name, Namespace: namespace}, &updatedCluster2)).To(Succeed())
+
+			// Global overrides should be applied
+			Expect(updatedCluster1.Spec.ClusterVersion).To(Equal("v1.127.0-cluster"))
+			Expect(updatedCluster1.Spec.RetentionPeriod).To(Equal("60d"))
+			Expect(updatedCluster2.Spec.ClusterVersion).To(Equal("v1.127.0-cluster"))
+			Expect(updatedCluster2.Spec.RetentionPeriod).To(Equal("60d"))
+
+			// Cluster-specific overrides should be applied after global overrides
+			Expect(*updatedCluster1.Spec.VMStorage.ReplicaCount).To(Equal(int32(2)))
+			Expect(*updatedCluster2.Spec.VMStorage.ReplicaCount).To(Equal(int32(3)))
+		})
+	})
 })

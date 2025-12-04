@@ -117,17 +117,25 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 
 		// Update the VMCluster when overrideSpec needs to be applied or ownerref set
-		var mergedSpec vmv1beta1.VMClusterSpec
-		var modifiedSpec bool
+		mergedSpec := vmClusterObj.Spec
+		modifiedSpec := false
 
-		if zoneRefOrSpec.Ref != nil {
-			mergedSpec, modifiedSpec, err = ApplyOverrideSpec(vmClusterObj.Spec, zoneRefOrSpec.OverrideSpec)
+		// Apply GlobalOverrideSpec if it is set
+		if cr.Spec.Zones.GlobalOverrideSpec != nil {
+			mergedSpec, modifiedSpec, err = ApplyOverrideSpec(vmClusterObj.Spec, cr.Spec.Zones.GlobalOverrideSpec)
+			if err != nil {
+				return fmt.Errorf("failed to apply global override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+			}
+		}
+		// Apply cluster-specific override if it exist
+		if zoneRefOrSpec.Ref != nil && zoneRefOrSpec.OverrideSpec != nil {
+			mergedSpec, modifiedSpec, err = ApplyOverrideSpec(mergedSpec, zoneRefOrSpec.OverrideSpec)
 			if err != nil {
 				return fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
 		}
 		if zoneRefOrSpec.Spec != nil {
-			mergedSpec, modifiedSpec, err = mergeVMClusterSpecs(vmClusterObj.Spec, *zoneRefOrSpec.Spec)
+			mergedSpec, modifiedSpec, err = mergeVMClusterSpecs(mergedSpec, *zoneRefOrSpec.Spec)
 			if err != nil {
 				return fmt.Errorf("failed to merge spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}

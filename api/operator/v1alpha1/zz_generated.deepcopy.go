@@ -323,6 +323,11 @@ func (in *VMDistributedClusterSpec) DeepCopyInto(out *VMDistributedClusterSpec) 
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.VMAgentFlushDeadline != nil {
+		in, out := &in.VMAgentFlushDeadline, &out.VMAgentFlushDeadline
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	if in.ZoneUpdatePause != nil {
 		in, out := &in.ZoneUpdatePause, &out.ZoneUpdatePause
 		*out = new(v1.Duration)

@@ -19,9 +19,10 @@ import (
 type crObject interface {
 	FinalAnnotations() map[string]string
 	GetLabels() map[string]string
+	SelectorLabels() map[string]string
 	PrefixedName() string
 	GetServiceAccountName() string
-	IsOwnsServiceAccount() bool
+	AsOwner() metav1.OwnerReference
 	GetNamespace() string
 }
 
@@ -120,6 +121,7 @@ func SafeDeleteForSelectorsWithFinalizer(ctx context.Context, rclient client.Cli
 		if !k8serrors.IsNotFound(err) {
 			return err
 		}
+		return nil
 	}
 	if err := rclient.Delete(ctx, r); err != nil {
 		if !k8serrors.IsNotFound(err) {
@@ -180,13 +182,9 @@ func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r clien
 }
 
 func deleteSA(ctx context.Context, rclient client.Client, cr crObject) error {
-	if !cr.IsOwnsServiceAccount() {
-		return nil
-	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ServiceAccount{}, cr.GetServiceAccountName(), cr.GetNamespace()); err != nil {
-		return err
-	}
-	return SafeDelete(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: cr.GetNamespace(), Name: cr.GetServiceAccountName()}})
+	owner := cr.AsOwner()
+	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: cr.GetNamespace(), Name: cr.GetServiceAccountName()}}
+	return SafeDeleteForSelectorsWithFinalizer(ctx, rclient, sa, cr.SelectorLabels(), &owner)
 }
 
 func finalizePDB(ctx context.Context, rclient client.Client, cr crObject) error {

@@ -674,6 +674,7 @@ func (cr *VTCluster) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// IsOwnsServiceAccount checks if serviceAccount belongs to the CR
 func (cr *VTCluster) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }

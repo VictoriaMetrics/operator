@@ -328,7 +328,7 @@ func (cr *VMAnomaly) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
-// IsOwnsServiceAccount checks if ServiceAccountName is set explicitly
+// IsOwnsServiceAccount checks if serviceAccount belongs to the CR
 func (cr *VMAnomaly) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }

@@ -350,6 +350,70 @@ func TestValidateVMClusterRefOrSpec_Matrix(t *testing.T) {
 	assert.Error(t, validateVMClusterRefOrSpec(6, bad))
 }
 
+func TestApplyGlobalOverrideSpec(t *testing.T) {
+	base := vmv1beta1.VMClusterSpec{
+		ClusterVersion:     "v1.0.0",
+		ServiceAccountName: "base",
+		RetentionPeriod:    "30d",
+	}
+
+	// Test with nil GlobalOverrideSpec
+	globalOverride := (*apiextensionsv1.JSON)(nil)
+	merged, modified, err := ApplyOverrideSpec(base, globalOverride)
+	assert.NoError(t, err)
+	assert.False(t, modified)
+	assert.Equal(t, base, merged)
+
+	// Test with empty GlobalOverrideSpec
+	emptyGlobal := &apiextensionsv1.JSON{Raw: []byte("{}")}
+	merged2, modified2, err := ApplyOverrideSpec(base, emptyGlobal)
+	assert.NoError(t, err)
+	assert.False(t, modified2)
+	assert.Equal(t, base, merged2)
+
+	// Test with GlobalOverrideSpec that modifies top-level fields
+	globalTopLevel := &apiextensionsv1.JSON{Raw: []byte(`{"clusterVersion": "v2.0.0", "serviceAccountName": "global-sa"}`)}
+	merged3, modified3, err := ApplyOverrideSpec(base, globalTopLevel)
+	assert.NoError(t, err)
+	assert.True(t, modified3)
+	assert.Equal(t, "v2.0.0", merged3.ClusterVersion)
+	assert.Equal(t, "global-sa", merged3.ServiceAccountName)
+	assert.Equal(t, "30d", merged3.RetentionPeriod) // Unchanged field
+
+	// Test with GlobalOverrideSpec that sets a field to null
+	globalNullify := &apiextensionsv1.JSON{Raw: []byte(`{"serviceAccountName": null}`)}
+	merged5, modified5, err := ApplyOverrideSpec(base, globalNullify)
+	assert.NoError(t, err)
+	assert.True(t, modified5)
+	assert.Equal(t, "", merged5.ServiceAccountName) // Should be empty string (null in JSON becomes empty string after unmarshal)
+}
+
+func TestApplyGlobalAndClusterSpecificOverrideSpecs(t *testing.T) {
+	base := vmv1beta1.VMClusterSpec{
+		ClusterVersion:     "v1.0.0",
+		ServiceAccountName: "base",
+		RetentionPeriod:    "30d",
+	}
+
+	// Apply GlobalOverrideSpec first
+	globalOverride := &apiextensionsv1.JSON{Raw: []byte(`{"clusterVersion": "v2.0.0", "serviceAccountName": "global-sa"}`)}
+	merged1, modified1, err := ApplyOverrideSpec(base, globalOverride)
+	assert.NoError(t, err)
+	assert.True(t, modified1)
+	assert.Equal(t, "v2.0.0", merged1.ClusterVersion)
+	assert.Equal(t, "global-sa", merged1.ServiceAccountName)
+	assert.Equal(t, "30d", merged1.RetentionPeriod)
+
+	// Then apply cluster-specific override
+	clusterOverride := &apiextensionsv1.JSON{Raw: []byte(`{"retentionPeriod": "10d", "clusterVersion": "v3.0.0"}`)}
+	merged2, modified2, err := ApplyOverrideSpec(merged1, clusterOverride)
+	assert.NoError(t, err)
+	assert.True(t, modified2)
+	assert.Equal(t, "v3.0.0", merged2.ClusterVersion)        // Cluster-specific override should take precedence
+	assert.Equal(t, "global-sa", merged2.ServiceAccountName) // From global override, unchanged by cluster override
+	assert.Equal(t, "10d", merged2.RetentionPeriod)          // From cluster override
+}
+
 // helpers
 func ptrTo[T any](v T) *T { return &v }
 

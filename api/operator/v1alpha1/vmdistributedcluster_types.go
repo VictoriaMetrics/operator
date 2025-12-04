@@ -189,7 +189,6 @@ type CustomVMAgentSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	vmv1beta1.VMAgentSecurityEnforcements       `json:",inline"`
 	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
 	vmv1beta1.CommonConfigReloaderParams        `json:",inline,omitempty"`
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
@@ -258,18 +257,6 @@ type VMAuthNameAndSpec struct {
 // VMDistributedClusterStatus defines the observed state of VMDistributedClusterStatus
 type VMDistributedClusterStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
-	// VMClusterInfo is a list of VMCluster-generation pairs
-	VMClusterInfo []VMClusterStatus `json:"vmClusterGenerations,omitempty"`
-	// Zones is a list of VMClusterRefOrSpec instances from the spec.
-	// It's used to detect changes in zones configuration for rolling updates.
-	Zones ZoneSpec `json:"zones,omitempty"`
-}
-
-// +k8s:openapi-gen=true
-// VMClusterStatus is a pair of VMCluster and its generation
-type VMClusterStatus struct {
-	VMClusterName string `json:"vmClusterName"`
-	Generation    int64  `json:"generation"`
 }
 
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMDistributedCluster App"

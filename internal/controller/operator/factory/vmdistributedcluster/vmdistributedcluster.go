@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-test/deep"
+	"github.com/google/go-cmp/cmp"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,34 +81,34 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Store current CR status
-	previousCRStatus := cr.Status.DeepCopy()
-	cr.Status = vmv1alpha1.VMDistributedClusterStatus{}
+	// previousCRStatus := cr.Status.DeepCopy()
+	// cr.Status = vmv1alpha1.VMDistributedClusterStatus{}
 
-	// Record vmcluster info in VMDistributedCluster status
-	cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
-	for i, vmCluster := range vmClusters {
-		cr.Status.VMClusterInfo[i] = vmv1alpha1.VMClusterStatus{
-			VMClusterName: vmCluster.Name,
-			Generation:    vmCluster.Generation,
-		}
-	}
-	cr.Status.Zones.VMClusters = cr.Spec.Zones.VMClusters
+	// // Record vmcluster info in VMDistributedCluster status
+	// cr.Status.VMClusterInfo = make([]vmv1alpha1.VMClusterStatus, len(vmClusters))
+	// for i, vmCluster := range vmClusters {
+	// 	cr.Status.VMClusterInfo[i] = vmv1alpha1.VMClusterStatus{
+	// 		VMClusterName: vmCluster.Name,
+	// 		Generation:    vmCluster.Generation,
+	// 	}
+	// }
+	// cr.Status.Zones.VMClusters = cr.Spec.Zones.VMClusters
 
-	// Compare generations of vmcluster objects from the spec with the previous CR and Zones configuration
-	previousGenerations := getGenerationsFromStatus(previousCRStatus)
-	currentGenerations := getGenerationsFromStatus(&cr.Status)
-	if len(previousGenerations) != len(currentGenerations) {
-		// Set status to expanding until all clusters have reported their status
-		cr.Status.UpdateStatus = vmv1beta1.UpdateStatusExpanding
-	}
+	// // Compare generations of vmcluster objects from the spec with the previous CR and Zones configuration
+	// previousGenerations := getGenerationsFromStatus(previousCRStatus)
+	// currentGenerations := getGenerationsFromStatus(&cr.Status)
+	// if len(previousGenerations) != len(currentGenerations) {
+	// 	// Set status to expanding until all clusters have reported their status
+	// 	cr.Status.UpdateStatus = vmv1beta1.UpdateStatusExpanding
+	// }
 
-	if diff := deep.Equal(previousGenerations, currentGenerations); len(diff) > 0 {
-		// Record new generations and zones config, then exit early if a change is detected
-		if err := rclient.Status().Update(ctx, cr); err != nil {
-			return fmt.Errorf("failed to update status: %w", err)
-		}
-		return fmt.Errorf("unexpected generations or zones config change detected: %v", diff)
-	}
+	// if diff := deep.Equal(previousGenerations, currentGenerations); len(diff) > 0 {
+	// 	// Record new generations and zones config, then exit early if a change is detected
+	// 	// if err := rclient.Status().Update(ctx, cr); err != nil {
+	// 	// 	return fmt.Errorf("failed to update status: %w", err)
+	// 	// }
+	// 	return fmt.Errorf("unexpected generations or zones config change detected: %v", diff)
+	// }
 
 	// Update or create the VMAgent
 	vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme, vmClusters)
@@ -174,7 +174,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			if err := rclient.Create(ctx, vmClusterObj); err != nil {
 				return fmt.Errorf("failed to create vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 			}
-			cr.Status.VMClusterInfo[i].Generation = vmClusterObj.Generation
 			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
 				return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
 			}
@@ -198,7 +197,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		if err := rclient.Update(ctx, vmClusterObj); err != nil {
 			return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 		}
-		cr.Status.VMClusterInfo[i].Generation = vmClusterObj.Generation
 
 		// Wait for VMCluster to be ready
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {

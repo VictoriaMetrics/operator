@@ -210,15 +210,6 @@ func mergeVMClusterSpecs(baseSpec, zoneSpec vmv1beta1.VMClusterSpec) (vmv1beta1.
 	return mergedSpec, modified, nil
 }
 
-// getGenerationsFromStatus flattens VMClusterInfo into a map[name]generation.
-func getGenerationsFromStatus(status *vmv1alpha1.VMDistributedClusterStatus) map[string]int64 {
-	generations := make(map[string]int64, len(status.VMClusterInfo))
-	for _, vmClusterPair := range status.VMClusterInfo {
-		generations[vmClusterPair.VMClusterName] = vmClusterPair.Generation
-	}
-	return generations
-}
-
 // waitForVMClusterReady polls VMCluster until it reports UpdateStatusOperational or deadline is hit.
 func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration) error {
 	var lastStatus vmv1beta1.UpdateStatus

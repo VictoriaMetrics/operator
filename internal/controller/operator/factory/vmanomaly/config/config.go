@@ -40,7 +40,7 @@ type settings struct {
 
 func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 	c.Preset = strings.ToLower(c.Preset)
-	if strings.HasPrefix(c.Preset, "ui:") {
+	if strings.HasPrefix(c.Preset, "ui") {
 		c.Reader = &reader{
 			Class: "noop",
 		}

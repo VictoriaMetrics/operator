@@ -256,19 +256,21 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	$(KUSTOMIZE) build config/crd/overlay > dist/crd.yaml
 
 olm: operator-sdk opm yq docs
+	$(eval DIGEST = $(shell $(CONTAINER_TOOL) buildx imagetools inspect $(REGISTRY)/$(ORG)/$(REPO):$(TAG)-ubi --format "{{print .Manifest.Digest}}"))
 	rm -rf bundle*
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manifests && \
-		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)-ubi
+		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 		-q --overwrite --version $(VERSION) \
 		--channels=beta --default-channel=beta --output-dir=bundle/$(VERSION)
 	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
-	cp config/manifests/ci.yaml bundle/
 	cp config/manifests/release-config.yaml bundle/$(VERSION)/
-	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO):$(TAG)"' \
+	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
-	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.19"' \
+	$(YQ) -i '.relatedImages = [{"name": "victoriametrics-operator", "image": "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"}]' \
+		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
+	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.20"' \
 		bundle/$(VERSION)/metadata/annotations.yaml
 	$(if $(findstring localhost,$(REGISTRY)), \
 		$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) .; \

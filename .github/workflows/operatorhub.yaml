@@ -83,12 +83,10 @@ jobs:
 
           mv bundle/* ${OPERATOR_DIR}/
           if [ -f ${OPERATOR_DIR}/Makefile ]; then
-            yq -i 'del(.updateGraph)' ${OPERATOR_DIR}/ci.yaml
             if [ ! -z $OLD_VERSION ]; then
               yq -i -I2 '.catalog_templates.[].replaces = strenv(OLD_ENTRY)' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
             fi
           else
-            yq -i 'del(.fbc)' ${OPERATOR_DIR}/ci.yaml
             rm -f ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
           fi
           echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT

@@ -1355,12 +1355,20 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	}
 	if !cr.IsOwnsServiceAccount() {
 		rbacMeta := metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.Namespace}
-		objects := []client.Object{
-			&corev1.ServiceAccount{ObjectMeta: objMeta},
-			&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
-			&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
-			&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
-			&rbacv1.Role{ObjectMeta: rbacMeta},
+		var objects []client.Object
+
+		if config.IsClusterWideAccessAllowed() {
+			objects = []client.Object{
+				&corev1.ServiceAccount{ObjectMeta: objMeta},
+				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
+				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
+			}
+		} else {
+			objects = []client.Object{
+				&corev1.ServiceAccount{ObjectMeta: objMeta},
+				&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
+				&rbacv1.Role{ObjectMeta: rbacMeta},
+			}
 		}
 		for _, o := range objects {
 			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, &owner); err != nil {

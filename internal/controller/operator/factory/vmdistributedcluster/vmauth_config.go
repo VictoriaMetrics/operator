@@ -92,7 +92,7 @@ func buildLBConfigMeta(cr *vmv1alpha1.VMDistributedCluster) metav1.ObjectMeta {
 }
 
 func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deployment, error) {
-	spec := cr.Spec.VMAuth.Spec
+	spec := cr.GetVMAuthSpec()
 	const configMountName = "vmauth-lb-config"
 	volumes := []corev1.Volume{
 		{
@@ -203,7 +203,7 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 }
 
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
-	spec := cr.Spec.VMAuth.Spec
+	spec := cr.GetVMAuthSpec()
 
 	builder := func(r *vmv1alpha1.VMDistributedCluster) *build.ChildBuilder {
 		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
@@ -235,7 +235,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 }
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
-	spec := cr.Spec.VMAuth.Spec
+	spec := cr.GetVMAuthSpec()
 
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	pdb := build.PodDisruptionBudget(b, spec.PodDisruptionBudget)
@@ -264,7 +264,7 @@ func updateVMAuthLBSecret(ctx context.Context, rclient client.Client, cr, prevCR
 }
 
 func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
-	spec := cr.Spec.VMAuth.Spec
+	spec := cr.GetVMAuthSpec()
 
 	updateVMAuthLBSecret(ctx, rclient, cr, prevCR, vmClusters)
 

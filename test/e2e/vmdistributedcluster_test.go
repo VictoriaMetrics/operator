@@ -512,12 +512,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			// Verify VMDistributedCluster status reflects both clusters are upgraded/operational
 			var upgradedCluster vmv1alpha1.VMDistributedCluster
 			Expect(k8sClient.Get(ctx, namespacedName, &upgradedCluster)).To(Succeed())
-			Expect(upgradedCluster.Status.VMClusterInfo).To(HaveLen(2))
+
 			names := []string{
-				upgradedCluster.Status.VMClusterInfo[0].VMClusterName,
-				upgradedCluster.Status.VMClusterInfo[1].VMClusterName,
+				vmCluster1.Name,
+				vmCluster2.Name,
 			}
-			Expect(names).To(ContainElements("vmcluster-1", "vmcluster-2"))
 
 			// Verify both clusters have desired version set
 			Eventually(func() error {

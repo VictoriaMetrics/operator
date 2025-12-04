@@ -15898,6 +15898,8 @@ spec:
                   type: boolean
                 readyDeadline:
                   type: string
+                vmAgentFlushDeadline:
+                  type: string
                 vmagent:
                   properties:
                     name:

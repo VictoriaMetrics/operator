@@ -39,6 +39,9 @@ type VMDistributedClusterSpec struct {
 	// ReadyDeadline is the deadline for the VMCluster to be ready.
 	// +optional
 	ReadyDeadline *metav1.Duration `json:"readyDeadline,omitempty"`
+	// VMAgentFlushDeadline is the deadline for VMAgent to flush accumulated queue.
+	// +optional
+	VMAgentFlushDeadline *metav1.Duration `json:"vmAgentFlushDeadline,omitempty"`
 	// ZoneUpdatePause is the time the operator should wait between zone updates to ensure a smooth transition.
 	// +optional
 	ZoneUpdatePause *metav1.Duration `json:"zoneUpdatePause,omitempty"`

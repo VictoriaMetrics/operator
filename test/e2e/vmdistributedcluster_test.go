@@ -74,8 +74,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmAgentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
@@ -142,10 +142,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Name: "inline-cluster-1",
@@ -256,9 +256,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
 						Name: inlineVMAuthName,
 						Spec: &vmv1beta1.VMAuthLoadBalancerSpec{
@@ -328,10 +328,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{Name: initialCluster.Name},
@@ -384,8 +384,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
@@ -465,8 +465,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: existingVMAgentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
@@ -567,10 +567,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
 					},
@@ -661,10 +661,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "missing-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
@@ -680,10 +680,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "zone-spec-missing-name",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Spec: &vmv1beta1.VMClusterSpec{
@@ -699,11 +699,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "zone-missing-spec-ref",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
-					Zones:           vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{}}},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					Zones:                vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{}}},
 				},
 			}, []vmv1beta1.VMCluster{}),
 			Entry("with zone having both spec and ref", &vmv1alpha1.VMDistributedCluster{
@@ -712,10 +712,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "zone-both-spec-ref",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
@@ -734,10 +734,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      "invalid-override-spec",
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"},
@@ -784,11 +784,11 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Name:      namespacedName.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
-					Zones:           vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}}}},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					Zones:                vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}}}},
 				},
 			}
 			DeferCleanup(func() {
@@ -826,9 +826,9 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Namespace: namespacedName.Namespace,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmagentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
@@ -884,8 +884,8 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Namespace: namespace,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
 						Name: vmauthName,
 						Spec: &vmv1beta1.VMAuthLoadBalancerSpec{
@@ -941,10 +941,10 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					Namespace: namespace,
 				},
 				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					ReadyDeadline:   &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause: &metav1.Duration{Duration: 1 * time.Second},
-					VMAgent:         vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
-					VMAuth:          vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: existingVMAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: existingVMAuthName},
 					Zones: vmv1alpha1.ZoneSpec{
 						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 							{

@@ -178,11 +178,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 
-		// Record new vmcluster generations
-		if err := rclient.Status().Update(ctx, cr); err != nil {
-			return fmt.Errorf("failed to update status: %w", err)
-		}
-
 		// Wait for VMAgent metrics to show no pending queue
 		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmAgentFlushDeadlineDeadline, rclient); err != nil {
 			// Ignore this error when running e2e tests - these need to run in the same network as pods

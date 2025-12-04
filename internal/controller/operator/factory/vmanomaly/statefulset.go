@@ -168,6 +168,11 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnoma
 			return fmt.Errorf("cannot remove podScrape: %w", err)
 		}
 	}
+	if !cr.IsOwnsServiceAccount() {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot remove serviceaccount: %w", err)
+		}
+	}
 	return nil
 }
 

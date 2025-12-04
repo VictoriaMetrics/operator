@@ -17,8 +17,8 @@ func TestCreateVMAgentClusterAccess(t *testing.T) {
 	f := func(cr *vmv1beta1.VMAgent, predefinedObjects []runtime.Object) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
-		if err := createVMAgentK8sAPIAccess(context.TODO(), fclient, cr, nil, true); err != nil {
-			t.Errorf("CreateVMAgentK8sAPIAccess() error = %v", err)
+		if err := createK8sAPIAccess(context.TODO(), fclient, cr, nil, true); err != nil {
+			t.Errorf("createK8sAPIAccess() error = %v", err)
 		}
 	}
 

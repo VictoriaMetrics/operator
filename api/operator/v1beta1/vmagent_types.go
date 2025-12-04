@@ -760,6 +760,7 @@ func (cr *VMAgent) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// IsOwnsServiceAccount checks if serviceAccount belongs to the CR
 func (cr *VMAgent) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }

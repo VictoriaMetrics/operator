@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -156,6 +157,14 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 	} else {
 		if err := finalize.OnClusterLoadBalancerDelete(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot remove orphaned loadbalancer components: %w", err)
+		}
+	}
+	if !cr.IsOwnsServiceAccount() {
+		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
+		objMeta := metav1.ObjectMeta{Name: b.PrefixedName(), Namespace: b.GetNamespace()}
+		owner := cr.AsOwner()
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot remove serviceaccount: %w", err)
 		}
 	}
 	return cc.RemoveOrphaned(ctx, rclient, cr)

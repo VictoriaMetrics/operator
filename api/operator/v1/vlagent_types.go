@@ -360,7 +360,7 @@ func (cr *VLAgent) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
-// IsOwnsServiceAccount implements build.objectForServiceAccountBuilder
+// IsOwnsServiceAccount checks if serviceAccount belongs to the CR
 func (cr *VLAgent) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }

@@ -456,6 +456,7 @@ func (cr *VMAlert) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// IsOwnsServiceAccount checks if serviceAccount belongs to the CR
 func (cr *VMAlert) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }

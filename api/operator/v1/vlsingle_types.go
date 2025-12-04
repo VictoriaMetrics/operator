@@ -301,6 +301,7 @@ func (cr *VLSingle) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// IsOwnsServiceAccount checks if serviceAccount belongs to the CR
 func (cr *VLSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }

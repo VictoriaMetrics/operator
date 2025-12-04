@@ -1006,7 +1006,7 @@ func addVMDistributedClusterDefaults(objI any) {
 	c := getCfg()
 
 	cv := config.ApplicationDefaults(c.VMAuthDefault)
-	if cr.Spec.VMAuth.Spec != nil {
+	if cr.Spec.VMAuth.Spec == nil {
 		cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthLoadBalancerSpec{}
 	}
 	addDefaultsToCommonParams(&cr.Spec.VMAuth.Spec.CommonDefaultableParams, nil, &cv)

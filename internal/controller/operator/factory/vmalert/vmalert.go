@@ -727,6 +727,7 @@ func discoverNotifiersIfNeeded(ctx context.Context, rclient client.Client, cr *v
 	if cr.Spec.Notifier != nil {
 		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
 	}
+	cfg := config.MustGetBaseConfig()
 	// trim notifiers with non-empty notifier Selector
 	var cnt int
 	for i := range cr.Spec.Notifiers {
@@ -742,7 +743,7 @@ func discoverNotifiersIfNeeded(ctx context.Context, rclient client.Client, cr *v
 		if err != nil {
 			return fmt.Errorf("cannot convert notifier selector as ListOptions: %w", err)
 		}
-		if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(l *vmv1beta1.VMAlertmanagerList) {
+		if err := k8stools.ListObjectsByNamespace(ctx, rclient, cfg.WatchNamespaces, func(l *vmv1beta1.VMAlertmanagerList) {
 			for _, item := range l.Items {
 				if !item.DeletionTimestamp.IsZero() || (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
 					continue

@@ -247,6 +247,7 @@ func handleReconcileErrWithoutStatus(
 }
 
 func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selector *metav1.LabelSelector) (bool, error) {
+	cfg := config.MustGetBaseConfig()
 	switch {
 	case selector == nil:
 		if sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
@@ -255,7 +256,7 @@ func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sour
 		return false, nil
 	case len(selector.MatchLabels) == 0 && len(selector.MatchExpressions) == 0:
 		return true, nil
-	case len(config.MustGetWatchNamespaces()) > 0:
+	case len(cfg.WatchNamespaces) > 0:
 		// selector labels for namespace ignores by default for multi-namespace mode
 		return true, nil
 	}

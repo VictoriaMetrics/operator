@@ -19,7 +19,6 @@ import (
 
 const (
 	UnLimitedResource = "unlimited"
-	prefixVar         = "VM_"
 )
 
 func getVersion(defaultVersion string) string {
@@ -34,9 +33,7 @@ var (
 	opConf   *BaseOperatorConf
 	initConf sync.Once
 
-	opNamespace   []string
-	initNamespace sync.Once
-	defaultEnvs   = map[string]string{
+	defaultEnvs = map[string]string{
 		"VM_METRICS_VERSION":  "v1.131.0",
 		"VM_LOGS_VERSION":     "v1.36.1",
 		"VM_ANOMALY_VERSION":  "v1.26.1",
@@ -50,7 +47,6 @@ func getEnvOpts() env.Options {
 		DefaultValueTagName:   "default",
 		PrefixTagName:         "prefix",
 		UseFieldNameByDefault: true,
-		Prefix:                prefixVar,
 		Environment:           env.ToMap(os.Environ()),
 	}
 	for n, ov := range defaultEnvs {
@@ -60,11 +56,6 @@ func getEnvOpts() env.Options {
 	}
 	return envOpts
 }
-
-// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
-// which specifies the Namespace to watch.
-// An empty value means the operator is running with cluster scope.
-var WatchNamespaceEnvVar = "WATCH_NAMESPACE"
 
 // ApplicationDefaults is useful for generic default building
 // uses the same memory as application default at config
@@ -103,30 +94,35 @@ type Resource struct {
 
 //genvars:true
 type BaseOperatorConf struct {
-	MetricsVersion    string `default:"${VM_METRICS_VERSION}" env:"METRICS_VERSION,expand"`
-	LogsVersion       string `default:"${VM_LOGS_VERSION}" env:"LOGS_VERSION,expand"`
-	AnomalyVersion    string `default:"${VM_ANOMALY_VERSION}" env:"ANOMALY_VERSION,expand"`
-	TracesVertsion    string `default:"${VM_TRACES_VERSION}" env:"TRACES_VERSION,expand"`
-	OperatorVersion   string `default:"${VM_OPERATOR_VERSION}" env:"OPERATOR_VERSION,expand"`
-	GatewayAPIEnabled bool   `default:"false" env:"GATEWAY_API_ENABLED"`
+	MetricsVersion    string `default:"${VM_METRICS_VERSION}" env:"VM_METRICS_VERSION,expand"`
+	LogsVersion       string `default:"${VM_LOGS_VERSION}" env:"VM_LOGS_VERSION,expand"`
+	AnomalyVersion    string `default:"${VM_ANOMALY_VERSION}" env:"VM_ANOMALY_VERSION,expand"`
+	TracesVertsion    string `default:"${VM_TRACES_VERSION}" env:"VM_TRACES_VERSION,expand"`
+	OperatorVersion   string `default:"${VM_OPERATOR_VERSION}" env:"VM_OPERATOR_VERSION,expand"`
+	GatewayAPIEnabled bool   `default:"false" env:"VM_GATEWAY_API_ENABLED"`
+
+	// Defines a list of namespaces to be watched by operator.
+	// Operator don't perform any cluster wide API calls if namespaces not empty.
+	// In case of empty list it performs only clusterwide api calls.
+	WatchNamespaces []string `default:"" env:"WATCH_NAMESPACE"`
 
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
-	UseVMConfigReloader bool `default:"true" env:"USECUSTOMCONFIGRELOADER"`
+	UseVMConfigReloader bool `default:"true" env:"VM_USECUSTOMCONFIGRELOADER"`
 	// container registry name prefix, e.g. docker.io
-	ContainerRegistry     string `default:"" env:"CONTAINERREGISTRY"`
-	VMConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:"CUSTOMCONFIGRELOADERIMAGE,expand"`
-	PSPAutoCreateEnabled  bool   `default:"false" env:"PSPAUTOCREATEENABLED"`
-	EnableTCP6            bool   `default:"false" env:"ENABLETCP6"`
+	ContainerRegistry     string `default:"" env:"VM_CONTAINERREGISTRY"`
+	VMConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:"VM_CUSTOMCONFIGRELOADERIMAGE,expand"`
+	PSPAutoCreateEnabled  bool   `default:"false" env:"VM_PSPAUTOCREATEENABLED"`
+	EnableTCP6            bool   `default:"false" env:"VM_ENABLETCP6"`
 
 	// defines global resource.limits.cpu for all config-reloader containers
-	ConfigReloaderLimitCPU string `default:"unlimited"`
+	ConfigReloaderLimitCPU string `default:"unlimited" env:"VM_CONFIG_RELOADER_LIMIT_CPU"`
 	// defines global resource.limits.memory for all config-reloader containers
-	ConfigReloaderLimitMemory string `default:"unlimited"`
+	ConfigReloaderLimitMemory string `default:"unlimited" env:"VM_CONFIG_RELOADER_LIMIT_MEMORY"`
 	// defines global resource.requests.cpu for all config-reloader containers
-	ConfigReloaderRequestCPU string `default:""`
+	ConfigReloaderRequestCPU string `default:"" env:"VM_CONFIG_RELOADER_REQUEST_CPU"`
 	// defines global resource.requests.memory for all config-reloader containers
-	ConfigReloaderRequestMemory string `default:""`
+	ConfigReloaderRequestMemory string `default:"" env:"VM_CONFIG_RELOADER_REQUEST_MEMORY"`
 
 	VLogsDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
@@ -146,7 +142,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 		ConfigReloaderCPU    string `env:"-"`
 		ConfigReloaderMemory string `env:"-"`
-	} `prefix:"VLOGSDEFAULT_"`
+	} `prefix:"VM_VLOGSDEFAULT_"`
 
 	VLAgentDefault struct {
 		Image               string `default:"victoriametrics/vlagent"`
@@ -166,7 +162,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 		ConfigReloaderCPU    string `env:"-"`
 		ConfigReloaderMemory string `env:"-"`
-	} `prefix:"VLAGENTDEFAULT_"`
+	} `prefix:"VM_VLAGENTDEFAULT_"`
 
 	VLSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
@@ -186,7 +182,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 		ConfigReloaderCPU    string `env:"-"`
 		ConfigReloaderMemory string `env:"-"`
-	} `prefix:"VLSINGLEDEFAULT_"`
+	} `prefix:"VM_VLSINGLEDEFAULT_"`
 
 	VTSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-traces"`
@@ -206,7 +202,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 		ConfigReloaderCPU    string `env:"-"`
 		ConfigReloaderMemory string `env:"-"`
-	} `prefix:"VTSINGLEDEFAULT_"`
+	} `prefix:"VM_VTSINGLEDEFAULT_"`
 
 	VMAlertDefault struct {
 		Image               string `default:"victoriametrics/vmalert"`
@@ -224,17 +220,17 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
 		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
-	} `prefix:"VMALERTDEFAULT_"`
+	} `prefix:"VM_VMALERTDEFAULT_"`
 
 	VMServiceScrapeDefault struct {
 		// Use endpointslices instead of endpoints as discovery role
 		// for vmservicescrape when generate scrape config for vmagent.
 		EnforceEndpointSlices bool `default:"false" env:"ENFORCEENDPOINTSLICES"`
-	} `prefix:"VMSERVICESCRAPEDEFAULT_"`
+	} `prefix:"VM_VMSERVICESCRAPEDEFAULT_"`
 
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
@@ -252,11 +248,11 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_CPU instead
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
 		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated:: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
+		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
-	} `prefix:"VMAGENTDEFAULT_"`
+	} `prefix:"VM_VMAGENTDEFAULT_"`
 
 	VMAnomalyDefault struct {
 		Image               string `default:"victoriametrics/vmanomaly"`
@@ -278,7 +274,7 @@ type BaseOperatorConf struct {
 		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
 		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
-	} `prefix:"VMANOMALYDEFAULT_"`
+	} `prefix:"VM_VMANOMALYDEFAULT_"`
 
 	VMSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-metrics"`
@@ -298,7 +294,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 		ConfigReloaderCPU    string `env:"-"`
 		ConfigReloaderMemory string `env:"-"`
-	} `prefix:"VMSINGLEDEFAULT_"`
+	} `prefix:"VM_VMSINGLEDEFAULT_"`
 
 	VMClusterDefault struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
@@ -349,7 +345,7 @@ type BaseOperatorConf struct {
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VMINSERTDEFAULT_"`
-	} `prefix:"VMCLUSTERDEFAULT_"`
+	} `prefix:"VM_VMCLUSTERDEFAULT_"`
 
 	VMAlertManager struct {
 		ConfigReloaderImage string `default:"jimmidyson/configmap-reload:v0.3.0" env:"CONFIGRELOADERIMAGE"`
@@ -370,9 +366,9 @@ type BaseOperatorConf struct {
 				Cpu string `default:"30m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-	} `prefix:"VMALERTMANAGER_"`
+	} `prefix:"VM_VMALERTMANAGER_"`
 
-	DisableSelfServiceScrapeCreation bool `default:"false" env:"DISABLESELFSERVICESCRAPECREATION"`
+	DisableSelfServiceScrapeCreation bool `default:"false" env:"VM_DISABLESELFSERVICESCRAPECREATION"`
 	VMBackup                         struct {
 		Image               string `default:"victoriametrics/vmbackupmanager"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}-enterprise"`
@@ -388,7 +384,7 @@ type BaseOperatorConf struct {
 				Cpu string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-	} `prefix:"VMBACKUP_"`
+	} `prefix:"VM_VMBACKUP_"`
 	VMAuthDefault struct {
 		Image               string `default:"victoriametrics/vmauth"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
@@ -409,7 +405,7 @@ type BaseOperatorConf struct {
 		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
 		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
 		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
-	} `prefix:"VMAUTHDEFAULT_"`
+	} `prefix:"VM_VMAUTHDEFAULT_"`
 
 	VLClusterDefault struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
@@ -458,7 +454,7 @@ type BaseOperatorConf struct {
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VLINSERTDEFAULT_"`
-	} `prefix:"VLCLUSTERDEFAULT_"`
+	} `prefix:"VM_VLCLUSTERDEFAULT_"`
 
 	VTClusterDefault struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
@@ -507,7 +503,7 @@ type BaseOperatorConf struct {
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"INSERT_"`
-	} `prefix:"VTCLUSTERDEFAULT_"`
+	} `prefix:"VM_VTCLUSTERDEFAULT_"`
 
 	EnabledPrometheusConverter struct {
 		PodMonitor         bool `default:"true" env:"PODMONITOR"`
@@ -516,30 +512,30 @@ type BaseOperatorConf struct {
 		Probe              bool `default:"true" env:"PROBE"`
 		AlertmanagerConfig bool `default:"true" env:"ALERTMANAGERCONFIG"`
 		ScrapeConfig       bool `default:"true" env:"SCRAPECONFIG"`
-	} `prefix:"ENABLEDPROMETHEUSCONVERTER_"`
+	} `prefix:"VM_ENABLEDPROMETHEUSCONVERTER_"`
 	// adds compare-options and sync-options for prometheus objects converted by operator.
 	// It helps to properly use converter with ArgoCD
-	PrometheusConverterAddArgoCDIgnoreAnnotations bool `default:"false" env:"PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS"`
-	EnabledPrometheusConverterOwnerReferences     bool `default:"false" env:"ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES"`
+	PrometheusConverterAddArgoCDIgnoreAnnotations bool `default:"false" env:"VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS"`
+	EnabledPrometheusConverterOwnerReferences     bool `default:"false" env:"VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES"`
 	// allows filtering for converted labels, labels with matched prefix will be ignored
-	FilterPrometheusConverterLabelPrefixes []string `default:"" env:"FILTERPROMETHEUSCONVERTERLABELPREFIXES"`
+	FilterPrometheusConverterLabelPrefixes []string `default:"" env:"VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES"`
 	// allows filtering for converted annotations, annotations with matched prefix will be ignored
-	FilterPrometheusConverterAnnotationPrefixes []string `default:"" env:"FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES"`
+	FilterPrometheusConverterAnnotationPrefixes []string `default:"" env:"VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES"`
 	// Defines domain name suffix for in-cluster addresses
 	// most known ClusterDomainName is .cluster.local
-	ClusterDomainName string `default:"" env:"CLUSTERDOMAINNAME"`
+	ClusterDomainName string `default:"" env:"VM_CLUSTERDOMAINNAME"`
 	// Defines deadline for deployment/statefulset
 	// to transit into ready state
 	// to wait for transition to ready state
-	AppReadyTimeout time.Duration `default:"80s" env:"APPREADYTIMEOUT"`
+	AppReadyTimeout time.Duration `default:"80s" env:"VM_APPREADYTIMEOUT"`
 	// Defines single pod deadline
 	// to wait for transition to ready state
-	PodWaitReadyTimeout time.Duration `default:"80s" env:"PODWAITREADYTIMEOUT"`
+	PodWaitReadyTimeout time.Duration `default:"80s" env:"VM_PODWAITREADYTIMEOUT"`
 	// Defines poll interval for pods ready check
 	// at statefulset rollout update
-	PodWaitReadyIntervalCheck time.Duration `default:"5s" env:"PODWAITREADYINTERVALCHECK"`
+	PodWaitReadyIntervalCheck time.Duration `default:"5s" env:"VM_PODWAITREADYINTERVALCHECK"`
 	// configures force resync interval for VMAgent, VMAlert, VMAlertmanager and VMAuth.
-	ForceResyncInterval time.Duration `default:"60s" env:"FORCERESYNCINTERVAL"`
+	ForceResyncInterval time.Duration `default:"60s" env:"VM_FORCERESYNCINTERVAL"`
 	// EnableStrictSecurity will add default `securityContext` to pods and containers created by operator
 	// Default PodSecurityContext include:
 	// 1. RunAsNonRoot: true
@@ -561,7 +557,7 @@ type BaseOperatorConf struct {
 	//      drop:
 	//        - all
 	// turn off `EnableStrictSecurity` by default, see https://github.com/VictoriaMetrics/operator/issues/749 for details
-	EnableStrictSecurity bool `default:"false" env:"ENABLESTRICTSECURITY"`
+	EnableStrictSecurity bool `default:"false" env:"VM_ENABLESTRICTSECURITY"`
 }
 
 // ResyncAfterDuration returns requeue duration for object period reconcile
@@ -583,6 +579,11 @@ func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
 
 // Validate - validates config on best effort.
 func (boc BaseOperatorConf) Validate() error {
+	for _, ns := range boc.WatchNamespaces {
+		if !validNamespaceRegex.MatchString(ns) {
+			return fmt.Errorf("namespace=%q doesn't match regex=%q", ns, validNamespaceRegex.String())
+		}
+	}
 	validateResource := func(name string, res Resource) error {
 		if res.Request.Mem != UnLimitedResource {
 			if _, err := resource.ParseQuantity(res.Request.Mem); err != nil {
@@ -706,40 +707,10 @@ func MustGetBaseConfig() *BaseOperatorConf {
 
 var validNamespaceRegex = regexp.MustCompile(`[a-z0-9]([-a-z0-9]*[a-z0-9])?`)
 
-func getWatchNamespaces() ([]string, error) {
-	wns, _ := os.LookupEnv(WatchNamespaceEnvVar)
-	if len(wns) > 0 {
-		nss := strings.Split(wns, ",")
-		// validate namespace with regexp
-		for _, ns := range nss {
-			if !validNamespaceRegex.MatchString(ns) {
-				return nil, fmt.Errorf("incorrect namespace name=%q for env var=%q with value: %q must match regex: %q", ns, WatchNamespaceEnvVar, wns, validNamespaceRegex.String())
-			}
-		}
-
-		return nss, nil
-	}
-	return nil, nil
-}
-
-// MustGetWatchNamespaces returns a list of namespaces to be watched by operator
-// Operator don't perform any cluster wide API calls if namespaces not empty
-// in case of empty list it performs only clusterwide api calls
-func MustGetWatchNamespaces() []string {
-	initNamespace.Do(func() {
-		nss, err := getWatchNamespaces()
-		if err != nil {
-			panic(err)
-		}
-		opNamespace = nss
-	})
-
-	return opNamespace
-}
-
 // IsClusterWideAccessAllowed checks if cluster wide access for components is needed
 func IsClusterWideAccessAllowed() bool {
-	return len(MustGetWatchNamespaces()) == 0
+	cfg := MustGetBaseConfig()
+	return len(cfg.WatchNamespaces) == 0
 }
 
 type Labels struct {

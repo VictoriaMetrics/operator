@@ -13,8 +13,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
-var getWatchNamespaces = config.MustGetWatchNamespaces
-
 type listing[L any] interface {
 	client.ObjectList
 	*L
@@ -67,20 +65,19 @@ type discoverNamespacesResponse struct {
 
 // discoverNamespaces select namespaces by given label selector
 func discoverNamespaces(ctx context.Context, rclient client.Client, s *SelectorOpts) (*discoverNamespacesResponse, error) {
-	watchNS := getWatchNamespaces()
-
+	cfg := config.MustGetBaseConfig()
 	var namespaces []string
 	switch {
-	case len(watchNS) > 0:
+	case len(cfg.WatchNamespaces) > 0:
 		// perform match only for watched namespaces
 		// filters by namespace is disabled, since operator cannot access cluster-wide APIs
 		// this case could be improved to additionally filter by namespace name - metadata.name label
 
 		// impossible case
-		if !slices.Contains(watchNS, s.DefaultNamespace) {
-			panic(fmt.Sprintf("BUG: watch namespaces: %s must contain namespace for the current reconcile object: %s", strings.Join(watchNS, ","), s.DefaultNamespace))
+		if !slices.Contains(cfg.WatchNamespaces, s.DefaultNamespace) {
+			panic(fmt.Sprintf("BUG: watch namespaces: %s must contain namespace for the current reconcile object: %s", strings.Join(cfg.WatchNamespaces, ","), s.DefaultNamespace))
 		}
-		namespaces = append(namespaces, watchNS...)
+		namespaces = append(namespaces, cfg.WatchNamespaces...)
 
 	case s.ObjectSelector != nil && s.NamespaceSelector == nil:
 		// in single namespace mode, return object ns

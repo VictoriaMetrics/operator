@@ -350,6 +350,10 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
 		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
-
+	if !cr.IsOwnsServiceAccount() {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot remove serviceaccount: %w", err)
+		}
+	}
 	return nil
 }

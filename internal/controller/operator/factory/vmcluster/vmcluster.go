@@ -1251,6 +1251,14 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			return fmt.Errorf("cannot remove orphaned loadbalancer components: %w", err)
 		}
 	}
+	if !cr.IsOwnsServiceAccount() {
+		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
+		owner := cr.AsOwner()
+		objMeta := metav1.ObjectMeta{Name: b.PrefixedName(), Namespace: b.GetNamespace()}
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot remove serviceaccount: %w", err)
+		}
+	}
 	return cc.RemoveOrphaned(ctx, rclient, cr)
 }
 

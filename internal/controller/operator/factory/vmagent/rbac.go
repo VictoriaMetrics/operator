@@ -113,14 +113,13 @@ var (
 	}
 )
 
-// createVMAgentK8sAPIAccess - creates RBAC access rules for vmagent
-func createVMAgentK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, clusterWide bool) error {
-
+// createK8sAPIAccess - creates RBAC access rules for vmagent
+func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, clusterWide bool) error {
 	if err := migrateRBAC(ctx, rclient, cr, clusterWide); err != nil {
 		return fmt.Errorf("cannot perform RBAC migration: %w", err)
 	}
 	if clusterWide {
-		if err := ensureVMAgentCRExist(ctx, rclient, cr, prevCR); err != nil {
+		if err := ensureCRExist(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
 		}
 		if err := ensureCRBExist(ctx, rclient, cr, prevCR); err != nil {
@@ -132,27 +131,27 @@ func createVMAgentK8sAPIAccess(ctx context.Context, rclient client.Client, cr, p
 	if err := ensureRoleExist(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
 	}
-	if err := ensureVMAgentRBExist(ctx, rclient, cr, prevCR); err != nil {
+	if err := ensureRBExist(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot ensure state of vmagent's role binding: %w", err)
 	}
 
 	return nil
 }
 
-func ensureVMAgentCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	var prevClusterRole *rbacv1.ClusterRole
 	if prevCR != nil {
-		prevClusterRole = buildClusterRole(prevCR)
+		prevClusterRole = buildCR(prevCR)
 	}
-	return reconcile.ClusterRole(ctx, rclient, buildClusterRole(cr), prevClusterRole)
+	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole)
 }
 
 func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	var prevCRB *rbacv1.ClusterRoleBinding
 	if prevCR != nil {
-		prevCRB = buildClusterRoleBinding(prevCR)
+		prevCRB = buildCRB(prevCR)
 	}
-	return reconcile.ClusterRoleBinding(ctx, rclient, buildClusterRoleBinding(cr), prevCRB)
+	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB)
 }
 
 // migrateRBAC deletes incorrectly formatted resource names
@@ -192,7 +191,7 @@ func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAge
 	return nil
 }
 
-func buildClusterRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
+func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
@@ -219,7 +218,7 @@ func buildClusterRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 	}
 }
 
-func buildClusterRole(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
+func buildCR(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
@@ -236,24 +235,24 @@ func buildClusterRole(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 }
 
 func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
-	nr := buildNamespacedRole(cr)
+	nr := buildRole(cr)
 	var prevRole *rbacv1.Role
 	if prevCR != nil {
-		prevRole = buildNamespacedRole(prevCR)
+		prevRole = buildRole(prevCR)
 	}
 	return reconcile.Role(ctx, rclient, nr, prevRole)
 }
 
-func ensureVMAgentRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
-	rb := buildNamespacedRoleBinding(cr)
+func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+	rb := buildRB(cr)
 	var prevRB *rbacv1.RoleBinding
 	if prevCR != nil {
-		prevRB = buildNamespacedRoleBinding(prevCR)
+		prevRB = buildRB(prevCR)
 	}
 	return reconcile.RoleBinding(ctx, rclient, rb, prevRB)
 }
 
-func buildNamespacedRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
+func buildRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
@@ -267,7 +266,7 @@ func buildNamespacedRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
 	}
 }
 
-func buildNamespacedRoleBinding(cr *vmv1beta1.VMAgent) *rbacv1.RoleBinding {
+func buildRB(cr *vmv1beta1.VMAgent) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),

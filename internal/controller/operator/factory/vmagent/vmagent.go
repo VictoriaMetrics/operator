@@ -14,6 +14,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -105,7 +106,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !cr.Spec.IngestOnlyMode {
-			if err := createVMAgentK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}
@@ -1352,7 +1353,21 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
 		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
-
+	if !cr.IsOwnsServiceAccount() {
+		rbacMeta := metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.Namespace}
+		objects := []client.Object{
+			&corev1.ServiceAccount{ObjectMeta: objMeta},
+			&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
+			&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
+			&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
+			&rbacv1.Role{ObjectMeta: rbacMeta},
+		}
+		for _, o := range objects {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, &owner); err != nil {
+				return fmt.Errorf("cannot remove %T: %w", o, err)
+			}
+		}
+	}
 	return nil
 }
 

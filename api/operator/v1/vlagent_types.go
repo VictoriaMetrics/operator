@@ -73,6 +73,9 @@ type VLAgentSpec struct {
 	// +optional
 	SyslogSpec *SyslogServerSpec `json:"syslogSpec,omitempty"`
 
+	// K8sCollector configures VLAgent logs collection from K8s pods
+	K8sCollector VLAgentK8sCollector `json:"k8sCollector,omitempty"`
+
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -80,6 +83,38 @@ type VLAgentSpec struct {
 	*vmv1beta1.EmbeddedProbes                   `json:",inline"`
 	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+}
+
+type VLAgentK8sCollector struct {
+	// Enabled switches VLAgent to log collection mode.
+	// Note, for this purpose operator uses DaemonSet, while by default VLAgent uses StatefulSet.
+	// It means that switching this option will drop all persisted data.
+	Enabled bool `json:"enabled,omitempty"`
+
+	// LogsPath configures root for logs path
+	// By default VLAgent collects logs from /var/log/containers
+	LogsPath string `json:"logsPath,omitempty"`
+
+	// CheckpointsPath configures path where logs checkpoints are stored
+	CheckpointsPath string `json:"checkpointsPath,omitempty"`
+
+	// TenantID defines default tenant ID to use for logs collected from pods in format: <accountID>:<projectID>
+	TenantID string `json:"tenantID,omitempty"`
+
+	// IgnoreFields defines fields to ignore across logs ingested from Kubernetes
+	IgnoreFields []string `json:"ignoreFields,omitempty"`
+
+	// DecolorizeFields defines fields to remove ANSI color codes across logs ingested from Kubernetes
+	DecolorizeFields []string `json:"decolorizeFields,omitempty"`
+
+	// MsgField defines fields that may contain the _msg field
+	MsgFields []string `json:"msgFields,omitempty"`
+
+	// TimeFields defines fields that may contain the _time field
+	TimeFields []string `json:"timeFields,omitempty"`
+
+	// ExtraFields defines extra fields to add to each collected log line
+	ExtraFields string `json:"extraFields,omitempty"`
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface
@@ -298,6 +333,11 @@ func (cr *VLAgent) FinalAnnotations() map[string]string {
 	return v
 }
 
+// AsCRDOwner implements interface
+func (*VLAgent) AsCRDOwner() []metav1.OwnerReference {
+	return vmv1beta1.GetCRDAsOwner(vmv1beta1.VLAgentCRD)
+}
+
 // SelectorLabels returns selector labels for querying any vlagent related resources
 func (cr *VLAgent) SelectorLabels() map[string]string {
 	return map[string]string{
@@ -400,6 +440,10 @@ func (cr *VLAgent) ProbeScheme() string {
 // ProbePort implements build.probeCRD interface
 func (cr *VLAgent) ProbePort() string {
 	return cr.Spec.Port
+}
+
+func (cr *VLAgent) GetClusterRoleName() string {
+	return fmt.Sprintf("monitoring:%s:vlagent-%s", cr.Namespace, cr.Name)
 }
 
 // ProbeNeedLiveness implements build.probeCRD interface

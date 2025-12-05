@@ -170,6 +170,27 @@ VLAgent - is a tiny but brave agent, which helps you collect logs from various s
 | spec<a href="#vlagent-spec" id="vlagent-spec">#</a><br/>_[VLAgentSpec](#vlagentspec)_ | _(Required)_<br/> |
 
 
+#### VLAgentK8sCollector
+
+
+
+
+
+Appears in: [VLAgentSpec](#vlagentspec)
+
+| Field | Description |
+| --- | --- |
+| checkpointsPath<a href="#vlagentk8scollector-checkpointspath" id="vlagentk8scollector-checkpointspath">#</a><br/>_string_ | _(Required)_<br/>CheckpointsPath configures path where logs checkpoints are stored |
+| decolorizeFields<a href="#vlagentk8scollector-decolorizefields" id="vlagentk8scollector-decolorizefields">#</a><br/>_string array_ | _(Required)_<br/>DecolorizeFields defines fields to remove ANSI color codes across logs ingested from Kubernetes |
+| enabled<a href="#vlagentk8scollector-enabled" id="vlagentk8scollector-enabled">#</a><br/>_boolean_ | _(Required)_<br/>Enabled switches VLAgent to log collection mode.<br />Note, for this purpose operator uses DaemonSet, while by default VLAgent uses StatefulSet.<br />It means that switching this option will drop all persisted data. |
+| extraFields<a href="#vlagentk8scollector-extrafields" id="vlagentk8scollector-extrafields">#</a><br/>_string_ | _(Required)_<br/>ExtraFields defines extra fields to add to each collected log line |
+| ignoreFields<a href="#vlagentk8scollector-ignorefields" id="vlagentk8scollector-ignorefields">#</a><br/>_string array_ | _(Required)_<br/>IgnoreFields defines fields to ignore across logs ingested from Kubernetes |
+| logsPath<a href="#vlagentk8scollector-logspath" id="vlagentk8scollector-logspath">#</a><br/>_string_ | _(Required)_<br/>LogsPath configures root for logs path<br />By default VLAgent collects logs from /var/log/containers |
+| msgFields<a href="#vlagentk8scollector-msgfields" id="vlagentk8scollector-msgfields">#</a><br/>_string array_ | _(Required)_<br/>MsgField defines fields that may contain the _msg field |
+| tenantID<a href="#vlagentk8scollector-tenantid" id="vlagentk8scollector-tenantid">#</a><br/>_string_ | _(Required)_<br/>TenantID defines default tenant ID to use for logs collected from pods in format: <accountID>:<projectID> |
+| timeFields<a href="#vlagentk8scollector-timefields" id="vlagentk8scollector-timefields">#</a><br/>_string array_ | _(Required)_<br/>TimeFields defines fields that may contain the _time field |
+
+
 #### VLAgentRemoteWriteSettings
 
 
@@ -236,6 +257,7 @@ Appears in: [VLAgent](#vlagent)
 | image<a href="#vlagentspec-image" id="vlagentspec-image">#</a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
 | imagePullSecrets<a href="#vlagentspec-imagepullsecrets" id="vlagentspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
 | initContainers<a href="#vlagentspec-initcontainers" id="vlagentspec-initcontainers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
+| k8sCollector<a href="#vlagentspec-k8scollector" id="vlagentspec-k8scollector">#</a><br/>_[VLAgentK8sCollector](#vlagentk8scollector)_ | _(Required)_<br/>K8sCollector configures VLAgent logs collection from K8s pods |
 | logFormat<a href="#vlagentspec-logformat" id="vlagentspec-logformat">#</a><br/>_string_ | _(Optional)_<br/>LogFormat for VLAgent to be configured with. |
 | logLevel<a href="#vlagentspec-loglevel" id="vlagentspec-loglevel">#</a><br/>_string_ | _(Optional)_<br/>LogLevel for VLAgent to be configured with.<br />INFO, WARN, ERROR, FATAL, PANIC |
 | managedMetadata<a href="#vlagentspec-managedmetadata" id="vlagentspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |

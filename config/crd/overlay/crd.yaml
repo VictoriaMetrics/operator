@@ -736,6 +736,58 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              k8sCollector:
+                description: K8sCollector configures VLAgent logs collection from
+                  K8s pods
+                properties:
+                  checkpointsPath:
+                    description: CheckpointsPath configures path where logs checkpoints
+                      are stored
+                    type: string
+                  decolorizeFields:
+                    description: DecolorizeFields defines fields to remove ANSI color
+                      codes across logs ingested from Kubernetes
+                    items:
+                      type: string
+                    type: array
+                  enabled:
+                    description: |-
+                      Enabled switches VLAgent to log collection mode.
+                      Note, for this purpose operator uses DaemonSet, while by default VLAgent uses StatefulSet.
+                      It means that switching this option will drop all persisted data.
+                    type: boolean
+                  extraFields:
+                    description: ExtraFields defines extra fields to add to each collected
+                      log line
+                    type: string
+                  ignoreFields:
+                    description: IgnoreFields defines fields to ignore across logs
+                      ingested from Kubernetes
+                    items:
+                      type: string
+                    type: array
+                  logsPath:
+                    description: |-
+                      LogsPath configures root for logs path
+                      By default VLAgent collects logs from /var/log/containers
+                    type: string
+                  msgFields:
+                    description: MsgField defines fields that may contain the _msg
+                      field
+                    items:
+                      type: string
+                    type: array
+                  tenantID:
+                    description: 'TenantID defines default tenant ID to use for logs
+                      collected from pods in format: <accountID>:<projectID>'
+                    type: string
+                  timeFields:
+                    description: TimeFields defines fields that may contain the _time
+                      field
+                    items:
+                      type: string
+                    type: array
+                type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object

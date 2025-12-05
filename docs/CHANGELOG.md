@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support `namespace` parameter in `attach_metadata` section for all scrape configurations. See [#1654](https://github.com/VictoriaMetrics/operator/issues/1654).
+* FEATURE: [vlagen](https://docs.victoriametrics.com/operator/resources/vlagent): support logs collection. See [#1501](https://github.com/VictoriaMetrics/operator/issues/1501).
 
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 

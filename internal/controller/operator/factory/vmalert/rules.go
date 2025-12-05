@@ -26,13 +26,16 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-var badConfigsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-	Name: "operator_vmalert_bad_objects_count",
-	Help: "Number of incorrect objects by controller",
-	ConstLabels: prometheus.Labels{
-		"controller": "vmrules",
+var badConfigsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "operator_vmalert_bad_objects_count",
+		Help: "Number of incorrect objects by controller",
+		ConstLabels: prometheus.Labels{
+			"controller": "vmrules",
+		},
 	},
-})
+	[]string{"object_namespace"},
+)
 
 func init() {
 	metrics.Registry.MustRegister(badConfigsTotal)
@@ -223,25 +226,34 @@ func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta
 		logger.WithContext(ctx).Info("deduplicating vmalert rules")
 		vmRules = deduplicateRules(ctx, vmRules)
 	}
-	var brokenRulesCnt int
+	var brokenRulesByNamespace map[string]int
 	for _, pRule := range vmRules {
 		if !build.MustSkipRuntimeValidation {
 			if err := pRule.Validate(); err != nil {
 				pRule.Status.CurrentSyncError = err.Error()
-				brokenRulesCnt++
+				if brokenRulesByNamespace == nil {
+					brokenRulesByNamespace = map[string]int{}
+				}
+				brokenRulesByNamespace[pRule.Namespace]++
 				continue
 			}
 		}
 		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {
 			pRule.Status.CurrentSyncError = fmt.Sprintf("cannot generate content for rule: %s, err :%s", pRule.Name, err)
-			brokenRulesCnt++
+			if brokenRulesByNamespace == nil {
+				brokenRulesByNamespace = map[string]int{}
+			}
+			brokenRulesByNamespace[pRule.Namespace]++
+
 			continue
 		}
 		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
 	}
-	logger.SelectedObjects(ctx, "VMRules", len(namespacedNames), brokenRulesCnt, namespacedNames)
-	badConfigsTotal.Add(float64(brokenRulesCnt))
+	logger.SelectedObjects(ctx, "VMRules", len(namespacedNames), len(brokenRulesByNamespace), namespacedNames)
+	for ns, cnt := range brokenRulesByNamespace {
+		badConfigsTotal.WithLabelValues(ns).Add(float64(cnt))
+	}
 	return rules, vmRules, nil
 }
 

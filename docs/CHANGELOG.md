@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `object_namespace` label to the `operator_alertmanager_bad_objects_count` and `operator_vmalert_bad_objects_count` metrics.
+
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 
 **Release date:** 06 December 2025

@@ -740,19 +740,33 @@ func honorTimestamps(cfg yaml.MapSlice, userHonorTimestamps *bool, overrideHonor
 	return append(cfg, yaml.MapItem{Key: "honor_timestamps", Value: honor && !overrideHonorTimestamps})
 }
 
-func addAttachMetadata(dst yaml.MapSlice, am *vmv1beta1.AttachMetadata) yaml.MapSlice {
+func addAttachMetadata(dst yaml.MapSlice, am *vmv1beta1.AttachMetadata, role string) yaml.MapSlice {
 	if am == nil {
 		return dst
 	}
+	var items yaml.MapSlice
 	if am.Node != nil && *am.Node {
+		switch role {
+		case "pod", "endpoints", "endpointslice":
+			items = append(items, yaml.MapItem{
+				Key:   "node",
+				Value: true,
+			})
+		}
+	}
+	if am.Namespace != nil && *am.Namespace {
+		switch role {
+		case "pod", "service", "endpoints", "endpointslice", "ingress":
+			items = append(items, yaml.MapItem{
+				Key:   "namespace",
+				Value: true,
+			})
+		}
+	}
+	if len(items) > 0 {
 		dst = append(dst, yaml.MapItem{
-			Key: "attach_metadata",
-			Value: yaml.MapSlice{
-				yaml.MapItem{
-					Key:   "node",
-					Value: true,
-				},
-			},
+			Key:   "attach_metadata",
+			Value: items,
 		})
 	}
 	return dst
@@ -860,10 +874,7 @@ func generateK8SSDConfig(ac *build.AssetsCache, opts generateK8SSDConfigOptions)
 			Value: opts.role,
 		},
 	}
-	switch opts.role {
-	case kubernetesSDRoleEndpoint, kubernetesSDRoleEndpointSlices, kubernetesSDRolePod:
-		k8sSDConfig = addAttachMetadata(k8sSDConfig, opts.attachMetadata)
-	}
+	k8sSDConfig = addAttachMetadata(k8sSDConfig, opts.attachMetadata, opts.role)
 	if len(opts.namespaces) != 0 {
 		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
 			Key: "namespaces",
@@ -1343,6 +1354,9 @@ func mergeAttachMetadataWithScrapeClass(am *vmv1beta1.AttachMetadata, scrapeClas
 
 	if am.Node == nil {
 		am.Node = scrapeClass.AttachMetadata.Node
+	}
+	if am.Namespace == nil {
+		am.Namespace = scrapeClass.AttachMetadata.Namespace
 	}
 }
 

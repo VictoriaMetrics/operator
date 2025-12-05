@@ -40,7 +40,10 @@ func generateServiceScrapeConfig(
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
 	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
-		ep.AttachMetadata = sc.Spec.AttachMetadata
+		ep.AttachMetadata.Node = sc.Spec.AttachMetadata.Node
+	}
+	if ep.AttachMetadata.Namespace == nil && sc.Spec.AttachMetadata.Namespace != nil {
+		ep.AttachMetadata.Namespace = sc.Spec.AttachMetadata.Namespace
 	}
 	k8sSDOpts := generateK8SSDConfigOptions{
 		namespaces:         selectedNamespaces,

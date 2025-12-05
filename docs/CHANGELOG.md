@@ -15,6 +15,7 @@ aliases:
 
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support `namespace` parameter in `attach_metadata` section for all scrape configurations. See [#1654](https://github.com/VictoriaMetrics/operator/issues/1654).
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent): support logs collection. See [#1501](https://github.com/VictoriaMetrics/operator/issues/1501).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `object_namespace` label to the `operator_alertmanager_bad_objects_count` and `operator_vmalert_bad_objects_count` metrics.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed HPA cleanup logic for all cluster resources, before it was constantly recreated. Bug introduced in [this commit](https://github.com/VictoriaMetrics/operator/commit/983d1678c37497a7d03d2f57821219fd4975deec).
 

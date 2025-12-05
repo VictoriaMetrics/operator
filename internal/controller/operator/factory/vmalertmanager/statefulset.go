@@ -760,7 +760,15 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 	}
 	parsedCfg.brokenAMCfgs = append(parsedCfg.brokenAMCfgs, badCfgs...)
 	logger.SelectedObjects(ctx, "VMAlertmanagerConfigs", len(parsedCfg.amcfgs), len(parsedCfg.brokenAMCfgs), namespacedNames)
-	badConfigsTotal.Add(float64(len(badCfgs)))
+	if len(parsedCfg.brokenAMCfgs) > 0 {
+		brokenCfgByNamespace := make(map[string]int)
+		for _, bamc := range parsedCfg.brokenAMCfgs {
+			brokenCfgByNamespace[bamc.Namespace]++
+		}
+		for ns, cnt := range brokenCfgByNamespace {
+			badConfigsTotal.WithLabelValues(ns).Add(float64(cnt))
+		}
+	}
 	return parsedCfg, nil
 }
 

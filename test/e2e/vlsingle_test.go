@@ -145,7 +145,6 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 							},
 							RetentionPeriod: "1",
 							StorageDataPath: "/custom-path/internal/dir",
-							Storage:         &corev1.PersistentVolumeClaimSpec{},
 						},
 					},
 					func(cr *vmv1.VLSingle) {

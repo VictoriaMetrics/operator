@@ -736,6 +736,48 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              k8sCollector:
+                description: K8sCollector configures VLAgent logs collection from
+                  K8s pods
+                properties:
+                  decolorizeFields:
+                    description: DecolorizeFields defines fields to remove ANSI color
+                      codes across logs ingested from Kubernetes
+                    items:
+                      type: string
+                    type: array
+                  enabled:
+                    description: Enabled enables k8s logs collection
+                    type: boolean
+                  extraFields:
+                    description: ExtraFields defines extra fields to add to each collected
+                      log line
+                    items:
+                      type: string
+                    type: array
+                  ignoreFields:
+                    description: IgnoreFields defines fields to ignore across logs
+                      ingested from Kubernetes
+                    items:
+                      type: string
+                    type: array
+                  msgFields:
+                    description: MsgField defines fields that may contain the _msg
+                      field
+                    items:
+                      type: string
+                    type: array
+                  tenantID:
+                    description: 'TenantID defines default tenant ID to use for logs
+                      collected from pods in format: <accountID>:<projectID>'
+                    type: string
+                  timeFields:
+                    description: TimeFields defines fields that may contain the _time
+                      field
+                    items:
+                      type: string
+                    type: array
+                type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object

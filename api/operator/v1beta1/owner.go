@@ -13,7 +13,8 @@ import (
 type CRDName int
 
 const (
-	Agent CRDName = iota
+	VMAgentCRD CRDName = iota
+	VLAgentCRD
 )
 
 func (c CRDName) String() string {
@@ -39,7 +40,9 @@ func Init(ctx context.Context, rclient client.Client) error {
 		var n CRDName
 		switch item.Name {
 		case "vmagents.operator.victoriametrics.com":
-			n = Agent
+			n = VMAgentCRD
+		case "vlagents.operator.victoriametrics.com":
+			n = VLAgentCRD
 		default:
 			continue
 		}

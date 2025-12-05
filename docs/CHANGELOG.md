@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vlagen](https://docs.victoriametrics.com/operator/resources/vlagent): support logs collection. See [#1501](https://github.com/VictoriaMetrics/operator/issues/1501).
+
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove orphaned ServiceAccount and RBAC resources. See [#1665](https://github.com/VictoriaMetrics/operator/issues/1665).
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): properly handle configuration which is missing `reader.queries` in either `configRawYaml` or `configSecret`. Previously, it would lead to panic.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix configuration parsing when running in [UI mode](https://docs.victoriametrics.com/anomaly-detection/ui/). Previously, configuration required to use `preset: ui:version` instead of `preset: ui`.

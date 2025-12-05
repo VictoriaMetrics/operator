@@ -15,6 +15,10 @@ type AttachMetadata struct {
 	// Valid for roles: pod, endpoints, endpointslice.
 	// +optional
 	Node *bool `json:"node,omitempty"`
+
+	// Namespace instructs vmagent to add namespace specific metadata from service discovery
+	// Valid for roles: pod, service, endpoints, endpointslice, ingress.
+	Namespace *bool `json:"namespace,omitempty"`
 }
 
 // VMScrapeParams defines scrape target configuration that compatible only with VictoriaMetrics scrapers

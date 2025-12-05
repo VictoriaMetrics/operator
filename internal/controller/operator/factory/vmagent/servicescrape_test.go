@@ -471,7 +471,8 @@ bearer_token_file: /var/run/token
 				Endpoints: []vmv1beta1.Endpoint{
 					{
 						AttachMetadata: vmv1beta1.AttachMetadata{
-							Node: ptr.To(true),
+							Node:      ptr.To(true),
+							Namespace: ptr.To(true),
 						},
 						Port: "8080",
 						EndpointAuth: vmv1beta1.EndpointAuth{
@@ -506,6 +507,8 @@ bearer_token_file: /var/run/token
 		want: `job_name: serviceScrape/default/test-scrape/0
 kubernetes_sd_configs:
 - role: service
+  attach_metadata:
+    namespace: true
   namespaces:
     names:
     - default
@@ -993,7 +996,8 @@ bearer_token_file: /var/run/token
 					{
 						Port: "8080",
 						AttachMetadata: vmv1beta1.AttachMetadata{
-							Node: ptr.To(true),
+							Node:      ptr.To(true),
+							Namespace: ptr.To(true),
 						},
 					},
 				},
@@ -1004,6 +1008,7 @@ kubernetes_sd_configs:
 - role: endpoints
   attach_metadata:
     node: true
+    namespace: true
   namespaces:
     names:
     - default

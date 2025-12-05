@@ -227,6 +227,7 @@ func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta
 		vmRules = deduplicateRules(ctx, vmRules)
 	}
 	var brokenRulesByNamespace map[string]int
+	var brokenRulesTotal int
 	for _, pRule := range vmRules {
 		if !build.MustSkipRuntimeValidation {
 			if err := pRule.Validate(); err != nil {
@@ -234,6 +235,7 @@ func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta
 				if brokenRulesByNamespace == nil {
 					brokenRulesByNamespace = map[string]int{}
 				}
+				brokenRulesTotal++
 				brokenRulesByNamespace[pRule.Namespace]++
 				continue
 			}
@@ -244,13 +246,13 @@ func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta
 			if brokenRulesByNamespace == nil {
 				brokenRulesByNamespace = map[string]int{}
 			}
+			brokenRulesTotal++
 			brokenRulesByNamespace[pRule.Namespace]++
-
 			continue
 		}
 		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
 	}
-	logger.SelectedObjects(ctx, "VMRules", len(namespacedNames), len(brokenRulesByNamespace), namespacedNames)
+	logger.SelectedObjects(ctx, "VMRules", len(namespacedNames), brokenRulesTotal, namespacedNames)
 	for ns, cnt := range brokenRulesByNamespace {
 		badConfigsTotal.WithLabelValues(ns).Add(float64(cnt))
 	}

@@ -448,6 +448,36 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					},
 				},
 			),
+			Entry("by transition into logs collection and back", "logs-collection-transition",
+				&vmv1.VLAgent{Spec: vmv1.VLAgentSpec{
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{UseDefaultResources: ptr.To(false)},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](2),
+					},
+					PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: &intstr.IntOrString{IntVal: 1}},
+					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+						{URL: "http://some-vl-single:9428"},
+					},
+				}},
+				testStep{
+					modify: func(cr *vmv1.VLAgent) { cr.Spec.K8sCollector.Enabled = true },
+					verify: func(cr *vmv1.VLAgent) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).To(Succeed())
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.StatefulSet{})
+					},
+				},
+				testStep{
+					modify: func(cr *vmv1.VLAgent) {
+						cr.Spec.K8sCollector.Enabled = false
+					},
+					verify: func(cr *vmv1.VLAgent) {
+						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).To(Succeed())
+						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.DaemonSet{})
+					},
+				},
+			),
 		)
 	})
 })

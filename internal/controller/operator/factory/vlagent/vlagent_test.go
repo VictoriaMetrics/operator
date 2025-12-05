@@ -822,7 +822,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		if err != nil {
 			t.Fatalf("BUG: cannot parse as yaml: %q", err)
 		}
-		got, err := makeSpec(cr)
+		got, err := newPodSpec(cr)
 		if err != nil {
 			t.Fatalf("not expected error=%q", err)
 		}
@@ -1042,6 +1042,111 @@ containers:
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 serviceaccountname: vlagent-agent
+
+    `)
+
+	// test k8s collector
+	f(&vmv1.VLAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1.VLAgentSpec{
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				Image: vmv1beta1.Image{
+					Tag: "v1.40.0",
+				},
+				UseDefaultResources: ptr.To(false),
+				Port:                "9425",
+			},
+			K8sCollector: vmv1.VLAgentK8sCollector{
+				Enabled:   true,
+				MsgFields: []string{"msg", "message"},
+			},
+			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+				{
+					URL:          "http://some-url/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+				{
+					URL:          "http://some-url-2/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+				{
+					URL: "http://some-url-3/api/v1/write",
+				},
+			},
+		},
+	}, []runtime.Object{}, `
+containers:
+  - name: vlagent
+    image: victoriametrics/vlagent:v1.40.0
+    args:
+      - -httpListenAddr=:9425
+      - -kubernetesCollector
+      - -kubernetesCollector.msgField="msg,message"
+      - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
+      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
+      - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+    ports:
+      - name: http
+        containerport: 9425
+        protocol: TCP
+    resources:
+      limits: {}
+      requests: {}
+      claims: []
+    volumemounts:
+      - name: varlog
+        readonly: true
+        mountpath: /var/log
+      - name: varlib
+        readonly: true
+        mountpath: /var/lib
+      - name: vl-collector-data
+        mountpath: /vl-collector
+      - name: persistent-queue-data
+        readonly: false
+        mountpath: /vlagent_pq/vlagent-remotewrite-data
+    livenessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 9425
+          scheme: HTTP
+      timeoutseconds: 5
+      periodseconds: 5
+      successthreshold: 1
+      failurethreshold: 10
+    readinessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 9425
+          scheme: HTTP
+      initialdelayseconds: 0
+      timeoutseconds: 5
+      periodseconds: 5
+      successthreshold: 1
+      failurethreshold: 10
+    terminationmessagepolicy: FallbackToLogsOnError
+    imagepullpolicy: IfNotPresent
+serviceaccountname: vlagent-agent
+volumes:
+- name: varlog
+  volumesource:
+    hostpath:
+      path: /var/log
+- name: varlib
+  volumesource:
+    hostpath:
+      path: /var/lib
+- name: vl-collector-data
+  volumesource:
+    hostpath:
+      path: /var/lib/vl-collector
+- name: persistent-queue-data
+  volumesource:
+    emptydir: {}
 
     `)
 

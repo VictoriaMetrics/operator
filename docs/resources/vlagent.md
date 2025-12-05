@@ -136,6 +136,14 @@ then `VLAgent` pods will be created without resource requests and limits.
 
 Also, you can specify requests without limits - in this case default values for limits will not be used.
 
+## K8s logs collection
+
+VLAgent supports collecting logs from K8s pods. To enable it it's required to set `spec.k8sCollector.enabled: true`.
+With this setting operator:
+ - switches VLAgent to DaemonSet mode
+ - mounts host paths, where k8s logs are stored
+ - adds RBAC to be able to get pods, namespaces and nodes information using K8s API
+
 ## Storage management
 
 In case of errors sending logs to `remoteWrite`,

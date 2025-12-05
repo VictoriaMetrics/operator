@@ -35,7 +35,7 @@ jobs:
           echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
           echo ${{secrets.QUAY_ACCESSKEY}} | docker login quay.io --username '${{secrets.QUAY_USER}}' --password-stdin
           make publish
-          TAG=${TAG} make olm
+          TAG=${TAG} REGISTRY=quay.io make olm
           gh release upload ${{github.event.release.tag_name}} ./dist/install-no-webhook.yaml#install-no-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./dist/install-with-webhook.yaml#install-with-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./config/crd/overlay/crd.yaml#crd.yaml --clobber || echo "fix me NOT enough security permissions"

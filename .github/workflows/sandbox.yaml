@@ -30,20 +30,13 @@ jobs:
           repository: VictoriaMetrics/operator
           ref: ${{ github.event.inputs.branch }}
 
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: "go.mod"
-          check-latest: true
-          cache: true
-        id: go
-
       - name: Publish image
         id: publish
         run: |
           echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
           export IMAGE_TAG=$(git rev-parse --short HEAD)
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          TAG=$IMAGE_TAG make docker-build
           TAG=$IMAGE_TAG make docker-push
 
       - name: Checkout ops

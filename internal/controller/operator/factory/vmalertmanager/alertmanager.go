@@ -22,13 +22,15 @@ import (
 
 const templatesDir = "/etc/vm/templates"
 
-var badConfigsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+var badConfigsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 	Name: "operator_alertmanager_bad_objects_count",
 	Help: "Number of child CRDs with bad or incomplete configurations",
 	ConstLabels: prometheus.Labels{
 		"crd": "vmalertmanager_config",
 	},
-})
+},
+	[]string{"object_namespace"},
+)
 
 func init() {
 	metrics.Registry.MustRegister(badConfigsTotal)

@@ -167,7 +167,7 @@ func convertDiscoveryRole(src *promv1.ServiceDiscoveryRole) string {
 	case promv1.EndpointsRole:
 		role = "endpoints"
 	case promv1.EndpointSliceRole:
-		role = "endpointslices"
+		role = "endpointslice"
 	}
 	return role
 }

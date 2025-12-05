@@ -1033,7 +1033,7 @@ scrape_configs:
 scrape_configs:
 - job_name: serviceScrape/default/test-vms/0
   kubernetes_sd_configs:
-  - role: endpointslices
+  - role: endpointslice
     namespaces:
       names:
       - default
@@ -1084,7 +1084,7 @@ scrape_configs:
   bearer_token: some-bearer
 - job_name: serviceScrape/default/test-vms/1
   kubernetes_sd_configs:
-  - role: endpointslices
+  - role: endpointslice
     namespaces:
       names:
       - default

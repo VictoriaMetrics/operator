@@ -38,7 +38,7 @@ func generateNodeScrapeConfig(
 		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
 		selectors:          sc.Spec.Selector,
 		apiServerConfig:    apiserverConfig,
-		role:               kubernetesSDRoleNode,
+		role:               k8sSDRoleNode,
 		namespace:          sc.Namespace,
 	}
 	if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {

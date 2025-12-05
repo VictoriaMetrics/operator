@@ -225,14 +225,7 @@ func generateScrapeConfig(
 					Value: namespaces,
 				})
 			}
-
-			if config.AttachMetadata.Node != nil {
-				switch config.Role {
-				case "pod", "endpoints", "endpointslice":
-					configs[i] = addAttachMetadata(configs[i], &config.AttachMetadata)
-				}
-			}
-
+			configs[i] = addAttachMetadata(configs[i], &config.AttachMetadata, config.Role)
 			selectors := make([][]yaml.MapItem, len(config.Selectors))
 			for i, s := range config.Selectors {
 				selectors[i] = []yaml.MapItem{

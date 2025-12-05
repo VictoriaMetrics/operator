@@ -35,12 +35,15 @@ func generateServiceScrapeConfig(
 	}
 	// service role.
 	if sc.Spec.DiscoveryRole == "" {
-		sc.Spec.DiscoveryRole = kubernetesSDRoleEndpoint
+		sc.Spec.DiscoveryRole = k8sSDRoleEndpoints
 	}
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
 	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
-		ep.AttachMetadata = sc.Spec.AttachMetadata
+		ep.AttachMetadata.Node = sc.Spec.AttachMetadata.Node
+	}
+	if ep.AttachMetadata.Namespace == nil && sc.Spec.AttachMetadata.Namespace != nil {
+		ep.AttachMetadata.Namespace = sc.Spec.AttachMetadata.Namespace
 	}
 	k8sSDOpts := generateK8SSDConfigOptions{
 		namespaces:         selectedNamespaces,
@@ -77,26 +80,26 @@ func generateServiceScrapeConfig(
 	// Filter targets based on correct port for the endpoint.
 	if ep.Port != "" {
 		switch sc.Spec.DiscoveryRole {
-		case kubernetesSDRoleEndpoint:
+		case k8sSDRoleEndpoints:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "keep"},
 				{Key: "source_labels", Value: []string{"__meta_kubernetes_endpoint_port_name"}},
 				{Key: "regex", Value: ep.Port},
 			})
-		case kubernetesSDRoleEndpointSlices:
+		case k8sSDRoleEndpointslice:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "keep"},
 				{Key: "source_labels", Value: []string{"__meta_kubernetes_endpointslice_port_name"}},
 				{Key: "regex", Value: ep.Port},
 			})
-		case kubernetesSDRoleService:
+		case k8sSDRoleService:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "keep"},
 				{Key: "source_labels", Value: []string{"__meta_kubernetes_service_port_name"}},
 				{Key: "regex", Value: ep.Port},
 			})
 		}
-	} else if ep.TargetPort != nil && sc.Spec.DiscoveryRole != kubernetesSDRoleService {
+	} else if ep.TargetPort != nil && sc.Spec.DiscoveryRole != k8sSDRoleService {
 		// not supported to service.
 		if ep.TargetPort.StrVal != "" {
 			relabelings = append(relabelings, yaml.MapSlice{
@@ -114,9 +117,9 @@ func generateServiceScrapeConfig(
 	}
 
 	switch sc.Spec.DiscoveryRole {
-	case kubernetesSDRoleService:
+	case k8sSDRoleService:
 		// nothing to do, service doesn't have relations with pods.
-	case kubernetesSDRoleEndpointSlices:
+	case k8sSDRoleEndpointslice:
 		// Relabel namespace and pod and service labels into proper labels.
 		relabelings = append(relabelings, []yaml.MapSlice{
 			{ // Relabel node labels for pre v2.3 meta labels
@@ -142,7 +145,7 @@ func generateServiceScrapeConfig(
 				{Key: "target_label", Value: "container"},
 			},
 		}...)
-	case kubernetesSDRoleEndpoint:
+	case k8sSDRoleEndpoints:
 		// Relabel namespace and pod and service labels into proper labels.
 		relabelings = append(relabelings, []yaml.MapSlice{
 			{ // Relabel node labels for pre v2.3 meta labels
@@ -192,7 +195,7 @@ func generateServiceScrapeConfig(
 		})
 	}
 
-	if sc.Spec.DiscoveryRole != kubernetesSDRoleService {
+	if sc.Spec.DiscoveryRole != k8sSDRoleService {
 		for _, l := range sc.Spec.PodTargetLabels {
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_label_" + sanitizeLabelName(l)}},
@@ -228,7 +231,7 @@ func generateServiceScrapeConfig(
 			{Key: "target_label", Value: "endpoint"},
 			{Key: "replacement", Value: ep.Port},
 		})
-	} else if ep.TargetPort != nil && sc.Spec.DiscoveryRole != kubernetesSDRoleService && ep.TargetPort.String() != "" {
+	} else if ep.TargetPort != nil && sc.Spec.DiscoveryRole != k8sSDRoleService && ep.TargetPort.String() != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "target_label", Value: "endpoint"},
 			{Key: "replacement", Value: ep.TargetPort.String()},

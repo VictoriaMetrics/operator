@@ -89,7 +89,7 @@ func generateProbeConfig(
 			shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
 			selectors:          sc.Spec.Targets.Ingress.Selector,
 			apiServerConfig:    apiserverConfig,
-			role:               kubernetesSDRoleIngress,
+			role:               k8sSDRoleIngress,
 			namespace:          sc.Namespace,
 		}
 		if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {

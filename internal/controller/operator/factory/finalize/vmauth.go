@@ -43,20 +43,6 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			return err
 		}
 	}
-	if cr.Spec.Ingress != nil {
-		vmauthIngress := &networkingv1.Ingress{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      cr.PrefixedName(),
-				Namespace: cr.Namespace,
-			},
-		}
-		if err := removeFinalizeObjByName(ctx, rclient, vmauthIngress, cr.PrefixedName(), cr.Namespace); err != nil {
-			return err
-		}
-		if err := SafeDelete(ctx, rclient, vmauthIngress); err != nil {
-			return err
-		}
-	}
 
 	// check ingress
 	if err := removeFinalizeObjByName(ctx, rclient, &networkingv1.Ingress{}, cr.PrefixedName(), cr.Namespace); err != nil {

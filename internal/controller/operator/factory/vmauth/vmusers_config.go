@@ -30,15 +30,16 @@ import (
 // allows to skip users based on external conditions
 // implementation should has as less implementation details of vmusers as possible
 // potentially it could be reused later for scrape objects/vmalert rules.
-type skipableVMUsers struct {
-	stopIter        bool
-	users           []*vmv1beta1.VMUser
-	brokenVMUsers   []*vmv1beta1.VMUser
-	namespacedNames []string
+type skipableUsers struct {
+	stopIter               bool
+	users                  []*vmv1beta1.VMUser
+	brokenUsers            []*vmv1beta1.VMUser
+	brokenUsersByNamespace map[string]int
+	namespacedNames        []string
 }
 
 // visitAll visits all users objects
-func (sus *skipableVMUsers) visitAll(filter func(user *vmv1beta1.VMUser) bool) {
+func (sus *skipableUsers) visitAll(filter func(user *vmv1beta1.VMUser) bool) {
 	var cnt int
 	// filter in-place
 	for _, user := range sus.users {
@@ -46,7 +47,11 @@ func (sus *skipableVMUsers) visitAll(filter func(user *vmv1beta1.VMUser) bool) {
 			return
 		}
 		if !filter(user) {
-			sus.brokenVMUsers = append(sus.brokenVMUsers, user)
+			sus.brokenUsers = append(sus.brokenUsers, user)
+			if sus.brokenUsersByNamespace == nil {
+				sus.brokenUsersByNamespace = make(map[string]int)
+			}
+			sus.brokenUsersByNamespace[user.Namespace]++
 			continue
 		}
 		sus.users[cnt] = user
@@ -55,7 +60,7 @@ func (sus *skipableVMUsers) visitAll(filter func(user *vmv1beta1.VMUser) bool) {
 	sus.users = sus.users[:cnt]
 }
 
-func (sus *skipableVMUsers) deduplicateBy(cb func(user *vmv1beta1.VMUser) (string, time.Time)) {
+func (sus *skipableUsers) deduplicateBy(cb func(user *vmv1beta1.VMUser) (string, time.Time)) {
 	// later map[key]index could be re-place with map[key]tuple(index,timestamp)
 	uniqByIndex := make(map[string]int, len(sus.users))
 	var cnt int
@@ -75,12 +80,16 @@ func (sus *skipableVMUsers) deduplicateBy(cb func(user *vmv1beta1.VMUser) (strin
 		}
 		sus.users[prevIdx] = user
 		prevUser.Status.CurrentSyncError = fmt.Sprintf("user has duplicate token/password with vmuser=%s-%s", user.Namespace, user.Name)
-		sus.brokenVMUsers = append(sus.brokenVMUsers, prevUser)
+		sus.brokenUsers = append(sus.brokenUsers, prevUser)
+		if sus.brokenUsersByNamespace == nil {
+			sus.brokenUsersByNamespace = make(map[string]int)
+		}
+		sus.brokenUsersByNamespace[user.Namespace]++
 	}
 	sus.users = sus.users[:cnt]
 }
 
-func (sus *skipableVMUsers) sort() {
+func (sus *skipableUsers) sort() {
 	// sort for consistency.
 	sort.Slice(sus.users, func(i, j int) bool {
 		if sus.users[i].Name != sus.users[j].Name {
@@ -91,7 +100,7 @@ func (sus *skipableVMUsers) sort() {
 }
 
 // builds vmauth config.
-func buildConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, sus *skipableVMUsers, ac *build.AssetsCache) ([]byte, error) {
+func buildConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, sus *skipableUsers, ac *build.AssetsCache) ([]byte, error) {
 	// apply sort before making any changes to users
 	sus.sort()
 
@@ -147,7 +156,7 @@ func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []*
 
 // duplicates logic from vmauth auth_config
 // parseAuthConfigUsers
-func filterNonUniqUsers(sus *skipableVMUsers) {
+func filterNonUniqUsers(sus *skipableUsers) {
 	sus.deduplicateBy(func(user *vmv1beta1.VMUser) (string, time.Time) {
 		var at string
 		if user.Spec.UserName != nil {
@@ -186,7 +195,7 @@ func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithU
 	return objT.AsURL(), nil
 }
 
-func addAuthCredentialsBuildSecrets(sus *skipableVMUsers, ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
+func addAuthCredentialsBuildSecrets(sus *skipableUsers, ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
 	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
 		switch {
 		case user.Spec.PasswordRef != nil:
@@ -403,7 +412,7 @@ func (c *clusterWithURL) AsURL() string {
 }
 
 // fetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
-func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVMUsers) (map[string]string, error) {
+func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableUsers) (map[string]string, error) {
 	crdCacheURLCache := make(map[string]string)
 	var resultErr error
 	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
@@ -440,7 +449,7 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVM
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache map[string]string, ac *build.AssetsCache) ([]byte, error) {
+func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableUsers, crdCache map[string]string, ac *build.AssetsCache) ([]byte, error) {
 	var cfg yaml.MapSlice
 
 	var cfgUsers []yaml.MapSlice
@@ -943,7 +952,7 @@ func genPassword() (string, error) {
 }
 
 // selects vmusers for given vmauth.
-func selectVMUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) (*skipableVMUsers, error) {
+func selectUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) (*skipableUsers, error) {
 	var res []*vmv1beta1.VMUser
 	var namespacedNames []string
 	opts := &k8stools.SelectorOpts{
@@ -964,7 +973,7 @@ func selectVMUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMA
 	}); err != nil {
 		return nil, err
 	}
-	return &skipableVMUsers{users: res, namespacedNames: namespacedNames}, nil
+	return &skipableUsers{users: res, namespacedNames: namespacedNames}, nil
 }
 
 // note, username and password must be filled by operator

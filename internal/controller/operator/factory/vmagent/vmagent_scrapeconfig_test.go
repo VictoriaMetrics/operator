@@ -587,7 +587,7 @@ scrape_configs:
     ca_file: /etc/vmagent-tls/certs/default_access-creds_ca
     cert_file: /etc/vmagent-tls/certs/default_access-creds_cert
     key_file: /etc/vmagent-tls/certs/default_access-creds_key
-- job_name: probe/kube-system/test-vmp/0
+- job_name: probe/kube-system/test-vmp
   honor_labels: false
   metrics_path: /probe
   static_configs:

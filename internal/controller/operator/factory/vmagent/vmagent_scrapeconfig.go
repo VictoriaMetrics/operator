@@ -23,113 +23,174 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
+type scrapeObjectWithStatus interface {
+	client.Object
+	GetStatusMetadata() *vmv1beta1.StatusMetadata
+}
+
+type childObjects[T scrapeObjectWithStatus] struct {
+	built             []T
+	broken            []T
+	brokenByNamespace map[string]int
+	zero              T
+	name              string
+}
+
+func newChildObjects[T scrapeObjectWithStatus](name string, built []T) *childObjects[T] {
+	return &childObjects[T]{
+		built: built,
+		name:  name,
+	}
+}
+
+func (co *childObjects[T]) get(t T) T {
+	for _, o := range co.built {
+		if o.GetName() == t.GetName() && o.GetNamespace() == t.GetNamespace() {
+			return o
+		}
+	}
+	for _, o := range co.broken {
+		if o.GetName() == t.GetName() && o.GetNamespace() == t.GetNamespace() {
+			return o
+		}
+	}
+	return co.zero
+}
+
+func (co *childObjects[T]) updateMetrics() {
+	for ns, cnt := range co.brokenByNamespace {
+		build.BadObjectsTotal.WithLabelValues(co.name, ns).Add(float64(cnt))
+	}
+}
+
+func (co *childObjects[T]) forEachCollectSkipInvalid(apply func(s T) error) {
+	if err := co.forEachCollectSkipOn(apply, func(_ error) bool { return true }); err != nil {
+		panic(fmt.Sprintf("BUG: unexpected error: %s", err))
+	}
+}
+
+func (co *childObjects[T]) forEachCollectSkipNotFound(apply func(s T) error) error {
+	return co.forEachCollectSkipOn(apply, build.IsNotFound)
+}
+
+func (co *childObjects[T]) forEachCollectSkipOn(apply func(s T) error, shouldIgnoreError func(error) bool) error {
+	var cnt int
+	for _, o := range co.built {
+		if err := apply(o); err != nil {
+			if !shouldIgnoreError(err) {
+				return err
+			}
+			st := o.GetStatusMetadata()
+			st.CurrentSyncError = err.Error()
+			co.broken = append(co.broken, o)
+			if co.brokenByNamespace == nil {
+				co.brokenByNamespace = make(map[string]int)
+			}
+			co.brokenByNamespace[o.GetNamespace()]++
+			continue
+		}
+		co.built[cnt] = o
+		cnt++
+	}
+	co.built = co.built[:cnt]
+	return nil
+}
+
 type scrapeObjects struct {
-	sss        []*vmv1beta1.VMServiceScrape
-	pss        []*vmv1beta1.VMPodScrape
-	stss       []*vmv1beta1.VMStaticScrape
-	nss        []*vmv1beta1.VMNodeScrape
-	prss       []*vmv1beta1.VMProbe
-	scss       []*vmv1beta1.VMScrapeConfig
-	sssBroken  []*vmv1beta1.VMServiceScrape
-	pssBroken  []*vmv1beta1.VMPodScrape
-	stssBroken []*vmv1beta1.VMStaticScrape
-	nssBroken  []*vmv1beta1.VMNodeScrape
-	prssBroken []*vmv1beta1.VMProbe
-	scssBroken []*vmv1beta1.VMScrapeConfig
+	serviceScrapes *childObjects[*vmv1beta1.VMServiceScrape]
+	podScrapes     *childObjects[*vmv1beta1.VMPodScrape]
+	staticScrapes  *childObjects[*vmv1beta1.VMStaticScrape]
+	nodeScrapes    *childObjects[*vmv1beta1.VMNodeScrape]
+	probes         *childObjects[*vmv1beta1.VMProbe]
+	scrapeConfigs  *childObjects[*vmv1beta1.VMScrapeConfig]
+}
+
+func (so *scrapeObjects) updateMetrics() {
+	so.serviceScrapes.updateMetrics()
+	so.podScrapes.updateMetrics()
+	so.staticScrapes.updateMetrics()
+	so.nodeScrapes.updateMetrics()
+	so.probes.updateMetrics()
+	so.scrapeConfigs.updateMetrics()
 }
 
 func (so *scrapeObjects) validateObjects(cr *vmv1beta1.VMAgent) {
-	so.sss, so.sssBroken = forEachCollectSkipInvalid(so.sss, so.sssBroken, func(ss *vmv1beta1.VMServiceScrape) error {
+	so.serviceScrapes.forEachCollectSkipInvalid(func(sc *vmv1beta1.VMServiceScrape) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
-			for _, ep := range ss.Spec.Endpoints {
+			for _, ep := range sc.Spec.Endpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
 				}
 			}
 		}
-		if err := validateScrapeClassExists(ss.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if err := ss.Validate(); err != nil {
-			return err
-		}
-		return nil
+		return sc.Validate()
 	})
 
-	so.pss, so.pssBroken = forEachCollectSkipInvalid(so.pss, so.pssBroken, func(ps *vmv1beta1.VMPodScrape) error {
+	so.podScrapes.forEachCollectSkipInvalid(func(sc *vmv1beta1.VMPodScrape) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
-			for _, ep := range ps.Spec.PodMetricsEndpoints {
+			for _, ep := range sc.Spec.PodMetricsEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
 				}
 			}
 		}
-		if err := validateScrapeClassExists(ps.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if err := ps.Validate(); err != nil {
-			return err
-		}
-		return nil
+		return sc.Validate()
 	})
-	so.stss, so.stssBroken = forEachCollectSkipInvalid(so.stss, so.stssBroken, func(sts *vmv1beta1.VMStaticScrape) error {
+	so.staticScrapes.forEachCollectSkipInvalid(func(sc *vmv1beta1.VMStaticScrape) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
-			for _, ep := range sts.Spec.TargetEndpoints {
+			for _, ep := range sc.Spec.TargetEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
 				}
 			}
 		}
-		if err := validateScrapeClassExists(sts.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if err := sts.Validate(); err != nil {
-			return err
-		}
-		return nil
+		return sc.Validate()
 	})
 
-	so.nss, so.nssBroken = forEachCollectSkipInvalid(so.nss, so.nssBroken, func(ns *vmv1beta1.VMNodeScrape) error {
+	so.nodeScrapes.forEachCollectSkipInvalid(func(sc *vmv1beta1.VMNodeScrape) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
-			if err := testForArbitraryFSAccess(ns.Spec.EndpointAuth); err != nil {
+			if err := testForArbitraryFSAccess(sc.Spec.EndpointAuth); err != nil {
 				return err
 			}
 		}
-		if err := validateScrapeClassExists(ns.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		return nil
+		return sc.Validate()
 	})
 
-	so.prss, so.prssBroken = forEachCollectSkipInvalid(so.prss, so.prssBroken, func(prs *vmv1beta1.VMProbe) error {
+	so.probes.forEachCollectSkipInvalid(func(sc *vmv1beta1.VMProbe) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
-			if err := testForArbitraryFSAccess(prs.Spec.EndpointAuth); err != nil {
+			if err := testForArbitraryFSAccess(sc.Spec.EndpointAuth); err != nil {
 				return err
 			}
 		}
-		if err := validateScrapeClassExists(prs.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if err := prs.Validate(); err != nil {
-			return err
-		}
-		return nil
+		return sc.Validate()
 	})
 
-	so.scss, so.scssBroken = forEachCollectSkipInvalid(so.scss, so.scssBroken, func(scss *vmv1beta1.VMScrapeConfig) error {
+	so.scrapeConfigs.forEachCollectSkipInvalid(func(sc *vmv1beta1.VMScrapeConfig) error {
 		// TODO: @f41gh7 validate per configuration FS access
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
-			if err := testForArbitraryFSAccess(scss.Spec.EndpointAuth); err != nil {
+			if err := testForArbitraryFSAccess(sc.Spec.EndpointAuth); err != nil {
 				return err
 			}
 		}
-		if err := validateScrapeClassExists(scss.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if err := scss.Validate(); err != nil {
-			return err
-		}
-		return nil
+		return sc.Validate()
 	})
 }
 
@@ -159,42 +220,42 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		return err
 	}
 
-	sss, err := selectServiceScrapes(ctx, cr, rclient)
+	serviceScrapes, err := selectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
 		return fmt.Errorf("selecting ServiceScrapes failed: %w", err)
 	}
 
-	pScrapes, err := selectPodScrapes(ctx, cr, rclient)
+	podScrapes, err := selectPodScrapes(ctx, cr, rclient)
 	if err != nil {
 		return fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
 
-	probes, err := selectVMProbes(ctx, cr, rclient)
+	probes, err := selectProbes(ctx, cr, rclient)
 	if err != nil {
 		return fmt.Errorf("selecting VMProbes failed: %w", err)
 	}
 
-	nodes, err := selectVMNodeScrapes(ctx, cr, rclient)
+	nodeScrapes, err := selectNodeScrapes(ctx, cr, rclient)
 	if err != nil {
 		return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
 	}
 
-	statics, err := selectStaticScrapes(ctx, cr, rclient)
+	staticScrapes, err := selectStaticScrapes(ctx, cr, rclient)
 	if err != nil {
 		return fmt.Errorf("selecting VMStaticScrapes failed: %w", err)
 	}
 
-	scrapeConfigs, err := selectScrapeConfig(ctx, cr, rclient)
+	scrapeConfigs, err := selectScrapeConfigs(ctx, cr, rclient)
 	if err != nil {
 		return fmt.Errorf("selecting ScrapeConfigs failed: %w", err)
 	}
 	sos := &scrapeObjects{
-		sss:  sss,
-		pss:  pScrapes,
-		prss: probes,
-		nss:  nodes,
-		stss: statics,
-		scss: scrapeConfigs,
+		serviceScrapes: newChildObjects("vmservicescrape", serviceScrapes),
+		podScrapes:     newChildObjects("vmpodscrape", podScrapes),
+		probes:         newChildObjects("vmprobe", probes),
+		nodeScrapes:    newChildObjects("vmnodescrape", nodeScrapes),
+		staticScrapes:  newChildObjects("vmstaticscrape", staticScrapes),
+		scrapeConfigs:  newChildObjects("vmscrapeconfig", scrapeConfigs),
 	}
 	sos.validateObjects(cr)
 
@@ -242,161 +303,82 @@ func createOrUpdateConfigurationSecret(ctx context.Context, rclient client.Clien
 		}
 	}
 
-	if err := updateStatusesForScrapeObjects(ctx, rclient, cr, sos, childObject); err != nil {
+	if err := sos.updateStatusesForScrapeObjects(ctx, rclient, cr, childObject); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, sos *scrapeObjects, childObject client.Object) error {
+func (sos *scrapeObjects) updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
 	parentObject := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+	sos.updateMetrics()
 	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
 		// fast path
 		switch t := childObject.(type) {
 		case *vmv1beta1.VMStaticScrape:
-			for _, o := range sos.stss {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMStaticScrape{o})
-				}
+			if o := sos.staticScrapes.get(t); o != nil {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMStaticScrape{o})
 			}
-			for _, o := range sos.stssBroken {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMStaticScrape{o})
-				}
-			}
-
 		case *vmv1beta1.VMProbe:
-			for _, o := range sos.prss {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMProbe{o})
-				}
-			}
-			for _, o := range sos.prssBroken {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMProbe{o})
-				}
+			if o := sos.probes.get(t); o != nil {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMProbe{o})
 			}
 		case *vmv1beta1.VMScrapeConfig:
-			for _, o := range sos.scss {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMScrapeConfig{o})
-				}
+			if o := sos.scrapeConfigs.get(t); o != nil {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMScrapeConfig{o})
 			}
-			for _, o := range sos.scssBroken {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMScrapeConfig{o})
-				}
-			}
-
 		case *vmv1beta1.VMNodeScrape:
-			for _, o := range sos.nss {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMNodeScrape{o})
-				}
-			}
-			for _, o := range sos.nssBroken {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMNodeScrape{o})
-				}
+			if o := sos.nodeScrapes.get(t); o != nil {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMNodeScrape{o})
 			}
 		case *vmv1beta1.VMPodScrape:
-			for _, o := range sos.pss {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMPodScrape{o})
-				}
-			}
-			for _, o := range sos.pssBroken {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMPodScrape{o})
-				}
+			if o := sos.podScrapes.get(t); o != nil {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMPodScrape{o})
 			}
 		case *vmv1beta1.VMServiceScrape:
-			for _, o := range sos.sss {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMServiceScrape{o})
-				}
-			}
-			for _, o := range sos.sssBroken {
-				if o.Name == t.Name && o.Namespace == t.Namespace {
-					return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMServiceScrape{o})
-				}
+			if o := sos.serviceScrapes.get(t); o != nil {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMServiceScrape{o})
 			}
 		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.sss); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.serviceScrapes.built); err != nil {
 		return fmt.Errorf("cannot update statuses for service scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.sssBroken); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.serviceScrapes.broken); err != nil {
 		return fmt.Errorf("cannot update statuses for broken scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.pss); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.podScrapes.built); err != nil {
 		return fmt.Errorf("cannot update statuses for pod scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.pssBroken); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.podScrapes.broken); err != nil {
 		return fmt.Errorf("cannot update statuses for broken pod scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nss); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nodeScrapes.built); err != nil {
 		return fmt.Errorf("cannot update statuses for node scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nssBroken); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.nodeScrapes.broken); err != nil {
 		return fmt.Errorf("cannot update statuses for broken node scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.prss); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.probes.built); err != nil {
 		return fmt.Errorf("cannot update statuses for probe scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.prssBroken); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.probes.broken); err != nil {
 		return fmt.Errorf("cannot update statuses for broken probe scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.stss); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.staticScrapes.built); err != nil {
 		return fmt.Errorf("cannot update statuses for static scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.stssBroken); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.staticScrapes.broken); err != nil {
 		return fmt.Errorf("cannot update statuses for broken static scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.scss); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.scrapeConfigs.built); err != nil {
 		return fmt.Errorf("cannot update statuses for scrapeconfig scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.scssBroken); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sos.scrapeConfigs.broken); err != nil {
 		return fmt.Errorf("cannot update statuses for broken scrapeconfig scrape objects: %w", err)
 	}
 	return nil
-}
-
-type scrapeObjectWithStatus interface {
-	client.Object
-	GetStatusMetadata() *vmv1beta1.StatusMetadata
-}
-
-func forEachCollectSkipInvalid[T scrapeObjectWithStatus](src, srcBroken []T, apply func(s T) error) ([]T, []T) {
-	r1, r2, err := forEachCollectSkipOn(src, srcBroken, apply, func(_ error) bool { return true })
-	if err != nil {
-		panic(fmt.Sprintf("BUG: unexpected error: %s", err))
-	}
-	return r1, r2
-}
-
-func forEachCollectSkipNotFound[T scrapeObjectWithStatus](src, srcBroken []T, apply func(s T) error) ([]T, []T, error) {
-	return forEachCollectSkipOn(src, srcBroken, apply, build.IsNotFound)
-}
-
-func forEachCollectSkipOn[T scrapeObjectWithStatus](src, srcBroken []T, apply func(s T) error, shouldIgnoreError func(error) bool) ([]T, []T, error) {
-	var cnt int
-	for _, o := range src {
-		if err := apply(o); err != nil {
-			if !shouldIgnoreError(err) {
-				return src, srcBroken, err
-			}
-			st := o.GetStatusMetadata()
-			st.CurrentSyncError = err.Error()
-			srcBroken = append(srcBroken, o)
-			continue
-		}
-		src[cnt] = o
-		cnt++
-	}
-	src = src[:cnt]
-	return src, srcBroken, nil
 }
 
 // TODO: @f41gh7 validate VMScrapeParams
@@ -535,22 +517,18 @@ func generateConfig(
 
 	cfg = append(cfg, yaml.MapItem{Key: "global", Value: globalItems})
 
-	apiserverConfig := cr.Spec.APIServerConfig
-
 	var scrapeConfigs []yaml.MapSlice
 	var err error
 
-	sos.sss, sos.sssBroken, err = forEachCollectSkipNotFound(sos.sss, sos.sssBroken, func(ss *vmv1beta1.VMServiceScrape) error {
+	err = sos.serviceScrapes.forEachCollectSkipNotFound(func(sc *vmv1beta1.VMServiceScrape) error {
 		scrapeConfigsLen := len(scrapeConfigs)
-		for i, ep := range ss.Spec.Endpoints {
+		for i, ep := range sc.Spec.Endpoints {
 			s, err := generateServiceScrapeConfig(
 				ctx,
 				cr,
-				ss,
+				sc,
 				ep, i,
-				apiserverConfig,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:scrapeConfigsLen]
@@ -564,16 +542,14 @@ func generateConfig(
 		return nil, err
 	}
 
-	sos.pss, sos.pssBroken, err = forEachCollectSkipNotFound(sos.pss, sos.pssBroken, func(identifier *vmv1beta1.VMPodScrape) error {
+	err = sos.podScrapes.forEachCollectSkipNotFound(func(sc *vmv1beta1.VMPodScrape) error {
 		scrapeConfigsLen := len(scrapeConfigs)
-		for i, ep := range identifier.Spec.PodMetricsEndpoints {
+		for i, ep := range sc.Spec.PodMetricsEndpoints {
 			s, err := generatePodScrapeConfig(
 				ctx,
 				cr,
-				identifier, ep, i,
-				apiserverConfig,
+				sc, ep, i,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:scrapeConfigsLen]
@@ -587,19 +563,13 @@ func generateConfig(
 		return nil, err
 	}
 
-	// TODO: refactor and remove idx
-	var idx int
-	sos.prss, sos.prssBroken, err = forEachCollectSkipNotFound(sos.prss, sos.prssBroken, func(identifier *vmv1beta1.VMProbe) error {
+	err = sos.probes.forEachCollectSkipNotFound(func(sc *vmv1beta1.VMProbe) error {
 		s, err := generateProbeConfig(
 			ctx,
 			cr,
-			identifier,
-			idx,
-			apiserverConfig,
+			sc,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
 		)
-		idx++
 		if err != nil {
 			return err
 		}
@@ -610,14 +580,12 @@ func generateConfig(
 		return nil, err
 	}
 
-	sos.nss, sos.nssBroken, err = forEachCollectSkipNotFound(sos.nss, sos.nssBroken, func(identifier *vmv1beta1.VMNodeScrape) error {
+	err = sos.nodeScrapes.forEachCollectSkipNotFound(func(sc *vmv1beta1.VMNodeScrape) error {
 		s, err := generateNodeScrapeConfig(
 			ctx,
 			cr,
-			identifier,
-			apiserverConfig,
+			sc,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		if err != nil {
 			return err
@@ -630,16 +598,15 @@ func generateConfig(
 		return nil, err
 	}
 
-	sos.stss, sos.stssBroken, err = forEachCollectSkipNotFound(sos.stss, sos.stssBroken, func(identifier *vmv1beta1.VMStaticScrape) error {
+	err = sos.staticScrapes.forEachCollectSkipNotFound(func(sc *vmv1beta1.VMStaticScrape) error {
 		scrapeConfigsLen := len(scrapeConfigs)
-		for i, ep := range identifier.Spec.TargetEndpoints {
+		for i, ep := range sc.Spec.TargetEndpoints {
 			s, err := generateStaticScrapeConfig(
 				ctx,
 				cr,
-				identifier,
+				sc,
 				ep, i,
 				ac,
-				cr.Spec.VMAgentSecurityEnforcements,
 			)
 			if err != nil {
 				scrapeConfigs = scrapeConfigs[:scrapeConfigsLen]
@@ -653,13 +620,12 @@ func generateConfig(
 		return nil, err
 	}
 
-	sos.scss, sos.scssBroken, err = forEachCollectSkipNotFound(sos.scss, sos.scssBroken, func(identifier *vmv1beta1.VMScrapeConfig) error {
+	err = sos.scrapeConfigs.forEachCollectSkipNotFound(func(sc *vmv1beta1.VMScrapeConfig) error {
 		s, err := generateScrapeConfig(
 			ctx,
 			cr,
-			identifier,
+			sc,
 			ac,
-			cr.Spec.VMAgentSecurityEnforcements,
 		)
 		if err != nil {
 			return err
@@ -1236,7 +1202,7 @@ func validateScrapeClassExists(scrapeClassName *string, cr *vmv1beta1.VMAgent) e
 	return fmt.Errorf("scrape class %q not found in VMAgent %s/%s", *scrapeClassName, cr.Namespace, cr.Name)
 }
 
-func mergeEndPointAuthWithScrapeClass(authz *vmv1beta1.EndpointAuth, scrapeClass *vmv1beta1.ScrapeClass) {
+func mergeEndpointAuthWithScrapeClass(authz *vmv1beta1.EndpointAuth, scrapeClass *vmv1beta1.ScrapeClass) {
 	if authz == nil {
 		panic("BUG: authz cannot be nil")
 	}

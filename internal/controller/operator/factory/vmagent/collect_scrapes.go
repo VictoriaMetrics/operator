@@ -13,7 +13,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-func selectScrapeConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMScrapeConfig, error) {
+func selectScrapeConfigs(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMScrapeConfig, error) {
 	if cr.Spec.DaemonSetMode {
 		return nil, nil
 	}
@@ -72,7 +72,7 @@ func selectPodScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client
 	return selectedConfigs, nil
 }
 
-func selectVMProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMProbe, error) {
+func selectProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMProbe, error) {
 	if cr.Spec.DaemonSetMode {
 		return nil, nil
 	}
@@ -102,7 +102,7 @@ func selectVMProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	return selectedConfigs, nil
 }
 
-func selectVMNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMNodeScrape, error) {
+func selectNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMNodeScrape, error) {
 	if cr.Spec.DaemonSetMode {
 		return nil, nil
 	}

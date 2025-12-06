@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -16,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -25,21 +23,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
-
-var badConfigsTotal = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "operator_vmalert_bad_objects_count",
-		Help: "Number of incorrect objects by controller",
-		ConstLabels: prometheus.Labels{
-			"controller": "vmrules",
-		},
-	},
-	[]string{"object_namespace"},
-)
-
-func init() {
-	metrics.Registry.MustRegister(badConfigsTotal)
-}
 
 var (
 	managedByOperatorLabel      = "managed-by"
@@ -254,7 +237,7 @@ func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta
 	}
 	logger.SelectedObjects(ctx, "VMRules", len(namespacedNames), brokenRulesTotal, namespacedNames)
 	for ns, cnt := range brokenRulesByNamespace {
-		badConfigsTotal.WithLabelValues(ns).Add(float64(cnt))
+		build.BadObjectsTotal.WithLabelValues("vmrule", ns).Add(float64(cnt))
 	}
 	return rules, vmRules, nil
 }

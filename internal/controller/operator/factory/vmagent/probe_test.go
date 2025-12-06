@@ -28,7 +28,7 @@ func Test_generateProbeConfig(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generateProbeConfig(ctx, o.cr, o.sc, 0, nil, ac, o.cr.Spec.VMAgentSecurityEnforcements)
+		got, err := generateProbeConfig(ctx, o.cr, o.sc, ac)
 		if err != nil {
 			t.Errorf("cannot generate ProbeConfig, err: %e", err)
 			return
@@ -69,7 +69,7 @@ func Test_generateProbeConfig(t *testing.T) {
 				},
 			},
 		},
-		want: `job_name: probe/default/static-probe/0
+		want: `job_name: probe/default/static-probe
 honor_labels: false
 metrics_path: /probe2
 params:
@@ -124,7 +124,7 @@ relabel_configs:
 				},
 			},
 		},
-		want: `job_name: probe/monitor/probe-ingress/0
+		want: `job_name: probe/monitor/probe-ingress
 honor_labels: false
 metrics_path: /probe
 params:
@@ -233,7 +233,7 @@ relabel_configs:
 				},
 			},
 		},
-		want: `job_name: probe/default/static-probe/0
+		want: `job_name: probe/default/static-probe
 honor_labels: false
 scrape_interval: 10s
 scrape_timeout: 15s
@@ -327,7 +327,7 @@ basic_auth:
 				},
 			},
 		},
-		want: `job_name: probe/monitor/probe-ingress/0
+		want: `job_name: probe/monitor/probe-ingress
 honor_labels: false
 metrics_path: /probe
 params:

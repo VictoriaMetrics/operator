@@ -766,7 +766,7 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 			brokenCfgByNamespace[bamc.Namespace]++
 		}
 		for ns, cnt := range brokenCfgByNamespace {
-			badConfigsTotal.WithLabelValues(ns).Add(float64(cnt))
+			build.BadObjectsTotal.WithLabelValues("vmalertmanagerconfig", ns).Add(float64(cnt))
 		}
 	}
 	return parsedCfg, nil

@@ -17,8 +17,9 @@ func generateStaticScrapeConfig(
 	ep *vmv1beta1.TargetEndpoint,
 	i int,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
+	spec := &sc.Spec
+	se := cr.Spec.VMAgentSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -26,9 +27,9 @@ func generateStaticScrapeConfig(
 		},
 	}
 
-	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, cr)
+	scrapeClass := getScrapeClass(spec.ScrapeClassName, cr)
 	if scrapeClass != nil {
-		mergeEndPointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
+		mergeEndpointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
 		mergeEndpointRelabelingsWithScrapeClass(&ep.EndpointRelabelings, scrapeClass)
 	}
 
@@ -41,10 +42,10 @@ func generateStaticScrapeConfig(
 
 	// set defaults
 	if ep.SampleLimit == 0 {
-		ep.SampleLimit = sc.Spec.SampleLimit
+		ep.SampleLimit = spec.SampleLimit
 	}
 	if ep.SeriesLimit == 0 {
-		ep.SeriesLimit = sc.Spec.SeriesLimit
+		ep.SeriesLimit = spec.SeriesLimit
 	}
 	if ep.ScrapeTimeout == "" {
 		ep.ScrapeTimeout = cr.Spec.ScrapeTimeout
@@ -55,10 +56,10 @@ func generateStaticScrapeConfig(
 
 	var relabelings []yaml.MapSlice
 
-	if sc.Spec.JobName != "" {
+	if spec.JobName != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "target_label", Value: "job"},
-			{Key: "replacement", Value: sc.Spec.JobName},
+			{Key: "replacement", Value: spec.JobName},
 		})
 	}
 

@@ -26,7 +26,7 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(nil)
 		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generatePodScrapeConfig(ctx, o.cr, o.sc, o.ep, 0, nil, ac, o.cr.Spec.VMAgentSecurityEnforcements)
+		got, err := generatePodScrapeConfig(ctx, o.cr, o.sc, o.ep, 0, ac)
 		if err != nil {
 			t.Errorf("cannot generate PodScrapeConfig, err: %e", err)
 			return

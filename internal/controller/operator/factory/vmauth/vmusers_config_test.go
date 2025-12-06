@@ -764,7 +764,7 @@ func Test_genPassword(t *testing.T) {
 
 func Test_selectVMUserSecrets(t *testing.T) {
 	type opts struct {
-		vmUsers             *skipableVMUsers
+		vmUsers             *skipableUsers
 		wantToCreateSecrets []string
 		wantToUpdateSecrets []string
 		predefinedObjects   []runtime.Object
@@ -822,7 +822,7 @@ func Test_selectVMUserSecrets(t *testing.T) {
 
 	// want 1 updateSecret
 	f(opts{
-		vmUsers: &skipableVMUsers{
+		vmUsers: &skipableUsers{
 			users: []*vmv1beta1.VMUser{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -851,7 +851,7 @@ func Test_selectVMUserSecrets(t *testing.T) {
 
 	// want 1 updateSecret
 	f(opts{
-		vmUsers: &skipableVMUsers{
+		vmUsers: &skipableUsers{
 			users: []*vmv1beta1.VMUser{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -890,7 +890,7 @@ func Test_selectVMUserSecrets(t *testing.T) {
 
 	// want nothing
 	f(opts{
-		vmUsers: &skipableVMUsers{
+		vmUsers: &skipableUsers{
 			users: []*vmv1beta1.VMUser{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -926,7 +926,7 @@ func Test_selectVMUserSecrets(t *testing.T) {
 
 	// update secret value
 	f(opts{
-		vmUsers: &skipableVMUsers{
+		vmUsers: &skipableUsers{
 			users: []*vmv1beta1.VMUser{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -972,9 +972,9 @@ func Test_buildConfig(t *testing.T) {
 		ctx := context.TODO()
 		testClient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		// fetch exist users for vmauth.
-		sus, err := selectVMUsers(ctx, testClient, o.cr)
+		sus, err := selectUsers(ctx, testClient, o.cr)
 		if err != nil {
-			t.Fatalf("unexpected error at selectVMUsers: %s", err)
+			t.Fatalf("unexpected error at selectUsers: %s", err)
 		}
 		rand.Shuffle(len(sus.users), func(i, j int) {
 			sus.users[i], sus.users[j] = sus.users[j], sus.users[i]
@@ -990,9 +990,9 @@ func Test_buildConfig(t *testing.T) {
 			return
 		}
 		// fetch exist users for vmauth.
-		sus, err = selectVMUsers(ctx, testClient, o.cr)
+		sus, err = selectUsers(ctx, testClient, o.cr)
 		if err != nil {
-			t.Fatalf("unexpected error at selectVMUsers: %s", err)
+			t.Fatalf("unexpected error at selectUsers: %s", err)
 		}
 		got2, err := buildConfig(ctx, testClient, o.cr, sus, ac)
 		if err != nil {

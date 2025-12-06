@@ -150,34 +150,36 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(1)),
-				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
-				StatefulMode:            true,
-				IngestOnlyMode:          true,
-				StatefulStorage: &vmv1beta1.StorageSpec{
-					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
-						Spec: corev1.PersistentVolumeClaimSpec{
-							StorageClassName: ptr.To("embed-sc"),
-							Resources: corev1.VolumeResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceStorage: resource.MustParse("10Gi"),
+				IngestOnlyMode: true,
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
+					StatefulMode:            true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
 								},
 							},
 						},
 					},
-				},
-				ClaimTemplates: []corev1.PersistentVolumeClaim{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "extraTemplate",
-						},
-						Spec: corev1.PersistentVolumeClaimSpec{
-							StorageClassName: ptr.To("default"),
-							Resources: corev1.VolumeResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceStorage: resource.MustParse("2Gi"),
+					ClaimTemplates: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "extraTemplate",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("default"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("2Gi"),
+									},
 								},
 							},
 						},
@@ -220,13 +222,16 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(0)),
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+
+					ShardCount: func() *int { i := 2; return &i }(),
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				ShardCount: func() *int { i := 2; return &i }(),
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -495,10 +500,12 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(1)),
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+					StatefulMode: true,
 				},
-				StatefulMode: true,
 				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 					EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
 						Name: "my-headless-additional-service",
@@ -533,38 +540,40 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				StatefulRollingUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
-				StatefulMode:                  true,
-				IngestOnlyMode:                true,
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To[int32](2),
-				},
-				ShardCount: ptr.To(3),
-				PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
-					MinAvailable: ptr.To(intstr.FromInt(1)),
-				},
-				StatefulStorage: &vmv1beta1.StorageSpec{
-					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
-						Spec: corev1.PersistentVolumeClaimSpec{
-							StorageClassName: ptr.To("embed-sc"),
-							Resources: corev1.VolumeResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceStorage: resource.MustParse("10Gi"),
+				IngestOnlyMode: true,
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					StatefulRollingUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
+					StatefulMode:                  true,
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](2),
+					},
+					ShardCount: ptr.To(3),
+					PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
+						MinAvailable: ptr.To(intstr.FromInt(1)),
+					},
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
 								},
 							},
 						},
 					},
-				},
-				ClaimTemplates: []corev1.PersistentVolumeClaim{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "extraTemplate",
-						},
-						Spec: corev1.PersistentVolumeClaimSpec{
-							StorageClassName: ptr.To("default"),
-							Resources: corev1.VolumeResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceStorage: resource.MustParse("2Gi"),
+					ClaimTemplates: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "extraTemplate",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("default"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("2Gi"),
+									},
 								},
 							},
 						},
@@ -616,33 +625,35 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(1)),
-				},
-				StatefulMode:   true,
 				IngestOnlyMode: true,
-				StatefulStorage: &vmv1beta1.StorageSpec{
-					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
-						Spec: corev1.PersistentVolumeClaimSpec{
-							StorageClassName: ptr.To("embed-sc"),
-							Resources: corev1.VolumeResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceStorage: resource.MustParse("10Gi"),
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+					StatefulMode: true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
 								},
 							},
 						},
 					},
-				},
-				ClaimTemplates: []corev1.PersistentVolumeClaim{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "extraTemplate",
-						},
-						Spec: corev1.PersistentVolumeClaimSpec{
-							StorageClassName: ptr.To("default"),
-							Resources: corev1.VolumeResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceStorage: resource.MustParse("2Gi"),
+					ClaimTemplates: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "extraTemplate",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("default"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("2Gi"),
+									},
 								},
 							},
 						},
@@ -690,10 +701,12 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(0)),
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+					StatefulMode: true,
 				},
-				StatefulMode: true,
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{
 						URL: "http://some-url",
@@ -996,8 +1009,10 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 						SendTimeout: ptr.To("15s"),
 					},
 				},
-				RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-					UseMultiTenantMode: true,
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						UseMultiTenantMode: true,
+					},
 				},
 			},
 		},
@@ -1046,14 +1061,16 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				StatefulMode: true,
-				StatefulStorage: &vmv1beta1.StorageSpec{
-					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
-						Spec: corev1.PersistentVolumeClaimSpec{
-							StorageClassName: ptr.To("embed-sc"),
-							Resources: corev1.VolumeResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceStorage: resource.MustParse("10Gi"),
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					StatefulMode: true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
 								},
 							},
 						},
@@ -1087,14 +1104,16 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				StatefulMode: true,
-				StatefulStorage: &vmv1beta1.StorageSpec{
-					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
-						Spec: corev1.PersistentVolumeClaimSpec{
-							StorageClassName: ptr.To("embed-sc"),
-							Resources: corev1.VolumeResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceStorage: resource.MustParse("10Gi"),
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					StatefulMode: true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
 								},
 							},
 						},
@@ -1540,7 +1559,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 				Name:      "default-vmagent",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMAgentSpec{StatefulMode: true},
+			Spec: vmv1beta1.VMAgentSpec{CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{StatefulMode: true}},
 		},
 		want: []string{
 			`-remoteWrite.maxDiskUsagePerURL=1073741824`,
@@ -1570,10 +1589,12 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-					Labels: map[string]string{
-						"label-1": "value1",
-						"label-2": "value2",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						Labels: map[string]string{
+							"label-1": "value1",
+							"label-2": "value2",
+						},
 					},
 				},
 			},
@@ -1593,10 +1614,12 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-					ShowURL: ptr.To(true),
-					Labels: map[string]string{
-						"label-1": "value1",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						ShowURL: ptr.To(true),
+						Labels: map[string]string{
+							"label-1": "value1",
+						},
 					},
 				},
 			},
@@ -1617,11 +1640,13 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-					ShowURL:            ptr.To(true),
-					TmpDataPath:        ptr.To("/tmp/my-path"),
-					MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
-					UseMultiTenantMode: true,
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						ShowURL:            ptr.To(true),
+						TmpDataPath:        ptr.To("/tmp/my-path"),
+						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
+						UseMultiTenantMode: true,
+					},
 				},
 			},
 		},
@@ -1647,8 +1672,10 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 						MaxDiskUsage: ptr.To(vmv1beta1.BytesString("500MB")),
 					},
 				},
-				RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-					MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1000")),
+					},
 				},
 			},
 		},
@@ -1678,17 +1705,19 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 						URL: "localhost:8432",
 					},
 				},
-				RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-					MaxBlockSize: ptr.To(int32(1000)),
-				},
-				StatefulMode: true,
-				StatefulStorage: &vmv1beta1.StorageSpec{
-					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
-						Spec: corev1.PersistentVolumeClaimSpec{
-							StorageClassName: ptr.To("embed-sc"),
-							Resources: corev1.VolumeResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceStorage: resource.MustParse("10Gi"),
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						MaxBlockSize: ptr.To(int32(1000)),
+					},
+					StatefulMode: true,
+					StatefulStorage: &vmv1beta1.StorageSpec{
+						VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								StorageClassName: ptr.To("embed-sc"),
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceStorage: resource.MustParse("10Gi"),
+									},
 								},
 							},
 						},
@@ -2203,9 +2232,11 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1beta1.VMAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
-			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				UseVMConfigReloader: ptr.To(false),
+			CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					UseVMConfigReloader: ptr.To(false),
+				},
 			},
 		},
 	}, []string{
@@ -2221,7 +2252,9 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1beta1.VMAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
+			CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
+			},
 
 			IngestOnlyMode: true},
 	}, []string{
@@ -2235,12 +2268,14 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1beta1.VMAgentSpec{
-			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				UseVMConfigReloader: ptr.To(false),
+			CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					UseVMConfigReloader: ptr.To(false),
+				},
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
 			},
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
-			IngestOnlyMode:          false,
-			InlineRelabelConfig:     []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
+			IngestOnlyMode:      false,
+			InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
 			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 				{
 					URL: "http://some",
@@ -2269,12 +2304,14 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1beta1.VMAgentSpec{
-			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				UseVMConfigReloader: ptr.To(false),
-			},
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ConfigMaps: []string{"cm-0", "cm-1"},
+			CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					UseVMConfigReloader: ptr.To(false),
+				},
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ConfigMaps: []string{"cm-0", "cm-1"},
+				},
 			},
 			IngestOnlyMode:      false,
 			InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
@@ -2341,26 +2378,28 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
 				IngestOnlyMode: true,
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					Image: vmv1beta1.Image{
-						Repository: "vm-repo",
-						Tag:        "v1.97.1",
-					},
-					Resources: corev1.ResourceRequirements{
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("10m"),
-							corev1.ResourceMemory: resource.MustParse("10Mi"),
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+						Image: vmv1beta1.Image{
+							Repository: "vm-repo",
+							Tag:        "v1.97.1",
 						},
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("10m"),
-							corev1.ResourceMemory: resource.MustParse("10Mi"),
+						Resources: corev1.ResourceRequirements{
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("10Mi"),
+							},
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("10Mi"),
+							},
 						},
+						Port: "8425",
 					},
-					Port: "8425",
-				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
-					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+						UseVMConfigReloader:    ptr.To(true),
+						ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					},
 				},
 			},
 		},
@@ -2435,16 +2474,18 @@ serviceaccountname: vmagent-agent
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
 				IngestOnlyMode: false,
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8429",
 					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8429",
-				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
-					ConfigReloaderImageTag: "vmcustomer:v1",
+					CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+						UseVMConfigReloader:    ptr.To(true),
+						ConfigReloaderImageTag: "vmcustomer:v1",
+					},
 				},
 			},
 		},
@@ -2608,16 +2649,18 @@ serviceaccountname: vmagent-agent
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
 				IngestOnlyMode: true,
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8425",
 					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8425",
-				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
-					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+						UseVMConfigReloader:    ptr.To(true),
+						ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					},
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{
@@ -2701,16 +2744,21 @@ serviceaccountname: vmagent-agent
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
 				IngestOnlyMode: true,
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8425",
 					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8425",
-				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
-					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+						UseVMConfigReloader:    ptr.To(true),
+						ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					},
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("20MB")),
+					},
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{
@@ -2724,9 +2772,6 @@ serviceaccountname: vmagent-agent
 						URL:          "http://some-url-3/api/v1/write",
 						MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
 					},
-				},
-				RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-					MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("20MB")),
 				},
 			},
 		},
@@ -2797,21 +2842,26 @@ serviceaccountname: vmagent-agent
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
 				IngestOnlyMode: true,
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8425",
 					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8425",
-				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
-					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
-				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ExtraArgs: map[string]string{
-						"remoteWrite.maxDiskUsagePerURL": "35GiB",
-						"remoteWrite.forceVMProto":       "false",
+					CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+						UseVMConfigReloader:    ptr.To(true),
+						ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ExtraArgs: map[string]string{
+							"remoteWrite.maxDiskUsagePerURL": "35GiB",
+							"remoteWrite.forceVMProto":       "false",
+						},
+					},
+					RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("20MB")),
 					},
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -2827,9 +2877,6 @@ serviceaccountname: vmagent-agent
 						URL:          "http://some-url-3/api/v1/write",
 						MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
 					},
-				},
-				RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
-					MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("20MB")),
 				},
 			},
 		},

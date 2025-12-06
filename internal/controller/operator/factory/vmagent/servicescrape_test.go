@@ -50,11 +50,13 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorLabels:      false,
-					OverrideHonorTimestamps:  false,
-					IgnoreNamespaceSelectors: false,
-					EnforcedNamespaceLabel:   "",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
+						OverrideHonorLabels:      false,
+						OverrideHonorTimestamps:  false,
+						IgnoreNamespaceSelectors: false,
+						EnforcedNamespaceLabel:   "",
+					},
 				},
 			},
 		},
@@ -964,11 +966,13 @@ bearer_token_file: /var/run/token
 			},
 			Spec: vmv1beta1.VMAgentSpec{
 				EnableKubernetesAPISelectors: true,
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorLabels:      false,
-					OverrideHonorTimestamps:  false,
-					IgnoreNamespaceSelectors: false,
-					EnforcedNamespaceLabel:   "",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
+						OverrideHonorLabels:      false,
+						OverrideHonorTimestamps:  false,
+						IgnoreNamespaceSelectors: false,
+						EnforcedNamespaceLabel:   "",
+					},
 				},
 				APIServerConfig: &vmv1beta1.APIServerConfig{
 					Host: "default-k8s-host",
@@ -1131,11 +1135,13 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorLabels:      false,
-					OverrideHonorTimestamps:  false,
-					IgnoreNamespaceSelectors: false,
-					EnforcedNamespaceLabel:   "",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
+						OverrideHonorLabels:      false,
+						OverrideHonorTimestamps:  false,
+						IgnoreNamespaceSelectors: false,
+						EnforcedNamespaceLabel:   "",
+					},
 				},
 				ScrapeClasses: []vmv1beta1.ScrapeClass{
 					{
@@ -1806,11 +1812,13 @@ relabel_configs:
 						},
 					},
 				},
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorLabels:      false,
-					OverrideHonorTimestamps:  false,
-					IgnoreNamespaceSelectors: false,
-					EnforcedNamespaceLabel:   "",
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
+						OverrideHonorLabels:      false,
+						OverrideHonorTimestamps:  false,
+						IgnoreNamespaceSelectors: false,
+						EnforcedNamespaceLabel:   "",
+					},
 				},
 			},
 		},

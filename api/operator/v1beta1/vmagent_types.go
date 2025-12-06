@@ -40,9 +40,8 @@ type VMAgentSecurityEnforcements struct {
 	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
 }
 
-// VMAgentSpec defines the desired state of VMAgent
-// +k8s:openapi-gen=true
-type VMAgentSpec struct {
+// CommonVMAgentSpec contains spec items without scraping
+type CommonVMAgentSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
@@ -60,6 +59,73 @@ type VMAgentSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
+
+	// RemoteWriteSettings defines global settings for all remoteWrite urls.
+	// +optional
+	RemoteWriteSettings *VMAgentRemoteWriteSettings `json:"remoteWriteSettings,omitempty"`
+
+	// ShardCount - numbers of shards of VMAgent
+	// in this case operator will use 1 deployment/sts per shard with
+	// replicas count according to spec.replicas,
+	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)
+	// +optional
+	ShardCount *int `json:"shardCount,omitempty"`
+
+	// UpdateStrategy - overrides default update strategy.
+	// works only for deployments, statefulset always use OnDelete.
+	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
+	// +optional
+	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
+	// RollingUpdate - overrides deployment update params.
+	// +optional
+	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	*EmbeddedProbes     `json:",inline"`
+	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
+	// Supports only VMPodScrape
+	// (available from v0.55.0).
+	// Cannot be used with statefulMode
+	// +optional
+	DaemonSetMode bool `json:"daemonSetMode,omitempty"`
+	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
+	// it allows using persistent storage for vmagent's persistentQueue
+	// +optional
+	StatefulMode bool `json:"statefulMode,omitempty"`
+	// StatefulStorage configures storage for StatefulSet
+	// +optional
+	StatefulStorage *StorageSpec `json:"statefulStorage,omitempty"`
+	// StatefulRollingUpdateStrategy allows configuration for strategyType
+	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
+	// +optional
+	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
+	// +optional
+	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
+	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
+	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+
+	// License allows to configure license key to be used for enterprise features.
+	// Using license key is supported starting from VictoriaMetrics v1.94.0.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
+	// +optional
+	License *License `json:"license,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	VMAgentSecurityEnforcements       `json:",inline"`
+	CommonDefaultableParams           `json:",inline,omitempty"`
+	CommonConfigReloaderParams        `json:",inline,omitempty"`
+	CommonApplicationDeploymentParams `json:",inline,omitempty"`
+}
+
+// VMAgentSpec defines the desired state of VMAgent
+// +k8s:openapi-gen=true
+type VMAgentSpec struct {
+	CommonVMAgentSpec `json:",inline"`
 
 	// APIServerConfig allows specifying a host and auth methods to access apiserver.
 	// If left empty, VMAgent is assumed to run inside of the cluster
@@ -87,9 +153,6 @@ type VMAgentSpec struct {
 	// or for cluster different url
 	// https://docs.victoriametrics.com/victoriametrics/vmagent/#splitting-data-streams-among-multiple-systems
 	RemoteWrite []VMAgentRemoteWriteSpec `json:"remoteWrite"`
-	// RemoteWriteSettings defines global settings for all remoteWrite urls.
-	// +optional
-	RemoteWriteSettings *VMAgentRemoteWriteSettings `json:"remoteWriteSettings,omitempty"`
 	// RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
 	// This relabeling is applied to all the collected metrics before sending them to remote storage.
 	// +optional
@@ -223,25 +286,6 @@ type VMAgentSpec struct {
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
-	// ShardCount - numbers of shards of VMAgent
-	// in this case operator will use 1 deployment/sts per shard with
-	// replicas count according to spec.replicas,
-	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)
-	// +optional
-	ShardCount *int `json:"shardCount,omitempty"`
-
-	// UpdateStrategy - overrides default update strategy.
-	// works only for deployments, statefulset always use OnDelete.
-	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
-	// +optional
-	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
-	// RollingUpdate - overrides deployment update params.
-	// +optional
-	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
-	// PodDisruptionBudget created by operator
-	// +optional
-	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*EmbeddedProbes     `json:",inline"`
 	// ServiceScrapeRelabelTemplate defines relabel config, that will be added to each VMServiceScrape.
 	// it's useful for adding specific labels to all targets
 	// +optional
@@ -290,44 +334,11 @@ type VMAgentSpec struct {
 	// MaxScrapeInterval allows limiting maximum scrape interval for VMServiceScrape, VMPodScrape and other scrapes
 	// If interval is higher than defined limit, `maxScrapeInterval` will be used.
 	MaxScrapeInterval *string `json:"maxScrapeInterval,omitempty"`
-	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
-	// Supports only VMPodScrape
-	// (available from v0.55.0).
-	// Cannot be used with statefulMode
-	// +optional
-	DaemonSetMode bool `json:"daemonSetMode,omitempty"`
-	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
-	// it allows using persistent storage for vmagent's persistentQueue
-	// +optional
-	StatefulMode bool `json:"statefulMode,omitempty"`
-	// StatefulStorage configures storage for StatefulSet
-	// +optional
-	StatefulStorage *StorageSpec `json:"statefulStorage,omitempty"`
-	// StatefulRollingUpdateStrategy allows configuration for strategyType
-	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
-	// +optional
-	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
-	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
-	// +optional
-	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
-
-	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
-	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 	// IngestOnlyMode switches vmagent into unmanaged mode
 	// it disables any config generation for scraping
 	// Currently it prevents vmagent from managing tls and auth options for remote write
 	// +optional
 	IngestOnlyMode bool `json:"ingestOnlyMode,omitempty"`
-
-	// License allows to configure license key to be used for enterprise features.
-	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
-	// +optional
-	License *License `json:"license,omitempty"`
-
-	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// EnableKubernetesAPISelectors instructs vmagent to use CRD scrape objects spec.selectors for
 	// Kubernetes API list and watch requests.
@@ -335,11 +346,6 @@ type VMAgentSpec struct {
 	// It could be useful to reduce Kubernetes API server resource usage for serving less than 100 CRD scrape objects in total.
 	// +optional
 	EnableKubernetesAPISelectors bool `json:"enableKubernetesAPISelectors,omitempty"`
-
-	VMAgentSecurityEnforcements       `json:",inline"`
-	CommonDefaultableParams           `json:",inline,omitempty"`
-	CommonConfigReloaderParams        `json:",inline,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface

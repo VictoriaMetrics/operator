@@ -1521,7 +1521,9 @@ scrape_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				DaemonSetMode:      true,
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					DaemonSetMode: true,
+				},
 				SelectAllByDefault: true,
 			},
 		},
@@ -1650,9 +1652,11 @@ scrape_configs:
 			},
 			Spec: vmv1beta1.VMAgentSpec{
 				SelectAllByDefault: true,
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					ArbitraryFSAccessThroughSMs: vmv1beta1.ArbitraryFSAccessThroughSMsConfig{
-						Deny: true,
+				CommonVMAgentSpec: vmv1beta1.CommonVMAgentSpec{
+					VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
+						ArbitraryFSAccessThroughSMs: vmv1beta1.ArbitraryFSAccessThroughSMsConfig{
+							Deny: true,
+						},
 					},
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{

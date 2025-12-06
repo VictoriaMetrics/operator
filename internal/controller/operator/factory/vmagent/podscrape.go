@@ -16,10 +16,11 @@ func generatePodScrapeConfig(
 	sc *vmv1beta1.VMPodScrape,
 	ep vmv1beta1.PodMetricsEndpoint,
 	i int,
-	apiserverConfig *vmv1beta1.APIServerConfig,
 	ac *build.AssetsCache,
-	se vmv1beta1.VMAgentSecurityEnforcements,
 ) (yaml.MapSlice, error) {
+	spec := &sc.Spec
+	apiserverConfig := cr.Spec.APIServerConfig
+	se := cr.Spec.VMAgentSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -27,21 +28,21 @@ func generatePodScrapeConfig(
 		},
 	}
 
-	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, cr)
+	scrapeClass := getScrapeClass(spec.ScrapeClassName, cr)
 	if scrapeClass != nil {
-		mergeEndPointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
+		mergeEndpointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
 		mergeEndpointRelabelingsWithScrapeClass(&ep.EndpointRelabelings, scrapeClass)
 		mergeAttachMetadataWithScrapeClass(&ep.AttachMetadata, scrapeClass)
 	}
 
-	selectedNamespaces := getNamespacesFromNamespaceSelector(&sc.Spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
-	if ep.AttachMetadata.Node == nil && sc.Spec.AttachMetadata.Node != nil {
-		ep.AttachMetadata = sc.Spec.AttachMetadata
+	selectedNamespaces := getNamespacesFromNamespaceSelector(&spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
+	if ep.AttachMetadata.Node == nil && spec.AttachMetadata.Node != nil {
+		ep.AttachMetadata = spec.AttachMetadata
 	}
 	k8sSDOpts := generateK8SSDConfigOptions{
 		namespaces:         selectedNamespaces,
 		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
-		selectors:          sc.Spec.Selector,
+		selectors:          spec.Selector,
 		apiServerConfig:    apiserverConfig,
 		role:               kubernetesSDRolePod,
 		attachMetadata:     &ep.AttachMetadata,
@@ -58,10 +59,10 @@ func generatePodScrapeConfig(
 
 	// set defaults
 	if ep.SampleLimit == 0 {
-		ep.SampleLimit = sc.Spec.SampleLimit
+		ep.SampleLimit = spec.SampleLimit
 	}
 	if ep.SeriesLimit == 0 {
-		ep.SeriesLimit = sc.Spec.SeriesLimit
+		ep.SeriesLimit = spec.SeriesLimit
 	}
 
 	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, cr)
@@ -79,7 +80,7 @@ func generatePodScrapeConfig(
 	}
 
 	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
-	relabelings = addSelectorToRelabelingFor(relabelings, "pod", sc.Spec.Selector, skipRelabelSelectors)
+	relabelings = addSelectorToRelabelingFor(relabelings, "pod", spec.Selector, skipRelabelSelectors)
 
 	// Filter targets based on correct port for the endpoint.
 	switch {
@@ -129,7 +130,7 @@ func generatePodScrapeConfig(
 	}...)
 
 	// Relabel targetLabels from Pod onto target.
-	for _, l := range sc.Spec.PodTargetLabels {
+	for _, l := range spec.PodTargetLabels {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_label_" + sanitizeLabelName(l)}},
 			{Key: "target_label", Value: sanitizeLabelName(l)},
@@ -148,9 +149,9 @@ func generatePodScrapeConfig(
 		{Key: "target_label", Value: "job"},
 		{Key: "replacement", Value: fmt.Sprintf("%s/%s", sc.GetNamespace(), sc.GetName())},
 	})
-	if sc.Spec.JobLabel != "" {
+	if spec.JobLabel != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
-			{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_label_" + sanitizeLabelName(sc.Spec.JobLabel)}},
+			{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_label_" + sanitizeLabelName(spec.JobLabel)}},
 			{Key: "target_label", Value: "job"},
 			{Key: "regex", Value: "(.+)"},
 			{Key: "replacement", Value: "${1}"},

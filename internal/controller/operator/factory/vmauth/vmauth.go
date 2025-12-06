@@ -416,7 +416,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		},
 	}
 	// fetch exist users for vmauth.
-	sus, err := selectVMUsers(ctx, rclient, cr)
+	sus, err := selectUsers(ctx, rclient, cr)
 	if err != nil {
 		return err
 	}
@@ -444,7 +444,10 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta); err != nil {
 		return err
 	}
-	logger.SelectedObjects(ctx, "VMUsers", len(sus.namespacedNames), len(sus.brokenVMUsers), sus.namespacedNames)
+	logger.SelectedObjects(ctx, "VMUsers", len(sus.namespacedNames), len(sus.brokenUsers), sus.namespacedNames)
+	for ns, cnt := range sus.brokenUsersByNamespace {
+		build.BadObjectsTotal.WithLabelValues("vmuser", ns).Add(float64(cnt))
+	}
 
 	parentObject := fmt.Sprintf("%s.%s.vmauth", cr.GetName(), cr.GetNamespace())
 	if childObject != nil {
@@ -454,7 +457,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMUser{u})
 			}
 		}
-		for _, u := range sus.brokenVMUsers {
+		for _, u := range sus.brokenUsers {
 			if u.Name == childObject.Name && u.Namespace == childObject.Namespace {
 				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMUser{u})
 			}
@@ -463,7 +466,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.users); err != nil {
 		return fmt.Errorf("cannot update statuses for vmusers: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.brokenVMUsers); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.brokenUsers); err != nil {
 		return fmt.Errorf("cannot update statuses for broken vmusers: %w", err)
 	}
 

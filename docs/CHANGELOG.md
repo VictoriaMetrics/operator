@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add unique `operator_bad_objects_count` metric with `object_namespace` and `crd` labels to track invalid objects managed by VMAgent, VMAuth, VMAlert and VMAlertmanager. Removed old `operator_alertmanager_bad_objects_count` and `operator_vmalert_bad_objects_count` metrics.
+
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 
 **Release date:** 06 December 2025

@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -16,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -25,18 +23,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
-
-var badConfigsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-	Name: "operator_vmalert_bad_objects_count",
-	Help: "Number of incorrect objects by controller",
-	ConstLabels: prometheus.Labels{
-		"controller": "vmrules",
-	},
-})
-
-func init() {
-	metrics.Registry.MustRegister(badConfigsTotal)
-}
 
 var (
 	managedByOperatorLabel      = "managed-by"
@@ -223,25 +209,36 @@ func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta
 		logger.WithContext(ctx).Info("deduplicating vmalert rules")
 		vmRules = deduplicateRules(ctx, vmRules)
 	}
-	var brokenRulesCnt int
+	var brokenRulesByNamespace map[string]int
+	var brokenRulesTotal int
 	for _, pRule := range vmRules {
 		if !build.MustSkipRuntimeValidation {
 			if err := pRule.Validate(); err != nil {
 				pRule.Status.CurrentSyncError = err.Error()
-				brokenRulesCnt++
+				if brokenRulesByNamespace == nil {
+					brokenRulesByNamespace = map[string]int{}
+				}
+				brokenRulesTotal++
+				brokenRulesByNamespace[pRule.Namespace]++
 				continue
 			}
 		}
 		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {
 			pRule.Status.CurrentSyncError = fmt.Sprintf("cannot generate content for rule: %s, err :%s", pRule.Name, err)
-			brokenRulesCnt++
+			if brokenRulesByNamespace == nil {
+				brokenRulesByNamespace = map[string]int{}
+			}
+			brokenRulesTotal++
+			brokenRulesByNamespace[pRule.Namespace]++
 			continue
 		}
 		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
 	}
-	logger.SelectedObjects(ctx, "VMRules", len(namespacedNames), brokenRulesCnt, namespacedNames)
-	badConfigsTotal.Add(float64(brokenRulesCnt))
+	logger.SelectedObjects(ctx, "VMRules", len(namespacedNames), brokenRulesTotal, namespacedNames)
+	for ns, cnt := range brokenRulesByNamespace {
+		build.BadObjectsTotal.WithLabelValues("vmrule", ns).Add(float64(cnt))
+	}
 	return rules, vmRules, nil
 }
 

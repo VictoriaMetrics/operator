@@ -27,7 +27,7 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generateNodeScrapeConfig(ctx, o.cr, o.sc, nil, ac, o.cr.Spec.VMAgentSecurityEnforcements)
+		got, err := generateNodeScrapeConfig(ctx, o.cr, o.sc, ac)
 		if err != nil {
 			t.Errorf("cannot generate NodeScrapeConfig, err: %e", err)
 			return

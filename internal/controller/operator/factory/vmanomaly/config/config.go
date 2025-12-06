@@ -12,6 +12,11 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
+type ChildObjects struct {
+	Models     []*vmv1.VMAnomalyModel
+	Schedulers []*vmv1.VMAnomalyScheduler
+}
+
 type header struct {
 	Class  string         `yaml:"class"`
 	Fields map[string]any `yaml:",inline"`
@@ -22,8 +27,8 @@ type validatable interface {
 }
 
 type config struct {
-	Schedulers map[string]*scheduler `yaml:"schedulers,omitempty"`
-	Models     map[string]*model     `yaml:"models,omitempty"`
+	Schedulers map[string]*Scheduler `yaml:"schedulers,omitempty"`
+	Models     map[string]*Model     `yaml:"models,omitempty"`
 	Reader     *reader               `yaml:"reader,omitempty"`
 	Writer     *writer               `yaml:"writer,omitempty"`
 	Monitoring *monitoring           `yaml:"monitoring,omitempty"`
@@ -38,23 +43,23 @@ type settings struct {
 	RestoreState      bool    `yaml:"restore_state,omitempty"`
 }
 
-func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
+func (c *config) override(cr *vmv1.VMAnomaly, objects *ChildObjects, ac *build.AssetsCache) error {
 	c.Preset = strings.ToLower(c.Preset)
 	if strings.HasPrefix(c.Preset, "ui") {
+		s := new(noopScheduler)
+		s.setClass("noop")
 		c.Reader = &reader{
 			Class: "noop",
 		}
 		c.Writer = &writer{
 			Class: "noop",
 		}
-		c.Schedulers = map[string]*scheduler{
+		c.Schedulers = map[string]*Scheduler{
 			"noop": {
-				validatable: &noopScheduler{
-					Class: "noop",
-				},
+				anomalyScheduler: s,
 			},
 		}
-		c.Models = map[string]*model{
+		c.Models = map[string]*Model{
 			"placeholder": {
 				anomalyModel: &zScoreModel{
 					commonModelParams: commonModelParams{
@@ -139,6 +144,26 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 			}
 		}
 		c.Monitoring = &m
+	}
+
+	// override models
+	for _, m := range objects.Models {
+		nm, err := modelFromSpec(&m.Spec)
+		name := fmt.Sprintf("%s-%s", m.Namespace, m.Name)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal model=%q: %w", name, err)
+		}
+		c.Models[name] = nm
+	}
+
+	// override schedulers
+	for _, s := range objects.Schedulers {
+		ns, err := schedulerFromSpec(&s.Spec)
+		name := fmt.Sprintf("%s-%s", s.Namespace, s.Name)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal scheduler=%q: %w", name, err)
+		}
+		c.Schedulers[name] = ns
 	}
 	return nil
 }
@@ -291,7 +316,7 @@ func (c *clientConfig) override(cr *vmv1.VMAnomaly, cfg *vmv1.VMAnomalyHTTPClien
 }
 
 // Load returns vmanomaly config merged with provided secrets
-func Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byte, error) {
+func Load(cr *vmv1.VMAnomaly, objects *ChildObjects, ac *build.AssetsCache) ([]byte, error) {
 	var data []byte
 	switch {
 	case cr.Spec.ConfigSecret != nil:
@@ -310,7 +335,7 @@ func Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal anomaly configuration, name=%q: %w", cr.Name, err)
 	}
-	if err = c.override(cr, ac); err != nil {
+	if err = c.override(cr, objects, ac); err != nil {
 		return nil, fmt.Errorf("failed to update secret values with values from anomaly instance, name=%q: %w", cr.Name, err)
 	}
 	if err = c.validate(); err != nil {

@@ -30,6 +30,8 @@ Package v1 contains API Schema definitions for the operator v1 API group
 - [VLCluster](#vlcluster)
 - [VLSingle](#vlsingle)
 - [VMAnomaly](#vmanomaly)
+- [VMAnomalyModel](#vmanomalymodel)
+- [VMAnomalyScheduler](#vmanomalyscheduler)
 - [VTCluster](#vtcluster)
 - [VTSingle](#vtsingle)
 
@@ -64,6 +66,20 @@ Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec)
 | endpointParams<a href="#oauth2-endpointparams" id="oauth2-endpointparams">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>EndpointParams to append to the token URL |
 | scopes<a href="#oauth2-scopes" id="oauth2-scopes">#</a><br/>_string array_ | _(Optional)_<br/>Scopes used for the token request |
 | tokenURL<a href="#oauth2-tokenurl" id="oauth2-tokenurl">#</a><br/>_string_ | _(Required)_<br/>TokenURL defines URL to fetch the token from |
+
+
+#### Selector
+
+
+
+Selector defines object and namespace selectors
+
+Appears in: [VMAnomalySpec](#vmanomalyspec)
+
+| Field | Description |
+| --- | --- |
+| namespaceSelector<a href="#selector-namespaceselector" id="selector-namespaceselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>NamespaceSelector defines namespaces to be selected for object discovery. |
+| objectSelector<a href="#selector-objectselector" id="selector-objectselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>ObjectSelector defines object to be selected for discovery. |
 
 
 #### SyslogServerSpec
@@ -628,6 +644,38 @@ Appears in: [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnom
 | tlsConfig<a href="#vmanomalyhttpclientspec-tlsconfig" id="vmanomalyhttpclientspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/>TLSConfig defines tls connection configuration |
 
 
+#### VMAnomalyModel
+
+
+
+VMAnomalyModel is the Schema for the vmanomalymodels API.
+
+
+
+| Field | Description |
+| --- | --- |
+| apiVersion<br/>_string_ | (Required)<br/>`operator.victoriametrics.com/v1` |
+| kind<br/>_string_ | (Required)<br/>`VMAnomalyModel` |
+| metadata<a href="#vmanomalymodel-metadata" id="vmanomalymodel-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#objectmeta-v1-meta)_ | _(Required)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
+| spec<a href="#vmanomalymodel-spec" id="vmanomalymodel-spec">#</a><br/>_[VMAnomalyModelSpec](#vmanomalymodelspec)_ | _(Required)_<br/> |
+
+
+#### VMAnomalyModelSpec
+
+
+
+VMAnomalyModelSpec defines the desired state of VMAnomalyModel.
+
+Appears in: [VMAnomalyModel](#vmanomalymodel)
+
+| Field | Description |
+| --- | --- |
+| class<a href="#vmanomalymodelspec-class" id="vmanomalymodelspec-class">#</a><br/>_string_ | _(Required)_<br/>Class defines anomaly detection model class |
+| params<a href="#vmanomalymodelspec-params" id="vmanomalymodelspec-params">#</a><br/>_[RawExtension](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#rawextension-runtime-pkg)_ | _(Required)_<br/>Params defines anomaly detection model params |
+
+
+
+
 #### VMAnomalyMonitoringPullSpec
 
 
@@ -708,6 +756,38 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | tz<a href="#vmanomalyreadersspec-tz" id="vmanomalyreadersspec-tz">#</a><br/>_string_ | _(Required)_<br/>Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns |
 
 
+#### VMAnomalyScheduler
+
+
+
+VMAnomalyScheduler is the Schema for the vmanomalyschedulers API.
+
+
+
+| Field | Description |
+| --- | --- |
+| apiVersion<br/>_string_ | (Required)<br/>`operator.victoriametrics.com/v1` |
+| kind<br/>_string_ | (Required)<br/>`VMAnomalyScheduler` |
+| metadata<a href="#vmanomalyscheduler-metadata" id="vmanomalyscheduler-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#objectmeta-v1-meta)_ | _(Required)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
+| spec<a href="#vmanomalyscheduler-spec" id="vmanomalyscheduler-spec">#</a><br/>_[VMAnomalySchedulerSpec](#vmanomalyschedulerspec)_ | _(Required)_<br/> |
+
+
+#### VMAnomalySchedulerSpec
+
+
+
+VMAnomalySchedulerSpec defines the desired state of VMAnomalyScheduler.
+
+Appears in: [VMAnomalyScheduler](#vmanomalyscheduler)
+
+| Field | Description |
+| --- | --- |
+| class<a href="#vmanomalyschedulerspec-class" id="vmanomalyschedulerspec-class">#</a><br/>_string_ | _(Required)_<br/>Class defines anomaly detection scheduler class |
+| params<a href="#vmanomalyschedulerspec-params" id="vmanomalyschedulerspec-params">#</a><br/>_[RawExtension](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#rawextension-runtime-pkg)_ | _(Required)_<br/>Params defines anomaly detection scheduler params |
+
+
+
+
 #### VMAnomalySpec
 
 
@@ -741,6 +821,7 @@ Appears in: [VMAnomaly](#vmanomaly)
 | logLevel<a href="#vmanomalyspec-loglevel" id="vmanomalyspec-loglevel">#</a><br/>_string_ | _(Optional)_<br/>LogLevel for VMAnomaly to be configured with.<br />INFO, WARN, ERROR, FATAL, PANIC |
 | managedMetadata<a href="#vmanomalyspec-managedmetadata" id="vmanomalyspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
 | minReadySeconds<a href="#vmanomalyspec-minreadyseconds" id="vmanomalyspec-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
+| modelSelector<a href="#vmanomalyspec-modelselector" id="vmanomalyspec-modelselector">#</a><br/>_[Selector](#selector)_ | _(Optional)_<br/>ModelSelector defines VMAnomalyModel's object and namespace selectors. |
 | monitoring<a href="#vmanomalyspec-monitoring" id="vmanomalyspec-monitoring">#</a><br/>_[VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)_ | _(Required)_<br/>Monitoring configures how expose anomaly metrics<br />See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/ |
 | nodeSelector<a href="#vmanomalyspec-nodeselector" id="vmanomalyspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
 | paused<a href="#vmanomalyspec-paused" id="vmanomalyspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
@@ -757,6 +838,7 @@ Appears in: [VMAnomaly](#vmanomaly)
 | rollingUpdateStrategy<a href="#vmanomalyspec-rollingupdatestrategy" id="vmanomalyspec-rollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>RollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
 | runtimeClassName<a href="#vmanomalyspec-runtimeclassname" id="vmanomalyspec-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
 | schedulerName<a href="#vmanomalyspec-schedulername" id="vmanomalyspec-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
+| schedulerSelector<a href="#vmanomalyspec-schedulerselector" id="vmanomalyspec-schedulerselector">#</a><br/>_[Selector](#selector)_ | _(Optional)_<br/>SchedulerSelector defines VMAnomalyScheduler's object and namespace selectors. |
 | secrets<a href="#vmanomalyspec-secrets" id="vmanomalyspec-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
 | securityContext<a href="#vmanomalyspec-securitycontext" id="vmanomalyspec-securitycontext">#</a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
 | serviceAccountName<a href="#vmanomalyspec-serviceaccountname" id="vmanomalyspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
@@ -1480,7 +1562,7 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlse
 
 Condition defines status condition of the resource
 
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
+Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyModelStatus](#vmanomalymodelstatus), [VMAnomalySchedulerStatus](#vmanomalyschedulerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
 
 | Field | Description |
 | --- | --- |
@@ -2950,7 +3032,7 @@ Appears in: [TargetRef](#targetref)
 
 StatusMetadata holds metadata of application update status
 
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
+Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyModelStatus](#vmanomalymodelstatus), [VMAnomalySchedulerStatus](#vmanomalyschedulerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
 
 | Field | Description |
 | --- | --- |
@@ -3289,7 +3371,7 @@ _Underlying type:_ _string_
 
 UpdateStatus defines status for application
 
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
+Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyModelStatus](#vmanomalymodelstatus), [VMAnomalySchedulerStatus](#vmanomalyschedulerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
 
 
 

@@ -94,6 +94,12 @@ type VMAnomalySpec struct {
 	// Monitoring configures how expose anomaly metrics
 	// See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/
 	Monitoring *VMAnomalyMonitoringSpec `json:"monitoring,omitempty"`
+	// ModelSelector defines VMAnomalyModel's object and namespace selectors.
+	// +optional
+	ModelSelector *Selector `json:"modelSelector,omitempty"`
+	// SchedulerSelector defines VMAnomalyScheduler's object and namespace selectors.
+	// +optional
+	SchedulerSelector *Selector `json:"schedulerSelector,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
@@ -328,6 +334,11 @@ func (cr *VMAnomaly) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// AsCRDOwner builds owner reference for child CRs
+func (*VMAnomaly) AsCRDOwner() []metav1.OwnerReference {
+	return vmv1beta1.GetCRDAsOwner(vmv1beta1.Anomaly)
+}
+
 // IsOwnsServiceAccount checks if serviceAccount belongs to the CR
 func (cr *VMAnomaly) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
@@ -455,6 +466,11 @@ func (cr *VMAnomalySpec) UnmarshalJSON(src []byte) error {
 		return nil
 	}
 	return nil
+}
+
+// IsUnmanaged checks if object should managed any config objects
+func (cr *VMAnomaly) IsUnmanaged() bool {
+	return cr.Spec.ModelSelector.IsUnmanaged() && cr.Spec.SchedulerSelector.IsUnmanaged()
 }
 
 // +kubebuilder:object:root=true

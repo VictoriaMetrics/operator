@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
-	"sort"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -13,16 +13,13 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
-type parsedConfig struct {
-	data         []byte
-	amcfgs       []*vmv1beta1.VMAlertmanagerConfig
-	brokenAMCfgs []*vmv1beta1.VMAlertmanagerConfig
+type parsedObjects struct {
+	configs *build.ChildObjects[*vmv1beta1.VMAlertmanagerConfig]
 }
 
-func buildConfig(alertmanagerCR *vmv1beta1.VMAlertmanager, baseCfg []byte, amcfgs []*vmv1beta1.VMAlertmanagerConfig, ac *build.AssetsCache) (*parsedConfig, error) {
-	// fast path.
-	if len(amcfgs) == 0 {
-		return &parsedConfig{data: baseCfg}, nil
+func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []byte, ac *build.AssetsCache) ([]byte, error) {
+	if len(pos.configs.All()) == 0 {
+		return baseCfg, nil
 	}
 	var globalConfigOpts globalAlertmanagerConfig
 	if err := yaml.Unmarshal(baseCfg, &globalConfigOpts); err != nil {
@@ -66,63 +63,45 @@ func buildConfig(alertmanagerCR *vmv1beta1.VMAlertmanager, baseCfg []byte, amcfg
 			})
 		}
 	}
-	sort.Slice(amcfgs, func(i, j int) bool {
-		return amcfgs[i].AsKey() < amcfgs[j].AsKey()
-	})
 	var subRoutes []yaml.MapSlice
 	var timeIntervals []yaml.MapSlice
-	var result parsedConfig
-
-	var cnt int
-OUTER:
-	for _, amcKey := range amcfgs {
-		if amcKey.Spec.Route == nil {
-			amcKey.Status.CurrentSyncError = "spec.route cannot be empty"
-			result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
-			continue
+	pos.configs.ForEachCollectSkipInvalid(func(cfg *vmv1beta1.VMAlertmanagerConfig) error {
+		if !build.MustSkipRuntimeValidation {
+			if err := cfg.Validate(); err != nil {
+				return err
+			}
+		}
+		if cfg.Spec.Route == nil {
+			return fmt.Errorf("spec.route cannot be empty")
 		}
 		var receiverCfgs []yaml.MapSlice
-		for _, receiver := range amcKey.Spec.Receivers {
-			receiverCfg, err := buildReceiver(amcKey, receiver, &globalConfigOpts, ac)
+		for _, receiver := range cfg.Spec.Receivers {
+			receiverCfg, err := buildReceiver(cfg, receiver, &globalConfigOpts, ac)
 			if err != nil {
-				// skip broken configs
-				result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
-				amcKey.Status.CurrentSyncError = err.Error()
-				continue OUTER
+				return err
 			}
 			if len(receiverCfg) > 0 {
 				receiverCfgs = append(receiverCfgs, receiverCfg)
 			}
 		}
-
-		mtis, err := buildGlobalTimeIntervals(amcKey)
+		mtis, err := buildGlobalTimeIntervals(cfg)
 		if err != nil {
-			result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
-			amcKey.Status.CurrentSyncError = err.Error()
-			continue
+			return err
 		}
-
-		route, err := buildRoute(amcKey, amcKey.Spec.Route, true, alertmanagerCR)
+		route, err := buildRoute(cfg, cfg.Spec.Route, true, cr)
 		if err != nil {
-			// TODO: @f41gh7 looks like this error is impossible
-			result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
-			amcKey.Status.CurrentSyncError = err.Error()
-			continue
+			return err
 		}
-
 		baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, receiverCfgs...)
-		for _, rule := range amcKey.Spec.InhibitRules {
-			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule, !alertmanagerCR.Spec.DisableNamespaceMatcher))
+		for _, rule := range cfg.Spec.InhibitRules {
+			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(cfg.Namespace, rule, !cr.Spec.DisableNamespaceMatcher))
 		}
 		if len(mtis) > 0 {
 			timeIntervals = append(timeIntervals, mtis...)
 		}
 		subRoutes = append(subRoutes, route)
-		amcfgs[cnt] = amcKey
-		cnt++
-	}
-	amcfgs = amcfgs[:cnt]
-
+		return nil
+	})
 	if len(subRoutes) > 0 {
 		baseYAMlCfg.Route.Routes = append(baseYAMlCfg.Route.Routes, subRoutes...)
 	}
@@ -134,9 +113,7 @@ OUTER:
 	if err != nil {
 		return nil, err
 	}
-	result.amcfgs = amcfgs
-	result.data = data
-	return &result, nil
+	return data, nil
 }
 
 // addConfigTemplates adds external templates to the given based configuration
@@ -750,7 +727,7 @@ func (cb *configBuilder) buildJira(jira vmv1beta1.JiraConfig) error {
 		for key := range jira.Fields {
 			sortableFieldIdxs = append(sortableFieldIdxs, key)
 		}
-		sort.Strings(sortableFieldIdxs)
+		slices.Sort(sortableFieldIdxs)
 		fields := make(yaml.MapSlice, 0, len(jira.Fields))
 		for _, key := range sortableFieldIdxs {
 			fields = append(fields, yaml.MapItem{
@@ -1250,7 +1227,7 @@ func (cb *configBuilder) buildVictorOps(vo vmv1beta1.VictorOpsConfig) error {
 		for customFieldKey := range vo.CustomFields {
 			customFieldIDs = append(customFieldIDs, customFieldKey)
 		}
-		sort.Strings(customFieldIDs)
+		slices.Sort(customFieldIDs)
 		for _, customFieldKey := range customFieldIDs {
 			value := vo.CustomFields[customFieldKey]
 			cfs = append(cfs, yaml.MapItem{Key: customFieldKey, Value: value})
@@ -1387,7 +1364,7 @@ func (cb *configBuilder) buildPagerDuty(pd vmv1beta1.PagerDutyConfig) error {
 		}
 		detailKeys = append(detailKeys, detailKey)
 	}
-	sort.Strings(detailKeys)
+	slices.Sort(detailKeys)
 	if len(detailKeys) > 0 {
 		var detailsYaml yaml.MapSlice
 		for _, detailKey := range detailKeys {
@@ -1814,7 +1791,7 @@ func orderedYAMLMAp(src map[string]string) yaml.MapSlice {
 	for key := range src {
 		dstKeys = append(dstKeys, key)
 	}
-	sort.Strings(dstKeys)
+	slices.Sort(dstKeys)
 	var result yaml.MapSlice
 	for _, key := range dstKeys {
 		result = append(result, yaml.MapItem{Key: key, Value: src[key]})

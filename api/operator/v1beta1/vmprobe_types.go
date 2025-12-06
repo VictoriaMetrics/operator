@@ -141,6 +141,11 @@ func (cr *VMProbe) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
 
+// AsKey returns unique key for object
+func (cr *VMProbe) AsKey(_ bool) string {
+	return cr.Namespace + "/" + cr.Name
+}
+
 // Validate returns error if CR is invalid
 func (cr *VMProbe) Validate() error {
 	if MustSkipCRValidation(cr) {

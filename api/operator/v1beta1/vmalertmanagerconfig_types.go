@@ -1256,7 +1256,8 @@ func (hc *HTTPConfig) validate() error {
 	return nil
 }
 
-func (r *VMAlertmanagerConfig) AsKey() string {
+// AsKey returns unique key for object
+func (r *VMAlertmanagerConfig) AsKey(_ bool) string {
 	return fmt.Sprintf("%s/%s", r.Namespace, r.Name)
 }
 

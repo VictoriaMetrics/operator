@@ -93,6 +93,11 @@ func (cr *VMStaticScrape) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
 
+// AsKey returns unique key for object
+func (cr *VMStaticScrape) AsKey(_ bool) string {
+	return cr.Namespace + "/" + cr.Name
+}
+
 func init() {
 	SchemeBuilder.Register(&VMStaticScrape{}, &VMStaticScrapeList{})
 }

@@ -168,7 +168,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMUserSpec{
-					UserName: ptr.To("user-1"),
+					Username: ptr.To("user-1"),
 					Password: ptr.To("password-1"),
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
@@ -204,7 +204,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMUserSpec{
-					UserName: ptr.To("user-1"),
+					Username: ptr.To("user-1"),
 					Password: ptr.To("password-1"),
 					TargetRefs: []vmv1beta1.TargetRef{
 						{

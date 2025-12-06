@@ -6955,8 +6955,8 @@ func (in *VMUserSpec) DeepCopyInto(out *VMUserSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.UserName != nil {
-		in, out := &in.UserName, &out.UserName
+	if in.Username != nil {
+		in, out := &in.Username, &out.Username
 		*out = new(string)
 		**out = **in
 	}

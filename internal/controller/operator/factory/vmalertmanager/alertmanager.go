@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/prometheus/client_golang/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -21,20 +19,6 @@ import (
 )
 
 const templatesDir = "/etc/vm/templates"
-
-var badConfigsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
-	Name: "operator_alertmanager_bad_objects_count",
-	Help: "Number of child CRDs with bad or incomplete configurations",
-	ConstLabels: prometheus.Labels{
-		"crd": "vmalertmanager_config",
-	},
-},
-	[]string{"object_namespace"},
-)
-
-func init() {
-	metrics.Registry.MustRegister(badConfigsTotal)
-}
 
 // CreateOrUpdateAlertManager creates alertmanager and builds config for it
 func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {

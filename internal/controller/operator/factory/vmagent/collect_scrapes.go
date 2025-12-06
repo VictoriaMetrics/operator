@@ -8,18 +8,17 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-func selectScrapeConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMScrapeConfig, error) {
+func selectScrapeConfigs(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMScrapeConfig, []string, error) {
 	if cr.Spec.DaemonSetMode {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var selectedConfigs []*vmv1beta1.VMScrapeConfig
-	var namespacedNames []string
+	var nsn []string
 	opts := &k8stools.SelectorOpts{
 		SelectAll:         cr.Spec.SelectAllByDefault,
 		NamespaceSelector: cr.Spec.ScrapeConfigNamespaceSelector,
@@ -33,20 +32,17 @@ func selectScrapeConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient clie
 				continue
 			}
 			selectedConfigs = append(selectedConfigs, item)
-			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 		}
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	build.OrderByKeys(selectedConfigs, namespacedNames)
-	logger.SelectedObjects(ctx, "VMScrapeConfigs", len(namespacedNames), 0, namespacedNames)
-
-	return selectedConfigs, nil
+	return selectedConfigs, nsn, nil
 }
 
-func selectPodScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMPodScrape, error) {
+func selectPodScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMPodScrape, []string, error) {
 	var selectedConfigs []*vmv1beta1.VMPodScrape
-	var namespacedNames []string
+	var nsn []string
 	opts := &k8stools.SelectorOpts{
 		SelectAll:         cr.Spec.SelectAllByDefault,
 		NamespaceSelector: cr.Spec.PodScrapeNamespaceSelector,
@@ -60,24 +56,20 @@ func selectPodScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client
 				continue
 			}
 			selectedConfigs = append(selectedConfigs, item)
-			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 		}
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	build.OrderByKeys(selectedConfigs, namespacedNames)
-	logger.SelectedObjects(ctx, "VMPodScrapes", len(namespacedNames), 0, namespacedNames)
-
-	return selectedConfigs, nil
+	return selectedConfigs, nsn, nil
 }
 
-func selectVMProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMProbe, error) {
+func selectProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMProbe, []string, error) {
 	if cr.Spec.DaemonSetMode {
-		return nil, nil
+		return nil, nil, nil
 	}
 	var selectedConfigs []*vmv1beta1.VMProbe
-	var namespacedNames []string
+	var nsn []string
 	opts := &k8stools.SelectorOpts{
 		SelectAll:         cr.Spec.SelectAllByDefault,
 		NamespaceSelector: cr.Spec.ProbeNamespaceSelector,
@@ -91,29 +83,26 @@ func selectVMProbes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 				continue
 			}
 			selectedConfigs = append(selectedConfigs, item)
-			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 		}
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	build.OrderByKeys(selectedConfigs, namespacedNames)
-	logger.SelectedObjects(ctx, "VMProbes", len(namespacedNames), 0, namespacedNames)
-	return selectedConfigs, nil
+	return selectedConfigs, nsn, nil
 }
 
-func selectVMNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMNodeScrape, error) {
+func selectNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMNodeScrape, []string, error) {
 	if cr.Spec.DaemonSetMode {
-		return nil, nil
+		return nil, nil, nil
 	}
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
 		logger.WithContext(ctx).Info("cannot use VMNodeScrape at operator in single namespace mode with default permissions." +
 			" Create ServiceAccount for VMAgent manually if needed. Skipping config generation for it")
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var selectedConfigs []*vmv1beta1.VMNodeScrape
-	var namespacedNames []string
+	var nsn []string
 	opts := &k8stools.SelectorOpts{
 		SelectAll:         cr.Spec.SelectAllByDefault,
 		NamespaceSelector: cr.Spec.NodeScrapeNamespaceSelector,
@@ -127,25 +116,21 @@ func selectVMNodeScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 				continue
 			}
 			selectedConfigs = append(selectedConfigs, item)
-			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 
 		}
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	build.OrderByKeys(selectedConfigs, namespacedNames)
-	logger.SelectedObjects(ctx, "VMNodeScrapes", len(namespacedNames), 0, namespacedNames)
-
-	return selectedConfigs, nil
+	return selectedConfigs, nsn, nil
 }
 
-func selectStaticScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMStaticScrape, error) {
+func selectStaticScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMStaticScrape, []string, error) {
 	if cr.Spec.DaemonSetMode {
-		return nil, nil
+		return nil, nil, nil
 	}
 	var selectedConfigs []*vmv1beta1.VMStaticScrape
-	var namespacedNames []string
+	var nsn []string
 	opts := &k8stools.SelectorOpts{
 		SelectAll:         cr.Spec.SelectAllByDefault,
 		NamespaceSelector: cr.Spec.StaticScrapeNamespaceSelector,
@@ -159,24 +144,21 @@ func selectStaticScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 				continue
 			}
 			selectedConfigs = append(selectedConfigs, item)
-			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 		}
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	build.OrderByKeys(selectedConfigs, namespacedNames)
-	logger.SelectedObjects(ctx, "VMStaticScrape", len(namespacedNames), 0, namespacedNames)
-
-	return selectedConfigs, nil
+	return selectedConfigs, nsn, nil
 }
 
-func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMServiceScrape, error) {
+func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) ([]*vmv1beta1.VMServiceScrape, []string, error) {
 	if cr.Spec.DaemonSetMode {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var selectedConfigs []*vmv1beta1.VMServiceScrape
-	var namespacedNames []string
+	var nsn []string
 	opts := &k8stools.SelectorOpts{
 		SelectAll:         cr.Spec.SelectAllByDefault,
 		NamespaceSelector: cr.Spec.ServiceScrapeNamespaceSelector,
@@ -190,15 +172,11 @@ func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 				continue
 			}
 			rclient.Scheme().Default(item)
-			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 			selectedConfigs = append(selectedConfigs, item)
 		}
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	build.OrderByKeys(selectedConfigs, namespacedNames)
-	logger.SelectedObjects(ctx, "VMServiceScrape", len(namespacedNames), 0, namespacedNames)
-
-	return selectedConfigs, nil
+	return selectedConfigs, nsn, nil
 }

@@ -18,7 +18,7 @@ func TestVMUser_Validate(t *testing.T) {
 	// invalid auths
 	f(&VMUser{
 		Spec: VMUserSpec{
-			UserName:    ptr.To("user"),
+			Username:    ptr.To("user"),
 			BearerToken: ptr.To("bearer"),
 		},
 	}, true)
@@ -26,7 +26,7 @@ func TestVMUser_Validate(t *testing.T) {
 	// invalid ref
 	f(&VMUser{
 		Spec: VMUserSpec{
-			UserName: ptr.To("some-user"),
+			Username: ptr.To("some-user"),
 			TargetRefs: []TargetRef{
 				{
 					CRD:    &CRDRef{Name: "sm"},
@@ -39,7 +39,7 @@ func TestVMUser_Validate(t *testing.T) {
 	// invalid ref wo targets
 	f(&VMUser{
 		Spec: VMUserSpec{
-			UserName: ptr.To("some-user"),
+			Username: ptr.To("some-user"),
 			TargetRefs: []TargetRef{
 				{
 					Paths: []string{"/some-path"},
@@ -51,7 +51,7 @@ func TestVMUser_Validate(t *testing.T) {
 	// invalid ref crd, bad empty ns
 	f(&VMUser{
 		Spec: VMUserSpec{
-			UserName: ptr.To("some-user"),
+			Username: ptr.To("some-user"),
 			TargetRefs: []TargetRef{
 				{
 					CRD: &CRDRef{
@@ -68,7 +68,7 @@ func TestVMUser_Validate(t *testing.T) {
 	// incorrect password
 	f(&VMUser{
 		Spec: VMUserSpec{
-			UserName: ptr.To("some-user"),
+			Username: ptr.To("some-user"),
 			Password: ptr.To("some-password"),
 			PasswordRef: &corev1.SecretKeySelector{
 				Key: "some-key",

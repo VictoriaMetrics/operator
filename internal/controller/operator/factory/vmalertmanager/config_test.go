@@ -20,12 +20,20 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+func mustRouteToJSON(t *testing.T, r vmv1beta1.SubRoute) apiextensionsv1.JSON {
+	t.Helper()
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("unexpected json marshal error: %s", err)
+	}
+	return apiextensionsv1.JSON{Raw: data}
+}
+
 //nolint:gofmt
 func TestBuildConfig(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAlertmanager
 		baseCfg           []byte
-		amcfgs            []*vmv1beta1.VMAlertmanagerConfig
 		predefinedObjects []runtime.Object
 		want              string
 		parseError        string
@@ -35,34 +43,44 @@ func TestBuildConfig(t *testing.T) {
 		t.Helper()
 		testClient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		if o.cr == nil {
-			o.cr = &vmv1beta1.VMAlertmanager{}
+			o.cr = &vmv1beta1.VMAlertmanager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertmanagerSpec{
+					ConfigNamespaceSelector: &metav1.LabelSelector{},
+				},
+			}
 		}
 		ctx := context.TODO()
 		ac := getAssetsCache(ctx, testClient, o.cr)
-		got, err := buildConfig(o.cr, o.baseCfg, o.amcfgs, ac)
+		got, data, err := buildAlertmanagerConfigWithCRDs(ctx, testClient, o.cr, o.baseCfg, ac)
 		if (err != nil) != o.wantErr {
 			t.Errorf("BuildConfig() error = %v, wantErr %v", err, o.wantErr)
 			return
 		}
-		if len(got.brokenAMCfgs) > 0 {
-			assert.Equal(t, o.parseError, got.brokenAMCfgs[0].Status.CurrentSyncError)
+		broken := got.configs.Broken()
+		if len(broken) > 0 {
+			assert.Equal(t, o.parseError, broken[0].Status.CurrentSyncError)
 		}
-		assert.Equal(t, o.want, string(got.data))
+		assert.Equal(t, o.want, string(data))
 	}
 
 	// override the top namespace matcher
 	f(opts{
 		cr: &vmv1beta1.VMAlertmanager{
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				EnforcedNamespaceLabel: "alert-namespace",
+				EnforcedNamespaceLabel:  "alert-namespace",
+				ConfigNamespaceSelector: &metav1.LabelSelector{},
 			},
 		},
 		baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
 `),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -121,20 +139,25 @@ templates: []
 	// with complex routing and enforced matchers
 	f(opts{
 		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
 				DisableNamespaceMatcher: true,
 				EnforcedTopRouteMatchers: []string{
 					`env=~{"dev|prod"}`,
 					`pod!=""`,
 				},
+				ConfigNamespaceSelector: &metav1.LabelSelector{},
 			},
 		},
 		baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
 `),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -175,19 +198,19 @@ templates: []
 					Route: &vmv1beta1.Route{
 						Receiver:  "email",
 						GroupWait: "1min",
-						Routes: []*vmv1beta1.SubRoute{
-							{
+						RawRoutes: []apiextensionsv1.JSON{
+							mustRouteToJSON(t, vmv1beta1.SubRoute{
 								Receiver:  "email-sub-1",
 								GroupWait: "5min",
 								Matchers:  []string{"team=prod"},
-								Routes: []*vmv1beta1.SubRoute{
-									{
+								RawRoutes: []apiextensionsv1.JSON{
+									mustRouteToJSON(t, vmv1beta1.SubRoute{
 										Receiver:  "email",
 										GroupWait: "10min",
 										Matchers:  []string{"pod=dev-env"},
-									},
+									}),
 								},
-							},
+							}),
 						},
 					},
 				},
@@ -247,8 +270,8 @@ templates: []
  time_out: 1min
  smtp_smarthost: some:443
 `),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -361,8 +384,8 @@ templates: []
  time_out: 1min
  opsgenie_api_key: some-key
 `),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -401,15 +424,15 @@ templates: []
 					Route: &vmv1beta1.Route{
 						Receiver:  "email",
 						GroupWait: "1min",
-						Routes: []*vmv1beta1.SubRoute{
-							{
+						RawRoutes: []apiextensionsv1.JSON{
+							mustRouteToJSON(t, vmv1beta1.SubRoute{
 								Receiver: "webhook",
-							},
+							}),
 						},
 					},
 				},
 			},
-			{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "scrape",
 					Namespace: "monitoring",
@@ -432,7 +455,7 @@ templates: []
 										{
 											Name:     "n",
 											Username: "f",
-											Type:     "some-type",
+											Type:     "team",
 										},
 									},
 								},
@@ -499,7 +522,7 @@ receivers:
     responders:
     - name: "n"
       username: f
-      type: some-type
+      type: team
 templates: []
 `,
 	})
@@ -509,8 +532,8 @@ templates: []
 		baseCfg: []byte(`global:
  time_out: 1min
 `),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -538,8 +561,6 @@ templates: []
 					},
 				},
 			},
-		},
-		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "webhook",
@@ -575,8 +596,8 @@ templates: []
 		baseCfg: []byte(`global:
  time_out: 1min
 `),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -603,6 +624,7 @@ templates: []
 									Actions: []vmv1beta1.SlackAction{
 										{
 											Name: "deny",
+											Type: "test",
 											Text: "text-5",
 											URL:  "some-url",
 											ConfirmField: &vmv1beta1.SlackConfirmationField{
@@ -614,6 +636,7 @@ templates: []
 										{
 											Short: ptr.To(true),
 											Title: "fields",
+											Value: "test",
 										},
 									},
 								},
@@ -626,8 +649,6 @@ templates: []
 					},
 				},
 			},
-		},
-		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "slack",
@@ -663,10 +684,12 @@ receivers:
     - name: deny
       text: text-5
       url: some-url
+      type: test
       confirm:
         text: confirmed
     fields:
-    - title: fields
+    - value: test
+      title: fields
       short: true
 templates: []
 `,
@@ -677,8 +700,8 @@ templates: []
 		baseCfg: []byte(`global:
  time_out: 1min
 `),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -732,8 +755,6 @@ templates: []
 					},
 				},
 			},
-		},
-		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{Name: "some-secret", Namespace: "default"},
 				Data:       map[string][]byte{"some-key": []byte(`some-value`)},
@@ -780,6 +801,9 @@ templates: []
 
 	// telegram ok
 	f(opts{
+		baseCfg: []byte(`global:
+ time_out: 1min
+`),
 		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -790,12 +814,7 @@ templates: []
 					"token": []byte("some-token"),
 				},
 			},
-		},
-		baseCfg: []byte(`global:
- time_out: 1min
-`),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "tg",
 					Namespace: "default",
@@ -853,8 +872,8 @@ templates: []
 		baseCfg: []byte(`global:
  time_out: 1min
 `),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -882,8 +901,6 @@ templates: []
 					},
 				},
 			},
-		},
-		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "slack",
@@ -910,8 +927,8 @@ templates: []
 		baseCfg: []byte(`global:
  time_out: 1min
 `),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "tg",
 					Namespace: "default",
@@ -941,55 +958,25 @@ templates: []
 					},
 				},
 			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tg",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-					Receivers: []vmv1beta1.Receiver{
-						{
-							Name: "telegram",
-							TelegramConfigs: []vmv1beta1.TelegramConfig{
-								{
-									SendResolved: ptr.To(true),
-									ChatID:       125,
-									Message:      "some-templated message",
-								},
-							},
-						},
-					},
-					Route: &vmv1beta1.Route{
-						Receiver:  "telegram",
-						GroupWait: "1min",
-					},
-				},
-			},
 		},
 		parseError: `unable to fetch secret="tg-secret", ns="default": secrets "tg-secret" not found`,
 		want: `global:
   time_out: 1min
 route:
   receiver: blackhole
-  routes:
-  - matchers:
-    - namespace = "default"
-    group_wait: 1min
-    receiver: default-tg-telegram
-    continue: true
 receivers:
 - name: blackhole
-- name: default-tg-telegram
-  telegram_configs:
-  - send_resolved: true
-    chat_id: 125
-    message: some-templated message
 templates: []
 `,
 	})
 
 	// jira section
 	f(opts{
+		baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+ jira_api_url: "https://jira.cloud"
+`),
 		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1002,14 +989,7 @@ templates: []
 					"CLOUD_PAT":  []byte(`personal-token`),
 				},
 			},
-		},
-		baseCfg: []byte(`global:
- time_out: 1min
- smtp_smarthost: some:443
- jira_api_url: "https://jira.cloud"
-`),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -1038,7 +1018,7 @@ templates: []
 										"dev",
 									},
 									Fields: map[string]apiextensionsv1.JSON{
-										"components":        {Raw: []byte(`{ name: "Monitoring" }`)},
+										"components":        {Raw: []byte(`{"name": "Monitoring"}`)},
 										"customfield_10001": {Raw: []byte(`"Random text"`)},
 										"customfield_10002": {Raw: []byte(`{"value": "red"}`)},
 									},
@@ -1073,7 +1053,7 @@ templates: []
 										"dev",
 									},
 									Fields: map[string]apiextensionsv1.JSON{
-										"components":        {Raw: []byte(`{ name: "Monitoring" }`)},
+										"components":        {Raw: []byte(`{"name": "Monitoring"}`)},
 										"customfield_10001": {Raw: []byte(`"Random text"`)},
 										"customfield_10002": {Raw: []byte(`{"value": "red"}`)},
 									},
@@ -1115,9 +1095,9 @@ receivers:
     labels:
     - dev
     fields:
-      components: '{ name: "Monitoring" }'
+      components: '{"name":"Monitoring"}'
       customfield_10001: '"Random text"'
-      customfield_10002: '{"value": "red"}'
+      customfield_10002: '{"value":"red"}'
 - name: default-base-jira-cloud
   jira_configs:
   - http_config:
@@ -1131,15 +1111,19 @@ receivers:
     labels:
     - dev
     fields:
-      components: '{ name: "Monitoring" }'
+      components: '{"name":"Monitoring"}'
       customfield_10001: '"Random text"'
-      customfield_10002: '{"value": "red"}'
+      customfield_10002: '{"value":"red"}'
 templates: []
 `,
 	})
 
 	// rocketchat section
 	f(opts{
+		baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+`),
 		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1151,13 +1135,7 @@ templates: []
 					"SECRET_TOKEN": []byte(`token value`),
 				},
 			},
-		},
-		baseCfg: []byte(`global:
- time_out: 1min
- smtp_smarthost: some:443
-`),
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
 					Namespace: "default",
@@ -1238,8 +1216,8 @@ templates: []
 
 	// incidentio
 	f(opts{
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "incidentio-dev",
 					Namespace: "default",
@@ -1266,8 +1244,6 @@ templates: []
 					},
 				},
 			},
-		},
-		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "incidentio-access",
@@ -1297,8 +1273,8 @@ templates: []
 
 	// msteamsv2
 	f(opts{
-		amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
-			{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "msteams-dev",
 					Namespace: "default",
@@ -1341,8 +1317,6 @@ templates: []
 					},
 				},
 			},
-		},
-		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "ms-teams-access",
@@ -1855,15 +1829,6 @@ authorization:
 	})
 }
 
-func mustRouteToJSON(t *testing.T, r vmv1beta1.SubRoute) apiextensionsv1.JSON {
-	t.Helper()
-	data, err := json.Marshal(r)
-	if err != nil {
-		t.Fatalf("unexpected json marshal error: %s", err)
-	}
-	return apiextensionsv1.JSON{Raw: data}
-}
-
 func Test_UpdateDefaultAMConfig(t *testing.T) {
 	type opts struct {
 		cr                  *vmv1beta1.VMAlertmanager
@@ -1990,11 +1955,6 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 							mustRouteToJSON(t, vmv1beta1.SubRoute{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietWeeklyNotifications\""}}),
 							mustRouteToJSON(t, vmv1beta1.SubRoute{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietDailyNotifications\""}}),
 							mustRouteToJSON(t, vmv1beta1.SubRoute{Receiver: "l2ci_receiver", Matchers: []string{"alert_group=~\"^l2ci.*\""}}),
-						},
-						Routes: []*vmv1beta1.SubRoute{
-							{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietWeeklyNotifications\""}},
-							{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietDailyNotifications\""}},
-							{Receiver: "l2ci_receiver", Matchers: []string{"alert_group=~\"^l2ci.*\""}},
 						},
 					},
 					Receivers: []vmv1beta1.Receiver{

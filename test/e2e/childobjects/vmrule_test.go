@@ -229,8 +229,7 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 						}
 					},
 				},
-			},
-			),
+			}),
 			Entry("by skipping broken vmrules", &opts{
 				alerts: []*vmv1beta1.VMAlert{
 					{

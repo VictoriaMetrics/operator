@@ -28,7 +28,7 @@ func Test_generateStaticScrapeConfig(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generateStaticScrapeConfig(ctx, o.cr, o.sc, o.sc.Spec.TargetEndpoints[0], 0, ac, o.cr.Spec.VMAgentSecurityEnforcements)
+		got, err := generateStaticScrapeConfig(ctx, o.cr, o.sc, o.sc.Spec.TargetEndpoints[0], 0, ac)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

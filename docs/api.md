@@ -4952,7 +4952,7 @@ Appears in: [VMUser](#vmuser)
 | targetRefs<a href="#vmuserspec-targetrefs" id="vmuserspec-targetrefs">#</a><br/>_[TargetRef](#targetref) array_ | _(Required)_<br/>TargetRefs - reference to endpoints, which user may access. |
 | tlsConfig<a href="#vmuserspec-tlsconfig" id="vmuserspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig defines tls configuration for the backend connection |
 | tokenRef<a href="#vmuserspec-tokenref" id="vmuserspec-tokenref">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>TokenRef allows fetching token from user-created secrets by its name and key. |
-| username<a href="#vmuserspec-username" id="vmuserspec-username">#</a><br/>_string_ | _(Optional)_<br/>UserName basic auth user name for accessing protected endpoint,<br />will be replaced with metadata.name of VMUser if omitted. |
+| username<a href="#vmuserspec-username" id="vmuserspec-username">#</a><br/>_string_ | _(Optional)_<br/>Username basic auth user name for accessing protected endpoint,<br />will be replaced with metadata.name of VMUser if omitted. |
 
 
 

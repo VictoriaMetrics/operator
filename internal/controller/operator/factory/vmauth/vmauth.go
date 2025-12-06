@@ -28,7 +28,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
@@ -416,12 +415,12 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		},
 	}
 	// fetch exist users for vmauth.
-	sus, err := selectVMUsers(ctx, rclient, cr)
+	pos, err := selectUsers(ctx, rclient, cr)
 	if err != nil {
 		return err
 	}
 	ac := getAssetsCache(ctx, rclient, cr)
-	generatedConfig, err := buildConfig(ctx, rclient, cr, sus, ac)
+	generatedConfig, err := pos.buildConfig(ctx, rclient, cr, ac)
 	if err != nil {
 		return err
 	}
@@ -444,29 +443,17 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta); err != nil {
 		return err
 	}
-	logger.SelectedObjects(ctx, "VMUsers", len(sus.namespacedNames), len(sus.brokenVMUsers), sus.namespacedNames)
+	pos.users.UpdateMetrics(ctx)
 
 	parentObject := fmt.Sprintf("%s.%s.vmauth", cr.GetName(), cr.GetNamespace())
 	if childObject != nil {
-		// fast path
-		for _, u := range sus.users {
-			if u.Name == childObject.Name && u.Namespace == childObject.Namespace {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMUser{u})
-			}
-		}
-		for _, u := range sus.brokenVMUsers {
-			if u.Name == childObject.Name && u.Namespace == childObject.Namespace {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMUser{u})
-			}
+		if u := pos.users.Get(childObject); u != nil {
+			return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMUser{u})
 		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.users); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.users.All()); err != nil {
 		return fmt.Errorf("cannot update statuses for vmusers: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, sus.brokenVMUsers); err != nil {
-		return fmt.Errorf("cannot update statuses for broken vmusers: %w", err)
-	}
-
 	return nil
 }
 

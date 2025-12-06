@@ -39,13 +39,9 @@ func Test_genUserCfg(t *testing.T) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, cr)
 		got, err := genUserCfg(o.user, o.crdURLCache, cr, ac)
-		if err != nil {
-			t.Fatalf("unexpected genUserCfg() error = %s", err)
-		}
+		assert.NoError(t, err)
 		szd, err := yaml.Marshal(got)
-		if err != nil {
-			t.Fatalf("BUG: cannot serialize result: %v", err)
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, o.want, string(szd))
 	}
 
@@ -218,7 +214,7 @@ bearer_token: secret-token
 		user: &vmv1beta1.VMUser{
 			Spec: vmv1beta1.VMUserSpec{
 				Name:     ptr.To("user1"),
-				UserName: ptr.To("basic"),
+				Username: ptr.To("basic"),
 				Password: ptr.To("pass"),
 				TargetRefs: []vmv1beta1.TargetRef{
 					{
@@ -331,7 +327,6 @@ bearer_token: secret-token
 						},
 						Paths: []string{"/logs/v1.*"},
 					},
-
 					{
 						CRD: &vmv1beta1.CRDRef{
 							Kind:      "VMSingle",
@@ -439,7 +434,7 @@ bearer_token: secret-token
 		user: &vmv1beta1.VMUser{
 			Spec: vmv1beta1.VMUserSpec{
 				Name:     ptr.To("user1"),
-				UserName: ptr.To("basic"),
+				Username: ptr.To("basic"),
 				Password: ptr.To("pass"),
 				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 					IPFilters: vmv1beta1.VMUserIPFilters{
@@ -491,7 +486,7 @@ password: pass
 		user: &vmv1beta1.VMUser{
 			Spec: vmv1beta1.VMUserSpec{
 				Name:     ptr.To("user1"),
-				UserName: ptr.To("basic"),
+				Username: ptr.To("basic"),
 				Password: ptr.To("pass"),
 				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 					Headers:               []string{"H1:V1", "H2:V2"},
@@ -561,7 +556,7 @@ password: pass
 		user: &vmv1beta1.VMUser{
 			Spec: vmv1beta1.VMUserSpec{
 				Name:     ptr.To("user1"),
-				UserName: ptr.To("basic"),
+				Username: ptr.To("basic"),
 				Password: ptr.To("pass"),
 				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
 					LoadBalancingPolicy:    ptr.To("first_available"),
@@ -639,7 +634,7 @@ password: pass
 		user: &vmv1beta1.VMUser{
 			Spec: vmv1beta1.VMUserSpec{
 				Name:     ptr.To("user1"),
-				UserName: ptr.To("basic"),
+				Username: ptr.To("basic"),
 				Password: ptr.To("pass"),
 				MetricLabels: map[string]string{
 					"foo": "bar",
@@ -744,18 +739,10 @@ func Test_genPassword(t *testing.T) {
 	f := func() {
 		t.Helper()
 		got1, err := genPassword()
-		if err != nil {
-			t.Errorf("genPassword() error = %v", err)
-			return
-		}
+		assert.NoError(t, err)
 		got2, err := genPassword()
-		if err != nil {
-			t.Errorf("genPassword() error = %v", err)
-			return
-		}
-		if got1 == got2 {
-			t.Errorf("genPassword() password cannot be the same, got1 = %v got2 %v", got1, got2)
-		}
+		assert.NoError(t, err)
+		assert.NotEqual(t, got1, got2)
 	}
 
 	// simple test
@@ -764,7 +751,6 @@ func Test_genPassword(t *testing.T) {
 
 func Test_selectVMUserSecrets(t *testing.T) {
 	type opts struct {
-		vmUsers             *skipableVMUsers
 		wantToCreateSecrets []string
 		wantToUpdateSecrets []string
 		predefinedObjects   []runtime.Object
@@ -778,13 +764,15 @@ func Test_selectVMUserSecrets(t *testing.T) {
 				Name:      "test-vmauth",
 				Namespace: "default",
 			},
+			Spec: vmv1beta1.VMAuthSpec{
+				UserNamespaceSelector: &metav1.LabelSelector{},
+			},
 		}
+		pos, err := selectUsers(ctx, testClient, cr)
+		assert.NoError(t, err)
 		ac := getAssetsCache(ctx, testClient, cr)
-		got, got1, err := addAuthCredentialsBuildSecrets(o.vmUsers, ac)
-		if err != nil {
-			t.Errorf("selectVMUserSecrets() error = %v", err)
-			return
-		}
+		got, got1, err := pos.addAuthCredentialsBuildSecrets(ac)
+		assert.NoError(t, err)
 		secretFound := func(src []*corev1.Secret, wantName string) bool {
 			for i := range src {
 				s := src[i]
@@ -803,44 +791,40 @@ func Test_selectVMUserSecrets(t *testing.T) {
 			return dst.String()
 		}
 		if len(o.wantToCreateSecrets) != len(got) {
-			t.Fatalf("not expected count of want=%d and got=%d to creates secrets, got=%q", len(got), len(o.wantToCreateSecrets), joinSecretNames(got))
+			t.Errorf("not expected count of want=%d and got=%d to create secrets, got=%q", len(o.wantToCreateSecrets), len(got), joinSecretNames(got))
 		}
 		if len(o.wantToUpdateSecrets) != len(got1) {
-			t.Fatalf("not expected count of want=%d and got=%d to update secrets, got=%q", len(got1), len(o.wantToUpdateSecrets), joinSecretNames(got1))
+			t.Errorf("not expected count of want=%d and got=%d to update secrets, got=%q", len(o.wantToUpdateSecrets), len(got1), joinSecretNames(got1))
 		}
 		for _, wantCreateName := range o.wantToCreateSecrets {
 			if !secretFound(got, wantCreateName) {
-				t.Fatalf("wanted secret name: %s not found at toCreateSecrets", wantCreateName)
+				t.Errorf("wanted secret name: %s not found at toCreateSecrets", wantCreateName)
 			}
 		}
 		for _, wantExistName := range o.wantToUpdateSecrets {
 			if !secretFound(got1, wantExistName) {
-				t.Fatalf("wanted secret name: %s not found at existSecrets", wantExistName)
+				t.Errorf("wanted secret name: %s not found at existSecrets", wantExistName)
 			}
 		}
 	}
 
 	// want 1 updateSecret
 	f(opts{
-		vmUsers: &skipableVMUsers{
-			users: []*vmv1beta1.VMUser{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "exist",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "not-exist",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
-				},
-			},
-		},
 		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "exist",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "not-exist",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer-1")},
+			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{Name: "vmuser-exist", Namespace: "default"},
 			},
@@ -851,37 +835,36 @@ func Test_selectVMUserSecrets(t *testing.T) {
 
 	// want 1 updateSecret
 	f(opts{
-		vmUsers: &skipableVMUsers{
-			users: []*vmv1beta1.VMUser{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "must-not-exist",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{
-						BearerToken:           ptr.To("some-bearer"),
-						DisableSecretCreation: true,
-					},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "must-not-exist",
+					Namespace: "default",
 				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "not-exists-must-create",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "exists",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+				Spec: vmv1beta1.VMUserSpec{
+					BearerToken:           ptr.To("some-bearer"),
+					DisableSecretCreation: true,
 				},
 			},
-		},
-		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "not-exists-must-create",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "exists",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
+			},
 			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "vmuser-exists", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmuser-exists",
+					Namespace: "default",
+				},
 			},
 		},
 		wantToUpdateSecrets: []string{"vmuser-exists"},
@@ -890,27 +873,23 @@ func Test_selectVMUserSecrets(t *testing.T) {
 
 	// want nothing
 	f(opts{
-		vmUsers: &skipableVMUsers{
-			users: []*vmv1beta1.VMUser{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "exist-with-generated",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{
-						GeneratePassword: true,
-					},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "exist-with-generated",
+					Namespace: "default",
 				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "exist-hardcoded",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{},
+				Spec: vmv1beta1.VMUserSpec{
+					GeneratePassword: true,
 				},
 			},
-		},
-		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "exist-hardcoded",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{},
+			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{Name: "vmuser-exist-with-generated", Namespace: "default"},
 				Data:       map[string][]byte{"username": []byte(`vmuser-exist-with-generated`), "password": []byte(`generated`)},
@@ -920,33 +899,27 @@ func Test_selectVMUserSecrets(t *testing.T) {
 				Data:       map[string][]byte{"bearerToken": []byte(`some-bearer`)},
 			},
 		},
-		wantToUpdateSecrets: []string{},
-		wantToCreateSecrets: []string{},
 	})
 
 	// update secret value
 	f(opts{
-		vmUsers: &skipableVMUsers{
-			users: []*vmv1beta1.VMUser{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "exist-with-generated",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{
-						GeneratePassword: true,
-					},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "exist-with-generated",
+					Namespace: "default",
 				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "exist-to-update",
-						Namespace: "default",
-					},
-					Spec: vmv1beta1.VMUserSpec{Password: ptr.To("some-new-password"), UserName: ptr.To("some-user")},
+				Spec: vmv1beta1.VMUserSpec{
+					GeneratePassword: true,
 				},
 			},
-		},
-		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "exist-to-update",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{Password: ptr.To("some-new-password"), Username: ptr.To("some-user")},
+			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{Name: "vmuser-exist-with-generated", Namespace: "default"},
 				Data:       map[string][]byte{"password": []byte(`generated`)},
@@ -957,7 +930,6 @@ func Test_selectVMUserSecrets(t *testing.T) {
 			},
 		},
 		wantToUpdateSecrets: []string{"vmuser-exist-to-update"},
-		wantToCreateSecrets: []string{},
 	})
 }
 
@@ -970,38 +942,26 @@ func Test_buildConfig(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.TODO()
+		rand.Shuffle(len(o.predefinedObjects), func(i, j int) {
+			o.predefinedObjects[i], o.predefinedObjects[j] = o.predefinedObjects[j], o.predefinedObjects[i]
+		})
 		testClient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		// fetch exist users for vmauth.
-		sus, err := selectVMUsers(ctx, testClient, o.cr)
-		if err != nil {
-			t.Fatalf("unexpected error at selectVMUsers: %s", err)
-		}
-		rand.Shuffle(len(sus.users), func(i, j int) {
-			sus.users[i], sus.users[j] = sus.users[j], sus.users[i]
-		})
+		pos, err := selectUsers(ctx, testClient, o.cr)
+		assert.NoError(t, err)
 		ac := getAssetsCache(ctx, testClient, o.cr)
 
-		got, err := buildConfig(ctx, testClient, o.cr, sus, ac)
-		if err != nil {
-			t.Errorf("buildConfig() error = %v", err)
-			return
-		}
+		got, err := pos.buildConfig(ctx, testClient, o.cr, ac)
+		assert.NoError(t, err)
 		if !assert.Equal(t, o.want, string(got)) {
 			return
 		}
 		// fetch exist users for vmauth.
-		sus, err = selectVMUsers(ctx, testClient, o.cr)
-		if err != nil {
-			t.Fatalf("unexpected error at selectVMUsers: %s", err)
-		}
-		got2, err := buildConfig(ctx, testClient, o.cr, sus, ac)
-		if err != nil {
-			t.Errorf("buildConfig() error = %v", err)
-			return
-		}
-		if !assert.Equal(t, o.want, string(got2)) {
-			t.Fatal("idempotent check failed")
-		}
+		pos, err = selectUsers(ctx, testClient, o.cr)
+		assert.NoError(t, err)
+		got2, err := pos.buildConfig(ctx, testClient, o.cr, ac)
+		assert.NoError(t, err)
+		assert.Equal(t, o.want, string(got2))
 	}
 
 	// simple cfg
@@ -1228,7 +1188,7 @@ func Test_buildConfig(t *testing.T) {
 				},
 				Spec: vmv1beta1.VMUserSpec{
 					Name:     ptr.To("user-1"),
-					UserName: ptr.To("some-user"),
+					Username: ptr.To("some-user"),
 					PasswordRef: &corev1.SecretKeySelector{
 						Key: "password",
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -1371,7 +1331,7 @@ func Test_buildConfig(t *testing.T) {
 				},
 				Spec: vmv1beta1.VMUserSpec{
 					Name:     ptr.To("user-5"),
-					UserName: ptr.To("some-user"),
+					Username: ptr.To("some-user"),
 					PasswordRef: &corev1.SecretKeySelector{
 						Key: "password",
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -2201,7 +2161,6 @@ unauthorized_user:
 					},
 				},
 			},
-
 			&vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "user-2",
@@ -2515,7 +2474,6 @@ unauthorized_user:
 					},
 				},
 			},
-
 			&corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "default",
@@ -2537,11 +2495,11 @@ unauthorized_user:
   - http://some-static-2
   bearer_token: bearer-2
 - url_prefix:
-  - http://some-static-1
-  bearer_token: bearer-1
-- url_prefix:
   - http://some-static-3
   bearer_token: bearer-3
+- url_prefix:
+  - http://some-static-1
+  bearer_token: bearer-1
 `,
 	})
 

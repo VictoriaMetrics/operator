@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,10 +16,10 @@ type VMUserSpec struct {
 	// Name of the VMUser object.
 	// +optional
 	Name *string `json:"name,omitempty"`
-	// UserName basic auth user name for accessing protected endpoint,
+	// Username basic auth user name for accessing protected endpoint,
 	// will be replaced with metadata.name of VMUser if omitted.
 	// +optional
-	UserName *string `json:"username,omitempty"`
+	Username *string `json:"username,omitempty"`
 	// Password basic auth password for accessing protected endpoint.
 	// +optional
 	Password *string `json:"password,omitempty"`
@@ -119,6 +120,7 @@ func (cr *CRDRef) AddRefToObj(obj client.Object) client.Object {
 	return obj
 }
 
+// AsKey returns unique key for object
 func (cr *CRDRef) AsKey() string {
 	return fmt.Sprintf("%s/%s/%s", cr.Kind, cr.Namespace, cr.Name)
 }
@@ -232,11 +234,37 @@ func (cr *VMUser) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
 
+func (cr *VMUser) AsKey(hide bool) string {
+	var id string
+	if cr.Spec.Username != nil {
+		v := *cr.Spec.Username
+		if hide {
+			v = strings.Repeat("*", 5)
+		}
+		id = "basicAuth:" + v
+	}
+	if cr.Spec.Password != nil {
+		v := *cr.Spec.Password
+		if hide {
+			v = strings.Repeat("*", 5)
+		}
+		return id + ":" + v
+	}
+	if cr.Spec.BearerToken != nil {
+		v := *cr.Spec.BearerToken
+		if hide {
+			v = strings.Repeat("*", 5)
+		}
+		return "bearerToken:" + v
+	}
+	return id
+}
+
 func (cr *VMUser) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.UserName != nil && cr.Spec.BearerToken != nil {
+	if cr.Spec.Username != nil && cr.Spec.BearerToken != nil {
 		return fmt.Errorf("one of spec.username and spec.bearerToken must be defined for user, got both")
 	}
 	if cr.Spec.PasswordRef != nil && cr.Spec.Password != nil {

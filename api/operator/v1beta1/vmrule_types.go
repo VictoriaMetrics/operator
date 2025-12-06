@@ -144,6 +144,11 @@ func (cr *VMRule) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
 
+// AsKey returns unique key for object
+func (cr *VMRule) AsKey(_ bool) string {
+	return fmt.Sprintf("%s-%s.yaml", cr.Namespace, cr.Name)
+}
+
 // Validate performs semantic validation of object
 func (cr *VMRule) Validate() error {
 	if MustSkipCRValidation(cr) {

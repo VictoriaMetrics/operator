@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
+
+**Release date:** 06 December 2025
+
 SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues addressed in Go1.25.5](https://github.com/golang/go/issues?q=milestone%3AGo1.25.5+label%3ACherryPickApproved).
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove orphaned ServiceAccount and RBAC resources. See [#1665](https://github.com/VictoriaMetrics/operator/issues/1665).

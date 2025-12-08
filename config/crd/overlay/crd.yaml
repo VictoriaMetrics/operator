@@ -9740,6 +9740,11 @@ spec:
                         When the scrape object defines its own configuration, it takes
                         precedence over the scrape class configuration.
                       properties:
+                        namespace:
+                          description: |-
+                            Namespace instructs vmagent to add namespace specific metadata from service discovery
+                            Valid for roles: pod, service, endpoints, endpointslice, ingress.
+                          type: boolean
                         node:
                           description: |-
                             Node instructs vmagent to add node specific metadata from service discovery
@@ -31069,6 +31074,11 @@ spec:
                 description: AttachMetadata configures metadata attaching from service
                   discovery
                 properties:
+                  namespace:
+                    description: |-
+                      Namespace instructs vmagent to add namespace specific metadata from service discovery
+                      Valid for roles: pod, service, endpoints, endpointslice, ingress.
+                    type: boolean
                   node:
                     description: |-
                       Node instructs vmagent to add node specific metadata from service discovery
@@ -31103,6 +31113,11 @@ spec:
                       description: AttachMetadata configures metadata attaching from
                         service discovery
                       properties:
+                        namespace:
+                          description: |-
+                            Namespace instructs vmagent to add namespace specific metadata from service discovery
+                            Valid for roles: pod, service, endpoints, endpointslice, ingress.
+                          type: boolean
                         node:
                           description: |-
                             Node instructs vmagent to add node specific metadata from service discovery
@@ -35190,6 +35205,11 @@ spec:
                       description: AttachMetadata configures metadata attaching from
                         service discovery
                       properties:
+                        namespace:
+                          description: |-
+                            Namespace instructs vmagent to add namespace specific metadata from service discovery
+                            Valid for roles: pod, service, endpoints, endpointslice, ingress.
+                          type: boolean
                         node:
                           description: |-
                             Node instructs vmagent to add node specific metadata from service discovery
@@ -36750,6 +36770,11 @@ spec:
                 description: AttachMetadata configures metadata attaching from service
                   discovery
                 properties:
+                  namespace:
+                    description: |-
+                      Namespace instructs vmagent to add namespace specific metadata from service discovery
+                      Valid for roles: pod, service, endpoints, endpointslice, ingress.
+                    type: boolean
                   node:
                     description: |-
                       Node instructs vmagent to add node specific metadata from service discovery
@@ -36777,6 +36802,11 @@ spec:
                       description: AttachMetadata configures metadata attaching from
                         service discovery
                       properties:
+                        namespace:
+                          description: |-
+                            Namespace instructs vmagent to add namespace specific metadata from service discovery
+                            Valid for roles: pod, service, endpoints, endpointslice, ingress.
+                          type: boolean
                         node:
                           description: |-
                             Node instructs vmagent to add node specific metadata from service discovery

@@ -31,12 +31,15 @@ const (
 	persistentQueueSTSDir    = "/vlagent_pq/vlagent-remotewrite-data"
 	persistentQueueMountName = "persistent-queue-data"
 
+	defaultLogsPath = "/var/log/containers"
+	defaultDataPath = "/vlagent"
+	dataVolumeName  = "data"
+
 	remoteWriteAssetsMounthPath = "/etc/vl/remote-write-assets"
 	tlsServerConfigMountPath    = "/etc/vl/tls-server-secrets"
 )
 
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
-
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
@@ -119,15 +122,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 			return fmt.Errorf("cannot update pod disruption budget for vlagent: %w", err)
 		}
 	}
-	if err := createOrUpdateDeploy(ctx, rclient, cr, prevCR); err != nil {
-		return err
-	}
-	if prevCR != nil {
-		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
-			return fmt.Errorf("cannot delete objects from prev state: %w", err)
-		}
-	}
-	return nil
+	return createOrUpdateDeploy(ctx, rclient, cr, prevCR)
 }
 
 func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
@@ -291,36 +286,59 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 			args = append(args, fmt.Sprintf("-kubernetesCollector.timeField=%q", strings.Join(cr.Spec.K8sCollector.TimeFields, ",")))
 		}
 		if len(cr.Spec.K8sCollector.ExtraFields) > 0 {
-			args = append(args, fmt.Sprintf("-kubernetesCollector.extraField=%q", cr.Spec.K8sCollector.ExtraFields))
+			args = append(args, fmt.Sprintf("-kubernetesCollector.extraFields=%s", cr.Spec.K8sCollector.ExtraFields))
 		}
-		if len(cr.Spec.K8sCollector.CheckpointsPath) > 0 {
-			args = append(args, fmt.Sprintf("-kubernetesCollector.checkpointsPath=%q", cr.Spec.K8sCollector.CheckpointsPath))
+
+		if len(cr.Spec.K8sCollector.LogsPath) == 0 || cr.Spec.K8sCollector.LogsPath == defaultLogsPath {
+			logVolumeName := "varlog"
+			logVolumePath := "/var/log"
+			libVolumeName := "varlib"
+			libVolumePath := "/var/lib"
+			volumes = append(volumes, corev1.Volume{
+				Name: logVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: logVolumePath,
+					},
+				},
+			}, corev1.Volume{
+				Name: libVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: libVolumePath,
+					},
+				},
+			})
+			agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+				Name:      logVolumeName,
+				MountPath: logVolumePath,
+				ReadOnly:  true,
+			}, corev1.VolumeMount{
+				Name:      libVolumeName,
+				MountPath: libVolumePath,
+				ReadOnly:  true,
+			})
+		} else {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.logsPath=%s", cr.Spec.K8sCollector.LogsPath))
 		}
-		if len(cr.Spec.K8sCollector.LogsPath) > 0 {
-			args = append(args, fmt.Sprintf("-kubernetesCollector.logsPath=%q", cr.Spec.K8sCollector.LogsPath))
+		dataPath := defaultDataPath
+		if len(cr.Spec.K8sCollector.DataPath) == 0 || cr.Spec.K8sCollector.DataPath == defaultDataPath {
+			volumes = append(volumes, corev1.Volume{
+				Name: dataVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+			agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+				Name:      dataVolumeName,
+				MountPath: dataPath,
+			})
+		} else {
+			dataPath = cr.Spec.K8sCollector.DataPath
 		}
-		volumes = append(volumes, corev1.Volume{
-			Name: "varlog",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/log",
-				},
-			},
-		}, corev1.Volume{
-			Name: "varlib",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/lib",
-				},
-			},
-		}, corev1.Volume{
-			Name: "vl-collector-data",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/lib/vl-collector",
-				},
-			},
-		})
+		checkpointsPath := path.Join(dataPath, "checkpoints.json")
+		args = append(args, fmt.Sprintf("-kubernetesCollector.checkpointsPath=%s", checkpointsPath))
+
 		if cr.Spec.RemoteWriteSettings == nil || cr.Spec.RemoteWriteSettings.TmpDataPath == nil {
 			volumes = append(volumes, corev1.Volume{
 				Name: persistentQueueMountName,
@@ -329,18 +347,6 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 				},
 			})
 		}
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      "varlog",
-			MountPath: "/var/log",
-			ReadOnly:  true,
-		}, corev1.VolumeMount{
-			Name:      "varlib",
-			MountPath: "/var/lib",
-			ReadOnly:  true,
-		}, corev1.VolumeMount{
-			Name:      "vl-collector-data",
-			MountPath: "/vl-collector",
-		})
 	}
 
 	var envs []corev1.EnvVar
@@ -719,8 +725,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
 			)
 		}
+		owner := cr.AsCRDOwner()
 		for _, o := range objects {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, &owner); err != nil {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, owner); err != nil {
 				return fmt.Errorf("cannot remove %T: %w", o, err)
 			}
 		}

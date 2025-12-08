@@ -88,15 +88,17 @@ type VLAgentSpec struct {
 type VLAgentK8sCollector struct {
 	// Enabled switches VLAgent to log collection mode.
 	// Note, for this purpose operator uses DaemonSet, while by default VLAgent uses StatefulSet.
-	// It means that switching this option will drop all persisted data.
+	// Switching this option will drop all persisted data.
 	Enabled bool `json:"enabled,omitempty"`
 
 	// LogsPath configures root for logs path
 	// By default VLAgent collects logs from /var/log/containers
 	LogsPath string `json:"logsPath,omitempty"`
 
-	// CheckpointsPath configures path where logs checkpoints are stored
-	CheckpointsPath string `json:"checkpointsPath,omitempty"`
+	// DataPath configures path where logs checkpoints are stored.
+	// By default it emptyDir is used as a volume for data path.
+	// To guarantee checkpoints persistence during pods recreation consider explicitly setting this option to destination, where hostPath volume is mounted.
+	DataPath string `json:"dataPath,omitempty"`
 
 	// TenantID defines default tenant ID to use for logs collected from pods in format: <accountID>:<projectID>
 	TenantID string `json:"tenantID,omitempty"`
@@ -113,7 +115,8 @@ type VLAgentK8sCollector struct {
 	// TimeFields defines fields that may contain the _time field
 	TimeFields []string `json:"timeFields,omitempty"`
 
-	// ExtraFields defines extra fields to add to each collected log line
+	// ExtraFields defines extra fields as JSON string which should be added to each collected log line
+	// Example: '{"env":"dev","cluster":"staging"}'
 	ExtraFields string `json:"extraFields,omitempty"`
 }
 
@@ -132,6 +135,14 @@ func (cr *VLAgent) Validate() error {
 	}
 	if len(cr.Spec.RemoteWrite) == 0 {
 		return fmt.Errorf("spec.remoteWrite cannot be empty array, provide at least one remoteWrite")
+	}
+	if cr.Spec.K8sCollector.Enabled {
+		if len(cr.Spec.K8sCollector.ExtraFields) > 0 {
+			var raw map[string]any
+			if err := json.Unmarshal([]byte(cr.Spec.K8sCollector.ExtraFields), &raw); err != nil {
+				return fmt.Errorf("spec.k8sCollector.extraFields is not a valid JSON: %w", err)
+			}
+		}
 	}
 	for idx, rw := range cr.Spec.RemoteWrite {
 		if rw.URL == "" {
@@ -334,7 +345,7 @@ func (cr *VLAgent) FinalAnnotations() map[string]string {
 }
 
 // AsCRDOwner implements interface
-func (*VLAgent) AsCRDOwner() []metav1.OwnerReference {
+func (*VLAgent) AsCRDOwner() *metav1.OwnerReference {
 	return vmv1beta1.GetCRDAsOwner(vmv1beta1.VLAgentCRD)
 }
 

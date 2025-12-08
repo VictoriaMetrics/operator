@@ -18,7 +18,10 @@ const (
 )
 
 func (c CRDName) String() string {
-	return []string{"vmagents.operator.victoriametrics.com", "vmalerts.operator.victoriametrics.com", "vmsingles.operator.victoriametrics.com", "vmclusters.operator.victoriametrics.com", "vmauths.operator.victoriametrics.com", "vmalertmanagers.operator.victoriametrics.com"}[c]
+	return []string{
+		"vmagents.operator.victoriametrics.com",
+		"vlagents.operator.victoriametrics.com",
+	}[c]
 }
 
 type crdInfo struct {
@@ -57,17 +60,15 @@ func Init(ctx context.Context, rclient client.Client) error {
 
 // GetCRDAsOwner returns owner references with global CustomResourceDefinition object as owner
 // useful for non-namespaced objects, like clusterRole
-func GetCRDAsOwner(name CRDName) []metav1.OwnerReference {
+func GetCRDAsOwner(name CRDName) *metav1.OwnerReference {
 	crdData := crdCache[name]
 	if crdData == nil {
 		return nil
 	}
-	return []metav1.OwnerReference{
-		{
-			Name:       name.String(),
-			UID:        crdData.uuid,
-			Kind:       "CustomResourceDefinition",
-			APIVersion: crdData.apiVersion,
-		},
+	return &metav1.OwnerReference{
+		Name:       name.String(),
+		UID:        crdData.uuid,
+		Kind:       "CustomResourceDefinition",
+		APIVersion: crdData.apiVersion,
 	}
 }

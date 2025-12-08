@@ -1370,8 +1370,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 				&rbacv1.Role{ObjectMeta: rbacMeta},
 			}
 		}
+		owner := cr.AsCRDOwner()
 		for _, o := range objects {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, &owner); err != nil {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, owner); err != nil {
 				return fmt.Errorf("cannot remove %T: %w", o, err)
 			}
 		}

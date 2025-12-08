@@ -787,7 +787,7 @@ func (cr *VMAgent) AsURL() string {
 }
 
 // AsCRDOwner implements interface
-func (*VMAgent) AsCRDOwner() []metav1.OwnerReference {
+func (*VMAgent) AsCRDOwner() *metav1.OwnerReference {
 	return GetCRDAsOwner(VMAgentCRD)
 }
 

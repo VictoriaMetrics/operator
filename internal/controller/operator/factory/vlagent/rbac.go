@@ -16,26 +16,24 @@ import (
 )
 
 var (
-	policyRules = []rbacv1.PolicyRule{
-		{
-			APIGroups: []string{""},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-			Resources: []string{
-				"pods",
-				"namespaces",
-				"nodes",
-			},
+	policyRules = []rbacv1.PolicyRule{{
+		APIGroups: []string{""},
+		Verbs: []string{
+			"get",
+			"list",
+			"watch",
 		},
-	}
+		Resources: []string{
+			"pods",
+			"namespaces",
+			"nodes",
+		},
+	}}
 )
 
 // createK8sAPIAccess - creates RBAC access rules for vlagent
 func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
-	if config.IsClusterWideAccessAllowed() {
+	if !config.IsClusterWideAccessAllowed() {
 		logger.WithContext(ctx).Info(fmt.Sprintf("skipping cluster role and binding for vlagent=%s/%s since operator has WATCH_NAMESPACE set", cr.Namespace, cr.Name))
 		return nil
 	}
@@ -65,16 +63,13 @@ func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 }
 
 func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
-	return &rbacv1.ClusterRoleBinding{
+	r := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
 			Namespace:   cr.GetNamespace(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
-			// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-			// use crd instead
-			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -89,20 +84,31 @@ func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
 			Kind:     "ClusterRole",
 		},
 	}
+	owner := cr.AsCRDOwner()
+	if owner != nil {
+		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
+		// use crd instead
+		r.OwnerReferences = []metav1.OwnerReference{*owner}
+	}
+	return r
 }
 
 func buildCR(cr *vmv1.VLAgent) *rbacv1.ClusterRole {
-	return &rbacv1.ClusterRole{
+	r := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
 			Namespace:   cr.GetNamespace(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
-			// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-			// use crd instead
-			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Rules: policyRules,
 	}
+	owner := cr.AsCRDOwner()
+	if owner != nil {
+		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
+		// use crd instead
+		r.OwnerReferences = []metav1.OwnerReference{*owner}
+	}
+	return r
 }

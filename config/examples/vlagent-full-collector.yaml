@@ -12,5 +12,14 @@ spec:
       memory: "850Mi"
   k8sCollector:
     enabled: true
+    dataPath: /var/lib/vl-collector
+    extraFields: '{"env":"dev","cluster":"staging"}'
+  volumes:
+    - name: data
+      hostPath:
+        path: /var/lib/vl-collector
+  volumeMounts:
+    - name: data
+      mountPath: /var/lib/vl-collector
   remoteWrite:
     - url: "http://vlsingle-example-0.default.svc:9428/internal/insert"

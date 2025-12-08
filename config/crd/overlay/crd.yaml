@@ -740,9 +740,11 @@ spec:
                 description: K8sCollector configures VLAgent logs collection from
                   K8s pods
                 properties:
-                  checkpointsPath:
-                    description: CheckpointsPath configures path where logs checkpoints
-                      are stored
+                  dataPath:
+                    description: |-
+                      DataPath configures path where logs checkpoints are stored.
+                      By default it emptyDir is used as a volume for data path.
+                      To guarantee checkpoints persistence during pods recreation consider explicitly setting this option to destination, where hostPath volume is mounted.
                     type: string
                   decolorizeFields:
                     description: DecolorizeFields defines fields to remove ANSI color
@@ -754,11 +756,12 @@ spec:
                     description: |-
                       Enabled switches VLAgent to log collection mode.
                       Note, for this purpose operator uses DaemonSet, while by default VLAgent uses StatefulSet.
-                      It means that switching this option will drop all persisted data.
+                      Switching this option will drop all persisted data.
                     type: boolean
                   extraFields:
-                    description: ExtraFields defines extra fields to add to each collected
-                      log line
+                    description: |-
+                      ExtraFields defines extra fields as JSON string which should be added to each collected log line
+                      Example: '{"env":"dev","cluster":"staging"}'
                     type: string
                   ignoreFields:
                     description: IgnoreFields defines fields to ignore across logs

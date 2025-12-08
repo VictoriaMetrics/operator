@@ -180,10 +180,10 @@ Appears in: [VLAgentSpec](#vlagentspec)
 
 | Field | Description |
 | --- | --- |
-| checkpointsPath<a href="#vlagentk8scollector-checkpointspath" id="vlagentk8scollector-checkpointspath">#</a><br/>_string_ | _(Required)_<br/>CheckpointsPath configures path where logs checkpoints are stored |
+| dataPath<a href="#vlagentk8scollector-datapath" id="vlagentk8scollector-datapath">#</a><br/>_string_ | _(Required)_<br/>DataPath configures path where logs checkpoints are stored.<br />By default it emptyDir is used as a volume for data path.<br />To guarantee checkpoints persistence during pods recreation consider explicitly setting this option to destination, where hostPath volume is mounted. |
 | decolorizeFields<a href="#vlagentk8scollector-decolorizefields" id="vlagentk8scollector-decolorizefields">#</a><br/>_string array_ | _(Required)_<br/>DecolorizeFields defines fields to remove ANSI color codes across logs ingested from Kubernetes |
-| enabled<a href="#vlagentk8scollector-enabled" id="vlagentk8scollector-enabled">#</a><br/>_boolean_ | _(Required)_<br/>Enabled switches VLAgent to log collection mode.<br />Note, for this purpose operator uses DaemonSet, while by default VLAgent uses StatefulSet.<br />It means that switching this option will drop all persisted data. |
-| extraFields<a href="#vlagentk8scollector-extrafields" id="vlagentk8scollector-extrafields">#</a><br/>_string_ | _(Required)_<br/>ExtraFields defines extra fields to add to each collected log line |
+| enabled<a href="#vlagentk8scollector-enabled" id="vlagentk8scollector-enabled">#</a><br/>_boolean_ | _(Required)_<br/>Enabled switches VLAgent to log collection mode.<br />Note, for this purpose operator uses DaemonSet, while by default VLAgent uses StatefulSet.<br />Switching this option will drop all persisted data. |
+| extraFields<a href="#vlagentk8scollector-extrafields" id="vlagentk8scollector-extrafields">#</a><br/>_string_ | _(Required)_<br/>ExtraFields defines extra fields as JSON string which should be added to each collected log line<br />Example: '\{"env":"dev","cluster":"staging"\}' |
 | ignoreFields<a href="#vlagentk8scollector-ignorefields" id="vlagentk8scollector-ignorefields">#</a><br/>_string array_ | _(Required)_<br/>IgnoreFields defines fields to ignore across logs ingested from Kubernetes |
 | logsPath<a href="#vlagentk8scollector-logspath" id="vlagentk8scollector-logspath">#</a><br/>_string_ | _(Required)_<br/>LogsPath configures root for logs path<br />By default VLAgent collects logs from /var/log/containers |
 | msgFields<a href="#vlagentk8scollector-msgfields" id="vlagentk8scollector-msgfields">#</a><br/>_string array_ | _(Required)_<br/>MsgField defines fields that may contain the _msg field |

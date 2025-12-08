@@ -1081,6 +1081,7 @@ containers:
     args:
       - -httpListenAddr=:9425
       - -kubernetesCollector
+      - -kubernetesCollector.checkpointsPath=/vlagent/checkpoints.json
       - -kubernetesCollector.msgField="msg,message"
       - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
       - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
@@ -1100,8 +1101,8 @@ containers:
       - name: varlib
         readonly: true
         mountpath: /var/lib
-      - name: vl-collector-data
-        mountpath: /vl-collector
+      - name: data
+        mountpath: /vlagent
       - name: persistent-queue-data
         readonly: false
         mountpath: /vlagent_pq/vlagent-remotewrite-data
@@ -1140,10 +1141,9 @@ volumes:
   volumesource:
     hostpath:
       path: /var/lib
-- name: vl-collector-data
+- name: data
   volumesource:
-    hostpath:
-      path: /var/lib/vl-collector
+    emptydir: {}
 - name: persistent-queue-data
   volumesource:
     emptydir: {}

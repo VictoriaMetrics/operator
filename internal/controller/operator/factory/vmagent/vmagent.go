@@ -1354,18 +1354,19 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		return fmt.Errorf("cannot remove additional service: %w", err)
 	}
 	if !cr.IsOwnsServiceAccount() {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot remove serviceaccount: %w", err)
+		}
+
 		rbacMeta := metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.Namespace}
 		var objects []client.Object
-
 		if config.IsClusterWideAccessAllowed() {
 			objects = []client.Object{
-				&corev1.ServiceAccount{ObjectMeta: objMeta},
 				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
 				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
 			}
 		} else {
 			objects = []client.Object{
-				&corev1.ServiceAccount{ObjectMeta: objMeta},
 				&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
 				&rbacv1.Role{ObjectMeta: rbacMeta},
 			}

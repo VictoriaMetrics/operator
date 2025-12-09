@@ -95,10 +95,9 @@ type VLAgentK8sCollector struct {
 	// By default VLAgent collects logs from /var/log/containers
 	LogsPath string `json:"logsPath,omitempty"`
 
-	// DataPath configures path where logs checkpoints are stored.
-	// By default it emptyDir is used as a volume for data path.
-	// To guarantee checkpoints persistence during pods recreation consider explicitly setting this option to destination, where hostPath volume is mounted.
-	DataPath string `json:"dataPath,omitempty"`
+	// CheckpointsPath configures path to file where logs checkpoints are stored.
+	// By default it's stored at host's /var/lib/vlagent_checkpoints/checkpoints.json.
+	CheckpointsPath string `json:"checkpointsPath,omitempty"`
 
 	// TenantID defines default tenant ID to use for logs collected from pods in format: <accountID>:<projectID>
 	TenantID string `json:"tenantID,omitempty"`

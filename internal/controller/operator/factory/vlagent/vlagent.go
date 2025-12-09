@@ -31,9 +31,9 @@ const (
 	persistentQueueSTSDir    = "/vlagent_pq/vlagent-remotewrite-data"
 	persistentQueueMountName = "persistent-queue-data"
 
-	defaultLogsPath = "/var/log/containers"
-	defaultDataPath = "/vlagent"
-	dataVolumeName  = "data"
+	defaultLogsPath        = "/var/log/containers"
+	defaultCheckpointsPath = "/var/lib/vlagent_checkpoints"
+	checkpointsVolumeName  = "checkpoints"
 
 	remoteWriteAssetsMounthPath = "/etc/vl/remote-write-assets"
 	tlsServerConfigMountPath    = "/etc/vl/tls-server-secrets"
@@ -321,22 +321,24 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		} else {
 			args = append(args, fmt.Sprintf("-kubernetesCollector.logsPath=%s", cr.Spec.K8sCollector.LogsPath))
 		}
-		dataPath := defaultDataPath
-		if len(cr.Spec.K8sCollector.DataPath) == 0 || cr.Spec.K8sCollector.DataPath == defaultDataPath {
+		checkpointsPath := defaultCheckpointsPath
+		if len(cr.Spec.K8sCollector.CheckpointsPath) == 0 || cr.Spec.K8sCollector.CheckpointsPath == defaultCheckpointsPath {
 			volumes = append(volumes, corev1.Volume{
-				Name: dataVolumeName,
+				Name: checkpointsVolumeName,
 				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: checkpointsPath,
+					},
 				},
 			})
 			agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-				Name:      dataVolumeName,
-				MountPath: dataPath,
+				Name:      checkpointsVolumeName,
+				MountPath: checkpointsPath,
 			})
+			checkpointsPath = path.Join(checkpointsPath, "checkpoints.json")
 		} else {
-			dataPath = cr.Spec.K8sCollector.DataPath
+			checkpointsPath = cr.Spec.K8sCollector.CheckpointsPath
 		}
-		checkpointsPath := path.Join(dataPath, "checkpoints.json")
 		args = append(args, fmt.Sprintf("-kubernetesCollector.checkpointsPath=%s", checkpointsPath))
 
 		if cr.Spec.RemoteWriteSettings == nil || cr.Spec.RemoteWriteSettings.TmpDataPath == nil {
@@ -714,16 +716,11 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 			return fmt.Errorf("cannot remove daemonset: %w", err)
 		}
 	}
-	if !cr.IsOwnsServiceAccount() || !cr.Spec.K8sCollector.Enabled {
+	if (!cr.IsOwnsServiceAccount() || !cr.Spec.K8sCollector.Enabled) && config.IsClusterWideAccessAllowed() {
+		rbacMeta := metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.Namespace}
 		objects := []client.Object{
-			&corev1.ServiceAccount{ObjectMeta: objMeta},
-		}
-		if config.IsClusterWideAccessAllowed() {
-			rbacMeta := metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.Namespace}
-			objects = append(objects,
-				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
-				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
-			)
+			&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
+			&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
 		}
 		owner := cr.AsCRDOwner()
 		for _, o := range objects {

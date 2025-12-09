@@ -740,11 +740,10 @@ spec:
                 description: K8sCollector configures VLAgent logs collection from
                   K8s pods
                 properties:
-                  dataPath:
+                  checkpointsPath:
                     description: |-
-                      DataPath configures path where logs checkpoints are stored.
-                      By default it emptyDir is used as a volume for data path.
-                      To guarantee checkpoints persistence during pods recreation consider explicitly setting this option to destination, where hostPath volume is mounted.
+                      CheckpointsPath configures path to file where logs checkpoints are stored.
+                      By default it's stored at host's /var/lib/vlagent_checkpoints/checkpoints.json.
                     type: string
                   decolorizeFields:
                     description: DecolorizeFields defines fields to remove ANSI color

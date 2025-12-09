@@ -12,5 +12,23 @@ spec:
       memory: "850Mi"
   k8sCollector:
     enabled: true
+    extraFields: '{"env":"dev","cluster":"staging"}'
+    msgFields:
+      - msg
+      - message
+      - log.msg
+    timeFields:
+      - time
+      - ts
+      - timestamp
   remoteWrite:
     - url: "http://vlsingle-example-0.default.svc:9428/internal/insert"
+  remoteWriteSettings:
+    tmpDataPath: /opt/queue
+  volumes:
+    - name: persistent-queue
+      hostPath:
+        path: /opt/mnt/vmagent-queue
+  volumeMounts:
+    - mountPath: /opt/queue
+      name: persistent-queue

@@ -1,0 +1,34 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VLAgent
+metadata:
+  name: example
+spec:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "350Mi"
+    limits:
+      cpu: "500m"
+      memory: "850Mi"
+  k8sCollector:
+    enabled: true
+    extraFields: '{"env":"dev","cluster":"staging"}'
+    msgFields:
+      - msg
+      - message
+      - log.msg
+    timeFields:
+      - time
+      - ts
+      - timestamp
+  remoteWrite:
+    - url: "http://vlsingle-example-0.default.svc:9428/internal/insert"
+  remoteWriteSettings:
+    tmpDataPath: /opt/queue
+  volumes:
+    - name: persistent-queue
+      hostPath:
+        path: /opt/mnt/vmagent-queue
+  volumeMounts:
+    - mountPath: /opt/queue
+      name: persistent-queue

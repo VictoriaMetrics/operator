@@ -192,16 +192,13 @@ func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAge
 }
 
 func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
-	return &rbacv1.ClusterRoleBinding{
+	r := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
 			Namespace:   cr.GetNamespace(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
-			// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-			// use crd instead
-			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -216,22 +213,33 @@ func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 			Kind:     "ClusterRole",
 		},
 	}
+	owner := cr.AsCRDOwner()
+	if owner != nil {
+		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
+		// use crd instead
+		r.OwnerReferences = []metav1.OwnerReference{*owner}
+	}
+	return r
 }
 
 func buildCR(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
-	return &rbacv1.ClusterRole{
+	r := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
 			Namespace:   cr.GetNamespace(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
-			// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-			// use crd instead
-			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Rules: clusterWidePolicyRules,
 	}
+	owner := cr.AsCRDOwner()
+	if owner != nil {
+		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
+		// use crd instead
+		r.OwnerReferences = []metav1.OwnerReference{*owner}
+	}
+	return r
 }
 
 func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {

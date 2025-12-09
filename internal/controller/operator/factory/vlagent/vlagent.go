@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -27,15 +28,18 @@ import (
 )
 
 const (
-	vlAgentPersistentQueueSTSDir    = "/vlagent_pq/vlagent-remotewrite-data"
-	vlAgentPersistentQueueMountName = "persistent-queue-data"
+	persistentQueueSTSDir    = "/vlagent_pq/vlagent-remotewrite-data"
+	persistentQueueMountName = "persistent-queue-data"
+
+	defaultLogsPath        = "/var/log/containers"
+	defaultCheckpointsPath = "/var/lib/vlagent_checkpoints"
+	checkpointsVolumeName  = "checkpoints"
 
 	remoteWriteAssetsMounthPath = "/etc/vl/remote-write-assets"
 	tlsServerConfigMountPath    = "/etc/vl/tls-server-secrets"
 )
 
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
-
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
@@ -89,6 +93,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
+		if cr.Spec.K8sCollector.Enabled {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR); err != nil {
+				return fmt.Errorf("cannot create vlagent role and binding for it, err: %w", err)
+			}
+		}
 	}
 
 	if err := createOrUpdateService(ctx, rclient, cr, prevCR); err != nil {
@@ -104,7 +113,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 		}
 	}
 
-	if cr.Spec.PodDisruptionBudget != nil {
+	if cr.Spec.PodDisruptionBudget != nil && !cr.Spec.K8sCollector.Enabled {
 		var prevPDB *policyv1.PodDisruptionBudget
 		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
 			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
@@ -113,39 +122,86 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 			return fmt.Errorf("cannot update pod disruption budget for vlagent: %w", err)
 		}
 	}
+	return createOrUpdateDeploy(ctx, rclient, cr, prevCR)
+}
 
-	var prevDeploy *appsv1.StatefulSet
-
+func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
+	var prevAppObj client.Object
 	if prevCR != nil {
 		var err error
-		prevDeploy, err = newDeploy(prevCR)
+		prevAppObj, err = newK8sApp(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vlagent: %w", err)
 		}
 	}
-	newDeploy, err := newDeploy(cr)
+	newAppObj, err := newK8sApp(cr)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vlagent: %w", err)
 	}
-	return createOrUpdateDeploy(ctx, rclient, cr, newDeploy, prevDeploy)
-}
-
-func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent, newSTS, prevSTS *appsv1.StatefulSet) error {
-	stsOpts := reconcile.STSOptions{
-		HasClaim:       len(newSTS.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: cr.SelectorLabels,
+	switch newApp := newAppObj.(type) {
+	case *appsv1.DaemonSet:
+		var prevApp *appsv1.DaemonSet
+		if prevAppObj != nil {
+			prevApp, _ = prevAppObj.(*appsv1.DaemonSet)
+		}
+		if err := reconcile.DaemonSet(ctx, rclient, newApp, prevApp); err != nil {
+			return fmt.Errorf("cannot reconcile daemonset for vlagent: %w", err)
+		}
+		return nil
+	case *appsv1.StatefulSet:
+		var prevApp *appsv1.StatefulSet
+		if prevAppObj != nil {
+			prevApp, _ = prevAppObj.(*appsv1.StatefulSet)
+		}
+		stsOpts := reconcile.STSOptions{
+			HasClaim:       len(newApp.Spec.VolumeClaimTemplates) > 0,
+			SelectorLabels: cr.SelectorLabels,
+		}
+		if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newApp, prevApp); err != nil {
+			return fmt.Errorf("cannot reconcile statefulset for vlagent: %w", err)
+		}
+		return nil
+	default:
+		panic(fmt.Sprintf("BUG: unexpected deploy object type: %T", newAppObj))
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSTS, prevSTS)
 }
 
-func newDeploy(cr *vmv1.VLAgent) (*appsv1.StatefulSet, error) {
-	podSpec, err := makeSpec(cr)
+func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
+	podSpec, err := newPodSpec(cr)
 	if err != nil {
 		return nil, err
 	}
-
 	cfg := config.MustGetBaseConfig()
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
+
+	if cr.Spec.K8sCollector.Enabled {
+		dsSpec := &appsv1.DaemonSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.PrefixedName(),
+				Namespace:       cr.Namespace,
+				Labels:          cr.FinalLabels(),
+				Annotations:     cr.FinalAnnotations(),
+				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+				Finalizers:      []string{vmv1beta1.FinalizerName},
+			},
+			Spec: appsv1.DaemonSetSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: cr.SelectorLabels(),
+				},
+				MinReadySeconds: cr.Spec.MinReadySeconds,
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels:      cr.PodLabels(),
+						Annotations: cr.PodAnnotations(),
+					},
+					Spec: *podSpec,
+				},
+			},
+		}
+		build.DaemonSetAddCommonParams(dsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
+		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+		return dsSpec, nil
+	}
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -180,13 +236,13 @@ func newDeploy(cr *vmv1.VLAgent) (*appsv1.StatefulSet, error) {
 	build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 
 	if cr.Spec.RemoteWriteSettings == nil || cr.Spec.RemoteWriteSettings.TmpDataPath == nil {
-		cr.Spec.Storage.IntoSTSVolume(vlAgentPersistentQueueMountName, &stsSpec.Spec)
+		cr.Spec.Storage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
 	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 	return stsSpec, nil
 }
 
-func makeSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
+func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 	var args []string
 
 	if rwArgs, err := buildRemoteWriteArgs(cr); err != nil {
@@ -210,13 +266,95 @@ func makeSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		args = append(args, "-envflag.enable=true")
 	}
 
+	var agentVolumeMounts []corev1.VolumeMount
+	var volumes []corev1.Volume
+	if cr.Spec.K8sCollector.Enabled {
+		args = append(args, "-kubernetesCollector")
+		if len(cr.Spec.K8sCollector.TenantID) > 0 {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.tenantID=%q", cr.Spec.K8sCollector.TenantID))
+		}
+		if len(cr.Spec.K8sCollector.IgnoreFields) > 0 {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.ignoreFields=%q", strings.Join(cr.Spec.K8sCollector.IgnoreFields, ",")))
+		}
+		if len(cr.Spec.K8sCollector.DecolorizeFields) > 0 {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.decolorizeFields=%q", strings.Join(cr.Spec.K8sCollector.DecolorizeFields, ",")))
+		}
+		if len(cr.Spec.K8sCollector.MsgFields) > 0 {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.msgField=%q", strings.Join(cr.Spec.K8sCollector.MsgFields, ",")))
+		}
+		if len(cr.Spec.K8sCollector.TimeFields) > 0 {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.timeField=%q", strings.Join(cr.Spec.K8sCollector.TimeFields, ",")))
+		}
+		if len(cr.Spec.K8sCollector.ExtraFields) > 0 {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.extraFields=%s", cr.Spec.K8sCollector.ExtraFields))
+		}
+
+		if len(cr.Spec.K8sCollector.LogsPath) == 0 || cr.Spec.K8sCollector.LogsPath == defaultLogsPath {
+			logVolumeName := "varlog"
+			logVolumePath := "/var/log"
+			libVolumeName := "varlib"
+			libVolumePath := "/var/lib"
+			volumes = append(volumes, corev1.Volume{
+				Name: logVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: logVolumePath,
+					},
+				},
+			}, corev1.Volume{
+				Name: libVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: libVolumePath,
+					},
+				},
+			})
+			agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+				Name:      logVolumeName,
+				MountPath: logVolumePath,
+				ReadOnly:  true,
+			}, corev1.VolumeMount{
+				Name:      libVolumeName,
+				MountPath: libVolumePath,
+				ReadOnly:  true,
+			})
+		} else {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.logsPath=%s", cr.Spec.K8sCollector.LogsPath))
+		}
+		checkpointsPath := defaultCheckpointsPath
+		if len(cr.Spec.K8sCollector.CheckpointsPath) == 0 || cr.Spec.K8sCollector.CheckpointsPath == defaultCheckpointsPath {
+			volumes = append(volumes, corev1.Volume{
+				Name: checkpointsVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: checkpointsPath,
+					},
+				},
+			})
+			agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+				Name:      checkpointsVolumeName,
+				MountPath: checkpointsPath,
+			})
+			checkpointsPath = path.Join(checkpointsPath, "checkpoints.json")
+		} else {
+			checkpointsPath = cr.Spec.K8sCollector.CheckpointsPath
+		}
+		args = append(args, fmt.Sprintf("-kubernetesCollector.checkpointsPath=%s", checkpointsPath))
+
+		if cr.Spec.RemoteWriteSettings == nil || cr.Spec.RemoteWriteSettings.TmpDataPath == nil {
+			volumes = append(volumes, corev1.Volume{
+				Name: persistentQueueMountName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+		}
+	}
+
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
-
-	var agentVolumeMounts []corev1.VolumeMount
-	var volumes []corev1.Volume
 
 	if cr.Spec.SyslogSpec != nil {
 		args = build.AddSyslogArgsTo(args, cr.Spec.SyslogSpec, tlsServerConfigMountPath)
@@ -228,8 +366,8 @@ func makeSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		// do not mount pq if user provided own path
 		agentVolumeMounts = append(agentVolumeMounts,
 			corev1.VolumeMount{
-				Name:      vlAgentPersistentQueueMountName,
-				MountPath: vlAgentPersistentQueueSTSDir,
+				Name:      persistentQueueMountName,
+				MountPath: persistentQueueSTSDir,
 			},
 		)
 	}
@@ -386,7 +524,7 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 	var hasAnyDiskUsagesSet bool
 	var storageLimit int64
 
-	pqMountPath := vlAgentPersistentQueueSTSDir
+	pqMountPath := persistentQueueSTSDir
 	if cr.Spec.Storage != nil {
 		if storage, ok := cr.Spec.Storage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
 			storageInt, ok := storage.AsInt64()
@@ -567,6 +705,28 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 	if !cr.IsOwnsServiceAccount() {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot remove serviceaccount: %w", err)
+		}
+	}
+	if cr.Spec.K8sCollector.Enabled {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &appsv1.StatefulSet{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot remove statefulset: %w", err)
+		}
+	} else {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &appsv1.DaemonSet{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot remove daemonset: %w", err)
+		}
+	}
+	if (!cr.IsOwnsServiceAccount() || !cr.Spec.K8sCollector.Enabled) && config.IsClusterWideAccessAllowed() {
+		rbacMeta := metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.Namespace}
+		objects := []client.Object{
+			&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
+			&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
+		}
+		owner := cr.AsCRDOwner()
+		for _, o := range objects {
+			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, owner); err != nil {
+				return fmt.Errorf("cannot remove %T: %w", o, err)
+			}
 		}
 	}
 	return nil

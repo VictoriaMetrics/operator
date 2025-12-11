@@ -157,28 +157,28 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			if err := rclient.Create(ctx, vmClusterObj); err != nil {
 				return fmt.Errorf("failed to create vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 			}
-			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
-				return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
+		} else {
+			// Update vmauth lb with excluded cluster
+			activeVMClusters := make([]*vmv1beta1.VMCluster, 0, len(vmClusters)-1)
+			for _, vmc := range vmClusters {
+				if vmc.Name == vmClusterObj.Name {
+					continue
+				}
+				activeVMClusters = append(activeVMClusters, vmc)
 			}
-			// No further action needed after creation
-			continue
+			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, activeVMClusters); err != nil {
+				return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
+			}
+
+			// Apply the updated object
+			if err := rclient.Update(ctx, vmClusterObj); err != nil {
+				return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
+			}
 		}
 
-		// Update vmauth lb with excluded cluster
-		activeVMClusters := make([]*vmv1beta1.VMCluster, 0, len(vmClusters)-1)
-		for _, vmc := range vmClusters {
-			if vmc.Name == vmClusterObj.Name {
-				continue
-			}
-			activeVMClusters = append(activeVMClusters, vmc)
-		}
-		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, activeVMClusters); err != nil {
-			return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
-		}
-
-		// Apply the updated object
-		if err := rclient.Update(ctx, vmClusterObj); err != nil {
-			return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
+		// Update vmauth lb with the included cluster (for both new and updated clusters)
+		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
+			return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
 		}
 
 		// Wait for VMCluster to be ready

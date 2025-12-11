@@ -25,7 +25,7 @@ func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr
 		}
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMAgent{ObjectMeta: vmAgentMeta})
 	}
-	if len(cr.Spec.VMAuth.Name) > 0 && cr.Spec.VMAuth.Spec != nil {
+	if len(cr.Spec.VMAuth.Name) > 0 {
 		vmAuthLBMeta := metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      cr.Spec.VMAuth.Name,

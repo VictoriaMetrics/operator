@@ -1285,24 +1285,27 @@ func buildVMAuthLBSecret(cr *vmv1beta1.VMCluster) *corev1.Secret {
 	if cr.Spec.VMInsert != nil {
 		insertPort = cr.Spec.VMInsert.Port
 	}
-	lbScrt := &corev1.Secret{
-		ObjectMeta: buildLBConfigSecretMeta(cr),
-		StringData: map[string]string{"config.yaml": fmt.Sprintf(`
+
+	insertUrl := fmt.Sprintf("http://srv+%s.%s:%s", cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert), targetHostSuffix, insertPort)
+	selectUrl := fmt.Sprintf("http://srv+%s.%s:%s", cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort)
+
+	lbConfig := fmt.Sprintf(`
 unauthorized_user:
   url_map:
   - src_paths:
     - "/insert/.*"
-    url_prefix: "http://srv+%s.%s:%s"
+    url_prefix: %q
     discover_backend_ips: true
   - src_paths:
     - "/.*"
-    url_prefix: "http://srv+%s.%s:%s"
+    url_prefix: %q
     discover_backend_ips: true
-      `, cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert), targetHostSuffix, insertPort,
-			cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort,
-		)},
+      `, insertUrl, selectUrl)
+	return &corev1.Secret{
+		ObjectMeta: buildLBConfigSecretMeta(cr),
+		// TODO: add backend auth
+		Data: map[string][]byte{"config.yaml": []byte(strings.TrimSpace(lbConfig))},
 	}
-	return lbScrt
 }
 
 func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {

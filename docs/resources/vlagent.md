@@ -199,7 +199,7 @@ metadata:
   name: resources-example
 spec:
   remoteWriteSettings:
-    maxDiskUsagePerURL: "1Gi"
+    maxDiskUsagePerURL: "1GiB"
 ```
 
 ## Examples

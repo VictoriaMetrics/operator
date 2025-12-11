@@ -100,7 +100,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		if newSelect.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
 		}
-		if newSelect.HPA == nil {
+		if newSelect.HPA != nil {
 			cc.KeepHPA(commonName)
 		}
 		cc.KeepService(commonName)
@@ -126,7 +126,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		if newInsert.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
 		}
-		if newInsert.HPA == nil {
+		if newInsert.HPA != nil {
 			cc.KeepHPA(commonName)
 		}
 		cc.KeepService(commonName)

@@ -8,9 +8,7 @@ import (
 	"math/big"
 	"net/url"
 	"path"
-	"sort"
 	"strings"
-	"time"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -30,87 +28,21 @@ import (
 // allows to skip users based on external conditions
 // implementation should has as less implementation details of vmusers as possible
 // potentially it could be reused later for scrape objects/vmalert rules.
-type skipableVMUsers struct {
-	stopIter        bool
-	users           []*vmv1beta1.VMUser
-	brokenVMUsers   []*vmv1beta1.VMUser
-	namespacedNames []string
-}
-
-// visitAll visits all users objects
-func (sus *skipableVMUsers) visitAll(filter func(user *vmv1beta1.VMUser) bool) {
-	var cnt int
-	// filter in-place
-	for _, user := range sus.users {
-		if sus.stopIter {
-			return
-		}
-		if !filter(user) {
-			sus.brokenVMUsers = append(sus.brokenVMUsers, user)
-			continue
-		}
-		sus.users[cnt] = user
-		cnt++
-	}
-	sus.users = sus.users[:cnt]
-}
-
-func (sus *skipableVMUsers) deduplicateBy(cb func(user *vmv1beta1.VMUser) (string, time.Time)) {
-	// later map[key]index could be re-place with map[key]tuple(index,timestamp)
-	uniqByIndex := make(map[string]int, len(sus.users))
-	var cnt int
-	for idx, user := range sus.users {
-		key, createdAt := cb(user)
-		prevIdx, ok := uniqByIndex[key]
-		if !ok {
-			// fast path
-			uniqByIndex[key] = idx
-			sus.users[cnt] = user
-			cnt++
-			continue
-		}
-		prevUser := sus.users[prevIdx]
-		if createdAt.After(prevUser.CreationTimestamp.Time) {
-			prevUser, user = user, prevUser
-		}
-		sus.users[prevIdx] = user
-		prevUser.Status.CurrentSyncError = fmt.Sprintf("user has duplicate token/password with vmuser=%s-%s", user.Namespace, user.Name)
-		sus.brokenVMUsers = append(sus.brokenVMUsers, prevUser)
-	}
-	sus.users = sus.users[:cnt]
-}
-
-func (sus *skipableVMUsers) sort() {
-	// sort for consistency.
-	sort.Slice(sus.users, func(i, j int) bool {
-		if sus.users[i].Name != sus.users[j].Name {
-			return sus.users[i].Name < sus.users[j].Name
-		}
-		return sus.users[i].Namespace < sus.users[j].Namespace
-	})
+type parsedObjects struct {
+	users *build.ChildObjects[*vmv1beta1.VMUser]
 }
 
 // builds vmauth config.
-func buildConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, sus *skipableVMUsers, ac *build.AssetsCache) ([]byte, error) {
-	// apply sort before making any changes to users
-	sus.sort()
-
+func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]byte, error) {
 	// loads info about exist operator object kind for crdRef.
-	crdCache, err := fetchCRDRefURLs(ctx, rclient, sus)
+	crdCache := pos.fetchCRDRefURLs(ctx, rclient)
+	toCreateSecrets, toUpdate, err := pos.addAuthCredentialsBuildSecrets(ac)
 	if err != nil {
 		return nil, err
 	}
-
-	toCreateSecrets, toUpdate, err := addAuthCredentialsBuildSecrets(sus, ac)
-	if err != nil {
-		return nil, err
-	}
-
-	// check config for dups.
-	filterNonUniqUsers(sus)
 
 	// generate yaml config for vmauth.
-	cfg, err := generateVMAuthConfig(vmauth, sus, crdCache, ac)
+	cfg, err := pos.generateVMAuthConfig(vmauth, crdCache, ac)
 	if err != nil {
 		return nil, err
 	}
@@ -145,24 +77,6 @@ func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []*
 	return nil
 }
 
-// duplicates logic from vmauth auth_config
-// parseAuthConfigUsers
-func filterNonUniqUsers(sus *skipableVMUsers) {
-	sus.deduplicateBy(func(user *vmv1beta1.VMUser) (string, time.Time) {
-		var at string
-		if user.Spec.UserName != nil {
-			at = "basicAuth:" + *user.Spec.UserName
-		}
-		if user.Spec.Password != nil {
-			at += ":" + *user.Spec.Password
-		}
-		if user.Spec.BearerToken != nil {
-			at = "bearerToken:" + *user.Spec.BearerToken
-		}
-		return at, user.CreationTimestamp.Time
-	})
-}
-
 type objectWithURL interface {
 	client.Object
 	AsURL() string
@@ -186,42 +100,31 @@ func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithU
 	return objT.AsURL(), nil
 }
 
-func addAuthCredentialsBuildSecrets(sus *skipableVMUsers, ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
-	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
+func (pos *parsedObjects) addAuthCredentialsBuildSecrets(ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
+	resultErr = pos.users.ForEachCollectSkipNotFound(func(user *vmv1beta1.VMUser) error {
 		switch {
 		case user.Spec.PasswordRef != nil:
-			secret, err := ac.LoadKeyFromSecret(user.Namespace, user.Spec.PasswordRef)
-			if err != nil {
-				if !build.IsNotFound(err) {
-					resultErr = fmt.Errorf("cannot get cred from secret=%w", err)
-					sus.stopIter = true
-					return true
-				}
-				user.Status.CurrentSyncError = fmt.Sprintf("cannot get cred from secret for passwordRef: %q", err)
-				return false
+			if secret, err := ac.LoadKeyFromSecret(user.Namespace, user.Spec.PasswordRef); err != nil {
+				return fmt.Errorf("cannot get password from secret: %w", err)
+			} else {
+				user.Spec.Password = ptr.To(secret)
 			}
-			user.Spec.Password = ptr.To(secret)
 		case user.Spec.TokenRef != nil:
-			secret, err := ac.LoadKeyFromSecret(user.Namespace, user.Spec.TokenRef)
-			if err != nil {
-				user.Status.CurrentSyncError = fmt.Sprintf("cannot get cred from secret for tokenRef: %q", err)
-				return false
+			if secret, err := ac.LoadKeyFromSecret(user.Namespace, user.Spec.TokenRef); err != nil {
+				return fmt.Errorf("cannot get token from secret: %w", err)
+			} else {
+				user.Spec.BearerToken = ptr.To(secret)
 			}
-			user.Spec.BearerToken = ptr.To(secret)
 		}
 
 		if !user.Spec.DisableSecretCreation {
-			secret, err := ac.LoadSecret(user.Namespace, user.SecretName())
-			if err != nil {
+			if secret, err := ac.LoadSecret(user.Namespace, user.SecretName()); err != nil {
 				if !build.IsNotFound(err) {
-					resultErr = fmt.Errorf("cannot get secret from API=%w", err)
-					sus.stopIter = true
-					return true
+					return fmt.Errorf("cannot get user secret: %w", err)
 				}
-				userSecret, err := buildVMUserSecret(user)
+				userSecret, err := buildUserSecret(user)
 				if err != nil {
-					user.Status.CurrentSyncError = fmt.Sprintf("cannot build user secret with password: %q", err)
-					return false
+					return fmt.Errorf("cannot build user secret with password: %w", err)
 				}
 				needToCreateSecrets = append(needToCreateSecrets, userSecret)
 
@@ -231,18 +134,10 @@ func addAuthCredentialsBuildSecrets(sus *skipableVMUsers, ac *build.AssetsCache)
 			}
 		}
 		if err := injectBackendAuthHeader(user, ac); err != nil {
-			if !build.IsNotFound(err) {
-				resultErr = fmt.Errorf("cannot inject backend auth header=%w", err)
-				sus.stopIter = true
-				return true
-			}
-			user.Status.CurrentSyncError = fmt.Sprintf("cannot inject auth backend header : %q", err)
-			return false
+			return fmt.Errorf("cannot inject backend auth header: %w", err)
 		}
-
-		return true
+		return nil
 	})
-
 	return
 }
 
@@ -293,10 +188,10 @@ func injectAuthSettings(secret *corev1.Secret, vmuser *vmv1beta1.VMUser) bool {
 	}
 	existUser := secret.Data["username"]
 
-	if vmuser.Spec.UserName == nil {
-		vmuser.Spec.UserName = ptr.To(string(existUser))
-	} else if string(existUser) != *vmuser.Spec.UserName {
-		secret.Data["username"] = []byte(*vmuser.Spec.UserName)
+	if vmuser.Spec.Username == nil {
+		vmuser.Spec.Username = ptr.To(string(existUser))
+	} else if string(existUser) != *vmuser.Spec.Username {
+		secret.Data["username"] = []byte(*vmuser.Spec.Username)
 		needUpdate = true
 	}
 
@@ -403,10 +298,14 @@ func (c *clusterWithURL) AsURL() string {
 }
 
 // fetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
-func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVMUsers) (map[string]string, error) {
+func (pos *parsedObjects) fetchCRDRefURLs(ctx context.Context, rclient client.Client) map[string]string {
 	crdCacheURLCache := make(map[string]string)
-	var resultErr error
-	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
+	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
+		if !build.MustSkipRuntimeValidation {
+			if err := user.Validate(); err != nil {
+				return err
+			}
+		}
 		for j := range user.Spec.TargetRefs {
 			ref := user.Spec.TargetRefs[j]
 			if ref.CRD == nil {
@@ -418,41 +317,36 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVM
 			}
 			crdObj, ok := crdNameToObject[ref.CRD.Kind]
 			if !ok {
-				user.Status.CurrentSyncError = fmt.Sprintf("unsupported kind for ref: %q at idx=%d", ref.CRD.Kind, j)
-				return false
+				return fmt.Errorf("unsupported kind for ref: %q at idx=%d", ref.CRD.Kind, j)
 			}
 			ref.CRD.AddRefToObj(crdObj.(client.Object))
 			url, err := getAsURLObject(ctx, rclient, crdObj)
 			if err != nil {
 				if !build.IsNotFound(err) {
-					resultErr = fmt.Errorf("cannot get object as url: %w", err)
-					sus.stopIter = true
-					return true
+					return fmt.Errorf("cannot get object as url: %w", err)
 				}
-				user.Status.CurrentSyncError = fmt.Sprintf("cannot fined CRD link for kind=%q at ref idx=%d: %q", ref.CRD.Kind, j, err)
-				return false
+				return fmt.Errorf("cannot find CRD link for kind=%q at ref idx=%d: %w", ref.CRD.Kind, j, err)
 			}
 			crdCacheURLCache[key] = url
 		}
-		return true
+		return nil
 	})
-	return crdCacheURLCache, resultErr
+	return crdCacheURLCache
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache map[string]string, ac *build.AssetsCache) ([]byte, error) {
+func (pos *parsedObjects) generateVMAuthConfig(cr *vmv1beta1.VMAuth, crdCache map[string]string, ac *build.AssetsCache) ([]byte, error) {
 	var cfg yaml.MapSlice
 
 	var cfgUsers []yaml.MapSlice
 
-	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
+	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
 		userCfg, err := genUserCfg(user, crdCache, cr, ac)
 		if err != nil {
-			user.Status.CurrentSyncError = err.Error()
-			return false
+			return err
 		}
 		cfgUsers = append(cfgUsers, userCfg)
-		return true
+		return nil
 	})
 
 	if len(cfgUsers) > 0 {
@@ -593,7 +487,7 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 	}
 	cfg, err := ac.TLSToYAML(cr.Namespace, "tls_", opt.TLSConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build tls config for vmauth %s under %s, err: %v", cr.Name, cr.Namespace, err)
+		return nil, fmt.Errorf("failed to build tls config for vmauth %s under %s: %w", cr.Name, cr.Namespace, err)
 	}
 	if len(cfg) > 0 {
 		dst = append(dst, cfg...)
@@ -692,7 +586,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 				var err error
 				urlParsed, err = url.Parse(ref.TargetPathSuffix)
 				if err != nil {
-					return nil, fmt.Errorf("cannot parse targetPath: %q, err: %w", ref.TargetPathSuffix, err)
+					return nil, fmt.Errorf("cannot parse targetPath=%q: %w", ref.TargetPathSuffix, err)
 				}
 			}
 			if len(ref.QueryArgs) > 0 {
@@ -705,7 +599,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 			for idx, urlPrefix := range urlPrefixes {
 				parsedURLPrefix, err := url.Parse(urlPrefix)
 				if err != nil {
-					return nil, fmt.Errorf("cannot parse urlPrefix: %q,err: %w", urlPrefix, err)
+					return nil, fmt.Errorf("cannot parse urlPrefix=%q: %w", urlPrefix, err)
 				}
 				parsedURLPrefix.Path = path.Join(parsedURLPrefix.Path, urlParsed.Path)
 				qs := urlParsed.Query()
@@ -742,7 +636,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 			ref := refs[0]
 			urlPrefix, err := handleRef(ref)
 			if err != nil {
-				return result, fmt.Errorf("cannot build urlPrefix for one ref, err: %w", err)
+				return result, fmt.Errorf("cannot build urlPrefix for one ref: %w", err)
 			}
 			result = append(result, yaml.MapItem{Key: "url_prefix", Value: urlPrefix})
 			result = addURLMapCommonToYaml(result, ref.URLMapCommon, isDefaultRoute)
@@ -844,7 +738,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 		urlMaps = append(urlMaps, urlMap)
 	}
 	if len(urlMaps) == 0 {
-		return nil, fmt.Errorf("user must has at least 1 url target")
+		return nil, fmt.Errorf("user must have at least 1 url target")
 	}
 	result = append(result, yaml.MapItem{Key: "url_map", Value: urlMaps})
 	return result, nil
@@ -872,8 +766,8 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1b
 		})
 	}
 
-	if user.Spec.UserName != nil {
-		username = *user.Spec.UserName
+	if user.Spec.Username != nil {
+		username = *user.Spec.Username
 	}
 	if user.Spec.Password != nil {
 		password = *user.Spec.Password
@@ -904,7 +798,7 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1b
 	// mutate vmuser
 	if username == "" {
 		username = user.Name
-		user.Spec.UserName = ptr.To(username)
+		user.Spec.Username = ptr.To(username)
 	}
 
 	r = append(r, yaml.MapItem{
@@ -943,9 +837,9 @@ func genPassword() (string, error) {
 }
 
 // selects vmusers for given vmauth.
-func selectVMUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) (*skipableVMUsers, error) {
+func selectUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) (*parsedObjects, error) {
 	var res []*vmv1beta1.VMUser
-	var namespacedNames []string
+	var nsn []string
 	opts := &k8stools.SelectorOpts{
 		SelectAll:         cr.Spec.SelectAllByDefault,
 		ObjectSelector:    cr.Spec.UserSelector,
@@ -959,17 +853,17 @@ func selectVMUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMA
 			}
 			item.Status.ObservedGeneration = item.GetGeneration()
 			res = append(res, item.DeepCopy())
-			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 		}
 	}); err != nil {
 		return nil, err
 	}
-	return &skipableVMUsers{users: res, namespacedNames: namespacedNames}, nil
+	return &parsedObjects{users: build.NewChildObjects("vmuser", res, nsn)}, nil
 }
 
 // note, username and password must be filled by operator
 // with default values if need.
-func buildVMUserSecret(src *vmv1beta1.VMUser) (*corev1.Secret, error) {
+func buildUserSecret(src *vmv1beta1.VMUser) (*corev1.Secret, error) {
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            src.SecretName(),
@@ -994,8 +888,8 @@ func buildVMUserSecret(src *vmv1beta1.VMUser) (*corev1.Secret, error) {
 	if src.Spec.BearerToken != nil {
 		s.Data["bearerToken"] = []byte(*src.Spec.BearerToken)
 	}
-	if src.Spec.UserName != nil {
-		s.Data["username"] = []byte(*src.Spec.UserName)
+	if src.Spec.Username != nil {
+		s.Data["username"] = []byte(*src.Spec.Username)
 	}
 	if src.Spec.Password != nil {
 		s.Data["password"] = []byte(*src.Spec.Password)

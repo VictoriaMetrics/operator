@@ -41233,7 +41233,7 @@ spec:
                 x-kubernetes-map-type: atomic
               username:
                 description: |-
-                  UserName basic auth user name for accessing protected endpoint,
+                  Username basic auth user name for accessing protected endpoint,
                   will be replaced with metadata.name of VMUser if omitted.
                 type: string
             required:

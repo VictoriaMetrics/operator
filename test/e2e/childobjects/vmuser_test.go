@@ -104,7 +104,7 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 							Namespace: namespace,
 						},
 						Spec: vmv1beta1.VMUserSpec{
-							UserName: ptr.To("user"),
+							Username: ptr.To("user"),
 							Password: ptr.To("password-1"),
 							TargetRefs: []vmv1beta1.TargetRef{
 								{
@@ -154,7 +154,7 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 							Namespace: namespace,
 						},
 						Spec: vmv1beta1.VMUserSpec{
-							UserName: ptr.To("user"),
+							Username: ptr.To("user"),
 							PasswordRef: &corev1.SecretKeySelector{
 								Key: "password",
 								LocalObjectReference: corev1.LocalObjectReference{

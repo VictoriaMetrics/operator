@@ -164,6 +164,11 @@ func (cr *VMServiceScrape) Validate() error {
 	return nil
 }
 
+// AsKey returns unique key for object
+func (cr *VMServiceScrape) AsKey(_ bool) string {
+	return cr.Namespace + "/" + cr.Name
+}
+
 // GetStatusMetadata implements reconcile.objectWithStatus interface
 func (cr *VMServiceScrape) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata

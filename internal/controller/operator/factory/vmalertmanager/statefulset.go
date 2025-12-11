@@ -500,11 +500,11 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
 		configSourceName = "inline configuration at configRawYaml"
 	}
-	mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, ac)
+	pos, data, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 	}
-	alertmananagerConfig = mergedCfg.data
+	alertmananagerConfig = data
 	// apply default config to be able just start alertmanager
 	if len(alertmananagerConfig) == 0 {
 		alertmananagerConfig = []byte(defaultAMConfig)
@@ -535,7 +535,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	}
 
 	if err := vmv1beta1.ValidateAlertmanagerConfigSpec(alertmananagerConfig); err != nil {
-		return fmt.Errorf("incorrect result configuration, config source=%s,am cfgs count=%d: %w", configSourceName, len(mergedCfg.amcfgs), err)
+		return fmt.Errorf("incorrect result configuration, config source=%s: %w", configSourceName, err)
 	}
 
 	newAMSecretConfig := &corev1.Secret{
@@ -570,22 +570,12 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 
 	if childCR != nil {
 		// fast path update only single object
-		for _, amc := range mergedCfg.amcfgs {
-			if amc.Name == childCR.Name && amc.Namespace == childCR.Namespace {
-				return reconcile.StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMAlertmanagerConfig{amc})
-			}
-		}
-		for _, amc := range mergedCfg.brokenAMCfgs {
-			if amc.Name == childCR.Name && amc.Namespace == childCR.Namespace {
-				return reconcile.StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMAlertmanagerConfig{amc})
-			}
+		if o := pos.configs.Get(childCR); o != nil {
+			return reconcile.StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMAlertmanagerConfig{o})
 		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, mergedCfg.amcfgs); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, pos.configs.All()); err != nil {
 		return fmt.Errorf("failed to update vmalertmanagerConfigs statuses: %w", err)
-	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, mergedCfg.brokenAMCfgs); err != nil {
-		return fmt.Errorf("failed to update broken vmalertmanagerConfigs statuses: %w", err)
 	}
 	return nil
 }
@@ -717,10 +707,9 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	return nil, fmt.Errorf("cannot find alertmanager config key: %q at secret: %q", alertmanagerSecretConfigKey, secretName)
 }
 
-func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, ac *build.AssetsCache) (*parsedConfig, error) {
-	var amCfgs []*vmv1beta1.VMAlertmanagerConfig
-	var badCfgs []*vmv1beta1.VMAlertmanagerConfig
-	var namespacedNames []string
+func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, ac *build.AssetsCache) (*parsedObjects, []byte, error) {
+	var configs []*vmv1beta1.VMAlertmanagerConfig
+	var nsn []string
 	opts := &k8stools.SelectorOpts{
 		SelectAll:         cr.Spec.SelectAllByDefault,
 		ObjectSelector:    cr.Spec.ConfigSelector,
@@ -733,35 +722,19 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 			if !item.DeletionTimestamp.IsZero() {
 				continue
 			}
-			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-			item.Status.ObservedGeneration = item.Generation
-			if item.Spec.ParsingError != "" {
-				item.Status.CurrentSyncError = item.Spec.ParsingError
-				badCfgs = append(badCfgs, item)
-				continue
-			}
-			if !build.MustSkipRuntimeValidation {
-				if err := item.Validate(); err != nil {
-					item.Status.CurrentSyncError = err.Error()
-					badCfgs = append(badCfgs, item)
-					continue
-				}
-
-			}
-			amCfgs = append(amCfgs, item)
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			configs = append(configs, item.DeepCopy())
 		}
 	}); err != nil {
-		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
+		return nil, nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
-
-	parsedCfg, err := buildConfig(cr, originConfig, amCfgs, ac)
+	pos := &parsedObjects{configs: build.NewChildObjects("vmalertmanagerconfig", configs, nsn)}
+	data, err := pos.buildConfig(cr, originConfig, ac)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	parsedCfg.brokenAMCfgs = append(parsedCfg.brokenAMCfgs, badCfgs...)
-	logger.SelectedObjects(ctx, "VMAlertmanagerConfigs", len(parsedCfg.amcfgs), len(parsedCfg.brokenAMCfgs), namespacedNames)
-	badConfigsTotal.Add(float64(len(badCfgs)))
-	return parsedCfg, nil
+	pos.configs.UpdateMetrics(ctx)
+	return pos, data, nil
 }
 
 func subPathForStorage(s *vmv1beta1.StorageSpec) string {

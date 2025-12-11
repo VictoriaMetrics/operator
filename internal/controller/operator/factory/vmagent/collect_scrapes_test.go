@@ -55,7 +55,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		got, err := selectServiceScrapes(context.TODO(), o.cr, fclient)
+		got, _, err := selectServiceScrapes(context.TODO(), o.cr, fclient)
 		if err != nil {
 			t.Errorf("SelectServiceScrapes() error = %v", err)
 			return
@@ -267,7 +267,7 @@ func TestSelectPodMonitors(t *testing.T) {
 	}
 	f := func(o opts) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		got, err := selectPodScrapes(context.TODO(), o.cr, fclient)
+		got, _, err := selectPodScrapes(context.TODO(), o.cr, fclient)
 		if err != nil {
 			t.Errorf("SelectPodScrapes() error = %v", err)
 			return
@@ -341,7 +341,7 @@ func TestSelectPodMonitors(t *testing.T) {
 	})
 }
 
-func TestSelectVMProbes(t *testing.T) {
+func TestSelectProbes(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent
 		want              []string
@@ -351,9 +351,9 @@ func TestSelectVMProbes(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		got, err := selectVMProbes(context.TODO(), o.cr, fclient)
+		got, _, err := selectProbes(context.TODO(), o.cr, fclient)
 		if err != nil {
-			t.Errorf("SelectVMProbes() error = %v", err)
+			t.Errorf("SelectProbes() error = %v", err)
 			return
 		}
 		var result []string
@@ -362,7 +362,7 @@ func TestSelectVMProbes(t *testing.T) {
 		}
 		sort.Strings(result)
 		if !reflect.DeepEqual(result, o.want) {
-			t.Errorf("SelectVMProbes(): %s", cmp.Diff(got, o.want))
+			t.Errorf("SelectProbes(): %s", cmp.Diff(got, o.want))
 		}
 	}
 

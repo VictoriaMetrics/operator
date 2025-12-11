@@ -27,7 +27,7 @@ func TestSelectRules(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		got, _, err := selectRulesContent(ctx, fclient, o.cr)
+		_, got, err := selectRules(ctx, fclient, o.cr)
 		if err != nil {
 			t.Errorf("SelectRules() error = %v", err)
 			return

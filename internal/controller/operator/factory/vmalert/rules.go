@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -16,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -25,18 +23,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
-
-var badConfigsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-	Name: "operator_vmalert_bad_objects_count",
-	Help: "Number of incorrect objects by controller",
-	ConstLabels: prometheus.Labels{
-		"controller": "vmrules",
-	},
-})
-
-func init() {
-	metrics.Registry.MustRegister(badConfigsTotal)
-}
 
 var (
 	managedByOperatorLabel      = "managed-by"
@@ -168,37 +154,39 @@ func rulesCMDiff(currentCMs []corev1.ConfigMap, newCMs []corev1.ConfigMap) (toCr
 }
 
 func reconcileVMAlertConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule) ([]string, error) {
-	rulesData, vmRules, err := selectRulesContent(ctx, rclient, cr)
+	pos, data, err := selectRules(ctx, rclient, cr)
 	if err != nil {
 		return nil, err
 	}
 	// perform config maps content update
-	ruleCMNames, err := reconcileConfigsData(ctx, rclient, cr, rulesData)
+	cmNames, err := reconcileConfigsData(ctx, rclient, cr, data)
 	if err != nil {
 		return nil, err
 	}
 	parentObject := fmt.Sprintf("%s.%s.vmalert", cr.Name, cr.Namespace)
 	if childCR != nil {
-		for _, rule := range vmRules {
-			if rule.Name == childCR.Name && rule.Namespace == childCR.Namespace {
-				// fast path update a single object that triggered event
-				// it should be fast path for the most cases
-				if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMRule{rule}); err != nil {
-					return nil, err
-				}
-				return ruleCMNames, nil
+		if o := pos.rules.Get(childCR); o != nil {
+			// fast path update a single object that triggered event
+			// it should be fast path for the most cases
+			if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMRule{o}); err != nil {
+				return nil, err
 			}
+			return cmNames, nil
 		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, vmRules); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.rules.All()); err != nil {
 		return nil, err
 	}
-	return ruleCMNames, nil
+	return cmNames, nil
 }
 
-func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (map[string]string, []*vmv1beta1.VMRule, error) {
-	var vmRules []*vmv1beta1.VMRule
-	var namespacedNames []string
+type parsedObjects struct {
+	rules *build.ChildObjects[*vmv1beta1.VMRule]
+}
+
+func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (*parsedObjects, map[string]string, error) {
+	var rules []*vmv1beta1.VMRule
+	var nsn []string
 	opts := &k8stools.SelectorOpts{
 		SelectAll:         cr.Spec.SelectAllByDefault,
 		ObjectSelector:    cr.Spec.RuleSelector,
@@ -210,39 +198,33 @@ func selectRulesContent(ctx context.Context, rclient client.Client, cr *vmv1beta
 			if !item.DeletionTimestamp.IsZero() {
 				continue
 			}
-			vmRules = append(vmRules, item.DeepCopy())
-			namespacedNames = append(namespacedNames, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			rules = append(rules, item.DeepCopy())
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
 		}
 	}); err != nil {
 		return nil, nil, err
 	}
-
-	rules := make(map[string]string, len(vmRules))
-
 	if cr.NeedDedupRules() {
 		logger.WithContext(ctx).Info("deduplicating vmalert rules")
-		vmRules = deduplicateRules(ctx, vmRules)
+		rules = deduplicateRules(ctx, rules)
 	}
-	var brokenRulesCnt int
-	for _, pRule := range vmRules {
+	pos := &parsedObjects{rules: build.NewChildObjects("vmrule", rules, nsn)}
+	data := make(map[string]string)
+	pos.rules.ForEachCollectSkipInvalid(func(rule *vmv1beta1.VMRule) error {
 		if !build.MustSkipRuntimeValidation {
-			if err := pRule.Validate(); err != nil {
-				pRule.Status.CurrentSyncError = err.Error()
-				brokenRulesCnt++
-				continue
+			if err := rule.Validate(); err != nil {
+				return err
 			}
 		}
-		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
+		content, err := generateContent(rule.Spec, cr.Spec.EnforcedNamespaceLabel, rule.Namespace)
 		if err != nil {
-			pRule.Status.CurrentSyncError = fmt.Sprintf("cannot generate content for rule: %s, err :%s", pRule.Name, err)
-			brokenRulesCnt++
-			continue
+			return err
 		}
-		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
-	}
-	logger.SelectedObjects(ctx, "VMRules", len(namespacedNames), brokenRulesCnt, namespacedNames)
-	badConfigsTotal.Add(float64(brokenRulesCnt))
-	return rules, vmRules, nil
+		data[rule.AsKey(false)] = content
+		return nil
+	})
+	pos.rules.UpdateMetrics(ctx)
+	return pos, data, nil
 }
 
 func generateContent(promRule vmv1beta1.VMRuleSpec, enforcedNsLabel, ns string) (string, error) {

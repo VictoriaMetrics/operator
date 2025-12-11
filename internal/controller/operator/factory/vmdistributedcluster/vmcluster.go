@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -88,6 +89,12 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 			return nil, fmt.Errorf("invalid VMClusterRefOrSpec at index %d: neither Ref nor Spec is set", i)
 		}
 	}
+
+	// Sort VMClusters by observedGeneration in descending order (biggest first)
+	sort.Slice(vmClusters, func(i, j int) bool {
+		return vmClusters[i].Status.ObservedGeneration > vmClusters[j].Status.ObservedGeneration
+	})
+
 	return vmClusters, nil
 }
 

@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"sync"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,8 +31,14 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmanomaly"
+)
+
+var (
+	anomalySync           sync.Mutex
+	anomalyReconcileLimit = limiter.NewReconcileRateLimiter("vmanomaly", 5)
 )
 
 // VMAnomalyReconciler reconciles a VMAnomaly object
@@ -72,6 +79,11 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		err = &getError{origin: err, controller: "vmanomaly", requestObject: req}
 		return
+	}
+
+	if !instance.IsUnmanaged() {
+		anomalySync.Lock()
+		defer anomalySync.Unlock()
 	}
 
 	RegisterObjectStat(&instance, "vmanomaly")

@@ -6736,6 +6736,11 @@ func (in *VMStorage) DeepCopyInto(out *VMStorage) {
 		*out = new(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy)
 		**out = **in
 	}
+	if in.HPA != nil {
+		in, out := &in.HPA, &out.HPA
+		*out = new(EmbeddedHPA)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.VMBackup != nil {
 		in, out := &in.VMBackup, &out.VMBackup
 		*out = new(VMBackup)

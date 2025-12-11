@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -240,6 +241,43 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 		want: string(vmv1beta1.UpdateStatusExpanding),
+	})
+
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "cluster-1",
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod:   "2",
+				ReplicationFactor: ptr.To(int32(2)),
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0))},
+					InsertPorts: &vmv1beta1.InsertPorts{
+						GraphitePort:     "8025",
+						OpenTSDBHTTPPort: "3311",
+						InfluxPort:       "5511",
+					},
+					HPA: &vmv1beta1.EmbeddedHPA{
+						MinReplicas: ptr.To(int32(0)),
+						MaxReplicas: 3,
+					},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					HPA: &vmv1beta1.EmbeddedHPA{
+						MinReplicas: ptr.To(int32(0)),
+						MaxReplicas: 3,
+						Behaviour: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+							ScaleDown: &autoscalingv2.HPAScalingRules{},
+						},
+					},
+				},
+			},
+		},
+		wantErr: true,
+		want:    string(vmv1beta1.UpdateStatusFailed),
 	})
 
 	// base-vmselect

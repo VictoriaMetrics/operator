@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +39,9 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 		if err != nil {
 			return err
 		}
+	}
+	if err := createOrUpdateVLStorageHPA(ctx, rclient, cr, prevCR); err != nil {
+		return err
 	}
 	if err := createOrUpdateVLStorageSTS(ctx, rclient, cr, prevCR); err != nil {
 		return err
@@ -91,6 +95,27 @@ func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, 
 		return nil, fmt.Errorf("cannot reconcile storage service: %w", err)
 	}
 	return newHeadless, nil
+}
+
+func createOrUpdateVLStorageHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+	hpa := cr.Spec.VLStorage.HPA
+	if hpa == nil {
+		return nil
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	targetRef := autoscalingv2.CrossVersionObjectReference{
+		Name:       b.PrefixedName(),
+		Kind:       "StatefulSet",
+		APIVersion: "apps/v1",
+	}
+	defaultHPA := build.HPA(b, targetRef, hpa)
+	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VLStorage.HPA != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VLStorage.HPA)
+	}
+
+	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
 }
 
 func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {

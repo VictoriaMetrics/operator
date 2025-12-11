@@ -441,6 +441,11 @@ type VTStorage struct {
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
+	// Configures horizontal pod autoscaling.
+	// Note, downscaling is not supported.
+	// +optional
+	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
+
 	// StorageDataPath - path to storage data
 	// +optional
 	StorageDataPath string `json:"storageDataPath,omitempty"`
@@ -611,6 +616,9 @@ func (cr *VTCluster) Validate() error {
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if vts.ServiceSpec != nil && vts.ServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		}
+		if vts.HPA != nil && vts.HPA.Behaviour != nil && vts.HPA.Behaviour.ScaleDown != nil {
+			return fmt.Errorf("vtstorage scaledown HPA behavior is not supported")
 		}
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,12 +28,13 @@ func TestCreateOrUpdate(t *testing.T) {
 		cr                *vmv1.VTCluster
 		validate          func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error
 		predefinedObjects []runtime.Object
+		wantErr           bool
 	}
-	f := func(opts opts) {
+	f := func(o opts) {
 		t.Helper()
-		fclient := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		build.AddDefaults(fclient.Scheme())
-		fclient.Scheme().Default(opts.cr)
+		fclient.Scheme().Default(o.cr)
 		ctx, cancel := context.WithCancel(context.Background())
 		var wg sync.WaitGroup
 		defer func() {
@@ -61,14 +63,14 @@ func TestCreateOrUpdate(t *testing.T) {
 				}
 			}()
 		}
-		if opts.cr.Spec.Storage != nil {
+		if o.cr.Spec.Storage != nil {
 			var vtst appsv1.StatefulSet
 			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: opts.cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: opts.cr.Namespace}, &vtst); err != nil {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: o.cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: o.cr.Namespace}, &vtst); err != nil {
 					return err
 				}
-				vtst.Status.ReadyReplicas = *opts.cr.Spec.Storage.ReplicaCount
-				vtst.Status.UpdatedReplicas = *opts.cr.Spec.Storage.ReplicaCount
+				vtst.Status.ReadyReplicas = *o.cr.Spec.Storage.ReplicaCount
+				vtst.Status.UpdatedReplicas = *o.cr.Spec.Storage.ReplicaCount
 				if err := fclient.Status().Update(ctx, &vtst); err != nil {
 					return err
 				}
@@ -76,10 +78,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				return nil
 			})
 		}
-		if opts.cr.Spec.Select != nil {
+		if o.cr.Spec.Select != nil {
 			var vts appsv1.Deployment
 			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: opts.cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: opts.cr.Namespace}, &vts); err != nil {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: o.cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: o.cr.Namespace}, &vts); err != nil {
 					return err
 				}
 				vts.Status.Conditions = append(vts.Status.Conditions, appsv1.DeploymentCondition{
@@ -97,10 +99,10 @@ func TestCreateOrUpdate(t *testing.T) {
 			})
 
 		}
-		if opts.cr.Spec.Insert != nil {
+		if o.cr.Spec.Insert != nil {
 			var vti appsv1.Deployment
 			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: opts.cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: opts.cr.Namespace}, &vti); err != nil {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: o.cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: o.cr.Namespace}, &vti); err != nil {
 					return err
 				}
 				vti.Status.Conditions = append(vti.Status.Conditions, appsv1.DeploymentCondition{
@@ -117,10 +119,10 @@ func TestCreateOrUpdate(t *testing.T) {
 			})
 
 		}
-		if opts.cr.Spec.RequestsLoadBalancer.Enabled {
+		if o.cr.Spec.RequestsLoadBalancer.Enabled {
 			var vmauthLB appsv1.Deployment
 			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: opts.cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: opts.cr.Namespace}, &vmauthLB); err != nil {
+				if err := fclient.Get(ctx, types.NamespacedName{Name: o.cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: o.cr.Namespace}, &vmauthLB); err != nil {
 					return err
 				}
 				vmauthLB.Status.Conditions = append(vmauthLB.Status.Conditions, appsv1.DeploymentCondition{
@@ -135,18 +137,19 @@ func TestCreateOrUpdate(t *testing.T) {
 				return nil
 			})
 		}
-		if err := CreateOrUpdate(ctx, fclient, opts.cr); err != nil {
+		err := CreateOrUpdate(ctx, fclient, o.cr)
+		if (err != nil) != o.wantErr {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		if opts.validate != nil {
-			if err := opts.validate(ctx, fclient, opts.cr); err != nil {
+		if o.validate != nil {
+			if err := o.validate(ctx, fclient, o.cr); err != nil {
 				t.Fatalf("unexpected validation error: %s", err)
 			}
 		}
 	}
 
 	// base cluster
-	o := opts{
+	f(opts{
 		cr: &vmv1.VTCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "base",
@@ -211,11 +214,10 @@ func TestCreateOrUpdate(t *testing.T) {
 
 			return nil
 		},
-	}
-	f(o)
+	})
 
 	// with storage retention
-	o = opts{
+	f(opts{
 		cr: &vmv1.VTCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "retention",
@@ -243,6 +245,36 @@ func TestCreateOrUpdate(t *testing.T) {
 
 			return nil
 		},
-	}
-	f(o)
+	})
+
+	// fail with scaledown for storage
+	f(opts{
+		cr: &vmv1.VTCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "scaledown",
+				Namespace: "default",
+			},
+			Spec: vmv1.VTClusterSpec{
+				Select: &vmv1.VTSelect{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				Storage: &vmv1.VTStorage{
+					RetentionPeriod: "1w",
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+					HPA: &vmv1beta1.EmbeddedHPA{
+						MinReplicas: ptr.To(int32(0)),
+						MaxReplicas: 3,
+						Behaviour: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+							ScaleDown: &autoscalingv2.HPAScalingRules{},
+						},
+					},
+				},
+			},
+		},
+		wantErr: true,
+	})
 }

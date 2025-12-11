@@ -220,7 +220,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 
 				},
 			),
-			Entry("with strict security and vm config reloader", "strict-vmreloader-create",
+			Entry("with strict security", "strict-security",
 				&vmv1beta1.VMAlert{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: nsn.Namespace,
@@ -228,9 +228,6 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					Spec: vmv1beta1.VMAlertSpec{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 							UseStrictSecurity: ptr.To(true),
-						},
-						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-							UseVMConfigReloader: ptr.To(true),
 						},
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount:                        ptr.To[int32](1),
@@ -335,16 +332,6 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Namespace: nsn.Namespace,
 					})).To(Equal(int32(3)))
 				}),
-			Entry("by switching to vm config-reloader", "vm-reloader",
-				func(cr *vmv1beta1.VMAlert) {
-					cr.Spec.UseVMConfigReloader = ptr.To(true)
-				},
-				func(cr *vmv1beta1.VMAlert) {
-					Eventually(func() string {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
-				}),
 		)
-	},
-	)
+	})
 })

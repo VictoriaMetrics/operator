@@ -58,10 +58,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader) {
-			if err := createVMAuthSecretAccess(ctx, rclient, cr, prevCR); err != nil {
-				return err
-			}
+		if err := createVMAuthSecretAccess(ctx, rclient, cr, prevCR); err != nil {
+			return err
 		}
 	}
 	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
@@ -230,7 +228,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -311,20 +308,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
-		if !useVMConfigReloader {
-			volumes = append(volumes, corev1.Volume{
-				Name: vmAuthVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: cr.ConfigSecretName(),
-					},
-				},
-			})
-			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      vmAuthVolumeName,
-				MountPath: vmAuthConfigRawFolder,
-			})
-		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "config-out",
 			MountPath: vmAuthConfigFolder,
@@ -332,8 +315,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 
 		configReloader := buildConfigReloaderContainer(cr)
 		operatorContainers = append(operatorContainers, configReloader)
-		initContainers = append(initContainers,
-			buildInitConfigContainer(useVMConfigReloader, cr, configReloader.Args)...)
+		initContainers = append(initContainers, buildInitConfigContainer(cr, configReloader.Args)...)
 		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
 	}
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
@@ -368,9 +350,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		return nil, err
 	}
 
-	if useVMConfigReloader {
-		volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
-	}
+	volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
 	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
 
 	return &corev1.PodTemplateSpec{
@@ -573,17 +553,12 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
 	cfg := config.MustGetBaseConfig()
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
-	if useVMConfigReloader {
-		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
-		if len(cr.Spec.InternalListenPort) == 0 && useProxyProtocol(cr) {
-			args = append(args, "--reload-use-proxy-protocol")
-		}
-		if cfg.EnableTCP6 {
-			args = append(args, "--enableTCP6")
-		}
-	} else {
-		args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))
+	args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
+	if len(cr.Spec.InternalListenPort) == 0 && useProxyProtocol(cr) {
+		args = append(args, "--reload-use-proxy-protocol")
+	}
+	if cfg.EnableTCP6 {
+		args = append(args, "--enableTCP6")
 	}
 
 	reloaderMounts := []corev1.VolumeMount{
@@ -591,12 +566,6 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 			Name:      "config-out",
 			MountPath: vmAuthConfigFolder,
 		},
-	}
-	if !useVMConfigReloader {
-		reloaderMounts = append(reloaderMounts, corev1.VolumeMount{
-			Name:      vmAuthVolumeName,
-			MountPath: vmAuthConfigMountGz,
-		})
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
 		newArgs := args[:0]
@@ -625,58 +594,25 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 				},
 			},
 		},
-		Command:      []string{"/bin/prometheus-config-reloader"},
 		Args:         args,
 		VolumeMounts: reloaderMounts,
 		Resources:    cr.Spec.ConfigReloaderResources,
 	}
 
-	if useVMConfigReloader {
-		configReloader.Command = nil
-		build.AddServiceAccountTokenVolumeMount(&configReloader, &cr.Spec.CommonApplicationDeploymentParams)
-	}
-
-	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &configReloader)
+	build.AddServiceAccountTokenVolumeMount(&configReloader, &cr.Spec.CommonApplicationDeploymentParams)
+	build.AddsPortProbesToConfigReloaderContainer(&configReloader)
 	build.AddConfigReloadAuthKeyToReloader(&configReloader, &cr.Spec.CommonConfigReloaderParams)
 	return configReloader
 }
 
-func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, args []string) []corev1.Container {
+func buildInitConfigContainer(cr *vmv1beta1.VMAuth, args []string) []corev1.Container {
 	baseImage := cr.Spec.ConfigReloaderImageTag
 	resources := cr.Spec.ConfigReloaderResources
-	var initReloader corev1.Container
-	if useVMConfigReloader {
-		initReloader = corev1.Container{
-			Image: baseImage,
-			Name:  "config-init",
-			Args:  append(args, "--only-init-config"),
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "config-out",
-					MountPath: vmAuthConfigFolder,
-				},
-			},
-			Resources: resources,
-		}
-		build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
-
-		return []corev1.Container{initReloader}
-	}
-	initReloader = corev1.Container{
+	initReloader := corev1.Container{
 		Image: baseImage,
 		Name:  "config-init",
-		Command: []string{
-			"/bin/sh",
-		},
-		Args: []string{
-			"-c",
-			fmt.Sprintf("gunzip -c %s > %s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz), path.Join(vmAuthConfigFolder, vmAuthConfigName)),
-		},
+		Args:  append(args, "--only-init-config"),
 		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "config",
-				MountPath: vmAuthConfigMountGz,
-			},
 			{
 				Name:      "config-out",
 				MountPath: vmAuthConfigFolder,
@@ -684,6 +620,7 @@ func buildInitConfigContainer(useVMConfigReloader bool, cr *vmv1beta1.VMAuth, ar
 		},
 		Resources: resources,
 	}
+	build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
 	return []corev1.Container{initReloader}
 }
 

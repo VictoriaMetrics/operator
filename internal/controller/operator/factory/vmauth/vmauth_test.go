@@ -193,9 +193,6 @@ func TestCreateOrUpdate(t *testing.T) {
 				SelectAllByDefault: true,
 			},
 		},
-		c: mutateConf(func(c *config.BaseOperatorConf) {
-			c.UseVMConfigReloader = true
-		}),
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmauth-test", "default"),
 			&vmv1beta1.VMUser{
@@ -258,7 +255,6 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 				Port: "8429",
 			},
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				UseVMConfigReloader:    ptr.To(true),
 				ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
 			},
 		},
@@ -394,10 +390,6 @@ serviceaccountname: vmauth-auth
 				},
 				Port: "8429",
 			},
-			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImageTag: "quay.io/prometheus-operator/prometheus-config-reloader:v1",
-				UseVMConfigReloader:    ptr.To(false),
-			},
 		},
 	}, `
 volumes:
@@ -406,24 +398,19 @@ volumes:
       emptydir:
         medium: ""
         sizelimit: null
-  - name: config
-    volumesource:
-      secret:
-        secretname: vmauth-config-auth
 initcontainers:
   - name: config-init
-    image: quay.io/prometheus-operator/prometheus-config-reloader:v1
-    command:
-      - /bin/sh
+    image: victoriametrics/operator:config-reloader-v0.65.0
+    command: []
     args:
-      - -c
-      - "gunzip -c /opt/vmauth-config-gz/config.yaml.gz > /opt/vmauth/config.yaml"
+      - --reload-url=http://localhost:8429/-/reload
+      - --config-envsubst-file=/opt/vmauth/config.yaml
+      - --config-secret-name=default/vmauth-config-auth
+      - --only-init-config
     resources:
       limits: {}
       requests: {}
     volumemounts:
-      - name: config
-        mountpath: /opt/vmauth-config-gz
       - name: config-out
         mountpath: /opt/vmauth
 containers:
@@ -442,8 +429,6 @@ containers:
       limits: {}
       requests: {}
     volumemounts:
-      - name: config
-        mountpath: /opt/vmauth/config
       - name: config-out
         mountpath: /opt/vmauth
     livenessprobe:
@@ -473,19 +458,45 @@ containers:
       failurethreshold: 10
     terminationmessagepolicy: FallbackToLogsOnError
   - name: config-reloader
-    image: quay.io/prometheus-operator/prometheus-config-reloader:v1
-    command:
-      - /bin/prometheus-config-reloader
+    image: victoriametrics/operator:config-reloader-v0.65.0
+    command: []
     args:
       - --reload-url=http://localhost:8429/-/reload
       - --config-envsubst-file=/opt/vmauth/config.yaml
-      - --config-file=/opt/vmauth-config-gz/config.yaml.gz
+      - --config-secret-name=default/vmauth-config-auth
+    ports:
+      - name: reloader-http
+        containerport: 8435
+        protocol: TCP
     env:
       - name: POD_NAME
         valuefrom:
           fieldref:
             apiversion: ""
             fieldpath: metadata.name
+    livenessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 8435
+          scheme: HTTP
+      timeoutseconds: 1
+      periodseconds: 10
+      successthreshold: 1
+      failurethreshold: 3
+    readinessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 8435
+          scheme: HTTP
+      initialdelayseconds: 5
+      timeoutseconds: 1
+      periodseconds: 10
+      successthreshold: 1
+      failurethreshold: 3
     resources:
       limits: {}
       requests: {}
@@ -493,8 +504,6 @@ containers:
       - name: config-out
         readonly: false
         mountpath: /opt/vmauth
-      - name: config
-        mountpath: /opt/vmauth-config-gz
     terminationmessagepolicy: FallbackToLogsOnError
 serviceaccountname: vmauth-auth
 
@@ -536,10 +545,6 @@ func TestBuildIngressForAuthOk(t *testing.T) {
 				},
 				Port: "8429",
 			},
-			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImageTag: "quay.io/prometheus-operator/prometheus-config-reloader:v1",
-				UseVMConfigReloader:    ptr.To(false),
-			},
 			Ingress: &vmv1beta1.EmbeddedIngress{
 				Host: "example.com",
 			},
@@ -572,10 +577,6 @@ rules:
 					Tag:        "v1.97.1",
 				},
 				Port: "8429",
-			},
-			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImageTag: "quay.io/prometheus-operator/prometheus-config-reloader:v1",
-				UseVMConfigReloader:    ptr.To(false),
 			},
 			Ingress: &vmv1beta1.EmbeddedIngress{
 				Host: "example.com",

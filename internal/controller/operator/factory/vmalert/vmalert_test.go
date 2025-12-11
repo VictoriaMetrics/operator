@@ -857,19 +857,46 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				Namespace: "default",
 				Name:      "base",
 			},
-			Spec: vmv1beta1.VMAlertSpec{
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader: ptr.To(false),
-				},
-			},
 		},
 		cmNames: []string{"cm-0", "cm-1"},
 		expectedContainer: corev1.Container{
 			Name: "config-reloader",
 			Args: []string{
-				"-webhook-url=http://localhost:/-/reload",
-				"-volume-dir=/etc/vmalert/config/cm-0",
-				"-volume-dir=/etc/vmalert/config/cm-1",
+				"--reload-url=http://localhost:/-/reload",
+				"--watched-dir=/etc/vmalert/config/cm-0",
+				"--watched-dir=/etc/vmalert/config/cm-1",
+			},
+			Ports: []corev1.ContainerPort{{
+				Name:          "reloader-http",
+				ContainerPort: 8435,
+				Protocol:      "TCP",
+			}},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				TimeoutSeconds:   1,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				FailureThreshold: 3,
+			},
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				InitialDelaySeconds: 5,
+				TimeoutSeconds:      1,
+				PeriodSeconds:       10,
+				SuccessThreshold:    1,
+				FailureThreshold:    3,
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -891,11 +918,6 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "base",
-			},
-			Spec: vmv1beta1.VMAlertSpec{
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader: ptr.To(true),
-				},
 			},
 		},
 		cmNames: []string{"cm-0"},
@@ -957,9 +979,6 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				Name:      "base",
 			},
 			Spec: vmv1beta1.VMAlertSpec{
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader: ptr.To(true),
-				},
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 					ConfigMaps: []string{"extra-template-1", "extra-template-2"},
 				},

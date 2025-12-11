@@ -38,11 +38,8 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		cfg := config.MustGetBaseConfig()
-		if ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader) {
-			if err := createConfigSecretAccess(ctx, rclient, cr, prevCR); err != nil {
-				return err
-			}
+		if err := createConfigSecretAccess(ctx, rclient, cr, prevCR); err != nil {
+			return err
 		}
 	}
 

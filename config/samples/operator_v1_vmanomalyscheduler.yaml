@@ -1,0 +1,13 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VMAnomalyScheduler
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: sample
+spec:
+  class: periodic
+  params:
+    infer_every: 2m
+    fit_every: 4m
+    fit_window: 5h

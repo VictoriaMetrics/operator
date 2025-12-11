@@ -1,16 +1,91 @@
 package config
 
 import (
+	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+func NewParsedObjects(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) (*ParsedObjects, error) {
+	models, err := selectModels(ctx, rclient, cr)
+	if err != nil {
+		return nil, fmt.Errorf("selecting VMAnomalyModels failed: %w", err)
+	}
+	schedulers, err := selectSchedulers(ctx, rclient, cr)
+	if err != nil {
+		return nil, fmt.Errorf("selecting VMAnomalySchedulers failed: %w", err)
+	}
+	return &ParsedObjects{
+		models:     models,
+		schedulers: schedulers,
+	}, nil
+}
+
+type ParsedObjects struct {
+	models     *build.ChildObjects[*vmv1.VMAnomalyModel]
+	schedulers *build.ChildObjects[*vmv1.VMAnomalyScheduler]
+}
+
+// Load returns vmanomaly config merged with provided secrets
+func (pos *ParsedObjects) Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byte, error) {
+	var data []byte
+	switch {
+	case cr.Spec.ConfigSecret != nil:
+		secret, err := ac.LoadKeyFromSecret(cr.Namespace, cr.Spec.ConfigSecret)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch secret content for anomaly config secret, name=%q: %w", cr.Name, err)
+		}
+		data = []byte(secret)
+	case cr.Spec.ConfigRawYaml != "":
+		data = []byte(cr.Spec.ConfigRawYaml)
+	default:
+		return nil, fmt.Errorf(`either "configRawYaml" or "configSecret" are required`)
+	}
+	c := &config{}
+	err := yaml.UnmarshalStrict(data, c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal anomaly configuration, name=%q: %w", cr.Name, err)
+	}
+	if err = c.override(cr, pos, ac); err != nil {
+		return nil, fmt.Errorf("failed to update secret values with values from anomaly instance, name=%q: %w", cr.Name, err)
+	}
+	if err = c.validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate anomaly configuration, name=%q: %w", cr.Name, err)
+	}
+	output := c.marshal()
+	if data, err = yaml.Marshal(output); err != nil {
+		return nil, fmt.Errorf("failed to marshal anomaly configuration, name=%q: %w", cr.Name, err)
+	}
+	return data, nil
+}
+
+func (pos *ParsedObjects) UpdateStatusesForChildObjects(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject client.Object) error {
+	parentObject := fmt.Sprintf("%s.%s.vmanomaly", cr.Name, cr.Namespace)
+	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
+		// fast path
+		switch obj := childObject.(type) {
+		case *vmv1.VMAnomalyModel:
+			if o := pos.models.Get(obj); o != nil {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMAnomalyModel{o})
+			}
+		case *vmv1.VMAnomalyScheduler:
+			if o := pos.schedulers.Get(obj); o != nil {
+				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMAnomalyScheduler{o})
+			}
+		}
+	}
+	return nil
+}
 
 type header struct {
 	Class  string         `yaml:"class"`
@@ -22,8 +97,8 @@ type validatable interface {
 }
 
 type config struct {
-	Schedulers map[string]*scheduler `yaml:"schedulers,omitempty"`
-	Models     map[string]*model     `yaml:"models,omitempty"`
+	Schedulers map[string]*Scheduler `yaml:"schedulers,omitempty"`
+	Models     map[string]*Model     `yaml:"models,omitempty"`
 	Reader     *reader               `yaml:"reader,omitempty"`
 	Writer     *writer               `yaml:"writer,omitempty"`
 	Monitoring *monitoring           `yaml:"monitoring,omitempty"`
@@ -55,7 +130,7 @@ type settings struct {
 	RestoreState      bool    `yaml:"restore_state,omitempty"`
 }
 
-func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
+func (c *config) override(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsCache) error {
 	crCanonicalName := strings.Join([]string{cr.Namespace, cr.Name}, "/")
 	if cr.Spec.Server != nil {
 		srv := cr.Spec.Server
@@ -71,20 +146,20 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 	}
 	c.Preset = strings.ToLower(c.Preset)
 	if strings.HasPrefix(c.Preset, "ui") {
+		s := new(noopScheduler)
+		s.setClass("noop")
 		c.Reader = &reader{
 			Class: "noop",
 		}
 		c.Writer = &writer{
 			Class: "noop",
 		}
-		c.Schedulers = map[string]*scheduler{
+		c.Schedulers = map[string]*Scheduler{
 			"noop": {
-				validatable: &noopScheduler{
-					Class: "noop",
-				},
+				anomalyScheduler: s,
 			},
 		}
-		c.Models = map[string]*model{
+		c.Models = map[string]*Model{
 			"placeholder": {
 				anomalyModel: &zScoreModel{
 					commonModelParams: commonModelParams{
@@ -165,6 +240,28 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 		}
 		c.Monitoring = &m
 	}
+
+	// override models
+	pos.models.ForEachCollectSkipInvalid(func(m *vmv1.VMAnomalyModel) error {
+		name := fmt.Sprintf("%s-%s", m.Namespace, m.Name)
+		nm, err := modelFromSpec(&m.Spec)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal model=%q: %w", name, err)
+		}
+		c.Models[name] = nm
+		return nil
+	})
+
+	// override schedulers
+	pos.schedulers.ForEachCollectSkipInvalid(func(s *vmv1.VMAnomalyScheduler) error {
+		name := fmt.Sprintf("%s-%s", s.Namespace, s.Name)
+		ns, err := schedulerFromSpec(&s.Spec)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal scheduler=%q: %w", name, err)
+		}
+		c.Schedulers[name] = ns
+		return nil
+	})
 	return nil
 }
 
@@ -316,37 +413,4 @@ func (c *clientConfig) override(cr *vmv1.VMAnomaly, cfg *vmv1.VMAnomalyHTTPClien
 		c.BearerTokenFile = cfg.BearerAuth.TokenFilePath
 	}
 	return nil
-}
-
-// Load returns vmanomaly config merged with provided secrets
-func Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byte, error) {
-	var data []byte
-	switch {
-	case cr.Spec.ConfigSecret != nil:
-		secret, err := ac.LoadKeyFromSecret(cr.Namespace, cr.Spec.ConfigSecret)
-		if err != nil {
-			return nil, fmt.Errorf("cannot fetch secret content for anomaly config secret, name=%q: %w", cr.Name, err)
-		}
-		data = []byte(secret)
-	case cr.Spec.ConfigRawYaml != "":
-		data = []byte(cr.Spec.ConfigRawYaml)
-	default:
-		return nil, fmt.Errorf(`either "configRawYaml" or "configSecret" are required`)
-	}
-	c := &config{}
-	err := yaml.UnmarshalStrict(data, c)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal anomaly configuration, name=%q: %w", cr.Name, err)
-	}
-	if err = c.override(cr, ac); err != nil {
-		return nil, fmt.Errorf("failed to update secret values with values from anomaly instance, name=%q: %w", cr.Name, err)
-	}
-	if err = c.validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate anomaly configuration, name=%q: %w", cr.Name, err)
-	}
-	output := c.marshal()
-	if data, err = yaml.Marshal(output); err != nil {
-		return nil, fmt.Errorf("failed to marshal anomaly configuration, name=%q: %w", cr.Name, err)
-	}
-	return data, nil
 }

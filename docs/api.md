@@ -30,6 +30,8 @@ Package v1 contains API Schema definitions for the operator v1 API group
 - [VLCluster](#vlcluster)
 - [VLSingle](#vlsingle)
 - [VMAnomaly](#vmanomaly)
+- [VMAnomalyModel](#vmanomalymodel)
+- [VMAnomalyScheduler](#vmanomalyscheduler)
 - [VTCluster](#vtcluster)
 - [VTSingle](#vtsingle)
 
@@ -64,6 +66,20 @@ Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec)
 | endpointParams<a href="#oauth2-endpointparams" id="oauth2-endpointparams">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>EndpointParams to append to the token URL |
 | scopes<a href="#oauth2-scopes" id="oauth2-scopes">#</a><br/>_string array_ | _(Optional)_<br/>Scopes used for the token request |
 | tokenURL<a href="#oauth2-tokenurl" id="oauth2-tokenurl">#</a><br/>_string_ | _(Required)_<br/>TokenURL defines URL to fetch the token from |
+
+
+#### Selector
+
+
+
+Selector defines object and namespace selectors
+
+Appears in: [VMAnomalySpec](#vmanomalyspec)
+
+| Field | Description |
+| --- | --- |
+| namespaceSelector<a href="#selector-namespaceselector" id="selector-namespaceselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>NamespaceSelector defines namespaces to be selected for object discovery. |
+| objectSelector<a href="#selector-objectselector" id="selector-objectselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>ObjectSelector defines object to be selected for discovery. |
 
 
 #### SyslogServerSpec
@@ -651,6 +667,38 @@ Appears in: [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnom
 | tlsConfig<a href="#vmanomalyhttpclientspec-tlsconfig" id="vmanomalyhttpclientspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/>TLSConfig defines tls connection configuration |
 
 
+#### VMAnomalyModel
+
+
+
+VMAnomalyModel is the Schema for the vmanomalymodels API.
+
+
+
+| Field | Description |
+| --- | --- |
+| apiVersion<br/>_string_ | (Required)<br/>`operator.victoriametrics.com/v1` |
+| kind<br/>_string_ | (Required)<br/>`VMAnomalyModel` |
+| metadata<a href="#vmanomalymodel-metadata" id="vmanomalymodel-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#objectmeta-v1-meta)_ | _(Required)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
+| spec<a href="#vmanomalymodel-spec" id="vmanomalymodel-spec">#</a><br/>_[VMAnomalyModelSpec](#vmanomalymodelspec)_ | _(Required)_<br/> |
+
+
+#### VMAnomalyModelSpec
+
+
+
+VMAnomalyModelSpec defines the desired state of VMAnomalyModel.
+
+Appears in: [VMAnomalyModel](#vmanomalymodel)
+
+| Field | Description |
+| --- | --- |
+| class<a href="#vmanomalymodelspec-class" id="vmanomalymodelspec-class">#</a><br/>_string_ | _(Required)_<br/>Class defines anomaly detection model class |
+| params<a href="#vmanomalymodelspec-params" id="vmanomalymodelspec-params">#</a><br/>_[RawExtension](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#rawextension-runtime-pkg)_ | _(Required)_<br/>Params defines anomaly detection model params |
+
+
+
+
 #### VMAnomalyMonitoringPullSpec
 
 
@@ -670,7 +718,6 @@ Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
 
 
 VMAnomalyMonitoringPushSpec defines metrics push configuration
-
 
 VMAnomaly uses prometheus text exposition format
 
@@ -731,6 +778,38 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | tz<a href="#vmanomalyreadersspec-tz" id="vmanomalyreadersspec-tz">#</a><br/>_string_ | _(Required)_<br/>Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns |
 
 
+#### VMAnomalyScheduler
+
+
+
+VMAnomalyScheduler is the Schema for the vmanomalyschedulers API.
+
+
+
+| Field | Description |
+| --- | --- |
+| apiVersion<br/>_string_ | (Required)<br/>`operator.victoriametrics.com/v1` |
+| kind<br/>_string_ | (Required)<br/>`VMAnomalyScheduler` |
+| metadata<a href="#vmanomalyscheduler-metadata" id="vmanomalyscheduler-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#objectmeta-v1-meta)_ | _(Required)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
+| spec<a href="#vmanomalyscheduler-spec" id="vmanomalyscheduler-spec">#</a><br/>_[VMAnomalySchedulerSpec](#vmanomalyschedulerspec)_ | _(Required)_<br/> |
+
+
+#### VMAnomalySchedulerSpec
+
+
+
+VMAnomalySchedulerSpec defines the desired state of VMAnomalyScheduler.
+
+Appears in: [VMAnomalyScheduler](#vmanomalyscheduler)
+
+| Field | Description |
+| --- | --- |
+| class<a href="#vmanomalyschedulerspec-class" id="vmanomalyschedulerspec-class">#</a><br/>_string_ | _(Required)_<br/>Class defines anomaly detection scheduler class |
+| params<a href="#vmanomalyschedulerspec-params" id="vmanomalyschedulerspec-params">#</a><br/>_[RawExtension](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#rawextension-runtime-pkg)_ | _(Required)_<br/>Params defines anomaly detection scheduler params |
+
+
+
+
 #### VMAnomalyServerSpec
 
 
@@ -780,6 +859,7 @@ Appears in: [VMAnomaly](#vmanomaly)
 | logLevel<a href="#vmanomalyspec-loglevel" id="vmanomalyspec-loglevel">#</a><br/>_string_ | _(Optional)_<br/>LogLevel for VMAnomaly to be configured with.<br />INFO, WARN, ERROR, FATAL, PANIC |
 | managedMetadata<a href="#vmanomalyspec-managedmetadata" id="vmanomalyspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
 | minReadySeconds<a href="#vmanomalyspec-minreadyseconds" id="vmanomalyspec-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
+| modelSelector<a href="#vmanomalyspec-modelselector" id="vmanomalyspec-modelselector">#</a><br/>_[Selector](#selector)_ | _(Optional)_<br/>ModelSelector defines VMAnomalyModel's object and namespace selectors. |
 | monitoring<a href="#vmanomalyspec-monitoring" id="vmanomalyspec-monitoring">#</a><br/>_[VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)_ | _(Required)_<br/>Monitoring configures how expose anomaly metrics<br />See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/ |
 | nodeSelector<a href="#vmanomalyspec-nodeselector" id="vmanomalyspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
 | paused<a href="#vmanomalyspec-paused" id="vmanomalyspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
@@ -796,8 +876,10 @@ Appears in: [VMAnomaly](#vmanomaly)
 | rollingUpdateStrategy<a href="#vmanomalyspec-rollingupdatestrategy" id="vmanomalyspec-rollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>RollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
 | runtimeClassName<a href="#vmanomalyspec-runtimeclassname" id="vmanomalyspec-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
 | schedulerName<a href="#vmanomalyspec-schedulername" id="vmanomalyspec-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
+| schedulerSelector<a href="#vmanomalyspec-schedulerselector" id="vmanomalyspec-schedulerselector">#</a><br/>_[Selector](#selector)_ | _(Optional)_<br/>SchedulerSelector defines VMAnomalyScheduler's object and namespace selectors. |
 | secrets<a href="#vmanomalyspec-secrets" id="vmanomalyspec-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
 | securityContext<a href="#vmanomalyspec-securitycontext" id="vmanomalyspec-securitycontext">#</a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
+| selectAllByDefault<a href="#vmanomalyspec-selectallbydefault" id="vmanomalyspec-selectallbydefault">#</a><br/>_boolean_ | _(Optional)_<br/>SelectAllByDefault changes default behavior for empty CRD selectors, such ModelSelector and SchedulerSelector.<br />with selectAllByDefault: true and empty object and namespace selectors<br />Operator selects all existing VMAnomalyModel and VMAnomalyScheduler objects<br />with selectAllByDefault: false - selects nothing |
 | server<a href="#vmanomalyspec-server" id="vmanomalyspec-server">#</a><br/>_[VMAnomalyServerSpec](#vmanomalyserverspec)_ | _(Optional)_<br/>Server configures HTTP server for VMAnomaly |
 | serviceAccountName<a href="#vmanomalyspec-serviceaccountname" id="vmanomalyspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | serviceScrapeSpec<a href="#vmanomalyspec-servicescrapespec" id="vmanomalyspec-servicescrapespec">#</a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vmanomaly VMPodScrape spec |
@@ -1604,7 +1686,7 @@ Appears in: [CommonScrapeParams](#commonscrapeparams), [VMAgentSpec](#vmagentspe
 
 Condition defines status condition of the resource
 
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
+Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyModelStatus](#vmanomalymodelstatus), [VMAnomalySchedulerStatus](#vmanomalyschedulerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
 
 | Field | Description |
 | --- | --- |
@@ -1627,6 +1709,7 @@ Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
 | Field | Description |
 | --- | --- |
 | key<a href="#configmapkeyreference-key" id="configmapkeyreference-key">#</a><br/>_string_ | _(Required)_<br/>The ConfigMap key to refer to. |
+| name<a href="#configmapkeyreference-name" id="configmapkeyreference-name">#</a><br/>_string_ | _(Optional)_<br/>Name of the referent.<br />This field is effectively required, but due to backwards compatibility is<br />allowed to be empty. Instances of this type with an empty value here are<br />almost certainly wrong.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names |
 
 
 #### ConsulSDConfig
@@ -1835,7 +1918,6 @@ Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage
 
 EmbeddedHTTPRoute describes httproute configuration options.
 
-
 Requires gateway-controller CRD installed and VM_GATEWAY_API_ENABLED=true env var
 See https://gateway-api.sigs.k8s.io/guides/#installing-a-gateway-controller
 
@@ -1917,7 +1999,7 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlse
 | maxUnavailable<a href="#embeddedpoddisruptionbudgetspec-maxunavailable" id="embeddedpoddisruptionbudgetspec-maxunavailable">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#intorstring-intstr-util)_ | _(Optional)_<br/>An eviction is allowed if at most "maxUnavailable" pods selected by<br />"selector" are unavailable after the eviction, i.e. even in absence of<br />the evicted pod. For example, one can prevent all voluntary evictions<br />by specifying 0. This is a mutually exclusive setting with "minAvailable". |
 | minAvailable<a href="#embeddedpoddisruptionbudgetspec-minavailable" id="embeddedpoddisruptionbudgetspec-minavailable">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#intorstring-intstr-util)_ | _(Optional)_<br/>An eviction is allowed if at least "minAvailable" pods selected by<br />"selector" will still be available after the eviction, i.e. even in the<br />absence of the evicted pod.  So for example you can prevent all voluntary<br />evictions by specifying "100%". |
 | selectorLabels<a href="#embeddedpoddisruptionbudgetspec-selectorlabels" id="embeddedpoddisruptionbudgetspec-selectorlabels">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>replaces default labels selector generated by operator<br />it's useful when you need to create custom budget |
-| unhealthyPodEvictionPolicy<a href="#embeddedpoddisruptionbudgetspec-unhealthypodevictionpolicy" id="embeddedpoddisruptionbudgetspec-unhealthypodevictionpolicy">#</a><br/>_string_ | _(Optional)_<br/>UnhealthyPodEvictionPolicy defines the criteria for when unhealthy pods<br /><br />Valid policies are IfHealthyBudget and AlwaysAllow.<br />If no policy is specified, the default behavior will be used,<br />which corresponds to the IfHealthyBudget policy.<br />Available from operator v0.64.0 |
+| unhealthyPodEvictionPolicy<a href="#embeddedpoddisruptionbudgetspec-unhealthypodevictionpolicy" id="embeddedpoddisruptionbudgetspec-unhealthypodevictionpolicy">#</a><br/>_string_ | _(Optional)_<br/>UnhealthyPodEvictionPolicy defines the criteria for when unhealthy pods<br />Valid policies are IfHealthyBudget and AlwaysAllow.<br />If no policy is specified, the default behavior will be used,<br />which corresponds to the IfHealthyBudget policy.<br />Available from operator v0.64.0 |
 
 
 #### EmbeddedProbes
@@ -2068,7 +2150,6 @@ GCESDConfig configures scrape targets from GCP GCE instances.
 The private IP address is used by default, but may be changed to
 the public IP address with relabeling.
 See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#gce_sd_configs)
-
 
 The GCE service discovery will load the Google Cloud credentials
 from the file specified by the GOOGLE_APPLICATION_CREDENTIALS environment variable.
@@ -2856,7 +2937,7 @@ Appears in: [CommonScrapeParams](#commonscrapeparams), [VMAgentSpec](#vmagentspe
 | basicAuth<a href="#scrapeclass-basicauth" id="scrapeclass-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication |
 | bearerTokenFile<a href="#scrapeclass-bearertokenfile" id="scrapeclass-bearertokenfile">#</a><br/>_string_ | _(Optional)_<br/>File to read bearer token for scraping targets. |
 | bearerTokenSecret<a href="#scrapeclass-bearertokensecret" id="scrapeclass-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. |
-| default<a href="#scrapeclass-default" id="scrapeclass-default">#</a><br/>_boolean_ | _(Optional)_<br/>default defines that the scrape applies to all scrape objects that<br />don't configure an explicit scrape class name.<br /><br />Only one scrape class can be set as the default. |
+| default<a href="#scrapeclass-default" id="scrapeclass-default">#</a><br/>_boolean_ | _(Optional)_<br/>default defines that the scrape applies to all scrape objects that<br />don't configure an explicit scrape class name.<br />Only one scrape class can be set as the default. |
 | metricRelabelConfigs<a href="#scrapeclass-metricrelabelconfigs" id="scrapeclass-metricrelabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>MetricRelabelConfigs to apply to samples after scrapping. |
 | name<a href="#scrapeclass-name" id="scrapeclass-name">#</a><br/>_string_ | _(Required)_<br/>name of the scrape class. |
 | oauth2<a href="#scrapeclass-oauth2" id="scrapeclass-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
@@ -3074,7 +3155,7 @@ Appears in: [TargetRef](#targetref)
 
 StatusMetadata holds metadata of application update status
 
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
+Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyModelStatus](#vmanomalymodelstatus), [VMAnomalySchedulerStatus](#vmanomalyschedulerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
 
 | Field | Description |
 | --- | --- |
@@ -3132,9 +3213,9 @@ Appears in: [StreamAggrConfig](#streamaggrconfig)
 
 | Field | Description |
 | --- | --- |
-| by<a href="#streamaggrrule-by" id="streamaggrrule-by">#</a><br/>_string array_ | _(Optional)_<br/>By is an optional list of labels for grouping input series.<br /><br />See also Without.<br /><br />If neither By nor Without are set, then the Outputs are calculated<br />individually per each input time series. |
+| by<a href="#streamaggrrule-by" id="streamaggrrule-by">#</a><br/>_string array_ | _(Optional)_<br/>By is an optional list of labels for grouping input series.<br />See also Without.<br />If neither By nor Without are set, then the Outputs are calculated<br />individually per each input time series. |
 | dedup_interval<a href="#streamaggrrule-dedup_interval" id="streamaggrrule-dedup_interval">#</a><br/>_string_ | _(Optional)_<br/>DedupInterval is an optional interval for deduplication. |
-| drop_input_labels<a href="#streamaggrrule-drop_input_labels" id="streamaggrrule-drop_input_labels">#</a><br/>_string_ | _(Optional)_<br/>DropInputLabels is an optional list with labels, which must be dropped before further processing of input samples.<br /><br />Labels are dropped before de-duplication and aggregation. |
+| drop_input_labels<a href="#streamaggrrule-drop_input_labels" id="streamaggrrule-drop_input_labels">#</a><br/>_string_ | _(Optional)_<br/>DropInputLabels is an optional list with labels, which must be dropped before further processing of input samples.<br />Labels are dropped before de-duplication and aggregation. |
 | enable_windows<a href="#streamaggrrule-enable_windows" id="streamaggrrule-enable_windows">#</a><br/>_boolean_ | _(Optional)_<br/>EnableWindows enables aggregating data in separate windows |
 | flush_on_shutdown<a href="#streamaggrrule-flush_on_shutdown" id="streamaggrrule-flush_on_shutdown">#</a><br/>_boolean_ | _(Optional)_<br/>FlushOnShutdown defines whether to flush the aggregation state on process termination<br />or config reload. Is `false` by default.<br />It is not recommended changing this setting, unless unfinished aggregations states<br />are preferred to missing data points. |
 | ignoreFirstSampleInterval<a href="#streamaggrrule-ignorefirstsampleinterval" id="streamaggrrule-ignorefirstsampleinterval">#</a><br/>_string_ | _(Required)_<br/>IgnoreFirstSampleInterval sets interval for total and prometheus_total during which first samples will be ignored |
@@ -3143,12 +3224,12 @@ Appears in: [StreamAggrConfig](#streamaggrconfig)
 | input_relabel_configs<a href="#streamaggrrule-input_relabel_configs" id="streamaggrrule-input_relabel_configs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>InputRelabelConfigs is an optional relabeling rules, which are applied on the input<br />before aggregation. |
 | interval<a href="#streamaggrrule-interval" id="streamaggrrule-interval">#</a><br/>_string_ | _(Required)_<br/>Interval is the interval between aggregations. |
 | keep_metric_names<a href="#streamaggrrule-keep_metric_names" id="streamaggrrule-keep_metric_names">#</a><br/>_boolean_ | _(Optional)_<br/>KeepMetricNames instructs to leave metric names as is for the output time series without adding any suffix. |
-| match<a href="#streamaggrrule-match" id="streamaggrrule-match">#</a><br/>_[StringOrArray](#stringorarray)_ | _(Optional)_<br/>Match is a label selector (or list of label selectors) for filtering time series for the given selector.<br /><br />If the match isn't set, then all the input time series are processed. |
+| match<a href="#streamaggrrule-match" id="streamaggrrule-match">#</a><br/>_[StringOrArray](#stringorarray)_ | _(Optional)_<br/>Match is a label selector (or list of label selectors) for filtering time series for the given selector.<br />If the match isn't set, then all the input time series are processed. |
 | no_align_flush_to_interval<a href="#streamaggrrule-no_align_flush_to_interval" id="streamaggrrule-no_align_flush_to_interval">#</a><br/>_boolean_ | _(Optional)_<br/>NoAlignFlushToInterval disables aligning of flushes to multiples of Interval.<br />By default flushes are aligned to Interval. |
 | output_relabel_configs<a href="#streamaggrrule-output_relabel_configs" id="streamaggrrule-output_relabel_configs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>OutputRelabelConfigs is an optional relabeling rules, which are applied<br />on the aggregated output before being sent to remote storage. |
-| outputs<a href="#streamaggrrule-outputs" id="streamaggrrule-outputs">#</a><br/>_string array_ | _(Required)_<br/>Outputs is a list of output aggregate functions to produce.<br /><br />The following names are allowed:<br /><br />- total - aggregates input counters<br />- increase - counts the increase over input counters<br />- count_series - counts the input series<br />- count_samples - counts the input samples<br />- sum_samples - sums the input samples<br />- last - the last biggest sample value<br />- min - the minimum sample value<br />- max - the maximum sample value<br />- avg - the average value across all the samples<br />- stddev - standard deviation across all the samples<br />- stdvar - standard variance across all the samples<br />- histogram_bucket - creates VictoriaMetrics histogram for input samples<br />- quantiles(phi1, ..., phiN) - quantiles' estimation for phi in the range [0..1]<br /><br />The output time series will have the following names:<br /><br />  input_name:aggr_<interval>_<output> |
+| outputs<a href="#streamaggrrule-outputs" id="streamaggrrule-outputs">#</a><br/>_string array_ | _(Required)_<br/>Outputs is a list of output aggregate functions to produce.<br />The following names are allowed:<br />- total - aggregates input counters<br />- increase - counts the increase over input counters<br />- count_series - counts the input series<br />- count_samples - counts the input samples<br />- sum_samples - sums the input samples<br />- last - the last biggest sample value<br />- min - the minimum sample value<br />- max - the maximum sample value<br />- avg - the average value across all the samples<br />- stddev - standard deviation across all the samples<br />- stdvar - standard variance across all the samples<br />- histogram_bucket - creates VictoriaMetrics histogram for input samples<br />- quantiles(phi1, ..., phiN) - quantiles' estimation for phi in the range [0..1]<br />The output time series will have the following names:<br />  input_name:aggr_<interval>_<output> |
 | staleness_interval<a href="#streamaggrrule-staleness_interval" id="streamaggrrule-staleness_interval">#</a><br/>_string_ | _(Optional)_<br/>Staleness interval is interval after which the series state will be reset if no samples have been sent during it.<br />The parameter is only relevant for outputs: total, total_prometheus, increase, increase_prometheus and histogram_bucket. |
-| without<a href="#streamaggrrule-without" id="streamaggrrule-without">#</a><br/>_string array_ | _(Optional)_<br/>Without is an optional list of labels, which must be excluded when grouping input series.<br /><br />See also By.<br /><br />If neither By nor Without are set, then the Outputs are calculated<br />individually per each input time series. |
+| without<a href="#streamaggrrule-without" id="streamaggrrule-without">#</a><br/>_string array_ | _(Optional)_<br/>Without is an optional list of labels, which must be excluded when grouping input series.<br />See also By.<br />If neither By nor Without are set, then the Outputs are calculated<br />individually per each input time series. |
 
 
 #### StringOrArray
@@ -3413,7 +3494,7 @@ _Underlying type:_ _string_
 
 UpdateStatus defines status for application
 
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
+Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyModelStatus](#vmanomalymodelstatus), [VMAnomalySchedulerStatus](#vmanomalyschedulerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
 
 
 
@@ -4109,7 +4190,7 @@ Appears in: [VMAuth](#vmauth)
 | dnsConfig<a href="#vmauthspec-dnsconfig" id="vmauthspec-dnsconfig">#</a><br/>_[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#poddnsconfig-v1-core)_ | _(Optional)_<br/>Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. |
 | dnsPolicy<a href="#vmauthspec-dnspolicy" id="vmauthspec-dnspolicy">#</a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
 | drop_src_path_prefix_parts<a href="#vmauthspec-drop_src_path_prefix_parts" id="vmauthspec-drop_src_path_prefix_parts">#</a><br/>_integer_ | _(Optional)_<br/>DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) for more details. |
-| dump_request_on_errors<a href="#vmauthspec-dump_request_on_errors" id="vmauthspec-dump_request_on_errors">#</a><br/>_boolean_ | _(Optional)_<br/>DumpRequestOnErrors instructs vmauth to return detailed request params to the client<br />if routing rules don't allow to forward request to the backends.<br />Useful for debugging `src_hosts` and `src_headers` based routing rules<br /><br />available since v1.107.0 vmauth version |
+| dump_request_on_errors<a href="#vmauthspec-dump_request_on_errors" id="vmauthspec-dump_request_on_errors">#</a><br/>_boolean_ | _(Optional)_<br/>DumpRequestOnErrors instructs vmauth to return detailed request params to the client<br />if routing rules don't allow to forward request to the backends.<br />Useful for debugging `src_hosts` and `src_headers` based routing rules<br />available since v1.107.0 vmauth version |
 | externalConfig<a href="#vmauthspec-externalconfig" id="vmauthspec-externalconfig">#</a><br/>_[ExternalConfig](#externalconfig)_ | _(Optional)_<br/>ExternalConfig defines a source of external VMAuth configuration.<br />If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders |
 | extraArgs<a href="#vmauthspec-extraargs" id="vmauthspec-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | extraEnvs<a href="#vmauthspec-extraenvs" id="vmauthspec-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
@@ -4158,7 +4239,7 @@ Appears in: [VMAuth](#vmauth)
 | tlsConfig<a href="#vmauthspec-tlsconfig" id="vmauthspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig defines tls configuration for the backend connection |
 | tolerations<a href="#vmauthspec-tolerations" id="vmauthspec-tolerations">#</a><br/>_[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#toleration-v1-core) array_ | _(Optional)_<br/>Tolerations If specified, the pod's tolerations. |
 | topologySpreadConstraints<a href="#vmauthspec-topologyspreadconstraints" id="vmauthspec-topologyspreadconstraints">#</a><br/>_[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#topologyspreadconstraint-v1-core) array_ | _(Optional)_<br/>TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ |
-| unauthorizedAccessConfig<a href="#vmauthspec-unauthorizedaccessconfig" id="vmauthspec-unauthorizedaccessconfig">#</a><br/>_[UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap) array_ | _(Required)_<br/>UnauthorizedAccessConfig configures access for un authorized users<br /><br />Deprecated: use unauthorizedUserAccessSpec instead<br />will be removed at v1.0 release |
+| unauthorizedAccessConfig<a href="#vmauthspec-unauthorizedaccessconfig" id="vmauthspec-unauthorizedaccessconfig">#</a><br/>_[UnauthorizedAccessConfigURLMap](#unauthorizedaccessconfigurlmap) array_ | _(Required)_<br/>UnauthorizedAccessConfig configures access for un authorized users<br />Deprecated: use unauthorizedUserAccessSpec instead<br />will be removed at v1.0 release |
 | unauthorizedUserAccessSpec<a href="#vmauthspec-unauthorizeduseraccessspec" id="vmauthspec-unauthorizeduseraccessspec">#</a><br/>_[VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec)_ | _(Optional)_<br/>UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config |
 | updateStrategy<a href="#vmauthspec-updatestrategy" id="vmauthspec-updatestrategy">#</a><br/>_[DeploymentStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#deploymentstrategytype-v1-apps)_ | _(Optional)_<br/>UpdateStrategy - overrides default update strategy.<br />Available from operator v0.64.0 |
 | useDefaultResources<a href="#vmauthspec-usedefaultresources" id="vmauthspec-usedefaultresources">#</a><br/>_boolean_ | _(Optional)_<br/>UseDefaultResources controls resource settings<br />By default, operator sets built-in resource requirements |
@@ -4186,7 +4267,7 @@ Appears in: [VMAuthSpec](#vmauthspec)
 | default_url<a href="#vmauthunauthorizeduseraccessspec-default_url" id="vmauthunauthorizeduseraccessspec-default_url">#</a><br/>_string array_ | _(Required)_<br/>DefaultURLs backend url for non-matching paths filter<br />usually used for default backend with error message |
 | discover_backend_ips<a href="#vmauthunauthorizeduseraccessspec-discover_backend_ips" id="vmauthunauthorizeduseraccessspec-discover_backend_ips">#</a><br/>_boolean_ | _(Required)_<br/>DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. |
 | drop_src_path_prefix_parts<a href="#vmauthunauthorizeduseraccessspec-drop_src_path_prefix_parts" id="vmauthunauthorizeduseraccessspec-drop_src_path_prefix_parts">#</a><br/>_integer_ | _(Optional)_<br/>DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) for more details. |
-| dump_request_on_errors<a href="#vmauthunauthorizeduseraccessspec-dump_request_on_errors" id="vmauthunauthorizeduseraccessspec-dump_request_on_errors">#</a><br/>_boolean_ | _(Optional)_<br/>DumpRequestOnErrors instructs vmauth to return detailed request params to the client<br />if routing rules don't allow to forward request to the backends.<br />Useful for debugging `src_hosts` and `src_headers` based routing rules<br /><br />available since v1.107.0 vmauth version |
+| dump_request_on_errors<a href="#vmauthunauthorizeduseraccessspec-dump_request_on_errors" id="vmauthunauthorizeduseraccessspec-dump_request_on_errors">#</a><br/>_boolean_ | _(Optional)_<br/>DumpRequestOnErrors instructs vmauth to return detailed request params to the client<br />if routing rules don't allow to forward request to the backends.<br />Useful for debugging `src_hosts` and `src_headers` based routing rules<br />available since v1.107.0 vmauth version |
 | headers<a href="#vmauthunauthorizeduseraccessspec-headers" id="vmauthunauthorizeduseraccessspec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth |
 | ip_filters<a href="#vmauthunauthorizeduseraccessspec-ip_filters" id="vmauthunauthorizeduseraccessspec-ip_filters">#</a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters) |
 | load_balancing_policy<a href="#vmauthunauthorizeduseraccessspec-load_balancing_policy" id="vmauthunauthorizeduseraccessspec-load_balancing_policy">#</a><br/>_string_ | _(Optional)_<br/>LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded") |
@@ -4988,7 +5069,7 @@ Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmaut
 | default_url<a href="#vmuserconfigoptions-default_url" id="vmuserconfigoptions-default_url">#</a><br/>_string array_ | _(Required)_<br/>DefaultURLs backend url for non-matching paths filter<br />usually used for default backend with error message |
 | discover_backend_ips<a href="#vmuserconfigoptions-discover_backend_ips" id="vmuserconfigoptions-discover_backend_ips">#</a><br/>_boolean_ | _(Required)_<br/>DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. |
 | drop_src_path_prefix_parts<a href="#vmuserconfigoptions-drop_src_path_prefix_parts" id="vmuserconfigoptions-drop_src_path_prefix_parts">#</a><br/>_integer_ | _(Optional)_<br/>DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) for more details. |
-| dump_request_on_errors<a href="#vmuserconfigoptions-dump_request_on_errors" id="vmuserconfigoptions-dump_request_on_errors">#</a><br/>_boolean_ | _(Optional)_<br/>DumpRequestOnErrors instructs vmauth to return detailed request params to the client<br />if routing rules don't allow to forward request to the backends.<br />Useful for debugging `src_hosts` and `src_headers` based routing rules<br /><br />available since v1.107.0 vmauth version |
+| dump_request_on_errors<a href="#vmuserconfigoptions-dump_request_on_errors" id="vmuserconfigoptions-dump_request_on_errors">#</a><br/>_boolean_ | _(Optional)_<br/>DumpRequestOnErrors instructs vmauth to return detailed request params to the client<br />if routing rules don't allow to forward request to the backends.<br />Useful for debugging `src_hosts` and `src_headers` based routing rules<br />available since v1.107.0 vmauth version |
 | headers<a href="#vmuserconfigoptions-headers" id="vmuserconfigoptions-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth |
 | ip_filters<a href="#vmuserconfigoptions-ip_filters" id="vmuserconfigoptions-ip_filters">#</a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters) |
 | load_balancing_policy<a href="#vmuserconfigoptions-load_balancing_policy" id="vmuserconfigoptions-load_balancing_policy">#</a><br/>_string_ | _(Optional)_<br/>LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded") |
@@ -5028,7 +5109,7 @@ Appears in: [VMUser](#vmuser)
 | disable_secret_creation<a href="#vmuserspec-disable_secret_creation" id="vmuserspec-disable_secret_creation">#</a><br/>_boolean_ | _(Required)_<br/>DisableSecretCreation skips related secret creation for vmuser |
 | discover_backend_ips<a href="#vmuserspec-discover_backend_ips" id="vmuserspec-discover_backend_ips">#</a><br/>_boolean_ | _(Required)_<br/>DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. |
 | drop_src_path_prefix_parts<a href="#vmuserspec-drop_src_path_prefix_parts" id="vmuserspec-drop_src_path_prefix_parts">#</a><br/>_integer_ | _(Optional)_<br/>DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) for more details. |
-| dump_request_on_errors<a href="#vmuserspec-dump_request_on_errors" id="vmuserspec-dump_request_on_errors">#</a><br/>_boolean_ | _(Optional)_<br/>DumpRequestOnErrors instructs vmauth to return detailed request params to the client<br />if routing rules don't allow to forward request to the backends.<br />Useful for debugging `src_hosts` and `src_headers` based routing rules<br /><br />available since v1.107.0 vmauth version |
+| dump_request_on_errors<a href="#vmuserspec-dump_request_on_errors" id="vmuserspec-dump_request_on_errors">#</a><br/>_boolean_ | _(Optional)_<br/>DumpRequestOnErrors instructs vmauth to return detailed request params to the client<br />if routing rules don't allow to forward request to the backends.<br />Useful for debugging `src_hosts` and `src_headers` based routing rules<br />available since v1.107.0 vmauth version |
 | generatePassword<a href="#vmuserspec-generatepassword" id="vmuserspec-generatepassword">#</a><br/>_boolean_ | _(Optional)_<br/>GeneratePassword instructs operator to generate password for user<br />if spec.password if empty. |
 | headers<a href="#vmuserspec-headers" id="vmuserspec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth |
 | ip_filters<a href="#vmuserspec-ip_filters" id="vmuserspec-ip_filters">#</a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters) |

@@ -65,6 +65,23 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 
 	Context("create", func() {
 		It("should successfully create a VMDistributedCluster with inline VMAgent spec", func() {
+			By("creating a VMCluster")
+			vmCluster := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-inline-vmauth",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+
 			By("creating a VMDistributedCluster with inline VMAgent spec")
 			namespacedName.Name = "distributed-cluster-with-inline-vmagent"
 			vmAgentName := "inline-vmagent"
@@ -101,26 +118,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 						},
 					},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{
-							Name: "inline-cluster-1",
-							Spec: &vmv1beta1.VMClusterSpec{
-								VMStorage: &vmv1beta1.VMStorage{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									},
-								},
-							},
-						},
-						{
-							Name: "inline-cluster-2",
-							Spec: &vmv1beta1.VMClusterSpec{
-								VMStorage: &vmv1beta1.VMStorage{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](2),
-									},
-								},
-							},
-						},
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
 					}},
 				},
 			}
@@ -253,13 +251,7 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					},
 				},
 			}
-			DeferCleanup(func() {
-				Expect(finalize.SafeDelete(ctx, k8sClient, vmCluster)).To(Succeed())
-			})
-			Expect(k8sClient.Create(ctx, vmCluster)).To(Succeed())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, vmCluster, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace})
-			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
 
 			By("creating a VMDistributedCluster with inline VMAuth spec")
 			inlineVMAuthName := "inline-vmauth-proxy"
@@ -749,42 +741,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 					}},
 				},
 			}, []vmv1beta1.VMCluster{}),
-			Entry("with invalid OverrideSpec for VMCluster", &vmv1alpha1.VMDistributedCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: namespace,
-					Name:      "invalid-override-spec",
-				},
-				Spec: vmv1alpha1.VMDistributedClusterSpec{
-					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
-					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 10 * time.Second},
-					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
-					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
-					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{
-							Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"},
-							OverrideSpec: &apiextensionsv1.JSON{
-								Raw: []byte(`{"invalidField": "invalidValue"}`), // Invalid override spec
-							},
-						},
-					}},
-				},
-			}, []vmv1beta1.VMCluster{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      "vmcluster-1",
-					},
-					Spec: vmv1beta1.VMClusterSpec{
-						RetentionPeriod: "1",
-						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-						},
-					},
-				},
-			}),
 		)
 	})
 

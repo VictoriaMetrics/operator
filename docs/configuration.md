@@ -252,7 +252,7 @@ In [Helm charts](https://docs.victoriametrics.com/helm/) some important configur
 
 For possible values refer to [parameters](https://docs.victoriametrics.com/helm/victoria-metrics-k8s-stack/#parameters).
 
-Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) to configure operator behaviour.
+Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) to configure operator behavior.
 ENV variables can be set in the `victoria-metrics-operator.env` section.
 
 ```yaml
@@ -327,7 +327,7 @@ victoria-metrics-operator:
 
 For possible values refer to [parameters](https://docs.victoriametrics.com/helm/victoria-metrics-operator/#parameters).
 
-Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) to configure operator behaviour.
+Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/configuration/#environment-variables) to configure operator behavior.
 ENV variables can be set in the `env` section.
 
 ```yaml
@@ -420,7 +420,7 @@ With this option set all VM components and config reloaders become IPv6-compatib
 By default, operator creates [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) 
 object for each component that it manages.
 
-You can disable this behaviour with `VM_DISABLESELFSERVICESCRAPECREATION` environment variable:
+You can disable this behavior with `VM_DISABLESELFSERVICESCRAPECREATION` environment variable:
 
 ```shell
 VM_DISABLESELFSERVICESCRAPECREATION=false

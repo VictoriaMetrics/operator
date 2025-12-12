@@ -59,13 +59,13 @@ type VMAlertSpec struct {
 	// RuleSelector selector to select which VMRules to mount for loading alerting
 	// rules from.
 	// Works in combination with NamespaceSelector.
-	// If both nil - behaviour controlled by selectAllByDefault
+	// If both nil - behavior controlled by selectAllByDefault
 	// NamespaceSelector nil - only objects at VMAlert namespace.
 	// +optional
 	RuleSelector *metav1.LabelSelector `json:"ruleSelector,omitempty"`
 	// RuleNamespaceSelector to be selected for VMRules discovery.
 	// Works in combination with Selector.
-	// If both nil - behaviour controlled by selectAllByDefault
+	// If both nil - behavior controlled by selectAllByDefault
 	// NamespaceSelector nil - only objects at VMAlert namespace.
 	// +optional
 	RuleNamespaceSelector *metav1.LabelSelector `json:"ruleNamespaceSelector,omitempty"`

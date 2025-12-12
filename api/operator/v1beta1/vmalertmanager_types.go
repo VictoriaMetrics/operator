@@ -152,14 +152,14 @@ type VMAlertmanagerSpec struct {
 	// Works in combination with NamespaceSelector.
 	// NamespaceSelector nil - only objects at VMAlertmanager namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
-	// If both nil - behaviour controlled by selectAllByDefault
+	// If both nil - behavior controlled by selectAllByDefault
 	// +optional
 	ConfigSelector *metav1.LabelSelector `json:"configSelector,omitempty"`
 	//  ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.
 	// Works in combination with Selector.
 	// NamespaceSelector nil - only objects at VMAlertmanager namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
-	// If both nil - behaviour controlled by selectAllByDefault
+	// If both nil - behavior controlled by selectAllByDefault
 	// +optional
 	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
 

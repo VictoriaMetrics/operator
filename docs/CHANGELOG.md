@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 **Update note 1: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.**
+**Update note 2: added `spec.hpa.behavior` and deprecated field with typo `spec.hpa.behaviour`
 
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support `namespace` parameter in `attach_metadata` section for all scrape configurations. See [#1654](https://github.com/VictoriaMetrics/operator/issues/1654).
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent): support logs collection. See [#1501](https://github.com/VictoriaMetrics/operator/issues/1501).
@@ -362,7 +363,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/): add global env variables `VM_CONFIG_RELOADER_LIMIT_CPU` and `VM_CONFIG_RELOADER_LIMIT_MEMORY` with `unlimited` as default value. It controls global limits for config-reloader containers. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/): add global env variables `VM_CONFIG_RELOADER_REQUEST_CPU` and `VM_CONFIG_RELOADER_REQUEST_MEMORY` with empty as default value. It controls global requests for config-reloader containers. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details. All per resource config-reloader requests env variables are now deprecated.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): introduce `daemonSetMode` as a beta feature. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1103) and this [docs](https://docs.victoriametrics.com/operator/resources/vmagent/#daemonSet-mode) for details.
-* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce Kubernetes API server load on large scale by removing `selectors` from `VMPodscrape` `kubernetes_sd_configs`. Add new field `VMAgent.spec.enableKubernetesAPISelectors`, which restores original behaviour. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details.
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce Kubernetes API server load on large scale by removing `selectors` from `VMPodscrape` `kubernetes_sd_configs`. Add new field `VMAgent.spec.enableKubernetesAPISelectors`, which restores original behavior. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1283) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): allow to define `remoteWrite.MaxDiskUsage` as integer and adds validation to it. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1256) for details.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): allow to define `remoteWriteSettings.maxDiskUsagePerURL` as string with bytes suffix and adds validation to it. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1256) for details.
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `content`, `username` and `avatar_url` to `discord_configs` definition. It's supported by [alertmanager v0.28.0+](https://github.com/prometheus/alertmanager/releases/tag/v0.28.0). See [this commit](https://github.com/VictoriaMetrics/operator/commit/5dccc92f99add9b3fc687619581b1901936b27b5) for details.
@@ -619,7 +620,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 - [operator](https://docs.victoriametrics.com/operator/): reduces load on kubernetes api-server. See this commits: [commit-0](https://github.com/VictoriaMetrics/operator/commit/a0145b8a89dd5bb9051f8d4359b6a70c1d1a95ce), [commit-1](https://github.com/VictoriaMetrics/operator/commit/e2fbbd3e37146670f656d700ad0f64b2c299b0a0), [commit-2](https://github.com/VictoriaMetrics/operator/commit/184ba19a5f1d10dc2ac1bf018b2729f64e2a8c25).
 - [operator](https://docs.victoriametrics.com/operator/): enables client cache back for `secrets` and `configmaps`. Adds new flag `-controller.disableCacheFor=secret,configmap` to disable it if needed.
 - [operator](https://docs.victoriametrics.com/operator/): made webhook port configurable. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1106) for details.
-- [operator](https://docs.victoriametrics.com/operator/): operator trims spaces from `Secret` and `Configmap` values by default. This behaviour could be changed with flag `disableSecretKeySpaceTrim`. Related [issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6986).
+- [operator](https://docs.victoriametrics.com/operator/): operator trims spaces from `Secret` and `Configmap` values by default. This behavior could be changed with flag `disableSecretKeySpaceTrim`. Related [issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6986).
 - [operator](https://docs.victoriametrics.com/operator/): expose again only command-line flags related to the operator. Release [v0.45.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.45.0) added regression with incorrectly exposed flags.
 
 ## [v0.47.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.47.3)
@@ -1334,7 +1335,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 ### Fixes
 
 - some typos <https://github.com/VictoriaMetrics/operator/pull/548> Thanks [@fatsheep9146](https://github.com/fatsheep9146)
-- update description for parameter to match behaviour  <https://github.com/VictoriaMetrics/operator/pull/549> thanks [@zekker6](https://github.com/zekker6)
+- update description for parameter to match behavior  <https://github.com/VictoriaMetrics/operator/pull/549> thanks [@zekker6](https://github.com/zekker6)
 - controllers/factory: fix resizing of PVC for vmsingle   <https://github.com/VictoriaMetrics/operator/pull/551> thanks [@zekker6](https://github.com/zekker6)
 
 ### Features

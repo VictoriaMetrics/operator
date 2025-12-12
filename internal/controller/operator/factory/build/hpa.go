@@ -9,6 +9,11 @@ import (
 
 // HPA creates HorizontalPodAutoscaler object
 func HPA(opts builderOpts, targetRef autoscalingv2.CrossVersionObjectReference, spec *vmv1beta1.EmbeddedHPA) *autoscalingv2.HorizontalPodAutoscaler {
+	behavior := spec.Behavior
+	if behavior == nil {
+		//nolint:staticcheck
+		behavior = spec.Behaviour
+	}
 	return &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            targetRef.Name,
@@ -22,7 +27,7 @@ func HPA(opts builderOpts, targetRef autoscalingv2.CrossVersionObjectReference, 
 			MinReplicas:    spec.MinReplicas,
 			ScaleTargetRef: targetRef,
 			Metrics:        spec.Metrics,
-			Behavior:       spec.Behaviour,
+			Behavior:       behavior,
 		},
 	}
 }

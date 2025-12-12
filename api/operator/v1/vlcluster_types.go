@@ -702,7 +702,11 @@ func (cr *VLCluster) Validate() error {
 		if vls.ServiceSpec != nil && vls.ServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
 		}
+		//nolint:staticcheck
 		if vls.HPA != nil && vls.HPA.Behaviour != nil && vls.HPA.Behaviour.ScaleDown != nil {
+			return fmt.Errorf("vlstorage scaledown HPA behavior is not supported")
+		}
+		if vls.HPA != nil && vls.HPA.Behavior != nil && vls.HPA.Behavior.ScaleDown != nil {
 			return fmt.Errorf("vlstorage scaledown HPA behavior is not supported")
 		}
 	}

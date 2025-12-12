@@ -483,10 +483,12 @@ type EmbeddedProbes struct {
 // EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
 // https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/
 type EmbeddedHPA struct {
-	MinReplicas *int32                                         `json:"minReplicas,omitempty"`
-	MaxReplicas int32                                          `json:"maxReplicas,omitempty"`
-	Metrics     []autoscalingv2.MetricSpec                     `json:"metrics,omitempty"`
-	Behaviour   *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behaviour,omitempty"`
+	MinReplicas *int32                     `json:"minReplicas,omitempty"`
+	MaxReplicas int32                      `json:"maxReplicas,omitempty"`
+	Metrics     []autoscalingv2.MetricSpec `json:"metrics,omitempty"`
+	// Deprecated: use behavior instead
+	Behaviour *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behaviour,omitempty"`
+	Behavior  *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
 }
 
 // Validate validates resource configuration

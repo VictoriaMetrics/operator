@@ -269,7 +269,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					HPA: &vmv1beta1.EmbeddedHPA{
 						MinReplicas: ptr.To(int32(0)),
 						MaxReplicas: 3,
-						Behaviour: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+						Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
 							ScaleDown: &autoscalingv2.HPAScalingRules{},
 						},
 					},

@@ -43,7 +43,7 @@ By default, the vmoperator converts all existing [prometheus-operator](https://g
 API objects into corresponding VictoriaMetrics Operator objects, 
 i.e. creates resources of VictoriaMetrics similar to Prometheus resources in the same namespace.
 
-You can control this behaviour by setting env variable for operator:
+You can control this behavior by setting env variable for operator:
 
 ```sh
 # disable conversion for each object
@@ -74,7 +74,7 @@ For more information about the operator's workflow, see [this doc](https://docs.
 
 ## Deletion synchronization
 
-By default, the operator doesn't make converted objects disappear after original ones are deleted. To change this behaviour
+By default, the operator doesn't make converted objects disappear after original ones are deleted. To change this behavior
 configure adding `OwnerReferences` to converted objects with following [operator parameter](https://docs.victoriametrics.com/operator/setup/#settings):
 
 ```sh

@@ -56,7 +56,7 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 
  In this case clients could establish multiple connections to the same `pod` via `service`. And client requests will be served only by subset of `pods`.
 
- Operator allows to tweak this behaviour with enabled [requestsLoadBalancer](https://docs.victoriametrics.com/operator/api/#vmclusterspec-requestsloadbalancer):
+ Operator allows to tweak this behavior with enabled [requestsLoadBalancer](https://docs.victoriametrics.com/operator/api/#vmclusterspec-requestsloadbalancer):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1

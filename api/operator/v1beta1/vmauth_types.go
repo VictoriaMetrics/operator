@@ -46,14 +46,14 @@ type VMAuthSpec struct {
 	// UserSelector defines VMUser to be selected for config file generation.
 	// Works in combination with NamespaceSelector.
 	// NamespaceSelector nil - only objects at VMAuth namespace.
-	// If both nil - behaviour controlled by selectAllByDefault
+	// If both nil - behavior controlled by selectAllByDefault
 	// +optional
 	UserSelector *metav1.LabelSelector `json:"userSelector,omitempty" yaml:"userSelector,omitempty"`
 	// UserNamespaceSelector Namespaces to be selected for  VMAuth discovery.
 	// Works in combination with Selector.
 	// NamespaceSelector nil - only objects at VMAuth namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
-	// If both nil - behaviour controlled by selectAllByDefault
+	// If both nil - behavior controlled by selectAllByDefault
 	// +optional
 	UserNamespaceSelector *metav1.LabelSelector `json:"userNamespaceSelector,omitempty" yaml:"userNamespaceSelector,omitempty"`
 

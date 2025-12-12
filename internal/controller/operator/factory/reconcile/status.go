@@ -221,7 +221,7 @@ func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ct
 
 	// make a deep copy before passing object to Patch function
 	// it reload state of the object from API server
-	// which is not desired behaviour
+	// which is not desired behavior
 	objectToUpdate := object.DeepCopy()
 	pr, err := buildStatusPatch(currentStatus)
 	if err != nil {

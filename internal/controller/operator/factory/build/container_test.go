@@ -221,7 +221,7 @@ func TestFormatContainerImage(t *testing.T) {
 	f("private.github.io", "quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1", "private.github.io/prometheus-operator/prometheus-config-reloader:v0.82.1")
 	// edge case
 	f("private.github.io", "quay.io/victoria-metrics/storage", "private.github.io/victoria-metrics/storage")
-	// correct behaviour, user must fix image naming
+	// correct behavior, user must fix image naming
 	f("private.github.io", "my-private.registry/victoria-metrics/storage", "private.github.io/my-private.registry/victoria-metrics/storage")
 }
 

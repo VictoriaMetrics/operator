@@ -678,6 +678,9 @@ func (cr *VMCluster) Validate() error {
 		if vms.HPA != nil && vms.HPA.Behaviour != nil && vms.HPA.Behaviour.ScaleDown != nil {
 			return fmt.Errorf("vmstorage scaledown HPA behavior is not supported")
 		}
+		if vms.HPA != nil && vms.HPA.Behavior != nil && vms.HPA.Behavior.ScaleDown != nil {
+			return fmt.Errorf("vmstorage scaledown HPA behavior is not supported")
+		}
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
 		rlb := cr.Spec.RequestsLoadBalancer.Spec

@@ -49,7 +49,7 @@ func verifyOwnerReferences(ctx context.Context, cr *vmv1alpha1.VMDistributedClus
 	}
 }
 
-var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster"), func() {
+var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributedcluster"), func() {
 	ctx := context.Background()
 
 	// This env var is required to make vmagent metrics checker ignore errors

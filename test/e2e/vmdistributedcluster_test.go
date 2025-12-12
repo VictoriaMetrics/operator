@@ -868,13 +868,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-								Port: "8417",
-								Image: vmv1beta1.Image{
-									Repository: "docker.io/victoriametrics/vmauth",
-									Tag:        "latest",
-								},
-							},
 						},
 					},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},

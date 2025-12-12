@@ -1,9 +1,10 @@
 package vmalertmanager
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
-	"net/url"
 	"path"
 	"sort"
 	"strconv"
@@ -28,17 +29,18 @@ import (
 )
 
 const (
-	defaultRetention            = "120h"
-	alertmanagerSecretConfigKey = "alertmanager.yaml"
-	webserverConfigKey          = "webserver_config.yaml"
-	gossipConfigKey             = "gossip_config.yaml"
-	alertmanagerConfDir         = "/etc/alertmanager/config"
-	alertmanagerConfFile        = alertmanagerConfDir + "/alertmanager.yaml"
-	tlsAssetsDir                = "/etc/alertmanager/tls_assets"
-	tlsAssetsVolumeName         = "tls-assets"
-	alertmanagerStorageDir      = "/alertmanager"
-	configVolumeName            = "config-volume"
-	defaultAMConfig             = `
+	defaultRetention              = "120h"
+	alertmanagerSecretConfigKey   = "alertmanager.yaml"
+	alertmanagerSecretConfigKeyGz = alertmanagerSecretConfigKey + ".gz"
+	webserverConfigKey            = "webserver_config.yaml"
+	gossipConfigKey               = "gossip_config.yaml"
+	alertmanagerConfDir           = "/etc/alertmanager/config"
+	alertmanagerConfFile          = alertmanagerConfDir + "/alertmanager.yaml"
+	tlsAssetsDir                  = "/etc/alertmanager/tls_assets"
+	tlsAssetsVolumeName           = "tls-assets"
+	alertmanagerStorageDir        = "/alertmanager"
+	configVolumeName              = "config-out"
+	defaultAMConfig               = `
 global:
   resolve_timeout: 5m
 route:
@@ -254,9 +256,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		{
 			Name: configVolumeName,
 			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.ConfigSecretName(),
-				},
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 		// use a different volume mount for the case of vm config-reloader
@@ -268,12 +268,6 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 					SecretName: cr.ConfigSecretName(),
 				},
 			},
-		},
-	}
-	volumes[0] = corev1.Volume{
-		Name: configVolumeName,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
 
@@ -311,7 +305,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		})
 	}
 
-	crVolumeMounts := []corev1.VolumeMount{
+	crMounts := []corev1.VolumeMount{
 		{
 			Name:      configVolumeName,
 			MountPath: alertmanagerConfDir,
@@ -341,7 +335,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		}
 		amVolumeMounts = append(amVolumeMounts, cmVolumeMount)
-		crVolumeMounts = append(crVolumeMounts, cmVolumeMount)
+		crMounts = append(crMounts, cmVolumeMount)
 	}
 
 	volumeByName := make(map[string]struct{})
@@ -365,7 +359,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			ReadOnly:  true,
 		}
 		amVolumeMounts = append(amVolumeMounts, tmplVolumeMount)
-		crVolumeMounts = append(crVolumeMounts, tmplVolumeMount)
+		crMounts = append(crMounts, tmplVolumeMount)
 	}
 
 	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
@@ -390,7 +384,13 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 
-	initContainers = append(initContainers, buildInitConfigContainer(cr)...)
+	ss := &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: cr.ConfigSecretName(),
+		},
+		Key: alertmanagerSecretConfigKey,
+	}
+	initContainers = append(initContainers, build.ConfigReloaderContainer(true, cr, crMounts, ss))
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
 
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
@@ -411,7 +411,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 	}
 	vmaContainer = build.Probe(vmaContainer, cr)
 	operatorContainers := []corev1.Container{vmaContainer}
-	operatorContainers = append(operatorContainers, buildVMAlertmanagerConfigReloader(cr, crVolumeMounts))
+	operatorContainers = append(operatorContainers, build.ConfigReloaderContainer(false, cr, crMounts, ss))
 
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
@@ -473,7 +473,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 
 	ac := getAssetsCache(ctx, rclient, cr)
 	var configSourceName string
-	var alertmananagerConfig []byte
+	var alertmanagerConfig []byte
 	switch {
 	// fetch content from user defined secret
 	case cr.Spec.ConfigSecret != "":
@@ -487,22 +487,22 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 			if err != nil {
 				return fmt.Errorf("cannot fetch secret content for alertmanager config secret, err: %w", err)
 			}
-			alertmananagerConfig = secretContent
+			alertmanagerConfig = secretContent
 			configSourceName = "configSecret ref: " + cr.Spec.ConfigSecret
 		}
 		// use in-line config
 	case cr.Spec.ConfigRawYaml != "":
-		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
+		alertmanagerConfig = []byte(cr.Spec.ConfigRawYaml)
 		configSourceName = "inline configuration at configRawYaml"
 	}
-	pos, data, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, ac)
+	pos, data, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmanagerConfig, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 	}
-	alertmananagerConfig = data
+	alertmanagerConfig = data
 	// apply default config to be able just start alertmanager
-	if len(alertmananagerConfig) == 0 {
-		alertmananagerConfig = []byte(defaultAMConfig)
+	if len(alertmanagerConfig) == 0 {
+		alertmanagerConfig = []byte(defaultAMConfig)
 		configSourceName = "default config"
 	}
 
@@ -522,21 +522,25 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		for _, template := range cr.Spec.Templates {
 			templatePaths = append(templatePaths, path.Join(templatesDir, template.Name, template.Key))
 		}
-		mergedCfg, err := addConfigTemplates(alertmananagerConfig, templatePaths)
+		mergedCfg, err := addConfigTemplates(alertmanagerConfig, templatePaths)
 		if err != nil {
 			return fmt.Errorf("cannot build alertmanager config with templates, err: %w", err)
 		}
-		alertmananagerConfig = mergedCfg
+		alertmanagerConfig = mergedCfg
 	}
 
-	if err := vmv1beta1.ValidateAlertmanagerConfigSpec(alertmananagerConfig); err != nil {
+	if err := vmv1beta1.ValidateAlertmanagerConfigSpec(alertmanagerConfig); err != nil {
 		return fmt.Errorf("incorrect result configuration, config source=%s: %w", configSourceName, err)
 	}
 
+	var buf bytes.Buffer
+	if err := gzipConfig(&buf, alertmanagerConfig); err != nil {
+		return fmt.Errorf("cannot gzip config for vmagent: %w", err)
+	}
 	newAMSecretConfig := &corev1.Secret{
 		ObjectMeta: *buildConfigSecretMeta(cr),
 		Data: map[string][]byte{
-			alertmanagerSecretConfigKey: alertmananagerConfig,
+			alertmanagerSecretConfigKeyGz: buf.Bytes(),
 		},
 	}
 	creds := ac.GetOutput()
@@ -587,85 +591,6 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
 
 }
 
-func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
-	initReloader := corev1.Container{
-		Image: cr.Spec.ConfigReloaderImageTag,
-		Name:  "config-init",
-		Args: []string{
-			fmt.Sprintf("--config-secret-key=%s", alertmanagerSecretConfigKey),
-			fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()),
-			fmt.Sprintf("--config-envsubst-file=%s", alertmanagerConfFile),
-			"--only-init-config",
-		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      configVolumeName,
-				MountPath: alertmanagerConfDir,
-			},
-		},
-		Resources: cr.Spec.ConfigReloaderResources,
-	}
-	build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
-	return []corev1.Container{initReloader}
-}
-
-func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMounts []corev1.VolumeMount) corev1.Container {
-	cfg := config.MustGetBaseConfig()
-	host := "127.0.0.1"
-	if cfg.EnableTCP6 {
-		host = "localhost"
-	}
-	localReloadURL := &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%s", host, cr.Port()),
-		Path:   path.Clean(cr.Spec.RoutePrefix + "/-/reload"),
-	}
-	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
-		localReloadURL.Scheme = "https"
-	}
-
-	args := []string{
-		fmt.Sprintf("--reload-url=%s", localReloadURL),
-		fmt.Sprintf("--config-envsubst-file=%s", alertmanagerConfFile),
-		fmt.Sprintf("--config-secret-key=%s", alertmanagerSecretConfigKey),
-		fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()),
-		"--webhook-method=POST",
-	}
-	if cfg.EnableTCP6 {
-		args = append(args, "--enableTCP6")
-	}
-	for _, vm := range crVolumeMounts {
-		args = append(args, fmt.Sprintf("--watched-dir=%s", vm.MountPath))
-	}
-	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		newArgs := args[:0]
-		for _, arg := range args {
-			argName := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if _, ok := cr.Spec.ConfigReloaderExtraArgs[argName]; !ok {
-				newArgs = append(newArgs, arg)
-			}
-		}
-		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
-		}
-		sort.Strings(newArgs)
-		args = newArgs
-	}
-
-	configReloaderContainer := corev1.Container{
-		Name:                     "config-reloader",
-		Image:                    cr.Spec.ConfigReloaderImageTag,
-		Args:                     args,
-		VolumeMounts:             crVolumeMounts,
-		Resources:                cr.Spec.ConfigReloaderResources,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-	}
-
-	build.AddsPortProbesToConfigReloaderContainer(&configReloaderContainer)
-	build.AddServiceAccountTokenVolumeMount(&configReloaderContainer, &cr.Spec.CommonApplicationDeploymentParams)
-	return configReloaderContainer
-}
-
 func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client, secretName, ns string) ([]byte, error) {
 	var s corev1.Secret
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, &s); err != nil {
@@ -680,6 +605,15 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 		return d, nil
 	}
 	return nil, fmt.Errorf("cannot find alertmanager config key: %q at secret: %q", alertmanagerSecretConfigKey, secretName)
+}
+
+func gzipConfig(buf *bytes.Buffer, conf []byte) error {
+	w := gzip.NewWriter(buf)
+	defer w.Close()
+	if _, err := w.Write(conf); err != nil {
+		return err
+	}
+	return nil
 }
 
 func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, ac *build.AssetsCache) (*parsedObjects, []byte, error) {

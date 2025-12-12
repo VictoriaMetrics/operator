@@ -226,18 +226,3 @@ That's why operator uses a few hacks.
 
 For `ConfigMap` updates, operator changes annotation with a time of `Configmap` content update. It triggers `ConfigMap`'s content synchronization by kubelet immediately.
 It's the case for `VMAlert`, it uses `ConfigMap` as a configuration source.
-
-For `Secret` it doesn't work. And operator offers its implementation for side-car container. It can be configured with env variable for operator:
-
-```
-- name: VM_USECUSTOMCONFIGRELOADER
-  value: "true"
-```
-
-If it's defined, operator uses own [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader)
-instead of [prometheus-config-reload](https://github.com/prometheus-operator/prometheus-operator/tree/main/cmd/prometheus-config-reloader).
-
-It watches corresponding `Secret` for changes with Kubernetes API watch call and writes content into emptyDir.
-This emptyDir shared with the application.
-In case of content changes, `config-reloader` sends HTTP requests to the application.
-It greatly reduces the time for configuration synchronization.

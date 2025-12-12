@@ -8,7 +8,8 @@
 | VM_GATEWAY_API_ENABLED: `false` <a href="#variables-vm-gateway-api-enabled" id="variables-vm-gateway-api-enabled">#</a> |
 | WATCH_NAMESPACE: `-` <a href="#variables-watch-namespace" id="variables-watch-namespace">#</a><br>Defines a list of namespaces to be watched by operator. Operator don't perform any cluster wide API calls if namespaces not empty. In case of empty list it performs only clusterwide api calls. |
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |
-| VM_CUSTOMCONFIGRELOADERIMAGE: `victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a> |
+| VM_CUSTOMCONFIGRELOADERIMAGE: `-` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a><br>Deprecated: use VM_CONFIG_RELOADER_IMAGE instead |
+| VM_CONFIG_RELOADER_IMAGE: `victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}` <a href="#variables-vm-config-reloader-image" id="variables-vm-config-reloader-image">#</a> |
 | VM_PSPAUTOCREATEENABLED: `false` <a href="#variables-vm-pspautocreateenabled" id="variables-vm-pspautocreateenabled">#</a> |
 | VM_ENABLETCP6: `false` <a href="#variables-vm-enabletcp6" id="variables-vm-enabletcp6">#</a> |
 | VM_CONFIG_RELOADER_LIMIT_CPU: `unlimited` <a href="#variables-vm-config-reloader-limit-cpu" id="variables-vm-config-reloader-limit-cpu">#</a><br>defines global resource.limits.cpu for all config-reloader containers |

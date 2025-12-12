@@ -863,7 +863,6 @@ containers:
       - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
     ports:
       - name: http
-        hostport: 0
         containerport: 9425
         protocol: TCP
     resources:
@@ -880,7 +879,6 @@ containers:
       claims: []
     volumemounts:
       - name: persistent-queue-data
-        readonly: false
         mountpath: /vlagent_pq/vlagent-remotewrite-data
     livenessprobe:
       probehandler:
@@ -900,7 +898,6 @@ containers:
           port:
             intval: 9425
           scheme: HTTP
-      initialdelayseconds: 0
       timeoutseconds: 5
       periodseconds: 5
       successthreshold: 1
@@ -934,11 +931,7 @@ containers:
         protocol: TCP
     volumemounts:
       - name: persistent-queue-data
-        readonly: false
         mountpath: /vlagent_pq/vlagent-remotewrite-data
-        subpath: ""
-        mountpropagation: null
-        subpathexpr: ""
     livenessprobe:
       probehandler:
         httpget:
@@ -946,12 +939,10 @@ containers:
           port:
             intval: 9429
           scheme: HTTP
-      initialdelayseconds: 0
       timeoutseconds: 5
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
-      terminationgraceperiodseconds: null
     readinessprobe:
       probehandler:
         httpget:
@@ -959,12 +950,10 @@ containers:
           port:
             intval: 9429
           scheme: HTTP
-      initialdelayseconds: 0
       timeoutseconds: 5
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
-      terminationgraceperiodseconds: null
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 serviceaccountname: vlagent-agent
@@ -1008,13 +997,8 @@ containers:
       - name: http
         containerport: 9425
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
-      claims: []
     volumemounts:
       - name: persistent-queue-data
-        readonly: false
         mountpath: /vlagent_pq/vlagent-remotewrite-data
     livenessprobe:
       probehandler:
@@ -1034,7 +1018,6 @@ containers:
           port:
             intval: 9425
           scheme: HTTP
-      initialdelayseconds: 0
       timeoutseconds: 5
       periodseconds: 5
       successthreshold: 1
@@ -1090,10 +1073,6 @@ containers:
       - name: http
         containerport: 9425
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
-      claims: []
     volumemounts:
       - name: varlog
         readonly: true
@@ -1104,7 +1083,6 @@ containers:
       - name: checkpoints
         mountpath: /var/lib/vlagent_checkpoints
       - name: persistent-queue-data
-        readonly: false
         mountpath: /vlagent_pq/vlagent-remotewrite-data
     livenessprobe:
       probehandler:
@@ -1124,7 +1102,6 @@ containers:
           port:
             intval: 9425
           scheme: HTTP
-      initialdelayseconds: 0
       timeoutseconds: 5
       periodseconds: 5
       successthreshold: 1
@@ -1192,13 +1169,8 @@ containers:
       - name: http
         containerport: 9425
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
-      claims: []
     volumemounts:
       - name: persistent-queue-data
-        readonly: false
         mountpath: /vlagent_pq/vlagent-remotewrite-data
     livenessprobe:
       probehandler:
@@ -1218,7 +1190,6 @@ containers:
           port:
             intval: 9425
           scheme: HTTP
-      initialdelayseconds: 0
       timeoutseconds: 5
       periodseconds: 5
       successthreshold: 1
@@ -1274,13 +1245,8 @@ containers:
       - name: http
         containerport: 9425
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
-      claims: []
     volumemounts:
       - name: persistent-queue-data
-        readonly: false
         mountpath: /vlagent_pq/vlagent-remotewrite-data
     livenessprobe:
       probehandler:
@@ -1300,7 +1266,6 @@ containers:
           port:
             intval: 9425
           scheme: HTTP
-      initialdelayseconds: 0
       timeoutseconds: 5
       periodseconds: 5
       successthreshold: 1

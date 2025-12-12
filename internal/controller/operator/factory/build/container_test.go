@@ -1,14 +1,18 @@
 package build
 
 import (
+	"path"
 	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 type testBuildProbeCR struct {
@@ -350,4 +354,231 @@ func TestAddSyslogArgsTo(t *testing.T) {
 	}
 	f(&spec, expected)
 
+}
+
+func TestBuildConfigReloaderContainer(t *testing.T) {
+	type opts struct {
+		cr                *vmv1beta1.VMAlert
+		cmNames           []string
+		expectedContainer corev1.Container
+	}
+	f := func(o opts) {
+		t.Helper()
+		var extraMounts []corev1.VolumeMount
+		for _, cm := range o.cr.Spec.ConfigMaps {
+			extraMounts = append(extraMounts, corev1.VolumeMount{
+				Name:      k8stools.SanitizeVolumeName("configmap-" + cm),
+				ReadOnly:  true,
+				MountPath: path.Join(vmv1beta1.ConfigMapsDir, cm),
+			})
+		}
+		for _, cm := range o.cmNames {
+			extraMounts = append(extraMounts, corev1.VolumeMount{
+				Name:      cm,
+				MountPath: path.Join("/cm-dir", cm),
+			})
+		}
+		got := ConfigReloaderContainer(false, o.cr, extraMounts, nil)
+		assert.Equal(t, o.expectedContainer, got)
+	}
+
+	// base case
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "base",
+			},
+		},
+		cmNames: []string{"cm-0", "cm-1"},
+		expectedContainer: corev1.Container{
+			Name: "config-reloader",
+			Args: []string{
+				"--reload-url=http://localhost:/-/reload",
+				"--watched-dir=/cm-dir/cm-0",
+				"--watched-dir=/cm-dir/cm-1",
+				"--webhook-method=POST",
+			},
+			Ports: []corev1.ContainerPort{{
+				Name:          "reloader-http",
+				ContainerPort: 8435,
+				Protocol:      "TCP",
+			}},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				TimeoutSeconds:   1,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				FailureThreshold: 3,
+			},
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				InitialDelaySeconds: 5,
+				TimeoutSeconds:      1,
+				PeriodSeconds:       10,
+				SuccessThreshold:    1,
+				FailureThreshold:    3,
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "cm-0",
+					MountPath: "/cm-dir/cm-0",
+				},
+				{
+					Name:      "cm-1",
+					MountPath: "/cm-dir/cm-1",
+				},
+			},
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		},
+	})
+
+	// vm config-reloader
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "base",
+			},
+		},
+		cmNames: []string{"cm-0"},
+		expectedContainer: corev1.Container{
+			Name: "config-reloader",
+			Args: []string{
+				"--reload-url=http://localhost:/-/reload",
+				"--watched-dir=/cm-dir/cm-0",
+				"--webhook-method=POST",
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "cm-0",
+					MountPath: "/cm-dir/cm-0",
+				},
+			},
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Ports: []corev1.ContainerPort{
+				{
+					Name:          "reloader-http",
+					Protocol:      corev1.ProtocolTCP,
+					ContainerPort: 8435,
+				},
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				TimeoutSeconds:   1,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				FailureThreshold: 3,
+			},
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				InitialDelaySeconds: 5,
+				TimeoutSeconds:      1,
+				PeriodSeconds:       10,
+				SuccessThreshold:    1,
+				FailureThreshold:    3,
+			},
+		},
+	})
+
+	// extra volumes
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "base",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ConfigMaps: []string{"extra-template-1", "extra-template-2"},
+				},
+			},
+		},
+		cmNames: []string{"cm-0"},
+		expectedContainer: corev1.Container{
+			Name: "config-reloader",
+			Args: []string{
+				"--reload-url=http://localhost:/-/reload",
+				"--watched-dir=/cm-dir/cm-0",
+				"--watched-dir=/etc/vm/configs/extra-template-1",
+				"--watched-dir=/etc/vm/configs/extra-template-2",
+				"--webhook-method=POST",
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "cm-0",
+					MountPath: "/cm-dir/cm-0",
+				},
+				{
+					Name:      "configmap-extra-template-1",
+					ReadOnly:  true,
+					MountPath: "/etc/vm/configs/extra-template-1",
+				},
+				{
+					Name:      "configmap-extra-template-2",
+					ReadOnly:  true,
+					MountPath: "/etc/vm/configs/extra-template-2",
+				},
+			},
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Ports: []corev1.ContainerPort{
+				{
+					Name:          "reloader-http",
+					Protocol:      corev1.ProtocolTCP,
+					ContainerPort: 8435,
+				},
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				TimeoutSeconds:   1,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				FailureThreshold: 3,
+			},
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				InitialDelaySeconds: 5,
+				TimeoutSeconds:      1,
+				PeriodSeconds:       10,
+				SuccessThreshold:    1,
+				FailureThreshold:    3,
+			},
+		},
+	})
 }

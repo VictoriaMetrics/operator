@@ -7935,9 +7935,14 @@ spec:
                   ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
                   for example resyncInterval: "30s"
                 type: object
-              configReloaderImageTag:
-                description: ConfigReloaderImageTag defines image:tag for config-reloader
+              configReloaderImage:
+                description: ConfigReloaderImage defines image:tag for config-reloader
                   container
+                type: string
+              configReloaderImageTag:
+                description: |-
+                  ConfigReloaderImageTag defines image:tag for config-reloader container
+                  Deprecated: use configReloaderImage instead
                 type: string
               configReloaderResources:
                 description: |-
@@ -17681,9 +17686,14 @@ spec:
                   ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
                   for example resyncInterval: "30s"
                 type: object
-              configReloaderImageTag:
-                description: ConfigReloaderImageTag defines image:tag for config-reloader
+              configReloaderImage:
+                description: ConfigReloaderImage defines image:tag for config-reloader
                   container
+                type: string
+              configReloaderImageTag:
+                description: |-
+                  ConfigReloaderImageTag defines image:tag for config-reloader container
+                  Deprecated: use configReloaderImage instead
                 type: string
               configReloaderResources:
                 description: |-
@@ -19746,9 +19756,14 @@ spec:
                   ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
                   for example resyncInterval: "30s"
                 type: object
-              configReloaderImageTag:
-                description: ConfigReloaderImageTag defines image:tag for config-reloader
+              configReloaderImage:
+                description: ConfigReloaderImage defines image:tag for config-reloader
                   container
+                type: string
+              configReloaderImageTag:
+                description: |-
+                  ConfigReloaderImageTag defines image:tag for config-reloader container
+                  Deprecated: use configReloaderImage instead
                 type: string
               configReloaderResources:
                 description: |-
@@ -24494,9 +24509,14 @@ spec:
                   ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
                   for example resyncInterval: "30s"
                 type: object
-              configReloaderImageTag:
-                description: ConfigReloaderImageTag defines image:tag for config-reloader
+              configReloaderImage:
+                description: ConfigReloaderImage defines image:tag for config-reloader
                   container
+                type: string
+              configReloaderImageTag:
+                description: |-
+                  ConfigReloaderImageTag defines image:tag for config-reloader container
+                  Deprecated: use configReloaderImage instead
                 type: string
               configReloaderResources:
                 description: |-

@@ -424,6 +424,29 @@ func (cr *VMAgent) GetShardCount() int {
 	return *cr.Spec.ShardCount
 }
 
+// GetReloadURL implements reloadable interface
+func (cr *VMAgent) GetReloadURL() string {
+	return BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)
+}
+
+// GetReloaderParams implements reloadable interface
+func (cr *VMAgent) GetReloaderParams() *CommonConfigReloaderParams {
+	return &cr.Spec.CommonConfigReloaderParams
+}
+
+// UseProxyProtocol implements reloadable interface
+func (cr *VMAgent) UseProxyProtocol() bool {
+	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
+		return true
+	}
+	return false
+}
+
+// AutomountServiceAccountToken implements reloadable interface
+func (cr *VMAgent) AutomountServiceAccountToken() bool {
+	return !cr.Spec.DisableAutomountServiceAccountToken
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	type pcr VMAgent

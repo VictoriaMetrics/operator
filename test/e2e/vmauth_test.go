@@ -178,14 +178,11 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 					}
 					Expect(spec.Rules).To(Equal(decoded))
 				}),
-				Entry("with strict security and vm config-reloader", "strict-with-reloader", &vmv1beta1.VMAuth{
+				Entry("with strict security", "strict-security", &vmv1beta1.VMAuth{
 					Spec: vmv1beta1.VMAuthSpec{
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 							UseStrictSecurity:   ptr.To(true),
 							UseDefaultResources: ptr.To(false),
-						},
-						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-							UseVMConfigReloader: ptr.To(true),
 						},
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount:                        ptr.To[int32](1),
@@ -301,7 +298,6 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 					},
 					testStep{
 						modify: func(cr *vmv1beta1.VMAuth) {
-							cr.Spec.UseVMConfigReloader = ptr.To(true)
 							cr.Spec.UseDefaultResources = ptr.To(false)
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
@@ -349,10 +345,6 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
-							CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-								UseVMConfigReloader: ptr.To(true),
-							},
-
 							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									URLPrefix: []string{"http://localhost:8490"},
@@ -615,9 +607,6 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-								UseVMConfigReloader: ptr.To(true),
-							},
 							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 								{
 									URLPrefix: []string{"http://localhost:8490"},
@@ -629,12 +618,6 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 					testStep{
 						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.UseProxyProtocol = true
-						},
-						verify: func(cr *vmv1beta1.VMAuth) {},
-					},
-					testStep{
-						modify: func(cr *vmv1beta1.VMAuth) {
-							cr.Spec.UseVMConfigReloader = ptr.To(false)
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {},
 					},

@@ -82,36 +82,12 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(BeEmpty())
 				},
 			),
-			Entry("with vm config reloader", "vmreloader-create",
+			Entry("with strict security", "strict-security",
 				&vmv1beta1.VMAlertmanager{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
 					},
 					Spec: vmv1beta1.VMAlertmanagerSpec{
-						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-							UseVMConfigReloader: ptr.To(true),
-						},
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							UseDefaultResources: ptr.To(false),
-						},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
-				},
-				func(cr *vmv1beta1.VMAlertmanager) {
-					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(BeEmpty())
-				},
-			),
-			Entry("with strict security and vm config reloader", "strict-vmreloader-create",
-				&vmv1beta1.VMAlertmanager{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-					},
-					Spec: vmv1beta1.VMAlertmanagerSpec{
-						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-							UseVMConfigReloader: ptr.To(true),
-						},
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 							UseDefaultResources: ptr.To(false),
 							UseStrictSecurity:   ptr.To(true),
@@ -225,10 +201,9 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 				},
 			),
 
-			Entry("by switching to vm config reloader and empty resources", "switch-vm-reloader",
+			Entry("by switching to empty resources", "switch-empty-resources",
 				func(cr *vmv1beta1.VMAlertmanager) {
 					cr.Spec.ReplicaCount = ptr.To[int32](1)
-					cr.Spec.UseVMConfigReloader = ptr.To(true)
 					cr.Spec.UseDefaultResources = ptr.To(false)
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {

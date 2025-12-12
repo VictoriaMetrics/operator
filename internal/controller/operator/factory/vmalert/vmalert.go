@@ -662,17 +662,12 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, extraWatchVolumeMounts []corev1.VolumeMount) corev1.Container {
 
 	var args []string
-	volumeWatchArg := "-volume-dir"
-	reloadURLArg := "-webhook-url"
 
+	volumeWatchArg := "--watched-dir"
+	reloadURLArg := "--reload-url"
 	cfg := config.MustGetBaseConfig()
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
-	if useVMConfigReloader {
-		volumeWatchArg = "--watched-dir"
-		reloadURLArg = "--reload-url"
-		if cfg.EnableTCP6 {
-			args = append(args, "--enableTCP6")
-		}
+	if cfg.EnableTCP6 {
+		args = append(args, "--enableTCP6")
 	}
 	args = append(args, fmt.Sprintf("%s=%s", reloadURLArg, vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)))
 	for _, cm := range ruleConfigMapNames {
@@ -714,9 +709,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []st
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		VolumeMounts:             reloaderVolumes,
 	}
-	if useVMConfigReloader {
-		build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &configReloaderContainer)
-	}
+	build.AddsPortProbesToConfigReloaderContainer(&configReloaderContainer)
 	build.AddConfigReloadAuthKeyToReloader(&configReloaderContainer, &cr.Spec.CommonConfigReloaderParams)
 	return configReloaderContainer
 }

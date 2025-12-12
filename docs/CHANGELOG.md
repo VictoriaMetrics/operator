@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+**Update note 1: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.**
+
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support `namespace` parameter in `attach_metadata` section for all scrape configurations. See [#1654](https://github.com/VictoriaMetrics/operator/issues/1654).
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent): support logs collection. See [#1501](https://github.com/VictoriaMetrics/operator/issues/1501).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): use `operator_bad_objects_total` metric with `object_namespace` and `crd` labels to track invalid objects managed by VMAgent, VMAuth, VMAlert and VMAlertmanager. Old `operator_alertmanager_bad_objects_count` and `operator_vmalert_bad_objects_count` are deprecated and will be removed in next releases.

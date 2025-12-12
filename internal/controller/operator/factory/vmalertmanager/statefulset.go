@@ -154,7 +154,6 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec, error) {
 
 	cfg := config.MustGetBaseConfig()
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
 
 	amArgs := []string{
@@ -271,13 +270,11 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			},
 		},
 	}
-	if useVMConfigReloader {
-		volumes[0] = corev1.Volume{
-			Name: configVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		}
+	volumes[0] = corev1.Volume{
+		Name: configVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
 	}
 
 	amVolumeMounts := []corev1.VolumeMount{
@@ -429,9 +426,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			}
 		}
 	}
-	if useVMConfigReloader {
-		volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
-	}
+	volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
 	return &appsv1.StatefulSetSpec{
 		ServiceName: cr.PrefixedName(),
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
@@ -593,11 +588,6 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
 }
 
 func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
-	cfg := config.MustGetBaseConfig()
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
-	if !useVMConfigReloader {
-		return nil
-	}
 	initReloader := corev1.Container{
 		Image: cr.Spec.ConfigReloaderImageTag,
 		Name:  "config-init",
@@ -615,10 +605,7 @@ func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
 		},
 		Resources: cr.Spec.ConfigReloaderResources,
 	}
-	if useVMConfigReloader {
-		build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
-	}
-
+	build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
 	return []corev1.Container{initReloader}
 }
 
@@ -636,29 +623,19 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
 		localReloadURL.Scheme = "https"
 	}
-	useVMConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, cfg.UseVMConfigReloader)
 
-	var args []string
-	if useVMConfigReloader {
-		args = append(args,
-			fmt.Sprintf("--reload-url=%s", localReloadURL),
-			fmt.Sprintf("--config-envsubst-file=%s", alertmanagerConfFile),
-			fmt.Sprintf("--config-secret-key=%s", alertmanagerSecretConfigKey),
-			fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()),
-			"--webhook-method=POST",
-		)
-		if cfg.EnableTCP6 {
-			args = append(args, "--enableTCP6")
-		}
-		for _, vm := range crVolumeMounts {
-			args = append(args, fmt.Sprintf("--watched-dir=%s", vm.MountPath))
-		}
-	} else {
-		// Add watching for every volume mount in config-reloader
-		args = append(args, fmt.Sprintf("-webhook-url=%s", localReloadURL))
-		for _, vm := range crVolumeMounts {
-			args = append(args, fmt.Sprintf("-volume-dir=%s", vm.MountPath))
-		}
+	args := []string{
+		fmt.Sprintf("--reload-url=%s", localReloadURL),
+		fmt.Sprintf("--config-envsubst-file=%s", alertmanagerConfFile),
+		fmt.Sprintf("--config-secret-key=%s", alertmanagerSecretConfigKey),
+		fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()),
+		"--webhook-method=POST",
+	}
+	if cfg.EnableTCP6 {
+		args = append(args, "--enableTCP6")
+	}
+	for _, vm := range crVolumeMounts {
+		args = append(args, fmt.Sprintf("--watched-dir=%s", vm.MountPath))
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
 		newArgs := args[:0]
@@ -684,10 +661,8 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	build.AddsPortProbesToConfigReloaderContainer(useVMConfigReloader, &configReloaderContainer)
-	if useVMConfigReloader {
-		build.AddServiceAccountTokenVolumeMount(&configReloaderContainer, &cr.Spec.CommonApplicationDeploymentParams)
-	}
+	build.AddsPortProbesToConfigReloaderContainer(&configReloaderContainer)
+	build.AddServiceAccountTokenVolumeMount(&configReloaderContainer, &cr.Spec.CommonApplicationDeploymentParams)
 	return configReloaderContainer
 }
 

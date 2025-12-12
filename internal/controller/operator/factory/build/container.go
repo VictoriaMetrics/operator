@@ -7,7 +7,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -307,10 +306,7 @@ var (
 
 // AddsPortProbesToConfigReloaderContainer conditionally adds readiness and liveness probes to the custom config-reloader image
 // exposes reloader-http port for container
-func AddsPortProbesToConfigReloaderContainer(useVMConfigReloader bool, crContainer *corev1.Container) {
-	if !useVMConfigReloader {
-		return
-	}
+func AddsPortProbesToConfigReloaderContainer(crContainer *corev1.Container) {
 	crContainer.Ports = append(crContainer.Ports, corev1.ContainerPort{
 		ContainerPort: int32(configReloaderDefaultPort),
 		Name:          "reloader-http",
@@ -371,10 +367,6 @@ func AddConfigReloadAuthKeyToApp(container *corev1.Container, extraArgs map[stri
 // AddConfigReloadAuthKeyToReloader adds authKey env var to the given config-reloader container
 func AddConfigReloadAuthKeyToReloader(container *corev1.Container, spec *vmv1beta1.CommonConfigReloaderParams) {
 	if spec.ConfigReloadAuthKeySecret == nil {
-		return
-	}
-	useVMConfigReloader := ptr.Deref(spec.UseVMConfigReloader, getCfg().UseVMConfigReloader)
-	if !useVMConfigReloader {
 		return
 	}
 	container.Args = append(container.Args, fmt.Sprintf("-%s=file://%s/%s", authKeyReloaderFlagName, authKeyMountPath, spec.ConfigReloadAuthKeySecret.Key))

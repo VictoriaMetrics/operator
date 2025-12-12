@@ -2204,13 +2204,11 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 		},
 		Spec: vmv1beta1.VMAgentSpec{
 			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
-			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				UseVMConfigReloader: ptr.To(false),
-			},
 		},
 	}, []string{
 		"--reload-url=http://localhost:8429/-/reload",
-		"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
+		"--config-secret-key=vmagent.yaml.gz",
+		"--config-secret-name=default/vmagent-default-vmagent",
 		"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
 	})
 
@@ -2235,9 +2233,6 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1beta1.VMAgentSpec{
-			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				UseVMConfigReloader: ptr.To(false),
-			},
 			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
 			IngestOnlyMode:          false,
 			InlineRelabelConfig:     []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
@@ -2256,7 +2251,8 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 		},
 	}, []string{
 		"--reload-url=http://localhost:8429/-/reload",
-		"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
+		"--config-secret-key=vmagent.yaml.gz",
+		"--config-secret-name=default/vmagent-default-vmagent",
 		"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
 		"--watched-dir=/etc/vm/relabeling",
 		"--watched-dir=/etc/vm/stream-aggr",
@@ -2269,9 +2265,6 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1beta1.VMAgentSpec{
-			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				UseVMConfigReloader: ptr.To(false),
-			},
 			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
 			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 				ConfigMaps: []string{"cm-0", "cm-1"},
@@ -2293,8 +2286,9 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 		},
 	}, []string{
 		"--reload-url=http://localhost:8429/-/reload",
-		"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
 		"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
+		"--config-secret-key=vmagent.yaml.gz",
+		"--config-secret-name=default/vmagent-default-vmagent",
 		"--watched-dir=/etc/vm/configs/cm-0",
 		"--watched-dir=/etc/vm/configs/cm-1",
 		"--watched-dir=/etc/vm/relabeling",
@@ -2359,7 +2353,6 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 					Port: "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
 					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
 				},
 			},
@@ -2443,7 +2436,6 @@ serviceaccountname: vmagent-agent
 					Port:                "8429",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
 					ConfigReloaderImageTag: "vmcustomer:v1",
 				},
 			},
@@ -2616,7 +2608,6 @@ serviceaccountname: vmagent-agent
 					Port:                "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
 					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -2709,7 +2700,6 @@ serviceaccountname: vmagent-agent
 					Port:                "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
 					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -2805,7 +2795,6 @@ serviceaccountname: vmagent-agent
 					Port:                "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseVMConfigReloader:    ptr.To(true),
 					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
 				},
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{

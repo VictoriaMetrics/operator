@@ -62,7 +62,6 @@ func getEnvOpts() env.Options {
 type ApplicationDefaults struct {
 	Image               string
 	Version             string
-	ConfigReloadImage   string
 	Port                string
 	UseDefaultResources bool
 	Resource            struct {
@@ -75,8 +74,6 @@ type ApplicationDefaults struct {
 			Cpu string
 		}
 	}
-	ConfigReloaderCPU    string
-	ConfigReloaderMemory string
 }
 
 // Resource is useful for generic resource building
@@ -106,28 +103,24 @@ type BaseOperatorConf struct {
 	// In case of empty list it performs only clusterwide api calls.
 	WatchNamespaces []string `default:"" env:"WATCH_NAMESPACE"`
 
-	// enables custom config reloader for vmauth and vmagent,
-	// it should speed-up config reloading process.
-	UseVMConfigReloader bool `default:"true" env:"VM_USECUSTOMCONFIGRELOADER"`
 	// container registry name prefix, e.g. docker.io
-	ContainerRegistry     string `default:"" env:"VM_CONTAINERREGISTRY"`
-	VMConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:"VM_CUSTOMCONFIGRELOADERIMAGE,expand"`
-	PSPAutoCreateEnabled  bool   `default:"false" env:"VM_PSPAUTOCREATEENABLED"`
-	EnableTCP6            bool   `default:"false" env:"VM_ENABLETCP6"`
+	ContainerRegistry    string `default:"" env:"VM_CONTAINERREGISTRY"`
+	ConfigReloaderImage  string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:"VM_CUSTOMCONFIGRELOADERIMAGE,expand"`
+	PSPAutoCreateEnabled bool   `default:"false" env:"VM_PSPAUTOCREATEENABLED"`
+	EnableTCP6           bool   `default:"false" env:"VM_ENABLETCP6"`
 
 	// defines global resource.limits.cpu for all config-reloader containers
 	ConfigReloaderLimitCPU string `default:"unlimited" env:"VM_CONFIG_RELOADER_LIMIT_CPU"`
 	// defines global resource.limits.memory for all config-reloader containers
 	ConfigReloaderLimitMemory string `default:"unlimited" env:"VM_CONFIG_RELOADER_LIMIT_MEMORY"`
 	// defines global resource.requests.cpu for all config-reloader containers
-	ConfigReloaderRequestCPU string `default:"" env:"VM_CONFIG_RELOADER_REQUEST_CPU"`
+	ConfigReloaderRequestCPU string `default:"10m" env:"VM_CONFIG_RELOADER_REQUEST_CPU"`
 	// defines global resource.requests.memory for all config-reloader containers
-	ConfigReloaderRequestMemory string `default:"" env:"VM_CONFIG_RELOADER_REQUEST_MEMORY"`
+	ConfigReloaderRequestMemory string `default:"25Mi" env:"VM_CONFIG_RELOADER_REQUEST_MEMORY"`
 
 	VLogsDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9428"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -140,14 +133,11 @@ type BaseOperatorConf struct {
 				Cpu string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
 	} `prefix:"VM_VLOGSDEFAULT_"`
 
 	VLAgentDefault struct {
 		Image               string `default:"victoriametrics/vlagent"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9429"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -160,14 +150,11 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
 	} `prefix:"VM_VLAGENTDEFAULT_"`
 
 	VLSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"9428"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -180,14 +167,11 @@ type BaseOperatorConf struct {
 				Cpu string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
 	} `prefix:"VM_VLSINGLEDEFAULT_"`
 
 	VTSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-traces"`
 		Version             string `env:",expand" default:"${VM_TRACES_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"10428"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -200,14 +184,11 @@ type BaseOperatorConf struct {
 				Cpu string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
 	} `prefix:"VM_VTSINGLEDEFAULT_"`
 
 	VMAlertDefault struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `default:"jimmidyson/configmap-reload:v0.3.0" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8080"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -220,10 +201,6 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VM_VMALERTDEFAULT_"`
 
 	VMServiceScrapeDefault struct {
@@ -235,7 +212,6 @@ type BaseOperatorConf struct {
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -248,16 +224,11 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VM_VMAGENTDEFAULT_"`
 
 	VMAnomalyDefault struct {
 		Image               string `default:"victoriametrics/vmanomaly"`
 		Version             string `env:",expand" default:"${VM_ANOMALY_VERSION}"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8490"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -270,16 +241,11 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VM_VMANOMALYDEFAULT_"`
 
 	VMSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-metrics"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `env:"-"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -292,8 +258,6 @@ type BaseOperatorConf struct {
 				Cpu string `default:"150m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		ConfigReloaderCPU    string `env:"-"`
-		ConfigReloaderMemory string `env:"-"`
 	} `prefix:"VM_VMSINGLEDEFAULT_"`
 
 	VMClusterDefault struct {
@@ -348,11 +312,6 @@ type BaseOperatorConf struct {
 	} `prefix:"VM_VMCLUSTERDEFAULT_"`
 
 	VMAlertManager struct {
-		ConfigReloaderImage string `default:"jimmidyson/configmap-reload:v0.3.0" env:"CONFIGRELOADERIMAGE"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory         string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
 		AlertManagerVersion          string `default:"v0.29.0" env:"ALERTMANAGERVERSION"`
 		UseDefaultResources          bool   `default:"true" env:"USEDEFAULTRESOURCES"`
@@ -388,7 +347,6 @@ type BaseOperatorConf struct {
 	VMAuthDefault struct {
 		Image               string `default:"victoriametrics/vmauth"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1" env:"CONFIGRELOADIMAGE"`
 		Port                string `default:"8427"`
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
@@ -401,10 +359,6 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_CPU instead
-		ConfigReloaderCPU string `default:"10m" env:"CONFIGRELOADERCPU"`
-		// Deprecated: use VM_CONFIG_RELOADER_REQUEST_MEMORY instead
-		ConfigReloaderMemory string `default:"25Mi" env:"CONFIGRELOADERMEMORY"`
 	} `prefix:"VM_VMAUTHDEFAULT_"`
 
 	VLClusterDefault struct {

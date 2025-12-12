@@ -125,16 +125,13 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
 
 			}),
-			Entry("with vm config-reloader and statefulMode", "vm-reloader-stateful",
+			Entry("with statefulMode", "vm-stateful",
 				&vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-							UseVMConfigReloader: ptr.To(true),
-						},
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 							UseDefaultResources: ptr.To(false),
 						},
@@ -272,9 +269,6 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 							UseStrictSecurity: ptr.To(true),
 						},
-						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-							UseVMConfigReloader: ptr.To(false),
-						},
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,
@@ -307,9 +301,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 
 					// assert k8s api access
 
-					// config-reloader must not have k8s api access
+					// config-reloader must have k8s api access
 					vmagentPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
-					Expect(hasVolumeMount(vmagentPod.Spec.Containers[0].VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).NotTo(Succeed())
+					Expect(hasVolumeMount(vmagentPod.Spec.Containers[0].VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).To(Succeed())
 
 					// vmagent must have k8s api access
 					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).To(Succeed())

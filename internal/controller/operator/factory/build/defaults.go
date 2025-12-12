@@ -190,7 +190,7 @@ func addVMAuthDefaults(objI any) {
 	}
 	cv := config.ApplicationDefaults(c.VMAuthDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
-	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
 }
 
 func addVMAlertDefaults(objI any) {
@@ -199,7 +199,7 @@ func addVMAlertDefaults(objI any) {
 
 	cv := config.ApplicationDefaults(c.VMAlertDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
-	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
 	if cr.Spec.ConfigReloaderImageTag == "" {
 		panic("cannot be empty")
 	}
@@ -211,7 +211,7 @@ func addVMAgentDefaults(objI any) {
 
 	cv := config.ApplicationDefaults(c.VMAgentDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
-	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
 }
 
 func addVLAgentDefaults(objI any) {
@@ -324,9 +324,6 @@ func addVMAlertmanagerDefaults(objI any) {
 				Cpu string
 			}
 		}(amcd.Resource),
-		ConfigReloadImage:    amcd.ConfigReloaderImage,
-		ConfigReloaderMemory: amcd.ConfigReloaderMemory,
-		ConfigReloaderCPU:    amcd.ConfigReloaderCPU,
 	}
 	if cr.Spec.ReplicaCount == nil {
 		cr.Spec.ReplicaCount = ptr.To[int32](1)
@@ -341,7 +338,7 @@ func addVMAlertmanagerDefaults(objI any) {
 		cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](120)
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
-	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
 }
 
 const (
@@ -580,27 +577,12 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, licens
 	common.Resources = Resources(common.Resources, config.Resource(appDefaults.Resource), ptr.Deref(common.UseDefaultResources, false))
 }
 
-func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, useDefaultResources bool, appDefaults *config.ApplicationDefaults) {
+func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, useDefaultResources bool) {
 	c := getCfg()
-	if common.UseVMConfigReloader == nil {
-		common.UseVMConfigReloader = &c.UseVMConfigReloader
-	}
 	if common.ConfigReloaderImageTag == "" {
-		if *common.UseVMConfigReloader {
-			common.ConfigReloaderImageTag = c.VMConfigReloaderImage
-		} else {
-			common.ConfigReloaderImageTag = appDefaults.ConfigReloadImage
-		}
+		common.ConfigReloaderImageTag = c.ConfigReloaderImage
 	}
 
-	cpuValue := appDefaults.ConfigReloaderCPU
-	if len(c.ConfigReloaderRequestCPU) > 0 {
-		cpuValue = c.ConfigReloaderRequestCPU
-	}
-	memoryValue := appDefaults.ConfigReloaderMemory
-	if len(c.ConfigReloaderRequestMemory) > 0 {
-		memoryValue = c.ConfigReloaderRequestMemory
-	}
 	common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
 	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource{
 		Limit: struct {
@@ -614,8 +596,8 @@ func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 			Mem string
 			Cpu string
 		}{
-			Cpu: cpuValue,
-			Mem: memoryValue,
+			Cpu: c.ConfigReloaderRequestCPU,
+			Mem: c.ConfigReloaderRequestMemory,
 		},
 	}, useDefaultResources)
 }

@@ -1167,6 +1167,7 @@ type CommonConfigReloaderParams struct {
 	// UseVMConfigReloader replaces prometheus-like config-reloader
 	// with vm one. It uses secrets watch instead of file watch
 	// which greatly increases speed of config updates
+	// Removed since v0.67.0: this property is ignored and no longer needed
 	// +optional
 	UseVMConfigReloader *bool `json:"useVMConfigReloader,omitempty"`
 	// ConfigReloaderImageTag defines image:tag for config-reloader container

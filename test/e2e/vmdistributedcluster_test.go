@@ -1048,13 +1048,13 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 							{
 								Ref: &corev1.LocalObjectReference{Name: vmCluster1.Name},
 								OverrideSpec: &apiextensionsv1.JSON{
-									Raw: []byte(`{"vmStorage": {"replicaCount": 2}}`),
+									Raw: []byte(`{"vmstorage": {"replicaCount": 2}}`),
 								},
 							},
 							{
 								Ref: &corev1.LocalObjectReference{Name: vmCluster2.Name},
 								OverrideSpec: &apiextensionsv1.JSON{
-									Raw: []byte(`{"vmStorage": {"replicaCount": 3}}`),
+									Raw: []byte(`{"vmstorage": {"replicaCount": 3}}`),
 								},
 							},
 						},

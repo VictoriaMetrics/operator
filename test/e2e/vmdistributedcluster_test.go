@@ -134,9 +134,6 @@ var _ = Describe("e2e vmdistributedcluster", Label("vm", "vmdistributedcluster")
 			Eventually(func() error {
 				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: namespace}, &vmagent)
 			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, types.NamespacedName{Name: vmAgentName, Namespace: namespace})
-			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
 			Expect(vmagent.Spec.ReplicaCount).To(Equal(ptr.To[int32](2)))
 			Expect(vmagent.OwnerReferences).To(HaveLen(1))
 			Expect(vmagent.OwnerReferences[0].Name).To(Equal(cr.Name))

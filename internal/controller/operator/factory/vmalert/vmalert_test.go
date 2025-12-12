@@ -467,7 +467,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					Name:      "notifier-cfg",
 					Namespace: "default",
 				},
-				StringData: map[string]string{"cfg.yaml": "static: []"},
+				Data: map[string][]byte{"cfg.yaml": []byte("static: []")},
 			},
 			&appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{

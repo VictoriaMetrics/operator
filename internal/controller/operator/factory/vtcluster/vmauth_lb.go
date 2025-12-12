@@ -3,6 +3,7 @@ package vtcluster
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -91,26 +92,25 @@ func buildVMauthLBSecret(cr *vmv1.VTCluster) *corev1.Secret {
 	selectURL := fmt.Sprintf("%s://%s.%s:%s",
 		selectProto, cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort)
 
-	lbScrt := &corev1.Secret{
-		ObjectMeta: buildLBConfigSecretMeta(cr),
-		// TODO: add backend auth
-		StringData: map[string]string{"config.yaml": fmt.Sprintf(`
+	lbConfig := fmt.Sprintf(`
 unauthorized_user:
   url_map:
   - src_paths:
     - "/insert/.*"
     - "/internal/insert"
-    url_prefix: "%s"
+    url_prefix: %q
     discover_backend_ips: true
   - src_paths:
     - ".*"
-    url_prefix: "%s"
+    url_prefix: %q
     discover_backend_ips: true
-      `, insertURL,
-			selectURL,
-		)},
+      `, insertURL, selectURL)
+
+	return &corev1.Secret{
+		ObjectMeta: buildLBConfigSecretMeta(cr),
+		// TODO: add backend auth
+		Data: map[string][]byte{"config.yaml": []byte(strings.TrimSpace(lbConfig))},
 	}
-	return lbScrt
 }
 
 func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {

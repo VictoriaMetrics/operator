@@ -106,6 +106,7 @@ func OnStorageDelete(ctx context.Context, rclient client.Client, cr build.Parent
 	objsToRemove := []client.Object{
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
+		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
 		&vmv1beta1.VMServiceScrape{ObjectMeta: objMeta},
 	}
 	owner := cr.AsOwner()

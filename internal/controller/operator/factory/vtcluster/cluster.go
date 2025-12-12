@@ -19,6 +19,11 @@ import (
 
 // CreateOrUpdate syncs VTCluster object to the desired state
 func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
+	if !build.MustSkipRuntimeValidation {
+		if err := cr.Validate(); err != nil {
+			return err
+		}
+	}
 	var prevCR *vmv1.VTCluster
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -81,6 +86,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if newStorage.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
+		}
+		if newStorage.HPA != nil {
+			cc.KeepHPA(commonName)
 		}
 		if !ptr.Deref(newStorage.DisableSelfServiceScrape, disableSelfScrape) {
 			cc.KeepScrape(commonName)

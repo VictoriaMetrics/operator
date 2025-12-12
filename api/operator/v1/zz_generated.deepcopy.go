@@ -901,6 +901,11 @@ func (in *VLStorage) DeepCopyInto(out *VLStorage) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.HPA != nil {
+		in, out := &in.HPA, &out.HPA
+		*out = new(v1beta1.EmbeddedHPA)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Storage != nil {
 		in, out := &in.Storage, &out.Storage
 		*out = new(v1beta1.StorageSpec)
@@ -1689,6 +1694,11 @@ func (in *VTStorage) DeepCopyInto(out *VTStorage) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.HPA != nil {
+		in, out := &in.HPA, &out.HPA
+		*out = new(v1beta1.EmbeddedHPA)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Storage != nil {
 		in, out := &in.Storage, &out.Storage

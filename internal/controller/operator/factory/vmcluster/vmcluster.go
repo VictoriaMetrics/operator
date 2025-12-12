@@ -33,6 +33,11 @@ import (
 // needed in update checked by revision status
 // its controlled by k8s controller-manager
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+	if !build.MustSkipRuntimeValidation {
+		if err := cr.Validate(); err != nil {
+			return err
+		}
+	}
 	var prevCR *vmv1beta1.VMCluster
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -72,6 +77,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 
 		storageSvc, err := createOrUpdateVMStorageService(ctx, rclient, cr, prevCR)
 		if err != nil {
+			return err
+		}
+		if err := createOrUpdateVMStorageHPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 		if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
@@ -1119,12 +1127,12 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.VMInsert.HPA == nil {
 		return nil
 	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
-		Name:       cr.PrefixedName(vmv1beta1.ClusterComponentInsert),
+		Name:       b.PrefixedName(),
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	newHPA := build.HPA(b, targetRef, cr.Spec.VMInsert.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMInsert.HPA != nil {
@@ -1138,18 +1146,38 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.VMSelect.HPA == nil {
 		return nil
 	}
-	commonName := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
-		Name:       commonName,
+		Name:       b.PrefixedName(),
 		Kind:       "StatefulSet",
 		APIVersion: "apps/v1",
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	defaultHPA := build.HPA(b, targetRef, cr.Spec.VMSelect.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMSelect.HPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMSelect.HPA)
+	}
+
+	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
+}
+
+func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	hpa := cr.Spec.VMStorage.HPA
+	if hpa == nil {
+		return nil
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	targetRef := autoscalingv2.CrossVersionObjectReference{
+		Name:       b.PrefixedName(),
+		Kind:       "StatefulSet",
+		APIVersion: "apps/v1",
+	}
+	defaultHPA := build.HPA(b, targetRef, hpa)
+	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VMStorage.HPA != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMStorage.HPA)
 	}
 
 	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
@@ -1173,6 +1201,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if newStorage.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
+		}
+		if newStorage.HPA != nil {
+			cc.KeepHPA(commonName)
 		}
 		if !ptr.Deref(newStorage.DisableSelfServiceScrape, disableSelfScrape) {
 			cc.KeepScrape(commonName)

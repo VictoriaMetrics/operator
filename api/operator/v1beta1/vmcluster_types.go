@@ -445,6 +445,11 @@ type VMStorage struct {
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 
+	// Configures horizontal pod autoscaling.
+	// Note, downscaling is not supported.
+	// +optional
+	HPA *EmbeddedHPA `json:"hpa,omitempty"`
+
 	// VMInsertPort for VMInsert connections
 	// +optional
 	VMInsertPort string `json:"vmInsertPort,omitempty"`
@@ -669,6 +674,9 @@ func (cr *VMCluster) Validate() error {
 			if err := vms.RollingUpdateStrategyBehavior.Validate(); err != nil {
 				return fmt.Errorf("vmstorage: %w", err)
 			}
+		}
+		if vms.HPA != nil && vms.HPA.Behaviour != nil && vms.HPA.Behaviour.ScaleDown != nil {
+			return fmt.Errorf("vmstorage scaledown HPA behavior is not supported")
 		}
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {

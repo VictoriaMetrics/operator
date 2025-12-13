@@ -1321,7 +1321,7 @@ spec:
                 type: integer
               rollingUpdateStrategy:
                 description: |-
-                  StatefulRollingUpdateStrategy allows configuration for strategyType
+                  RollingUpdateStrategy allows configuration for strategyType
                   set it to RollingUpdate for disabling operator statefulSet rollingUpdate
                 type: string
               runtimeClassName:
@@ -1411,7 +1411,7 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               storage:
-                description: StatefulStorage configures storage for StatefulSet
+                description: Storage configures storage for StatefulSet
                 properties:
                   disableMountSubPath:
                     description: |-

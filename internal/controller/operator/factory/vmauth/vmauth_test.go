@@ -400,7 +400,7 @@ volumes:
         sizelimit: null
 initcontainers:
   - name: config-init
-    image: victoriametrics/operator:config-reloader-v0.65.0
+    image: victoriametrics/operator:config-reloader-v0.66.1
     command: []
     args:
       - --reload-url=http://localhost:8429/-/reload
@@ -458,7 +458,7 @@ containers:
       failurethreshold: 10
     terminationmessagepolicy: FallbackToLogsOnError
   - name: config-reloader
-    image: victoriametrics/operator:config-reloader-v0.65.0
+    image: victoriametrics/operator:config-reloader-v0.66.1
     command: []
     args:
       - --reload-url=http://localhost:8429/-/reload

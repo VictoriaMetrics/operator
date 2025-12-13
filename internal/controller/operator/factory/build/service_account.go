@@ -34,9 +34,9 @@ func ServiceAccount(cr objectForServiceAccountBuilder) *corev1.ServiceAccount {
 
 const serviceAccountTokenVolume = "kube-api-access"
 
-// AddServiceAccountTokenVolumeMount conditionally adds volumeMount to the provided container if DisableAutomountServiceAccountToken is set
-func AddServiceAccountTokenVolumeMount(dst *corev1.Container, params *vmv1beta1.CommonApplicationDeploymentParams) {
-	if !params.DisableAutomountServiceAccountToken {
+// AddServiceAccountTokenVolumeMount conditionally adds volumeMount to the provided container if automount is not set
+func AddServiceAccountTokenVolumeMount(dst *corev1.Container, automount bool) {
+	if automount {
 		return
 	}
 	for _, vm := range dst.VolumeMounts {

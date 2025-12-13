@@ -2,6 +2,8 @@ package build
 
 import (
 	"fmt"
+	"path"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -304,9 +306,89 @@ var (
 	}
 )
 
-// AddsPortProbesToConfigReloaderContainer conditionally adds readiness and liveness probes to the custom config-reloader image
+type reloadable interface {
+	GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams
+	GetReloadURL() string
+	GetNamespace() string
+	UseProxyProtocol() bool
+	AutomountServiceAccountToken() bool
+}
+
+func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeMount, ss *corev1.SecretKeySelector) corev1.Container {
+	args := []string{
+		fmt.Sprintf("--reload-url=%s", cr.GetReloadURL()),
+		"--webhook-method=POST",
+	}
+	cfg := config.MustGetBaseConfig()
+	if cfg.EnableTCP6 {
+		args = append(args, "--enableTCP6")
+	}
+	if cr.UseProxyProtocol() {
+		args = append(args, "--reload-use-proxy-protocol")
+	}
+	outVolumeName := "config-out"
+	if ss != nil {
+		var configDir string
+		for _, m := range mounts {
+			if m.Name == outVolumeName {
+				configDir = m.MountPath
+			}
+		}
+		args = append(args,
+			fmt.Sprintf("--config-envsubst-file=%s", path.Join(configDir, ss.Key)),
+			fmt.Sprintf("--config-secret-name=%s/%s", cr.GetNamespace(), ss.Name),
+			fmt.Sprintf("--config-secret-key=%s.gz", ss.Key))
+	}
+	if isInit {
+		args = append(args, "--only-init-config")
+	} else {
+		for _, m := range mounts {
+			if m.Name != outVolumeName {
+				args = append(args, fmt.Sprintf("--watched-dir=%s", m.MountPath))
+			}
+		}
+	}
+
+	p := cr.GetReloaderParams()
+	if len(p.ConfigReloaderExtraArgs) > 0 {
+		newArgs := args[:0]
+		for _, arg := range args {
+			argName := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
+			if _, ok := p.ConfigReloaderExtraArgs[argName]; !ok {
+				newArgs = append(newArgs, arg)
+			}
+		}
+		for k, v := range p.ConfigReloaderExtraArgs {
+			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
+		}
+		args = newArgs
+	}
+	sort.Strings(args)
+	sort.Slice(mounts, func(i, j int) bool {
+		return mounts[i].Name < mounts[j].Name
+	})
+	c := corev1.Container{
+		Name:         "config-init",
+		Image:        p.ConfigReloaderImage,
+		Args:         args,
+		Resources:    p.ConfigReloaderResources,
+		VolumeMounts: mounts,
+	}
+	if ss != nil {
+		AddServiceAccountTokenVolumeMount(&c, cr.AutomountServiceAccountToken())
+	}
+	if !isInit {
+		c.Name = "config-reloader"
+		c.TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
+		addPortProbesToConfigReloaderContainer(&c)
+		addConfigReloadAuthKeyToReloader(&c, p)
+	}
+	return c
+}
+
+// addPortProbesToConfigReloaderContainer conditionally adds readiness and liveness probes to the custom config-reloader image
 // exposes reloader-http port for container
-func AddsPortProbesToConfigReloaderContainer(crContainer *corev1.Container) {
+func addPortProbesToConfigReloaderContainer(crContainer *corev1.Container) {
 	crContainer.Ports = append(crContainer.Ports, corev1.ContainerPort{
 		ContainerPort: int32(configReloaderDefaultPort),
 		Name:          "reloader-http",
@@ -364,8 +446,8 @@ func AddConfigReloadAuthKeyToApp(container *corev1.Container, extraArgs map[stri
 	})
 }
 
-// AddConfigReloadAuthKeyToReloader adds authKey env var to the given config-reloader container
-func AddConfigReloadAuthKeyToReloader(container *corev1.Container, spec *vmv1beta1.CommonConfigReloaderParams) {
+// addConfigReloadAuthKeyToReloader adds authKey env var to the given config-reloader container
+func addConfigReloadAuthKeyToReloader(container *corev1.Container, spec *vmv1beta1.CommonConfigReloaderParams) {
 	if spec.ConfigReloadAuthKeySecret == nil {
 		return
 	}

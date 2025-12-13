@@ -1171,8 +1171,12 @@ type CommonConfigReloaderParams struct {
 	// +optional
 	UseVMConfigReloader *bool `json:"useVMConfigReloader,omitempty"`
 	// ConfigReloaderImageTag defines image:tag for config-reloader container
+	// Deprecated: use configReloaderImage instead
 	// +optional
 	ConfigReloaderImageTag string `json:"configReloaderImageTag,omitempty"`
+	// ConfigReloaderImage defines image:tag for config-reloader container
+	// +optional
+	ConfigReloaderImage string `json:"configReloaderImage,omitempty"`
 	// ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not defined default resources from operator config will be used
 	// +optional

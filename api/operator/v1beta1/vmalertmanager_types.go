@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"path"
 
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
@@ -212,6 +213,38 @@ type VMAlertmanagerSpec struct {
 // SetLastSpec implements objectWithLastAppliedState interface
 func (cr *VMAlertmanager) SetLastSpec(prevSpec VMAlertmanagerSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
+}
+
+// GetReloadURL implements reloadable interface
+func (cr *VMAlertmanager) GetReloadURL() string {
+	host := "127.0.0.1"
+	localReloadURL := &url.URL{
+		Scheme: "http",
+		Host:   fmt.Sprintf("%s:%s", host, cr.Port()),
+		Path:   path.Clean(cr.Spec.RoutePrefix + "/-/reload"),
+	}
+	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
+		localReloadURL.Scheme = "https"
+	}
+	return localReloadURL.String()
+}
+
+// GetReloaderParams implements reloadable interface
+func (cr *VMAlertmanager) GetReloaderParams() *CommonConfigReloaderParams {
+	return &cr.Spec.CommonConfigReloaderParams
+}
+
+// UseProxyProtocol implements reloadable interface
+func (cr *VMAlertmanager) UseProxyProtocol() bool {
+	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
+		return true
+	}
+	return false
+}
+
+// AutomountServiceAccountToken implements reloadable interface
+func (cr *VMAlertmanager) AutomountServiceAccountToken() bool {
+	return !cr.Spec.DisableAutomountServiceAccountToken
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

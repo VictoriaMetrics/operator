@@ -202,7 +202,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 	}
 
 	var volumeMounts []corev1.VolumeMount
-	var configReloaderWatchMounts []corev1.VolumeMount
+	var crMounts []corev1.VolumeMount
 
 	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
 
@@ -256,14 +256,16 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		}
 		volumeMounts = append(volumeMounts, vm)
-		configReloaderWatchMounts = append(configReloaderWatchMounts, vm)
+		crMounts = append(crMounts, vm)
 	}
 
 	for _, name := range ruleConfigMapNames {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		m := corev1.VolumeMount{
 			Name:      name,
 			MountPath: path.Join(vmAlertConfigDir, name),
-		})
+		}
+		volumeMounts = append(volumeMounts, m)
+		crMounts = append(crMounts, m)
 	}
 
 	var ports []corev1.ContainerPort
@@ -297,7 +299,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
 	if !cr.IsUnmanaged() {
-		crc := buildConfigReloaderContainer(cr, ruleConfigMapNames, configReloaderWatchMounts)
+		crc := build.ConfigReloaderContainer(false, cr, crMounts, nil)
 		vmalertContainers = append(vmalertContainers, crc)
 	}
 
@@ -657,61 +659,6 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 	args = build.AppendFlagsToArgs(args, totalCount, tlsServerName, tlsKeys, tlsCerts, tlsCAs, tlsInsecure, headers, bearerTokenPath)
 	args = build.AppendFlagsToArgs(args, totalCount, oauth2SecretFile, oauth2ClientID, oauth2Scopes, oauth2TokenURL)
 	return args, nil
-}
-
-func buildConfigReloaderContainer(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, extraWatchVolumeMounts []corev1.VolumeMount) corev1.Container {
-
-	var args []string
-
-	volumeWatchArg := "--watched-dir"
-	reloadURLArg := "--reload-url"
-	cfg := config.MustGetBaseConfig()
-	if cfg.EnableTCP6 {
-		args = append(args, "--enableTCP6")
-	}
-	args = append(args, fmt.Sprintf("%s=%s", reloadURLArg, vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)))
-	for _, cm := range ruleConfigMapNames {
-		args = append(args, fmt.Sprintf("%s=%s", volumeWatchArg, path.Join(vmAlertConfigDir, cm)))
-	}
-	for _, wm := range extraWatchVolumeMounts {
-		args = append(args, fmt.Sprintf("%s=%s", volumeWatchArg, wm.MountPath))
-	}
-	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		newArgs := args[:0]
-		for _, arg := range args {
-			argName := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if _, ok := cr.Spec.ConfigReloaderExtraArgs[argName]; !ok {
-				newArgs = append(newArgs, arg)
-			}
-		}
-		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
-		}
-		sort.Strings(newArgs)
-		args = newArgs
-	}
-	var reloaderVolumes []corev1.VolumeMount
-	for _, name := range ruleConfigMapNames {
-		reloaderVolumes = append(reloaderVolumes, corev1.VolumeMount{
-			Name:      name,
-			MountPath: path.Join(vmAlertConfigDir, name),
-		})
-	}
-	reloaderVolumes = append(reloaderVolumes, extraWatchVolumeMounts...)
-	sort.Slice(reloaderVolumes, func(i, j int) bool {
-		return reloaderVolumes[i].Name < reloaderVolumes[j].Name
-	})
-	configReloaderContainer := corev1.Container{
-		Name:                     "config-reloader",
-		Image:                    cr.Spec.ConfigReloaderImageTag,
-		Args:                     args,
-		Resources:                cr.Spec.ConfigReloaderResources,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		VolumeMounts:             reloaderVolumes,
-	}
-	build.AddsPortProbesToConfigReloaderContainer(&configReloaderContainer)
-	build.AddConfigReloadAuthKeyToReloader(&configReloaderContainer, &cr.Spec.CommonConfigReloaderParams)
-	return configReloaderContainer
 }
 
 func discoverNotifiersIfNeeded(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {

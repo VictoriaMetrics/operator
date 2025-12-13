@@ -158,6 +158,27 @@ func (cr *VMAlert) SetLastSpec(prevSpec VMAlertSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
+// GetReloadURL implements reloadable interface
+func (cr *VMAlert) GetReloadURL() string {
+	return BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)
+}
+
+// GetReloaderParams implements reloadable interface
+func (cr *VMAlert) GetReloaderParams() *CommonConfigReloaderParams {
+	return &cr.Spec.CommonConfigReloaderParams
+}
+
+// UseProxyProtocol implements reloadable interface
+func (cr *VMAlert) UseProxyProtocol() bool {
+	v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]
+	return ok && v == "true"
+}
+
+// AutomountServiceAccountToken implements reloadable interface
+func (cr *VMAlert) AutomountServiceAccountToken() bool {
+	return !cr.Spec.DisableAutomountServiceAccountToken
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAlert) UnmarshalJSON(src []byte) error {
 	type pcr VMAlert

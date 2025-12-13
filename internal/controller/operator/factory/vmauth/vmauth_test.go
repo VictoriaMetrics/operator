@@ -255,30 +255,26 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 				Port: "8429",
 			},
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+				ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
 			},
 		},
 	}, `
 volumes:
   - name: config-out
     volumesource:
-      emptydir:
-        medium: ""
-        sizelimit: null
+      emptydir: {}
 initcontainers:
   - name: config-init
     image: vmcustom:config-reloader-v0.35.0
     args:
-      - --reload-url=http://localhost:8429/-/reload
       - --config-envsubst-file=/opt/vmauth/config.yaml
+      - --config-secret-key=config.yaml.gz
       - --config-secret-name=default/vmauth-config-auth
       - --only-init-config
-    resources:
-      limits: {}
-      requests: {}
+      - --reload-url=http://localhost:8429/-/reload
+      - --webhook-method=POST
     volumemounts:
       - name: config-out
-        readonly: false
         mountpath: /opt/vmauth
 containers:
   - name: vmauth
@@ -289,24 +285,17 @@ containers:
       - -httpListenAddr=:8429
     ports:
       - name: http
-        hostport: 0
         containerport: 8429
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
     volumemounts:
       - name: config-out
-        readonly: false
         mountpath: /opt/vmauth
     livenessprobe:
       probehandler:
         httpget:
           path: /health
           port:
-            type: 0
             intval: 8429
-            strval: ""
           scheme: HTTP
       timeoutseconds: 5
       periodseconds: 5
@@ -319,7 +308,6 @@ containers:
           port:
             intval: 8429
           scheme: HTTP
-      initialdelayseconds: 0
       timeoutseconds: 5
       periodseconds: 5
       successthreshold: 1
@@ -328,34 +316,24 @@ containers:
   - name: config-reloader
     image: vmcustom:config-reloader-v0.35.0
     args:
-      - --reload-url=http://localhost:8429/-/reload
       - --config-envsubst-file=/opt/vmauth/config.yaml
+      - --config-secret-key=config.yaml.gz
       - --config-secret-name=default/vmauth-config-auth
-    env:
-      - name: POD_NAME
-        valuefrom:
-          fieldref:
-            apiversion: ""
-            fieldpath: metadata.name
+      - --reload-url=http://localhost:8429/-/reload
+      - --webhook-method=POST
     ports:
       - name: reloader-http
         containerport: 8435
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
     volumemounts:
       - name: config-out
-        readonly: false
         mountpath: /opt/vmauth
     livenessprobe:
       probehandler:
         httpget:
           path: /health
           port:
-            type: 0
             intval: 8435
-            strval: ""
           scheme: HTTP
       timeoutseconds: 1
       periodseconds: 10
@@ -378,7 +356,7 @@ serviceaccountname: vmauth-auth
 
 `)
 
-	// without custom-loader
+	// with config-reloader
 	f(&vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
 		Spec: vmv1beta1.VMAuthSpec{
@@ -395,21 +373,17 @@ serviceaccountname: vmauth-auth
 volumes:
   - name: config-out
     volumesource:
-      emptydir:
-        medium: ""
-        sizelimit: null
+      emptydir: {}
 initcontainers:
   - name: config-init
     image: victoriametrics/operator:config-reloader-v0.66.1
-    command: []
     args:
-      - --reload-url=http://localhost:8429/-/reload
       - --config-envsubst-file=/opt/vmauth/config.yaml
+      - --config-secret-key=config.yaml.gz
       - --config-secret-name=default/vmauth-config-auth
       - --only-init-config
-    resources:
-      limits: {}
-      requests: {}
+      - --reload-url=http://localhost:8429/-/reload
+      - --webhook-method=POST
     volumemounts:
       - name: config-out
         mountpath: /opt/vmauth
@@ -422,12 +396,8 @@ containers:
       - -httpListenAddr=:8429
     ports:
       - name: http
-        hostport: 0
         containerport: 8429
         protocol: TCP
-    resources:
-      limits: {}
-      requests: {}
     volumemounts:
       - name: config-out
         mountpath: /opt/vmauth
@@ -436,9 +406,7 @@ containers:
         httpget:
           path: /health
           port:
-            type: 0
             intval: 8429
-            strval: ""
           scheme: HTTP
       timeoutseconds: 5
       periodseconds: 5
@@ -451,7 +419,6 @@ containers:
           port:
             intval: 8429
           scheme: HTTP
-      initialdelayseconds: 0
       timeoutseconds: 5
       periodseconds: 5
       successthreshold: 1
@@ -459,21 +426,16 @@ containers:
     terminationmessagepolicy: FallbackToLogsOnError
   - name: config-reloader
     image: victoriametrics/operator:config-reloader-v0.66.1
-    command: []
     args:
-      - --reload-url=http://localhost:8429/-/reload
       - --config-envsubst-file=/opt/vmauth/config.yaml
+      - --config-secret-key=config.yaml.gz
       - --config-secret-name=default/vmauth-config-auth
+      - --reload-url=http://localhost:8429/-/reload
+      - --webhook-method=POST
     ports:
       - name: reloader-http
         containerport: 8435
         protocol: TCP
-    env:
-      - name: POD_NAME
-        valuefrom:
-          fieldref:
-            apiversion: ""
-            fieldpath: metadata.name
     livenessprobe:
       probehandler:
         httpget:
@@ -497,12 +459,8 @@ containers:
       periodseconds: 10
       successthreshold: 1
       failurethreshold: 3
-    resources:
-      limits: {}
-      requests: {}
     volumemounts:
       - name: config-out
-        readonly: false
         mountpath: /opt/vmauth
     terminationmessagepolicy: FallbackToLogsOnError
 serviceaccountname: vmauth-auth
@@ -562,8 +520,6 @@ rules:
             name: vmauth-auth
             port:
               name: http
-              number: 0
-          resource: null
 `)
 
 	// with custom paths
@@ -598,7 +554,5 @@ rules:
             name: vmauth-auth
             port:
               name: http
-              number: 0
-          resource: null
 `)
 }

@@ -303,7 +303,7 @@ spec:
 
  The following containers needs access to Kubernetes API server:
 * vmagent uses Kubernetes service-discovery for scrapping target metrics.
-* config-reloader watches configuration secret and triggers application state config reload on change. Note, it's only true for `useVMConfigReloader: true`. This option can be used with `VMAgent`, `VMAuth` and `VMAlertmanager`.
+* config-reloader watches configuration secret and triggers application state config reload on change.
 
  It's also possible to mount `serviceAccountToken` manually to any component.
 Consider the following example:

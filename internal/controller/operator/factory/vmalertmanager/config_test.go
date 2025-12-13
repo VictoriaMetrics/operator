@@ -1,8 +1,11 @@
 package vmalertmanager
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"testing"
 
@@ -1875,13 +1878,27 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			t.Fatalf("config for alertmanager not exist, err: %v", err)
 		}
 
+		uncompress := func(data []byte) []byte {
+			dataBuf := bytes.NewBuffer(data)
+			dataReader, err := gzip.NewReader(dataBuf)
+			if err != nil {
+				t.Fatalf("failed to uncompress config: %s", err)
+			}
+			d, err := io.ReadAll(dataReader)
+			if err != nil {
+				t.Fatalf("cannot read cfg: %s", err)
+			}
+			dataReader.Close()
+			return d
+		}
+
 		// check secret config after creating
-		d, ok := createdSecret.Data[alertmanagerSecretConfigKey]
+		d, ok := createdSecret.Data[alertmanagerSecretConfigKeyGz]
 		if !ok {
 			t.Fatalf("config for alertmanager not exist, err: %v", err)
 		}
 		var secretConfig alertmanagerConfig
-		assert.NoError(t, yaml.Unmarshal(d, &secretConfig))
+		assert.NoError(t, yaml.Unmarshal(uncompress(d), &secretConfig))
 		var amc vmv1beta1.VMAlertmanagerConfig
 		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: "test-amc"}, &amc))
 		// we add blachole as first route by default
@@ -1903,11 +1920,11 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 		}
 
 		// check secret config after updating
-		d, ok = createdSecret.Data[alertmanagerSecretConfigKey]
+		d, ok = createdSecret.Data[alertmanagerSecretConfigKeyGz]
 		if !ok {
 			t.Fatalf("config for alertmanager not exist, err: %v", err)
 		}
-		err = yaml.Unmarshal(d, &secretConfig)
+		err = yaml.Unmarshal(uncompress(d), &secretConfig)
 		if err != nil {
 			t.Fatalf("could not unmarshall secret config data into structure, err: %v", err)
 		}
@@ -1936,7 +1953,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 					Name:      "vmalertmanager-test-am-config",
 					Namespace: "default",
 				},
-				Data: map[string][]byte{alertmanagerSecretConfigKey: {}},
+				Data: map[string][]byte{alertmanagerSecretConfigKeyGz: {}},
 			},
 			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{

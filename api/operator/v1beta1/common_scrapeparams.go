@@ -378,6 +378,9 @@ type CommonScrapeParams struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// SampleLimit defines global per target limit of scraped samples
+	// +optional
+	SampleLimit int `json:"sampleLimit,omitempty"`
 	// SelectAllByDefault changes default behavior for empty CRD selectors, such ServiceScrapeSelector.
 	// with selectAllByDefault: true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector
 	// Operator selects all exist serviceScrapes

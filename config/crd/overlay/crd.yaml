@@ -10410,6 +10410,10 @@ spec:
                   RuntimeClassName - defines runtime class for kubernetes pod.
                   https://kubernetes.io/docs/concepts/containers/runtime-class/
                 type: string
+              sampleLimit:
+                description: SampleLimit defines global per target limit of scraped
+                  samples
+                type: integer
               schedulerName:
                 description: SchedulerName - defines kubernetes scheduler name
                 type: string

@@ -65,14 +65,6 @@ type VMAgentSpec struct {
 	// If left empty, VMAgent is assumed to run inside of the cluster
 	// and will discover API servers automatically and use the pod's CA certificate
 	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
-	// aPIServerConfig is deprecated use apiServerConfig instead
-	// +deprecated
-	// +optional
-	APIServerConfigDeprecated *APIServerConfig `json:"aPIServerConfig,omitempty"`
-	// APIServerConfig allows specifying a host and auth methods to access apiserver.
-	// If left empty, VMAgent is assumed to run inside of the cluster
-	// and will discover API servers automatically and use the pod's CA certificate
-	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
 	// +optional
 	APIServerConfig *APIServerConfig `json:"apiServerConfig,omitempty"`
 
@@ -437,10 +429,6 @@ func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	type pcr VMAgent
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
 		return err
-	}
-	// TODO: remove it at v0.56.0 release
-	if cr.Spec.APIServerConfigDeprecated != nil && cr.Spec.APIServerConfig == nil {
-		cr.Spec.APIServerConfig = cr.Spec.APIServerConfigDeprecated
 	}
 	if err := ParseLastAppliedStateTo(cr); err != nil {
 		return err

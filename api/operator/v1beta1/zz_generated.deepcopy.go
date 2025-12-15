@@ -4127,11 +4127,6 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(ManagedObjectsMetadata)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.APIServerConfigDeprecated != nil {
-		in, out := &in.APIServerConfigDeprecated, &out.APIServerConfigDeprecated
-		*out = new(APIServerConfig)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.APIServerConfig != nil {
 		in, out := &in.APIServerConfig, &out.APIServerConfig
 		*out = new(APIServerConfig)

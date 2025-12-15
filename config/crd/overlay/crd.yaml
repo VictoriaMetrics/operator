@@ -7173,17 +7173,6 @@ spec:
           spec:
             description: VMAgentSpec defines the desired state of VMAgent
             properties:
-              aPIServerConfig:
-                description: |-
-                  APIServerConfig allows specifying a host and auth methods to access apiserver.
-                  If left empty, VMAgent is assumed to run inside of the cluster
-                  and will discover API servers automatically and use the pod's CA certificate
-                  and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
-                  aPIServerConfig is deprecated use apiServerConfig instead
-                required:
-                - host
-                type: object
-                x-kubernetes-preserve-unknown-fields: true
               additionalScrapeConfigs:
                 description: |-
                   AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it

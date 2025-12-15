@@ -28424,48 +28424,6 @@ spec:
                       Paused If set to true all actions on the underlying managed objects are not
                       going to be performed, except for delete actions.
                     type: boolean
-                  persistentVolume:
-                    description: |-
-                      PersistentVolume - add persistent volume for cacheMountPath
-                      its useful for persistent cache
-                      use storage instead of persistentVolume.
-                    properties:
-                      disableMountSubPath:
-                        description: |-
-                          Deprecated: subPath usage will be disabled by default in a future release, this option will become unnecessary.
-                          DisableMountSubPath allows to remove any subPath usage in volume mounts.
-                        type: boolean
-                      emptyDir:
-                        description: |-
-                          EmptyDirVolumeSource to be used by the Prometheus StatefulSets. If specified, used in place of any volumeClaimTemplate. More
-                          info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
-                        properties:
-                          medium:
-                            description: |-
-                              medium represents what type of storage medium should back this directory.
-                              The default is "" which means to use the node's default medium.
-                              Must be an empty string (default) or Memory.
-                              More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir
-                            type: string
-                          sizeLimit:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            description: |-
-                              sizeLimit is the total amount of local storage required for this EmptyDir volume.
-                              The size limit is also applicable for memory medium.
-                              The maximum usage on memory medium EmptyDir would be the minimum value between
-                              the SizeLimit specified here and the sum of memory limits of all containers in a pod.
-                              The default is nil which means that the limit is undefined.
-                              More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                        type: object
-                      volumeClaimTemplate:
-                        description: A PVC spec to be used by the StatefulSets/Deployments.
-                        type: object
-                        x-kubernetes-preserve-unknown-fields: true
-                    type: object
                   persistentVolumeClaimRetentionPolicy:
                     description: PersistentVolumeClaimRetentionPolicy allows configuration
                       of PVC retention policy

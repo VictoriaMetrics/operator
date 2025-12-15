@@ -44,7 +44,7 @@ func HTTPRoute(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTTPRou
 }
 
 func httpRouteRule(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTTPRoute) ([]gwapiv1.HTTPRouteRule, error) {
-	defaultPortVal, err := strconv.Atoi(port)
+	defaultPortVal, err := strconv.ParseInt(port, 10, 32)
 	if err != nil {
 		return nil, err
 	}

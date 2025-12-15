@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/VictoriaMetrics/VictoriaMetrics v1.131.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.132.0
 	github.com/VictoriaMetrics/metrics v1.40.2
 	github.com/VictoriaMetrics/metricsql v0.84.8
 	github.com/VictoriaMetrics/operator/api v0.51.3
@@ -35,7 +35,7 @@ require (
 
 require (
 	github.com/VictoriaMetrics/VictoriaLogs v1.36.2-0.20251008164716-21c0fb3de84d // indirect
-	github.com/VictoriaMetrics/easyproto v0.1.4 // indirect
+	github.com/VictoriaMetrics/easyproto v1.1.3 // indirect
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
@@ -73,7 +73,7 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fastjson v1.6.4 // indirect
+	github.com/valyala/fastjson v1.6.5 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/valyala/gozstd v1.24.0 // indirect

@@ -3,7 +3,7 @@ module github.com/VictoriaMetrics/operator/api
 go 1.25.5
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.131.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.132.0
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
 	github.com/prometheus/alertmanager v0.28.0
@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/VictoriaMetrics/VictoriaLogs v1.36.2-0.20251008164716-21c0fb3de84d // indirect
-	github.com/VictoriaMetrics/easyproto v0.1.4 // indirect
+	github.com/VictoriaMetrics/easyproto v1.1.3 // indirect
 	github.com/VictoriaMetrics/metrics v1.40.2 // indirect
 	github.com/VictoriaMetrics/metricsql v0.84.8 // indirect
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
@@ -59,7 +59,7 @@ require (
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fastjson v1.6.4 // indirect
+	github.com/valyala/fastjson v1.6.5 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/valyala/gozstd v1.24.0 // indirect

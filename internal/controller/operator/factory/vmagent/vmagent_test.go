@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path"
 	"sort"
 	"strings"
 	"testing"
@@ -2179,123 +2178,6 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 	})
 }
 
-func Test_buildConfigReloaderArgs(t *testing.T) {
-	f := func(cr *vmv1beta1.VMAgent, want []string) {
-		t.Helper()
-		var exvms []corev1.VolumeMount
-		for _, cm := range cr.Spec.ConfigMaps {
-			exvms = append(exvms, corev1.VolumeMount{
-				Name:      k8stools.SanitizeVolumeName("configmap-" + cm),
-				ReadOnly:  true,
-				MountPath: path.Join(vmv1beta1.ConfigMapsDir, cm),
-			})
-		}
-		got := buildConfigReloaderArgs(cr, exvms)
-		sort.Strings(got)
-		sort.Strings(want)
-		assert.Equal(t, want, got)
-	}
-
-	// parse ok
-	f(&vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default-vmagent",
-			Namespace: "default",
-		},
-		Spec: vmv1beta1.VMAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
-		},
-	}, []string{
-		"--reload-url=http://localhost:8429/-/reload",
-		"--config-secret-key=vmagent.yaml.gz",
-		"--config-secret-name=default/vmagent-default-vmagent",
-		"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
-	})
-
-	// ingest only
-	f(&vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default-vmagent",
-			Namespace: "default",
-		},
-		Spec: vmv1beta1.VMAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
-
-			IngestOnlyMode: true},
-	}, []string{
-		"--reload-url=http://localhost:8429/-/reload",
-	})
-
-	// with relabel and stream
-	f(&vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default-vmagent",
-			Namespace: "default",
-		},
-		Spec: vmv1beta1.VMAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
-			IngestOnlyMode:          false,
-			InlineRelabelConfig:     []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
-			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-				{
-					URL: "http://some",
-					StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
-						Rules: []vmv1beta1.StreamAggrRule{
-							{
-								Outputs: []string{"dst"},
-							},
-						},
-					},
-				},
-			},
-		},
-	}, []string{
-		"--reload-url=http://localhost:8429/-/reload",
-		"--config-secret-key=vmagent.yaml.gz",
-		"--config-secret-name=default/vmagent-default-vmagent",
-		"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
-		"--watched-dir=/etc/vm/relabeling",
-		"--watched-dir=/etc/vm/stream-aggr",
-	})
-
-	// with configMaps mount
-	f(&vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default-vmagent",
-			Namespace: "default",
-		},
-		Spec: vmv1beta1.VMAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ConfigMaps: []string{"cm-0", "cm-1"},
-			},
-			IngestOnlyMode:      false,
-			InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
-			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-				{
-					URL: "http://some",
-					StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
-						Rules: []vmv1beta1.StreamAggrRule{
-							{
-								Outputs: []string{"dst"},
-							},
-						},
-					},
-				},
-			},
-		},
-	}, []string{
-		"--reload-url=http://localhost:8429/-/reload",
-		"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
-		"--config-secret-key=vmagent.yaml.gz",
-		"--config-secret-name=default/vmagent-default-vmagent",
-		"--watched-dir=/etc/vm/configs/cm-0",
-		"--watched-dir=/etc/vm/configs/cm-1",
-		"--watched-dir=/etc/vm/relabeling",
-		"--watched-dir=/etc/vm/stream-aggr",
-	})
-}
-
 func TestMakeSpecForAgentOk(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent
@@ -2353,7 +2235,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 					Port: "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
 				},
 			},
 		},
@@ -2361,9 +2243,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 volumes:
     - name: persistent-queue-data
       volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
+        emptydir: {}
 initcontainers: []
 containers:
     - name: vmagent
@@ -2374,7 +2254,6 @@ containers:
         - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
       ports:
         - name: http
-          hostport: 0
           containerport: 8425
           protocol: TCP
       resources:
@@ -2391,16 +2270,13 @@ containers:
         claims: []
       volumemounts:
         - name: persistent-queue-data
-          readonly: false
           mountpath: /tmp/vmagent-remotewrite-data
       livenessprobe:
         probehandler:
             httpget:
                 path: /health
                 port:
-                    type: 0
                     intval: 8425
-                    strval: ""
                 scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
@@ -2413,7 +2289,6 @@ containers:
                 port:
                     intval: 8425
                 scheme: HTTP
-        initialdelayseconds: 0
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
@@ -2436,7 +2311,7 @@ serviceaccountname: vmagent-agent
 					Port:                "8429",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImageTag: "vmcustomer:v1",
+					ConfigReloaderImage: "vmcustomer:v1",
 				},
 			},
 		},
@@ -2451,9 +2326,7 @@ volumes:
             secretname: tls-assets-vmagent-agent
     - name: config-out
       volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
+        emptydir: {}
     - name: config
       volumesource:
         secret:
@@ -2462,42 +2335,30 @@ initcontainers:
     - name: config-init
       image: vmcustomer:v1
       args:
-        - --reload-url=http://localhost:8429/-/reload
-        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml
-        - --config-secret-name=default/vmagent-agent
+        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.yaml
         - --config-secret-key=vmagent.yaml.gz
+        - --config-secret-name=default/vmagent-agent
         - --only-init-config
+        - --reload-url=http://localhost:8429/-/reload
+        - --webhook-method=POST
       volumemounts:
         - name: config-out
-          readonly: false
           mountpath: /etc/vmagent/config_out
 containers:
     - name: config-reloader
       image: vmcustomer:v1
       args:
-        - --reload-url=http://localhost:8429/-/reload
-        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml
-        - --config-secret-name=default/vmagent-agent
+        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.yaml
         - --config-secret-key=vmagent.yaml.gz
+        - --config-secret-name=default/vmagent-agent
+        - --reload-url=http://localhost:8429/-/reload
+        - --webhook-method=POST
       ports:
         - name: reloader-http
-          hostport: 0
           containerport: 8435
           protocol: TCP
-          hostip: ""
-      env:
-        - name: POD_NAME
-          valuefrom:
-            fieldref:
-                fieldpath: metadata.name
-      resources:
-        limits: {}
-        requests: {}
-        claims: []
-      resizepolicy: []
       volumemounts:
         - name: config-out
-          readonly: false
           mountpath: /etc/vmagent/config_out
       livenessprobe:
         probehandler:
@@ -2506,7 +2367,6 @@ containers:
                 port:
                     intval: 8435
                 scheme: HTTP
-        initialdelayseconds: 0
         timeoutseconds: 1
         periodseconds: 10
         successthreshold: 1
@@ -2523,13 +2383,12 @@ containers:
         periodseconds: 10
         successthreshold: 1
         failurethreshold: 3
-        terminationgraceperiodseconds: null
       terminationmessagepolicy: FallbackToLogsOnError
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
         - -httpListenAddr=:8429
-        - -promscrape.config=/etc/vmagent/config_out/vmagent.env.yaml
+        - -promscrape.config=/etc/vmagent/config_out/vmagent.yaml
         - -remoteWrite.maxDiskUsagePerURL=1073741824
         - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
       ports:
@@ -2538,29 +2397,16 @@ containers:
           protocol: TCP
       volumemounts:
         - name: persistent-queue-data
-          readonly: false
           mountpath: /tmp/vmagent-remotewrite-data
-          subpath: ""
-          mountpropagation: null
-          subpathexpr: ""
         - name: config-out
           readonly: true
           mountpath: /etc/vmagent/config_out
-          subpath: ""
-          mountpropagation: null
-          subpathexpr: ""
         - name: tls-assets
           readonly: true
           mountpath: /etc/vmagent-tls/certs
-          subpath: ""
-          mountpropagation: null
-          subpathexpr: ""
         - name: config
           readonly: true
           mountpath: /etc/vmagent/config
-          subpath: ""
-          mountpropagation: null
-          subpathexpr: ""
       livenessprobe:
         probehandler:
             httpget:
@@ -2568,12 +2414,10 @@ containers:
                 port:
                     intval: 8429
                 scheme: HTTP
-        initialdelayseconds: 0
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
-        terminationgraceperiodseconds: null
       readinessprobe:
         probehandler:
             httpget:
@@ -2581,12 +2425,10 @@ containers:
                 port:
                     intval: 8429
                 scheme: HTTP
-        initialdelayseconds: 0
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
-        terminationgraceperiodseconds: null
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 
@@ -2608,7 +2450,7 @@ serviceaccountname: vmagent-agent
 					Port:                "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{
@@ -2629,9 +2471,7 @@ serviceaccountname: vmagent-agent
 volumes:
     - name: persistent-queue-data
       volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
+        emptydir: {}
 initcontainers: []
 containers:
     - name: vmagent
@@ -2643,25 +2483,17 @@ containers:
         - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
       ports:
         - name: http
-          hostport: 0
           containerport: 8425
           protocol: TCP
-      resources:
-        limits: {}
-        requests: {}
-        claims: []
       volumemounts:
         - name: persistent-queue-data
-          readonly: false
           mountpath: /tmp/vmagent-remotewrite-data
       livenessprobe:
         probehandler:
             httpget:
                 path: /health
                 port:
-                    type: 0
                     intval: 8425
-                    strval: ""
                 scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
@@ -2674,7 +2506,6 @@ containers:
                 port:
                     intval: 8425
                 scheme: HTTP
-        initialdelayseconds: 0
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
@@ -2700,7 +2531,7 @@ serviceaccountname: vmagent-agent
 					Port:                "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{
@@ -2724,9 +2555,7 @@ serviceaccountname: vmagent-agent
 volumes:
     - name: persistent-queue-data
       volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
+        emptydir: {}
 initcontainers: []
 containers:
     - name: vmagent
@@ -2738,25 +2567,17 @@ containers:
         - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
       ports:
         - name: http
-          hostport: 0
           containerport: 8425
           protocol: TCP
-      resources:
-        limits: {}
-        requests: {}
-        claims: []
       volumemounts:
         - name: persistent-queue-data
-          readonly: false
           mountpath: /tmp/vmagent-remotewrite-data
       livenessprobe:
         probehandler:
             httpget:
                 path: /health
                 port:
-                    type: 0
                     intval: 8425
-                    strval: ""
                 scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
@@ -2769,7 +2590,6 @@ containers:
                 port:
                     intval: 8425
                 scheme: HTTP
-        initialdelayseconds: 0
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
@@ -2795,7 +2615,7 @@ serviceaccountname: vmagent-agent
 					Port:                "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
+					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
 				},
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 					ExtraArgs: map[string]string{
@@ -2826,9 +2646,7 @@ serviceaccountname: vmagent-agent
 volumes:
     - name: persistent-queue-data
       volumesource:
-        emptydir:
-            medium: ""
-            sizelimit: null
+        emptydir: {}
 initcontainers: []
 containers:
     - name: vmagent
@@ -2841,25 +2659,17 @@ containers:
         - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
       ports:
         - name: http
-          hostport: 0
           containerport: 8425
           protocol: TCP
-      resources:
-        limits: {}
-        requests: {}
-        claims: []
       volumemounts:
         - name: persistent-queue-data
-          readonly: false
           mountpath: /tmp/vmagent-remotewrite-data
       livenessprobe:
         probehandler:
             httpget:
                 path: /health
                 port:
-                    type: 0
                     intval: 8425
-                    strval: ""
                 scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
@@ -2872,7 +2682,6 @@ containers:
                 port:
                     intval: 8425
                 scheme: HTTP
-        initialdelayseconds: 0
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1

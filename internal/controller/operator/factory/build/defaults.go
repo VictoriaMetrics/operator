@@ -200,7 +200,7 @@ func addVMAlertDefaults(objI any) {
 	cv := config.ApplicationDefaults(c.VMAlertDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
-	if cr.Spec.ConfigReloaderImageTag == "" {
+	if cr.Spec.ConfigReloaderImage == "" {
 		panic("cannot be empty")
 	}
 }
@@ -579,11 +579,15 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, licens
 
 func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, useDefaultResources bool) {
 	c := getCfg()
-	if common.ConfigReloaderImageTag == "" {
-		common.ConfigReloaderImageTag = c.ConfigReloaderImage
+	if common.ConfigReloaderImage == "" {
+		if common.ConfigReloaderImageTag != "" {
+			common.ConfigReloaderImage = common.ConfigReloaderImageTag
+		} else {
+			common.ConfigReloaderImage = c.ConfigReloaderImage
+		}
 	}
 
-	common.ConfigReloaderImageTag = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
+	common.ConfigReloaderImage = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImage)
 	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource{
 		Limit: struct {
 			Mem string

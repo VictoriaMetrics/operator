@@ -692,6 +692,37 @@ func (cr *VMAuth) IsUnmanaged() bool {
 		cr.Spec.LocalPath != ""
 }
 
+// GetReloadURL implements reloadable interface
+func (cr *VMAuth) GetReloadURL() string {
+	port := cr.Spec.Port
+	if len(cr.Spec.InternalListenPort) > 0 {
+		port = cr.Spec.InternalListenPort
+	}
+	return BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)
+}
+
+// GetReloaderParams implements reloadable interface
+func (cr *VMAuth) GetReloaderParams() *CommonConfigReloaderParams {
+	return &cr.Spec.CommonConfigReloaderParams
+}
+
+// UseProxyProtocol implements reloadable interface
+func (cr *VMAuth) UseProxyProtocol() bool {
+	hasInternalPorts := len(cr.Spec.InternalListenPort) == 0
+	if cr.Spec.UseProxyProtocol {
+		return hasInternalPorts
+	}
+	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
+		return hasInternalPorts
+	}
+	return false
+}
+
+// AutomountServiceAccountToken implements reloadable interface
+func (cr *VMAuth) AutomountServiceAccountToken() bool {
+	return !cr.Spec.DisableAutomountServiceAccountToken
+}
+
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
 func (cr *VMAuth) LastAppliedSpecAsPatch() (client.Patch, error) {
 	return LastAppliedChangesAsPatch(cr.Spec)

@@ -104,10 +104,12 @@ type BaseOperatorConf struct {
 	WatchNamespaces []string `default:"" env:"WATCH_NAMESPACE"`
 
 	// container registry name prefix, e.g. docker.io
-	ContainerRegistry    string `default:"" env:"VM_CONTAINERREGISTRY"`
-	ConfigReloaderImage  string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:"VM_CUSTOMCONFIGRELOADERIMAGE,expand"`
-	PSPAutoCreateEnabled bool   `default:"false" env:"VM_PSPAUTOCREATEENABLED"`
-	EnableTCP6           bool   `default:"false" env:"VM_ENABLETCP6"`
+	ContainerRegistry string `default:"" env:"VM_CONTAINERREGISTRY"`
+	// Deprecated: use VM_CONFIG_RELOADER_IMAGE instead
+	CustomConfigReloaderImage string `env:"VM_CUSTOMCONFIGRELOADERIMAGE"`
+	ConfigReloaderImage       string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:"VM_CONFIG_RELOADER_IMAGE,expand"`
+	PSPAutoCreateEnabled      bool   `default:"false" env:"VM_PSPAUTOCREATEENABLED"`
+	EnableTCP6                bool   `default:"false" env:"VM_ENABLETCP6"`
 
 	// defines global resource.limits.cpu for all config-reloader containers
 	ConfigReloaderLimitCPU string `default:"unlimited" env:"VM_CONFIG_RELOADER_LIMIT_CPU"`
@@ -650,6 +652,9 @@ func MustGetBaseConfig() *BaseOperatorConf {
 		c, err := env.ParseAsWithOptions[BaseOperatorConf](getEnvOpts())
 		if err != nil {
 			panic(err)
+		}
+		if c.CustomConfigReloaderImage != "" {
+			c.ConfigReloaderImage = c.CustomConfigReloaderImage
 		}
 		if err := c.Validate(); err != nil {
 			panic(err)

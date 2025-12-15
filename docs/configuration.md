@@ -284,9 +284,6 @@ victoria-metrics-operator:
     enable_converter_ownership: false
     # -- By default, operator creates psp for its objects.
     psp_auto_creation_enabled: true
-    # -- Enables custom config-reloader, bundled with operator.
-    # It should reduce  vmagent and vmauth config sync-time and make it predictable.
-    useCustomConfigReloader: false
 
   # -- extra settings for the operator deployment. full list Ref: https://docs.victoriametrics.com/operator/vars
   env:
@@ -296,8 +293,8 @@ victoria-metrics-operator:
     # -- container registry name prefix, e.g. docker.io
     - name: VM_CONTAINERREGISTRY
       value: ""
-    # -- image for custom reloader (see the useCustomConfigReloader parameter)
-    - name: VM_CUSTOMCONFIGRELOADERIMAGE
+    # -- image for custom reloader
+    - name: VM_CONFIG_RELOADER_IMAGE
       value: victoriametrics/operator:config-reloader-v0.32.0
 
   # By default, the operator will watch all the namespaces
@@ -351,9 +348,6 @@ operator:
   enable_converter_ownership: false
   # -- By default, operator creates psp for its objects.
   psp_auto_creation_enabled: true
-  # -- Enables custom config-reloader, bundled with operator.
-  # It should reduce  vmagent and vmauth config sync-time and make it predictable.
-  useCustomConfigReloader: false
 
 # -- extra settings for the operator deployment. full list Ref: https://docs.victoriametrics.com/operator/vars
 env:
@@ -363,8 +357,8 @@ env:
   # -- container registry name prefix, e.g. docker.io
   - name: VM_CONTAINERREGISTRY
     value: ""
-  # -- image for custom reloader (see the useCustomConfigReloader parameter)
-  - name: VM_CUSTOMCONFIGRELOADERIMAGE
+  # -- image for custom reloader
+  - name: VM_CONFIG_RELOADER_IMAGE
     value: victoriametrics/operator:config-reloader-v0.32.0
 
 # By default, the operator will watch all the namespaces

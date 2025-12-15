@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"path"
 	"sort"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -82,7 +81,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	}
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
 		// it's not possible to scrape metrics from vmauth if proxyProtocol is configured
-		if !useProxyProtocol(cr) || len(cr.Spec.InternalListenPort) > 0 {
+		if !cr.UseProxyProtocol() {
 			if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, buildServiceScrape(svc, cr)); err != nil {
 				return err
 			}
@@ -231,6 +230,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
+	var crMounts []corev1.VolumeMount
 
 	volumes = append(volumes, cr.Spec.Volumes...)
 	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
@@ -308,14 +308,21 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		m := corev1.VolumeMount{
 			Name:      "config-out",
 			MountPath: vmAuthConfigFolder,
-		})
-
-		configReloader := buildConfigReloaderContainer(cr)
+		}
+		volumeMounts = append(volumeMounts, m)
+		crMounts = append(crMounts, m)
+		ss := &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: cr.ConfigSecretName(),
+			},
+			Key: vmAuthConfigName,
+		}
+		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
-		initContainers = append(initContainers, buildInitConfigContainer(cr, configReloader.Args)...)
+		initContainers = append(initContainers, build.ConfigReloaderContainer(true, cr, crMounts, ss))
 		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
 	}
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
@@ -543,87 +550,6 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 	}
 }
 
-func buildConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
-	port := cr.Spec.Port
-	if len(cr.Spec.InternalListenPort) > 0 {
-		port = cr.Spec.InternalListenPort
-	}
-	args := []string{
-		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)),
-		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
-	}
-	cfg := config.MustGetBaseConfig()
-	args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
-	if len(cr.Spec.InternalListenPort) == 0 && useProxyProtocol(cr) {
-		args = append(args, "--reload-use-proxy-protocol")
-	}
-	if cfg.EnableTCP6 {
-		args = append(args, "--enableTCP6")
-	}
-
-	reloaderMounts := []corev1.VolumeMount{
-		{
-			Name:      "config-out",
-			MountPath: vmAuthConfigFolder,
-		},
-	}
-	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		newArgs := args[:0]
-		for _, arg := range args {
-			argName := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if _, ok := cr.Spec.ConfigReloaderExtraArgs[argName]; !ok {
-				newArgs = append(newArgs, arg)
-			}
-		}
-		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
-		}
-		sort.Strings(newArgs)
-		args = newArgs
-	}
-	configReloader := corev1.Container{
-		Name:  "config-reloader",
-		Image: cr.Spec.ConfigReloaderImageTag,
-
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		Env: []corev1.EnvVar{
-			{
-				Name: "POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
-				},
-			},
-		},
-		Args:         args,
-		VolumeMounts: reloaderMounts,
-		Resources:    cr.Spec.ConfigReloaderResources,
-	}
-
-	build.AddServiceAccountTokenVolumeMount(&configReloader, &cr.Spec.CommonApplicationDeploymentParams)
-	build.AddsPortProbesToConfigReloaderContainer(&configReloader)
-	build.AddConfigReloadAuthKeyToReloader(&configReloader, &cr.Spec.CommonConfigReloaderParams)
-	return configReloader
-}
-
-func buildInitConfigContainer(cr *vmv1beta1.VMAuth, args []string) []corev1.Container {
-	baseImage := cr.Spec.ConfigReloaderImageTag
-	resources := cr.Spec.ConfigReloaderResources
-	initReloader := corev1.Container{
-		Image: baseImage,
-		Name:  "config-init",
-		Args:  append(args, "--only-init-config"),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "config-out",
-				MountPath: vmAuthConfigFolder,
-			},
-		},
-		Resources: resources,
-	}
-	build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
-	return []corev1.Container{initReloader}
-}
-
 func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	w := gzip.NewWriter(buf)
 	defer w.Close()
@@ -722,7 +648,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 	}
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		if useProxyProtocol(cr) && len(cr.Spec.InternalListenPort) == 0 {
+		if cr.UseProxyProtocol() {
 			if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels(), &owner); err != nil {
 				return fmt.Errorf("cannot remove serviceScrape: %w", err)
 			}
@@ -763,21 +689,8 @@ func buildServiceScrape(svc *corev1.Service, cr *vmv1beta1.VMAuth) *vmv1beta1.VM
 	return b
 }
 
-func useProxyProtocol(cr *vmv1beta1.VMAuth) bool {
-	if cr.Spec.UseProxyProtocol {
-		return true
-	}
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		return true
-	}
-
-	return false
-}
-
 func addVMAuthProbes(cr *vmv1beta1.VMAuth, vmauthContainer corev1.Container) corev1.Container {
-	if useProxyProtocol(cr) &&
-		len(cr.Spec.InternalListenPort) == 0 &&
-		cr.Spec.EmbeddedProbes == nil {
+	if cr.UseProxyProtocol() && cr.Spec.EmbeddedProbes == nil {
 		probePort := intstr.Parse(cr.ProbePort())
 		cr.Spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{
 			ReadinessProbe: &corev1.Probe{

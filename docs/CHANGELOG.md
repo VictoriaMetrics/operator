@@ -15,6 +15,8 @@ aliases:
 
 **Update note 1: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.**
 **Update note 2: removed deprecated VMAgent `spec.aPIServerConfig`
+**Update note 3: VM_CUSTOMCONFIGRELOADERIMAGE is deprecated and will be removed in next releases. Use VM_CONFIG_RELOADER_IMAGE instead.**
+**Update note 4: spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.**
 
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support `namespace` parameter in `attach_metadata` section for all scrape configurations. See [#1654](https://github.com/VictoriaMetrics/operator/issues/1654).
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent): support logs collection. See [#1501](https://github.com/VictoriaMetrics/operator/issues/1501).

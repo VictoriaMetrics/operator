@@ -41,7 +41,7 @@ const (
 
 	tlsAssetsDir           = "/etc/vmagent-tls/certs"
 	vmagentGzippedFilename = "vmagent.yaml.gz"
-	configEnvsubstFilename = "vmagent.env.yaml"
+	configFilename         = "vmagent.yaml"
 	defaultMaxDiskUsage    = "1073741824"
 
 	kubeNodeEnvName     = "KUBE_NODE_NAME"
@@ -520,7 +520,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
 	var agentVolumeMounts []corev1.VolumeMount
-	var configReloaderWatchMounts []corev1.VolumeMount
+	var crMounts []corev1.VolumeMount
 	// mount data path any way, even if user changes its value
 	// we cannot rely on value of remoteWriteSettings.
 	pqMountPath := vmAgentPersistentQueueDir
@@ -550,7 +550,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	if !cr.Spec.IngestOnlyMode {
 		args = append(args,
-			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConfOutDir, configEnvsubstFilename)))
+			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConfOutDir, configFilename)))
 
 		// preserve order of volumes and volumeMounts
 		// it must prevent vmagent restarts during operator version change
@@ -563,14 +563,12 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 			},
 		})
 
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "config-out",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
+		volumes = append(volumes, corev1.Volume{
+			Name: "config-out",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
-		)
+		})
 		volumes = append(volumes, corev1.Volume{
 			Name: string(build.SecretConfigResourceKind),
 			VolumeSource: corev1.VolumeSource{
@@ -579,13 +577,14 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 				},
 			},
 		})
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "config-out",
-				ReadOnly:  true,
-				MountPath: vmAgentConfOutDir,
-			},
-		)
+
+		m := corev1.VolumeMount{
+			Name:      "config-out",
+			MountPath: vmAgentConfOutDir,
+		}
+		crMounts = append(crMounts, m)
+		m.ReadOnly = true
+		agentVolumeMounts = append(agentVolumeMounts, m)
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
 			Name:      string(build.TLSAssetsResourceKind),
 			MountPath: tlsAssetsDir,
@@ -598,30 +597,28 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		})
 
 	}
+	mountsLen := len(agentVolumeMounts)
 	volumes, agentVolumeMounts = build.StreamAggrVolumeTo(volumes, agentVolumeMounts, cr)
+	crMounts = append(crMounts, agentVolumeMounts[mountsLen:]...)
 	if cr.HasAnyRelabellingConfigs() {
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "relabeling-assets",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: cr.RelabelingAssetName(),
-						},
+		volumes = append(volumes, corev1.Volume{
+			Name: "relabeling-assets",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cr.RelabelingAssetName(),
 					},
 				},
 			},
-		)
-
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "relabeling-assets",
-				ReadOnly:  true,
-				MountPath: vmv1beta1.RelabelingConfigDir,
-			},
-		)
+		})
+		m := corev1.VolumeMount{
+			Name:      "relabeling-assets",
+			ReadOnly:  true,
+			MountPath: vmv1beta1.RelabelingConfigDir,
+		}
+		crMounts = append(crMounts, m)
+		agentVolumeMounts = append(agentVolumeMounts, m)
 	}
-
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("secret-" + s),
@@ -655,7 +652,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		}
 		agentVolumeMounts = append(agentVolumeMounts, cvm)
-		configReloaderWatchMounts = append(configReloaderWatchMounts, cvm)
+		crMounts = append(crMounts, cvm)
 	}
 
 	volumes, agentVolumeMounts = build.LicenseVolumeTo(volumes, agentVolumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
@@ -685,7 +682,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, &cr.Spec.CommonApplicationDeploymentParams)
+	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, cr.AutomountServiceAccountToken())
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
 
 	vmagentContainer = build.Probe(vmagentContainer, cr)
@@ -696,10 +693,16 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	var ic []corev1.Container
 	// conditional add config reloader container
 	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-		configReloader := buildConfigReloaderContainer(cr, configReloaderWatchMounts)
+		ss := &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: cr.PrefixedName(),
+			},
+			Key: configFilename,
+		}
+		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
-			ic = append(ic, buildInitConfigContainer(cr, configReloader.Args)...)
+			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
 			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 		}
 	}
@@ -1151,121 +1154,6 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 		args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", maxDiskUsage))
 	}
 	return args, nil
-}
-
-func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, extraWatchsMounts []corev1.VolumeMount) corev1.Container {
-	var configReloadVolumeMounts []corev1.VolumeMount
-	if !cr.Spec.IngestOnlyMode {
-		configReloadVolumeMounts = append(configReloadVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "config-out",
-				MountPath: vmAgentConfOutDir,
-			},
-		)
-	}
-	if cr.HasAnyRelabellingConfigs() {
-		configReloadVolumeMounts = append(configReloadVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "relabeling-assets",
-				ReadOnly:  true,
-				MountPath: vmv1beta1.RelabelingConfigDir,
-			})
-	}
-	if cr.HasAnyStreamAggrRule() {
-		configReloadVolumeMounts = append(configReloadVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "stream-aggr-conf",
-				ReadOnly:  true,
-				MountPath: vmv1beta1.StreamAggrConfigDir,
-			})
-	}
-
-	configReloadArgs := buildConfigReloaderArgs(cr, extraWatchsMounts)
-
-	configReloadVolumeMounts = append(configReloadVolumeMounts, extraWatchsMounts...)
-	cntr := corev1.Container{
-		Name:                     "config-reloader",
-		Image:                    cr.Spec.ConfigReloaderImageTag,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		Env: []corev1.EnvVar{
-			{
-				Name: "POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
-				},
-			},
-		},
-		Args:         configReloadArgs,
-		VolumeMounts: configReloadVolumeMounts,
-		Resources:    cr.Spec.ConfigReloaderResources,
-	}
-	build.AddServiceAccountTokenVolumeMount(&cntr, &cr.Spec.CommonApplicationDeploymentParams)
-	build.AddsPortProbesToConfigReloaderContainer(&cntr)
-	build.AddConfigReloadAuthKeyToReloader(&cntr, &cr.Spec.CommonConfigReloaderParams)
-	return cntr
-}
-
-func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, extraWatchVolumes []corev1.VolumeMount) []string {
-	// by default use watched-dir
-	// it should simplify parsing for latest and empty version tags.
-	dirsArg := "watched-dir"
-
-	args := []string{
-		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
-	}
-	cfg := config.MustGetBaseConfig()
-	if !cr.Spec.IngestOnlyMode {
-		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConfOutDir, configEnvsubstFilename)))
-		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
-		args = append(args, "--config-secret-key=vmagent.yaml.gz")
-		if cfg.EnableTCP6 {
-			args = append(args, "--enableTCP6")
-		}
-	}
-	if cr.HasAnyStreamAggrRule() {
-		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.StreamAggrConfigDir))
-	}
-	if cr.HasAnyRelabellingConfigs() {
-		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.RelabelingConfigDir))
-	}
-	for _, vl := range extraWatchVolumes {
-		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vl.MountPath))
-	}
-	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		newArgs := args[:0]
-		for _, arg := range args {
-			argName := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if _, ok := cr.Spec.ConfigReloaderExtraArgs[argName]; !ok {
-				newArgs = append(newArgs, arg)
-			}
-		}
-		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
-		}
-		sort.Strings(newArgs)
-		args = newArgs
-	}
-
-	return args
-}
-
-func buildInitConfigContainer(cr *vmv1beta1.VMAgent, configReloaderArgs []string) []corev1.Container {
-	baseImage := cr.Spec.ConfigReloaderImageTag
-	resources := cr.Spec.ConfigReloaderResources
-	initReloader := corev1.Container{
-		Image: baseImage,
-		Name:  "config-init",
-		Args:  append(configReloaderArgs, "--only-init-config"),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "config-out",
-				MountPath: vmAgentConfOutDir,
-			},
-		},
-		Resources: resources,
-	}
-	build.AddServiceAccountTokenVolumeMount(&initReloader, &cr.Spec.CommonApplicationDeploymentParams)
-	return []corev1.Container{initReloader}
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {

@@ -27,6 +27,7 @@ aliases:
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed HPA cleanup logic for all cluster resources, before it was constantly recreated. Bug introduced in [this commit](https://github.com/VictoriaMetrics/operator/commit/983d1678c37497a7d03d2f57821219fd4975deec).
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): prevent cluster load balancer secret from infinite reconcile.
+* BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): do not set strict security for vlagent in collector mode. See [#1696](https://github.com/VictoriaMetrics/operator/issues/1696).
 
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 

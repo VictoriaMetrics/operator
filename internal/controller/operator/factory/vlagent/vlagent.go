@@ -198,7 +198,6 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 				},
 			},
 		}
-		build.DaemonSetAddCommonParams(dsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
 		return dsSpec, nil
 	}

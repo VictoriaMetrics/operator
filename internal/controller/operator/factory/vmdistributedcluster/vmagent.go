@@ -44,9 +44,6 @@ type VMAgentWithStatus interface {
 
 // parseEndpointSliceAddresses extracts IPv4/IPv6 addresses from an EndpointSlice object.
 func parseEndpointSliceAddresses(es *discoveryv1.EndpointSlice) []string {
-	if es == nil {
-		return nil
-	}
 	addrs := make([]string, 0)
 	for _, ep := range es.Endpoints {
 		for _, a := range ep.Addresses {

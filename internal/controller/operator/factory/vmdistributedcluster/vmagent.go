@@ -93,7 +93,7 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 		if err != nil {
 			return false, err
 		}
-		return vmAgentObj.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
+		return vmAgentObj.GetGeneration() == vmAgentObj.Status.ObservedGeneration && vmAgentObj.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
 	})
 	if err != nil {
 		return err

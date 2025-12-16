@@ -229,7 +229,7 @@ func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster
 			return false, fmt.Errorf("failed to fetch VMCluster %s/%s: %w", vmCluster.Namespace, vmCluster.Name, err)
 		}
 		lastStatus = vmCluster.Status.UpdateStatus
-		return vmCluster.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
+		return vmCluster.GetGeneration() == vmCluster.Status.ObservedGeneration && vmCluster.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
 	})
 	if err != nil {
 		return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w, current status: %s", vmCluster.Namespace, vmCluster.Name, err, lastStatus)

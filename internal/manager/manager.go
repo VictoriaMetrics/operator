@@ -51,6 +51,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	webhookv1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1"
+	webhookv1alpha1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1alpha1"
 	webhookv1beta1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1beta1"
 )
 
@@ -371,6 +372,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		webhookv1.SetupVMAnomalyWebhookWithManager,
 		webhookv1beta1.SetupVMSingleWebhookWithManager,
 		webhookv1beta1.SetupVMClusterWebhookWithManager,
+		webhookv1alpha1.SetupVMDistributedClusterWebhookWithManager,
 		webhookv1beta1.SetupVLogsWebhookWithManager,
 		webhookv1.SetupVLAgentWebhookWithManager,
 		webhookv1.SetupVLSingleWebhookWithManager,

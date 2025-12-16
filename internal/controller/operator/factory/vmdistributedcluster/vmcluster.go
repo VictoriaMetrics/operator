@@ -22,26 +22,6 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// validateVMClusterRefOrSpec checks for mutual exclusivity and required fields for VMClusterRefOrSpec.
-func validateVMClusterRefOrSpec(i int, refOrSpec vmv1alpha1.VMClusterRefOrSpec) error {
-	if refOrSpec.Spec != nil && refOrSpec.Ref != nil {
-		return fmt.Errorf("VMClusterRefOrSpec at index %d must specify either Ref or Spec, got: %+v", i, refOrSpec)
-	}
-	if refOrSpec.Spec == nil && refOrSpec.Ref == nil {
-		return fmt.Errorf("VMClusterRefOrSpec at index %d must have either Ref or Spec set, got: %+v", i, refOrSpec)
-	}
-	if refOrSpec.Spec != nil && refOrSpec.OverrideSpec != nil {
-		return fmt.Errorf("VMClusterRefOrSpec at index %d cannot have both Spec and OverrideSpec set, got: %+v", i, refOrSpec)
-	}
-	if refOrSpec.Spec != nil && refOrSpec.Name == "" {
-		return fmt.Errorf("VMClusterRefOrSpec.Name must be set when Spec is provided for index %d", i)
-	}
-	if refOrSpec.Ref != nil && refOrSpec.Ref.Name == "" {
-		return fmt.Errorf("VMClusterRefOrSpec.Ref.Name must be set for reference at index %d", i)
-	}
-	return nil
-}
-
 // getReferencedVMCluster fetches an existing VMCluster based on its reference.
 func getReferencedVMCluster(ctx context.Context, rclient client.Client, namespace string, ref *corev1.LocalObjectReference) (*vmv1beta1.VMCluster, error) {
 	vmClusterObj := &vmv1beta1.VMCluster{}
@@ -60,10 +40,6 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 	var err error
 	vmClusters := make([]*vmv1beta1.VMCluster, len(refs))
 	for i, vmClusterObjOrRef := range refs {
-		if err = validateVMClusterRefOrSpec(i, vmClusterObjOrRef); err != nil {
-			return nil, err
-		}
-
 		switch {
 		case vmClusterObjOrRef.Ref != nil:
 			vmClusters[i], err = getReferencedVMCluster(ctx, rclient, namespace, vmClusterObjOrRef.Ref)

@@ -362,7 +362,7 @@ func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthLoadBalancerSpe
 
 // PodMetadata returns pod metadata for given component kind
 func (cr *VMDistributedCluster) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.EmbeddedObjectMetadata {
-	return cr.Spec.VMAuth.Spec.PodMetadata
+	return cr.GetVMAuthSpec().PodMetadata
 }
 
 // FinalAnnotations returns global annotations to be applied by objects generate for vmcluster

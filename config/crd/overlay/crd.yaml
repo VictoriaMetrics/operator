@@ -17410,8 +17410,6 @@ spec:
                               - name
                             type: object
                           type: array
-                        daemonSetMode:
-                          type: boolean
                         disableAutomountServiceAccountToken:
                           type: boolean
                         disableSelfServiceScrape:

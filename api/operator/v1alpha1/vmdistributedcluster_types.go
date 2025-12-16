@@ -449,6 +449,28 @@ func (cr *VMDistributedCluster) GetVMUserName() string {
 	return fmt.Sprintf("%s-user", cr.Name)
 }
 
+// AutomountServiceAccountToken implements reloadable interface
+func (cr *VMDistributedCluster) AutomountServiceAccountToken() bool {
+	return true
+}
+
+// AutomountServiceAccountToken implements reloadable interface
+func (cr *VMDistributedCluster) GetReloadURL() string {
+	vmAuth := vmv1beta1.VMAuth{}
+	return vmv1beta1.BuildReloadPathWithPort(vmAuth.Spec.ExtraArgs, vmAuth.Spec.Port)
+}
+
+// GetReloaderParams implements reloadable interface
+func (cr *VMDistributedCluster) GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams {
+	vmAuth := vmv1beta1.VMAuth{}
+	return &vmAuth.Spec.CommonConfigReloaderParams
+}
+
+// UseProxyProtocol implements reloadable interface
+func (cr *VMDistributedCluster) UseProxyProtocol() bool {
+	return false
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMDistributedClusterSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMDistributedClusterSpec

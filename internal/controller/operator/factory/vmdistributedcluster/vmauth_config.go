@@ -159,8 +159,17 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 		VolumeMounts:    vmounts,
 	}
 	vmauthLBCnt = build.Probe(vmauthLBCnt, spec)
+
+	secretKeySelector := &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+		},
+		Key: configMountName,
+	}
+	configReloader := build.ConfigReloaderContainer(false, cr, vmounts, secretKeySelector)
 	containers := []corev1.Container{
 		vmauthLBCnt,
+		configReloader,
 	}
 	var err error
 

@@ -113,6 +113,9 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 	}
 	vmounts = append(vmounts, spec.VolumeMounts...)
 
+	// Add license volume and mount if provided
+	volumes, vmounts = build.LicenseVolumeTo(volumes, vmounts, spec.License, vmv1beta1.SecretsDir)
+
 	args := []string{
 		"-auth.config=/opt/vmauth-config/config.yaml",
 		"-configCheckInterval=30s",
@@ -135,6 +138,8 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
+	// Add license args if provided
+	args = build.LicenseArgsTo(args, spec.License, vmv1beta1.SecretsDir)
 	sort.Strings(args)
 	vmauthLBCnt := corev1.Container{
 		Name: "vmauth",

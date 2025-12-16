@@ -76,7 +76,7 @@ func buildVMAuthLBSecret(cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1
 
 	lbScrt := &corev1.Secret{
 		ObjectMeta: buildLBConfigMeta(cr),
-		StringData: map[string]string{"config.yaml": string(configData)},
+		Data:       map[string][]byte{"config.yaml": configData},
 	}
 	return lbScrt, nil
 }

@@ -52,6 +52,9 @@ type VMDistributedClusterSpec struct {
 	VMAuth VMAuthNameAndSpec `json:"vmauth,omitempty"`
 	// Zones is a list of VMCluster instances to update. Each VMCluster in the list represents a "zone" within the distributed cluster.
 	Zones ZoneSpec `json:"zones,omitempty"`
+	// License configures license key for enterprise features. If not nil, it will be passed to VMAgent, VMAuth and VMClusters.
+	// +optional
+	License *vmv1beta1.License `json:"license,omitempty"`
 	// ClusterVersion defines expected image tag for all components.
 
 	// Paused If set to true all actions on the underlying managed objects are not
@@ -348,7 +351,13 @@ func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthLoadBalancerSpe
 			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
 		}
 	}
-	return spec
+	// Make a copy to avoid modifying the original spec
+	specCopy := spec.DeepCopy()
+	// If License is not set in VMAuth spec but is set in VMDistributedCluster, use the VMDistributedCluster License
+	if specCopy.License == nil && cr.Spec.License != nil {
+		specCopy.License = cr.Spec.License
+	}
+	return specCopy
 }
 
 // PodMetadata returns pod metadata for given component kind

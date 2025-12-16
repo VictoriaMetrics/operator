@@ -236,6 +236,10 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	newVMAgentSpec.PersistentVolumeClaimRetentionPolicy = desiredVMAgentSpec.PersistentVolumeClaimRetentionPolicy
 	newVMAgentSpec.ClaimTemplates = desiredVMAgentSpec.ClaimTemplates
 	newVMAgentSpec.License = desiredVMAgentSpec.License
+	// If License is not set in VMAgent spec but is set in VMDistributedCluster, use the VMDistributedCluster License
+	if newVMAgentSpec.License == nil && cr.Spec.License != nil {
+		newVMAgentSpec.License = cr.Spec.License
+	}
 	newVMAgentSpec.ServiceAccountName = desiredVMAgentSpec.ServiceAccountName
 	newVMAgentSpec.VMAgentSecurityEnforcements = desiredVMAgentSpec.VMAgentSecurityEnforcements
 	newVMAgentSpec.CommonDefaultableParams = desiredVMAgentSpec.CommonDefaultableParams

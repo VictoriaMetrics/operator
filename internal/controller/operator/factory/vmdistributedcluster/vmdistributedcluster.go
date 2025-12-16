@@ -141,6 +141,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			}
 		}
 
+		// Apply VMDistributedCluster License to VMCluster if not already set
+		if mergedSpec.License == nil && cr.Spec.License != nil {
+			mergedSpec.License = cr.Spec.License.DeepCopy()
+			modifiedSpec = true
+		}
+
 		// Set owner reference for this vmcluster
 		modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmClusterObj, scheme)
 		if err != nil {

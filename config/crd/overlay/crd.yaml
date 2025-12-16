@@ -15880,6 +15880,28 @@ spec:
               type: object
             spec:
               properties:
+                license:
+                  properties:
+                    forceOffline:
+                      type: boolean
+                    key:
+                      type: string
+                    keyRef:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                        - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    reloadInterval:
+                      type: string
+                  type: object
                 paused:
                   type: boolean
                 readyDeadline:
@@ -22144,6 +22166,28 @@ spec:
                               - name
                             type: object
                           type: array
+                        license:
+                          properties:
+                            forceOffline:
+                              type: boolean
+                            key:
+                              type: string
+                            keyRef:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                                - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            reloadInterval:
+                              type: string
+                          type: object
                         livenessProbe:
                           properties:
                             exec:
@@ -26278,6 +26322,28 @@ spec:
                                             - name
                                           type: object
                                         type: array
+                                      license:
+                                        properties:
+                                          forceOffline:
+                                            type: boolean
+                                          key:
+                                            type: string
+                                          keyRef:
+                                            properties:
+                                              key:
+                                                type: string
+                                              name:
+                                                default: ""
+                                                type: string
+                                              optional:
+                                                type: boolean
+                                            required:
+                                              - key
+                                            type: object
+                                            x-kubernetes-map-type: atomic
+                                          reloadInterval:
+                                            type: string
+                                        type: object
                                       livenessProbe:
                                         properties:
                                           exec:

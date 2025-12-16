@@ -230,7 +230,6 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	newVMAgentSpec.RollingUpdate = desiredVMAgentSpec.RollingUpdate
 	newVMAgentSpec.PodDisruptionBudget = desiredVMAgentSpec.PodDisruptionBudget
 	newVMAgentSpec.EmbeddedProbes = desiredVMAgentSpec.EmbeddedProbes
-	newVMAgentSpec.DaemonSetMode = desiredVMAgentSpec.DaemonSetMode
 	newVMAgentSpec.StatefulMode = desiredVMAgentSpec.StatefulMode
 	newVMAgentSpec.StatefulStorage = desiredVMAgentSpec.StatefulStorage
 	newVMAgentSpec.StatefulRollingUpdateStrategy = desiredVMAgentSpec.StatefulRollingUpdateStrategy

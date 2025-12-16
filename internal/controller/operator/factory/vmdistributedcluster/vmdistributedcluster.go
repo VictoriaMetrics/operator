@@ -38,29 +38,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return nil
 	}
 
-	// Validate zones, exit early if invalid
-	for i, zone := range cr.Spec.Zones.VMClusters {
-		if zone.Spec != nil && zone.Name == "" {
-			return fmt.Errorf("VMClusterRefOrSpec.Name must be set when Spec is provided for zone at index %d", i)
-		}
-		if zone.Spec == nil && zone.Ref == nil {
-			return fmt.Errorf("VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
-		}
-		if zone.Spec != nil && zone.Ref != nil {
-			return fmt.Errorf("either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index %d", i)
-		}
-	}
-
-	// Validate VMAgent
-	if cr.Spec.VMAgent.Name == "" {
-		return fmt.Errorf("VMAgent.Name must be set")
-	}
-
-	// Validate VMAuth
-	if cr.Spec.VMAuth.Name == "" {
-		return fmt.Errorf("VMAuth.Name must be set")
-	}
-
 	// Fetch VMCluster statuses by name (needed to build target refs for the VMUser).
 	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones.VMClusters)
 	if err != nil {

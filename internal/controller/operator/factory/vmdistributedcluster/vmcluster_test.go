@@ -2,7 +2,6 @@ package vmdistributedcluster
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -315,39 +314,6 @@ func TestFetchVMClusters_InlineAndRef(t *testing.T) {
 	assert.Equal(t, "ref", got[0].Name)
 	assert.Equal(t, "inline", got[1].Name)
 	assert.Equal(t, inlineSpec.ClusterVersion, got[1].Spec.ClusterVersion)
-}
-
-func TestValidateVMClusterRefOrSpec_Matrix(t *testing.T) {
-	ok := vmv1alpha1.VMClusterRefOrSpec{Ref: &corev1.LocalObjectReference{Name: "a"}}
-	assert.NoError(t, validateVMClusterRefOrSpec(0, ok))
-
-	ok2 := vmv1alpha1.VMClusterRefOrSpec{Name: "b", Spec: &vmv1beta1.VMClusterSpec{}}
-	assert.NoError(t, validateVMClusterRefOrSpec(1, ok2))
-
-	both := vmv1alpha1.VMClusterRefOrSpec{
-		Name: "c",
-		Ref:  &corev1.LocalObjectReference{Name: "c"},
-		Spec: &vmv1beta1.VMClusterSpec{},
-	}
-	assert.Error(t, validateVMClusterRefOrSpec(2, both))
-
-	none := vmv1alpha1.VMClusterRefOrSpec{}
-	assert.Error(t, validateVMClusterRefOrSpec(3, none))
-
-	missingRefName := vmv1alpha1.VMClusterRefOrSpec{Ref: &corev1.LocalObjectReference{}}
-	assert.Error(t, validateVMClusterRefOrSpec(4, missingRefName))
-
-	missingSpecName := vmv1alpha1.VMClusterRefOrSpec{Spec: &vmv1beta1.VMClusterSpec{}}
-	assert.Error(t, validateVMClusterRefOrSpec(5, missingSpecName))
-
-	// Spec with OverrideSpec simultaneously
-	overrideJSON, _ := json.Marshal(vmv1beta1.VMClusterSpec{})
-	bad := vmv1alpha1.VMClusterRefOrSpec{
-		Name:         "x",
-		Spec:         &vmv1beta1.VMClusterSpec{},
-		OverrideSpec: &apiextensionsv1.JSON{Raw: overrideJSON},
-	}
-	assert.Error(t, validateVMClusterRefOrSpec(6, bad))
 }
 
 func TestApplyGlobalOverrideSpec(t *testing.T) {

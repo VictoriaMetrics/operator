@@ -352,38 +352,4 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to fetch vmclusters")
 	})
-
-	t.Run("VMClusterRefOrSpec validation errors", func(t *testing.T) {
-		data := beforeEach()
-		rclient := data.trackingClient
-		ctx := context.TODO()
-
-		// Both Ref and Spec set
-		data.cr.Spec.Zones = vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-			{
-				Name: "vmcluster-1",
-				Ref:  &corev1.LocalObjectReference{Name: "vmcluster-1"},
-				Spec: &vmv1beta1.VMClusterSpec{},
-			},
-		}}
-		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "either VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index 0")
-
-		// Neither Ref nor Spec set
-		data.cr.Spec.Zones = vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-			{},
-		}}
-		err = CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Spec or VMClusterRefOrSpec.Ref must be set for zone at index 0")
-
-		// Spec provided but Name missing
-		data.cr.Spec.Zones = vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-			{Spec: &vmv1beta1.VMClusterSpec{}},
-		}}
-		err = CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "VMClusterRefOrSpec.Name must be set when Spec is provided for zone at index 0")
-	})
 }

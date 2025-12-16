@@ -116,7 +116,7 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
 	assert.Equal(t, "vmdclusterlb-vmdist", secret.Name)
 	assert.Equal(t, "prod", secret.Namespace)
 
-	configData, ok := secret.StringData["config.yaml"]
+	configData, ok := secret.Data["config.yaml"]
 	assert.True(t, ok)
 	assert.NotEmpty(t, configData)
 
@@ -127,7 +127,7 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
     url_prefix: http://srv+vmselect-vmc-test.default.svc:8481
     discover_backend_ips: true
 `
-	assert.Equal(t, expectedYAML, configData)
+	assert.Equal(t, []byte(expectedYAML), configData)
 
 	t.Run("multiple vmclusters", func(t *testing.T) {
 		vmClusters := []*vmv1beta1.VMCluster{
@@ -150,7 +150,7 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, secret)
 
-		configData, ok := secret.StringData["config.yaml"]
+		configData, ok := secret.Data["config.yaml"]
 		assert.True(t, ok)
 		expectedYAML := `unauthorized_user:
   url_map:
@@ -163,7 +163,7 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
     url_prefix: http://srv+vmselect-vmc-test-2.monitoring.svc:8481
     discover_backend_ips: true
 `
-		assert.Equal(t, expectedYAML, configData)
+		assert.Equal(t, []byte(expectedYAML), configData)
 	})
 
 	// Test with no vmclusters
@@ -172,11 +172,11 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, secret)
 
-		configData, ok := secret.StringData["config.yaml"]
+		configData, ok := secret.Data["config.yaml"]
 		assert.True(t, ok)
 		expectedYAML := `unauthorized_user:
   url_map: []
 `
-		assert.Equal(t, expectedYAML, configData)
+		assert.Equal(t, []byte(expectedYAML), configData)
 	})
 }

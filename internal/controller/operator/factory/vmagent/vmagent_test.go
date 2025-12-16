@@ -245,7 +245,9 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				ServiceScrapeSelector: &metav1.LabelSelector{},
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ServiceScrapeSelector: &metav1.LabelSelector{},
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -294,7 +296,9 @@ func TestCreateOrUpdate(t *testing.T) {
 						BearerTokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bearer-secret"}, Key: "token"},
 					},
 				},
-				ServiceScrapeSelector: &metav1.LabelSelector{},
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ServiceScrapeSelector: &metav1.LabelSelector{},
+				},
 			},
 		},
 		wantErr: true,
@@ -369,7 +373,9 @@ func TestCreateOrUpdate(t *testing.T) {
 						TLSConfig: &vmv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"},
 					},
 				},
-				ServiceScrapeSelector: &metav1.LabelSelector{},
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ServiceScrapeSelector: &metav1.LabelSelector{},
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -436,11 +442,13 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				InlineScrapeConfig: strings.TrimSpace(`
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					InlineScrapeConfig: strings.TrimSpace(`
 - job_name: "prometheus"
   static_configs:
   - targets: ["localhost:9090"]
 `),
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -459,15 +467,17 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				AdditionalScrapeConfigs: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "add-cfg"},
-					Key:                  "agent.yaml",
-				},
-				InlineScrapeConfig: strings.TrimSpace(`
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					AdditionalScrapeConfigs: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "add-cfg"},
+						Key:                  "agent.yaml",
+					},
+					InlineScrapeConfig: strings.TrimSpace(`
 - job_name: "prometheus"
   static_configs:
   - targets: ["localhost:9090"]
 `),
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -935,8 +945,10 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 						},
 					},
 				},
-				InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
-					{TargetLabel: "dst", Replacement: ptr.To("ok")},
+				CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+					InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
+						{TargetLabel: "dst", Replacement: ptr.To("ok")},
+					},
 				},
 			},
 		},
@@ -1878,11 +1890,15 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		if err := createOrUpdateRelabelConfigsAssets(ctx, cl, o.cr, nil); err != nil {
+		ac := build.NewAssetsCache(ctx, cl, nil)
+		if err := createOrUpdateRelabelConfigsAssets(ctx, cl, o.cr, nil, ac); err != nil {
 			t.Fatalf("CreateOrUpdateRelabelConfigsAssets() error = %v", err)
 		}
 		var createdCM corev1.ConfigMap
-		if err := cl.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.RelabelingAssetName()}, &createdCM); err != nil {
+		if err := cl.Get(ctx, types.NamespacedName{
+			Namespace: o.cr.Namespace,
+			Name:      build.ResourceName(build.RelabelConfigResourceKind, o.cr),
+		}, &createdCM); err != nil {
 			t.Fatalf("cannot fetch created cm: %v", err)
 		}
 		if err := o.validate(&createdCM); err != nil {
@@ -1898,13 +1914,15 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
-					{
-						Regex:        []string{".*"},
-						Action:       "DROP",
-						SourceLabels: []string{"pod"},
+				CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+					InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
+						{
+							Regex:        []string{".*"},
+							Action:       "DROP",
+							SourceLabels: []string{"pod"},
+						},
+						{},
 					},
-					{},
 				},
 			},
 		},
@@ -1931,16 +1949,18 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
-					{
-						Regex:        []string{".*"},
-						Action:       "DROP",
-						SourceLabels: []string{"pod"},
+				CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+					InlineRelabelConfig: []*vmv1beta1.RelabelConfig{
+						{
+							Regex:        []string{".*"},
+							Action:       "DROP",
+							SourceLabels: []string{"pod"},
+						},
 					},
-				},
-				RelabelConfig: &corev1.ConfigMapKeySelector{
-					Key:                  "global.yaml",
-					LocalObjectReference: corev1.LocalObjectReference{Name: "relabels"},
+					RelabelConfig: &corev1.ConfigMapKeySelector{
+						Key:                  "global.yaml",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "relabels"},
+					},
 				},
 			},
 		},
@@ -1983,7 +2003,8 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		if err := createOrUpdateStreamAggrConfig(ctx, cl, o.cr, nil); err != nil {
+		ac := build.NewAssetsCache(ctx, cl, nil)
+		if err := createOrUpdateStreamAggrConfig(ctx, cl, o.cr, nil, ac); err != nil {
 			t.Fatalf("CreateOrUpdateStreamAggrConfig() error = %v", err)
 		}
 		var createdCM corev1.ConfigMap

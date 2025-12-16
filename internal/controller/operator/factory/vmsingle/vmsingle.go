@@ -70,7 +70,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}
 	}
-	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR); err != nil {
+	ac := getAssetsCache(ctx, rclient)
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, ac); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
 	}
 	if cr.IsOwnsServiceAccount() {
@@ -379,7 +380,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 }
 
 // buildStreamAggrConfig build configmap with stream aggregation config for vmsingle.
-func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) (*corev1.ConfigMap, error) {
+func buildStreamAggrConfig(cr *vmv1beta1.VMSingle, ac *build.AssetsCache) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
 		ObjectMeta: build.ResourceMeta(build.StreamAggrConfigResourceKind, cr),
 		Data:       make(map[string]string),
@@ -394,9 +395,7 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient 
 		}
 	}
 	if cr.Spec.StreamAggrConfig.RuleConfigMap != nil {
-		data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
-			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.StreamAggrConfig.RuleConfigMap.Name, Namespace: cr.Namespace}},
-			cr.Spec.StreamAggrConfig.RuleConfigMap.Key)
+		data, err := ac.LoadKeyFromConfigMap(cr.Namespace, cr.Spec.StreamAggrConfig.RuleConfigMap)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.StreamAggrConfig.RuleConfigMap.Name, err)
 		}
@@ -408,11 +407,11 @@ func buildStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient 
 }
 
 // createOrUpdateStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
-func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
+func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ac *build.AssetsCache) error {
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
-	streamAggrCM, err := buildStreamAggrConfig(ctx, cr, rclient)
+	streamAggrCM, err := buildStreamAggrConfig(cr, ac)
 	if err != nil {
 		return err
 	}
@@ -509,4 +508,9 @@ func addVolumeMountsTo(volumes []corev1.Volume, vmMounts []corev1.VolumeMount, c
 	}
 
 	return volumes, vmMounts
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{}
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }

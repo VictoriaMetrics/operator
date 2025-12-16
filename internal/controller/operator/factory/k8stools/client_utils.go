@@ -254,11 +254,3 @@ func (ow *ObjectWatcherForNamespaces) Stop() {
 	ow.cancel()
 	ow.wg.Wait()
 }
-
-// FetchConfigMapContentByKey returns configmap content by key
-func FetchConfigMapContentByKey(ctx context.Context, rclient client.Client, cm *corev1.ConfigMap, key string) (string, error) {
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cm.Namespace, Name: cm.Name}, cm); err != nil {
-		return "", err
-	}
-	return cm.Data[key], nil
-}

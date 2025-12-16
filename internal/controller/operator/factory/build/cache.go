@@ -44,13 +44,15 @@ const (
 	SecretConfigResourceKind ResourceKind = "config"
 	// StreamAggrConfigResourceKind defines build for stream aggregation configmap object
 	StreamAggrConfigResourceKind ResourceKind = "stream-aggr"
+	// RelabelConfigResourceKind defines build for relabelling configmap object
+	RelabelConfigResourceKind ResourceKind = "relabelings-assets"
 )
 
 // ResourceName returns a name for provided resource and corresponding cr object
 func ResourceName(kind ResourceKind, cr builderOpts) string {
 	var parts []string
 	switch kind {
-	case TLSAssetsResourceKind, StreamAggrConfigResourceKind:
+	case TLSAssetsResourceKind, StreamAggrConfigResourceKind, RelabelConfigResourceKind:
 		parts = append(parts, string(kind))
 	}
 	parts = append(parts, cr.PrefixedName())

@@ -160,7 +160,9 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				EnableKubernetesAPISelectors: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					EnableKubernetesAPISelectors: true,
+				},
 			},
 		},
 		sc: &vmv1beta1.VMPodScrape{
@@ -234,7 +236,9 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				EnableKubernetesAPISelectors: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					EnableKubernetesAPISelectors: true,
+				},
 			},
 		},
 		sc: &vmv1beta1.VMPodScrape{

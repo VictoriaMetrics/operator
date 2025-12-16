@@ -8102,6 +8102,12 @@ spec:
                   and metric that is user created. The label value will always be the namespace of the object that is
                   being created.
                 type: string
+              externalLabelName:
+                description: |-
+                  ExternalLabelName Name of external label used to denote scraping agent instance
+                  name. Defaults to the value of `prometheus`. External label will
+                  _not_ be added when value is set to empty string (`""`).
+                type: string
               externalLabels:
                 additionalProperties:
                   type: string
@@ -8243,7 +8249,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -8260,7 +8266,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -8321,7 +8327,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -8338,7 +8344,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -8403,7 +8409,7 @@ spec:
                 description: |-
                   IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
                   scrape objects, and they will only discover endpoints
-                  within their current namespace.  Defaults to false.
+                  within their current namespace. Defaults to false.
                 type: boolean
               image:
                 description: |-
@@ -8512,7 +8518,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -8529,7 +8535,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -8775,7 +8781,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -8792,7 +8798,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -8862,7 +8868,7 @@ spec:
               overrideHonorLabels:
                 description: |-
                   OverrideHonorLabels if set to true overrides all user configured honor_labels.
-                  If HonorLabels is set in scrape objects  to true, this overrides honor_labels to false.
+                  If HonorLabels is set in scrape objects to true, this overrides honor_labels to false.
                 type: boolean
               overrideHonorTimestamps:
                 description: OverrideHonorTimestamps allows to globally enforce honoring
@@ -9070,7 +9076,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -9087,7 +9093,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -9256,7 +9262,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -9273,7 +9279,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -9569,7 +9575,7 @@ spec:
                             description: |-
                               UnderScoreSourceLabels - additional form of source labels source_labels
                               for compatibility with original relabel config.
-                              if set  both sourceLabels and source_labels, sourceLabels has priority.
+                              if set both sourceLabels and source_labels, sourceLabels has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             items:
                               type: string
@@ -9586,7 +9592,7 @@ spec:
                             description: |-
                               UnderScoreTargetLabel - additional form of target label - target_label
                               for compatibility with original relabel config.
-                              if set  both targetLabel and target_label, targetLabel has priority.
+                              if set both targetLabel and target_label, targetLabel has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             type: string
                           targetLabel:
@@ -9888,7 +9894,7 @@ spec:
                                       description: |-
                                         UnderScoreSourceLabels - additional form of source labels source_labels
                                         for compatibility with original relabel config.
-                                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                                        if set both sourceLabels and source_labels, sourceLabels has priority.
                                         for details https://github.com/VictoriaMetrics/operator/issues/131
                                       items:
                                         type: string
@@ -9905,7 +9911,7 @@ spec:
                                       description: |-
                                         UnderScoreTargetLabel - additional form of target label - target_label
                                         for compatibility with original relabel config.
-                                        if set  both targetLabel and target_label, targetLabel has priority.
+                                        if set both targetLabel and target_label, targetLabel has priority.
                                         for details https://github.com/VictoriaMetrics/operator/issues/131
                                       type: string
                                     targetLabel:
@@ -9985,7 +9991,7 @@ spec:
                                       description: |-
                                         UnderScoreSourceLabels - additional form of source labels source_labels
                                         for compatibility with original relabel config.
-                                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                                        if set both sourceLabels and source_labels, sourceLabels has priority.
                                         for details https://github.com/VictoriaMetrics/operator/issues/131
                                       items:
                                         type: string
@@ -10002,7 +10008,7 @@ spec:
                                       description: |-
                                         UnderScoreTargetLabel - additional form of target label - target_label
                                         for compatibility with original relabel config.
-                                        if set  both targetLabel and target_label, targetLabel has priority.
+                                        if set both targetLabel and target_label, targetLabel has priority.
                                         for details https://github.com/VictoriaMetrics/operator/issues/131
                                       type: string
                                     targetLabel:
@@ -10614,7 +10620,7 @@ spec:
                             description: |-
                               UnderScoreSourceLabels - additional form of source labels source_labels
                               for compatibility with original relabel config.
-                              if set  both sourceLabels and source_labels, sourceLabels has priority.
+                              if set both sourceLabels and source_labels, sourceLabels has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             items:
                               type: string
@@ -10631,7 +10637,7 @@ spec:
                             description: |-
                               UnderScoreTargetLabel - additional form of target label - target_label
                               for compatibility with original relabel config.
-                              if set  both targetLabel and target_label, targetLabel has priority.
+                              if set both targetLabel and target_label, targetLabel has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             type: string
                           targetLabel:
@@ -10809,7 +10815,7 @@ spec:
                             description: |-
                               UnderScoreSourceLabels - additional form of source labels source_labels
                               for compatibility with original relabel config.
-                              if set  both sourceLabels and source_labels, sourceLabels has priority.
+                              if set both sourceLabels and source_labels, sourceLabels has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             items:
                               type: string
@@ -10826,7 +10832,7 @@ spec:
                             description: |-
                               UnderScoreTargetLabel - additional form of target label - target_label
                               for compatibility with original relabel config.
-                              if set  both targetLabel and target_label, targetLabel has priority.
+                              if set both targetLabel and target_label, targetLabel has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             type: string
                           targetLabel:
@@ -11099,7 +11105,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -11116,7 +11122,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -11309,7 +11315,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -11326,7 +11332,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -12034,7 +12040,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -12051,7 +12057,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -12271,7 +12277,7 @@ spec:
                                 description: |-
                                   UnderScoreSourceLabels - additional form of source labels source_labels
                                   for compatibility with original relabel config.
-                                  if set  both sourceLabels and source_labels, sourceLabels has priority.
+                                  if set both sourceLabels and source_labels, sourceLabels has priority.
                                   for details https://github.com/VictoriaMetrics/operator/issues/131
                                 items:
                                   type: string
@@ -12288,7 +12294,7 @@ spec:
                                 description: |-
                                   UnderScoreTargetLabel - additional form of target label - target_label
                                   for compatibility with original relabel config.
-                                  if set  both targetLabel and target_label, targetLabel has priority.
+                                  if set both targetLabel and target_label, targetLabel has priority.
                                   for details https://github.com/VictoriaMetrics/operator/issues/131
                                 type: string
                               targetLabel:
@@ -12367,7 +12373,7 @@ spec:
                                 description: |-
                                   UnderScoreSourceLabels - additional form of source labels source_labels
                                   for compatibility with original relabel config.
-                                  if set  both sourceLabels and source_labels, sourceLabels has priority.
+                                  if set both sourceLabels and source_labels, sourceLabels has priority.
                                   for details https://github.com/VictoriaMetrics/operator/issues/131
                                 items:
                                   type: string
@@ -12384,7 +12390,7 @@ spec:
                                 description: |-
                                   UnderScoreTargetLabel - additional form of target label - target_label
                                   for compatibility with original relabel config.
-                                  if set  both targetLabel and target_label, targetLabel has priority.
+                                  if set both targetLabel and target_label, targetLabel has priority.
                                   for details https://github.com/VictoriaMetrics/operator/issues/131
                                 type: string
                               targetLabel:
@@ -12534,6 +12540,7 @@ spec:
                   VMAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance
                   name. Defaults to the value of `prometheus`. External label will
                   _not_ be added when value is set to empty string (`""`).
+                  Deprecated: use externalLabelName instead. will be removed in v0.69.0
                 type: string
               volumeMounts:
                 description: |-
@@ -31671,7 +31678,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -31688,7 +31695,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -31876,7 +31883,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -31893,7 +31900,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -32654,7 +32661,7 @@ spec:
                             description: |-
                               UnderScoreSourceLabels - additional form of source labels source_labels
                               for compatibility with original relabel config.
-                              if set  both sourceLabels and source_labels, sourceLabels has priority.
+                              if set both sourceLabels and source_labels, sourceLabels has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             items:
                               type: string
@@ -32671,7 +32678,7 @@ spec:
                             description: |-
                               UnderScoreTargetLabel - additional form of target label - target_label
                               for compatibility with original relabel config.
-                              if set  both targetLabel and target_label, targetLabel has priority.
+                              if set both targetLabel and target_label, targetLabel has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             type: string
                           targetLabel:
@@ -32869,7 +32876,7 @@ spec:
                             description: |-
                               UnderScoreSourceLabels - additional form of source labels source_labels
                               for compatibility with original relabel config.
-                              if set  both sourceLabels and source_labels, sourceLabels has priority.
+                              if set both sourceLabels and source_labels, sourceLabels has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             items:
                               type: string
@@ -32886,7 +32893,7 @@ spec:
                             description: |-
                               UnderScoreTargetLabel - additional form of target label - target_label
                               for compatibility with original relabel config.
-                              if set  both targetLabel and target_label, targetLabel has priority.
+                              if set both targetLabel and target_label, targetLabel has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             type: string
                           targetLabel:
@@ -33615,7 +33622,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -33632,7 +33639,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -33874,7 +33881,7 @@ spec:
                               description: |-
                                 UnderScoreSourceLabels - additional form of source labels source_labels
                                 for compatibility with original relabel config.
-                                if set  both sourceLabels and source_labels, sourceLabels has priority.
+                                if set both sourceLabels and source_labels, sourceLabels has priority.
                                 for details https://github.com/VictoriaMetrics/operator/issues/131
                               items:
                                 type: string
@@ -33891,7 +33898,7 @@ spec:
                               description: |-
                                 UnderScoreTargetLabel - additional form of target label - target_label
                                 for compatibility with original relabel config.
-                                if set  both targetLabel and target_label, targetLabel has priority.
+                                if set both targetLabel and target_label, targetLabel has priority.
                                 for details https://github.com/VictoriaMetrics/operator/issues/131
                               type: string
                             targetLabel:
@@ -34008,7 +34015,7 @@ spec:
                               description: |-
                                 UnderScoreSourceLabels - additional form of source labels source_labels
                                 for compatibility with original relabel config.
-                                if set  both sourceLabels and source_labels, sourceLabels has priority.
+                                if set both sourceLabels and source_labels, sourceLabels has priority.
                                 for details https://github.com/VictoriaMetrics/operator/issues/131
                               items:
                                 type: string
@@ -34025,7 +34032,7 @@ spec:
                               description: |-
                                 UnderScoreTargetLabel - additional form of target label - target_label
                                 for compatibility with original relabel config.
-                                if set  both targetLabel and target_label, targetLabel has priority.
+                                if set both targetLabel and target_label, targetLabel has priority.
                                 for details https://github.com/VictoriaMetrics/operator/issues/131
                               type: string
                             targetLabel:
@@ -37106,7 +37113,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -37123,7 +37130,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -37601,7 +37608,7 @@ spec:
                       description: |-
                         UnderScoreSourceLabels - additional form of source labels source_labels
                         for compatibility with original relabel config.
-                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        if set both sourceLabels and source_labels, sourceLabels has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
@@ -37618,7 +37625,7 @@ spec:
                       description: |-
                         UnderScoreTargetLabel - additional form of target label - target_label
                         for compatibility with original relabel config.
-                        if set  both targetLabel and target_label, targetLabel has priority.
+                        if set both targetLabel and target_label, targetLabel has priority.
                         for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
@@ -38337,7 +38344,7 @@ spec:
                             description: |-
                               UnderScoreSourceLabels - additional form of source labels source_labels
                               for compatibility with original relabel config.
-                              if set  both sourceLabels and source_labels, sourceLabels has priority.
+                              if set both sourceLabels and source_labels, sourceLabels has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             items:
                               type: string
@@ -38354,7 +38361,7 @@ spec:
                             description: |-
                               UnderScoreTargetLabel - additional form of target label - target_label
                               for compatibility with original relabel config.
-                              if set  both targetLabel and target_label, targetLabel has priority.
+                              if set both targetLabel and target_label, targetLabel has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             type: string
                           targetLabel:
@@ -38545,7 +38552,7 @@ spec:
                             description: |-
                               UnderScoreSourceLabels - additional form of source labels source_labels
                               for compatibility with original relabel config.
-                              if set  both sourceLabels and source_labels, sourceLabels has priority.
+                              if set both sourceLabels and source_labels, sourceLabels has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             items:
                               type: string
@@ -38562,7 +38569,7 @@ spec:
                             description: |-
                               UnderScoreTargetLabel - additional form of target label - target_label
                               for compatibility with original relabel config.
-                              if set  both targetLabel and target_label, targetLabel has priority.
+                              if set both targetLabel and target_label, targetLabel has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             type: string
                           targetLabel:
@@ -40136,7 +40143,7 @@ spec:
                                 description: |-
                                   UnderScoreSourceLabels - additional form of source labels source_labels
                                   for compatibility with original relabel config.
-                                  if set  both sourceLabels and source_labels, sourceLabels has priority.
+                                  if set both sourceLabels and source_labels, sourceLabels has priority.
                                   for details https://github.com/VictoriaMetrics/operator/issues/131
                                 items:
                                   type: string
@@ -40153,7 +40160,7 @@ spec:
                                 description: |-
                                   UnderScoreTargetLabel - additional form of target label - target_label
                                   for compatibility with original relabel config.
-                                  if set  both targetLabel and target_label, targetLabel has priority.
+                                  if set both targetLabel and target_label, targetLabel has priority.
                                   for details https://github.com/VictoriaMetrics/operator/issues/131
                                 type: string
                               targetLabel:
@@ -40232,7 +40239,7 @@ spec:
                                 description: |-
                                   UnderScoreSourceLabels - additional form of source labels source_labels
                                   for compatibility with original relabel config.
-                                  if set  both sourceLabels and source_labels, sourceLabels has priority.
+                                  if set both sourceLabels and source_labels, sourceLabels has priority.
                                   for details https://github.com/VictoriaMetrics/operator/issues/131
                                 items:
                                   type: string
@@ -40249,7 +40256,7 @@ spec:
                                 description: |-
                                   UnderScoreTargetLabel - additional form of target label - target_label
                                   for compatibility with original relabel config.
-                                  if set  both targetLabel and target_label, targetLabel has priority.
+                                  if set both targetLabel and target_label, targetLabel has priority.
                                   for details https://github.com/VictoriaMetrics/operator/issues/131
                                 type: string
                               targetLabel:
@@ -41274,7 +41281,7 @@ spec:
                             description: |-
                               UnderScoreSourceLabels - additional form of source labels source_labels
                               for compatibility with original relabel config.
-                              if set  both sourceLabels and source_labels, sourceLabels has priority.
+                              if set both sourceLabels and source_labels, sourceLabels has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             items:
                               type: string
@@ -41291,7 +41298,7 @@ spec:
                             description: |-
                               UnderScoreTargetLabel - additional form of target label - target_label
                               for compatibility with original relabel config.
-                              if set  both targetLabel and target_label, targetLabel has priority.
+                              if set both targetLabel and target_label, targetLabel has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             type: string
                           targetLabel:
@@ -41479,7 +41486,7 @@ spec:
                             description: |-
                               UnderScoreSourceLabels - additional form of source labels source_labels
                               for compatibility with original relabel config.
-                              if set  both sourceLabels and source_labels, sourceLabels has priority.
+                              if set both sourceLabels and source_labels, sourceLabels has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             items:
                               type: string
@@ -41496,7 +41503,7 @@ spec:
                             description: |-
                               UnderScoreTargetLabel - additional form of target label - target_label
                               for compatibility with original relabel config.
-                              if set  both targetLabel and target_label, targetLabel has priority.
+                              if set both targetLabel and target_label, targetLabel has priority.
                               for details https://github.com/VictoriaMetrics/operator/issues/131
                             type: string
                           targetLabel:

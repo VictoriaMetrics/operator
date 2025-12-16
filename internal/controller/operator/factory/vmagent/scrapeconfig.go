@@ -18,7 +18,7 @@ func generateScrapeConfig(
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	se := cr.Spec.VMAgentSecurityEnforcements
+	se := cr.Spec.CommonScrapeSecurityEnforcements
 	jobName := fmt.Sprintf("scrapeConfig/%s/%s", sc.Namespace, sc.Name)
 	cfg := yaml.MapSlice{
 		{

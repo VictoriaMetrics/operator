@@ -50,11 +50,13 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorLabels:      false,
-					OverrideHonorTimestamps:  false,
-					IgnoreNamespaceSelectors: false,
-					EnforcedNamespaceLabel:   "",
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+						OverrideHonorLabels:      false,
+						OverrideHonorTimestamps:  false,
+						IgnoreNamespaceSelectors: false,
+						EnforcedNamespaceLabel:   "",
+					},
 				},
 			},
 		},
@@ -158,7 +160,9 @@ bearer_token_file: /var/run/token
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				MaxScrapeInterval: ptr.To("40m"),
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					MaxScrapeInterval: ptr.To("40m"),
+				},
 			},
 		},
 		sc: &vmv1beta1.VMServiceScrape{
@@ -261,7 +265,9 @@ bearer_token_file: /var/run/token
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				MinScrapeInterval: ptr.To("1m"),
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					MinScrapeInterval: ptr.To("1m"),
+				},
 			},
 		},
 		sc: &vmv1beta1.VMServiceScrape{
@@ -857,11 +863,13 @@ oauth2:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				ServiceScrapeRelabelTemplate: []*vmv1beta1.RelabelConfig{
-					{
-						TargetLabel:  "node",
-						SourceLabels: []string{"__meta_kubernetes_node_name"},
-						Regex:        []string{".+"},
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ServiceScrapeRelabelTemplate: []*vmv1beta1.RelabelConfig{
+						{
+							TargetLabel:  "node",
+							SourceLabels: []string{"__meta_kubernetes_node_name"},
+							Regex:        []string{".+"},
+						},
 					},
 				},
 			},
@@ -966,12 +974,14 @@ bearer_token_file: /var/run/token
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				EnableKubernetesAPISelectors: true,
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorLabels:      false,
-					OverrideHonorTimestamps:  false,
-					IgnoreNamespaceSelectors: false,
-					EnforcedNamespaceLabel:   "",
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					EnableKubernetesAPISelectors: true,
+					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+						OverrideHonorLabels:      false,
+						OverrideHonorTimestamps:  false,
+						IgnoreNamespaceSelectors: false,
+						EnforcedNamespaceLabel:   "",
+					},
 				},
 				APIServerConfig: &vmv1beta1.APIServerConfig{
 					Host: "default-k8s-host",
@@ -1071,7 +1081,9 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				EnableKubernetesAPISelectors: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					EnableKubernetesAPISelectors: true,
+				},
 				APIServerConfig: &vmv1beta1.APIServerConfig{
 					Host: "default-k8s-host",
 				},
@@ -1136,34 +1148,36 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorLabels:      false,
-					OverrideHonorTimestamps:  false,
-					IgnoreNamespaceSelectors: false,
-					EnforcedNamespaceLabel:   "",
-				},
-				ScrapeClasses: []vmv1beta1.ScrapeClass{
-					{
-						Name:    "default",
-						Default: ptr.To(true),
-						EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-							RelabelConfigs: []*vmv1beta1.RelabelConfig{
-								{
-									Action:       "replace",
-									SourceLabels: []string{"__meta_kubernetes_pod_app_name"},
-									TargetLabel:  "app",
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+						OverrideHonorLabels:      false,
+						OverrideHonorTimestamps:  false,
+						IgnoreNamespaceSelectors: false,
+						EnforcedNamespaceLabel:   "",
+					},
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name:    "default",
+							Default: ptr.To(true),
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								RelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										Action:       "replace",
+										SourceLabels: []string{"__meta_kubernetes_pod_app_name"},
+										TargetLabel:  "app",
+									},
 								},
 							},
 						},
-					},
-					{
-						Name: "not-default",
-						EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-							MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
-								{
-									Action:       "replace",
-									SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
-									TargetLabel:  "node",
+						{
+							Name: "not-default",
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										Action:       "replace",
+										SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
+										TargetLabel:  "node",
+									},
 								},
 							},
 						},
@@ -1261,29 +1275,31 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				ScrapeClasses: []vmv1beta1.ScrapeClass{
-					{
-						Name:    "custom-class",
-						Default: ptr.To(false),
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								CAFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
-								Cert: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name:    "custom-class",
+							Default: ptr.To(false),
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CAFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+									Cert: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "cert",
 										},
-										Key: "cert",
 									},
 								},
 							},
-						},
-						EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-							RelabelConfigs: []*vmv1beta1.RelabelConfig{
-								{
-									SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
-									TargetLabel:  "node",
-									Action:       "replace",
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								RelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
+										TargetLabel:  "node",
+										Action:       "replace",
+									},
 								},
 							},
 						},
@@ -1391,12 +1407,14 @@ tls_config:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				ScrapeClasses: []vmv1beta1.ScrapeClass{
-					{
-						Name:    "default",
-						Default: ptr.To(true),
-						AttachMetadata: &vmv1beta1.AttachMetadata{
-							Node: ptr.To(true),
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name:    "default",
+							Default: ptr.To(true),
+							AttachMetadata: &vmv1beta1.AttachMetadata{
+								Node: ptr.To(true),
+							},
 						},
 					},
 				},
@@ -1472,23 +1490,25 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				ScrapeClasses: []vmv1beta1.ScrapeClass{
-					{
-						Name:    "secure-class",
-						Default: ptr.To(false),
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							Authorization: &vmv1beta1.Authorization{
-								Credentials: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "auth-secret",
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name:    "secure-class",
+							Default: ptr.To(false),
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								Authorization: &vmv1beta1.Authorization{
+									Credentials: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "auth-secret",
+										},
+										Key: "token",
 									},
-									Key: "token",
+									Type: "Bearer",
 								},
-								Type: "Bearer",
-							},
-							TLSConfig: &vmv1beta1.TLSConfig{
-								CAFile:             "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
-								InsecureSkipVerify: false,
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CAFile:             "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+									InsecureSkipVerify: false,
+								},
 							},
 						},
 					},
@@ -1580,21 +1600,23 @@ authorization:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				ScrapeClasses: []vmv1beta1.ScrapeClass{
-					{
-						Name:    "metrics-class",
-						Default: ptr.To(true),
-						EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-							MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
-								{
-									SourceLabels: []string{"__name__"},
-									Regex:        vmv1beta1.StringOrArray{"go_.*"},
-									Action:       "keep",
-								},
-								{
-									TargetLabel: "scrape_class",
-									Replacement: ptr.To("metrics-class"),
-									Action:      "replace",
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name:    "metrics-class",
+							Default: ptr.To(true),
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										SourceLabels: []string{"__name__"},
+										Regex:        vmv1beta1.StringOrArray{"go_.*"},
+										Action:       "keep",
+									},
+									{
+										TargetLabel: "scrape_class",
+										Replacement: ptr.To("metrics-class"),
+										Action:      "replace",
+									},
 								},
 							},
 						},
@@ -1691,15 +1713,17 @@ metric_relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				ScrapeClasses: []vmv1beta1.ScrapeClass{
-					{
-						Name: "non-default-class",
-						EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-							RelabelConfigs: []*vmv1beta1.RelabelConfig{
-								{
-									SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
-									TargetLabel:  "node",
-									Action:       "replace",
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name: "non-default-class",
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								RelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										SourceLabels: []string{"__meta_kubernetes_pod_node_name"},
+										TargetLabel:  "node",
+										Action:       "replace",
+									},
 								},
 							},
 						},
@@ -1788,34 +1812,36 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				ScrapeClasses: []vmv1beta1.ScrapeClass{
-					{
-						Name:    "default",
-						Default: ptr.To(true),
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							OAuth2: &vmv1beta1.OAuth2{
-								ProxyURL: "http://some",
-								Scopes:   []string{"1", "2"},
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name:    "default",
+							Default: ptr.To(true),
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								OAuth2: &vmv1beta1.OAuth2{
+									ProxyURL: "http://some",
+									Scopes:   []string{"1", "2"},
+								},
+							},
+						},
+						{
+							Name: "not-default",
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								OAuth2: &vmv1beta1.OAuth2{
+									ProxyURL:         "http://some",
+									Scopes:           []string{"1", "2"},
+									ClientSecretFile: "/path/to/file",
+									EndpointParams:   map[string]string{"param": "value"},
+								},
 							},
 						},
 					},
-					{
-						Name: "not-default",
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							OAuth2: &vmv1beta1.OAuth2{
-								ProxyURL:         "http://some",
-								Scopes:           []string{"1", "2"},
-								ClientSecretFile: "/path/to/file",
-								EndpointParams:   map[string]string{"param": "value"},
-							},
-						},
+					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+						OverrideHonorLabels:      false,
+						OverrideHonorTimestamps:  false,
+						IgnoreNamespaceSelectors: false,
+						EnforcedNamespaceLabel:   "",
 					},
-				},
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorLabels:      false,
-					OverrideHonorTimestamps:  false,
-					IgnoreNamespaceSelectors: false,
-					EnforcedNamespaceLabel:   "",
 				},
 			},
 		},

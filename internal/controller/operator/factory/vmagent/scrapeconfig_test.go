@@ -51,8 +51,10 @@ func TestGenerateScrapeConfig(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				MinScrapeInterval: ptr.To("30s"),
-				MaxScrapeInterval: ptr.To("5m"),
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					MinScrapeInterval: ptr.To("30s"),
+					MaxScrapeInterval: ptr.To("5m"),
+				},
 			},
 		},
 		sc: &vmv1beta1.VMScrapeConfig{
@@ -126,8 +128,10 @@ static_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				MinScrapeInterval: ptr.To("30s"),
-				MaxScrapeInterval: ptr.To("5m"),
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					MinScrapeInterval: ptr.To("30s"),
+					MaxScrapeInterval: ptr.To("5m"),
+				},
 			},
 		},
 		sc: &vmv1beta1.VMScrapeConfig{

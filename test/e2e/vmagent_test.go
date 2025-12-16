@@ -276,7 +276,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://localhost:8428"},
 						},
-						SelectAllByDefault: true,
+						CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+							SelectAllByDefault: true,
+						},
 					},
 				}, nil, func(cr *vmv1beta1.VMAgent) {
 					Eventually(func() string {
@@ -542,7 +544,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ReplicaCount: ptr.To[int32](2),
 					},
-					SelectAllByDefault:  true,
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+						SelectAllByDefault: true,
+					},
 					PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: &intstr.IntOrString{IntVal: 1}},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://some-vm-single:8428"},

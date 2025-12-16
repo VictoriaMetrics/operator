@@ -20,7 +20,7 @@ func generatePodScrapeConfig(
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
 	apiserverConfig := cr.Spec.APIServerConfig
-	se := cr.Spec.VMAgentSecurityEnforcements
+	se := cr.Spec.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",

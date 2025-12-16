@@ -19,7 +19,7 @@ func generateStaticScrapeConfig(
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	se := cr.Spec.VMAgentSecurityEnforcements
+	se := cr.Spec.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",

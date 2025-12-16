@@ -17,6 +17,7 @@ aliases:
 **Update note 2: removed deprecated VMAgent `spec.aPIServerConfig`
 **Update note 3: VM_CUSTOMCONFIGRELOADERIMAGE is deprecated and will be removed in next releases. Use VM_CONFIG_RELOADER_IMAGE instead.**
 **Update note 4: spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.**
+**Update note 5: spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.**
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.132.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.132.0) version
 

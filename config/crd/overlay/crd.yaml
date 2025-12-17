@@ -20079,8 +20079,6 @@ spec:
                             type: object
                           type: array
                       type: object
-                    tenantID:
-                      type: string
                   type: object
                 vmauth:
                   properties:

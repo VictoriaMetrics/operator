@@ -12,7 +12,6 @@ spec:
       cpu: "500m"
       memory: "850Mi"
   daemonSetMode: true
-  useVMConfigReloader: true
   remoteWrite:
     - url: "http://vmsingle-dc-1.default.svc:8429/api/v1/write"
       maxDiskUsage: 5GB

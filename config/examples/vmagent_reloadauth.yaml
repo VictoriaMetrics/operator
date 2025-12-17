@@ -5,8 +5,7 @@ metadata:
 spec:
   selectAllByDefault: true
   replicaCount: 1
-  useVMConfigReloader: true
-  configReloaderImageTag: victoriametrics/operator:config-reloader-v0.57.0
+  configReloaderImage: victoriametrics/operator:config-reloader-v0.67.0
   configReloadAuthKeySecret:
     name: reload-key
     key: RELOAD_AUTH_KEY

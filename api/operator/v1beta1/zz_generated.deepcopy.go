@@ -6347,11 +6347,6 @@ func (in *VMSelect) DeepCopyInto(out *VMSelect) {
 		*out = new(EmbeddedObjectMetadata)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.PersistentVolume != nil {
-		in, out := &in.PersistentVolume, &out.PersistentVolume
-		*out = new(StorageSpec)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.PersistentVolumeClaimRetentionPolicy != nil {
 		in, out := &in.PersistentVolumeClaimRetentionPolicy, &out.PersistentVolumeClaimRetentionPolicy
 		*out = new(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy)

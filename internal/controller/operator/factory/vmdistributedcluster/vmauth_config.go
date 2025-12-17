@@ -9,6 +9,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -274,7 +275,76 @@ func updateVMAuthLBSecret(ctx context.Context, rclient client.Client, cr, prevCR
 	if err := reconcile.Secret(ctx, rclient, secret, prevSecretMeta); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
+
+	if err := ensureVMAuthRoleExist(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot check vmauth role: %w", err)
+	}
+	if err := ensureVMAuthRBExist(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot check vmauth role binding: %w", err)
+	}
+
 	return nil
+}
+
+func ensureVMAuthRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
+	var prevRole *rbacv1.Role
+	if prevCR != nil {
+		prevRole = buildRole(prevCR)
+	}
+	return reconcile.Role(ctx, rclient, buildRole(cr), prevRole)
+}
+
+func ensureVMAuthRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
+	var prevRB *rbacv1.RoleBinding
+	if prevCR != nil {
+		prevRB = buildRoleBinding(prevCR)
+	}
+	return reconcile.RoleBinding(ctx, rclient, buildRoleBinding(cr), prevRB)
+}
+
+func buildRole(cr *vmv1alpha1.VMDistributedCluster) *rbacv1.Role {
+	return &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+			Namespace:       cr.Namespace,
+			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
+			Annotations:     cr.FinalAnnotations(),
+			Finalizers:      []string{vmv1beta1.FinalizerName},
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{"secrets"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+		},
+	}
+}
+
+func buildRoleBinding(cr *vmv1alpha1.VMDistributedCluster) *rbacv1.RoleBinding {
+	return &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+			Namespace:       cr.Namespace,
+			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
+			Annotations:     cr.FinalAnnotations(),
+			Finalizers:      []string{vmv1beta1.FinalizerName},
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Name:     cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+			Kind:     "Role",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Name:      cr.GetServiceAccountName(),
+				Namespace: cr.Namespace,
+				Kind:      "ServiceAccount",
+			},
+		},
+	}
 }
 
 func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {

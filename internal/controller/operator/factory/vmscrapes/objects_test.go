@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -57,7 +57,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		sp := &o.cr.Spec.CommonScrapeParams
-		pos := &parsedObjects{Namespace: o.cr.Namespace}
+		pos := &ParsedObjects{Namespace: o.cr.Namespace}
 		assert.NoError(t, pos.selectServiceScrapes(context.TODO(), fclient, sp))
 		gotNames := []string{}
 		for _, monitorName := range pos.serviceScrapes.All() {
@@ -287,7 +287,7 @@ func TestSelectPodMonitors(t *testing.T) {
 	f := func(o opts) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		sp := &o.cr.Spec.CommonScrapeParams
-		pos := &parsedObjects{Namespace: o.cr.Namespace}
+		pos := &ParsedObjects{Namespace: o.cr.Namespace}
 		assert.NoError(t, pos.selectPodScrapes(context.TODO(), fclient, sp))
 		var gotNames []string
 
@@ -373,7 +373,7 @@ func TestSelectProbes(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		sp := &o.cr.Spec.CommonScrapeParams
-		pos := &parsedObjects{Namespace: o.cr.Namespace}
+		pos := &ParsedObjects{Namespace: o.cr.Namespace}
 		assert.NoError(t, pos.selectProbes(context.TODO(), fclient, sp))
 		var result []string
 		for _, k := range pos.probes.All() {

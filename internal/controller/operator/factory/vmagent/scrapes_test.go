@@ -2,11 +2,9 @@ package vmagent
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,87 +17,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
-
-func Test_generateRelabelConfig(t *testing.T) {
-	f := func(rc *vmv1beta1.RelabelConfig, want string) {
-		// related fields only filled during json unmarshal
-		j, err := json.Marshal(rc)
-		if err != nil {
-			t.Fatalf("cannot serialize relabelConfig: %s", err)
-		}
-		var rlbCfg vmv1beta1.RelabelConfig
-		if err := json.Unmarshal(j, &rlbCfg); err != nil {
-			t.Fatalf("cannot parse relabelConfig: %s", err)
-		}
-		got := generateRelabelConfig(&rlbCfg)
-		gotBytes, err := yaml.Marshal(got)
-		if err != nil {
-			t.Errorf("cannot marshal generateRelabelConfig to yaml: %e", err)
-			return
-		}
-		assert.Equal(t, want, string(gotBytes))
-	}
-
-	// ok base cfg
-	f(&vmv1beta1.RelabelConfig{
-		TargetLabel:  "address",
-		SourceLabels: []string{"__address__"},
-		Action:       "replace",
-	}, `source_labels:
-- __address__
-target_label: address
-action: replace
-`)
-
-	// ok base with underscore
-	f(&vmv1beta1.RelabelConfig{
-		UnderScoreTargetLabel:  "address",
-		UnderScoreSourceLabels: []string{"__address__"},
-		Action:                 "replace",
-	}, `source_labels:
-- __address__
-target_label: address
-action: replace
-`)
-
-	// ok base with graphite match labels
-	f(&vmv1beta1.RelabelConfig{
-		UnderScoreTargetLabel:  "address",
-		UnderScoreSourceLabels: []string{"__address__"},
-		Action:                 "graphite",
-		Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
-		Match:                  `foo.*.*.bar`,
-	}, `source_labels:
-- __address__
-target_label: address
-action: graphite
-match: foo.*.*.bar
-labels:
-  instance: ${2}:8080
-  job: $1
-`)
-
-	// with empty replacement and separator
-	f(&vmv1beta1.RelabelConfig{
-		UnderScoreTargetLabel:  "address",
-		UnderScoreSourceLabels: []string{"__address__"},
-		Action:                 "graphite",
-		Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
-		Match:                  `foo.*.*.bar`,
-		Separator:              ptr.To(""),
-		Replacement:            ptr.To(""),
-	}, `source_labels:
-- __address__
-separator: ""
-target_label: address
-replacement: ""
-action: graphite
-match: foo.*.*.bar
-labels:
-  instance: ${2}:8080
-  job: $1
-`)
-}
 
 func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 	type opts struct {
@@ -947,7 +864,6 @@ scrape_configs:
 							UnderScoreSourceLabels: []string{"test2"},
 						},
 					},
-
 					GlobalScrapeMetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
 						{
 							UnderScoreSourceLabels: []string{"test1"},
@@ -1704,7 +1620,7 @@ scrape_configs:
 					Targets: vmv1beta1.VMProbeTargets{
 						Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
 							{
-								Role: k8sSDRoleIngress,
+								Role: "ingress",
 								Selector: *metav1.SetAsLabelSelector(map[string]string{
 									"alb.ingress.kubernetes.io/tags": "Environment=devl",
 								}),
@@ -2234,7 +2150,7 @@ scrape_configs: []
 		}
 		ac := getAssetsCache(ctx, testClient, cr)
 		if err := createOrUpdateScrapeConfig(ctx, testClient, cr, nil, nil, ac); err != nil {
-			t.Errorf("CreateOrUpdateConfigurationSecret() error = %s", err)
+			t.Errorf("createOrUpdateScrapeConfig() error = %s", err)
 		}
 		var configSecret corev1.Secret
 		if err := testClient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &configSecret); err != nil {
@@ -2269,7 +2185,7 @@ scrape_configs: []
 			Targets: vmv1beta1.VMProbeTargets{
 				Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
 					{
-						Role:     k8sSDRoleIngress,
+						Role:     "ingress",
 						Selector: *metav1.SetAsLabelSelector(map[string]string{"alb.ingress.kubernetes.io/tags": "Environment=devl"}),
 					},
 				},

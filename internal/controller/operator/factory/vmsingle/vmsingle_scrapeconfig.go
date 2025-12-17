@@ -1,4 +1,4 @@
-package vmagent
+package vmsingle
 
 import (
 	"bytes"
@@ -41,7 +41,7 @@ func (so *parsedObjects) updateMetrics(ctx context.Context) {
 	so.scrapeConfigs.UpdateMetrics(ctx)
 }
 
-func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
+func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMSingle) {
 	so.serviceScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMServiceScrape) error {
 		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sc.Spec.Endpoints {
@@ -139,9 +139,9 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 	})
 }
 
-// CreateOrUpdateScrapeConfig builds scrape configuration for VMAgent
-func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
-	var prevCR *vmv1beta1.VMAgent
+// CreateOrUpdateScrapeConfig builds scrape configuration for VMSingle
+func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, childObject client.Object) error {
+	var prevCR *vmv1beta1.VMSingle
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
@@ -153,16 +153,9 @@ func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *
 	return nil
 }
 
-func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
-	if cr.Spec.IngestOnlyMode {
+func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, childObject client.Object, ac *build.AssetsCache) error {
+	if !cr.Spec.EnableScraping {
 		return nil
-	}
-	// HACK: newPodSpec could load content into ac and it must be called
-	// before secret config reconcile
-	//
-	// TODO: @f41gh7 rewrite this section with VLAgent secret assets injection pattern
-	if _, err := newPodSpec(cr, ac); err != nil {
-		return err
 	}
 
 	serviceScrapes, nsnServiceScrapes, err := selectServiceScrapes(ctx, cr, rclient)
@@ -223,7 +216,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		additionalScrapeConfigs,
 	)
 	if err != nil {
-		return fmt.Errorf("generating config for vmagent failed: %w", err)
+		return fmt.Errorf("generating config for vmsingle failed: %w", err)
 	}
 
 	for kind, secret := range ac.GetOutput() {
@@ -235,7 +228,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 			// Compress config to avoid 1mb secret limit for a while
 			var buf bytes.Buffer
 			if err = gzipConfig(&buf, generatedConfig); err != nil {
-				return fmt.Errorf("cannot gzip config for vmagent: %w", err)
+				return fmt.Errorf("cannot gzip config for vmsingle: %w", err)
 			}
 			secret.Data[scrapeGzippedFilename] = buf.Bytes()
 		}
@@ -255,8 +248,8 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	return nil
 }
 
-func (pos *parsedObjects) updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
-	parentObject := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+func (pos *parsedObjects) updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, childObject client.Object) error {
+	parentObject := fmt.Sprintf("%s.%s.vmsingle", cr.Name, cr.Namespace)
 	pos.updateMetrics(ctx)
 	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
 		// fast path
@@ -311,14 +304,14 @@ func (pos *parsedObjects) updateStatusesForScrapeObjects(ctx context.Context, rc
 // TODO: @f41gh7 validate VMScrapeParams
 func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
 	if e.BearerTokenFile != "" {
-		return fmt.Errorf("it accesses file system via bearer token file which VMAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via bearer token file which VMSingle specification prohibits")
 	}
 	if e.BasicAuth != nil && e.BasicAuth.PasswordFile != "" {
-		return fmt.Errorf("it accesses file system via basicAuth password file which VMAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via basicAuth password file which VMSingle specification prohibits")
 	}
 
 	if e.OAuth2 != nil && e.OAuth2.ClientSecretFile != "" {
-		return fmt.Errorf("it accesses file system via oauth2 client secret file which VMAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via oauth2 client secret file which VMSingle specification prohibits")
 	}
 
 	tlsConf := e.TLSConfig
@@ -331,7 +324,7 @@ func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
 	}
 
 	if tlsConf.CAFile != "" || tlsConf.CertFile != "" || tlsConf.KeyFile != "" {
-		return fmt.Errorf("it accesses file system via tls config which VMAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via tls config which VMSingle specification prohibits")
 	}
 
 	return nil
@@ -400,7 +393,7 @@ var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
 func generateConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	cr *vmv1beta1.VMSingle,
 	pos *parsedObjects,
 	ac *build.AssetsCache,
 	additionalScrapeConfigs []byte,
@@ -409,7 +402,7 @@ func generateConfig(
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
 		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +
 			"Since operator launched with set WATCH_NAMESPACE param. " +
-			"Set custom ServiceAccountName property for VMAgent if needed.")
+			"Set custom ServiceAccountName property for VMSingle if needed.")
 		cr.Spec.IgnoreNamespaceSelectors = true
 	}
 
@@ -750,14 +743,13 @@ func getNamespacesFromNamespaceSelector(nsSelector *vmv1beta1.NamespaceSelector,
 }
 
 type generateK8SSDConfigOptions struct {
-	namespaces          []string
-	apiServerConfig     *vmv1beta1.APIServerConfig
-	role                string
-	attachMetadata      *vmv1beta1.AttachMetadata
-	shouldAddSelectors  bool
-	selectors           metav1.LabelSelector
-	mustUseNodeSelector bool
-	namespace           string
+	namespaces         []string
+	apiServerConfig    *vmv1beta1.APIServerConfig
+	role               string
+	attachMetadata     *vmv1beta1.AttachMetadata
+	shouldAddSelectors bool
+	selectors          metav1.LabelSelector
+	namespace          string
 }
 
 func generateK8SSDConfig(ac *build.AssetsCache, opts generateK8SSDConfigOptions) (yaml.MapSlice, error) {
@@ -827,20 +819,7 @@ func generateK8SSDConfig(ac *build.AssetsCache, opts generateK8SSDConfigOptions)
 	var selectors []yaml.MapSlice
 
 	isEmptySelectors := len(opts.selectors.MatchLabels)+len(opts.selectors.MatchExpressions) == 0
-	switch {
-	case opts.mustUseNodeSelector:
-		var selector yaml.MapSlice
-		selector = append(selector, yaml.MapItem{
-			Key:   "role",
-			Value: k8sSDRolePod,
-		})
-		selector = append(selector, yaml.MapItem{
-			Key:   "field",
-			Value: "spec.nodeName=" + kubeNodeEnvTemplate,
-		})
-		selectors = append(selectors, selector)
-
-	case opts.shouldAddSelectors && !isEmptySelectors:
+	if opts.shouldAddSelectors && !isEmptySelectors {
 		var selector yaml.MapSlice
 		selector = append(selector, yaml.MapItem{
 			Key:   "role",
@@ -900,20 +879,15 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 	})
 }
 
-func buildExternalLabels(cr *vmv1beta1.VMAgent) yaml.MapSlice {
+func buildExternalLabels(cr *vmv1beta1.VMSingle) yaml.MapSlice {
 	m := map[string]string{}
 	sp := cr.Spec.CommonScrapeParams
 
 	// Use "prometheus" external label name by default if field is missing.
-	// in case of migration from prometheus to vmagent, it helps to have same labels
+	// in case of migration from prometheus to vmsingle, it helps to have same labels
 	// Do not add external label if field is set to empty string.
 	prometheusExternalLabelName := "prometheus"
-	var labelName *string
-	if sp.ExternalLabelName != nil {
-		labelName = sp.ExternalLabelName
-	} else if sp.VMAgentExternalLabelName != nil {
-		labelName = sp.VMAgentExternalLabelName
-	}
+	labelName := sp.ExternalLabelName
 	if labelName != nil {
 		if *labelName != "" {
 			prometheusExternalLabelName = *labelName
@@ -1053,7 +1027,7 @@ func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParam
 	}
 	if cs.Scheme != "" {
 		// scheme may have uppercase format to be compatible with prometheus-operator objects
-		// vmagent expects lower case format only
+		// vmsingle expects lower case format only
 		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: strings.ToLower(cs.Scheme)})
 	}
 	if cs.MaxScrapeSize != "" {
@@ -1123,7 +1097,7 @@ func addEndpointAuthTo(cfg yaml.MapSlice, ea *vmv1beta1.EndpointAuth, namespace 
 	return cfg, nil
 }
 
-func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) *build.AssetsCache {
 	cfg := map[build.ResourceKind]*build.ResourceCfg{
 		build.SecretConfigResourceKind: {
 			MountDir:   confDir,
@@ -1136,7 +1110,7 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	}
 	return build.NewAssetsCache(ctx, rclient, cfg)
 }
-func validateScrapeClassExists(scrapeClassName *string, cr *vmv1beta1.VMAgent) error {
+func validateScrapeClassExists(scrapeClassName *string, cr *vmv1beta1.VMSingle) error {
 	if scrapeClassName == nil {
 		return nil
 	}
@@ -1145,7 +1119,7 @@ func validateScrapeClassExists(scrapeClassName *string, cr *vmv1beta1.VMAgent) e
 			return nil
 		}
 	}
-	return fmt.Errorf("scrape class %q not found in VMAgent %s/%s", *scrapeClassName, cr.Namespace, cr.Name)
+	return fmt.Errorf("scrape class %q not found in VMSingle %s/%s", *scrapeClassName, cr.Namespace, cr.Name)
 }
 
 func mergeEndpointAuthWithScrapeClass(authz *vmv1beta1.EndpointAuth, scrapeClass *vmv1beta1.ScrapeClass) {

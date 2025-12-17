@@ -1,4 +1,4 @@
-package vmagent
+package vmsingle
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 func generateServiceScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	cr *vmv1beta1.VMSingle,
 	sc *vmv1beta1.VMServiceScrape,
 	ep vmv1beta1.Endpoint,
 	i int,

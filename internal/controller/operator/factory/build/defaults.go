@@ -228,6 +228,7 @@ func addVMSingleDefaults(objI any) {
 	useBackupDefaultResources := c.VMBackup.UseDefaultResources
 	cv := config.ApplicationDefaults(c.VMSingleDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
 	if cr.Spec.UseDefaultResources != nil {
 		useBackupDefaultResources = *cr.Spec.UseDefaultResources
 	}

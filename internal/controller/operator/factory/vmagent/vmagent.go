@@ -30,14 +30,14 @@ import (
 )
 
 const (
-	vmAgentConfDir                  = "/etc/vmagent/config"
-	vmAgentConfOutDir               = "/etc/vmagent/config_out"
-	vmAgentPersistentQueueDir       = "/tmp/vmagent-remotewrite-data"
-	vmAgentPersistentQueueSTSDir    = "/vmagent_pq/vmagent-remotewrite-data"
-	vmAgentPersistentQueueMountName = "persistent-queue-data"
-	globalRelabelingName            = "global_relabeling.yaml"
-	urlRelabelingName               = "url_relabeling-%d.yaml"
-	globalAggregationConfigName     = "global_aggregation.yaml"
+	confDir                     = "/etc/vmagent/config"
+	confOutDir                  = "/etc/vmagent/config_out"
+	persistentQueueDir          = "/tmp/vmagent-remotewrite-data"
+	persistentQueueSTSDir       = "/vmagent_pq/vmagent-remotewrite-data"
+	persistentQueueMountName    = "persistent-queue-data"
+	globalRelabelingName        = "global_relabeling.yaml"
+	urlRelabelingName           = "url_relabeling-%d.yaml"
+	globalAggregationConfigName = "global_aggregation.yaml"
 
 	tlsAssetsDir          = "/etc/vmagent-tls/certs"
 	scrapeGzippedFilename = "vmagent.yaml.gz"
@@ -421,7 +421,7 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		}
 		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
-		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
+		cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
 	}
@@ -523,13 +523,13 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	var crMounts []corev1.VolumeMount
 	// mount data path any way, even if user changes its value
 	// we cannot rely on value of remoteWriteSettings.
-	pqMountPath := vmAgentPersistentQueueDir
+	pqMountPath := persistentQueueDir
 	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
+		pqMountPath = persistentQueueSTSDir
 	}
 	agentVolumeMounts = append(agentVolumeMounts,
 		corev1.VolumeMount{
-			Name:      vmAgentPersistentQueueMountName,
+			Name:      persistentQueueMountName,
 			MountPath: pqMountPath,
 		},
 	)
@@ -539,7 +539,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	// in case for sts, we have to use persistentVolumeClaimTemplate instead
 	if !cr.Spec.StatefulMode {
 		volumes = append(volumes, corev1.Volume{
-			Name: vmAgentPersistentQueueMountName,
+			Name: persistentQueueMountName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -550,7 +550,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	if !cr.Spec.IngestOnlyMode {
 		args = append(args,
-			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConfOutDir, configFilename)))
+			fmt.Sprintf("-promscrape.config=%s", path.Join(confOutDir, configFilename)))
 
 		// preserve order of volumes and volumeMounts
 		// it must prevent vmagent restarts during operator version change
@@ -580,7 +580,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 		m := corev1.VolumeMount{
 			Name:      "config-out",
-			MountPath: vmAgentConfOutDir,
+			MountPath: confOutDir,
 		}
 		crMounts = append(crMounts, m)
 		m.ReadOnly = true
@@ -592,7 +592,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
 			Name:      string(build.SecretConfigResourceKind),
-			MountPath: vmAgentConfDir,
+			MountPath: confDir,
 			ReadOnly:  true,
 		})
 
@@ -911,9 +911,9 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 	var hasAnyDiskUsagesSet bool
 	var storageLimit int64
 
-	pqMountPath := vmAgentPersistentQueueDir
+	pqMountPath := persistentQueueDir
 	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
+		pqMountPath = persistentQueueSTSDir
 		if cr.Spec.StatefulStorage != nil {
 			if storage, ok := cr.Spec.StatefulStorage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
 				storageInt, ok := storage.AsInt64()

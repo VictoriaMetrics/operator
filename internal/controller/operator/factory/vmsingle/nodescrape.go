@@ -1,4 +1,4 @@
-package vmagent
+package vmsingle
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 func generateNodeScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	cr *vmv1beta1.VMSingle,
 	sc *vmv1beta1.VMNodeScrape,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {

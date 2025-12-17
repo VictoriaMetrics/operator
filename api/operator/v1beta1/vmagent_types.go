@@ -34,14 +34,12 @@ type VMAgentSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-
 	// APIServerConfig allows specifying a host and auth methods to access apiserver.
 	// If left empty, VMAgent is assumed to run inside of the cluster
 	// and will discover API servers automatically and use the pod's CA certificate
 	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
 	// +optional
 	APIServerConfig *APIServerConfig `json:"apiServerConfig,omitempty"`
-
 	// RemoteWrite list of victoria metrics /some other remote write system
 	// for vm it must looks like: http://victoria-metrics-single:8428/api/v1/write
 	// or for cluster different url
@@ -350,7 +348,7 @@ type VMAgentRemoteWriteSpec struct {
 	// +optional
 	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 
-	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
+	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url.
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	UrlRelabelConfig *corev1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
@@ -567,7 +565,7 @@ func (cr *VMAgent) IsOwnsServiceAccount() bool {
 }
 
 func (cr *VMAgent) GetClusterRoleName() string {
-	return fmt.Sprintf("monitoring:%s:vmagent-%s", cr.Namespace, cr.Name)
+	return fmt.Sprintf("monitoring:%s:%s", cr.Namespace, cr.PrefixedName())
 }
 
 // AsURL - returns url for http access

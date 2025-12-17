@@ -1,4 +1,4 @@
-package vmagent
+package vmsingle
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 func generateStaticScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	cr *vmv1beta1.VMSingle,
 	sc *vmv1beta1.VMStaticScrape,
 	ep *vmv1beta1.TargetEndpoint,
 	i int,
@@ -49,7 +49,7 @@ func generateStaticScrapeConfig(
 		ep.SeriesLimit = spec.SeriesLimit
 	}
 	if ep.ScrapeTimeout == "" {
-		ep.ScrapeTimeout = sp.ScrapeTimeout
+		ep.ScrapeTimeout = cr.Spec.ScrapeTimeout
 	}
 	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
 

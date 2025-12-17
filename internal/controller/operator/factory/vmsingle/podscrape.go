@@ -1,4 +1,4 @@
-package vmagent
+package vmsingle
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 func generatePodScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	cr *vmv1beta1.VMSingle,
 	sc *vmv1beta1.VMPodScrape,
 	ep vmv1beta1.PodMetricsEndpoint,
 	i int,
@@ -51,9 +51,6 @@ func generatePodScrapeConfig(
 		role:               k8sSDRolePod,
 		attachMetadata:     &ep.AttachMetadata,
 		namespace:          sc.Namespace,
-	}
-	if cr.Spec.DaemonSetMode {
-		k8sSDOpts.mustUseNodeSelector = true
 	}
 	if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
 		return nil, err

@@ -1,8 +1,11 @@
 package vmdistributedcluster
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
+	"path"
 	"sort"
 
 	"gopkg.in/yaml.v2"
@@ -41,6 +44,13 @@ type URLMap struct {
 	DiscoverBackendIPs bool     `yaml:"discover_backend_ips"`
 }
 
+const (
+	configMountName = "config-out"
+	configMountPath = "/opt/vmauth-config"
+	configFileName  = "config.yaml"
+	configGZName    = "config.yaml.gz"
+)
+
 // buildVMAuthVMSelectRefs builds the URLMap entries for each vmselect in the vmclusters.
 func buildVMAuthVMSelectURLMaps(vmClusters []*vmv1beta1.VMCluster) URLMap {
 	prefixes := make([]string, 0, len(vmClusters))
@@ -75,11 +85,25 @@ func buildVMAuthLBSecret(cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1
 		return nil, fmt.Errorf("cannot marshal vmauth config: %w", err)
 	}
 
+	var buf bytes.Buffer
+	if err := gzipConfig(&buf, configData); err != nil {
+		return nil, fmt.Errorf("cannot gzip config for vmauth: %w", err)
+	}
+
 	lbScrt := &corev1.Secret{
 		ObjectMeta: buildLBConfigMeta(cr),
-		Data:       map[string][]byte{"config.yaml": configData},
+		Data:       map[string][]byte{configGZName: buf.Bytes()},
 	}
 	return lbScrt, nil
+}
+
+func gzipConfig(buf *bytes.Buffer, conf []byte) error {
+	w := gzip.NewWriter(buf)
+	defer w.Close()
+	if _, err := w.Write(conf); err != nil {
+		return err
+	}
+	return nil
 }
 
 func buildLBConfigMeta(cr *vmv1alpha1.VMDistributedCluster) metav1.ObjectMeta {
@@ -94,21 +118,18 @@ func buildLBConfigMeta(cr *vmv1alpha1.VMDistributedCluster) metav1.ObjectMeta {
 
 func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deployment, error) {
 	spec := cr.GetVMAuthSpec()
-	const configMountName = "vmauth-lb-config"
 	volumes := []corev1.Volume{
 		{
 			Name: configMountName,
 			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
-				},
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
 	volumes = append(volumes, spec.Volumes...)
 	vmounts := []corev1.VolumeMount{
 		{
-			MountPath: "/opt/vmauth-config/",
+			MountPath: configMountPath,
 			Name:      configMountName,
 		},
 	}
@@ -118,7 +139,7 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 	volumes, vmounts = build.LicenseVolumeTo(volumes, vmounts, spec.License, vmv1beta1.SecretsDir)
 
 	args := []string{
-		"-auth.config=/opt/vmauth-config/config.yaml",
+		fmt.Sprintf("-auth.config=%s", path.Join(configMountPath, configFileName)),
 		"-configCheckInterval=30s",
 	}
 	if spec.LogLevel != "" {
@@ -165,7 +186,7 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
 		},
-		Key: configMountName,
+		Key: configFileName,
 	}
 	configReloader := build.ConfigReloaderContainer(false, cr, vmounts, secretKeySelector)
 	containers := []corev1.Container{

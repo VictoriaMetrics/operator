@@ -19029,8 +19029,6 @@ spec:
                           type: object
                         serviceAccountName:
                           type: string
-                        shardCount:
-                          type: integer
                         startupProbe:
                           properties:
                             exec:

@@ -150,14 +150,6 @@ type CustomVMAgentSpec struct {
 	// RemoteWriteSettings defines global settings for all remoteWrite urls.
 	// +optional
 	RemoteWriteSettings *vmv1beta1.VMAgentRemoteWriteSettings `json:"remoteWriteSettings,omitempty"`
-
-	// ShardCount - numbers of shards of VMAgent
-	// in this case operator will use 1 deployment/sts per shard with
-	// replicas count according to spec.replicas,
-	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)
-	// +optional
-	ShardCount *int `json:"shardCount,omitempty"`
-
 	// UpdateStrategy - overrides default update strategy.
 	// works only for deployments, statefulset always use OnDelete.
 	// +kubebuilder:validation:Enum=Recreate;RollingUpdate

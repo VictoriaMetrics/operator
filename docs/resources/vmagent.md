@@ -785,7 +785,7 @@ spec:
   scrapeTimeout: 10s
   externalLabels:
     cluster: my-cluster
-  vmAgentExternalLabelName: example
+  externalLabelName: example
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   inlineRelabelConfig:

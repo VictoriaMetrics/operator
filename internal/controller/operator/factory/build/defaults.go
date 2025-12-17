@@ -231,8 +231,12 @@ func addVMSingleDefaults(objI any) {
 	useBackupDefaultResources := c.VMBackup.UseDefaultResources
 	cv := config.ApplicationDefaults(c.VMSingleDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
+	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
 	if cr.Spec.UseDefaultResources != nil {
 		useBackupDefaultResources = *cr.Spec.UseDefaultResources
+	}
+	if cr.Spec.IngestOnlyMode == nil {
+		cr.Spec.IngestOnlyMode = ptr.To(true)
 	}
 	backupDefaults := &config.ApplicationDefaults{
 		Image:               c.VMBackup.Image,

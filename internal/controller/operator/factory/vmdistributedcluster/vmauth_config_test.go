@@ -11,77 +11,60 @@ import (
 )
 
 func Test_buildVMAuthVMSelectURLMaps(t *testing.T) {
-	type args struct {
-		vmClusters []*vmv1beta1.VMCluster
-	}
-	tests := []struct {
-		name string
-		args args
-		want URLMap
-	}{
-		{
-			name: "single default vmcluster",
-			args: args{
-				vmClusters: []*vmv1beta1.VMCluster{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "vmc-test",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMClusterSpec{},
-					},
+	t.Run("single default vmcluster", func(t *testing.T) {
+		vmClusters := []*vmv1beta1.VMCluster{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmc-test",
+					Namespace: "default",
 				},
+				Spec: vmv1beta1.VMClusterSpec{},
 			},
-			want: URLMap{
-				SrcPaths:           []string{"/.*"},
-				URLPrefix:          []string{"http://srv+vmselect-vmc-test.default.svc:8481"},
-				DiscoverBackendIPs: true,
-			},
-		},
+		}
+		want := URLMap{
+			SrcPaths:           []string{"/.*"},
+			URLPrefix:          []string{"http://srv+vmselect-vmc-test.default.svc:8481"},
+			DiscoverBackendIPs: true,
+		}
+		got := buildVMAuthVMSelectURLMaps(vmClusters)
+		assert.Equal(t, want, got)
+	})
 
-		{
-			name: "multiple vmclusters",
-			args: args{
-				vmClusters: []*vmv1beta1.VMCluster{
-					{
-						ObjectMeta: metav1.ObjectMeta{Name: "vmc-1", Namespace: "ns1"},
-						Spec:       vmv1beta1.VMClusterSpec{},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{Name: "vmc-2", Namespace: "ns2"},
-						Spec: vmv1beta1.VMClusterSpec{
-							VMSelect: &vmv1beta1.VMSelect{},
-						},
-					},
+	t.Run("multiple vmclusters", func(t *testing.T) {
+		vmClusters := []*vmv1beta1.VMCluster{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "vmc-1", Namespace: "ns1"},
+				Spec:       vmv1beta1.VMClusterSpec{},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "vmc-2", Namespace: "ns2"},
+				Spec: vmv1beta1.VMClusterSpec{
+					VMSelect: &vmv1beta1.VMSelect{},
 				},
 			},
-			want: URLMap{
-				SrcPaths: []string{"/.*"},
-				URLPrefix: []string{
-					"http://srv+vmselect-vmc-1.ns1.svc:8481",
-					"http://srv+vmselect-vmc-2.ns2.svc:8481",
-				},
-				DiscoverBackendIPs: true,
+		}
+		want := URLMap{
+			SrcPaths: []string{"/.*"},
+			URLPrefix: []string{
+				"http://srv+vmselect-vmc-1.ns1.svc:8481",
+				"http://srv+vmselect-vmc-2.ns2.svc:8481",
 			},
-		},
-		{
-			name: "no vmclusters",
-			args: args{
-				vmClusters: []*vmv1beta1.VMCluster{},
-			},
-			want: URLMap{
-				SrcPaths:           []string{"/.*"},
-				URLPrefix:          []string{},
-				DiscoverBackendIPs: true,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := buildVMAuthVMSelectURLMaps(tt.args.vmClusters)
-			assert.Equal(t, tt.want, got)
-		})
-	}
+			DiscoverBackendIPs: true,
+		}
+		got := buildVMAuthVMSelectURLMaps(vmClusters)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("no vmclusters", func(t *testing.T) {
+		vmClusters := []*vmv1beta1.VMCluster{}
+		want := URLMap{
+			SrcPaths:           []string{"/.*"},
+			URLPrefix:          []string{},
+			DiscoverBackendIPs: true,
+		}
+		got := buildVMAuthVMSelectURLMaps(vmClusters)
+		assert.Equal(t, want, got)
+	})
 }
 
 func Test_buildVMAuthLBSecret(t *testing.T) {

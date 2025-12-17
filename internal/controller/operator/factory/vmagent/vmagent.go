@@ -28,25 +28,23 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmscrapes"
 )
 
 const (
-	vmAgentConfDir                  = "/etc/vmagent/config"
-	vmAgentConfOutDir               = "/etc/vmagent/config_out"
-	vmAgentPersistentQueueDir       = "/tmp/vmagent-remotewrite-data"
-	vmAgentPersistentQueueSTSDir    = "/vmagent_pq/vmagent-remotewrite-data"
-	vmAgentPersistentQueueMountName = "persistent-queue-data"
-	globalRelabelingName            = "global_relabeling.yaml"
-	urlRelabelingName               = "url_relabeling-%d.yaml"
-	globalAggregationConfigName     = "global_aggregation.yaml"
+	confDir                     = "/etc/vmagent/config"
+	confOutDir                  = "/etc/vmagent/config_out"
+	persistentQueueDir          = "/tmp/vmagent-remotewrite-data"
+	persistentQueueSTSDir       = "/vmagent_pq/vmagent-remotewrite-data"
+	persistentQueueMountName    = "persistent-queue-data"
+	globalRelabelingName        = "global_relabeling.yaml"
+	urlRelabelingName           = "url_relabeling-%d.yaml"
+	globalAggregationConfigName = "global_aggregation.yaml"
 
 	tlsAssetsDir          = "/etc/vmagent-tls/certs"
 	scrapeGzippedFilename = "vmagent.yaml.gz"
 	configFilename        = "vmagent.yaml"
 	defaultMaxDiskUsage   = "1073741824"
-
-	kubeNodeEnvName     = "KUBE_NODE_NAME"
-	kubeNodeEnvTemplate = "%{" + kubeNodeEnvName + "}"
 )
 
 func buildVMAgentServiceScrape(cr *vmv1beta1.VMAgent, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
@@ -436,7 +434,7 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		}
 		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
-		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
+		cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
 	}
@@ -521,7 +519,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	if cr.Spec.DaemonSetMode {
 		envs = append(envs, corev1.EnvVar{
-			Name: kubeNodeEnvName,
+			Name: vmv1beta1.KubeNodeEnvName,
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "spec.nodeName",
@@ -538,13 +536,13 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	var crMounts []corev1.VolumeMount
 	// mount data path any way, even if user changes its value
 	// we cannot rely on value of remoteWriteSettings.
-	pqMountPath := vmAgentPersistentQueueDir
+	pqMountPath := persistentQueueDir
 	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
+		pqMountPath = persistentQueueSTSDir
 	}
 	agentVolumeMounts = append(agentVolumeMounts,
 		corev1.VolumeMount{
-			Name:      vmAgentPersistentQueueMountName,
+			Name:      persistentQueueMountName,
 			MountPath: pqMountPath,
 		},
 	)
@@ -554,7 +552,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	// in case for sts, we have to use persistentVolumeClaimTemplate instead
 	if !cr.Spec.StatefulMode {
 		volumes = append(volumes, corev1.Volume{
-			Name: vmAgentPersistentQueueMountName,
+			Name: persistentQueueMountName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -565,7 +563,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 		args = append(args,
-			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConfOutDir, configFilename)))
+			fmt.Sprintf("-promscrape.config=%s", path.Join(confOutDir, configFilename)))
 
 		// preserve order of volumes and volumeMounts
 		// it must prevent vmagent restarts during operator version change
@@ -595,7 +593,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 		m := corev1.VolumeMount{
 			Name:      "config-out",
-			MountPath: vmAgentConfOutDir,
+			MountPath: confOutDir,
 		}
 		crMounts = append(crMounts, m)
 		m.ReadOnly = true
@@ -607,7 +605,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
 			Name:      string(build.SecretConfigResourceKind),
-			MountPath: vmAgentConfDir,
+			MountPath: confDir,
 			ReadOnly:  true,
 		})
 
@@ -766,7 +764,7 @@ func buildRelabelingsAssets(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*core
 	}
 	// global section
 	if len(cr.Spec.InlineRelabelConfig) > 0 {
-		rcs := addRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
+		rcs := vmscrapes.AddRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
 		data, err := yaml.Marshal(rcs)
 		if err != nil {
 			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
@@ -789,7 +787,7 @@ func buildRelabelingsAssets(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*core
 	for i := range cr.Spec.RemoteWrite {
 		rw := cr.Spec.RemoteWrite[i]
 		if len(rw.InlineUrlRelabelConfig) > 0 {
-			rcs := addRelabelConfigs(nil, rw.InlineUrlRelabelConfig)
+			rcs := vmscrapes.AddRelabelConfigs(nil, rw.InlineUrlRelabelConfig)
 			data, err := yaml.Marshal(rcs)
 			if err != nil {
 				return nil, fmt.Errorf("cannot serialize urlRelabelConfig as yaml: %w", err)
@@ -930,9 +928,9 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 	var hasAnyDiskUsagesSet bool
 	var storageLimit int64
 
-	pqMountPath := vmAgentPersistentQueueDir
+	pqMountPath := persistentQueueDir
 	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
+		pqMountPath = persistentQueueSTSDir
 		if cr.Spec.StatefulStorage != nil {
 			if storage, ok := cr.Spec.StatefulStorage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
 				storageInt, ok := storage.AsInt64()
@@ -1220,4 +1218,104 @@ func removeStaleDaemonSet(ctx context.Context, rclient client.Client, cr *vmv1be
 	}
 	owner := cr.AsOwner()
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, &ds, &owner)
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.SecretConfigResourceKind: {
+			MountDir:   confDir,
+			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
+		},
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
+}
+
+// CreateOrUpdateScrapeConfig builds scrape configuration for VMAgent
+func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
+	var prevCR *vmv1beta1.VMAgent
+	if cr.Status.LastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.Status.LastAppliedSpec
+	}
+	ac := getAssetsCache(ctx, rclient, cr)
+	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
+	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+		return nil
+	}
+	// HACK: newPodSpec could load content into ac and it must be called
+	// before secret config reconcile
+	//
+	// TODO: @f41gh7 rewrite this section with VLAgent secret assets injection pattern
+	if _, err := newPodSpec(cr, ac); err != nil {
+		return err
+	}
+
+	pos := &vmscrapes.ParsedObjects{
+		Namespace:            cr.Namespace,
+		APIServerConfig:      cr.Spec.APIServerConfig,
+		MustUseNodeSelector:  cr.Spec.DaemonSetMode,
+		HasClusterWideAccess: config.IsClusterWideAccessAllowed() || !cr.IsOwnsServiceAccount(),
+		ExternalLabels:       cr.ExternalLabels(),
+	}
+	if !pos.HasClusterWideAccess {
+		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +
+			"Since operator launched with set WATCH_NAMESPACE param. " +
+			"Set custom ServiceAccountName property for VMAgent if needed.")
+		pos.IgnoreNamespaceSelectors = true
+	}
+	sp := &cr.Spec.CommonScrapeParams
+	if err := pos.Init(ctx, rclient, sp); err != nil {
+		return err
+	}
+	pos.ValidateObjects(sp)
+
+	// Update secret based on the most recent configuration.
+	generatedConfig, err := pos.GenerateConfig(
+		ctx,
+		sp,
+		ac,
+	)
+	if err != nil {
+		return fmt.Errorf("generating config for vmagent failed: %w", err)
+	}
+
+	owner := cr.AsOwner()
+	for kind, secret := range ac.GetOutput() {
+		var prevSecretMeta *metav1.ObjectMeta
+		if prevCR != nil {
+			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
+		}
+		if kind == build.SecretConfigResourceKind {
+			// Compress config to avoid 1mb secret limit for a while
+			d, err := build.GzipConfig(generatedConfig)
+			if err != nil {
+				return fmt.Errorf("cannot gzip config for vmagent: %w", err)
+			}
+			secret.Data[scrapeGzippedFilename] = d
+		}
+		secret.ObjectMeta = build.ResourceMeta(kind, cr)
+		secret.Annotations = map[string]string{
+			"generated": "true",
+		}
+		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
+			return err
+		}
+	}
+
+	parentName := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+	if err := pos.UpdateStatusesForScrapeObjects(ctx, rclient, parentName, childObject); err != nil {
+		return err
+	}
+
+	return nil
 }

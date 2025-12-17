@@ -371,7 +371,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					// assert k8s api access
 
 					// config-reloader must have k8s api access
-					vmagentPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
+					vmagentPod := mustGetFirstPod(ctx, k8sClient, &appsv1.ReplicaSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					})
 					Expect(hasVolumeMount(vmagentPod.Spec.Containers[0].VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).ToNot(HaveOccurred())
 
 					// vmagent must have k8s api access

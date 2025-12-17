@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func TestGenerateScrapeConfig(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		ac := getAssetsCache(ctx, fclient, o.cr)
+		ac := getAssetsCache(ctx, fclient)
 		sp := &o.cr.Spec.CommonScrapeParams
 		got, err := generateScrapeConfig(ctx, sp, o.sc, ac)
 		assert.NoError(t, err)
@@ -263,8 +263,8 @@ http_sd_configs:
     credentials: auth-secret
     type: Bearer
   tls_config:
-    ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-    cert_file: /etc/vmagent-tls/certs/default_tls-secret_cert
+    ca_file: /tls/default_tls-secret_ca
+    cert_file: /tls/default_tls-secret_cert
 `,
 	})
 

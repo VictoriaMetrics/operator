@@ -1788,7 +1788,6 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 							Action:       "DROP",
 							SourceLabels: []string{"pod"},
 						},
-						{},
 					},
 				},
 			},

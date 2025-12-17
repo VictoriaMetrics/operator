@@ -6808,7 +6808,15 @@ func (in *VMSingleSpec) DeepCopyInto(out *VMSingleSpec) {
 		*out = new(StreamAggrConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.APIServerConfig != nil {
+		in, out := &in.APIServerConfig, &out.APIServerConfig
+		*out = new(APIServerConfig)
+		(*in).DeepCopyInto(*out)
+	}
+	in.CommonRelabelParams.DeepCopyInto(&out.CommonRelabelParams)
+	in.CommonScrapeParams.DeepCopyInto(&out.CommonScrapeParams)
 	in.CommonDefaultableParams.DeepCopyInto(&out.CommonDefaultableParams)
+	in.CommonConfigReloaderParams.DeepCopyInto(&out.CommonConfigReloaderParams)
 	in.CommonApplicationDeploymentParams.DeepCopyInto(&out.CommonApplicationDeploymentParams)
 }
 

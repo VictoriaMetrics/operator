@@ -15,12 +15,14 @@ type CRDName int
 const (
 	VMAgentCRD CRDName = iota
 	VLAgentCRD
+	VMSingleCRD
 )
 
 func (c CRDName) String() string {
 	return []string{
 		"vmagents.operator.victoriametrics.com",
 		"vlagents.operator.victoriametrics.com",
+		"vmsingles.operator.victoriametrics.com",
 	}[c]
 }
 
@@ -46,6 +48,8 @@ func Init(ctx context.Context, rclient client.Client) error {
 			n = VMAgentCRD
 		case "vlagents.operator.victoriametrics.com":
 			n = VLAgentCRD
+		case "vmsingles.operator.victoriametrics.com":
+			n = VMSingleCRD
 		default:
 			continue
 		}

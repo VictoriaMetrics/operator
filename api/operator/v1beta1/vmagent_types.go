@@ -332,7 +332,7 @@ type VMAgentRemoteWriteSpec struct {
 	// +optional
 	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 
-	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
+	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url.
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	UrlRelabelConfig *corev1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`

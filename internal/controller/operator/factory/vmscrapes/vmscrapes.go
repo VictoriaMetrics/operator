@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -12,102 +12,15 @@ import (
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-// CreateOrUpdateScrapeConfig builds scrape configuration for VMAgent
-func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
-	var prevCR *vmv1beta1.VMAgent
-	if cr.Status.LastAppliedSpec != nil {
-		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.Status.LastAppliedSpec
-	}
-	ac := getAssetsCache(ctx, rclient, cr)
-	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
-		return err
-	}
-	return nil
-}
-
-func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
-	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
-		return nil
-	}
-	// HACK: newPodSpec could load content into ac and it must be called
-	// before secret config reconcile
-	//
-	// TODO: @f41gh7 rewrite this section with VLAgent secret assets injection pattern
-	if _, err := newPodSpec(cr, ac); err != nil {
-		return err
-	}
-
-	pos := &parsedObjects{
-		Namespace:                cr.Namespace,
-		APIServerConfig:          cr.Spec.APIServerConfig,
-		MustUseNodeSelector:      cr.Spec.DaemonSetMode,
-		HasClusterWideAccess:     config.IsClusterWideAccessAllowed() || !cr.IsOwnsServiceAccount(),
-		ExternalLabels:           cr.ExternalLabels(),
-		IgnoreNamespaceSelectors: cr.Spec.IgnoreNamespaceSelectors,
-	}
-	if !pos.HasClusterWideAccess {
-		logger.WithContext(ctx).Info("setting discovery for the single namespace only." +
-			"Since operator launched with set WATCH_NAMESPACE param. " +
-			"Set custom ServiceAccountName property for VMAgent if needed.")
-		pos.IgnoreNamespaceSelectors = true
-	}
-	sp := &cr.Spec.CommonScrapeParams
-	if err := pos.init(ctx, rclient, sp); err != nil {
-		return err
-	}
-
-	pos.validateObjects(sp)
-
-	// Update secret based on the most recent configuration.
-	generatedConfig, err := pos.generateConfig(
-		ctx,
-		sp,
-		ac,
-	)
-	if err != nil {
-		return fmt.Errorf("generating config for vmagent failed: %w", err)
-	}
-
-	owner := cr.AsOwner()
-	for kind, secret := range ac.GetOutput() {
-		var prevSecretMeta *metav1.ObjectMeta
-		if prevCR != nil {
-			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
-		}
-		if kind == build.SecretConfigResourceKind {
-			// Compress config to avoid 1mb secret limit for a while
-			data, err := build.GzipConfig(generatedConfig)
-			if err != nil {
-				return fmt.Errorf("cannot gzip config for vmagent: %w", err)
-			}
-			secret.Data[scrapeGzippedFilename] = data
-		}
-		secret.ObjectMeta = build.ResourceMeta(kind, cr)
-		secret.Annotations = map[string]string{
-			"generated": "true",
-		}
-		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
-			return err
-		}
-	}
-
-	parentName := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
-	if err := pos.updateStatusesForScrapeObjects(ctx, rclient, parentName, childObject); err != nil {
-		return err
-	}
-
-	return nil
-}
+const (
+	kubeNodeEnvTemplate = "%{" + vmv1beta1.KubeNodeEnvName + "}"
+)
 
 // TODO: @f41gh7 validate VMScrapeParams
 func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
@@ -273,7 +186,8 @@ func addAttachMetadata(dst yaml.MapSlice, am *vmv1beta1.AttachMetadata, role str
 	return dst
 }
 
-func addRelabelConfigs(dst []yaml.MapSlice, rcs []*vmv1beta1.RelabelConfig) []yaml.MapSlice {
+// AddRelabelConfigs adds relabel configuration to yaml
+func AddRelabelConfigs(dst []yaml.MapSlice, rcs []*vmv1beta1.RelabelConfig) []yaml.MapSlice {
 	for i := range rcs {
 		rc := rcs[i]
 		if rc.IsEmpty() {
@@ -697,20 +611,6 @@ func addEndpointAuthTo(cfg yaml.MapSlice, ea *vmv1beta1.EndpointAuth, namespace 
 		cfg = append(cfg, c...)
 	}
 	return cfg, nil
-}
-
-func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.SecretConfigResourceKind: {
-			MountDir:   vmAgentConfDir,
-			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
-		},
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	return build.NewAssetsCache(ctx, rclient, cfg)
 }
 
 func validateScrapeClassExists(scrapeClassName *string, sp *vmv1beta1.CommonScrapeParams) error {

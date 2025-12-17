@@ -114,10 +114,6 @@ func (tc *trackingClient) Create(ctx context.Context, obj client.Object, opts ..
 		if o.Kind == "" {
 			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMCluster"}
 		}
-	case *vmv1beta1.VMUser:
-		if o.Kind == "" {
-			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMUser"}
-		}
 	case *corev1.ConfigMap:
 		if o.Kind == "" {
 			o.TypeMeta = metav1.TypeMeta{APIVersion: corev1.SchemeGroupVersion.String(), Kind: "ConfigMap"}
@@ -172,18 +168,6 @@ func (tsw *trackingStatusWriter) Patch(ctx context.Context, obj client.Object, p
 
 var _ client.SubResourceWriter = (*trackingStatusWriter)(nil)
 
-func newVMUser(name string, targetRefs []vmv1beta1.TargetRef) *vmv1beta1.VMUser {
-	return &vmv1beta1.VMUser{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "default",
-		},
-		Spec: vmv1beta1.VMUserSpec{
-			TargetRefs: targetRefs,
-		},
-	}
-}
-
 func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 	return &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -218,9 +202,6 @@ func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 }
 
 // newVMDistributedCluster constructs a VMDistributedCluster for tests.
-// It accepts an optional VMUser parameter (legacy callers may supply a VMUserNameAndSpec),
-// and/or a VMAuth parameter. Any supplied VMUser values are ignored (kept for compatibility).
-// The VMAuth value, if provided among extras, will be used to populate the CR's Spec.VMAuth.
 func newVMDistributedCluster(name string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgentSpec vmv1alpha1.VMAgentNameAndSpec, extras ...interface{}) *vmv1alpha1.VMDistributedCluster {
 	var vmAuth vmv1alpha1.VMAuthNameAndSpec
 
@@ -257,11 +238,11 @@ func newVMDistributedCluster(name string, zones []vmv1alpha1.VMClusterRefOrSpec,
 
 type testData struct {
 	vmagent        *vmv1beta1.VMAgent
-	vmusers        []*vmv1beta1.VMUser
 	vmcluster1     *vmv1beta1.VMCluster
 	vmcluster2     *vmv1beta1.VMCluster
 	cr             *vmv1alpha1.VMDistributedCluster
 	trackingClient *trackingClient
+	scheme         *runtime.Scheme
 }
 
 func beforeEach() testData {
@@ -278,18 +259,6 @@ func beforeEach() testData {
 		},
 		Status: vmv1beta1.VMAgentStatus{Replicas: 1},
 	}
-	vmuser1 := newVMUser("vmuser-1", []vmv1beta1.TargetRef{
-		{
-			CRD:              &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "vmcluster-1", Namespace: "default"},
-			TargetPathSuffix: "/select/0/prometheus/api/v1",
-		},
-	})
-	vmuser2 := newVMUser("vmuser-2", []vmv1beta1.TargetRef{
-		{
-			CRD:              &vmv1beta1.CRDRef{Kind: "VMCluster/vmselect", Name: "vmcluster-2", Namespace: "default"},
-			TargetPathSuffix: "/select/0/prometheus/api/v1",
-		},
-	})
 	vmcluster1 := newVMCluster("vmcluster-1", "v1.0.0")
 	vmcluster2 := newVMCluster("vmcluster-2", "v1.0.0") // keep original helper semantics
 
@@ -303,8 +272,6 @@ func beforeEach() testData {
 	// Create a new trackingClient
 	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
 		vmagent,
-		vmuser1,
-		vmuser2,
 		vmcluster1,
 		vmcluster2,
 		cr,
@@ -317,27 +284,22 @@ func beforeEach() testData {
 	}
 	return testData{
 		vmagent:        vmagent,
-		vmusers:        []*vmv1beta1.VMUser{vmuser1, vmuser2},
 		vmcluster1:     vmcluster1,
 		vmcluster2:     vmcluster2,
 		cr:             cr,
 		trackingClient: tc,
+		scheme:         scheme,
 	}
 }
 
 func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
-	scheme := runtime.NewScheme()
-	_ = vmv1alpha1.AddToScheme(scheme)
-	_ = vmv1beta1.AddToScheme(scheme)
-	_ = corev1.AddToScheme(scheme)
-
 	t.Run("Paused CR should do nothing", func(t *testing.T) {
 		data := beforeEach()
 		data.cr.Spec.Paused = true
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
+		err := CreateOrUpdate(ctx, data.cr, rclient, data.scheme, httpTimeout)
 		assert.NoError(t, err) // No error as it's paused
 		assert.Empty(t, rclient.Actions)
 	})
@@ -348,7 +310,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, scheme, httpTimeout)
+		err := CreateOrUpdate(ctx, data.cr, rclient, data.scheme, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to fetch vmclusters")
 	})

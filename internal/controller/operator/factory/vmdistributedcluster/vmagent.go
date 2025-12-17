@@ -202,19 +202,11 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 		desiredVMAgentSpec = *cr.Spec.VMAgent.Spec.DeepCopy()
 	}
 
-	// Determine tenant id (default to "0" when not provided)
-	tenantID := "0"
-	if cr.Spec.VMAgent.TenantID != nil && *cr.Spec.VMAgent.TenantID != "" {
-		tenantID = *cr.Spec.VMAgent.TenantID
-	}
-
-	tenantPtr := &tenantID
-
 	// Preserve existing VMAgent RemoteWrite order when possible to avoid unnecessary updates.
 	// New VMCluster URLs will be appended to the end of the list.
 	remoteWriteURLs := make([]string, 0, len(vmClusters))
 	for _, vmCluster := range vmClusters {
-		remoteWriteURLs = append(remoteWriteURLs, remoteWriteURL(vmCluster, tenantPtr))
+		remoteWriteURLs = append(remoteWriteURLs, remoteWriteURL(vmCluster))
 	}
 
 	// Map CR-provided remoteWrite entries by URL so we can preserve auth/config if present.
@@ -243,7 +235,6 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	newVMAgentSpec.ManagedMetadata = desiredVMAgentSpec.ManagedMetadata
 	newVMAgentSpec.LogLevel = desiredVMAgentSpec.LogLevel
 	newVMAgentSpec.LogFormat = desiredVMAgentSpec.LogFormat
-	newVMAgentSpec.RemoteWriteSettings = desiredVMAgentSpec.RemoteWriteSettings
 	newVMAgentSpec.UpdateStrategy = desiredVMAgentSpec.UpdateStrategy
 	newVMAgentSpec.RollingUpdate = desiredVMAgentSpec.RollingUpdate
 	newVMAgentSpec.PodDisruptionBudget = desiredVMAgentSpec.PodDisruptionBudget
@@ -263,6 +254,11 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	newVMAgentSpec.CommonConfigReloaderParams = desiredVMAgentSpec.CommonConfigReloaderParams
 	newVMAgentSpec.CommonApplicationDeploymentParams = desiredVMAgentSpec.CommonApplicationDeploymentParams
 
+	if desiredVMAgentSpec.RemoteWriteSettings == nil {
+		desiredVMAgentSpec.RemoteWriteSettings = &vmv1beta1.VMAgentRemoteWriteSettings{}
+	}
+	desiredVMAgentSpec.RemoteWriteSettings.UseMultiTenantMode = true
+	newVMAgentSpec.RemoteWriteSettings = desiredVMAgentSpec.RemoteWriteSettings
 	newVMAgentSpec.RemoteWrite = make([]vmv1beta1.VMAgentRemoteWriteSpec, len(desiredVMAgentSpec.RemoteWrite))
 	for i, remoteWrite := range desiredVMAgentSpec.RemoteWrite {
 		vmAgentRemoteWrite := vmv1beta1.VMAgentRemoteWriteSpec{}
@@ -308,8 +304,8 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 }
 
 // remoteWriteURL generates the remote write URL based on the provided VMCluster and tenant.
-func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
-	return fmt.Sprintf("http://%s.%s.svc.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert), vmCluster.Namespace, *tenant)
+func remoteWriteURL(vmCluster *vmv1beta1.VMCluster) string {
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local.:8480/insert/multitenant/prometheus/api/v1/write", vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert), vmCluster.Namespace)
 }
 
 func preserveVMAgentOrder(desiredVMAgentSpec *vmv1alpha1.CustomVMAgentSpec, remoteWriteURLs []string, vmAgentWriteSpec []vmv1beta1.VMAgentRemoteWriteSpec, writeSpecMap map[string]vmv1alpha1.CustomVMAgentRemoteWriteSpec) {

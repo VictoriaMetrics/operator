@@ -36,13 +36,13 @@ type VMAuthUser struct {
 // URLMap defines a single URL mapping rule.
 type URLMap struct {
 	SrcPaths           []string `yaml:"src_paths"`
-	URLPrefix          string   `yaml:"url_prefix"`
+	URLPrefix          []string `yaml:"url_prefix"`
 	DiscoverBackendIPs bool     `yaml:"discover_backend_ips"`
 }
 
 // buildVMAuthVMSelectRefs builds the URLMap entries for each vmselect in the vmclusters.
-func buildVMAuthVMSelectURLMaps(vmClusters []*vmv1beta1.VMCluster) []URLMap {
-	maps := make([]URLMap, 0, len(vmClusters))
+func buildVMAuthVMSelectURLMaps(vmClusters []*vmv1beta1.VMCluster) URLMap {
+	prefixes := make([]string, 0, len(vmClusters))
 	for _, vmCluster := range vmClusters {
 		targetHostSuffix := fmt.Sprintf("%s.svc", vmCluster.Namespace)
 		if vmCluster.Spec.ClusterDomainName != "" {
@@ -52,20 +52,20 @@ func buildVMAuthVMSelectURLMaps(vmClusters []*vmv1beta1.VMCluster) []URLMap {
 		if vmCluster.Spec.VMSelect != nil && vmCluster.Spec.VMSelect.Port != "" {
 			selectPort = vmCluster.Spec.VMSelect.Port
 		}
-		maps = append(maps, URLMap{
-			SrcPaths:           []string{"/.*"},
-			URLPrefix:          fmt.Sprintf("http://srv+%s.%s:%s", vmCluster.PrefixedName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort),
-			DiscoverBackendIPs: true,
-		})
+		prefixes = append(prefixes, fmt.Sprintf("http://srv+%s.%s:%s", vmCluster.PrefixedName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort))
 	}
-	return maps
+	return URLMap{
+		SrcPaths:           []string{"/.*"},
+		URLPrefix:          prefixes,
+		DiscoverBackendIPs: true,
+	}
 }
 
 // buildVMAuthLBSecret builds a secret containing the vmauth configuration.
 func buildVMAuthLBSecret(cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) (*corev1.Secret, error) {
 	config := VMAuthConfig{
 		UnauthorizedUser: &VMAuthUser{
-			URLMap: buildVMAuthVMSelectURLMaps(vmClusters),
+			URLMap: []URLMap{buildVMAuthVMSelectURLMaps(vmClusters)},
 		},
 	}
 

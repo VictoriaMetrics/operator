@@ -17,7 +17,7 @@ func Test_buildVMAuthVMSelectURLMaps(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want []URLMap
+		want URLMap
 	}{
 		{
 			name: "single default vmcluster",
@@ -32,12 +32,10 @@ func Test_buildVMAuthVMSelectURLMaps(t *testing.T) {
 					},
 				},
 			},
-			want: []URLMap{
-				{
-					SrcPaths:           []string{"/.*"},
-					URLPrefix:          "http://srv+vmselect-vmc-test.default.svc:8481",
-					DiscoverBackendIPs: true,
-				},
+			want: URLMap{
+				SrcPaths:           []string{"/.*"},
+				URLPrefix:          []string{"http://srv+vmselect-vmc-test.default.svc:8481"},
+				DiscoverBackendIPs: true,
 			},
 		},
 
@@ -57,17 +55,13 @@ func Test_buildVMAuthVMSelectURLMaps(t *testing.T) {
 					},
 				},
 			},
-			want: []URLMap{
-				{
-					SrcPaths:           []string{"/.*"},
-					URLPrefix:          "http://srv+vmselect-vmc-1.ns1.svc:8481",
-					DiscoverBackendIPs: true,
+			want: URLMap{
+				SrcPaths: []string{"/.*"},
+				URLPrefix: []string{
+					"http://srv+vmselect-vmc-1.ns1.svc:8481",
+					"http://srv+vmselect-vmc-2.ns2.svc:8481",
 				},
-				{
-					SrcPaths:           []string{"/.*"},
-					URLPrefix:          "http://srv+vmselect-vmc-2.ns2.svc:8481",
-					DiscoverBackendIPs: true,
-				},
+				DiscoverBackendIPs: true,
 			},
 		},
 		{
@@ -75,7 +69,11 @@ func Test_buildVMAuthVMSelectURLMaps(t *testing.T) {
 			args: args{
 				vmClusters: []*vmv1beta1.VMCluster{},
 			},
-			want: []URLMap{},
+			want: URLMap{
+				SrcPaths:           []string{"/.*"},
+				URLPrefix:          []string{},
+				DiscoverBackendIPs: true,
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -124,7 +122,8 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
   url_map:
   - src_paths:
     - /.*
-    url_prefix: http://srv+vmselect-vmc-test.default.svc:8481
+    url_prefix:
+    - http://srv+vmselect-vmc-test.default.svc:8481
     discover_backend_ips: true
 `
 	assert.Equal(t, []byte(expectedYAML), configData)
@@ -156,11 +155,9 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
   url_map:
   - src_paths:
     - /.*
-    url_prefix: http://srv+vmselect-vmc-test-1.default.svc:8481
-    discover_backend_ips: true
-  - src_paths:
-    - /.*
-    url_prefix: http://srv+vmselect-vmc-test-2.monitoring.svc:8481
+    url_prefix:
+    - http://srv+vmselect-vmc-test-1.default.svc:8481
+    - http://srv+vmselect-vmc-test-2.monitoring.svc:8481
     discover_backend_ips: true
 `
 		assert.Equal(t, []byte(expectedYAML), configData)
@@ -175,7 +172,11 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
 		configData, ok := secret.Data["config.yaml"]
 		assert.True(t, ok)
 		expectedYAML := `unauthorized_user:
-  url_map: []
+  url_map:
+  - src_paths:
+    - /.*
+    url_prefix: []
+    discover_backend_ips: true
 `
 		assert.Equal(t, []byte(expectedYAML), configData)
 	})

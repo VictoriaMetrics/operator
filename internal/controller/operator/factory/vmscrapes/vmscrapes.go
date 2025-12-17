@@ -1,8 +1,6 @@
-package vmagent
+package vmscrapes
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"reflect"
@@ -17,40 +15,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-type parsedObjects struct {
-	serviceScrapes *build.ChildObjects[*vmv1beta1.VMServiceScrape]
-	podScrapes     *build.ChildObjects[*vmv1beta1.VMPodScrape]
-	staticScrapes  *build.ChildObjects[*vmv1beta1.VMStaticScrape]
-	nodeScrapes    *build.ChildObjects[*vmv1beta1.VMNodeScrape]
-	probes         *build.ChildObjects[*vmv1beta1.VMProbe]
-	scrapeConfigs  *build.ChildObjects[*vmv1beta1.VMScrapeConfig]
-}
+const (
+	kubeNodeEnvTemplate = "%{" + vmv1beta1.KubeNodeEnvName + "}"
+)
 
-func (so *parsedObjects) updateMetrics(ctx context.Context) {
-	so.serviceScrapes.UpdateMetrics(ctx)
-	so.podScrapes.UpdateMetrics(ctx)
-	so.staticScrapes.UpdateMetrics(ctx)
-	so.nodeScrapes.UpdateMetrics(ctx)
-	so.probes.UpdateMetrics(ctx)
-	so.scrapeConfigs.UpdateMetrics(ctx)
-}
-
-func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
-	so.serviceScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMServiceScrape) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+func (pos *ParsedObjects) ValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
+	se := &sp.CommonScrapeSecurityEnforcements
+	pos.serviceScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMServiceScrape) error {
+		if se.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sc.Spec.Endpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
 				}
 			}
 		}
-		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
 		if !build.MustSkipRuntimeValidation {
@@ -59,15 +43,15 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		return nil
 	})
 
-	so.podScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMPodScrape) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+	pos.podScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMPodScrape) error {
+		if se.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sc.Spec.PodMetricsEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
 				}
 			}
 		}
-		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
 		if !build.MustSkipRuntimeValidation {
@@ -75,15 +59,15 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		}
 		return nil
 	})
-	so.staticScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMStaticScrape) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+	pos.staticScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMStaticScrape) error {
+		if se.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sc.Spec.TargetEndpoints {
 				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
 					return err
 				}
 			}
 		}
-		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
 		if !build.MustSkipRuntimeValidation {
@@ -92,13 +76,13 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		return nil
 	})
 
-	so.nodeScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMNodeScrape) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+	pos.nodeScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMNodeScrape) error {
+		if se.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(sc.Spec.EndpointAuth); err != nil {
 				return err
 			}
 		}
-		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
 		if !build.MustSkipRuntimeValidation {
@@ -107,13 +91,13 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		return nil
 	})
 
-	so.probes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMProbe) error {
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+	pos.probes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMProbe) error {
+		if se.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(sc.Spec.EndpointAuth); err != nil {
 				return err
 			}
 		}
-		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
 		if !build.MustSkipRuntimeValidation {
@@ -122,14 +106,14 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		return nil
 	})
 
-	so.scrapeConfigs.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMScrapeConfig) error {
+	pos.scrapeConfigs.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMScrapeConfig) error {
 		// TODO: @f41gh7 validate per configuration FS access
-		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+		if se.ArbitraryFSAccessThroughSMs.Deny {
 			if err := testForArbitraryFSAccess(sc.Spec.EndpointAuth); err != nil {
 				return err
 			}
 		}
-		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
+		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
 		if !build.MustSkipRuntimeValidation {
@@ -139,170 +123,54 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 	})
 }
 
-// CreateOrUpdateScrapeConfig builds scrape configuration for VMAgent
-func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
-	var prevCR *vmv1beta1.VMAgent
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
-	ac := getAssetsCache(ctx, rclient, cr)
-	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
-		return err
-	}
-	return nil
-}
-
-func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
-	if cr.Spec.IngestOnlyMode {
-		return nil
-	}
-	// HACK: newPodSpec could load content into ac and it must be called
-	// before secret config reconcile
-	//
-	// TODO: @f41gh7 rewrite this section with VLAgent secret assets injection pattern
-	if _, err := newPodSpec(cr, ac); err != nil {
-		return err
-	}
-
-	serviceScrapes, nsnServiceScrapes, err := selectServiceScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting ServiceScrapes failed: %w", err)
-	}
-
-	podScrapes, nsnPodScrapes, err := selectPodScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting PodScrapes failed: %w", err)
-	}
-
-	probes, nsnProbes, err := selectProbes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting VMProbes failed: %w", err)
-	}
-
-	nodeScrapes, nsnNodeScrapes, err := selectNodeScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
-	}
-
-	staticScrapes, nsnStaticScrapes, err := selectStaticScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting VMStaticScrapes failed: %w", err)
-	}
-
-	scrapeConfigs, nsnScrapeConfigs, err := selectScrapeConfigs(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("selecting ScrapeConfigs failed: %w", err)
-	}
-	pos := &parsedObjects{
-		serviceScrapes: build.NewChildObjects("vmservicescrape", serviceScrapes, nsnServiceScrapes),
-		podScrapes:     build.NewChildObjects("vmpodscrape", podScrapes, nsnPodScrapes),
-		probes:         build.NewChildObjects("vmprobe", probes, nsnProbes),
-		nodeScrapes:    build.NewChildObjects("vmnodescrape", nodeScrapes, nsnNodeScrapes),
-		staticScrapes:  build.NewChildObjects("vmstaticscrape", staticScrapes, nsnStaticScrapes),
-		scrapeConfigs:  build.NewChildObjects("vmscrapeconfig", scrapeConfigs, nsnScrapeConfigs),
-	}
-	pos.validateObjects(cr)
-
-	var additionalScrapeConfigs []byte
-
-	if cr.Spec.AdditionalScrapeConfigs != nil {
-		sc, err := ac.LoadKeyFromSecret(cr.Namespace, cr.Spec.AdditionalScrapeConfigs)
-		if err != nil {
-			return fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
-		}
-		additionalScrapeConfigs = []byte(sc)
-	}
-
-	// Update secret based on the most recent configuration.
-	generatedConfig, err := generateConfig(
-		ctx,
-		cr,
-		pos,
-		ac,
-		additionalScrapeConfigs,
-	)
-	if err != nil {
-		return fmt.Errorf("generating config for vmagent failed: %w", err)
-	}
-
-	for kind, secret := range ac.GetOutput() {
-		var prevSecretMeta *metav1.ObjectMeta
-		if prevCR != nil {
-			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
-		}
-		if kind == build.SecretConfigResourceKind {
-			// Compress config to avoid 1mb secret limit for a while
-			var buf bytes.Buffer
-			if err = gzipConfig(&buf, generatedConfig); err != nil {
-				return fmt.Errorf("cannot gzip config for vmagent: %w", err)
-			}
-			secret.Data[scrapeGzippedFilename] = buf.Bytes()
-		}
-		secret.ObjectMeta = build.ResourceMeta(kind, cr)
-		secret.Annotations = map[string]string{
-			"generated": "true",
-		}
-		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta); err != nil {
-			return err
-		}
-	}
-
-	if err := pos.updateStatusesForScrapeObjects(ctx, rclient, cr, childObject); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (pos *parsedObjects) updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
-	parentObject := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+// UpdateStatusesForScrapeObjects updates status of either selected childObject or all child objects
+func (pos *ParsedObjects) UpdateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, parentName string, childObject client.Object) error {
 	pos.updateMetrics(ctx)
 	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
 		// fast path
 		switch t := childObject.(type) {
 		case *vmv1beta1.VMStaticScrape:
 			if o := pos.staticScrapes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMStaticScrape{o})
+				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMStaticScrape{o})
 			}
 		case *vmv1beta1.VMProbe:
 			if o := pos.probes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMProbe{o})
+				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMProbe{o})
 			}
 		case *vmv1beta1.VMScrapeConfig:
 			if o := pos.scrapeConfigs.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMScrapeConfig{o})
+				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMScrapeConfig{o})
 			}
 		case *vmv1beta1.VMNodeScrape:
 			if o := pos.nodeScrapes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMNodeScrape{o})
+				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMNodeScrape{o})
 			}
 		case *vmv1beta1.VMPodScrape:
 			if o := pos.podScrapes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMPodScrape{o})
+				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMPodScrape{o})
 			}
 		case *vmv1beta1.VMServiceScrape:
 			if o := pos.serviceScrapes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMServiceScrape{o})
+				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMServiceScrape{o})
 			}
 		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.serviceScrapes.All()); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, pos.serviceScrapes.All()); err != nil {
 		return fmt.Errorf("cannot update statuses for service scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.podScrapes.All()); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, pos.podScrapes.All()); err != nil {
 		return fmt.Errorf("cannot update statuses for pod scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.nodeScrapes.All()); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, pos.nodeScrapes.All()); err != nil {
 		return fmt.Errorf("cannot update statuses for node scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.probes.All()); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, pos.probes.All()); err != nil {
 		return fmt.Errorf("cannot update statuses for probe scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.staticScrapes.All()); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, pos.staticScrapes.All()); err != nil {
 		return fmt.Errorf("cannot update statuses for static scrape objects: %w", err)
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.scrapeConfigs.All()); err != nil {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, pos.scrapeConfigs.All()); err != nil {
 		return fmt.Errorf("cannot update statuses for scrapeconfig scrape objects: %w", err)
 	}
 	return nil
@@ -337,21 +205,12 @@ func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
 	return nil
 }
 
-func gzipConfig(buf *bytes.Buffer, conf []byte) error {
-	w := gzip.NewWriter(buf)
-	defer w.Close()
-	if _, err := w.Write(conf); err != nil {
-		return err
-	}
-	return nil
-}
-
-func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointScrapeParams, cr *vmv1beta1.VMAgent) {
+func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointScrapeParams, sp *vmv1beta1.CommonScrapeParams) {
 	if dst.ScrapeInterval == "" {
 		dst.ScrapeInterval = dst.Interval
 	}
 
-	originInterval, minIntervalStr, maxIntervalStr := dst.ScrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval
+	originInterval, minIntervalStr, maxIntervalStr := dst.ScrapeInterval, sp.MinScrapeInterval, sp.MaxScrapeInterval
 	if originInterval == "" || (minIntervalStr == nil && maxIntervalStr == nil) {
 		// fast path
 		return
@@ -398,54 +257,61 @@ const (
 
 var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
-func generateConfig(
+// GenerateConfig generates yaml scrape configuration from collected scrape objects
+func (pos *ParsedObjects) GenerateConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
-	pos *parsedObjects,
+	sp *vmv1beta1.CommonScrapeParams,
 	ac *build.AssetsCache,
-	additionalScrapeConfigs []byte,
 ) ([]byte, error) {
+	var additionalScrapeConfigs []byte
+	if sp.AdditionalScrapeConfigs != nil {
+		sc, err := ac.LoadKeyFromSecret(pos.Namespace, sp.AdditionalScrapeConfigs)
+		if err != nil {
+			return nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
+		}
+		additionalScrapeConfigs = []byte(sc)
+	}
 	cfg := yaml.MapSlice{}
-	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
+	if !pos.HasClusterWideAccess {
 		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +
 			"Since operator launched with set WATCH_NAMESPACE param. " +
 			"Set custom ServiceAccountName property for VMAgent if needed.")
-		cr.Spec.IgnoreNamespaceSelectors = true
+		sp.IgnoreNamespaceSelectors = true
 	}
 
 	scrapeInterval := defaultScrapeInterval
-	if cr.Spec.ScrapeInterval != "" {
-		scrapeInterval = cr.Spec.ScrapeInterval
+	if sp.ScrapeInterval != "" {
+		scrapeInterval = sp.ScrapeInterval
 	}
 	globalItems := yaml.MapSlice{
 		{Key: "scrape_interval", Value: scrapeInterval},
-		{Key: "external_labels", Value: buildExternalLabels(cr)},
+		{Key: "external_labels", Value: stringMapToMapSlice(pos.ExternalLabels)},
 	}
 
-	if cr.Spec.SampleLimit > 0 {
+	if sp.SampleLimit > 0 {
 		globalItems = append(globalItems, yaml.MapItem{
 			Key:   "sample_limit",
-			Value: cr.Spec.SampleLimit,
+			Value: sp.SampleLimit,
 		})
 	}
 
-	if cr.Spec.ScrapeTimeout != "" {
+	if sp.ScrapeTimeout != "" {
 		globalItems = append(globalItems, yaml.MapItem{
 			Key:   "scrape_timeout",
-			Value: cr.Spec.ScrapeTimeout,
+			Value: sp.ScrapeTimeout,
 		})
 	}
 
-	if len(cr.Spec.GlobalScrapeMetricRelabelConfigs) > 0 {
+	if len(sp.GlobalScrapeMetricRelabelConfigs) > 0 {
 		globalItems = append(globalItems, yaml.MapItem{
 			Key:   "metric_relabel_configs",
-			Value: cr.Spec.GlobalScrapeMetricRelabelConfigs,
+			Value: sp.GlobalScrapeMetricRelabelConfigs,
 		})
 	}
-	if len(cr.Spec.GlobalScrapeRelabelConfigs) > 0 {
+	if len(sp.GlobalScrapeRelabelConfigs) > 0 {
 		globalItems = append(globalItems, yaml.MapItem{
 			Key:   "relabel_configs",
-			Value: cr.Spec.GlobalScrapeRelabelConfigs,
+			Value: sp.GlobalScrapeRelabelConfigs,
 		})
 	}
 
@@ -459,7 +325,8 @@ func generateConfig(
 		for i, ep := range sc.Spec.Endpoints {
 			s, err := generateServiceScrapeConfig(
 				ctx,
-				cr,
+				sp,
+				pos,
 				sc,
 				ep, i,
 				ac,
@@ -481,7 +348,8 @@ func generateConfig(
 		for i, ep := range sc.Spec.PodMetricsEndpoints {
 			s, err := generatePodScrapeConfig(
 				ctx,
-				cr,
+				sp,
+				pos,
 				sc, ep, i,
 				ac,
 			)
@@ -500,7 +368,8 @@ func generateConfig(
 	err = pos.probes.ForEachCollectSkipNotFound(func(sc *vmv1beta1.VMProbe) error {
 		s, err := generateProbeConfig(
 			ctx,
-			cr,
+			sp,
+			pos,
 			sc,
 			ac,
 		)
@@ -517,7 +386,8 @@ func generateConfig(
 	err = pos.nodeScrapes.ForEachCollectSkipNotFound(func(sc *vmv1beta1.VMNodeScrape) error {
 		s, err := generateNodeScrapeConfig(
 			ctx,
-			cr,
+			sp,
+			pos,
 			sc,
 			ac,
 		)
@@ -537,7 +407,7 @@ func generateConfig(
 		for i, ep := range sc.Spec.TargetEndpoints {
 			s, err := generateStaticScrapeConfig(
 				ctx,
-				cr,
+				sp,
 				sc,
 				ep, i,
 				ac,
@@ -557,7 +427,7 @@ func generateConfig(
 	err = pos.scrapeConfigs.ForEachCollectSkipNotFound(func(sc *vmv1beta1.VMScrapeConfig) error {
 		s, err := generateScrapeConfig(
 			ctx,
-			cr,
+			sp,
 			sc,
 			ac,
 		)
@@ -578,8 +448,8 @@ func generateConfig(
 	}
 
 	var inlineScrapeConfigsYaml []yaml.MapSlice
-	if len(cr.Spec.InlineScrapeConfig) > 0 {
-		if err := yaml.Unmarshal([]byte(cr.Spec.InlineScrapeConfig), &inlineScrapeConfigsYaml); err != nil {
+	if len(sp.InlineScrapeConfig) > 0 {
+		if err := yaml.Unmarshal([]byte(sp.InlineScrapeConfig), &inlineScrapeConfigsYaml); err != nil {
 			return nil, fmt.Errorf("unmarshalling inline additional scrape configs failed: %w", err)
 		}
 	}
@@ -672,7 +542,8 @@ func addAttachMetadata(dst yaml.MapSlice, am *vmv1beta1.AttachMetadata, role str
 	return dst
 }
 
-func addRelabelConfigs(dst []yaml.MapSlice, rcs []*vmv1beta1.RelabelConfig) []yaml.MapSlice {
+// AddRelabelConfigs adds relabel configuration to yaml
+func AddRelabelConfigs(dst []yaml.MapSlice, rcs []*vmv1beta1.RelabelConfig) []yaml.MapSlice {
 	for i := range rcs {
 		rc := rcs[i]
 		if rc.IsEmpty() {
@@ -907,38 +778,6 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 	})
 }
 
-func buildExternalLabels(cr *vmv1beta1.VMAgent) yaml.MapSlice {
-	m := map[string]string{}
-	sp := cr.Spec.CommonScrapeParams
-
-	// Use "prometheus" external label name by default if field is missing.
-	// in case of migration from prometheus to vmagent, it helps to have same labels
-	// Do not add external label if field is set to empty string.
-	prometheusExternalLabelName := "prometheus"
-	var labelName *string
-	if sp.ExternalLabelName != nil {
-		labelName = sp.ExternalLabelName
-	} else if sp.VMAgentExternalLabelName != nil {
-		labelName = sp.VMAgentExternalLabelName
-	}
-	if labelName != nil {
-		if *labelName != "" {
-			prometheusExternalLabelName = *labelName
-		} else {
-			prometheusExternalLabelName = ""
-		}
-	}
-
-	if prometheusExternalLabelName != "" {
-		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", cr.Namespace, cr.Name)
-	}
-
-	for n, v := range sp.ExternalLabels {
-		m[n] = v
-	}
-	return stringMapToMapSlice(m)
-}
-
 func buildVMScrapeParams(namespace string, cfg *vmv1beta1.VMScrapeParams, ac *build.AssetsCache) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 	if cfg == nil {
@@ -1020,7 +859,7 @@ func addSelectorToRelabelingFor(relabelings []yaml.MapSlice, typeName string, se
 	return relabelings
 }
 
-func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParams, se vmv1beta1.CommonScrapeSecurityEnforcements) yaml.MapSlice {
+func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParams, se *vmv1beta1.CommonScrapeSecurityEnforcements) yaml.MapSlice {
 	hl := honorLabels(cs.HonorLabels, se.OverrideHonorLabels)
 	cfg = append(cfg, yaml.MapItem{
 		Key:   "honor_labels",
@@ -1075,7 +914,7 @@ func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParam
 	return cfg
 }
 
-func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, se vmv1beta1.CommonScrapeSecurityEnforcements) yaml.MapSlice {
+func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, se *vmv1beta1.CommonScrapeSecurityEnforcements) yaml.MapSlice {
 	if len(src) == 0 {
 		return cfg
 	}
@@ -1130,29 +969,16 @@ func addEndpointAuthTo(cfg yaml.MapSlice, ea *vmv1beta1.EndpointAuth, namespace 
 	return cfg, nil
 }
 
-func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {
-	cfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.SecretConfigResourceKind: {
-			MountDir:   vmAgentConfDir,
-			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
-		},
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	return build.NewAssetsCache(ctx, rclient, cfg)
-}
-func validateScrapeClassExists(scrapeClassName *string, cr *vmv1beta1.VMAgent) error {
+func validateScrapeClassExists(scrapeClassName *string, sp *vmv1beta1.CommonScrapeParams) error {
 	if scrapeClassName == nil {
 		return nil
 	}
-	for _, sc := range cr.Spec.ScrapeClasses {
+	for _, sc := range sp.ScrapeClasses {
 		if sc.Name == *scrapeClassName {
 			return nil
 		}
 	}
-	return fmt.Errorf("scrape class %q not found in VMAgent %s/%s", *scrapeClassName, cr.Namespace, cr.Name)
+	return fmt.Errorf("scrape class %q not supported", *scrapeClassName)
 }
 
 func mergeEndpointAuthWithScrapeClass(authz *vmv1beta1.EndpointAuth, scrapeClass *vmv1beta1.ScrapeClass) {
@@ -1298,9 +1124,9 @@ func mergeTLSConfigs(left, right *vmv1beta1.TLSConfig) *vmv1beta1.TLSConfig {
 	return left
 }
 
-func getScrapeClass(name *string, vmagent *vmv1beta1.VMAgent) *vmv1beta1.ScrapeClass {
+func getScrapeClass(name *string, sp *vmv1beta1.CommonScrapeParams) *vmv1beta1.ScrapeClass {
 	var defaultClass *vmv1beta1.ScrapeClass
-	for _, scrapeClass := range vmagent.Spec.ScrapeClasses {
+	for _, scrapeClass := range sp.ScrapeClasses {
 		if ptr.Deref(name, "") == scrapeClass.Name {
 			return &scrapeClass
 		}

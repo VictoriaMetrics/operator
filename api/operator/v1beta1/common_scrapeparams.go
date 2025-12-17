@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 // AttachMetadata configures metadata attachment
@@ -358,7 +359,7 @@ type CommonScrapeSecurityEnforcements struct {
 	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
 	// ArbitraryFSAccessThroughSMs configures whether configuration
 	// based on EndpointAuth can access arbitrary files on the file system
-	// of the VMAgent container e.g. bearer token files, basic auth, tls certs
+	// of the VMAgent or VMSingle container e.g. bearer token files, basic auth, tls certs
 	// +optional
 	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
 }
@@ -389,56 +390,56 @@ type CommonScrapeParams struct {
 	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
 	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ServiceScrapeSelector *metav1.LabelSelector `json:"serviceScrapeSelector,omitempty"`
 	// ServiceScrapeNamespaceSelector Namespaces to be selected for VMServiceScrape discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ServiceScrapeNamespaceSelector *metav1.LabelSelector `json:"serviceScrapeNamespaceSelector,omitempty"`
 	// PodScrapeSelector defines PodScrapes to be selected for target discovery.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	PodScrapeSelector *metav1.LabelSelector `json:"podScrapeSelector,omitempty"`
 	// PodScrapeNamespaceSelector defines Namespaces to be selected for VMPodScrape discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	PodScrapeNamespaceSelector *metav1.LabelSelector `json:"podScrapeNamespaceSelector,omitempty"`
 	// ProbeSelector defines VMProbe to be selected for target probing.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ProbeSelector *metav1.LabelSelector `json:"probeSelector,omitempty"`
 	// ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ProbeNamespaceSelector *metav1.LabelSelector `json:"probeNamespaceSelector,omitempty"`
 	// NodeScrapeSelector defines VMNodeScrape to be selected for scraping.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	NodeScrapeSelector *metav1.LabelSelector `json:"nodeScrapeSelector,omitempty"`
 	// NodeScrapeNamespaceSelector defines Namespaces to be selected for VMNodeScrape discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
@@ -446,13 +447,13 @@ type CommonScrapeParams struct {
 	// StaticScrapeSelector defines VMStaticScrape to be selected for target discovery.
 	// Works in combination with NamespaceSelector.
 	// If both nil - match everything.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	StaticScrapeSelector *metav1.LabelSelector `json:"staticScrapeSelector,omitempty"`
 	// StaticScrapeNamespaceSelector defines Namespaces to be selected for VMStaticScrape discovery.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
@@ -463,16 +464,16 @@ type CommonScrapeParams struct {
 	ScrapeConfigSelector *metav1.LabelSelector `json:"scrapeConfigSelector,omitempty"`
 	// ScrapeConfigNamespaceSelector defines Namespaces to be selected for VMScrapeConfig discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ScrapeConfigNamespaceSelector *metav1.LabelSelector `json:"scrapeConfigNamespaceSelector,omitempty"`
 	// InlineScrapeConfig As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
-	// break upgrades of VMAgent. It is advised to review VMAgent release
+	// break upgrades of VMAgent or VMSingle. It is advised to review VMAgent or VMSingle release
 	// notes to ensure that no incompatible scrape configs are going to break
-	// VMAgent after the upgrade.
+	// VMAgent or VMSingle after the upgrade.
 	// it should be defined as single yaml file.
 	// inlineScrapeConfig: |
 	//     - job_name: "prometheus"
@@ -482,9 +483,9 @@ type CommonScrapeParams struct {
 	InlineScrapeConfig string `json:"inlineScrapeConfig,omitempty"`
 	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
-	// break upgrades of VMAgent. It is advised to review VMAgent release
+	// break upgrades of VMAgent or VMSingle. It is advised to review VMAgent or VMSingle release
 	// notes to ensure that no incompatible scrape configs are going to break
-	// VMAgent after the upgrade.
+	// VMAgent or VMSingle after the upgrade.
 	// +optional
 	AdditionalScrapeConfigs *corev1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// ServiceScrapeRelabelTemplate defines relabel config, that will be added to each VMServiceScrape.
@@ -539,6 +540,11 @@ type CommonScrapeParams struct {
 	// it doesn't affect metrics ingested directly by push API's
 	// +optional
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
+	// IngestOnlyMode switches vmagent or vmsingle into unmanaged mode
+	// it disables any config generation for scraping
+	// Currently it prevents vmagent from managing tls and auth options for remote write
+	// +optional
+	IngestOnlyMode *bool `json:"ingestOnlyMode,omitempty"`
 	// EnableKubernetesAPISelectors instructs vmagent to use CRD scrape objects spec.selectors for
 	// Kubernetes API list and watch requests.
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#list-and-watch-filtering
@@ -550,6 +556,9 @@ type CommonScrapeParams struct {
 
 // isUnmanaged checks if object should managed any config objects
 func (cr *CommonScrapeParams) isUnmanaged() bool {
+	if ptr.Deref(cr.IngestOnlyMode, false) {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.NodeScrapeSelector == nil && cr.NodeScrapeNamespaceSelector == nil &&
 		cr.ServiceScrapeSelector == nil && cr.ServiceScrapeNamespaceSelector == nil &&
@@ -561,36 +570,54 @@ func (cr *CommonScrapeParams) isUnmanaged() bool {
 
 // isNodeScrapeUnmanaged checks if scraping agent should managed any VMNodeScrape objects
 func (cr *CommonScrapeParams) isNodeScrapeUnmanaged() bool {
+	if ptr.Deref(cr.IngestOnlyMode, false) {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.NodeScrapeSelector == nil && cr.NodeScrapeNamespaceSelector == nil
 }
 
 // isServiceScrapeUnmanaged checks if scraping agent should managed any VMServiceScrape objects
 func (cr *CommonScrapeParams) isServiceScrapeUnmanaged() bool {
+	if ptr.Deref(cr.IngestOnlyMode, false) {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.ServiceScrapeSelector == nil && cr.ServiceScrapeNamespaceSelector == nil
 }
 
 // isUnmanaged checks if scraping agent should managed any VMPodScrape objects
 func (cr *CommonScrapeParams) isPodScrapeUnmanaged() bool {
+	if ptr.Deref(cr.IngestOnlyMode, false) {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.PodScrapeSelector == nil && cr.PodScrapeNamespaceSelector == nil
 }
 
 // isProbeUnmanaged checks if scraping agent should managed any VMProbe objects
 func (cr *CommonScrapeParams) isProbeUnmanaged() bool {
+	if ptr.Deref(cr.IngestOnlyMode, false) {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.ProbeSelector == nil && cr.ProbeNamespaceSelector == nil
 }
 
 // isStaticScrapeUnmanaged checks if scraping agent should managed any VMStaticScrape objects
 func (cr *CommonScrapeParams) isStaticScrapeUnmanaged() bool {
+	if ptr.Deref(cr.IngestOnlyMode, false) {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.StaticScrapeSelector == nil && cr.StaticScrapeNamespaceSelector == nil
 }
 
 // isScrapeConfigUnmanaged checks if scraping agent should managed any VMScrapeConfig objects
 func (cr *CommonScrapeParams) isScrapeConfigUnmanaged() bool {
+	if ptr.Deref(cr.IngestOnlyMode, false) {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.ScrapeConfigSelector == nil && cr.ScrapeConfigNamespaceSelector == nil
 }

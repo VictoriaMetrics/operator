@@ -1,4 +1,4 @@
-package vmagent
+package vmsingle
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-func getSingleNamespaceRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
+func getSingleNamespaceRules(cr *vmv1beta1.VMSingle) []rbacv1.PolicyRule {
 	var rules []rbacv1.PolicyRule
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
 		rules = append(rules, rbacv1.PolicyRule{
@@ -47,7 +47,7 @@ func getSingleNamespaceRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
 	return rules
 }
 
-func getClusterWideRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
+func getClusterWideRules(cr *vmv1beta1.VMSingle) []rbacv1.PolicyRule {
 	var rules []rbacv1.PolicyRule
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
 		rules = append(rules, rbacv1.PolicyRule{
@@ -87,32 +87,32 @@ func getClusterWideRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
 	return rules
 }
 
-// createK8sAPIAccess - creates RBAC access rules for vmagent
-func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, clusterWide bool) error {
+// createK8sAPIAccess - creates RBAC access rules for vmsingle
+func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, clusterWide bool) error {
 	if err := migrateRBAC(ctx, rclient, cr, clusterWide); err != nil {
 		return fmt.Errorf("cannot perform RBAC migration: %w", err)
 	}
 	if clusterWide {
 		if err := ensureCRExist(ctx, rclient, cr, prevCR); err != nil {
-			return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
+			return fmt.Errorf("cannot ensure state of vmsingle's cluster role: %w", err)
 		}
 		if err := ensureCRBExist(ctx, rclient, cr, prevCR); err != nil {
-			return fmt.Errorf("cannot ensure state of vmagent's cluster role binding: %w", err)
+			return fmt.Errorf("cannot ensure state of vmsingle's cluster role binding: %w", err)
 		}
 		return nil
 	}
 
 	if err := ensureRoleExist(ctx, rclient, cr, prevCR); err != nil {
-		return fmt.Errorf("cannot ensure state of vmagent's role: %w", err)
+		return fmt.Errorf("cannot ensure state of vmsingle's role: %w", err)
 	}
 	if err := ensureRBExist(ctx, rclient, cr, prevCR); err != nil {
-		return fmt.Errorf("cannot ensure state of vmagent's role binding: %w", err)
+		return fmt.Errorf("cannot ensure state of vmsingle's role binding: %w", err)
 	}
 
 	return nil
 }
 
-func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	var prevClusterRole *rbacv1.ClusterRole
 	if prevCR != nil {
 		prevClusterRole = buildCR(prevCR)
@@ -121,7 +121,7 @@ func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1b
 	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole, owner)
 }
 
-func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	var prevCRB *rbacv1.ClusterRoleBinding
 	if prevCR != nil {
 		prevCRB = buildCRB(prevCR)
@@ -133,16 +133,16 @@ func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 // migrateRBAC deletes incorrectly formatted resource names
 // see https://github.com/VictoriaMetrics/operator/issues/891
 // and https://github.com/VictoriaMetrics/operator/pull/1176
-func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, clusterWide bool) error {
-	const prevNamingPrefix = "monitoring:vmagent-cluster-access-"
+func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, clusterWide bool) error {
+	const prevNamingPrefix = "monitoring:vmsingle-cluster-access-"
 	prevVersionName := prevNamingPrefix + cr.Name
 	currentVersionName := cr.GetRBACName()
 	owner := cr.AsOwner()
 
 	// explicitly set namespace via ObjetMeta for unit tests
 	toMigrateObjects := []client.Object{
-		&rbacv1.ClusterRole{},
-		&rbacv1.ClusterRoleBinding{},
+		&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Namespace: cr.Namespace}},
+		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Namespace: cr.Namespace}},
 	}
 	if !clusterWide {
 		toMigrateObjects = []client.Object{
@@ -167,7 +167,7 @@ func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAge
 	return nil
 }
 
-func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
+func buildCRB(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRoleBinding {
 	r := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
@@ -190,12 +190,14 @@ func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 	}
 	owner := cr.AsCRDOwner()
 	if owner != nil {
+		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
+		// use crd instead
 		r.OwnerReferences = []metav1.OwnerReference{*owner}
 	}
 	return r
 }
 
-func buildCR(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
+func buildCR(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRole {
 	r := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
@@ -207,12 +209,14 @@ func buildCR(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 	}
 	owner := cr.AsCRDOwner()
 	if owner != nil {
+		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
+		// use crd instead
 		r.OwnerReferences = []metav1.OwnerReference{*owner}
 	}
 	return r
 }
 
-func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	nr := buildRole(cr)
 	var prevRole *rbacv1.Role
 	if prevCR != nil {
@@ -222,7 +226,7 @@ func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv
 	return reconcile.Role(ctx, rclient, nr, prevRole, &owner)
 }
 
-func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	rb := buildRB(cr)
 	var prevRB *rbacv1.RoleBinding
 	if prevCR != nil {
@@ -232,7 +236,7 @@ func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1b
 	return reconcile.RoleBinding(ctx, rclient, rb, prevRB, &owner)
 }
 
-func buildRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
+func buildRole(cr *vmv1beta1.VMSingle) *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetRBACName(),
@@ -246,7 +250,7 @@ func buildRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
 	}
 }
 
-func buildRB(cr *vmv1beta1.VMAgent) *rbacv1.RoleBinding {
+func buildRB(cr *vmv1beta1.VMSingle) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetRBACName(),

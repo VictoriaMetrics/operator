@@ -22,14 +22,14 @@ import (
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
-func expectPodCount(ctx context.Context, rclient client.Client, obj client.Object, count int) error {
+func getLatestPods(ctx context.Context, rclient client.Client, obj client.Object) ([]corev1.Pod, error) {
 	GinkgoHelper()
 	var podList corev1.PodList
 	if err := rclient.List(ctx, &podList, &client.ListOptions{
 		Namespace:     obj.GetNamespace(),
 		LabelSelector: labels.SelectorFromSet(obj.GetLabels()),
 	}); err != nil {
-		return err
+		return nil, err
 	}
 	podsByHash := make(map[string][]corev1.Pod)
 	var labelName, kind string
@@ -42,7 +42,7 @@ func expectPodCount(ctx context.Context, rclient client.Client, obj client.Objec
 		labelName = "pod-template-hash"
 		kind = "ReplicaSet"
 	default:
-		panic(fmt.Sprintf("kind=%T is not supported", obj))
+		return nil, fmt.Errorf("kind=%T is not supported", obj)
 	}
 	for _, pod := range podList.Items {
 		if !pod.DeletionTimestamp.IsZero() {
@@ -70,7 +70,7 @@ func expectPodCount(ctx context.Context, rclient client.Client, obj client.Objec
 			Namespace: obj.GetNamespace(),
 		}
 		if err := rclient.Get(ctx, nsn, obj); err != nil {
-			return fmt.Errorf("failed to get %T=%s", obj, nsn)
+			return nil, fmt.Errorf("failed to get %T=%s", obj, nsn)
 		}
 		ts := obj.GetCreationTimestamp()
 		if creationTimestamp.IsZero() || (!ts.IsZero() && ts.After(creationTimestamp.Time)) {
@@ -81,13 +81,22 @@ func expectPodCount(ctx context.Context, rclient client.Client, obj client.Objec
 			case *appsv1.ReplicaSet:
 				currentHash = v.Labels[labelName]
 			default:
-				panic(fmt.Sprintf("kind=%T is not supported", obj))
+				return nil, fmt.Errorf("kind=%T is not supported", obj)
 			}
 		}
 	}
 	var pods []corev1.Pod
 	if len(currentHash) > 0 {
 		pods = podsByHash[currentHash]
+	}
+	return pods, nil
+}
+
+func expectPodCount(ctx context.Context, rclient client.Client, obj client.Object, count int) error {
+	GinkgoHelper()
+	pods, err := getLatestPods(ctx, rclient, obj)
+	if err != nil {
+		return err
 	}
 	if len(pods) != count {
 		return fmt.Errorf("pod count mismatch, expect: %d, got: %d", count, len(pods))
@@ -290,20 +299,10 @@ func hasVolumeMount(volumeMounts []corev1.VolumeMount, volumeMountName string) e
 }
 
 //nolint:dupl,lll
-func mustGetFirstPod(rclient client.Client, ns string, lbs map[string]string) *corev1.Pod {
+func mustGetFirstPod(ctx context.Context, rclient client.Client, obj client.Object) *corev1.Pod {
 	GinkgoHelper()
-	var podList corev1.PodList
-	Expect(rclient.List(context.TODO(), &podList, &client.ListOptions{
-		Namespace:     ns,
-		LabelSelector: labels.SelectorFromSet(lbs),
-	})).ToNot(HaveOccurred())
-	pods := podList.Items[:0]
-	for _, pod := range podList.Items {
-		if !pod.DeletionTimestamp.IsZero() {
-			continue
-		}
-		pods = append(pods, pod)
-	}
+	pods, err := getLatestPods(ctx, rclient, obj)
+	Expect(err).ToNot(HaveOccurred())
 	Expect(pods).ToNot(BeEmpty())
 	return &pods[0]
 }

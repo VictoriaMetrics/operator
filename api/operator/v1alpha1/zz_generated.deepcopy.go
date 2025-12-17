@@ -114,11 +114,6 @@ func (in *CustomVMAgentSpec) DeepCopyInto(out *CustomVMAgentSpec) {
 		*out = new(v1beta1.VMAgentRemoteWriteSettings)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.ShardCount != nil {
-		in, out := &in.ShardCount, &out.ShardCount
-		*out = new(int)
-		**out = **in
-	}
 	if in.UpdateStrategy != nil {
 		in, out := &in.UpdateStrategy, &out.UpdateStrategy
 		*out = new(appsv1.DeploymentStrategyType)

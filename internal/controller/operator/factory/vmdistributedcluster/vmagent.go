@@ -244,7 +244,6 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	newVMAgentSpec.LogLevel = desiredVMAgentSpec.LogLevel
 	newVMAgentSpec.LogFormat = desiredVMAgentSpec.LogFormat
 	newVMAgentSpec.RemoteWriteSettings = desiredVMAgentSpec.RemoteWriteSettings
-	newVMAgentSpec.ShardCount = desiredVMAgentSpec.ShardCount
 	newVMAgentSpec.UpdateStrategy = desiredVMAgentSpec.UpdateStrategy
 	newVMAgentSpec.RollingUpdate = desiredVMAgentSpec.RollingUpdate
 	newVMAgentSpec.PodDisruptionBudget = desiredVMAgentSpec.PodDisruptionBudget

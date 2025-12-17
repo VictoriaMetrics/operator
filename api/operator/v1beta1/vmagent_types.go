@@ -272,6 +272,9 @@ type VMAgentSpec struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// SampleLimit defines global per target limit of scraped samples
+	// +optional
+	SampleLimit int `json:"sampleLimit,omitempty"`
 	// ExternalLabels The labels to add to any time series scraped by vmagent.
 	// it doesn't affect metrics ingested directly by push API's
 	// +optional

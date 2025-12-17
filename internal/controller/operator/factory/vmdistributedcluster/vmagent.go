@@ -260,7 +260,6 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 		newVMAgentSpec.License = cr.Spec.License
 	}
 	newVMAgentSpec.ServiceAccountName = desiredVMAgentSpec.ServiceAccountName
-	newVMAgentSpec.VMAgentSecurityEnforcements = desiredVMAgentSpec.VMAgentSecurityEnforcements
 	newVMAgentSpec.CommonDefaultableParams = desiredVMAgentSpec.CommonDefaultableParams
 	newVMAgentSpec.CommonConfigReloaderParams = desiredVMAgentSpec.CommonConfigReloaderParams
 	newVMAgentSpec.CommonApplicationDeploymentParams = desiredVMAgentSpec.CommonApplicationDeploymentParams

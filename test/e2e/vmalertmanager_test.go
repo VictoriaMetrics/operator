@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
 
@@ -15,6 +14,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 )
 
@@ -36,15 +36,6 @@ receivers:
 - name: blackhole
 `
 )
-
-func gzipConfig(buf *bytes.Buffer, conf []byte) error {
-	w := gzip.NewWriter(buf)
-	defer w.Close()
-	if _, err := w.Write(conf); err != nil {
-		return err
-	}
-	return nil
-}
 
 //nolint:dupl
 var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), func() {
@@ -207,7 +198,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 				func(cr *vmv1beta1.VMAlertmanager) {
 					var amCfg corev1.Secret
 					var buf bytes.Buffer
-					Expect(gzipConfig(&buf, []byte(alertmanagerTestConf))).To(Succeed())
+					Expect(build.GzipConfig(&buf, []byte(alertmanagerTestConf))).To(Succeed())
 					Expect(k8sClient.Get(ctx,
 						types.NamespacedName{Name: cr.ConfigSecretName(), Namespace: namespace}, &amCfg)).To(Succeed())
 					Expect(amCfg.Data["alertmanager.yaml.gz"]).To(Equal(buf.Bytes()))

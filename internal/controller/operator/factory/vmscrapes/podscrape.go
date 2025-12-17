@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -12,15 +12,15 @@ import (
 
 func generatePodScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	sp *vmv1beta1.CommonScrapeParams,
+	pos *ParsedObjects,
 	sc *vmv1beta1.VMPodScrape,
 	ep vmv1beta1.PodMetricsEndpoint,
 	i int,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	apiserverConfig := cr.Spec.APIServerConfig
-	se := cr.Spec.CommonScrapeSecurityEnforcements
+	se := &sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -28,7 +28,7 @@ func generatePodScrapeConfig(
 		},
 	}
 
-	scrapeClass := getScrapeClass(spec.ScrapeClassName, cr)
+	scrapeClass := getScrapeClass(spec.ScrapeClassName, sp)
 	if scrapeClass != nil {
 		mergeEndpointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
 		mergeEndpointRelabelingsWithScrapeClass(&ep.EndpointRelabelings, scrapeClass)
@@ -44,16 +44,14 @@ func generatePodScrapeConfig(
 	}
 
 	k8sSDOpts := generateK8SSDConfigOptions{
-		namespaces:         selectedNamespaces,
-		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
-		selectors:          spec.Selector,
-		apiServerConfig:    apiserverConfig,
-		role:               k8sSDRolePod,
-		attachMetadata:     &ep.AttachMetadata,
-		namespace:          sc.Namespace,
-	}
-	if cr.Spec.DaemonSetMode {
-		k8sSDOpts.mustUseNodeSelector = true
+		namespaces:          selectedNamespaces,
+		shouldAddSelectors:  sp.EnableKubernetesAPISelectors,
+		selectors:           spec.Selector,
+		apiServerConfig:     pos.APIServerConfig,
+		role:                k8sSDRolePod,
+		attachMetadata:      &ep.AttachMetadata,
+		namespace:           sc.Namespace,
+		mustUseNodeSelector: pos.MustUseNodeSelector,
 	}
 	if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
 		return nil, err
@@ -69,7 +67,7 @@ func generatePodScrapeConfig(
 		ep.SeriesLimit = spec.SeriesLimit
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 
@@ -83,7 +81,7 @@ func generatePodScrapeConfig(
 		})
 	}
 
-	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+	skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "pod", spec.Selector, skipRelabelSelectors)
 
 	// Filter targets based on correct port for the endpoint.
@@ -177,7 +175,7 @@ func generatePodScrapeConfig(
 	for _, c := range ep.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.PodScrapeRelabelTemplate {
+	for _, trc := range sp.PodScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

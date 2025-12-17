@@ -291,12 +291,6 @@ type VMSelect struct {
 	// +optional
 	CacheMountPath string `json:"cacheMountPath,omitempty"`
 
-	// PersistentVolume - add persistent volume for cacheMountPath
-	// its useful for persistent cache
-	// use storage instead of persistentVolume.
-	// +deprecated
-	// +optional
-	PersistentVolume *StorageSpec `json:"persistentVolume,omitempty"`
 	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
@@ -617,9 +611,6 @@ func (cr *VMStorage) GetStorageVolumeName() string {
 // GetCacheMountVolumeName returns formatted name for vmselect volume
 func (cr *VMSelect) GetCacheMountVolumeName() string {
 	storageSpec := cr.StorageSpec
-	if storageSpec == nil {
-		storageSpec = cr.PersistentVolume
-	}
 	if storageSpec != nil && storageSpec.VolumeClaimTemplate.Name != "" {
 		return storageSpec.VolumeClaimTemplate.Name
 	}

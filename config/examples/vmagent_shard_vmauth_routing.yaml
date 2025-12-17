@@ -19,7 +19,6 @@ metadata:
   name: expose-vmagent-ui
 spec:
    selectAllByDefault: false
-   useCustomConfigRealoder: false
    unauthorizedUserAccessSpec:
     url_map:
       # manually keep in sync shardCount and url_map entries per shard

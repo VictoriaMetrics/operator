@@ -13,7 +13,6 @@ spec:
     tls: "true"
     tlsCertFile: /etc/vm/secrets/remote-tls/cert
     tlsKeyFile: /etc/vm/secrets/remote-tls/key
-  useVMConfigReloader: true
   serviceScrapeSpec:
     endpoints:
       - port: http

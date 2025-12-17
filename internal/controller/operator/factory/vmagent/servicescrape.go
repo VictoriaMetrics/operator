@@ -20,7 +20,7 @@ func generateServiceScrapeConfig(
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
 	apiserverConfig := cr.Spec.APIServerConfig
-	se := cr.Spec.VMAgentSecurityEnforcements
+	se := cr.Spec.CommonScrapeSecurityEnforcements
 	scrapeClass := getScrapeClass(spec.ScrapeClassName, cr)
 	if scrapeClass != nil {
 		mergeEndpointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)

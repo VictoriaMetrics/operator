@@ -87,10 +87,12 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorTimestamps: false,
-					OverrideHonorLabels:     true,
-					EnforcedNamespaceLabel:  "namespace",
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+						OverrideHonorTimestamps: false,
+						OverrideHonorLabels:     true,
+						EnforcedNamespaceLabel:  "namespace",
+					},
 				},
 			},
 		},
@@ -147,10 +149,12 @@ relabel_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				VMAgentSecurityEnforcements: vmv1beta1.VMAgentSecurityEnforcements{
-					OverrideHonorTimestamps: false,
-					OverrideHonorLabels:     true,
-					EnforcedNamespaceLabel:  "namespace",
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+						OverrideHonorTimestamps: false,
+						OverrideHonorLabels:     true,
+						EnforcedNamespaceLabel:  "namespace",
+					},
 				},
 			},
 		},

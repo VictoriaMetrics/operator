@@ -676,6 +676,22 @@ func (config *StreamAggrConfig) HasAnyRule() bool {
 	return false
 }
 
+// CommonRelabelParams defines params for relabelling
+type CommonRelabelParams struct {
+	// RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
+	// This relabeling is applied to all the collected metrics before sending them to remote storage.
+	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig name",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
+	RelabelConfig *corev1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
+	// InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD.
+	// +optional
+	InlineRelabelConfig []*RelabelConfig `json:"inlineRelabelConfig,omitempty"`
+}
+
+func (cr *CommonRelabelParams) HasAnyRelabellingConfigs() bool {
+	return cr.RelabelConfig != nil || len(cr.InlineRelabelConfig) > 0
+}
+
 // KeyValue defines a (key, value) tuple.
 // +kubebuilder:object:generate=false
 // +k8s:openapi-gen=false

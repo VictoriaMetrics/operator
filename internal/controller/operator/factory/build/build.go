@@ -190,7 +190,7 @@ type streamAggrOpts interface {
 func StreamAggrVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, cr streamAggrOpts) ([]corev1.Volume, []corev1.VolumeMount) {
 	if cr.HasAnyStreamAggrRule() {
 		volumes = append(volumes, corev1.Volume{
-			Name: "stream-aggr-conf",
+			Name: string(StreamAggrConfigResourceKind),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -200,9 +200,53 @@ func StreamAggrVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, cr
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      "stream-aggr-conf",
+			Name:      string(StreamAggrConfigResourceKind),
 			ReadOnly:  true,
 			MountPath: vmv1beta1.StreamAggrConfigDir,
+		})
+	}
+	return volumes, mounts
+}
+
+// RelabelArgsTo conditionally adds relabel commandline args into given args
+func RelabelArgsTo(args []string, flag string, keys []string, cs ...*vmv1beta1.CommonRelabelParams) []string {
+	if len(cs) == 0 {
+		return args
+	}
+	configFlag := NewFlag(fmt.Sprintf("-%s", flag), "")
+	for i, c := range cs {
+		if c == nil {
+			continue
+		}
+		if c.HasAnyRelabellingConfigs() {
+			configFlag.Add(path.Join(vmv1beta1.RelabelingConfigDir, keys[i]), i)
+		}
+	}
+	return AppendFlagsToArgs(args, len(cs), configFlag)
+}
+
+type relabelOpts interface {
+	builderOpts
+	HasAnyRelabellingConfigs() bool
+}
+
+// RelabelVolumeTo conditionally mounts configmap with relabel config into given volumes and volume mounts
+func RelabelVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, cr relabelOpts) ([]corev1.Volume, []corev1.VolumeMount) {
+	if cr.HasAnyRelabellingConfigs() {
+		volumes = append(volumes, corev1.Volume{
+			Name: string(RelabelConfigResourceKind),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: ResourceName(RelabelConfigResourceKind, cr),
+					},
+				},
+			},
+		})
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      string(RelabelConfigResourceKind),
+			ReadOnly:  true,
+			MountPath: vmv1beta1.RelabelingConfigDir,
 		})
 	}
 	return volumes, mounts

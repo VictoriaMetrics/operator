@@ -176,9 +176,8 @@ func TestUpdateOrCreateVMAgent_PreserveExistingOrder(t *testing.T) {
 	ctx := context.TODO()
 
 	data := beforeEach()
-	tenant := "0"
-	u1 := remoteWriteURL(data.vmcluster1, &tenant)
-	u2 := remoteWriteURL(data.vmcluster2, &tenant)
+	u1 := remoteWriteURL(data.vmcluster1)
+	u2 := remoteWriteURL(data.vmcluster2)
 
 	// Prepare existing vmagent with RemoteWrite in order [u1, u2].
 	existing := data.vmagent.DeepCopy()
@@ -211,9 +210,8 @@ func TestUpdateOrCreateVMAgent_Append(t *testing.T) {
 	ctx := context.TODO()
 
 	data := beforeEach()
-	tenant := "0"
-	u1 := remoteWriteURL(data.vmcluster1, &tenant)
-	u2 := remoteWriteURL(data.vmcluster2, &tenant)
+	u1 := remoteWriteURL(data.vmcluster1)
+	u2 := remoteWriteURL(data.vmcluster2)
 
 	// Prepare existing vmagent with RemoteWrite in order [u1, u2].
 	existing := data.vmagent.DeepCopy()

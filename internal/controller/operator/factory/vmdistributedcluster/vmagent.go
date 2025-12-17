@@ -210,12 +210,31 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 
 	tenantPtr := &tenantID
 
-	// Point VMAgent to all VMClusters by constructing RemoteWrite entries
-	if len(vmClusters) > 0 {
-		desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.CustomVMAgentRemoteWriteSpec, len(vmClusters))
-		for i, vmCluster := range vmClusters {
-			desiredVMAgentSpec.RemoteWrite[i].URL = remoteWriteURL(vmCluster, tenantPtr)
+	// Preserve existing VMAgent RemoteWrite order when possible to avoid unnecessary updates.
+	// New VMCluster URLs will be appended to the end of the list.
+	remoteWriteURLs := make([]string, 0, len(vmClusters))
+	for _, vmCluster := range vmClusters {
+		remoteWriteURLs = append(remoteWriteURLs, remoteWriteURL(vmCluster, tenantPtr))
+	}
+
+	// Map CR-provided remoteWrite entries by URL so we can preserve auth/config if present.
+	writeSpecMap := map[string]vmv1alpha1.CustomVMAgentRemoteWriteSpec{}
+	for _, rw := range desiredVMAgentSpec.RemoteWrite {
+		writeSpecMap[rw.URL] = rw
+	}
+
+	if !vmAgentExists {
+		// New VMAgent
+		desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.CustomVMAgentRemoteWriteSpec, len(remoteWriteURLs))
+		for i, url := range remoteWriteURLs {
+			if crrw, ok := writeSpecMap[url]; ok {
+				desiredVMAgentSpec.RemoteWrite[i] = crrw
+			}
+			desiredVMAgentSpec.RemoteWrite[i].URL = url
 		}
+	} else {
+		// Existing VMAgent
+		preserveVMAgentOrder(&desiredVMAgentSpec, remoteWriteURLs, vmAgentObj.Spec.RemoteWrite, writeSpecMap)
 	}
 
 	// Assemble new VMAgentSpec
@@ -246,23 +265,21 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	newVMAgentSpec.CommonConfigReloaderParams = desiredVMAgentSpec.CommonConfigReloaderParams
 	newVMAgentSpec.CommonApplicationDeploymentParams = desiredVMAgentSpec.CommonApplicationDeploymentParams
 
-	if len(desiredVMAgentSpec.RemoteWrite) > 0 {
-		newVMAgentSpec.RemoteWrite = make([]vmv1beta1.VMAgentRemoteWriteSpec, len(desiredVMAgentSpec.RemoteWrite))
-		for i, remoteWrite := range desiredVMAgentSpec.RemoteWrite {
-			vmAgentRemoteWrite := vmv1beta1.VMAgentRemoteWriteSpec{}
-			vmAgentRemoteWrite.URL = remoteWrite.URL
-			vmAgentRemoteWrite.BasicAuth = remoteWrite.BasicAuth
-			vmAgentRemoteWrite.BearerTokenSecret = remoteWrite.BearerTokenSecret
-			vmAgentRemoteWrite.OAuth2 = remoteWrite.OAuth2
-			vmAgentRemoteWrite.TLSConfig = remoteWrite.TLSConfig
-			vmAgentRemoteWrite.SendTimeout = remoteWrite.SendTimeout
-			vmAgentRemoteWrite.Headers = remoteWrite.Headers
-			vmAgentRemoteWrite.MaxDiskUsage = remoteWrite.MaxDiskUsage
-			vmAgentRemoteWrite.ForceVMProto = remoteWrite.ForceVMProto
-			vmAgentRemoteWrite.ProxyURL = remoteWrite.ProxyURL
-			vmAgentRemoteWrite.AWS = remoteWrite.AWS
-			newVMAgentSpec.RemoteWrite[i] = vmAgentRemoteWrite
-		}
+	newVMAgentSpec.RemoteWrite = make([]vmv1beta1.VMAgentRemoteWriteSpec, len(desiredVMAgentSpec.RemoteWrite))
+	for i, remoteWrite := range desiredVMAgentSpec.RemoteWrite {
+		vmAgentRemoteWrite := vmv1beta1.VMAgentRemoteWriteSpec{}
+		vmAgentRemoteWrite.URL = remoteWrite.URL
+		vmAgentRemoteWrite.BasicAuth = remoteWrite.BasicAuth
+		vmAgentRemoteWrite.BearerTokenSecret = remoteWrite.BearerTokenSecret
+		vmAgentRemoteWrite.OAuth2 = remoteWrite.OAuth2
+		vmAgentRemoteWrite.TLSConfig = remoteWrite.TLSConfig
+		vmAgentRemoteWrite.SendTimeout = remoteWrite.SendTimeout
+		vmAgentRemoteWrite.Headers = remoteWrite.Headers
+		vmAgentRemoteWrite.MaxDiskUsage = remoteWrite.MaxDiskUsage
+		vmAgentRemoteWrite.ForceVMProto = remoteWrite.ForceVMProto
+		vmAgentRemoteWrite.ProxyURL = remoteWrite.ProxyURL
+		vmAgentRemoteWrite.AWS = remoteWrite.AWS
+		newVMAgentSpec.RemoteWrite[i] = vmAgentRemoteWrite
 	}
 
 	// Compare current spec with desired spec and apply if different
@@ -295,4 +312,39 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 // remoteWriteURL generates the remote write URL based on the provided VMCluster and tenant.
 func remoteWriteURL(vmCluster *vmv1beta1.VMCluster, tenant *string) string {
 	return fmt.Sprintf("http://%s.%s.svc.cluster.local.:8480/insert/%s/prometheus/api/v1/write", vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert), vmCluster.Namespace, *tenant)
+}
+
+func preserveVMAgentOrder(desiredVMAgentSpec *vmv1alpha1.CustomVMAgentSpec, remoteWriteURLs []string, vmAgentWriteSpec []vmv1beta1.VMAgentRemoteWriteSpec, writeSpecMap map[string]vmv1alpha1.CustomVMAgentRemoteWriteSpec) {
+	desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.CustomVMAgentRemoteWriteSpec, 0, len(remoteWriteURLs))
+	used := map[string]bool{}
+	// Build a map to lookup desired URLs
+	desiredSet := map[string]bool{}
+	for _, u := range remoteWriteURLs {
+		desiredSet[u] = true
+	}
+	// First, keep URLs in the same order as existing VMAgent.Spec.RemoteWrite
+	for _, existing := range vmAgentWriteSpec {
+		if !desiredSet[existing.URL] {
+			continue
+		}
+		customSpec := vmv1alpha1.CustomVMAgentRemoteWriteSpec{
+			URL: existing.URL,
+		}
+		// Use existing spec if available, always rewrite URL
+		if crrw, ok := writeSpecMap[existing.URL]; ok {
+			customSpec = *crrw.DeepCopy()
+			customSpec.URL = existing.URL
+		}
+		desiredVMAgentSpec.RemoteWrite = append(desiredVMAgentSpec.RemoteWrite, customSpec)
+		used[existing.URL] = true
+	}
+	// Append any new URLs that were not present in the existing spec
+	for _, newURL := range remoteWriteURLs {
+		if used[newURL] {
+			continue
+		}
+		desiredVMAgentSpec.RemoteWrite = append(desiredVMAgentSpec.RemoteWrite, vmv1alpha1.CustomVMAgentRemoteWriteSpec{
+			URL: newURL,
+		})
+	}
 }

@@ -70,6 +70,7 @@ const (
 	LastAppliedSpecAnnotation        = "operator.victoriametrics/last-applied-spec"
 	VMAuthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
 	VMAuthLBServiceProxyJobNameLabel = "operator.victoriametrics.com/vmauthlb-proxy-job-name"
+	KubeNodeEnvName                  = "KUBE_NODE_NAME"
 )
 
 const (

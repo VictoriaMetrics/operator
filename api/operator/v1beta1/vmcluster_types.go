@@ -966,7 +966,8 @@ type VMAuthLoadBalancerSpec struct {
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 	// License configures enterprise features license key
 	// +optional
-	License *License `json:"license,omitempty"`
+	License                    *License `json:"license,omitempty"`
+	CommonConfigReloaderParams `json:",inline"`
 }
 
 // ProbePath returns path for probe requests

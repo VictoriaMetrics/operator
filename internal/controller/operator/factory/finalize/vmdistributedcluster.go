@@ -7,6 +7,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -41,6 +42,9 @@ func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr
 			Namespace: ns,
 		}})
 		objsToRemove = append(objsToRemove, &corev1.Secret{ObjectMeta: vmAuthLBPrefixedMeta})
+		objsToRemove = append(objsToRemove, &rbacv1.Role{ObjectMeta: vmAuthLBPrefixedMeta})
+		objsToRemove = append(objsToRemove, &rbacv1.RoleBinding{ObjectMeta: vmAuthLBPrefixedMeta})
+		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: vmAuthLBMeta})
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: vmAuthLBMeta})
 		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: vmAuthLBPrefixedMeta})
 	}

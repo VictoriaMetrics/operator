@@ -1,6 +1,9 @@
 package vmdistributedcluster
 
 import (
+	"bytes"
+	"compress/gzip"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -97,9 +100,15 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
 	assert.Equal(t, "vmdclusterlb-vmdist", secret.Name)
 	assert.Equal(t, "prod", secret.Namespace)
 
-	configData, ok := secret.Data["config.yaml"]
+	configGZData, ok := secret.Data[configGZName]
 	assert.True(t, ok)
-	assert.NotEmpty(t, configData)
+	assert.NotEmpty(t, configGZData)
+
+	gr, err := gzip.NewReader(bytes.NewReader(configGZData))
+	assert.NoError(t, err)
+	defer gr.Close()
+	decompressed, err := io.ReadAll(gr)
+	assert.NoError(t, err)
 
 	expectedYAML := `unauthorized_user:
   url_map:
@@ -109,7 +118,7 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
     - http://srv+vmselect-vmc-test.default.svc:8481
     discover_backend_ips: true
 `
-	assert.Equal(t, []byte(expectedYAML), configData)
+	assert.Equal(t, []byte(expectedYAML), decompressed)
 
 	t.Run("multiple vmclusters", func(t *testing.T) {
 		vmClusters := []*vmv1beta1.VMCluster{
@@ -132,8 +141,15 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, secret)
 
-		configData, ok := secret.Data["config.yaml"]
+		configGZData, ok := secret.Data[configGZName]
 		assert.True(t, ok)
+
+		gr, err := gzip.NewReader(bytes.NewReader(configGZData))
+		assert.NoError(t, err)
+		defer gr.Close()
+		decompressed, err := io.ReadAll(gr)
+		assert.NoError(t, err)
+
 		expectedYAML := `unauthorized_user:
   url_map:
   - src_paths:
@@ -143,7 +159,7 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
     - http://srv+vmselect-vmc-test-2.monitoring.svc:8481
     discover_backend_ips: true
 `
-		assert.Equal(t, []byte(expectedYAML), configData)
+		assert.Equal(t, []byte(expectedYAML), decompressed)
 	})
 
 	// Test with no vmclusters
@@ -152,8 +168,15 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, secret)
 
-		configData, ok := secret.Data["config.yaml"]
+		configGZData, ok := secret.Data[configGZName]
 		assert.True(t, ok)
+
+		gr, err := gzip.NewReader(bytes.NewReader(configGZData))
+		assert.NoError(t, err)
+		defer gr.Close()
+		decompressed, err := io.ReadAll(gr)
+		assert.NoError(t, err)
+
 		expectedYAML := `unauthorized_user:
   url_map:
   - src_paths:
@@ -161,6 +184,6 @@ func Test_buildVMAuthLBSecret(t *testing.T) {
     url_prefix: []
     discover_backend_ips: true
 `
-		assert.Equal(t, []byte(expectedYAML), configData)
+		assert.Equal(t, []byte(expectedYAML), decompressed)
 	})
 }

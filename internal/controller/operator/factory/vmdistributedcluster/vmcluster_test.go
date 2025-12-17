@@ -2,6 +2,7 @@ package vmdistributedcluster
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -58,17 +60,18 @@ func TestMergeMapsRecursive_BasicAndNil(t *testing.T) {
 }
 
 func TestMergeVMClusterSpecs_DeepMerge(t *testing.T) {
+
 	base := vmv1beta1.VMClusterSpec{
 		ClusterVersion: "v1.0.0",
 		VMSelect: &vmv1beta1.VMSelect{
 			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ReplicaCount: ptrTo(int32(1)),
+				ReplicaCount: ptr.To(int32(1)),
 				ExtraArgs:    map[string]string{"keep": "x", "override": "old"},
 			},
 		},
 		VMInsert: &vmv1beta1.VMInsert{
 			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ReplicaCount: ptrTo(int32(1)),
+				ReplicaCount: ptr.To(int32(1)),
 				ExtraArgs:    map[string]string{"insert-arg": "1"},
 			},
 		},
@@ -78,7 +81,7 @@ func TestMergeVMClusterSpecs_DeepMerge(t *testing.T) {
 		ClusterVersion: "v1.2.3",
 		VMSelect: &vmv1beta1.VMSelect{
 			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ReplicaCount: ptrTo(int32(3)),
+				ReplicaCount: ptr.To(int32(3)),
 				ExtraArgs:    map[string]string{"override": "new", "add": "y"},
 			},
 		},
@@ -284,7 +287,7 @@ func TestGetReferencedVMCluster(t *testing.T) {
 	// not found
 	_, err = getReferencedVMCluster(context.Background(), cl, "default", &corev1.LocalObjectReference{Name: "missing"})
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err) || contains(err.Error(), "not found"))
+	assert.True(t, k8serrors.IsNotFound(err) || strings.Contains(err.Error(), "not found"))
 }
 
 func TestFetchVMClusters_InlineAndRef(t *testing.T) {
@@ -378,24 +381,4 @@ func TestApplyGlobalAndClusterSpecificOverrideSpecs(t *testing.T) {
 	assert.Equal(t, "v3.0.0", merged2.ClusterVersion)        // Cluster-specific override should take precedence
 	assert.Equal(t, "global-sa", merged2.ServiceAccountName) // From global override, unchanged by cluster override
 	assert.Equal(t, "10d", merged2.RetentionPeriod)          // From cluster override
-}
-
-// helpers
-func ptrTo[T any](v T) *T { return &v }
-
-func contains(s, sub string) bool {
-	return len(s) >= len(sub) && (s == sub || (len(sub) > 0 && (indexOf(s, sub) >= 0)))
-}
-
-func indexOf(s, sub string) int {
-outer:
-	for i := 0; i+len(sub) <= len(s); i++ {
-		for j := 0; j < len(sub); j++ {
-			if s[i+j] != sub[j] {
-				continue outer
-			}
-		}
-		return i
-	}
-	return -1
 }

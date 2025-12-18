@@ -22,6 +22,7 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 const (
@@ -176,6 +177,8 @@ func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, 
 
 // updateOrCreateVMAgent ensures that the VMAgent is updated or created based on the provided VMDistributedCluster.
 func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmClusters []*vmv1beta1.VMCluster) (*vmv1beta1.VMAgent, error) {
+	logger.WithContext(ctx).Info("Reconciling VMAgent")
+
 	// Get existing vmagent obj using Name and cr namespace
 	vmAgentExists := true
 	vmAgentNeedsUpdate := false
@@ -292,13 +295,20 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 
 	// Create or update the vmagent object if spec has changed or it doesn't exist yet
 	if !vmAgentExists {
+		// TODO[vrutkovs]: add diff
+		logger.WithContext(ctx).Info("Creating VMAgent")
 		if err := rclient.Create(ctx, vmAgentObj); err != nil {
 			return nil, fmt.Errorf("failed to create VMAgent %s/%s: %w", vmAgentObj.Namespace, vmAgentObj.Name, err)
 		}
 	} else if vmAgentNeedsUpdate {
+		// TODO[vrutkovs]: add diff
+		logger.WithContext(ctx).Info("Updating VMAgent")
+
 		if err := rclient.Update(ctx, vmAgentObj); err != nil {
 			return nil, fmt.Errorf("failed to update VMAgent %s/%s: %w", vmAgentObj.Namespace, vmAgentObj.Name, err)
 		}
+	} else {
+		logger.WithContext(ctx).Info("VMAgent is up to date")
 	}
 	return vmAgentObj, nil
 }

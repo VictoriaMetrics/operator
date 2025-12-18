@@ -829,23 +829,23 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			// Verify resource versions have not changed (no updates performed)
 			var afterCluster vmv1beta1.VMCluster
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, &afterCluster)).To(Succeed())
-			Expect(afterCluster.ResourceVersion).To(Equal(clusterRV))
+			Expect(afterCluster.ResourceVersion).To(Equal(clusterRV), "VMCluster resource version should not change")
 
 			var afterAgent vmv1beta1.VMAgent
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: namespace}, &afterAgent)).To(Succeed())
-			Expect(afterAgent.ResourceVersion).To(Equal(agentRV))
+			Expect(afterAgent.ResourceVersion).To(Equal(agentRV), "VMAgent resource version should not change")
 
 			var afterAuthDeployment appsv1.Deployment
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthDeployName, Namespace: namespace}, &afterAuthDeployment)).To(Succeed())
-			Expect(afterAuthDeployment.ResourceVersion).To(Equal(authDeploymentRV))
+			Expect(afterAuthDeployment.ResourceVersion).To(Equal(authDeploymentRV), "VMAuthLB Deployment resource version should not change")
 
 			var afterAuthService corev1.Service
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthServiceName, Namespace: namespace}, &afterAuthService)).To(Succeed())
-			Expect(afterAuthService.ResourceVersion).To(Equal(authServiceRV))
+			Expect(afterAuthService.ResourceVersion).To(Equal(authServiceRV), "VMAuthLB Service resource version should not change")
 
 			var afterAuthSecret corev1.Secret
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthSecretName, Namespace: namespace}, &afterAuthSecret)).To(Succeed())
-			Expect(afterAuthSecret.ResourceVersion).To(Equal(authSecretRV))
+			Expect(afterAuthSecret.ResourceVersion).To(Equal(authSecretRV), "VMAuthLB Secret resource version should not change")
 		})
 	})
 

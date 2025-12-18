@@ -16,6 +16,7 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 var (
@@ -83,8 +84,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		Timeout: httpTimeout,
 	}
 
+	logger.WithContext(ctx).Info("Reconciling VMClusters")
+
 	// Apply changes to VMClusters one by one if new spec needs to be applied
 	for i, vmClusterObj := range vmClusters {
+		logger.WithContext(ctx).Info("Reconciling VMCluster", "index", i, "name", vmClusterObj.Name)
+
 		zoneRefOrSpec := cr.Spec.Zones.VMClusters[i]
 
 		needsToBeCreated := false
@@ -137,10 +142,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		vmClusterObj.Spec = mergedSpec
 
 		if needsToBeCreated {
+			logger.WithContext(ctx).Info("Creating VMCluster", "index", i, "name", vmClusterObj.Name)
 			if err := rclient.Create(ctx, vmClusterObj); err != nil {
 				return fmt.Errorf("failed to create vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 			}
 		} else {
+			logger.WithContext(ctx).Info("Excluding VMCluster from vmauth configuration", "index", i, "name", vmClusterObj.Name)
 			// Update vmauth lb with excluded cluster
 			activeVMClusters := make([]*vmv1beta1.VMCluster, 0, len(vmClusters)-1)
 			for _, vmc := range vmClusters {
@@ -153,23 +160,27 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 				return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
 			}
 
+			logger.WithContext(ctx).Info("Updating VMCluster", "index", i, "name", vmClusterObj.Name)
 			// Apply the updated object
 			if err := rclient.Update(ctx, vmClusterObj); err != nil {
 				return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 			}
 		}
 
-		// Update vmauth lb with the included cluster (for both new and updated clusters)
-		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
-			return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
-		}
+		// TODO[vrutkovs]: remove it
+		// // Update vmauth lb with the included cluster (for both new and updated clusters)
+		// if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
+		// 	return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
+		// }
 
 		// Wait for VMCluster to be ready
+		logger.WithContext(ctx).Info("Waiting for VMCluster to become operational", "index", i, "name", vmClusterObj.Name)
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 
 		// Wait for VMAgent metrics to show no pending queue
+		logger.WithContext(ctx).Info("Fetching VMAgent metrics", "index", i, "name", vmClusterObj.Name, "timeout", vmAgentFlushDeadlineDeadline)
 		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmAgentFlushDeadlineDeadline, rclient); err != nil {
 			// Ignore this error when running e2e tests - these need to run in the same network as pods
 			if os.Getenv("E2E_TEST") != "true" {
@@ -177,12 +188,16 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			}
 		}
 
+		logger.WithContext(ctx).Info("Re-enabling VMCluster in vmauth", "index", i, "name", vmClusterObj.Name)
 		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
 			return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
 		}
 
-		// Sleep for zoneUpdatePause time between VMClusters updates
-		time.Sleep(zoneUpdatePause)
+		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)
+		if i != len(vmClusters)-1 {
+			logger.WithContext(ctx).Info("Sleeping between zone updates", "index", i, "name", vmClusterObj.Name, "zoneUpdatePause", zoneUpdatePause)
+			time.Sleep(zoneUpdatePause)
+		}
 	}
 	return nil
 }

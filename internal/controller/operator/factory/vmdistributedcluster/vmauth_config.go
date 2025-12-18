@@ -24,6 +24,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
@@ -283,7 +284,8 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
 }
 
-func updateVMAuthLBSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
+func createOrUpdateVMAuthLBSecret(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
+	logger.WithContext(ctx).Info("Preparing VMAuth LB configuration")
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildLBConfigMeta(prevCR))
@@ -368,11 +370,8 @@ func buildRoleBinding(cr *vmv1alpha1.VMDistributedCluster) *rbacv1.RoleBinding {
 	}
 }
 
-func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
-	spec := cr.GetVMAuthSpec()
-
-	updateVMAuthLBSecret(ctx, rclient, cr, prevCR, vmClusters)
-
+func updateVMAuthLBServiceAccount(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
+	logger.WithContext(ctx).Info("Preparing VMAuth LB serviceaccount")
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetServiceAccountName(),
@@ -391,6 +390,11 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 		return fmt.Errorf("failed create service account: %w", err)
 	}
 
+	return nil
+}
+
+func updateAuthLBDeployment(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
+	logger.WithContext(ctx).Info("Preparing VMAuth LB deployment")
 	lbDep, err := buildVMAuthLBDeployment(cr)
 	if err != nil {
 		return fmt.Errorf("cannot build deployment for vmauth loadbalancing: %w", err)
@@ -405,10 +409,23 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, false); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb deployment: %w", err)
 	}
-	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {
-		return err
+	return nil
+}
+
+func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
+	if err := createOrUpdateVMAuthLBSecret(ctx, rclient, cr, prevCR, vmClusters); err != nil {
+		return fmt.Errorf("cannot update vmauth lb secret: %w", err)
 	}
-	if spec.PodDisruptionBudget != nil {
+	if err := updateVMAuthLBServiceAccount(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot update vmauth lb service account: %w", err)
+	}
+	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot create or update vmauth lb service: %w", err)
+	}
+	if err := updateAuthLBDeployment(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot create or update vmauth lb deployment: %w", err)
+	}
+	if cr.GetVMAuthSpec().PodDisruptionBudget != nil {
 		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
 		}

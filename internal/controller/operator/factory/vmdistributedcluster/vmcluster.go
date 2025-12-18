@@ -20,6 +20,7 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // getReferencedVMCluster fetches an existing VMCluster based on its reference.
@@ -37,6 +38,8 @@ func getReferencedVMCluster(ctx context.Context, rclient client.Client, namespac
 
 // fetchVMClusters ensures that referenced VMClusters are fetched and validated.
 func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []vmv1alpha1.VMClusterRefOrSpec) ([]*vmv1beta1.VMCluster, error) {
+	logger.WithContext(ctx).Info("Fetching VMClusters")
+
 	var err error
 	vmClusters := make([]*vmv1beta1.VMCluster, len(refs))
 	for i, vmClusterObjOrRef := range refs {
@@ -71,6 +74,7 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 		return vmClusters[i].Status.ObservedGeneration > vmClusters[j].Status.ObservedGeneration
 	})
 
+	logger.WithContext(ctx).Info(fmt.Sprintf("Found %d VMClusters", len(vmClusters)))
 	return vmClusters, nil
 }
 

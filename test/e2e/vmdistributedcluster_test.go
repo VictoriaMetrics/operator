@@ -20,6 +20,7 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	vmdc "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributedcluster"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
@@ -740,6 +741,111 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
 				return *vmCluster.Spec.VMStorage.ReplicaCount
 			}, eventualDeploymentAppReadyTimeout).Should(Equal(initialReplicas + 1))
+		})
+
+		It("should be idempotent when calling CreateOrUpdate multiple times", func() {
+			const (
+				attempts    = 3
+				httpTimeout = 1 * time.Second
+			)
+
+			By("creating a VMCluster for idempotency test")
+			vmCluster := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-idempotent",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+
+			By("creating a VMDistributedCluster with this VMCluster")
+			namespacedName.Name = "distributed-idempotent"
+			cr := &vmv1alpha1.VMDistributedCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      namespacedName.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedClusterSpec{
+					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
+					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
+					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
+					}},
+				},
+			}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+			})
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
+			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
+
+			// Capture resource versions of key child resources
+			var beforeCluster vmv1beta1.VMCluster
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, &beforeCluster)).To(Succeed())
+			clusterRV := beforeCluster.ResourceVersion
+
+			var beforeAgent vmv1beta1.VMAgent
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: namespace}, &beforeAgent)).To(Succeed())
+			agentRV := beforeAgent.ResourceVersion
+
+			var beforeAuthDeployment appsv1.Deployment
+			beforeAuthDeployName := cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthDeployName, Namespace: namespace}, &beforeAuthDeployment)).To(Succeed())
+			authDeploymentRV := beforeAuthDeployment.ResourceVersion
+
+			var beforeAuthService corev1.Service
+			beforeAuthServiceName := cr.Spec.VMAuth.Name
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthServiceName, Namespace: namespace}, &beforeAuthService)).To(Succeed())
+			authServiceRV := beforeAuthService.ResourceVersion
+
+			var beforeAuthSecret corev1.Secret
+			beforeAuthSecretName := cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthSecretName, Namespace: namespace}, &beforeAuthSecret)).To(Succeed())
+			authSecretRV := beforeAuthSecret.ResourceVersion
+
+			// Call CreateOrUpdate multiple times and ensure it succeeds and doesn't modify child resources
+			for i := 0; i < attempts; i++ {
+				var latestCR vmv1alpha1.VMDistributedCluster
+				Expect(k8sClient.Get(ctx, namespacedName, &latestCR)).To(Succeed())
+				// Ensure that TypeMeta is set for ownership check to pass
+				latestCR.Kind = "VMDistributedCluster"
+				latestCR.APIVersion = vmv1alpha1.GroupVersion.String()
+				k8sClient.Scheme().Default(&latestCR)
+				Expect(vmdc.CreateOrUpdate(ctx, &latestCR, k8sClient, k8sClient.Scheme(), httpTimeout)).To(Succeed())
+			}
+
+			// Verify resource versions have not changed (no updates performed)
+			var afterCluster vmv1beta1.VMCluster
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, &afterCluster)).To(Succeed())
+			Expect(afterCluster.ResourceVersion).To(Equal(clusterRV))
+
+			var afterAgent vmv1beta1.VMAgent
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: namespace}, &afterAgent)).To(Succeed())
+			Expect(afterAgent.ResourceVersion).To(Equal(agentRV))
+
+			var afterAuthDeployment appsv1.Deployment
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthDeployName, Namespace: namespace}, &afterAuthDeployment)).To(Succeed())
+			Expect(afterAuthDeployment.ResourceVersion).To(Equal(authDeploymentRV))
+
+			var afterAuthService corev1.Service
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthServiceName, Namespace: namespace}, &afterAuthService)).To(Succeed())
+			Expect(afterAuthService.ResourceVersion).To(Equal(authServiceRV))
+
+			var afterAuthSecret corev1.Secret
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthSecretName, Namespace: namespace}, &afterAuthSecret)).To(Succeed())
+			Expect(afterAuthSecret.ResourceVersion).To(Equal(authSecretRV))
 		})
 	})
 

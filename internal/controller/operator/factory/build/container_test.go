@@ -146,7 +146,7 @@ func Test_buildProbe(t *testing.T) {
 func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 	type opts struct {
 		args      []string
-		extraArgs map[string]string
+		extraArgs map[string]vmv1beta1.ArgValue
 		dashes    string
 		want      []string
 	}
@@ -168,42 +168,52 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 
 	// override default
 	f(opts{
-		args:      []string{"-http.ListenAddr=:8081"},
-		extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
-		dashes:    "-",
-		want:      []string{"-http.ListenAddr=127.0.0.1:8085"},
+		args: []string{"-http.ListenAddr=:8081"},
+		extraArgs: map[string]vmv1beta1.ArgValue{
+			"http.ListenAddr": []string{"127.0.0.1:8085"},
+		},
+		dashes: "-",
+		want:   []string{"-http.ListenAddr=127.0.0.1:8085"},
 	})
 
 	// override default, add to the end
 	f(opts{
-		args:      []string{"-http.ListenAddr=:8081", "-promscrape.config=/opt/vmagent.yml"},
-		extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
-		dashes:    "-",
-		want:      []string{"-promscrape.config=/opt/vmagent.yml", "-http.ListenAddr=127.0.0.1:8085"},
+		args: []string{"-http.ListenAddr=:8081", "-promscrape.config=/opt/vmagent.yml"},
+		extraArgs: map[string]vmv1beta1.ArgValue{
+			"http.ListenAddr": []string{"127.0.0.1:8085"},
+		},
+		dashes: "-",
+		want:   []string{"-promscrape.config=/opt/vmagent.yml", "-http.ListenAddr=127.0.0.1:8085"},
 	})
 
 	// two dashes, extend
 	f(opts{
-		args:      []string{"--web.timeout=0"},
-		extraArgs: map[string]string{"log.level": "debug"},
-		dashes:    "--",
-		want:      []string{"--web.timeout=0", "--log.level=debug"},
+		args: []string{"--web.timeout=0"},
+		extraArgs: map[string]vmv1beta1.ArgValue{
+			"log.level": []string{"debug"},
+		},
+		dashes: "--",
+		want:   []string{"--web.timeout=0", "--log.level=debug"},
 	})
 
 	// two dashes, override default
 	f(opts{
-		args:      []string{"--log.level=info"},
-		extraArgs: map[string]string{"log.level": "debug"},
-		dashes:    "--",
-		want:      []string{"--log.level=debug"},
+		args: []string{"--log.level=info"},
+		extraArgs: map[string]vmv1beta1.ArgValue{
+			"log.level": []string{"debug"},
+		},
+		dashes: "--",
+		want:   []string{"--log.level=debug"},
 	})
 
 	// two dashes, alertmanager migration
 	f(opts{
-		args:      []string{"--log.level=info"},
-		extraArgs: map[string]string{"-web.externalURL": "http://domain.example"},
-		dashes:    "--",
-		want:      []string{"--log.level=info", "--web.externalURL=http://domain.example"},
+		args: []string{"--log.level=info"},
+		extraArgs: map[string]vmv1beta1.ArgValue{
+			"-web.externalURL": []string{"http://domain.example"},
+		},
+		dashes: "--",
+		want:   []string{"--log.level=info", "--web.externalURL=http://domain.example"},
 	})
 }
 

@@ -11,7 +11,7 @@ import (
 
 func Test_buildPathWithPrefixFlag(t *testing.T) {
 	type opts struct {
-		flags       map[string]string
+		flags       map[string]ArgValue
 		defaultPath string
 		want        string
 	}
@@ -29,15 +29,21 @@ func Test_buildPathWithPrefixFlag(t *testing.T) {
 	// with some prefix
 	f(opts{
 		defaultPath: healthPath,
-		flags:       map[string]string{"some.flag": "some-value", vmPathPrefixFlagName: "/prefix/path/"},
-		want:        fmt.Sprintf("/prefix/path%s", healthPath),
+		flags: map[string]ArgValue{
+			"some.flag":          []string{"some-value"},
+			vmPathPrefixFlagName: []string{"/prefix/path/"},
+		},
+		want: fmt.Sprintf("/prefix/path%s", healthPath),
 	})
 
 	// with bad path
 	f(opts{
 		defaultPath: healthPath,
-		flags:       map[string]string{"some.flag": "some-value", vmPathPrefixFlagName: "badpath/badvalue"},
-		want:        fmt.Sprintf("badpath/badvalue%s", healthPath),
+		flags: map[string]ArgValue{
+			"some.flag":          []string{"some-value"},
+			vmPathPrefixFlagName: []string{"badpath/badvalue"},
+		},
+		want: fmt.Sprintf("badpath/badvalue%s", healthPath),
 	})
 }
 

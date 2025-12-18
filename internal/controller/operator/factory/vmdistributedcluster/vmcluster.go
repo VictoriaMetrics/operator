@@ -236,7 +236,7 @@ func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *
 			owner.Name == cr.GetName()
 
 		if !isCROwner {
-			return fmt.Errorf("vmcluster %s has unexpected owner reference: %s/%s/%s", vmClusterObj.Name, owner.APIVersion, owner.Kind, owner.Name)
+			return fmt.Errorf("vmcluster %s has unexpected owner reference: %s/%s/%s, expected %s/%s/%s", vmClusterObj.Name, owner.APIVersion, owner.Kind, owner.Name, cr.APIVersion, cr.Kind, cr.Name)
 		}
 	}
 	return nil

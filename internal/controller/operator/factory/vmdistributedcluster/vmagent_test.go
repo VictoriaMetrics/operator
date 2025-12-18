@@ -104,7 +104,7 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 	t.Run("VMAgent metrics return zero", func(t *testing.T) {
 
 		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 0")
+			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 0")
 		}))
 		defer ts.Close()
 
@@ -120,9 +120,9 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			callCount++
 			if callCount == 1 {
-				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 100")
+				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 100")
 			} else {
-				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 0")
+				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 0")
 			}
 		}))
 		defer ts.Close()
@@ -138,7 +138,7 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 	t.Run("VMAgent metrics timeout", func(t *testing.T) {
 		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(2 * time.Second) // Simulate a long response
-			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending 0")
+			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 0")
 		}))
 		defer ts.Close()
 

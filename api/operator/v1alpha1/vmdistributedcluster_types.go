@@ -443,14 +443,9 @@ func (cr *VMDistributedCluster) AutomountServiceAccountToken() bool {
 	return true
 }
 
-// AutomountServiceAccountToken implements reloadable interface
-func (cr *VMDistributedCluster) GetReloadURL() string {
-	return vmv1beta1.BuildReloadPathWithPort(cr.Spec.VMAuth.Spec.ExtraArgs, cr.Spec.VMAuth.Spec.Port)
-}
-
 // GetReloaderParams implements reloadable interface
 func (cr *VMDistributedCluster) GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams {
-	return &cr.Spec.VMAuth.Spec.CommonConfigReloaderParams
+	return &cr.GetVMAuthSpec().CommonConfigReloaderParams
 }
 
 // UseProxyProtocol implements reloadable interface

@@ -164,8 +164,8 @@ func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, 
 	for _, metric := range strings.Split(metrics, "\n") {
 		value, found := strings.CutPrefix(metric, VMAgentQueueMetricName)
 		if found {
-			value = strings.Trim(value, " ")
-			res, err := strconv.ParseFloat(value, 64)
+			values := strings.Split(value, " ")
+			res, err := strconv.ParseFloat(values[len(values)-1], 64)
 			if err != nil {
 				return 0, fmt.Errorf("could not parse metric value %s: %w", metric, err)
 			}

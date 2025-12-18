@@ -22,7 +22,7 @@ func VMBackupManager(
 	cr *vmv1beta1.VMBackup,
 	port string,
 	storagePath, dataVolumeName string,
-	extraArgs map[string]string,
+	extraArgs map[string]vmv1beta1.ArgValue,
 	isCluster bool,
 	license *vmv1beta1.License,
 ) (*corev1.Container, error) {

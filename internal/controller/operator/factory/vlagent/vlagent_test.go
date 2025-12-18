@@ -1211,8 +1211,8 @@ serviceaccountname: vlagent-agent
 				Port:                "9425",
 			},
 			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ExtraArgs: map[string]string{
-					"remoteWrite.maxDiskUsagePerURL": "35GiB",
+				ExtraArgs: map[string]vmv1beta1.ArgValue{
+					"remoteWrite.maxDiskUsagePerURL": []string{"35GiB"},
 				},
 			},
 			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{

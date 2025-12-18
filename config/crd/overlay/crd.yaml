@@ -551,12 +551,10 @@ spec:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string
               extraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ExtraArgs that will be passed to the application container
                   for example remoteWrite.tmpDataPath: /tmp
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               extraEnvs:
                 description: ExtraEnvs that will be passed to the application container
                 items:
@@ -2525,12 +2523,10 @@ spec:
                     description: DNSPolicy sets DNS policy for the pod
                     type: string
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: |-
                       ExtraArgs that will be passed to the application container
                       for example remoteWrite.tmpDataPath: /tmp
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     description: ExtraEnvs that will be passed to the application
                       container
@@ -3451,12 +3447,10 @@ spec:
                     description: DNSPolicy sets DNS policy for the pod
                     type: string
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: |-
                       ExtraArgs that will be passed to the application container
                       for example remoteWrite.tmpDataPath: /tmp
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     description: ExtraEnvs that will be passed to the application
                       container
@@ -4247,12 +4241,10 @@ spec:
                     description: DNSPolicy sets DNS policy for the pod
                     type: string
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: |-
                       ExtraArgs that will be passed to the application container
                       for example remoteWrite.tmpDataPath: /tmp
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     description: ExtraEnvs that will be passed to the application
                       container
@@ -6005,12 +5997,10 @@ spec:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string
               extraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ExtraArgs that will be passed to the application container
                   for example remoteWrite.tmpDataPath: /tmp
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               extraEnvs:
                 description: ExtraEnvs that will be passed to the application container
                 items:
@@ -7929,12 +7919,10 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               configReloaderExtraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
                   for example resyncInterval: "30s"
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               configReloaderImage:
                 description: ConfigReloaderImage defines image:tag for config-reloader
                   container
@@ -8110,12 +8098,10 @@ spec:
                   it doesn't affect metrics ingested directly by push API's
                 type: object
               extraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ExtraArgs that will be passed to the application container
                   for example remoteWrite.tmpDataPath: /tmp
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               extraEnvs:
                 description: ExtraEnvs that will be passed to the application container
                 items:
@@ -17680,12 +17666,10 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               configReloaderExtraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
                   for example resyncInterval: "30s"
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               configReloaderImage:
                 description: ConfigReloaderImage defines image:tag for config-reloader
                   container
@@ -17923,12 +17907,10 @@ spec:
                   served from root of a DNS name.
                 type: string
               extraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ExtraArgs that will be passed to the application container
                   for example remoteWrite.tmpDataPath: /tmp
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               extraEnvs:
                 description: ExtraEnvs that will be passed to the application container
                 items:
@@ -19750,12 +19732,10 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               configReloaderExtraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
                   for example resyncInterval: "30s"
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               configReloaderImage:
                 description: ConfigReloaderImage defines image:tag for config-reloader
                   container
@@ -20042,12 +20022,10 @@ spec:
                   all generated recording rules and alerts.'
                 type: object
               extraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ExtraArgs that will be passed to the application container
                   for example remoteWrite.tmpDataPath: /tmp
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               extraEnvs:
                 description: ExtraEnvs that will be passed to the application container
                 items:
@@ -22273,12 +22251,10 @@ spec:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string
               extraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ExtraArgs that will be passed to the application container
                   for example remoteWrite.tmpDataPath: /tmp
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               extraEnvs:
                 description: ExtraEnvs that will be passed to the application container
                 items:
@@ -24503,12 +24479,10 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               configReloaderExtraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
                   for example resyncInterval: "30s"
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               configReloaderImage:
                 description: ConfigReloaderImage defines image:tag for config-reloader
                   container
@@ -24702,12 +24676,10 @@ spec:
                     x-kubernetes-map-type: atomic
                 type: object
               extraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ExtraArgs that will be passed to the application container
                   for example remoteWrite.tmpDataPath: /tmp
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               extraEnvs:
                 description: ExtraEnvs that will be passed to the application container
                 items:
@@ -27385,12 +27357,10 @@ spec:
                     description: DNSPolicy sets DNS policy for the pod
                     type: string
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: |-
                       ExtraArgs that will be passed to the application container
                       for example remoteWrite.tmpDataPath: /tmp
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     description: ExtraEnvs that will be passed to the application
                       container
@@ -28193,12 +28163,10 @@ spec:
                     description: DNSPolicy sets DNS policy for the pod
                     type: string
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: |-
                       ExtraArgs that will be passed to the application container
                       for example remoteWrite.tmpDataPath: /tmp
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     description: ExtraEnvs that will be passed to the application
                       container
@@ -29498,12 +29466,10 @@ spec:
                     description: DNSPolicy sets DNS policy for the pod
                     type: string
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: |-
                       ExtraArgs that will be passed to the application container
                       for example remoteWrite.tmpDataPath: /tmp
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     description: ExtraEnvs that will be passed to the application
                       container
@@ -30851,10 +30817,8 @@ spec:
                         description: Defines if weekly backups disabled (default false)
                         type: boolean
                       extraArgs:
-                        additionalProperties:
-                          type: string
                         description: extra args like maxBytesPerSecond default 0
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       extraEnvs:
                         items:
                           description: EnvVar represents an environment variable present
@@ -39207,12 +39171,10 @@ spec:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string
               extraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ExtraArgs that will be passed to the application container
                   for example remoteWrite.tmpDataPath: /tmp
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               extraEnvs:
                 description: ExtraEnvs that will be passed to the application container
                 items:
@@ -40446,10 +40408,8 @@ spec:
                     description: Defines if weekly backups disabled (default false)
                     type: boolean
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: extra args like maxBytesPerSecond default 0
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     items:
                       description: EnvVar represents an environment variable present
@@ -42786,12 +42746,10 @@ spec:
                     description: DNSPolicy sets DNS policy for the pod
                     type: string
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: |-
                       ExtraArgs that will be passed to the application container
                       for example remoteWrite.tmpDataPath: /tmp
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     description: ExtraEnvs that will be passed to the application
                       container
@@ -43606,12 +43564,10 @@ spec:
                     description: DNSPolicy sets DNS policy for the pod
                     type: string
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: |-
                       ExtraArgs that will be passed to the application container
                       for example remoteWrite.tmpDataPath: /tmp
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     description: ExtraEnvs that will be passed to the application
                       container
@@ -44407,12 +44363,10 @@ spec:
                     description: DNSPolicy sets DNS policy for the pod
                     type: string
                   extraArgs:
-                    additionalProperties:
-                      type: string
                     description: |-
                       ExtraArgs that will be passed to the application container
                       for example remoteWrite.tmpDataPath: /tmp
-                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   extraEnvs:
                     description: ExtraEnvs that will be passed to the application
                       container
@@ -46034,12 +45988,10 @@ spec:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string
               extraArgs:
-                additionalProperties:
-                  type: string
                 description: |-
                   ExtraArgs that will be passed to the application container
                   for example remoteWrite.tmpDataPath: /tmp
-                type: object
+                x-kubernetes-preserve-unknown-fields: true
               extraEnvs:
                 description: ExtraEnvs that will be passed to the application container
                 items:

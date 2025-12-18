@@ -236,10 +236,8 @@ func (cr *VMAlertmanager) GetReloaderParams() *CommonConfigReloaderParams {
 
 // UseProxyProtocol implements reloadable interface
 func (cr *VMAlertmanager) UseProxyProtocol() bool {
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		return true
-	}
-	return false
+	v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]
+	return ok && len(v) > 0 && v[0] == "true"
 }
 
 // AutomountServiceAccountToken implements reloadable interface
@@ -423,7 +421,7 @@ func (cr *VMAlertmanager) GetMetricPath() string {
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr *VMAlertmanager) GetExtraArgs() map[string]string {
+func (cr *VMAlertmanager) GetExtraArgs() map[string]ArgValue {
 	return cr.Spec.ExtraArgs
 }
 

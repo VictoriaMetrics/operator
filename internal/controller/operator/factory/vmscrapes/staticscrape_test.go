@@ -1,4 +1,4 @@
-package vmsingle
+package vmscrapes
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 
 func Test_generateStaticScrapeConfig(t *testing.T) {
 	type opts struct {
-		cr                *vmv1beta1.VMSingle
+		cr                *vmv1beta1.VMAgent
 		sc                *vmv1beta1.VMStaticScrape
 		predefinedObjects []runtime.Object
 		want              string
@@ -27,8 +27,9 @@ func Test_generateStaticScrapeConfig(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generateStaticScrapeConfig(ctx, o.cr, o.sc, o.sc.Spec.TargetEndpoints[0], 0, ac)
+		ac := getAssetsCache(ctx, fclient)
+		sp := &o.cr.Spec.CommonScrapeParams
+		got, err := generateStaticScrapeConfig(ctx, sp, o.sc, o.sc.Spec.TargetEndpoints[0], 0, ac)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -43,9 +44,9 @@ func Test_generateStaticScrapeConfig(t *testing.T) {
 
 	// basic cfg
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "default-vmsingle",
+				Name:      "default-vmagent",
 				Namespace: "default",
 			},
 		},
@@ -81,12 +82,12 @@ relabel_configs:
 
 	// basic cfg with overrides
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "default-vmsingle",
+				Name:      "default-vmagent",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
+			Spec: vmv1beta1.VMAgentSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
 						OverrideHonorTimestamps: false,
@@ -143,12 +144,12 @@ relabel_configs:
 
 	// complete cfg with overrides
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "default-vmsingle",
+				Name:      "default-vmagent",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
+			Spec: vmv1beta1.VMAgentSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
 						OverrideHonorTimestamps: false,
@@ -240,7 +241,7 @@ relabel_configs:
 								{
 									Action:       "drop",
 									SourceLabels: []string{"src"},
-									Regex:        []string{"vmsingle", "vmalert"},
+									Regex:        []string{"vmagent", "vmalert"},
 								},
 							},
 							MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
@@ -341,7 +342,7 @@ relabel_configs:
 - source_labels:
   - src
   regex:
-  - vmsingle
+  - vmagent
   - vmalert
   action: drop
 - target_label: namespace
@@ -363,9 +364,9 @@ proxy_basic_auth:
   password: proxy-password
 tls_config:
   insecure_skip_verify: true
-  ca_file: /etc/vm-tls/certs/default_tls-cfg_ca
+  ca_file: /tls/default_tls-cfg_ca
   cert_file: /tmp/cert-part
-  key_file: /etc/vm-tls/certs/default_tls-cfg_key
+  key_file: /tls/default_tls-cfg_key
 bearer_token: token-value
 basic_auth:
   username: admin

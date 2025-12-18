@@ -103,11 +103,6 @@ type VMAgentSpec struct {
 
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
-	// IngestOnlyMode switches vmagent into unmanaged mode
-	// it disables any config generation for scraping
-	// Currently it prevents vmagent from managing tls and auth options for remote write
-	// +optional
-	IngestOnlyMode bool `json:"ingestOnlyMode,omitempty"`
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
@@ -612,64 +607,36 @@ func (*VMAgent) ProbeNeedLiveness() bool {
 
 // IsUnmanaged checks if object should managed any config objects
 func (cr *VMAgent) IsUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
 	return cr.Spec.isUnmanaged()
 }
 
 // IsNodeScrapeUnmanaged checks if vmagent should managed any VMNodeScrape objects
 func (cr *VMAgent) IsNodeScrapeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
 	return cr.Spec.isNodeScrapeUnmanaged()
 }
 
 // IsServiceScrapeUnmanaged checks if vmagent should managed any VMServiceScrape objects
 func (cr *VMAgent) IsServiceScrapeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
 	return cr.Spec.isServiceScrapeUnmanaged()
 }
 
 // IsUnmanaged checks if vmagent should managed any VMPodScrape objects
 func (cr *VMAgent) IsPodScrapeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
 	return cr.Spec.isPodScrapeUnmanaged()
 }
 
 // IsProbeUnmanaged checks if vmagent should managed any VMProbe objects
 func (cr *VMAgent) IsProbeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
 	return cr.Spec.isProbeUnmanaged()
 }
 
 // IsStaticScrapeUnmanaged checks if vmagent should managed any VMStaticScrape objects
 func (cr *VMAgent) IsStaticScrapeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
 	return cr.Spec.isStaticScrapeUnmanaged()
 }
 
 // IsScrapeConfigUnmanaged checks if vmagent should managed any VMScrapeConfig objects
 func (cr *VMAgent) IsScrapeConfigUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
 	return cr.Spec.isScrapeConfigUnmanaged()
 }
 

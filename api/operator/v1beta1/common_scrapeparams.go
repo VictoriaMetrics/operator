@@ -536,6 +536,11 @@ type CommonScrapeParams struct {
 	// it doesn't affect metrics ingested directly by push API's
 	// +optional
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
+	// IngestOnlyMode switches vmagent or vmsingle into unmanaged mode
+	// it disables any config generation for scraping
+	// Currently it prevents vmagent from managing tls and auth options for remote write
+	// +optional
+	IngestOnlyMode *bool `json:"ingestOnlyMode,omitempty"`
 	// EnableKubernetesAPISelectors instructs vmagent to use CRD scrape objects spec.selectors for
 	// Kubernetes API list and watch requests.
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#list-and-watch-filtering
@@ -547,6 +552,9 @@ type CommonScrapeParams struct {
 
 // isUnmanaged checks if object should managed any config objects
 func (cr *CommonScrapeParams) isUnmanaged() bool {
+	if cr.IngestOnlyMode == nil || *cr.IngestOnlyMode {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.NodeScrapeSelector == nil && cr.NodeScrapeNamespaceSelector == nil &&
 		cr.ServiceScrapeSelector == nil && cr.ServiceScrapeNamespaceSelector == nil &&
@@ -558,36 +566,54 @@ func (cr *CommonScrapeParams) isUnmanaged() bool {
 
 // isNodeScrapeUnmanaged checks if scraping agent should managed any VMNodeScrape objects
 func (cr *CommonScrapeParams) isNodeScrapeUnmanaged() bool {
+	if cr.IngestOnlyMode == nil || *cr.IngestOnlyMode {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.NodeScrapeSelector == nil && cr.NodeScrapeNamespaceSelector == nil
 }
 
 // isServiceScrapeUnmanaged checks if scraping agent should managed any VMServiceScrape objects
 func (cr *CommonScrapeParams) isServiceScrapeUnmanaged() bool {
+	if cr.IngestOnlyMode == nil || *cr.IngestOnlyMode {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.ServiceScrapeSelector == nil && cr.ServiceScrapeNamespaceSelector == nil
 }
 
 // isUnmanaged checks if scraping agent should managed any VMPodScrape objects
 func (cr *CommonScrapeParams) isPodScrapeUnmanaged() bool {
+	if cr.IngestOnlyMode == nil || *cr.IngestOnlyMode {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.PodScrapeSelector == nil && cr.PodScrapeNamespaceSelector == nil
 }
 
 // isProbeUnmanaged checks if scraping agent should managed any VMProbe objects
 func (cr *CommonScrapeParams) isProbeUnmanaged() bool {
+	if cr.IngestOnlyMode == nil || *cr.IngestOnlyMode {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.ProbeSelector == nil && cr.ProbeNamespaceSelector == nil
 }
 
 // isStaticScrapeUnmanaged checks if scraping agent should managed any VMStaticScrape objects
 func (cr *CommonScrapeParams) isStaticScrapeUnmanaged() bool {
+	if cr.IngestOnlyMode == nil || *cr.IngestOnlyMode {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.StaticScrapeSelector == nil && cr.StaticScrapeNamespaceSelector == nil
 }
 
 // isScrapeConfigUnmanaged checks if scraping agent should managed any VMScrapeConfig objects
 func (cr *CommonScrapeParams) isScrapeConfigUnmanaged() bool {
+	if cr.IngestOnlyMode == nil || *cr.IngestOnlyMode {
+		return true
+	}
 	return !cr.SelectAllByDefault &&
 		cr.ScrapeConfigSelector == nil && cr.ScrapeConfigNamespaceSelector == nil
 }

@@ -1,15 +1,13 @@
-package vmsingle
+package vmagent
 
 import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/json"
 	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,90 +21,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func Test_generateRelabelConfig(t *testing.T) {
-	f := func(rc *vmv1beta1.RelabelConfig, want string) {
-		// related fields only filled during json unmarshal
-		j, err := json.Marshal(rc)
-		if err != nil {
-			t.Fatalf("cannot serialize relabelConfig: %s", err)
-		}
-		var rlbCfg vmv1beta1.RelabelConfig
-		if err := json.Unmarshal(j, &rlbCfg); err != nil {
-			t.Fatalf("cannot parse relabelConfig: %s", err)
-		}
-		got := generateRelabelConfig(&rlbCfg)
-		gotBytes, err := yaml.Marshal(got)
-		if err != nil {
-			t.Errorf("cannot marshal generateRelabelConfig to yaml: %e", err)
-			return
-		}
-		assert.Equal(t, want, string(gotBytes))
-	}
-
-	// ok base cfg
-	f(&vmv1beta1.RelabelConfig{
-		TargetLabel:  "address",
-		SourceLabels: []string{"__address__"},
-		Action:       "replace",
-	}, `source_labels:
-- __address__
-target_label: address
-action: replace
-`)
-
-	// ok base with underscore
-	f(&vmv1beta1.RelabelConfig{
-		UnderScoreTargetLabel:  "address",
-		UnderScoreSourceLabels: []string{"__address__"},
-		Action:                 "replace",
-	}, `source_labels:
-- __address__
-target_label: address
-action: replace
-`)
-
-	// ok base with graphite match labels
-	f(&vmv1beta1.RelabelConfig{
-		UnderScoreTargetLabel:  "address",
-		UnderScoreSourceLabels: []string{"__address__"},
-		Action:                 "graphite",
-		Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
-		Match:                  `foo.*.*.bar`,
-	}, `source_labels:
-- __address__
-target_label: address
-action: graphite
-match: foo.*.*.bar
-labels:
-  instance: ${2}:8080
-  job: $1
-`)
-
-	// with empty replacement and separator
-	f(&vmv1beta1.RelabelConfig{
-		UnderScoreTargetLabel:  "address",
-		UnderScoreSourceLabels: []string{"__address__"},
-		Action:                 "graphite",
-		Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
-		Match:                  `foo.*.*.bar`,
-		Separator:              ptr.To(""),
-		Replacement:            ptr.To(""),
-	}, `source_labels:
-- __address__
-separator: ""
-target_label: address
-replacement: ""
-action: graphite
-match: foo.*.*.bar
-labels:
-  instance: ${2}:8080
-  job: $1
-`)
-}
-
 func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 	type opts struct {
-		cr                *vmv1beta1.VMSingle
+		cr                *vmv1beta1.VMAgent
 		cfgMutator        func(c *config.BaseOperatorConf)
 		predefinedObjects []runtime.Object
 		wantConfig        string
@@ -131,7 +48,7 @@ func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 		}
 		var expectSecret corev1.Secret
 		if err := testClient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &expectSecret); err != nil {
-			t.Fatalf("cannot get vmsingle config secret: %s", err)
+			t.Fatalf("cannot get vmagent config secret: %s", err)
 		}
 		gotCfg := expectSecret.Data[scrapeGzippedFilename]
 		cfgB := bytes.NewBuffer(gotCfg)
@@ -149,13 +66,12 @@ func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 
 	// complete test
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				EnableScraping: true,
+			Spec: vmv1beta1.VMAgentSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
 					ServiceScrapeSelector:          &metav1.LabelSelector{},
@@ -542,9 +458,9 @@ scrape_configs:
   stream_parse: true
   proxy_tls_config:
     insecure_skip_verify: true
-    ca_file: /etc/vm-tls/certs/default_access-creds_ca
-    cert_file: /etc/vm-tls/certs/default_access-creds_cert
-    key_file: /etc/vm-tls/certs/default_access-creds_key
+    ca_file: /etc/vmagent-tls/certs/default_access-creds_ca
+    cert_file: /etc/vmagent-tls/certs/default_access-creds_cert
+    key_file: /etc/vmagent-tls/certs/default_access-creds_key
 - job_name: podScrape/default/test-vps/1
   kubernetes_sd_configs:
   - role: pod
@@ -587,9 +503,9 @@ scrape_configs:
     replacement: "801"
   tls_config:
     insecure_skip_verify: true
-    ca_file: /etc/vm-tls/certs/default_access-creds_ca
-    cert_file: /etc/vm-tls/certs/default_access-creds_cert
-    key_file: /etc/vm-tls/certs/default_access-creds_key
+    ca_file: /etc/vmagent-tls/certs/default_access-creds_ca
+    cert_file: /etc/vmagent-tls/certs/default_access-creds_cert
+    key_file: /etc/vmagent-tls/certs/default_access-creds_key
 - job_name: probe/kube-system/test-vmp
   honor_labels: false
   metrics_path: /probe
@@ -635,13 +551,12 @@ scrape_configs:
 
 	// with missing secret references
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				EnableScraping: true,
+			Spec: vmv1beta1.VMAgentSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
 					ServiceScrapeSelector:          &metav1.LabelSelector{},
@@ -931,13 +846,12 @@ scrape_configs:
 
 	// with changed default config value
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				EnableScraping: true,
+			Spec: vmv1beta1.VMAgentSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
 					ServiceScrapeSelector:          &metav1.LabelSelector{},
@@ -1145,13 +1059,12 @@ scrape_configs:
 
 	// with oauth2 tls config
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				EnableScraping: true,
+			Spec: vmv1beta1.VMAgentSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
 					ServiceScrapeSelector:          &metav1.LabelSelector{},
@@ -1458,9 +1371,9 @@ scrape_configs:
     client_secret: data
     token_url: http://some-url
     tls_config:
-      ca_file: /etc/vm-tls/certs/default_configmap_tls-default_CA
-      cert_file: /etc/vm-tls/certs/default_tls-auth_CERT
-      key_file: /etc/vm-tls/certs/default_tls-auth_SECRET_KEY
+      ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+      cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
+      key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
 - job_name: podScrape/default/dev-pods/0
   kubernetes_sd_configs:
   - role: pod
@@ -1495,9 +1408,9 @@ scrape_configs:
     client_secret: data
     token_url: http://some-url
     tls_config:
-      ca_file: /etc/vm-tls/certs/default_configmap_tls-default_CA
-      cert_file: /etc/vm-tls/certs/default_tls-auth_CERT
-      key_file: /etc/vm-tls/certs/default_tls-auth_SECRET_KEY
+      ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+      cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
+      key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
 - job_name: nodeScrape/default/k8s-nodes
   kubernetes_sd_configs:
   - role: node
@@ -1518,27 +1431,161 @@ scrape_configs:
     client_secret: data
     token_url: http://some-url
     tls_config:
-      ca_file: /etc/vm-tls/certs/default_configmap_tls-default_CA
-      cert_file: /etc/vm-tls/certs/default_tls-auth_CERT
-      key_file: /etc/vm-tls/certs/default_tls-auth_SECRET_KEY
+      ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+      cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
+      key_file: /etc/vmagent-tls/certs/default_tls-auth_SECRET_KEY
+`,
+	})
+
+	// daemonset mode
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "per-node",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				DaemonSetMode: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					SelectAllByDefault: true,
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default",
+				},
+			},
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default-2",
+				},
+			},
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "system",
+				},
+			},
+			&vmv1beta1.VMServiceScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "svc-1",
+					Namespace: "default-1",
+				},
+				Spec: vmv1beta1.VMServiceScrapeSpec{
+					Endpoints: []vmv1beta1.Endpoint{
+						{
+							Port: "http",
+						},
+					},
+				},
+			},
+			&vmv1beta1.VMPodScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMPodScrapeSpec{
+					PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+						{
+							Port: ptr.To("web"),
+						},
+						{
+							PortNumber: ptr.To(int32(8085)),
+						},
+					},
+				},
+			},
+		},
+		wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/per-node
+scrape_configs:
+- job_name: podScrape/default/pod-1/0
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+    selectors:
+    - role: pod
+      field: spec.nodeName=%{KUBE_NODE_NAME}
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: web
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/pod-1
+  - target_label: endpoint
+    replacement: web
+- job_name: podScrape/default/pod-1/1
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+    selectors:
+    - role: pod
+      field: spec.nodeName=%{KUBE_NODE_NAME}
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_number
+    regex: 8085
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/pod-1
 `,
 	})
 
 	// with invalid objects syntax
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "select-all",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				EnableScraping: true,
+			Spec: vmv1beta1.VMAgentSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					SelectAllByDefault: true,
 					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
 						ArbitraryFSAccessThroughSMs: vmv1beta1.ArbitraryFSAccessThroughSMsConfig{
 							Deny: true,
 						},
+					},
+				},
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{
+						URL: "http://some-single.example.com",
 					},
 				},
 			},
@@ -1599,15 +1646,19 @@ scrape_configs: []
 
 	// with partial missing refs
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "select-all",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				EnableScraping: true,
+			Spec: vmv1beta1.VMAgentSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					SelectAllByDefault: true,
+				},
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{
+						URL: "http://some-single.example.com",
+					},
 				},
 			},
 		},
@@ -1679,13 +1730,16 @@ scrape_configs: []
 
 	// with scrape classes
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "scrape-classes",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				EnableScraping: true,
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://some"},
+				},
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					SelectAllByDefault: true,
 					ScrapeClasses: []vmv1beta1.ScrapeClass{
@@ -1694,14 +1748,7 @@ scrape_configs: []
 							Default: ptr.To(true),
 							EndpointAuth: vmv1beta1.EndpointAuth{
 								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										ConfigMap: &corev1.ConfigMapKeySelector{
-											Key: "CA",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-default",
-											},
-										},
-									},
+									CA:         vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "CA", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-default"}}},
 									ServerName: "my-server",
 								},
 							},
@@ -1711,6 +1758,7 @@ scrape_configs: []
 								RelabelConfigs:       []*vmv1beta1.RelabelConfig{},
 							},
 						},
+
 						{
 							Name: "with-oauth2",
 							EndpointAuth: vmv1beta1.EndpointAuth{
@@ -1751,28 +1799,9 @@ scrape_configs: []
 										},
 									},
 									TLSConfig: &vmv1beta1.TLSConfig{
-										CA: vmv1beta1.SecretOrConfigMap{
-											ConfigMap: &corev1.ConfigMapKeySelector{
-												Key: "CA",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-default",
-												},
-											},
-										},
-										Cert: vmv1beta1.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												Key: "CERT",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "tls-auth",
-												},
-											},
-										},
-										KeySecret: &corev1.SecretKeySelector{
-											Key: "CERT",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-auth",
-											},
-										},
+										CA:        vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "CA", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-default"}}},
+										Cert:      vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "CERT", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-auth"}}},
+										KeySecret: &corev1.SecretKeySelector{Key: "CERT", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-auth"}},
 									},
 								},
 							},
@@ -1912,7 +1941,7 @@ scrape_configs:
   - target_label: endpoint
     replacement: some
   tls_config:
-    ca_file: /etc/vm-tls/certs/default_configmap_tls-default_CA
+    ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
     server_name: my-server
 - job_name: podScrape/default/class-oauth2-tls/0
   kubernetes_sd_configs:
@@ -1948,9 +1977,9 @@ scrape_configs:
     client_secret_file: /path/to/file
     token_url: http://some
     tls_config:
-      ca_file: /etc/vm-tls/certs/default_configmap_tls-default_CA
-      cert_file: /etc/vm-tls/certs/default_tls-auth_CERT
-      key_file: /etc/vm-tls/certs/default_tls-auth_CERT
+      ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
+      cert_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
+      key_file: /etc/vmagent-tls/certs/default_tls-auth_CERT
 - job_name: staticScrape/default/class-oauth2/0
   static_configs:
   - targets:
@@ -1966,7 +1995,7 @@ scrape_configs:
   honor_labels: false
   relabel_configs: []
   tls_config:
-    ca_file: /etc/vm-tls/certs/default_configmap_tls-default_CA
+    ca_file: /etc/vmagent-tls/certs/default_configmap_tls-default_CA
     server_name: my-server
   consul_sd_configs:
   - server: some
@@ -1980,13 +2009,12 @@ scrape_configs:
 
 	// oauth2 with partial fields set
 	f(opts{
-		cr: &vmv1beta1.VMSingle{
+		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "with-oauth2",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				EnableScraping: true,
+			Spec: vmv1beta1.VMAgentSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					SelectAllByDefault: true,
 				},
@@ -2103,20 +2131,24 @@ func TestScrapeObjectFailedStatus(t *testing.T) {
 		expectedConfig := `global:
   scrape_interval: 30s
   external_labels:
-    prometheus: default/vmsingle
+    prometheus: default/vmagent
 scrape_configs: []
 `
 		ctx := context.TODO()
 		testClient := k8stools.GetTestClientWithClientObjects([]client.Object{so})
 		build.AddDefaults(testClient.Scheme())
 
-		cr := &vmv1beta1.VMSingle{
+		cr := &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "vmsingle",
+				Name:      "vmagent",
 				Namespace: "default",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				EnableScraping: true,
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{
+						URL: "http://vmsingle.example.com",
+					},
+				},
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					SelectAllByDefault: true,
 				},
@@ -2128,7 +2160,7 @@ scrape_configs: []
 		}
 		var configSecret corev1.Secret
 		if err := testClient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &configSecret); err != nil {
-			t.Fatalf("cannot get vmsingle config secret: %s", err)
+			t.Fatalf("cannot get vmagent config secret: %s", err)
 		}
 
 		gotCfg := configSecret.Data[scrapeGzippedFilename]
@@ -2188,7 +2220,8 @@ scrape_configs: []
 				},
 			},
 		},
-	})
+	},
+	)
 	commonEndpointAuthWithMissingRef := vmv1beta1.EndpointAuth{
 		BasicAuth: &vmv1beta1.BasicAuth{
 			Username: corev1.SecretKeySelector{

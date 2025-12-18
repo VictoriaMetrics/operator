@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -12,14 +12,14 @@ import (
 
 func generateServiceScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	sp *vmv1beta1.CommonScrapeParams,
+	pos *ParsedObjects,
 	sc *vmv1beta1.VMServiceScrape,
 	ep vmv1beta1.Endpoint,
 	i int,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	sp := &cr.Spec.CommonScrapeParams
 	se := &sp.CommonScrapeSecurityEnforcements
 	scrapeClass := getScrapeClass(spec.ScrapeClassName, sp)
 	if scrapeClass != nil {
@@ -48,9 +48,9 @@ func generateServiceScrapeConfig(
 	}
 	k8sSDOpts := generateK8SSDConfigOptions{
 		namespaces:         selectedNamespaces,
-		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+		shouldAddSelectors: sp.EnableKubernetesAPISelectors,
 		selectors:          spec.Selector,
-		apiServerConfig:    cr.Spec.APIServerConfig,
+		apiServerConfig:    pos.APIServerConfig,
 		role:               spec.DiscoveryRole,
 		attachMetadata:     &ep.AttachMetadata,
 		namespace:          sc.Namespace,
@@ -75,7 +75,7 @@ func generateServiceScrapeConfig(
 	var relabelings []yaml.MapSlice
 
 	// Exact label matches.
-	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+	skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "service", spec.Selector, skipRelabelSelectors)
 
 	// Filter targets based on correct port for the endpoint.
@@ -243,7 +243,7 @@ func generateServiceScrapeConfig(
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
 
-	for _, trc := range cr.Spec.ServiceScrapeRelabelTemplate {
+	for _, trc := range sp.ServiceScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 

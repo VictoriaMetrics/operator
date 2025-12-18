@@ -1,6 +1,7 @@
 package vmsingle
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path"
@@ -22,6 +23,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmscrapes"
 )
 
 const (
@@ -77,6 +79,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}
 	}
+	ingestOnlyMode := ptr.Deref(cr.Spec.IngestOnlyMode, true)
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
@@ -85,7 +88,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if !cr.Spec.EnableScraping {
+		if !ingestOnlyMode {
 			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
 				return fmt.Errorf("cannot create vmsingle role and binding for it, err: %w", err)
 			}
@@ -213,11 +216,12 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 	var vmMounts []corev1.VolumeMount
 	var crMounts []corev1.VolumeMount
 
-	if cr.Spec.EnableScraping {
+	ingestOnlyMode := ptr.Deref(cr.Spec.IngestOnlyMode, true)
+	if !ingestOnlyMode {
 		args = append(args, fmt.Sprintf("-promscrape.config=%s", path.Join(confOutDir, configFilename)))
 
 		// preserve order of volumes and volumeMounts
-		// it must prevent vmagent restarts during operator version change
+		// it must prevent vmsingle restarts during operator version change
 		volumes = append(volumes, corev1.Volume{
 			Name: string(build.TLSAssetsResourceKind),
 			VolumeSource: corev1.VolumeSource{
@@ -356,7 +360,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 	operatorContainers := []corev1.Container{vmsingleContainer}
 	var ic []corev1.Container
 
-	if cr.Spec.EnableScraping || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
+	if !ingestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
 		ss := &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: cr.PrefixedName(),
@@ -365,7 +369,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 		}
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
-		if cr.Spec.EnableScraping {
+		if !ingestOnlyMode {
 			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
 			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 		}
@@ -482,7 +486,7 @@ func buildRelabelingsAssets(cr *vmv1beta1.VMSingle, ac *build.AssetsCache) (*cor
 		Data:       make(map[string]string),
 	}
 	if len(cr.Spec.InlineRelabelConfig) > 0 {
-		rcs := addRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
+		rcs := vmscrapes.AddRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
 		data, err := yaml.Marshal(rcs)
 		if err != nil {
 			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
@@ -670,4 +674,117 @@ func addVolumeMountsTo(volumes []corev1.Volume, vmMounts []corev1.VolumeMount, c
 	}
 
 	return volumes, vmMounts
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.SecretConfigResourceKind: {
+			MountDir:   confDir,
+			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
+		},
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
+}
+
+// CreateOrUpdateScrapeConfig builds scrape configuration for VMSingle
+func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, childObject client.Object) error {
+	var prevCR *vmv1beta1.VMSingle
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+	ac := getAssetsCache(ctx, rclient, cr)
+	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, childObject client.Object, ac *build.AssetsCache) error {
+	ingestOnlyMode := ptr.Deref(cr.Spec.IngestOnlyMode, true)
+	if ingestOnlyMode {
+		return nil
+	}
+
+	pos := &vmscrapes.ParsedObjects{
+		Namespace:            cr.Namespace,
+		APIServerConfig:      cr.Spec.APIServerConfig,
+		HasClusterWideAccess: config.IsClusterWideAccessAllowed() || !cr.IsOwnsServiceAccount(),
+		ExternalLabels:       buildExternalLabels(cr),
+	}
+	sp := &cr.Spec.CommonScrapeParams
+	if err := pos.Init(ctx, rclient, sp); err != nil {
+		return err
+	}
+	pos.ValidateObjects(sp)
+
+	// Update secret based on the most recent configuration.
+	generatedConfig, err := pos.GenerateConfig(
+		ctx,
+		sp,
+		ac,
+	)
+	if err != nil {
+		return fmt.Errorf("generating config for vmsingle failed: %w", err)
+	}
+
+	for kind, secret := range ac.GetOutput() {
+		var prevSecretMeta *metav1.ObjectMeta
+		if prevCR != nil {
+			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
+		}
+		if kind == build.SecretConfigResourceKind {
+			// Compress config to avoid 1mb secret limit for a while
+			var buf bytes.Buffer
+			if err = build.GzipConfig(&buf, generatedConfig); err != nil {
+				return fmt.Errorf("cannot gzip config for vmsingle: %w", err)
+			}
+			secret.Data[scrapeGzippedFilename] = buf.Bytes()
+		}
+		secret.ObjectMeta = build.ResourceMeta(kind, cr)
+		secret.Annotations = map[string]string{
+			"generated": "true",
+		}
+		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta); err != nil {
+			return err
+		}
+	}
+
+	parentName := fmt.Sprintf("%s.%s.vmsingle", cr.Name, cr.Namespace)
+	if err := pos.UpdateStatusesForScrapeObjects(ctx, rclient, parentName, childObject); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func buildExternalLabels(cr *vmv1beta1.VMSingle) map[string]string {
+	m := map[string]string{}
+	sp := cr.Spec.CommonScrapeParams
+
+	// Use "prometheus" external label name by default if field is missing.
+	// in case of migration from prometheus to vmsingle, it helps to have same labels
+	// Do not add external label if field is set to empty string.
+	prometheusExternalLabelName := "prometheus"
+	labelName := sp.ExternalLabelName
+	if labelName != nil {
+		if *labelName != "" {
+			prometheusExternalLabelName = *labelName
+		} else {
+			prometheusExternalLabelName = ""
+		}
+	}
+
+	if prometheusExternalLabelName != "" {
+		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", cr.Namespace, cr.Name)
+	}
+
+	for n, v := range sp.ExternalLabels {
+		m[n] = v
+	}
+	return m
 }

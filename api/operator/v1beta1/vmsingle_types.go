@@ -90,9 +90,6 @@ type VMSingleSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// EnableScraping enables scraping for VMSingle
-	EnableScraping bool `json:"enableScraping,omitempty"`
-
 	CommonRelabelParams               `json:",inline,omitempty"`
 	CommonScrapeParams                `json:",inline,omitempty"`
 	CommonDefaultableParams           `json:",inline"`

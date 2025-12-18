@@ -1,6 +1,7 @@
 package vmagent
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"maps"
@@ -27,6 +28,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmscrapes"
 )
 
 const (
@@ -43,9 +45,6 @@ const (
 	scrapeGzippedFilename = "vmagent.yaml.gz"
 	configFilename        = "vmagent.yaml"
 	defaultMaxDiskUsage   = "1073741824"
-
-	kubeNodeEnvName     = "KUBE_NODE_NAME"
-	kubeNodeEnvTemplate = "%{" + kubeNodeEnvName + "}"
 )
 
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
@@ -97,6 +96,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}
 	}
+	ingestOnlyMode := ptr.Deref(cr.Spec.IngestOnlyMode, false)
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
@@ -105,7 +105,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if !cr.Spec.IngestOnlyMode {
+		if !ingestOnlyMode {
 			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
@@ -167,6 +167,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	pdbToKeep := make(map[string]struct{})
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
+	ingestOnlyMode := ptr.Deref(cr.Spec.IngestOnlyMode, false)
 
 	isUpscaling := false
 	if prevCR.IsSharded() {
@@ -217,7 +218,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					rv.err = fmt.Errorf("cannot fill placeholders for %T sharded vmagent(%d): %w", newAppTpl, shardNum, err)
 					return
 				}
-				if !cr.Spec.IngestOnlyMode {
+				if !ingestOnlyMode {
 					patchShardContainers(newApp.Spec.Template.Spec.Containers, shardNum, shardCount)
 				}
 			}
@@ -231,7 +232,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 							rv.err = fmt.Errorf("cannot fill placeholders for prev %T sharded vmagent(%d): %w", newAppTpl, shardNum, err)
 							return
 						}
-						if !prevCR.Spec.IngestOnlyMode {
+						if !ingestOnlyMode {
 							patchShardContainers(prevApp.Spec.Template.Spec.Containers, shardNum, shardCount)
 						}
 					} else {
@@ -255,7 +256,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					rv.err = fmt.Errorf("cannot fill placeholders for %T in sharded vmagent(%d): %w", newAppTpl, shardNum, err)
 					return
 				}
-				if !cr.Spec.IngestOnlyMode {
+				if !ingestOnlyMode {
 					patchShardContainers(newApp.Spec.Template.Spec.Containers, shardNum, shardCount)
 				}
 			}
@@ -269,7 +270,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 							rv.err = fmt.Errorf("cannot fill placeholders for prev %T in sharded vmagent(%d): %w", newAppTpl, shardNum, err)
 							return
 						}
-						if !prevCR.Spec.IngestOnlyMode {
+						if !ingestOnlyMode {
 							patchShardContainers(prevApp.Spec.Template.Spec.Containers, shardNum, shardCount)
 						}
 					} else {
@@ -506,7 +507,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	if cr.Spec.DaemonSetMode {
 		envs = append(envs, corev1.EnvVar{
-			Name: kubeNodeEnvName,
+			Name: vmv1beta1.KubeNodeEnvName,
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "spec.nodeName",
@@ -548,7 +549,8 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	volumes = append(volumes, cr.Spec.Volumes...)
 
-	if !cr.Spec.IngestOnlyMode {
+	ingestOnlyMode := ptr.Deref(cr.Spec.IngestOnlyMode, false)
+	if !ingestOnlyMode {
 		args = append(args,
 			fmt.Sprintf("-promscrape.config=%s", path.Join(confOutDir, configFilename)))
 
@@ -675,7 +677,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	// conditional add config reloader container
-	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
+	if !ingestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
 		ss := &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: cr.PrefixedName(),
@@ -684,7 +686,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		}
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
-		if !cr.Spec.IngestOnlyMode {
+		if !ingestOnlyMode {
 			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
 			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 		}
@@ -751,7 +753,7 @@ func buildRelabelingsAssets(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*core
 	}
 	// global section
 	if len(cr.Spec.InlineRelabelConfig) > 0 {
-		rcs := addRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
+		rcs := vmscrapes.AddRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
 		data, err := yaml.Marshal(rcs)
 		if err != nil {
 			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
@@ -774,7 +776,7 @@ func buildRelabelingsAssets(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*core
 	for i := range cr.Spec.RemoteWrite {
 		rw := cr.Spec.RemoteWrite[i]
 		if len(rw.InlineUrlRelabelConfig) > 0 {
-			rcs := addRelabelConfigs(nil, rw.InlineUrlRelabelConfig)
+			rcs := vmscrapes.AddRelabelConfigs(nil, rw.InlineUrlRelabelConfig)
 			data, err := yaml.Marshal(rcs)
 			if err != nil {
 				return nil, fmt.Errorf("cannot serialize urlRelabelConfig as yaml: %w", err)
@@ -1210,4 +1212,130 @@ func removeStaleDaemonSet(ctx context.Context, rclient client.Client, cr *vmv1be
 	}
 	owner := cr.AsOwner()
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, &ds, &owner)
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.SecretConfigResourceKind: {
+			MountDir:   confDir,
+			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
+		},
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
+}
+
+// CreateOrUpdateScrapeConfig builds scrape configuration for VMAgent
+func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
+	var prevCR *vmv1beta1.VMAgent
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+	ac := getAssetsCache(ctx, rclient, cr)
+	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
+	ingestOnlyMode := ptr.Deref(cr.Spec.IngestOnlyMode, false)
+	if ingestOnlyMode {
+		return nil
+	}
+	// HACK: newPodSpec could load content into ac and it must be called
+	// before secret config reconcile
+	//
+	// TODO: @f41gh7 rewrite this section with VLAgent secret assets injection pattern
+	if _, err := newPodSpec(cr, ac); err != nil {
+		return err
+	}
+
+	pos := &vmscrapes.ParsedObjects{
+		Namespace:            cr.Namespace,
+		APIServerConfig:      cr.Spec.APIServerConfig,
+		MustUseNodeSelector:  cr.Spec.DaemonSetMode,
+		HasClusterWideAccess: config.IsClusterWideAccessAllowed() || !cr.IsOwnsServiceAccount(),
+		ExternalLabels:       buildExternalLabels(cr),
+	}
+	sp := &cr.Spec.CommonScrapeParams
+	if err := pos.Init(ctx, rclient, sp); err != nil {
+		return err
+	}
+	pos.ValidateObjects(sp)
+
+	// Update secret based on the most recent configuration.
+	generatedConfig, err := pos.GenerateConfig(
+		ctx,
+		sp,
+		ac,
+	)
+	if err != nil {
+		return fmt.Errorf("generating config for vmagent failed: %w", err)
+	}
+
+	for kind, secret := range ac.GetOutput() {
+		var prevSecretMeta *metav1.ObjectMeta
+		if prevCR != nil {
+			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
+		}
+		if kind == build.SecretConfigResourceKind {
+			// Compress config to avoid 1mb secret limit for a while
+			var buf bytes.Buffer
+			if err = build.GzipConfig(&buf, generatedConfig); err != nil {
+				return fmt.Errorf("cannot gzip config for vmagent: %w", err)
+			}
+			secret.Data[scrapeGzippedFilename] = buf.Bytes()
+		}
+		secret.ObjectMeta = build.ResourceMeta(kind, cr)
+		secret.Annotations = map[string]string{
+			"generated": "true",
+		}
+		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta); err != nil {
+			return err
+		}
+	}
+
+	parentName := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+	if err := pos.UpdateStatusesForScrapeObjects(ctx, rclient, parentName, childObject); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func buildExternalLabels(cr *vmv1beta1.VMAgent) map[string]string {
+	m := map[string]string{}
+	sp := cr.Spec.CommonScrapeParams
+
+	// Use "prometheus" external label name by default if field is missing.
+	// in case of migration from prometheus to vmagent, it helps to have same labels
+	// Do not add external label if field is set to empty string.
+	prometheusExternalLabelName := "prometheus"
+	var labelName *string
+	if sp.ExternalLabelName != nil {
+		labelName = sp.ExternalLabelName
+	} else if sp.VMAgentExternalLabelName != nil {
+		labelName = sp.VMAgentExternalLabelName
+	}
+	if labelName != nil {
+		if *labelName != "" {
+			prometheusExternalLabelName = *labelName
+		} else {
+			prometheusExternalLabelName = ""
+		}
+	}
+
+	if prometheusExternalLabelName != "" {
+		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", cr.Namespace, cr.Name)
+	}
+
+	for n, v := range sp.ExternalLabels {
+		m[n] = v
+	}
+	return m
 }

@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -13,12 +13,11 @@ import (
 
 func generateScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	sp *vmv1beta1.CommonScrapeParams,
 	sc *vmv1beta1.VMScrapeConfig,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	sp := &cr.Spec.CommonScrapeParams
 	se := &sp.CommonScrapeSecurityEnforcements
 	jobName := fmt.Sprintf("scrapeConfig/%s/%s", sc.Namespace, sc.Name)
 	cfg := yaml.MapSlice{
@@ -42,7 +41,7 @@ func generateScrapeConfig(
 	for _, c := range spec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.ScrapeConfigRelabelTemplate {
+	for _, trc := range sp.ScrapeConfigRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

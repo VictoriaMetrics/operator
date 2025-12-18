@@ -154,7 +154,9 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
 				StatefulMode:            true,
-				IngestOnlyMode:          true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
 				StatefulStorage: &vmv1beta1.StorageSpec{
 					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 						Spec: corev1.PersistentVolumeClaimSpec{
@@ -544,7 +546,9 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				StatefulRollingUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
 				StatefulMode:                  true,
-				IngestOnlyMode:                true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 					ReplicaCount: ptr.To[int32](2),
 				},
@@ -628,8 +632,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
-				StatefulMode:   true,
-				IngestOnlyMode: true,
+				StatefulMode: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
 				StatefulStorage: &vmv1beta1.StorageSpec{
 					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 						Spec: corev1.PersistentVolumeClaimSpec{
@@ -2236,7 +2242,9 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
-				IngestOnlyMode: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
 				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 					Image: vmv1beta1.Image{
 						Repository: "vm-repo",
@@ -2322,7 +2330,9 @@ serviceaccountname: vmagent-agent
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
-				IngestOnlyMode: false,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(false),
+				},
 				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
@@ -2461,7 +2471,9 @@ serviceaccountname: vmagent-agent
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
-				IngestOnlyMode: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
 				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
@@ -2542,7 +2554,9 @@ serviceaccountname: vmagent-agent
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
-				IngestOnlyMode: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
 				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
@@ -2626,7 +2640,9 @@ serviceaccountname: vmagent-agent
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1beta1.VMAgentSpec{
-				IngestOnlyMode: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
 				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",

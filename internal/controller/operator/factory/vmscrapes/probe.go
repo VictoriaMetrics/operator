@@ -1,4 +1,4 @@
-package vmsingle
+package vmscrapes
 
 import (
 	"context"
@@ -12,12 +12,12 @@ import (
 
 func generateProbeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMSingle,
+	sp *vmv1beta1.CommonScrapeParams,
+	pos *ParsedObjects,
 	sc *vmv1beta1.VMProbe,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	sp := &cr.Spec.CommonScrapeParams
 	se := &sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
@@ -80,15 +80,15 @@ func generateProbeConfig(
 	}
 	if spec.Targets.Ingress != nil {
 
-		skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+		skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", spec.Targets.Ingress.Selector, skipRelabelSelectors)
 		selectedNamespaces := getNamespacesFromNamespaceSelector(&spec.Targets.Ingress.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
 
 		k8sSDOpts := generateK8SSDConfigOptions{
 			namespaces:         selectedNamespaces,
-			shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+			shouldAddSelectors: sp.EnableKubernetesAPISelectors,
 			selectors:          spec.Targets.Ingress.Selector,
-			apiServerConfig:    cr.Spec.APIServerConfig,
+			apiServerConfig:    pos.APIServerConfig,
 			role:               k8sSDRoleIngress,
 			namespace:          sc.Namespace,
 		}
@@ -152,7 +152,7 @@ func generateProbeConfig(
 		},
 	}...)
 
-	for _, trc := range cr.Spec.ProbeScrapeRelabelTemplate {
+	for _, trc := range sp.ProbeScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

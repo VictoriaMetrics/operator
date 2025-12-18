@@ -1,4 +1,4 @@
-package vmsingle
+package vmscrapes
 
 import (
 	"context"
@@ -12,14 +12,13 @@ import (
 
 func generateStaticScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMSingle,
+	sp *vmv1beta1.CommonScrapeParams,
 	sc *vmv1beta1.VMStaticScrape,
 	ep *vmv1beta1.TargetEndpoint,
 	i int,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	sp := &cr.Spec.CommonScrapeParams
 	se := &sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
@@ -49,7 +48,7 @@ func generateStaticScrapeConfig(
 		ep.SeriesLimit = spec.SeriesLimit
 	}
 	if ep.ScrapeTimeout == "" {
-		ep.ScrapeTimeout = cr.Spec.ScrapeTimeout
+		ep.ScrapeTimeout = sp.ScrapeTimeout
 	}
 	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
 
@@ -67,7 +66,7 @@ func generateStaticScrapeConfig(
 	for _, c := range ep.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.StaticScrapeRelabelTemplate {
+	for _, trc := range sp.StaticScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

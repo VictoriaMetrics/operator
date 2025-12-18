@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -12,12 +12,12 @@ import (
 
 func generateNodeScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	sp *vmv1beta1.CommonScrapeParams,
+	pos *ParsedObjects,
 	sc *vmv1beta1.VMNodeScrape,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	sp := &cr.Spec.CommonScrapeParams
 	se := &sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
@@ -35,9 +35,9 @@ func generateNodeScrapeConfig(
 	setScrapeIntervalToWithLimit(ctx, &spec.EndpointScrapeParams, sp)
 
 	k8sSDOpts := generateK8SSDConfigOptions{
-		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+		shouldAddSelectors: sp.EnableKubernetesAPISelectors,
 		selectors:          sc.Spec.Selector,
-		apiServerConfig:    cr.Spec.APIServerConfig,
+		apiServerConfig:    pos.APIServerConfig,
 		role:               k8sSDRoleNode,
 		namespace:          sc.Namespace,
 	}
@@ -51,7 +51,7 @@ func generateNodeScrapeConfig(
 
 	var relabelings []yaml.MapSlice
 
-	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+	skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "node", spec.Selector, skipRelabelSelectors)
 	// Add __address__ as internalIP and pod and service labels into proper labels.
 	relabelings = append(relabelings, []yaml.MapSlice{
@@ -102,7 +102,7 @@ func generateNodeScrapeConfig(
 	for _, c := range spec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.NodeScrapeRelabelTemplate {
+	for _, trc := range sp.NodeScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 

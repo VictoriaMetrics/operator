@@ -8451,7 +8451,7 @@ spec:
                 type: array
               ingestOnlyMode:
                 description: |-
-                  IngestOnlyMode switches vmagent into unmanaged mode
+                  IngestOnlyMode switches vmagent or vmsingle into unmanaged mode
                   it disables any config generation for scraping
                   Currently it prevents vmagent from managing tls and auth options for remote write
                 type: boolean
@@ -39588,9 +39588,6 @@ spec:
                   https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#list-and-watch-filtering
                   It could be useful to reduce Kubernetes API server resource usage for serving less than 100 CRD scrape objects in total.
                 type: boolean
-              enableScraping:
-                description: EnableScraping enables scraping for VMSingle
-                type: boolean
               enforcedNamespaceLabel:
                 description: |-
                   EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert
@@ -39944,6 +39941,12 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              ingestOnlyMode:
+                description: |-
+                  IngestOnlyMode switches vmagent or vmsingle into unmanaged mode
+                  it disables any config generation for scraping
+                  Currently it prevents vmagent from managing tls and auth options for remote write
+                type: boolean
               initContainers:
                 description: |-
                   InitContainers allows adding initContainers to the pod definition.

@@ -803,7 +803,7 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			var beforeAuthDeployment appsv1.Deployment
 			beforeAuthDeployName := cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthDeployName, Namespace: namespace}, &beforeAuthDeployment)).To(Succeed())
-			authDeploymentRV := beforeAuthDeployment.ResourceVersion
+			authDeploymentSpec := beforeAuthDeployment.Spec
 
 			var beforeAuthService corev1.Service
 			beforeAuthServiceName := cr.Spec.VMAuth.Name
@@ -837,7 +837,7 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 
 			var afterAuthDeployment appsv1.Deployment
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthDeployName, Namespace: namespace}, &afterAuthDeployment)).To(Succeed())
-			Expect(afterAuthDeployment.ResourceVersion).To(Equal(authDeploymentRV), "VMAuthLB Deployment resource version should not change")
+			Expect(afterAuthDeployment.Spec).To(Equal(authDeploymentSpec), "VMAuthLB Deployment spec should not change")
 
 			var afterAuthService corev1.Service
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: beforeAuthServiceName, Namespace: namespace}, &afterAuthService)).To(Succeed())

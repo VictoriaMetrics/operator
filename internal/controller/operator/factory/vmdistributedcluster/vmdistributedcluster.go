@@ -39,6 +39,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return nil
 	}
 
+	logger.WithContext(ctx).Info("Starting reconciliation", "name", cr.Name)
+
 	// Fetch VMCluster statuses by name (needed to build target refs for the VMUser).
 	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones.VMClusters)
 	if err != nil {
@@ -199,5 +201,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			time.Sleep(zoneUpdatePause)
 		}
 	}
+	logger.WithContext(ctx).Info("Reconciliation completed", "name", cr.Name)
 	return nil
 }

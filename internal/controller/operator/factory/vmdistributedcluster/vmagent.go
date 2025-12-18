@@ -294,20 +294,21 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 
 	// Create or update the vmagent object if spec has changed or it doesn't exist yet
-	if !vmAgentExists {
+	switch {
+	case !vmAgentExists:
 		// TODO[vrutkovs]: add diff
 		logger.WithContext(ctx).Info("Creating VMAgent")
 		if err := rclient.Create(ctx, vmAgentObj); err != nil {
 			return nil, fmt.Errorf("failed to create VMAgent %s/%s: %w", vmAgentObj.Namespace, vmAgentObj.Name, err)
 		}
-	} else if vmAgentNeedsUpdate {
+	case vmAgentNeedsUpdate:
 		// TODO[vrutkovs]: add diff
 		logger.WithContext(ctx).Info("Updating VMAgent")
 
 		if err := rclient.Update(ctx, vmAgentObj); err != nil {
 			return nil, fmt.Errorf("failed to update VMAgent %s/%s: %w", vmAgentObj.Namespace, vmAgentObj.Name, err)
 		}
-	} else {
+	default:
 		logger.WithContext(ctx).Info("VMAgent is up to date")
 	}
 	return vmAgentObj, nil

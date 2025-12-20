@@ -309,18 +309,18 @@ var (
 
 type reloadable interface {
 	GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams
-	GetReloadURL() string
+	GetReloadURL(string) string
 	GetNamespace() string
 	UseProxyProtocol() bool
 	AutomountServiceAccountToken() bool
 }
 
 func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeMount, ss *corev1.SecretKeySelector) corev1.Container {
+	cfg := config.MustGetBaseConfig()
 	args := []string{
-		fmt.Sprintf("--reload-url=%s", cr.GetReloadURL()),
+		fmt.Sprintf("--reload-url=%s", cr.GetReloadURL(config.GetLocalhost())),
 		"--webhook-method=POST",
 	}
-	cfg := config.MustGetBaseConfig()
 	if cfg.EnableTCP6 {
 		args = append(args, "--enableTCP6")
 	}

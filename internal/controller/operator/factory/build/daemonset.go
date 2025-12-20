@@ -22,7 +22,7 @@ func DaemonSetAddCommonParams(dst *appsv1.DaemonSet, useStrictSecurity bool, par
 	dst.Spec.Template.Spec.DNSPolicy = params.DNSPolicy
 	dst.Spec.Template.Spec.DNSConfig = params.DNSConfig
 	dst.Spec.Template.Spec.NodeSelector = params.NodeSelector
-	dst.Spec.Template.Spec.SecurityContext = AddStrictSecuritySettingsToPod(params.SecurityContext, useStrictSecurity)
+	dst.Spec.Template.Spec.SecurityContext = AddStrictSecuritySettingsWithRootToPod(params.SecurityContext, useStrictSecurity)
 	dst.Spec.Template.Spec.TerminationGracePeriodSeconds = params.TerminationGracePeriodSeconds
 	dst.Spec.Template.Spec.TopologySpreadConstraints = params.TopologySpreadConstraints
 	dst.Spec.Template.Spec.ImagePullSecrets = params.ImagePullSecrets

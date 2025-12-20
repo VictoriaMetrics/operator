@@ -72,10 +72,10 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						{URL: "http://localhost:9428/internal/insert"},
 						{URL: "http://localhost:9481/internal/insert", Headers: []string{"Authorization: Bearer Insecure", "Basic: Insecure Token"}},
 					},
+					TmpDataPath: ptr.To("/tmp/custom-path"),
 					RemoteWriteSettings: &vmv1.VLAgentRemoteWriteSettings{
 						MaxBlockSize:  ptr.To(vmv1beta1.BytesString(`15MB`)),
 						FlushInterval: ptr.To("2s"),
-						TmpDataPath:   ptr.To("/tmp/custom-path"),
 					},
 				},
 			}, nil, func(cr *vmv1.VLAgent) {
@@ -89,7 +89,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(1))
 				cnt := sts.Spec.Template.Spec.Containers[0]
 				Expect(cnt.VolumeMounts).To(BeEmpty())
-				Expect(cnt.Args).To(ContainElements("-remoteWrite.tmpDataPath=/tmp/custom-path", "-remoteWrite.maxBlockSize=15MB"))
+				Expect(cnt.Args).To(ContainElements("-tmpDataPath=/tmp/custom-path", "-remoteWrite.maxBlockSize=15MB"))
 			}),
 			Entry("with additional service and insert ports", "insert-ports",
 				&vmv1.VLAgent{

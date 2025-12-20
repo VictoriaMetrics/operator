@@ -45,6 +45,12 @@ type VLAgentSpec struct {
 	// +optional
 	RemoteWriteSettings *VLAgentRemoteWriteSettings `json:"remoteWriteSettings,omitempty"`
 
+	// Path to directory where temporary data for vlagent stored
+	// Defaults to /vlagent-data or /var/lib/vlagent-data in collector mode
+	// If defined, operator ignores spec.storage field and skips adding volume and volumeMount for tmp data
+	// +optional
+	TmpDataPath *string `json:"tmpDataPath,omitempty"`
+
 	// ServiceSpec that will be added to vlagent service spec
 	// +optional
 	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
@@ -101,14 +107,29 @@ type VLAgentK8sCollector struct {
 	LogsPath string `json:"logsPath,omitempty"`
 
 	// CheckpointsPath configures path to file where logs checkpoints are stored.
-	// By default it's stored at host's /var/lib/vlagent_checkpoints/checkpoints.json.
-	CheckpointsPath string `json:"checkpointsPath,omitempty"`
+	// By default it's stored at host's /var/lib/vlagent-data/checkpoints.json.
+	CheckpointsPath *string `json:"checkpointsPath,omitempty"`
 
 	// TenantID defines default tenant ID to use for logs collected from pods in format: <accountID>:<projectID>
 	TenantID string `json:"tenantID,omitempty"`
 
 	// IgnoreFields defines fields to ignore across logs ingested from Kubernetes
 	IgnoreFields []string `json:"ignoreFields,omitempty"`
+
+	// ExcludeFilter defines logsql expression that allows to filter out containers to collect logs from
+	ExcludeFilter string `json:"excludeFilter,omitempty"`
+
+	// IncludePodLabels enables attachment of pod labels to log entries
+	IncludePodLabels *bool `json:"includePodLabels,omitempty"`
+
+	// IncludePodAnnotations enables attachment of pod annotations to log entries
+	IncludePodAnnotations *bool `json:"includePodAnnotations,omitempty"`
+
+	// IncludeNodeLabels enables attachment of node labels to log entries
+	IncludeNodeLabels *bool `json:"includeNodeLabels,omitempty"`
+
+	// IncludeNodeAnnotations enables attachment of node annotations to log entries
+	IncludeNodeAnnotations *bool `json:"includeNodeAnnotations,omitempty"`
 
 	// DecolorizeFields defines fields to remove ANSI color codes across logs ingested from Kubernetes
 	DecolorizeFields []string `json:"decolorizeFields,omitempty"`
@@ -203,8 +224,8 @@ type VLAgentRemoteWriteSettings struct {
 	// Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info
 	// +optional
 	ShowURL *bool `json:"showURL,omitempty"`
-	// Path to directory where temporary data for remote write component is stored (default /vlagent_pq/vlagent-remotewrite-data)
-	// If defined, operator ignores spec.storage field and skips adding volume and volumeMount for pq
+	// Path to directory where temporary data for remote write component is stored.
+	// Defaults to /vlagent-data/vlagent-remotewrite-data or /var/lib/vlagent-data/vlagent-remotewrite-data in collector mode
 	// +optional
 	TmpDataPath *string `json:"tmpDataPath,omitempty"`
 	// Interval for flushing the data to remote storage. (default 1s)

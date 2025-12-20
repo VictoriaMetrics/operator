@@ -10,6 +10,7 @@ spec:
     limits:
       cpu: "500m"
       memory: "850Mi"
+  useStrictSecurity: true
   k8sCollector:
     enabled: true
     extraFields: '{"env":"dev","cluster":"staging"}'
@@ -23,12 +24,3 @@ spec:
       - timestamp
   remoteWrite:
     - url: "http://vlsingle-example-0.default.svc:9428/internal/insert"
-  remoteWriteSettings:
-    tmpDataPath: /opt/queue
-  volumes:
-    - name: persistent-queue
-      hostPath:
-        path: /opt/mnt/vmagent-queue
-  volumeMounts:
-    - mountPath: /opt/queue
-      name: persistent-queue

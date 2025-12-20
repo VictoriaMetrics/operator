@@ -743,7 +743,7 @@ spec:
                   checkpointsPath:
                     description: |-
                       CheckpointsPath configures path to file where logs checkpoints are stored.
-                      By default it's stored at host's /var/lib/vlagent_checkpoints/checkpoints.json.
+                      By default it's stored at host's /var/lib/vlagent-data/checkpoints.json.
                     type: string
                   decolorizeFields:
                     description: DecolorizeFields defines fields to remove ANSI color
@@ -757,6 +757,10 @@ spec:
                       Note, for this purpose operator uses DaemonSet, while by default VLAgent uses StatefulSet.
                       Switching this option will drop all persisted data.
                     type: boolean
+                  excludeFilter:
+                    description: ExcludeFilter defines logsql expression that allows
+                      to filter out containers to collect logs from
+                    type: string
                   extraFields:
                     description: |-
                       ExtraFields defines extra fields as JSON string which should be added to each collected log line
@@ -768,6 +772,22 @@ spec:
                     items:
                       type: string
                     type: array
+                  includeNodeAnnotations:
+                    description: IncludeNodeAnnotations enables attachment of node
+                      annotations to log entries
+                    type: boolean
+                  includeNodeLabels:
+                    description: IncludeNodeLabels enables attachment of node labels
+                      to log entries
+                    type: boolean
+                  includePodAnnotations:
+                    description: IncludePodAnnotations enables attachment of pod annotations
+                      to log entries
+                    type: boolean
+                  includePodLabels:
+                    description: IncludePodLabels enables attachment of pod labels
+                      to log entries
+                    type: boolean
                   logsPath:
                     description: |-
                       LogsPath configures root for logs path
@@ -1285,8 +1305,8 @@ spec:
                     type: boolean
                   tmpDataPath:
                     description: |-
-                      Path to directory where temporary data for remote write component is stored (default /vlagent_pq/vlagent-remotewrite-data)
-                      If defined, operator ignores spec.storage field and skips adding volume and volumeMount for pq
+                      Path to directory where temporary data for remote write component is stored.
+                      Defaults to /vlagent-data/vlagent-remotewrite-data or /var/lib/vlagent-data/vlagent-remotewrite-data in collector mode
                     type: string
                 type: object
               replicaCount:
@@ -2077,6 +2097,12 @@ spec:
                   termination
                 format: int64
                 type: integer
+              tmpDataPath:
+                description: |-
+                  Path to directory where temporary data for vlagent stored
+                  Defaults to /vlagent-data or /var/lib/vlagent-data in collector mode
+                  If defined, operator ignores spec.storage field and skips adding volume and volumeMount for tmp data
+                type: string
               tolerations:
                 description: Tolerations If specified, the pod's tolerations.
                 items:

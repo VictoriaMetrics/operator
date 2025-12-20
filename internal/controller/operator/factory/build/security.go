@@ -12,14 +12,23 @@ import (
 // it's a work-around for kubernetes defaults
 var _ = equality.Semantic.AddFunc(compareAppAromr)
 
-var (
-	// '65534' refers to 'nobody' in all the used default images like alpine, busybox
-	containerUserGroup     int64 = 65534
-	runNonRoot                   = true
-	defaultSecurityContext       = &corev1.SecurityContext{
-		RunAsUser:                &containerUserGroup,
-		RunAsGroup:               &containerUserGroup,
-		RunAsNonRoot:             &runNonRoot,
+func getDefaultPodSecurityContext(requireRoot bool) *corev1.PodSecurityContext {
+	sc := &corev1.PodSecurityContext{
+		FSGroup: &containerUserGroup,
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+	if !requireRoot {
+		sc.RunAsNonRoot = &runNonRoot
+		sc.RunAsUser = &containerUserGroup
+		sc.RunAsGroup = &containerUserGroup
+	}
+	return sc
+}
+
+func getDefaultSecurityContext(requireRoot bool) *corev1.SecurityContext {
+	sc := &corev1.SecurityContext{
 		Privileged:               ptr.To(false),
 		ReadOnlyRootFilesystem:   ptr.To(true),
 		AllowPrivilegeEscalation: ptr.To(false),
@@ -29,15 +38,18 @@ var (
 			},
 		},
 	}
-	defaultPodSecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: &runNonRoot,
-		RunAsUser:    &containerUserGroup,
-		RunAsGroup:   &containerUserGroup,
-		FSGroup:      &containerUserGroup,
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
+	if !requireRoot {
+		sc.RunAsUser = &containerUserGroup
+		sc.RunAsGroup = &containerUserGroup
+		sc.RunAsNonRoot = &runNonRoot
 	}
+	return sc
+}
+
+var (
+	// '65534' refers to 'nobody' in all the used default images like alpine, busybox
+	containerUserGroup int64 = 65534
+	runNonRoot               = true
 )
 
 // AddStrictSecuritySettingsToContainers conditionally adds Security settings to given containers
@@ -47,13 +59,24 @@ func AddStrictSecuritySettingsToContainers(p *vmv1beta1.SecurityContext, contain
 	}
 	for idx := range containers {
 		container := &containers[idx]
-		container.SecurityContext = containerSecurityContext(p)
+		container.SecurityContext = containerSecurityContext(p, false)
 	}
 }
 
-func containerSecurityContext(p *vmv1beta1.SecurityContext) *corev1.SecurityContext {
+// AddStrictSecuritySettingsWithRootToContainers conditionally adds Security settings to given containers
+func AddStrictSecuritySettingsWithRootToContainers(p *vmv1beta1.SecurityContext, containers []corev1.Container, enableStrictSecurity bool) {
+	if !enableStrictSecurity && p == nil {
+		return
+	}
+	for idx := range containers {
+		container := &containers[idx]
+		container.SecurityContext = containerSecurityContext(p, true)
+	}
+}
+
+func containerSecurityContext(p *vmv1beta1.SecurityContext, requireRoot bool) *corev1.SecurityContext {
 	if p == nil {
-		return defaultSecurityContext
+		return getDefaultSecurityContext(requireRoot)
 	}
 	var sc corev1.SecurityContext
 	if p.ContainerSecurityContext != nil {
@@ -82,7 +105,23 @@ func AddStrictSecuritySettingsToPod(p *vmv1beta1.SecurityContext, enableStrictSe
 	if !enableStrictSecurity {
 		return nil
 	}
-	securityContext := defaultPodSecurityContext.DeepCopy()
+	securityContext := getDefaultPodSecurityContext(false)
+	if k8stools.IsFSGroupChangePolicySupported() {
+		onRootMismatch := corev1.FSGroupChangeOnRootMismatch
+		securityContext.FSGroupChangePolicy = &onRootMismatch
+	}
+	return securityContext
+}
+
+// AddStrictSecuritySettingsWithRootToPod conditionally creates security context for pod or returns predefined one
+func AddStrictSecuritySettingsWithRootToPod(p *vmv1beta1.SecurityContext, enableStrictSecurity bool) *corev1.PodSecurityContext {
+	if p != nil {
+		return p.PodSecurityContext
+	}
+	if !enableStrictSecurity {
+		return nil
+	}
+	securityContext := getDefaultPodSecurityContext(true)
 	if k8stools.IsFSGroupChangePolicySupported() {
 		onRootMismatch := corev1.FSGroupChangeOnRootMismatch
 		securityContext.FSGroupChangePolicy = &onRootMismatch

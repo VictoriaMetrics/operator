@@ -27,9 +27,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 			return err
 		}
 		if !existVSS.DeletionTimestamp.IsZero() {
-			return &errRecreate{
-				origin: fmt.Errorf("waiting for servicescrape %q to be removed", vss.Name),
-			}
+			return newErrRecreate(ctx, &existVSS)
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &existVSS); err != nil {
 			return err
@@ -65,9 +63,7 @@ func VMPodScrapeForCRD(ctx context.Context, rclient client.Client, vps *vmv1beta
 			return err
 		}
 		if !existVPS.DeletionTimestamp.IsZero() {
-			return &errRecreate{
-				origin: fmt.Errorf("waiting for podscrape %q to be removed", vps.Name),
-			}
+			return newErrRecreate(ctx, &existVPS)
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &existVPS); err != nil {
 			return err

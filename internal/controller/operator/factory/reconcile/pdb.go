@@ -27,9 +27,7 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 			return fmt.Errorf("cannot get existing pdb: %s, err: %w", newPDB.Name, err)
 		}
 		if !currentPDB.DeletionTimestamp.IsZero() {
-			return &errRecreate{
-				origin: fmt.Errorf("waiting for PDB %q to be removed", newPDB.Name),
-			}
+			return newErrRecreate(ctx, currentPDB)
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, currentPDB); err != nil {
 			return err

@@ -46,9 +46,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			return fmt.Errorf("cannot get deployment for app: %s err: %w", newDeploy.Name, err)
 		}
 		if !currentDeploy.DeletionTimestamp.IsZero() {
-			return &errRecreate{
-				origin: fmt.Errorf("waiting for deployment %q to be removed", newDeploy.Name),
-			}
+			return newErrRecreate(ctx, &currentDeploy)
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentDeploy); err != nil {
 			return err

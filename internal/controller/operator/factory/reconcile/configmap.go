@@ -25,9 +25,7 @@ func ConfigMap(ctx context.Context, rclient client.Client, newCM *corev1.ConfigM
 		}
 	}
 	if !currentCM.DeletionTimestamp.IsZero() {
-		return &errRecreate{
-			origin: fmt.Errorf("waiting for configmap %q to be removed", newCM.Name),
-		}
+		return newErrRecreate(ctx, &currentCM)
 	}
 	var prevCM *corev1.ConfigMap
 	if prevCMMEta != nil {

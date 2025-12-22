@@ -26,9 +26,7 @@ func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.Horizon
 			return fmt.Errorf("cannot get exist hpa object: %w", err)
 		}
 		if !currentHPA.DeletionTimestamp.IsZero() {
-			return &errRecreate{
-				origin: fmt.Errorf("waiting for HPA %q to be removed", newHPA.Name),
-			}
+			return newErrRecreate(ctx, &currentHPA)
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentHPA); err != nil {
 			return err

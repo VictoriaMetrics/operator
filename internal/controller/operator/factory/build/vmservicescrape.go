@@ -143,9 +143,12 @@ func vmServiceScrapeForServiceWithSpec(service *corev1.Service, serviceScrapeSpe
 	// in some cases it may be useful
 	// for instance when additional service created with extra pod ports
 	if scrapeSvc.Spec.Selector.MatchLabels == nil && scrapeSvc.Spec.Selector.MatchExpressions == nil {
-		scrapeSvc.Spec.Selector = metav1.LabelSelector{MatchLabels: service.Spec.Selector, MatchExpressions: []metav1.LabelSelectorRequirement{
-			{Key: vmv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist},
-		}}
+		scrapeSvc.Spec.Selector = metav1.LabelSelector{
+			MatchLabels: service.Labels,
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				{Key: vmv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist},
+			},
+		}
 	}
 
 	return scrapeSvc

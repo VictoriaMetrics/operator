@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"path"
 	"reflect"
 	"regexp"
@@ -52,6 +53,7 @@ const (
 	reloadAuthKey        = "reloadAuthKey"
 	snapshotCreate       = "/snapshot/create"
 	snapshotDelete       = "/snapshot/delete"
+	snapshotAuthKey      = "snapshotAuthKey"
 )
 
 const (
@@ -391,11 +393,19 @@ func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 	return defaultName + "-additional-service"
 }
 
-// BuildReloadPathWithPort builds reload api path for given args
-func BuildReloadPathWithPort(extraArgs map[string]string, port string) string {
-	proto := HTTPProtoFromFlags(extraArgs)
-	urlPath := joinPathAuthKey(BuildPathWithPrefixFlag(extraArgs, reloadPath), reloadAuthKey, extraArgs)
-	return fmt.Sprintf("%s://localhost:%s%s", proto, port, urlPath)
+// BuildLocalURL builds API path for given args
+func BuildLocalURL(key, host, port, path string, extraArgs map[string]string) string {
+	localURL := &url.URL{
+		Scheme: HTTPProtoFromFlags(extraArgs),
+		Host:   fmt.Sprintf("%s:%s", host, port),
+		Path:   BuildPathWithPrefixFlag(extraArgs, path),
+	}
+	if authKey, ok := extraArgs[key]; ok {
+		q := url.Values{}
+		q.Add("authKey", authKey)
+		localURL.RawQuery = q.Encode()
+	}
+	return localURL.String()
 }
 
 // BuildPathWithPrefixFlag returns provided path with possible prefix from flags
@@ -413,18 +423,6 @@ func HTTPProtoFromFlags(flags map[string]string) string {
 		proto = "https"
 	}
 	return proto
-}
-
-func joinPathAuthKey(urlPath string, keyName string, extraArgs map[string]string) string {
-	if authKey, ok := extraArgs[keyName]; ok {
-		separator := "?"
-		idx := strings.IndexByte(urlPath, '?')
-		if idx > 0 {
-			separator = "&"
-		}
-		return urlPath + separator + "authKey=" + authKey
-	}
-	return urlPath
 }
 
 type EmbeddedPodDisruptionBudgetSpec struct {

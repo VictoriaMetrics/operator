@@ -216,8 +216,7 @@ func (cr *VMAlertmanager) SetLastSpec(prevSpec VMAlertmanagerSpec) {
 }
 
 // GetReloadURL implements reloadable interface
-func (cr *VMAlertmanager) GetReloadURL() string {
-	host := "127.0.0.1"
+func (cr *VMAlertmanager) GetReloadURL(host string) string {
 	localReloadURL := &url.URL{
 		Scheme: "http",
 		Host:   fmt.Sprintf("%s:%s", host, cr.Port()),

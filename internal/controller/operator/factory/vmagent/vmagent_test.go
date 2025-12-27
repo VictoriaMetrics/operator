@@ -2360,7 +2360,7 @@ initcontainers:
         - --config-secret-key=vmagent.yaml.gz
         - --config-secret-name=default/vmagent-agent
         - --only-init-config
-        - --reload-url=http://localhost:8429/-/reload
+        - --reload-url=http://127.0.0.1:8429/-/reload
         - --webhook-method=POST
       volumemounts:
         - name: config-out
@@ -2372,7 +2372,7 @@ containers:
         - --config-envsubst-file=/etc/vmagent/config_out/vmagent.yaml
         - --config-secret-key=vmagent.yaml.gz
         - --config-secret-name=default/vmagent-agent
-        - --reload-url=http://localhost:8429/-/reload
+        - --reload-url=http://127.0.0.1:8429/-/reload
         - --webhook-method=POST
       ports:
         - name: reloader-http

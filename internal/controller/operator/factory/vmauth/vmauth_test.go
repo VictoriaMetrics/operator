@@ -21,19 +21,22 @@ import (
 )
 
 func TestCreateOrUpdate(t *testing.T) {
-	mutateConf := func(cb func(c *config.BaseOperatorConf)) *config.BaseOperatorConf {
-		c := config.MustGetBaseConfig()
-		cb(c)
-		return c
-	}
 	type opts struct {
 		cr                *vmv1beta1.VMAuth
-		c                 *config.BaseOperatorConf
+		cfgMutator        func(*config.BaseOperatorConf)
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
 
 	f := func(o opts) {
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
 		ctx := context.Background()
 		tc := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		if err := CreateOrUpdate(ctx, o.cr, tc); (err != nil) != o.wantErr {
@@ -64,9 +67,9 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		c: mutateConf(func(c *config.BaseOperatorConf) {
+		cfgMutator: func(c *config.BaseOperatorConf) {
 			c.GatewayAPIEnabled = true
-		}),
+		},
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmauth-test", "default"),
 			&apiextensionsv1.CustomResourceDefinition{
@@ -105,7 +108,6 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		c: config.MustGetBaseConfig(),
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmauth-test", "default"),
 			&apiextensionsv1.CustomResourceDefinition{
@@ -133,7 +135,6 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		c: config.MustGetBaseConfig(),
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmauth-test", "default"),
 			&corev1.Secret{
@@ -159,7 +160,6 @@ func TestCreateOrUpdate(t *testing.T) {
 				SelectAllByDefault: true,
 			},
 		},
-		c: config.MustGetBaseConfig(),
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmauth-test", "default"),
 			&vmv1beta1.VMUser{
@@ -271,7 +271,7 @@ initcontainers:
       - --config-secret-key=config.yaml.gz
       - --config-secret-name=default/vmauth-config-auth
       - --only-init-config
-      - --reload-url=http://localhost:8429/-/reload
+      - --reload-url=http://127.0.0.1:8429/-/reload
       - --webhook-method=POST
     volumemounts:
       - name: config-out
@@ -319,7 +319,7 @@ containers:
       - --config-envsubst-file=/opt/vmauth/config.yaml
       - --config-secret-key=config.yaml.gz
       - --config-secret-name=default/vmauth-config-auth
-      - --reload-url=http://localhost:8429/-/reload
+      - --reload-url=http://127.0.0.1:8429/-/reload
       - --webhook-method=POST
     ports:
       - name: reloader-http
@@ -382,7 +382,7 @@ initcontainers:
       - --config-secret-key=config.yaml.gz
       - --config-secret-name=default/vmauth-config-auth
       - --only-init-config
-      - --reload-url=http://localhost:8429/-/reload
+      - --reload-url=http://127.0.0.1:8429/-/reload
       - --webhook-method=POST
     volumemounts:
       - name: config-out
@@ -430,7 +430,7 @@ containers:
       - --config-envsubst-file=/opt/vmauth/config.yaml
       - --config-secret-key=config.yaml.gz
       - --config-secret-name=default/vmauth-config-auth
-      - --reload-url=http://localhost:8429/-/reload
+      - --reload-url=http://127.0.0.1:8429/-/reload
       - --webhook-method=POST
     ports:
       - name: reloader-http

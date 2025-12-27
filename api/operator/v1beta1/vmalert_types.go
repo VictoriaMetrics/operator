@@ -159,8 +159,8 @@ func (cr *VMAlert) SetLastSpec(prevSpec VMAlertSpec) {
 }
 
 // GetReloadURL implements reloadable interface
-func (cr *VMAlert) GetReloadURL() string {
-	return BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)
+func (cr *VMAlert) GetReloadURL(host string) string {
+	return BuildLocalURL(reloadAuthKey, host, cr.Spec.Port, reloadPath, cr.Spec.ExtraArgs)
 }
 
 // GetReloaderParams implements reloadable interface

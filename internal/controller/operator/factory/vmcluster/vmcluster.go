@@ -991,6 +991,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	args = append(args, fmt.Sprintf("-storageDataPath=%s", cr.Spec.VMStorage.StorageDataPath))
 
 	vmMounts = append(vmMounts, cr.Spec.VMStorage.VolumeMounts...)
+	commonMounts := vmMounts
 
 	for _, s := range cr.Spec.VMStorage.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -1051,7 +1052,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	var initContainers []corev1.Container
 
 	if cr.Spec.VMStorage.VMBackup != nil {
-		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMStorage.VMBackup, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs, true, cr.Spec.License)
+		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMStorage.VMBackup, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, commonMounts, cr.Spec.VMStorage.ExtraArgs, true, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -1061,7 +1062,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 		if cr.Spec.VMStorage.VMBackup.Restore != nil &&
 			cr.Spec.VMStorage.VMBackup.Restore.OnStart != nil &&
 			cr.Spec.VMStorage.VMBackup.Restore.OnStart.Enabled {
-			vmRestore, err := build.VMRestore(cr.Spec.VMStorage.VMBackup, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName())
+			vmRestore, err := build.VMRestore(cr.Spec.VMStorage.VMBackup, cr.Spec.VMStorage.StorageDataPath, commonMounts)
 			if err != nil {
 				return nil, err
 			}

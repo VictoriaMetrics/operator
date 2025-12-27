@@ -55,10 +55,10 @@ type VLAgentSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	// StatefulStorage configures storage for StatefulSet
+	// Storage configures storage for StatefulSet
 	// +optional
 	Storage *vmv1beta1.StorageSpec `json:"storage,omitempty"`
-	// StatefulRollingUpdateStrategy allows configuration for strategyType
+	// RollingUpdateStrategy allows configuration for strategyType
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`

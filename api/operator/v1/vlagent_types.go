@@ -393,7 +393,7 @@ func (cr *VLAgent) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VLAgent) GetExtraArgs() map[string]string {
+func (cr *VLAgent) GetExtraArgs() map[string]vmv1beta1.ArgValue {
 	return cr.Spec.ExtraArgs
 }
 

@@ -554,7 +554,9 @@ type VMBackup struct {
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 	// extra args like maxBytesPerSecond default 0
 	// +optional
-	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	ExtraArgs map[string]ArgValue `json:"extraArgs,omitempty"`
 	// +optional
 	ExtraEnvs []corev1.EnvVar `json:"extraEnvs,omitempty"`
 	// ExtraEnvsFrom defines source of env variables for the application container
@@ -750,7 +752,7 @@ func (cr *VMSelect) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMSelect) GetExtraArgs() map[string]string {
+func (cr *VMSelect) GetExtraArgs() map[string]ArgValue {
 	return cr.ExtraArgs
 }
 
@@ -768,7 +770,7 @@ func (cr *VMInsert) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMInsert) GetExtraArgs() map[string]string {
+func (cr *VMInsert) GetExtraArgs() map[string]ArgValue {
 	return cr.ExtraArgs
 }
 
@@ -786,7 +788,7 @@ func (cr *VMStorage) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMStorage) GetExtraArgs() map[string]string {
+func (cr *VMStorage) GetExtraArgs() map[string]ArgValue {
 	return cr.ExtraArgs
 }
 
@@ -796,23 +798,23 @@ func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
 }
 
 // SnapshotCreatePathWithFlags returns url for accessing vmbackupmanager component
-func (*VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
+func (*VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]ArgValue) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(BuildPathWithPrefixFlag(extraArgs, snapshotCreate))), extraArgs)
 }
 
 // SnapshotDeletePathWithFlags returns url for accessing vmbackupmanager component
-func (*VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
+func (*VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]ArgValue) string {
 	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(BuildPathWithPrefixFlag(extraArgs, snapshotDelete))), extraArgs)
 }
 
-func joinBackupAuthKey(urlPath string, extraArgs map[string]string) string {
-	if authKey, ok := extraArgs["snapshotAuthKey"]; ok {
+func joinBackupAuthKey(urlPath string, extraArgs map[string]ArgValue) string {
+	if authKey, ok := extraArgs["snapshotAuthKey"]; ok && len(authKey) > 0 {
 		separator := "?"
 		idx := strings.IndexByte(urlPath, '?')
 		if idx > 0 {
 			separator = "&"
 		}
-		return urlPath + separator + "authKey=" + authKey
+		return urlPath + separator + "authKey=" + authKey[0]
 	}
 	return urlPath
 }
@@ -833,7 +835,7 @@ func (cr *VMCluster) IsOwnsServiceAccount() bool {
 // AsURL implements stub for interface.
 func (cr *VMCluster) AsURL(kind ClusterComponent) string {
 	var port string
-	var extraArgs map[string]string
+	var extraArgs map[string]ArgValue
 	switch kind {
 	case ClusterComponentSelect:
 		if cr.Spec.VMSelect == nil {
@@ -1010,7 +1012,7 @@ func (cr *VMAuthLoadBalancerSpec) GetServiceScrape() *VMServiceScrapeSpec {
 }
 
 // GetExtraArgs implements build.serviceScrapeBuilder interface
-func (cr *VMAuthLoadBalancerSpec) GetExtraArgs() map[string]string {
+func (cr *VMAuthLoadBalancerSpec) GetExtraArgs() map[string]ArgValue {
 	return cr.ExtraArgs
 }
 

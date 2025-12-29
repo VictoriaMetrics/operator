@@ -664,7 +664,7 @@ func (cr *VMAuth) GetMetricPath() string {
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr *VMAuth) GetExtraArgs() map[string]string {
+func (cr *VMAuth) GetExtraArgs() map[string]ArgValue {
 	return cr.Spec.ExtraArgs
 }
 
@@ -712,10 +712,8 @@ func (cr *VMAuth) UseProxyProtocol() bool {
 	if cr.Spec.UseProxyProtocol {
 		return hasInternalPorts
 	}
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		return hasInternalPorts
-	}
-	return false
+	v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]
+	return ok && len(v) > 0 && v[0] == "true" && hasInternalPorts
 }
 
 // AutomountServiceAccountToken implements reloadable interface

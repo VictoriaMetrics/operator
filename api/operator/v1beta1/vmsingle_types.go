@@ -254,7 +254,7 @@ func (cr *VMSingle) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMSingle) GetExtraArgs() map[string]string {
+func (cr *VMSingle) GetExtraArgs() map[string]ArgValue {
 	return cr.Spec.ExtraArgs
 }
 

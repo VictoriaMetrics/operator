@@ -2639,9 +2639,9 @@ serviceaccountname: vmagent-agent
 					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
 				},
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ExtraArgs: map[string]string{
-						"remoteWrite.maxDiskUsagePerURL": "35GiB",
-						"remoteWrite.forceVMProto":       "false",
+					ExtraArgs: map[string]vmv1beta1.ArgValue{
+						"remoteWrite.maxDiskUsagePerURL": []string{"35GiB"},
+						"remoteWrite.forceVMProto":       []string{"false"},
 					},
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{

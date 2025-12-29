@@ -171,7 +171,7 @@ func (cr *VMAlert) GetReloaderParams() *CommonConfigReloaderParams {
 // UseProxyProtocol implements reloadable interface
 func (cr *VMAlert) UseProxyProtocol() bool {
 	v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]
-	return ok && v == "true"
+	return ok && len(v) > 0 && v[0] == "true"
 }
 
 // AutomountServiceAccountToken implements reloadable interface
@@ -457,7 +457,7 @@ func (cr *VMAlert) GetMetricPath() string {
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr *VMAlert) GetExtraArgs() map[string]string {
+func (cr *VMAlert) GetExtraArgs() map[string]ArgValue {
 	return cr.Spec.ExtraArgs
 }
 

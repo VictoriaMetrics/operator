@@ -305,7 +305,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		volumes = append(volumes, corev1.Volume{
 			Name: "config-out",
 			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
+				EmptyDir: cr.Spec.ConfigReloaderEmptyDir,
 			},
 		})
 		m := corev1.VolumeMount{

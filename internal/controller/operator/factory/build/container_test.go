@@ -49,7 +49,6 @@ func Test_buildProbe(t *testing.T) {
 		cr        testBuildProbeCR
 		validate  func(corev1.Container) error
 	}
-
 	f := func(o opts) {
 		t.Helper()
 		got := Probe(o.container, o.cr)
@@ -353,7 +352,203 @@ func TestAddSyslogArgsTo(t *testing.T) {
 		"-syslog.compressMethod.udp=zstd",
 	}
 	f(&spec, expected)
+}
 
+func TestStorageVolumeMountsTo(t *testing.T) {
+	type opts struct {
+		pvcSrc          *corev1.PersistentVolumeClaimVolumeSource
+		storagePath     string
+		volumes         []corev1.Volume
+		expectedVolumes []corev1.Volume
+		mounts          []corev1.VolumeMount
+		expectedMounts  []corev1.VolumeMount
+		wantErr         bool
+	}
+	f := func(o opts) {
+		t.Helper()
+		gotVolumes, gotMounts, err := StorageVolumeMountsTo(o.volumes, o.mounts, o.pvcSrc, o.storagePath, DataVolumeName)
+		assert.Equal(t, o.expectedMounts, gotMounts)
+		assert.Equal(t, o.expectedVolumes, gotVolumes)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+	// no PVC spec and no volumes and mounts
+	f(opts{
+		storagePath: "/test",
+		expectedVolumes: []corev1.Volume{{
+			Name: DataVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      DataVolumeName,
+			MountPath: "/test",
+		}},
+	})
+
+	// with PVC spec and no volumes and mounts
+	f(opts{
+		storagePath: "/test",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		expectedVolumes: []corev1.Volume{{
+			Name: DataVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "test-claim",
+				},
+			},
+		}},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      DataVolumeName,
+			MountPath: "/test",
+		}},
+	})
+
+	// with PVC spec and matching data volume
+	f(opts{
+		volumes: []corev1.Volume{{
+			Name: DataVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+					VolumeID: "aws-volume",
+				},
+			},
+		}},
+		storagePath: "/test",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		wantErr: true,
+	})
+
+	// with PVC spec and not matching data volume
+	f(opts{
+		volumes: []corev1.Volume{{
+			Name: "extra",
+			VolumeSource: corev1.VolumeSource{
+				AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+					VolumeID: "aws-volume",
+				},
+			},
+		}},
+		storagePath: "/test",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		expectedVolumes: []corev1.Volume{
+			{
+				Name: DataVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "test-claim",
+					},
+				},
+			},
+			{
+				Name: "extra",
+				VolumeSource: corev1.VolumeSource{
+					AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+						VolumeID: "aws-volume",
+					},
+				},
+			},
+		},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      DataVolumeName,
+			MountPath: "/test",
+		}},
+	})
+
+	// with PVC spec and existing data volume mount
+	f(opts{
+		volumes: []corev1.Volume{{
+			Name: "extra",
+			VolumeSource: corev1.VolumeSource{
+				AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+					VolumeID: "aws-volume",
+				},
+			},
+		}},
+		mounts: []corev1.VolumeMount{{
+			Name:      DataVolumeName,
+			MountPath: "/other-path",
+		}},
+		wantErr:     true,
+		storagePath: "/test",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+	})
+
+	// with PVC spec and intersecting data volume mount
+	f(opts{
+		volumes: []corev1.Volume{{
+			Name: "extra",
+			VolumeSource: corev1.VolumeSource{
+				AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+					VolumeID: "aws-volume",
+				},
+			},
+		}},
+		mounts: []corev1.VolumeMount{{
+			Name:      DataVolumeName,
+			MountPath: "/test",
+		}},
+		storagePath: "/test/data",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		expectedVolumes: []corev1.Volume{
+			{
+				Name: DataVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "test-claim",
+					},
+				},
+			},
+			{
+				Name: "extra",
+				VolumeSource: corev1.VolumeSource{
+					AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+						VolumeID: "aws-volume",
+					},
+				},
+			},
+		},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      DataVolumeName,
+			MountPath: "/test",
+		}},
+	})
+
+	// with PVC spec and intersecting volume mount and absent volume
+	f(opts{
+		volumes: []corev1.Volume{{
+			Name: "test",
+			VolumeSource: corev1.VolumeSource{
+				AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+					VolumeID: "aws-volume",
+				},
+			},
+		}},
+		mounts: []corev1.VolumeMount{{
+			Name:      "test",
+			MountPath: "/test",
+		}},
+		storagePath: "/test/data",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		wantErr: true,
+	})
 }
 
 func TestBuildConfigReloaderContainer(t *testing.T) {

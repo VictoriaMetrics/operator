@@ -21,7 +21,8 @@ func VMBackupManager(
 	ctx context.Context,
 	cr *vmv1beta1.VMBackup,
 	port string,
-	storagePath, dataVolumeName string,
+	storagePath string,
+	mounts []corev1.VolumeMount,
 	extraArgs map[string]string,
 	isCluster bool,
 	license *vmv1beta1.License,
@@ -85,16 +86,7 @@ func VMBackupManager(
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Port).IntVal})
-
-	mounts := []corev1.VolumeMount{
-		{
-			Name:      dataVolumeName,
-			MountPath: storagePath,
-			ReadOnly:  false,
-		},
-	}
 	mounts = append(mounts, cr.VolumeMounts...)
-
 	if cr.CredentialsSecret != nil {
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),
@@ -171,9 +163,9 @@ func VMBackupManager(
 // VMRestore conditionally creates vmrestore container
 func VMRestore(
 	cr *vmv1beta1.VMBackup,
-	storagePath, dataVolumeName string,
+	storagePath string,
+	mounts []corev1.VolumeMount,
 ) (*corev1.Container, error) {
-
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", storagePath),
 		"-eula",
@@ -197,16 +189,7 @@ func VMRestore(
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Port).IntVal})
-
-	mounts := []corev1.VolumeMount{
-		{
-			Name:      dataVolumeName,
-			MountPath: storagePath,
-			ReadOnly:  false,
-		},
-	}
 	mounts = append(mounts, cr.VolumeMounts...)
-
 	if cr.CredentialsSecret != nil {
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),

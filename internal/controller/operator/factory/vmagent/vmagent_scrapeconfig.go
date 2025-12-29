@@ -422,6 +422,13 @@ func generateConfig(
 		{Key: "external_labels", Value: buildExternalLabels(cr)},
 	}
 
+	if cr.Spec.SampleLimit > 0 {
+		globalItems = append(globalItems, yaml.MapItem{
+			Key:   "sample_limit",
+			Value: cr.Spec.SampleLimit,
+		})
+	}
+
 	if cr.Spec.ScrapeTimeout != "" {
 		globalItems = append(globalItems, yaml.MapItem{
 			Key:   "scrape_timeout",

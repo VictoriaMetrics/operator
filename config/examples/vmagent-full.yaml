@@ -83,7 +83,7 @@ spec:
     repository: victoriametrics/vmagent
     tag: v1.46.0
     pullPolicy: IfNotPresent
-  vmAgentExternalLabelName: vmagent
+  externalLabelName: vmagent
   scrapeInterval: 30s
   externalLabels:
     key: value

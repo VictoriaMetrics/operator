@@ -1207,6 +1207,9 @@ type CommonConfigReloaderParams struct {
 	// available since v0.57.0 version
 	// +optional
 	ConfigReloadAuthKeySecret *corev1.SecretKeySelector `json:"configReloadAuthKeySecret,omitempty"`
+	// ConfigReloaderEmptyDir sets emptyDir for reloader ephemeral volume, that is shared with main container
+	// +optional
+	ConfigReloaderEmptyDir *corev1.EmptyDirVolumeSource `json:"configReloaderEmptyDir,omitempty"`
 }
 
 // CommonApplicationDeploymentParams defines common params

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/caarlos0/env/v11"
 	"github.com/prometheus/client_golang/prometheus"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -57,6 +59,19 @@ func getEnvOpts() env.Options {
 	return envOpts
 }
 
+// Resource is useful for generic resource building
+// uses the same memory layout as resources at config
+type Resource struct {
+	Limit struct {
+		Mem string
+		Cpu string
+	}
+	Request struct {
+		Mem string
+		Cpu string
+	}
+}
+
 // ApplicationDefaults is useful for generic default building
 // uses the same memory as application default at config
 type ApplicationDefaults struct {
@@ -73,19 +88,6 @@ type ApplicationDefaults struct {
 			Mem string
 			Cpu string
 		}
-	}
-}
-
-// Resource is useful for generic resource building
-// uses the same memory layout as resources at config
-type Resource struct {
-	Limit struct {
-		Mem string
-		Cpu string
-	}
-	Request struct {
-		Mem string
-		Cpu string
 	}
 }
 
@@ -107,18 +109,31 @@ type BaseOperatorConf struct {
 	ContainerRegistry string `default:"" env:"VM_CONTAINERREGISTRY"`
 	// Deprecated: use VM_CONFIG_RELOADER_IMAGE instead
 	CustomConfigReloaderImage string `env:"VM_CUSTOMCONFIGRELOADERIMAGE"`
-	ConfigReloaderImage       string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:"VM_CONFIG_RELOADER_IMAGE,expand"`
 	PSPAutoCreateEnabled      bool   `default:"false" env:"VM_PSPAUTOCREATEENABLED"`
 	EnableTCP6                bool   `default:"false" env:"VM_ENABLETCP6"`
 
-	// defines global resource.limits.cpu for all config-reloader containers
-	ConfigReloaderLimitCPU string `default:"unlimited" env:"VM_CONFIG_RELOADER_LIMIT_CPU"`
-	// defines global resource.limits.memory for all config-reloader containers
-	ConfigReloaderLimitMemory string `default:"unlimited" env:"VM_CONFIG_RELOADER_LIMIT_MEMORY"`
-	// defines global resource.requests.cpu for all config-reloader containers
-	ConfigReloaderRequestCPU string `default:"10m" env:"VM_CONFIG_RELOADER_REQUEST_CPU"`
-	// defines global resource.requests.memory for all config-reloader containers
-	ConfigReloaderRequestMemory string `default:"25Mi" env:"VM_CONFIG_RELOADER_REQUEST_MEMORY"`
+	// defines global config reloader parameters
+	ConfigReloader struct {
+		// default image for all config-reloader containers
+		Image    string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:",expand"`
+		Resource struct {
+			Limit struct {
+				// defines global resource.limits.memory for all config-reloader containers
+				Mem string `default:"unlimited" env:"MEMORY"`
+				// defines global resource.limits.cpu for all config-reloader containers
+				Cpu string `default:"unlimited"`
+			} `prefix:"LIMIT_"`
+			Request struct {
+				// defines global resource.requests.memory for all config-reloader containers
+				Mem string `default:"25Mi" env:"MEMORY"`
+				// defines global resource.requests.cpu for all config-reloader containers
+				Cpu string `default:"10m"`
+			} `prefix:"REQUEST_"`
+		}
+		// defines emptyDir configuration for config reloader volume
+		EmptyDir string                       `default:"{}"`
+		emptyDir *corev1.EmptyDirVolumeSource `env:"-"`
+	} `prefix:"VM_CONFIG_RELOADER_"`
 
 	VLogsDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
@@ -533,8 +548,13 @@ func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
 	return boc.ForceResyncInterval + time.Duration(p*float64(dv))
 }
 
+// ConfigReloaderEmptyDir returns emptyDir section for config reloader
+func (boc *BaseOperatorConf) ConfigReloaderEmptyDir() *corev1.EmptyDirVolumeSource {
+	return boc.ConfigReloader.emptyDir
+}
+
 // Validate - validates config on best effort.
-func (boc BaseOperatorConf) Validate() error {
+func (boc BaseOperatorConf) validate() error {
 	for _, ns := range boc.WatchNamespaces {
 		if !validNamespaceRegex.MatchString(ns) {
 			return fmt.Errorf("namespace=%q doesn't match regex=%q", ns, validNamespaceRegex.String())
@@ -564,28 +584,9 @@ func (boc BaseOperatorConf) Validate() error {
 		return nil
 	}
 
-	if boc.ConfigReloaderLimitMemory != UnLimitedResource {
-		if _, err := resource.ParseQuantity(boc.ConfigReloaderLimitMemory); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource limit memory: %w", err)
-		}
+	if err := validateResource("config-reloader", Resource(boc.ConfigReloader.Resource)); err != nil {
+		return err
 	}
-	if boc.ConfigReloaderLimitCPU != UnLimitedResource {
-		if _, err := resource.ParseQuantity(boc.ConfigReloaderLimitCPU); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource limit cpu: %w", err)
-		}
-	}
-
-	if len(boc.ConfigReloaderRequestMemory) > 0 && boc.ConfigReloaderRequestMemory != UnLimitedResource {
-		if _, err := resource.ParseQuantity(boc.ConfigReloaderRequestMemory); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource request memory: %w", err)
-		}
-	}
-	if len(boc.ConfigReloaderRequestCPU) > 0 && boc.ConfigReloaderRequestCPU != UnLimitedResource {
-		if _, err := resource.ParseQuantity(boc.ConfigReloaderRequestCPU); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource request cpu: %w", err)
-		}
-	}
-
 	if err := validateResource("vmagent", Resource(boc.VMAgentDefault.Resource)); err != nil {
 		return err
 	}
@@ -654,9 +655,14 @@ func MustGetBaseConfig() *BaseOperatorConf {
 			panic(err)
 		}
 		if c.CustomConfigReloaderImage != "" {
-			c.ConfigReloaderImage = c.CustomConfigReloaderImage
+			c.ConfigReloader.Image = c.CustomConfigReloaderImage
 		}
-		if err := c.Validate(); err != nil {
+		var emptyDir corev1.EmptyDirVolumeSource
+		if err := json.Unmarshal([]byte(c.ConfigReloader.EmptyDir), &emptyDir); err != nil {
+			panic(fmt.Errorf(`failed to parse VM_CONFIG_RELOADER_EMPTY_DIR value %q as JSON object for EmptyDirVolumeSource (example: {"medium":"Memory","sizeLimit":"1Gi"}): %w`, c.ConfigReloader.EmptyDir, err))
+		}
+		c.ConfigReloader.emptyDir = &emptyDir
+		if err := c.validate(); err != nil {
 			panic(err)
 		}
 		opConf = &c

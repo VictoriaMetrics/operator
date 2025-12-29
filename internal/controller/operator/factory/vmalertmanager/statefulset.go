@@ -256,7 +256,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		{
 			Name: configVolumeName,
 			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
+				EmptyDir: cr.Spec.ConfigReloaderEmptyDir,
 			},
 		},
 		// use a different volume mount for the case of vm config-reloader

@@ -358,7 +358,7 @@ func (pos *parsedObjects) generateVMAuthConfig(cr *vmv1beta1.VMAuth, crdCache ma
 		}
 	}
 
-	unAuthorizedAccessValue, err := buildUnauthorizedConfig(cr, ac)
+	unAuthorizedAccessValue, err := buildUnauthorizedConfig(cr, crdCache, ac)
 	if err != nil {
 		return nil, fmt.Errorf("cannot build unauthorized_user config section: %w", err)
 	}
@@ -383,7 +383,7 @@ func appendIfNotEmpty(src []string, key string, origin yaml.MapSlice) yaml.MapSl
 	return origin
 }
 
-func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]yaml.MapItem, error) {
+func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, crdURLCache map[string]string, ac *build.AssetsCache) ([]yaml.MapItem, error) {
 	var result []yaml.MapItem
 
 	switch {
@@ -393,13 +393,14 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]yam
 			return nil, fmt.Errorf("incorrect spec.UnauthorizedUserAccess syntax: %w", err)
 		}
 		var urlMapYAML []yaml.MapSlice
-		for _, uc := range uua.URLMap {
+		for _, uc := range uua.URLMap { //nolint:staticcheck
 			urlMap := appendIfNotEmpty(uc.SrcPaths, "src_paths", yaml.MapSlice{})
 			urlMap = appendIfNotEmpty(uc.SrcHosts, "src_hosts", urlMap)
 			urlMap = appendIfNotEmpty(uc.URLPrefix, "url_prefix", urlMap)
 			urlMap = addURLMapCommonToYaml(urlMap, uc.URLMapCommon, false)
 			urlMapYAML = append(urlMapYAML, urlMap)
 		}
+		resultLen := len(result)
 		if len(urlMapYAML) > 0 {
 			result = append(result, yaml.MapItem{Key: "url_map", Value: urlMapYAML})
 		}
@@ -413,6 +414,12 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]yam
 			})
 		}
 		var err error
+		if resultLen == len(result) {
+			result, err = genURLMaps("unauthorized_user", uua.TargetRefs, result, crdURLCache)
+			if err != nil {
+				return nil, fmt.Errorf("cannot generate urlMaps for user: %w", err)
+			}
+		}
 		result, err = addUserConfigOptionToYaml(result, uua.VMUserConfigOptions, cr, ac)
 		if err != nil {
 			return nil, err

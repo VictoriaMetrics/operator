@@ -86,6 +86,45 @@ type TargetRef struct {
 	TargetRefBasicAuth *TargetRefBasicAuth `json:"targetRefBasicAuth,omitempty"`
 }
 
+func (r *TargetRef) validate(isRetryCodesSet bool) error {
+	if r.CRD != nil && r.Static != nil {
+		return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got both")
+	}
+	if r.CRD == nil && r.Static == nil {
+		return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got none")
+	}
+	if r.Static != nil {
+		if r.Static.URL == "" && len(r.Static.URLs) == 0 {
+			return fmt.Errorf("for targetRef.static url or urls option must be set")
+		}
+		if r.Static.URL != "" {
+			if err := validateURLPrefix(r.Static.URL); err != nil {
+				return fmt.Errorf("incorrect static.url: %w", err)
+			}
+		}
+		for _, staticURL := range r.Static.URLs {
+			if err := validateURLPrefix(staticURL); err != nil {
+				return fmt.Errorf("incorrect value at static.urls: %w", err)
+			}
+		}
+	}
+	if r.CRD != nil {
+		if r.CRD.Namespace == "" || r.CRD.Name == "" {
+			return fmt.Errorf("crd.name and crd.namespace cannot be empty")
+		}
+	}
+	if err := validateHTTPHeaders(r.ResponseHeaders); err != nil {
+		return fmt.Errorf("failed to parse targetRef response headers: %w", err)
+	}
+	if err := validateHTTPHeaders(r.RequestHeaders); err != nil {
+		return fmt.Errorf("failed to parse targetRef headers: %w", err)
+	}
+	if isRetryCodesSet && len(r.RetryStatusCodes) > 0 {
+		return fmt.Errorf("retry_status_codes already set at global spec level")
+	}
+	return nil
+}
+
 // VMUserIPFilters defines filters for IP addresses
 // supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)
 type VMUserIPFilters struct {
@@ -275,41 +314,9 @@ func (cr *VMUser) Validate() error {
 	}
 	isRetryCodesSet := len(cr.Spec.RetryStatusCodes) > 0
 	for i := range cr.Spec.TargetRefs {
-		targetRef := cr.Spec.TargetRefs[i]
-		if targetRef.CRD != nil && targetRef.Static != nil {
-			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got both")
-		}
-		if targetRef.CRD == nil && targetRef.Static == nil {
-			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got none")
-		}
-		if targetRef.Static != nil {
-			if targetRef.Static.URL == "" && len(targetRef.Static.URLs) == 0 {
-				return fmt.Errorf("for targetRef.static url or urls option must be set at idx=%d", i)
-			}
-			if targetRef.Static.URL != "" {
-				if err := validateURLPrefix(targetRef.Static.URL); err != nil {
-					return fmt.Errorf("incorrect static.url: %w", err)
-				}
-			}
-			for _, staticURL := range targetRef.Static.URLs {
-				if err := validateURLPrefix(staticURL); err != nil {
-					return fmt.Errorf("incorrect value at static.urls: %w", err)
-				}
-			}
-		}
-		if targetRef.CRD != nil {
-			if targetRef.CRD.Namespace == "" || targetRef.CRD.Name == "" {
-				return fmt.Errorf("crd.name and crd.namespace cannot be empty")
-			}
-		}
-		if err := validateHTTPHeaders(targetRef.ResponseHeaders); err != nil {
-			return fmt.Errorf("failed to parse targetRef response headers :%w", err)
-		}
-		if err := validateHTTPHeaders(targetRef.RequestHeaders); err != nil {
-			return fmt.Errorf("failed to parse targetRef headers :%w", err)
-		}
-		if isRetryCodesSet && len(targetRef.RetryStatusCodes) > 0 {
-			return fmt.Errorf("retry_status_codes already set at VMUser.spec level")
+		targetRef := &cr.Spec.TargetRefs[i]
+		if err := targetRef.validate(isRetryCodesSet); err != nil {
+			return fmt.Errorf("%w for users[%d]", err, i)
 		}
 	}
 	for k := range cr.Spec.MetricLabels {

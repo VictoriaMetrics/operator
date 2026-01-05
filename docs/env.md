@@ -1,6 +1,6 @@
 | Environment variables |
 | --- |
-| VM_METRICS_VERSION: `v1.132.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
+| VM_METRICS_VERSION: `v1.133.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
 | VM_LOGS_VERSION: `v1.43.1` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
 | VM_ANOMALY_VERSION: `v1.28.2` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a> |
 | VM_TRACES_VERSION: `v0.5.1` <a href="#variables-vm-traces-version" id="variables-vm-traces-version">#</a> |

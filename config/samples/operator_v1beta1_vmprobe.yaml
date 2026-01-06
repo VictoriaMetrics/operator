@@ -12,7 +12,7 @@ spec:
     url: prometheus-blackbox-exporter.default.svc:9115
   module: http_2xx
   targets:
-    staticConfig:
+    static:
       targets:
       - vmagent-example.default.svc:8429/health
   interval: 2s

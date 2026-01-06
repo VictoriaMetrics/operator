@@ -1,0 +1,21 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMProbe
+metadata:
+  name: k8s-probe
+spec:
+  jobName: k8s-probe
+  vmProberSpec:
+    # by default scheme http, and path is /probe
+    url: prometheus-blackbox-exporter.default.svc:9115
+  module: http_2xx
+  targets:
+    k8s:
+      - role: ingress
+        selector:
+          matchLabels:
+            app: victoria-metrics-single
+      - role: service
+        selector:
+          matchLabels:
+            app: victoria-metrics-agent
+  interval: 2s

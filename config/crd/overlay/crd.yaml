@@ -33776,11 +33776,12 @@ spec:
                   targets to be probed using the prober.
                 properties:
                   ingress:
-                    description: Ingress defines the set of dynamically discovered
-                      ingress objects which hosts are considered for probing.
+                    description: |-
+                      Ingress defines the set of dynamically discovered Ingress objects which hosts are considered for probing.
+                      Deprecated: use k8s configs instead
                     properties:
                       namespaceSelector:
-                        description: Select Ingress objects by namespace.
+                        description: Select k8s objects by namespace.
                         properties:
                           any:
                             description: |-
@@ -33870,8 +33871,17 @@ spec:
                               type: string
                           type: object
                         type: array
+                      role:
+                        description: Role defines k8s role name
+                        enum:
+                        - service
+                        - ingress
+                        - httproute
+                        - grpcroute
+                        - pod
+                        type: string
                       selector:
-                        description: Select Ingress objects by labels.
+                        description: Select k8s objects by labels.
                         properties:
                           matchExpressions:
                             description: matchExpressions is a list of label selector
@@ -33917,6 +33927,161 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
+                  k8s:
+                    description: K8s defines k8s targets, which are considered for
+                      probing.
+                    items:
+                      description: VMProbeTargetK8s defines the set of k8s objects
+                        considered for probing.
+                      properties:
+                        namespaceSelector:
+                          description: Select k8s objects by namespace.
+                          properties:
+                            any:
+                              description: |-
+                                Boolean describing whether all namespaces are selected in contrast to a
+                                list restricting them.
+                              type: boolean
+                            matchNames:
+                              description: List of namespace names.
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        relabelingConfigs:
+                          description: RelabelConfigs to apply to samples during service
+                            discovery.
+                          items:
+                            description: |-
+                              RelabelConfig allows dynamic rewriting of the label set
+                              More info: https://docs.victoriametrics.com/victoriametrics/#relabeling
+                            properties:
+                              action:
+                                description: Action to perform based on regex matching.
+                                  Default is 'replace'
+                                type: string
+                              if:
+                                description: 'If represents metricsQL match expression
+                                  (or list of expressions): ''{__name__=~"foo_.*"}'''
+                                x-kubernetes-preserve-unknown-fields: true
+                              labels:
+                                additionalProperties:
+                                  type: string
+                                description: 'Labels is used together with Match for
+                                  `action: graphite`'
+                                type: object
+                              match:
+                                description: 'Match is used together with Labels for
+                                  `action: graphite`'
+                                type: string
+                              modulus:
+                                description: Modulus to take of the hash of the source
+                                  label values.
+                                format: int64
+                                type: integer
+                              regex:
+                                description: |-
+                                  Regular expression against which the extracted value is matched. Default is '(.*)'
+                                  victoriaMetrics supports multiline regex joined with |
+                                  https://docs.victoriametrics.com/victoriametrics/vmagent/#relabeling-enhancements
+                                x-kubernetes-preserve-unknown-fields: true
+                              replacement:
+                                description: |-
+                                  Replacement value against which a regex replace is performed if the
+                                  regular expression matches. Regex capture groups are available. Default is '$1'
+                                type: string
+                              separator:
+                                description: Separator placed between concatenated
+                                  source label values. default is ';'.
+                                type: string
+                              source_labels:
+                                description: |-
+                                  UnderScoreSourceLabels - additional form of source labels source_labels
+                                  for compatibility with original relabel config.
+                                  if set both sourceLabels and source_labels, sourceLabels has priority.
+                                  for details https://github.com/VictoriaMetrics/operator/issues/131
+                                items:
+                                  type: string
+                                type: array
+                              sourceLabels:
+                                description: |-
+                                  The source labels select values from existing labels. Their content is concatenated
+                                  using the configured separator and matched against the configured regular expression
+                                  for the replace, keep, and drop actions.
+                                items:
+                                  type: string
+                                type: array
+                              target_label:
+                                description: |-
+                                  UnderScoreTargetLabel - additional form of target label - target_label
+                                  for compatibility with original relabel config.
+                                  if set both targetLabel and target_label, targetLabel has priority.
+                                  for details https://github.com/VictoriaMetrics/operator/issues/131
+                                type: string
+                              targetLabel:
+                                description: |-
+                                  Label to which the resulting value is written in a replace action.
+                                  It is mandatory for replace actions. Regex capture groups are available.
+                                type: string
+                            type: object
+                          type: array
+                        role:
+                          description: Role defines k8s role name
+                          enum:
+                          - service
+                          - ingress
+                          - httproute
+                          - grpcroute
+                          - pod
+                          type: string
+                        selector:
+                          description: Select k8s objects by labels.
+                          properties:
+                            matchExpressions:
+                              description: matchExpressions is a list of label selector
+                                requirements. The requirements are ANDed.
+                              items:
+                                description: |-
+                                  A label selector requirement is a selector that contains values, a key, and an operator that
+                                  relates the key and values.
+                                properties:
+                                  key:
+                                    description: key is the label key that the selector
+                                      applies to.
+                                    type: string
+                                  operator:
+                                    description: |-
+                                      operator represents a key's relationship to a set of values.
+                                      Valid operators are In, NotIn, Exists and DoesNotExist.
+                                    type: string
+                                  values:
+                                    description: |-
+                                      values is an array of string values. If the operator is In or NotIn,
+                                      the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                      the values array must be empty. This array is replaced during a strategic
+                                      merge patch.
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                required:
+                                - key
+                                - operator
+                                type: object
+                              type: array
+                              x-kubernetes-list-type: atomic
+                            matchLabels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                operator is "In", and the values array contains only "value". The requirements are ANDed.
+                              type: object
+                          type: object
+                          x-kubernetes-map-type: atomic
+                      type: object
+                    type: array
                   staticConfig:
                     description: StaticConfig defines static targets which are considers
                       for probing.

@@ -69,7 +69,7 @@ spec:
 
 After adding target to `VMAgent` configuration it starts probing itself through blackbox exporter.
 
-### Ingress targets
+### K8s targets
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -82,16 +82,22 @@ spec:
      url: prometheus-blackbox-exporter.default.svc:9115
   module: http_2xx
   targets:
-   ingress: 
+    k8s:
+    - role: ingress
       selector:
-       matchLabels:
-        app: victoria-metrics-single
+        matchLabels:
+          app: victoria-metrics-single
   interval: 10s
 ```
 
 This configuration will add 2 additional targets for probing: `vmsingle2.example.com` and `vmsingle.example.com`.
 
 But probes will be unsuccessful, because there is no such hosts.
+
+`spec.targets.k8s[*].role` supports `ingress`, `service`, `pod`, `httproute` and `grpcroute` values.
+
+Some for `pod` and `service` roles path and scheme are not exposed via metalabels and equal to `/` and `http` respectively by default.
+To override them add `operator.victoriametrics.com/probe-path` and `operator.victoriametrics.com/probe-scheme` annotations with needed values to items that are considered for probing.
 
 ### Related resources
 

@@ -384,7 +384,7 @@ func TestConvertProbe(t *testing.T) {
 					ProxyURL: ptr.To("http://proxy.com"),
 				},
 				Targets: vmv1beta1.VMProbeTargets{
-					StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
+					Static: &vmv1beta1.VMProbeTargetStatic{
 						Targets: []string{"target-1", "target-2"},
 						Labels: map[string]string{
 							"l1": "v1",
@@ -431,24 +431,27 @@ func TestConvertProbe(t *testing.T) {
 		want: vmv1beta1.VMProbe{
 			Spec: vmv1beta1.VMProbeSpec{
 				Targets: vmv1beta1.VMProbeTargets{
-					Ingress: &vmv1beta1.ProbeTargetIngress{
-						Selector: metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"app": "test",
+					Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
+						{
+							Role: "ingress",
+							Selector: metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app": "test",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "key",
+									Operator: "op",
+									Values:   []string{"v1", "v2"},
+								}},
 							},
-							MatchExpressions: []metav1.LabelSelectorRequirement{{
-								Key:      "key",
-								Operator: "op",
-								Values:   []string{"v1", "v2"},
+							NamespaceSelector: vmv1beta1.NamespaceSelector{
+								MatchNames: []string{"test-ns"},
+							},
+							RelabelConfigs: []*vmv1beta1.RelabelConfig{{
+								Action:       "keep",
+								SourceLabels: []string{"__address__"},
 							}},
 						},
-						NamespaceSelector: vmv1beta1.NamespaceSelector{
-							MatchNames: []string{"test-ns"},
-						},
-						RelabelConfigs: []*vmv1beta1.RelabelConfig{{
-							Action:       "keep",
-							SourceLabels: []string{"__address__"},
-						}},
 					},
 				},
 			},

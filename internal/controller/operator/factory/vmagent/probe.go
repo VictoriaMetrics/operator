@@ -10,6 +10,38 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
+func getRoleRelabelings(role string) []yaml.MapSlice {
+	switch role {
+	case k8sSDRoleService, k8sSDRolePod:
+		return []yaml.MapSlice{
+			{
+				{Key: "action", Value: "replace"},
+				{Key: "source_labels", Value: []string{"__meta_kubernetes_service_annotation_operator_victoriametrics_com_probe_path"}},
+				{Key: "target_label", Value: fmt.Sprintf("__meta_kubernetes_%s_path", role)},
+			},
+			{
+				{Key: "if", Value: `{__meta_kubernetes_service_annotationpresent_operator_victoriametrics_com_probe_path!="true"}`},
+				{Key: "action", Value: "replace"},
+				{Key: "target_label", Value: fmt.Sprintf("__meta_kubernetes_%s_path", role)},
+				{Key: "replacement", Value: "/"},
+			},
+			{
+				{Key: "action", Value: "replace"},
+				{Key: "source_labels", Value: []string{"__meta_kubernetes_service_annotation_operator_victoriametrics_com_probe_scheme"}},
+				{Key: "target_label", Value: fmt.Sprintf("__meta_kubernetes_%s_scheme", role)},
+			},
+			{
+				{Key: "if", Value: `{__meta_kubernetes_service_annotationpresent_operator_victoriametrics_com_probe_scheme!="true"}`},
+				{Key: "action", Value: "replace"},
+				{Key: "target_label", Value: fmt.Sprintf("__meta_kubernetes_%s_scheme", role)},
+				{Key: "replacement", Value: "http"},
+			},
+		}
+	default:
+		return nil
+	}
+}
+
 func generateProbeConfig(
 	ctx context.Context,
 	cr *vmv1beta1.VMAgent,
@@ -78,38 +110,40 @@ func generateProbeConfig(
 			relabelings = append(relabelings, generateRelabelConfig(r))
 		}
 	}
+
+	var k8sSDOpts []generateK8SSDConfigOptions
+	k8sTargets := spec.Targets.K8s
 	if spec.Targets.Ingress != nil {
-
+		k8sTargets = append(k8sTargets, spec.Targets.Ingress)
+	}
+	for _, t := range k8sTargets {
 		skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
-		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", spec.Targets.Ingress.Selector, skipRelabelSelectors)
-		selectedNamespaces := getNamespacesFromNamespaceSelector(&spec.Targets.Ingress.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
-
-		k8sSDOpts := generateK8SSDConfigOptions{
+		relabelings = addSelectorToRelabelingFor(relabelings, t.Role, t.Selector, skipRelabelSelectors)
+		relabelings = append(relabelings, getRoleRelabelings(t.Role)...)
+		selectedNamespaces := getNamespacesFromNamespaceSelector(&t.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
+		k8sSDOpts = append(k8sSDOpts, generateK8SSDConfigOptions{
 			namespaces:         selectedNamespaces,
 			shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
-			selectors:          spec.Targets.Ingress.Selector,
+			selectors:          t.Selector,
 			apiServerConfig:    apiserverConfig,
-			role:               k8sSDRoleIngress,
+			role:               t.Role,
 			namespace:          sc.Namespace,
-		}
-		if c, err := generateK8SSDConfig(ac, k8sSDOpts); err != nil {
-			return nil, err
-		} else {
-			cfg = append(cfg, c...)
-		}
-
-		// Relabelings for ingress SD.
+		})
 		relabelings = append(relabelings, []yaml.MapSlice{
 			{
 				{Key: "source_labels", Value: []string{"__address__"}},
 				{Key: "separator", Value: ";"},
 				{Key: "regex", Value: "(.*)"},
-				{Key: "target_label", Value: "__tmp_ingress_address"},
+				{Key: "target_label", Value: fmt.Sprintf("__tmp_%s_address", t.Role)},
 				{Key: "replacement", Value: "$1"},
 				{Key: "action", Value: "replace"},
 			},
 			{
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_ingress_scheme", "__address__", "__meta_kubernetes_ingress_path"}},
+				{Key: "source_labels", Value: []string{
+					fmt.Sprintf("__meta_kubernetes_%s_scheme", t.Role),
+					"__address__",
+					fmt.Sprintf("__meta_kubernetes_%s_path", t.Role),
+				}},
 				{Key: "separator", Value: ";"},
 				{Key: "regex", Value: "(.+);(.+);(.+)"},
 				{Key: "target_label", Value: "__param_target"},
@@ -121,16 +155,20 @@ func generateProbeConfig(
 				{Key: "target_label", Value: "namespace"},
 			},
 			{
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_ingress_name"}},
-				{Key: "target_label", Value: "ingress"},
+				{Key: "source_labels", Value: []string{fmt.Sprintf("__meta_kubernetes_%s_name", t.Role)}},
+				{Key: "target_label", Value: t.Role},
 			},
 		}...)
-
-		// Add configured relabelings.
-		for _, r := range spec.Targets.Ingress.RelabelConfigs {
+		for _, r := range t.RelabelConfigs {
 			relabelings = append(relabelings, generateRelabelConfig(r))
 		}
-
+	}
+	if len(k8sSDOpts) > 0 {
+		if c, err := generateK8SSDConfig(ac, k8sSDOpts...); err != nil {
+			return nil, err
+		} else {
+			cfg = append(cfg, c...)
+		}
 	}
 
 	if spec.JobName != "" {

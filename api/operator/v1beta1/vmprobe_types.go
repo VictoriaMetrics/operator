@@ -67,8 +67,11 @@ func (cr *VMProbeSpec) UnmarshalJSON(src []byte) error {
 type VMProbeTargets struct {
 	// StaticConfig defines static targets which are considers for probing.
 	StaticConfig *VMProbeTargetStaticConfig `json:"staticConfig,omitempty"`
-	// Ingress defines the set of dynamically discovered ingress objects which hosts are considered for probing.
-	Ingress *ProbeTargetIngress `json:"ingress,omitempty"`
+	// K8s defines k8s targets, which are considered for probing.
+	K8s []*VMProbeTargetK8s `json:"k8s,omitempty"`
+	// Ingress defines the set of dynamically discovered Ingress objects which hosts are considered for probing.
+	// Deprecated: use k8s configs instead
+	Ingress *VMProbeTargetK8s `json:"ingress,omitempty"`
 }
 
 // VMProbeTargetStaticConfig defines the set of static targets considered for probing.
@@ -82,15 +85,31 @@ type VMProbeTargetStaticConfig struct {
 	RelabelConfigs []*RelabelConfig `json:"relabelingConfigs,omitempty"`
 }
 
-// ProbeTargetIngress defines the set of Ingress objects considered for probing.
+// VMProbeTargetK8s defines the set of k8s objects considered for probing.
 // +k8s:openapi-gen=true
-type ProbeTargetIngress struct {
-	// Select Ingress objects by labels.
+type VMProbeTargetK8s struct {
+	// Role defines k8s role name
+	// +kubebuilder:validation:Enum=service;ingress;pod
+	Role string `json:"role,omitempty"`
+	// Select k8s objects by labels.
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
-	// Select Ingress objects by namespace.
+	// Select k8s objects by namespace.
 	NamespaceSelector NamespaceSelector `json:"namespaceSelector,omitempty"`
 	// RelabelConfigs to apply to samples during service discovery.
 	RelabelConfigs []*RelabelConfig `json:"relabelingConfigs,omitempty"`
+}
+
+func (t *VMProbeTargetK8s) validate(prefix string) error {
+	if t == nil {
+		return nil
+	}
+	if _, err := metav1.LabelSelectorAsSelector(&t.Selector); err != nil {
+		return fmt.Errorf("invalid %s.selector: %w", prefix, err)
+	}
+	if err := checkRelabelConfigs(t.RelabelConfigs); err != nil {
+		return fmt.Errorf("invalid %s.relabelingConfigs: %w", prefix, err)
+	}
+	return nil
 }
 
 // VMProberSpec contains specification parameters for the Prober used for probing.
@@ -154,15 +173,15 @@ func (cr *VMProbe) Validate() error {
 	if err := checkRelabelConfigs(cr.Spec.MetricRelabelConfigs); err != nil {
 		return fmt.Errorf("invalid metricRelabelConfigs: %w", err)
 	}
-	switch {
-	case cr.Spec.Targets.Ingress != nil:
-		if _, err := metav1.LabelSelectorAsSelector(&cr.Spec.Targets.Ingress.Selector); err != nil {
-			return fmt.Errorf("invalid spec.targets.ingress.selector syntax: %w", err)
+	for i, t := range cr.Spec.Targets.K8s {
+		if err := t.validate(fmt.Sprintf("spec.targets.k8s[%d]", i)); err != nil {
+			return err
 		}
-		if err := checkRelabelConfigs(cr.Spec.Targets.Ingress.RelabelConfigs); err != nil {
-			return fmt.Errorf("invalid ingress.relabelingConfigs: %w", err)
-		}
-	case cr.Spec.Targets.StaticConfig != nil:
+	}
+	if err := cr.Spec.Targets.Ingress.validate("spec.targets.ingress"); err != nil {
+		return err
+	}
+	if cr.Spec.Targets.StaticConfig != nil {
 		if err := checkRelabelConfigs(cr.Spec.Targets.StaticConfig.RelabelConfigs); err != nil {
 			return fmt.Errorf("invalid staticConfig.relabelingConfigs: %w", err)
 		}

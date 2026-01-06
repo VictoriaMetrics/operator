@@ -1711,10 +1711,13 @@ scrape_configs:
 				},
 				Spec: vmv1beta1.VMProbeSpec{
 					Targets: vmv1beta1.VMProbeTargets{
-						Ingress: &vmv1beta1.ProbeTargetIngress{
-							Selector: *metav1.SetAsLabelSelector(map[string]string{
-								"alb.ingress.kubernetes.io/tags": "Environment=devl",
-							}),
+						K8s: []*vmv1beta1.VMProbeTargetK8s{
+							{
+								Role: k8sSDRoleIngress,
+								Selector: *metav1.SetAsLabelSelector(map[string]string{
+									"alb.ingress.kubernetes.io/tags": "Environment=devl",
+								}),
+							},
 						},
 					},
 				},
@@ -2279,8 +2282,11 @@ scrape_configs: []
 		ObjectMeta: commonMeta,
 		Spec: vmv1beta1.VMProbeSpec{
 			Targets: vmv1beta1.VMProbeTargets{
-				Ingress: &vmv1beta1.ProbeTargetIngress{
-					Selector: *metav1.SetAsLabelSelector(map[string]string{"alb.ingress.kubernetes.io/tags": "Environment=devl"}),
+				K8s: []*vmv1beta1.VMProbeTargetK8s{
+					{
+						Role:     k8sSDRoleIngress,
+						Selector: *metav1.SetAsLabelSelector(map[string]string{"alb.ingress.kubernetes.io/tags": "Environment=devl"}),
+					},
 				},
 			},
 		},

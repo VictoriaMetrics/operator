@@ -61,7 +61,7 @@ spec:
      url: prometheus-blackbox-exporter.default.svc:9115
   module: http_2xx
   targets:
-   staticConfig: 
+   static:
       targets:
       -  vmagent-example.default.svc:8429/health
   interval: 2s 
@@ -69,7 +69,7 @@ spec:
 
 After adding target to `VMAgent` configuration it starts probing itself through blackbox exporter.
 
-### Ingress targets
+### K8s targets
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -82,16 +82,22 @@ spec:
      url: prometheus-blackbox-exporter.default.svc:9115
   module: http_2xx
   targets:
-   ingress: 
-      selector:
-       matchLabels:
-        app: victoria-metrics-single
+    kubernetes:
+      - role: ingress
+        selector:
+          matchLabels:
+            app: victoria-metrics-single
   interval: 10s
 ```
 
 This configuration will add 2 additional targets for probing: `vmsingle2.example.com` and `vmsingle.example.com`.
 
 But probes will be unsuccessful, because there is no such hosts.
+
+`spec.targets.kubernetes[*].role` supports `ingress`, `service`, `pod` and `node` values.
+
+For `pod`, `service` and `node` roles path and scheme are not exposed via metalabels and equal to `/` and `http` respectively by default.
+To override them add `operator.victoriametrics.com/probe-path` and `operator.victoriametrics.com/probe-scheme` annotations with needed values to items that are considered for probing.
 
 ### Related resources
 

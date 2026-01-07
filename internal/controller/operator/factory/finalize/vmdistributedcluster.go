@@ -27,25 +27,17 @@ func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMAgent{ObjectMeta: vmAgentMeta})
 	}
 	if len(cr.Spec.VMAuth.Name) > 0 {
-		vmAuthLBMeta := metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      cr.Spec.VMAuth.Name,
-		}
 		vmAuthLBPrefixedMeta := metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
 		}
 		objsToRemove = append(objsToRemove, &appsv1.Deployment{ObjectMeta: vmAuthLBPrefixedMeta})
-		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: vmAuthLBMeta})
-		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.GetServiceAccountName(),
-			Namespace: ns,
-		}})
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: vmAuthLBPrefixedMeta})
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: vmAuthLBPrefixedMeta})
 		objsToRemove = append(objsToRemove, &corev1.Secret{ObjectMeta: vmAuthLBPrefixedMeta})
 		objsToRemove = append(objsToRemove, &rbacv1.Role{ObjectMeta: vmAuthLBPrefixedMeta})
 		objsToRemove = append(objsToRemove, &rbacv1.RoleBinding{ObjectMeta: vmAuthLBPrefixedMeta})
-		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: vmAuthLBMeta})
-		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: vmAuthLBMeta})
+		objsToRemove = append(objsToRemove, &vmv1beta1.VMServiceScrape{ObjectMeta: vmAuthLBPrefixedMeta})
 		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: vmAuthLBPrefixedMeta})
 	}
 	for _, vmclusterSpec := range cr.Spec.Zones.VMClusters {

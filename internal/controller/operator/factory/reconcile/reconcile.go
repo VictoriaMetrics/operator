@@ -1,13 +1,18 @@
 package reconcile
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 var (
@@ -134,17 +139,21 @@ func isRecreate(err error) bool {
 }
 
 type errRecreate struct {
-	origin error
+	msg string
+}
+
+func newErrRecreate(ctx context.Context, r client.Object) *errRecreate {
+	finalizers := strings.Join(r.GetFinalizers(), ",")
+	msg := fmt.Sprintf("waiting for %s=%s/%s (finalizers=[%s]) to be removed", r.GetObjectKind().GroupVersionKind().Kind, r.GetNamespace(), r.GetName(), finalizers)
+	logger.WithContext(ctx).Info(msg)
+	return &errRecreate{
+		msg: msg,
+	}
 }
 
 // Error implements errors.Error interface
 func (e *errRecreate) Error() string {
-	return e.origin.Error()
-}
-
-// Unwrap implements error.Unwrap interface
-func (e *errRecreate) Unwrap() error {
-	return e.origin
+	return e.msg
 }
 
 // IsRetryable determines one of errors:

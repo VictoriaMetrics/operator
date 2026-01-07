@@ -27,9 +27,7 @@ func Secret(ctx context.Context, rclient client.Client, newS *corev1.Secret, pre
 		return err
 	}
 	if !currentS.DeletionTimestamp.IsZero() {
-		return &errRecreate{
-			origin: fmt.Errorf("waiting for secret %q to be removed", newS.Name),
-		}
+		return newErrRecreate(ctx, &currentS)
 	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, &currentS); err != nil {
 		return err

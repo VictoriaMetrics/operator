@@ -28,9 +28,7 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newHTTPRoute, prevHTT
 			return fmt.Errorf("cannot get existing HTTPRoute object: %w", err)
 		}
 		if !curHTTPRoute.DeletionTimestamp.IsZero() {
-			return &errRecreate{
-				origin: fmt.Errorf("waiting for HTTPRoute %q to be removed", newHTTPRoute.Name),
-			}
+			return newErrRecreate(ctx, &curHTTPRoute)
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &curHTTPRoute); err != nil {
 			return err

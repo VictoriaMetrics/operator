@@ -25,10 +25,8 @@ func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *c
 			}
 			return fmt.Errorf("cannot get ServiceAccount: %w", err)
 		}
-		if !newSA.DeletionTimestamp.IsZero() {
-			return &errRecreate{
-				origin: fmt.Errorf("waiting for serviceaccount %q to be removed", newSA.Name),
-			}
+		if !currentSA.DeletionTimestamp.IsZero() {
+			return newErrRecreate(ctx, &currentSA)
 		}
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSA); err != nil {
 			return err

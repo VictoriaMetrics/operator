@@ -206,13 +206,7 @@ func buildVMAuthLBDeployment(cr *vmv1alpha1.VMDistributedCluster) (*appsv1.Deplo
 		strategyType = *spec.UpdateStrategy
 	}
 	lbDep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       cr.Namespace,
-			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
-			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		},
+		ObjectMeta: buildLBConfigMeta(cr),
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer),
@@ -327,14 +321,7 @@ func ensureVMAuthRBExist(ctx context.Context, rclient client.Client, cr, prevCR 
 
 func buildRole(cr *vmv1alpha1.VMDistributedCluster) *rbacv1.Role {
 	return &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
-			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
-			Annotations:     cr.FinalAnnotations(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		},
+		ObjectMeta: buildLBConfigMeta(cr),
 		Rules: []rbacv1.PolicyRule{
 			{
 				APIGroups: []string{""},
@@ -347,14 +334,7 @@ func buildRole(cr *vmv1alpha1.VMDistributedCluster) *rbacv1.Role {
 
 func buildRoleBinding(cr *vmv1alpha1.VMDistributedCluster) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
-			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentBalancer),
-			Annotations:     cr.FinalAnnotations(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		},
+		ObjectMeta: buildLBConfigMeta(cr),
 		RoleRef: rbacv1.RoleRef{
 			Name:     cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
 			Kind:     "Role",
@@ -362,7 +342,7 @@ func buildRoleBinding(cr *vmv1alpha1.VMDistributedCluster) *rbacv1.RoleBinding {
 		},
 		Subjects: []rbacv1.Subject{
 			{
-				Name:      cr.GetServiceAccountName(),
+				Name:      cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
 				Namespace: cr.Namespace,
 				Kind:      "ServiceAccount",
 			},
@@ -373,13 +353,7 @@ func buildRoleBinding(cr *vmv1alpha1.VMDistributedCluster) *rbacv1.RoleBinding {
 func updateVMAuthLBServiceAccount(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster) error {
 	logger.WithContext(ctx).Info("Preparing VMAuth LB serviceaccount")
 	serviceAccount := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetServiceAccountName(),
-			Namespace:       cr.GetNamespace(),
-			Labels:          cr.AllLabels(),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		},
+		ObjectMeta: buildLBConfigMeta(cr),
 	}
 	var prevSA *corev1.ServiceAccount
 	if prevCR != nil {

@@ -319,6 +319,45 @@ func TestFetchVMClusters_InlineAndRef(t *testing.T) {
 	assert.Equal(t, inlineSpec.ClusterVersion, got[1].Spec.ClusterVersion)
 }
 
+func TestFetchVMClusters_SortedByGeneration(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = vmv1alpha1.AddToScheme(scheme)
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	c1 := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster-1", Namespace: "ns"},
+		Status:     vmv1beta1.VMClusterStatus{StatusMetadata: vmv1beta1.StatusMetadata{ObservedGeneration: 1}},
+	}
+	c2 := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster-2", Namespace: "ns"},
+		Status:     vmv1beta1.VMClusterStatus{StatusMetadata: vmv1beta1.StatusMetadata{ObservedGeneration: 3}},
+	}
+	c3 := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster-3", Namespace: "ns"},
+		Status:     vmv1beta1.VMClusterStatus{StatusMetadata: vmv1beta1.StatusMetadata{ObservedGeneration: 2}},
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(c1, c2, c3).Build()
+
+	refs := []vmv1alpha1.VMClusterRefOrSpec{
+		{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}},
+		{Ref: &corev1.LocalObjectReference{Name: "cluster-2"}},
+		{Ref: &corev1.LocalObjectReference{Name: "cluster-3"}},
+	}
+
+	got, err := fetchVMClusters(context.Background(), cl, "ns", refs)
+	assert.NoError(t, err)
+	assert.Len(t, got, 3)
+
+	// Expected order: descending by ObservedGeneration
+	assert.Equal(t, "cluster-2", got[0].Name)
+	assert.Equal(t, int64(3), got[0].Status.ObservedGeneration)
+	assert.Equal(t, "cluster-3", got[1].Name)
+	assert.Equal(t, int64(2), got[1].Status.ObservedGeneration)
+	assert.Equal(t, "cluster-1", got[2].Name)
+	assert.Equal(t, int64(1), got[2].Status.ObservedGeneration)
+}
+
 func TestApplyGlobalOverrideSpec(t *testing.T) {
 	base := vmv1beta1.VMClusterSpec{
 		ClusterVersion:     "v1.0.0",

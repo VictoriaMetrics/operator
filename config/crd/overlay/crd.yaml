@@ -26546,6 +26546,227 @@ spec:
                     items:
                       type: integer
                     type: array
+                  targetRefs:
+                    description: TargetRefs - reference to endpoints, which user may
+                      access.
+                    items:
+                      description: |-
+                        TargetRef describes target for user traffic forwarding.
+                        one of target types can be chosen:
+                        crd or static per targetRef.
+                        user can define multiple targetRefs with different ref Types.
+                      properties:
+                        crd:
+                          description: |-
+                            CRD describes exist operator's CRD object,
+                            operator generates access url based on CRD params.
+                          properties:
+                            kind:
+                              description: |-
+                                Kind one of:
+                                VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage and VLAgent
+                              enum:
+                              - VMAgent
+                              - VMAlert
+                              - VMSingle
+                              - VLogs
+                              - VMAlertManager
+                              - VMAlertmanager
+                              - VMCluster/vmselect
+                              - VMCluster/vmstorage
+                              - VMCluster/vminsert
+                              - VLSingle
+                              - VLCluster/vlinsert
+                              - VLCluster/vlselect
+                              - VLCluster/vlstorage
+                              - VLAgent
+                              - VTCluster/vtinsert
+                              - VTCluster/vtselect
+                              - VTCluster/vtstorage
+                              - VTSingle
+                              type: string
+                            name:
+                              description: Name target CRD object name
+                              type: string
+                            namespace:
+                              description: Namespace target CRD object namespace.
+                              type: string
+                          required:
+                          - kind
+                          - name
+                          - namespace
+                          type: object
+                        discover_backend_ips:
+                          description: DiscoverBackendIPs instructs discovering URLPrefix
+                            backend IPs via DNS.
+                          type: boolean
+                        drop_src_path_prefix_parts:
+                          description: |-
+                            DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+                            See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) for more details.
+                          type: integer
+                        headers:
+                          description: |-
+                            RequestHeaders represent additional http headers, that vmauth uses
+                            in form of ["header_key: header_value"]
+                            multiple values for header key:
+                            ["header_key: value1,value2"]
+                            it's available since 1.68.0 version of vmauth
+                          items:
+                            type: string
+                          type: array
+                        hosts:
+                          items:
+                            type: string
+                          type: array
+                        load_balancing_policy:
+                          description: |-
+                            LoadBalancingPolicy defines load balancing policy to use for backend urls.
+                            Supported policies: least_loaded, first_available.
+                            See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded")
+                          enum:
+                          - least_loaded
+                          - first_available
+                          type: string
+                        paths:
+                          description: Paths - matched path to route.
+                          items:
+                            type: string
+                          type: array
+                        query_args:
+                          description: QueryArgs appends list of query arguments to
+                            generated URL
+                          items:
+                            description: QueryArg defines item for query arguments
+                            properties:
+                              name:
+                                description: Name of query argument
+                                type: string
+                              values:
+                                description: Values of query argument
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - name
+                            - values
+                            type: object
+                          type: array
+                        response_headers:
+                          description: |-
+                            ResponseHeaders represent additional http headers, that vmauth adds for request response
+                            in form of ["header_key: header_value"]
+                            multiple values for header key:
+                            ["header_key: value1,value2"]
+                            it's available since 1.93.0 version of vmauth
+                          items:
+                            type: string
+                          type: array
+                        retry_status_codes:
+                          description: |-
+                            RetryStatusCodes defines http status codes in numeric format for request retries
+                            Can be defined per target or at VMUser.spec level
+                            e.g. [429,503]
+                          items:
+                            type: integer
+                          type: array
+                        src_headers:
+                          description: SrcHeaders is an optional list of headers,
+                            which must match request headers.
+                          items:
+                            type: string
+                          type: array
+                        src_query_args:
+                          description: SrcQueryArgs is an optional list of query args,
+                            which must match request URL query args.
+                          items:
+                            type: string
+                          type: array
+                        static:
+                          description: |-
+                            Static - user defined url for traffic forward,
+                            for instance http://vmsingle:8428
+                          properties:
+                            url:
+                              description: URL http url for given staticRef.
+                              type: string
+                            urls:
+                              description: URLs allows setting multiple urls for load-balancing
+                                at vmauth-side.
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        target_path_suffix:
+                          description: |-
+                            TargetPathSuffix allows to add some suffix to the target path
+                            It allows to hide tenant configuration from user with crd as ref.
+                            it also may contain any url encoded params.
+                          type: string
+                        targetRefBasicAuth:
+                          description: TargetRefBasicAuth allow an target endpoint
+                            to authenticate over basic authentication
+                          properties:
+                            password:
+                              description: |-
+                                The secret in the service scrape namespace that contains the password
+                                for authentication.
+                                It must be at them same namespace as CRD
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must
+                                    be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key
+                                    must be defined
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            username:
+                              description: |-
+                                The secret in the service scrape namespace that contains the username
+                                for authentication.
+                                It must be at them same namespace as CRD
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must
+                                    be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key
+                                    must be defined
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                          required:
+                          - password
+                          - username
+                          type: object
+                      type: object
+                    type: array
                   tlsConfig:
                     description: TLSConfig defines tls configuration for the backend
                       connection
@@ -26701,6 +26922,9 @@ spec:
                         type: string
                     type: object
                   url_map:
+                    description: |-
+                      URLMap defines url map for destination
+                      Deprecated since 0.67: use targetRefs instead
                     items:
                       description: |-
                         UnauthorizedAccessConfigURLMap defines element of url_map routing configuration
@@ -26784,7 +27008,9 @@ spec:
                       type: object
                     type: array
                   url_prefix:
-                    description: URLPrefix defines prefix prefix for destination
+                    description: |-
+                      URLPrefix defines url prefix for destination
+                      Deprecated since 0.67: use targetRefs instead
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               updateStrategy:

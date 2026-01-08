@@ -18,9 +18,8 @@ spec:
       cpu: "500m"
       memory: "850Mi"
   unauthorizedUserAccessSpec:
-    url_map:
-      - src_paths:
-          - /*
-        url_prefix:
+    static:
+      - urls:
           - http://vmsingle:8429/
           - http://vmsingle-2:8429/
+    paths: ["/*"]

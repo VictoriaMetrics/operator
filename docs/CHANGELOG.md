@@ -17,8 +17,9 @@ aliases:
 **Update note 2: removed deprecated VMAgent `spec.aPIServerConfig` property**
 **Update note 3: removed deprecated VMCluster `spec.vmselect.persistentVolume` property**
 **Update note 4: VM_CUSTOMCONFIGRELOADERIMAGE is deprecated and will be removed in next releases. Use VM_CONFIG_RELOADER_IMAGE instead.**
-**Update note 5: spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.**
-**Update note 6: spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.**
+**Update note 5: VMAgent's, VMAuth's, VMAlert's and VMAlertmanager's spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.**
+**Update note 6: VMAgent's spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.**
+**Update node 7: VMAuth's spec.unauthorizedUserAccessSpec.url_prefix and spec.unauthorizedUserAccessSpec.url_map are deprecated and will be removed in next releases. Use spec.unauthorizedUserAccessSpec.targetRef instead.**
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.133.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.133.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1).

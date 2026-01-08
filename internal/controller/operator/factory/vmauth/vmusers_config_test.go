@@ -2512,6 +2512,18 @@ unauthorized_user:
 			},
 			Spec: vmv1beta1.VMAuthSpec{
 				SelectAllByDefault: true,
+				UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VLSingle",
+								Name:      "test",
+								Namespace: "default",
+							},
+							Paths: []string{"/"},
+						},
+					},
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -2575,6 +2587,9 @@ unauthorized_user:
 - url_prefix:
   - http://vlagent-test.default.svc:9429
   bearer_token: bearer-token-2
+unauthorized_user:
+  url_prefix:
+  - http://vlsingle-test.default.svc:9428
 `,
 	})
 

@@ -20,14 +20,18 @@ metadata:
 spec:
    selectAllByDefault: false
    unauthorizedUserAccessSpec:
-    url_map:
-      # manually keep in sync shardCount and url_map entries per shard
-      - src_paths: ["/vmagent/shard/0/.*"]
-        url_prefix: http://vmagent-main-0-0.vmagent-main.default.svc:8429
-        drop_src_path_prefix_parts: 3
-      - src_paths: ["/vmagent/shard/1/.*"]
-        url_prefix: http://vmagent-main-1-0.vmagent-main.default.svc:8429
-        drop_src_path_prefix_parts: 3
-      - src_paths: ["/.*"]
-        url_prefix:
-          - http://vmagent-main.default.svc:8429
+     targetRefs:
+       # manually keep in sync shardCount and url_map entries per shard
+       - static:
+           url: http://vmagent-main-0-0.vmagent-main.default.svc:8429
+         paths: ["/vmagent/shard/0/.*"]
+         drop_src_path_prefix_parts: 3
+       - static:
+           url: http://vmagent-main-1-0.vmagent-main.default.svc:8429
+         paths: ["/vmagent/shard/1/.*"]
+         drop_src_path_prefix_parts: 3
+       - crd:
+           kind: VMAgent
+           name: main
+           namespace: default
+         paths: ["/*"]

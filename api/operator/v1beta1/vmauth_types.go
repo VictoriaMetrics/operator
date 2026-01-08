@@ -149,44 +149,61 @@ type VMAuthSpec struct {
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
 type VMAuthUnauthorizedUserAccessSpec struct {
-	// URLPrefix defines prefix prefix for destination
+	// URLPrefix defines url prefix for destination
+	// Deprecated since 0.67: use targetRefs instead
+	// +deprecated
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
-	URLPrefix StringOrArray                    `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
-	URLMap    []UnauthorizedAccessConfigURLMap `json:"url_map,omitempty" yaml:"url_map,omitempty"`
+	URLPrefix StringOrArray `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
+	// URLMap defines url map for destination
+	// Deprecated since 0.67: use targetRefs instead
+	// +deprecated
+	URLMap []UnauthorizedAccessConfigURLMap `json:"url_map,omitempty" yaml:"url_map,omitempty"`
 
-	VMUserConfigOptions `json:",inline" yaml:",inline"`
+	// TargetRefs - reference to endpoints, which user may access.
+	TargetRefs []TargetRef `json:"targetRefs,omitempty" yaml:"-"`
+
 	// MetricLabels - additional labels for metrics exported by vmauth for given user.
 	// +optional
-	MetricLabels map[string]string `json:"metric_labels,omitempty" yaml:"metric_labels"`
+	MetricLabels        map[string]string `json:"metric_labels,omitempty" yaml:"metric_labels"`
+	VMUserConfigOptions `json:",inline" yaml:",inline"`
 }
 
 // Validate performs semantic syntax validation
-func (vmuua *VMAuthUnauthorizedUserAccessSpec) Validate() error {
-	if len(vmuua.URLMap) == 0 && len(vmuua.URLPrefix) == 0 {
-		return fmt.Errorf("at least one of `url_map` or `url_prefix` must be defined")
+func (s *VMAuthUnauthorizedUserAccessSpec) Validate() error {
+	if len(s.URLMap) == 0 && len(s.URLPrefix) == 0 && len(s.TargetRefs) == 0 {
+		return fmt.Errorf("at least one of `url_map`, `url_prefix` or `target_refs` must be defined")
 	}
-	for idx, urlMap := range vmuua.URLMap {
+	if len(s.TargetRefs) != 0 && (len(s.URLMap) != 0 || len(s.URLPrefix) != 0) {
+		return fmt.Errorf("`target_refs` cannot be used together with `url_prefix` or `url_map`")
+	}
+	isRetryCodesSet := len(s.RetryStatusCodes) > 0
+	for _, r := range s.TargetRefs {
+		if err := r.validate(isRetryCodesSet); err != nil {
+			return fmt.Errorf("%w for unauthorized_user", err)
+		}
+	}
+	for idx, urlMap := range s.URLMap {
 		if err := urlMap.validate(); err != nil {
 			return fmt.Errorf("incorrect url_map at idx=%d: %w", idx, err)
 		}
 	}
-	for _, urlPrefix := range vmuua.URLPrefix {
+	for _, urlPrefix := range s.URLPrefix {
 		if err := validateURLPrefix(urlPrefix); err != nil {
 			return err
 		}
 	}
-	if vmuua.TLSConfig != nil {
-		if err := vmuua.TLSConfig.Validate(); err != nil {
+	if s.TLSConfig != nil {
+		if err := s.TLSConfig.Validate(); err != nil {
 			return fmt.Errorf("incorrect tlsConfig for UnauthorizedUserAccess: %w", err)
 		}
 	}
-	for k := range vmuua.MetricLabels {
+	for k := range s.MetricLabels {
 		if !labelNameRegexp.Match([]byte(k)) {
 			return fmt.Errorf("incorrect metricLabelName=%q, must match pattern=%q", k, labelNameRegexp)
 		}
 	}
-	if err := vmuua.validate(); err != nil {
+	if err := s.validate(); err != nil {
 		return fmt.Errorf("incorrect UnauthorizedUserAccess options: %w", err)
 	}
 
@@ -212,14 +229,14 @@ type UnauthorizedAccessConfigURLMap struct {
 }
 
 // Validate performs syntax logic validation
-func (uac *UnauthorizedAccessConfigURLMap) validate() error {
-	if len(uac.SrcPaths) == 0 && len(uac.SrcHosts) == 0 && len(uac.SrcQueryArgs) == 0 && len(uac.SrcQueryArgs) == 0 {
+func (c *UnauthorizedAccessConfigURLMap) validate() error {
+	if len(c.SrcPaths) == 0 && len(c.SrcHosts) == 0 && len(c.SrcQueryArgs) == 0 && len(c.SrcQueryArgs) == 0 {
 		return fmt.Errorf("incorrect url_map config at least of one src_paths,src_hosts,src_query_args or src_headers must be defined")
 	}
-	if len(uac.URLPrefix) == 0 {
+	if len(c.URLPrefix) == 0 {
 		return fmt.Errorf("url_prefix cannot be empty for url_map")
 	}
-	for idx, urlPrefix := range uac.URLPrefix {
+	for idx, urlPrefix := range c.URLPrefix {
 		if err := validateURLPrefix(urlPrefix); err != nil {
 			return fmt.Errorf("incorrect url_prefix=%q at idx: %d: %w", urlPrefix, idx, err)
 		}
@@ -352,21 +369,21 @@ type VMUserConfigOptions struct {
 }
 
 // Validate performs semantic syntax validation
-func (vuopts *VMUserConfigOptions) validate() error {
-	for _, durl := range vuopts.DefaultURLs {
+func (o *VMUserConfigOptions) validate() error {
+	for _, durl := range o.DefaultURLs {
 		if err := validateURLPrefix(durl); err != nil {
 			return fmt.Errorf("unexpected spec.default_url=%q: %w", durl, err)
 		}
 	}
-	if vuopts.TLSConfig != nil {
-		if err := vuopts.TLSConfig.Validate(); err != nil {
+	if o.TLSConfig != nil {
+		if err := o.TLSConfig.Validate(); err != nil {
 			return err
 		}
 	}
-	if err := validateHTTPHeaders(vuopts.Headers); err != nil {
+	if err := validateHTTPHeaders(o.Headers); err != nil {
 		return fmt.Errorf("incorrect 'headers' syntax: %w", err)
 	}
-	if err := validateHTTPHeaders(vuopts.ResponseHeaders); err != nil {
+	if err := validateHTTPHeaders(o.ResponseHeaders); err != nil {
 		return fmt.Errorf("incorrect 'response_headers' syntax: %w", err)
 	}
 	return nil

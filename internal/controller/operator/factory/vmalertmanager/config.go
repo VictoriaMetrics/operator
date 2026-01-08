@@ -66,7 +66,7 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 	var subRoutes []yaml.MapSlice
 	var timeIntervals []yaml.MapSlice
 	pos.configs.ForEachCollectSkipInvalid(func(cfg *vmv1beta1.VMAlertmanagerConfig) error {
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			if err := cfg.Validate(); err != nil {
 				return err
 			}

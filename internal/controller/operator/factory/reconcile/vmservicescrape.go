@@ -10,12 +10,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // VMServiceScrapeForCRD creates or updates given object
 func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1beta1.VMServiceScrape) error {
+	if build.IsControllerDisabled("VMServiceScrape") {
+		return nil
+	}
 	return retryOnConflict(func() error {
 		var existVSS vmv1beta1.VMServiceScrape
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: vss.Namespace, Name: vss.Name}, &existVSS)
@@ -52,6 +56,9 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 
 // VMPodScrapeForCRD creates or updates given object
 func VMPodScrapeForCRD(ctx context.Context, rclient client.Client, vps *vmv1beta1.VMPodScrape) error {
+	if build.IsControllerDisabled("VMPodScrape") {
+		return nil
+	}
 	return retryOnConflict(func() error {
 		var existVPS vmv1beta1.VMPodScrape
 		err := rclient.Get(ctx, types.NamespacedName{Namespace: vps.Namespace, Name: vps.Name}, &existVPS)

@@ -45,13 +45,15 @@ const (
 )
 
 const (
-	vmPathPrefixFlagName = "http.pathPrefix"
-	healthPath           = "/health"
-	metricPath           = "/metrics"
-	reloadPath           = "/-/reload"
-	reloadAuthKey        = "reloadAuthKey"
-	snapshotCreate       = "/snapshot/create"
-	snapshotDelete       = "/snapshot/delete"
+	httpPathPrefixFlag = "http.pathPrefix"
+	reloadAuthKeyFlag  = "reloadAuthKey"
+	tlsFlag            = "tls"
+
+	healthPath     = "/health"
+	metricsPath    = "/metrics"
+	reloadPath     = "/-/reload"
+	snapshotCreate = "/snapshot/create"
+	snapshotDelete = "/snapshot/delete"
 )
 
 const (
@@ -391,16 +393,28 @@ func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 	return defaultName + "-additional-service"
 }
 
+// UseTLS returns true if TLS is enabled
+func UseTLS(flags map[string]string) bool {
+	if v, ok := flags[tlsFlag]; ok {
+		firstIdx := strings.IndexByte(v, ',')
+		if firstIdx > 0 {
+			v = v[:firstIdx]
+		}
+		return strings.ToLower(v) == "true"
+	}
+	return false
+}
+
 // BuildReloadPathWithPort builds reload api path for given args
-func BuildReloadPathWithPort(extraArgs map[string]string, port string) string {
-	proto := HTTPProtoFromFlags(extraArgs)
-	urlPath := joinPathAuthKey(BuildPathWithPrefixFlag(extraArgs, reloadPath), reloadAuthKey, extraArgs)
+func BuildReloadPathWithPort(flags map[string]string, port string) string {
+	proto := HTTPProtoFromFlags(flags)
+	urlPath := joinPathAuthKey(BuildPathWithPrefixFlag(flags, reloadPath), reloadAuthKeyFlag, flags)
 	return fmt.Sprintf("%s://localhost:%s%s", proto, port, urlPath)
 }
 
 // BuildPathWithPrefixFlag returns provided path with possible prefix from flags
 func BuildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
-	if prefix, ok := flags[vmPathPrefixFlagName]; ok {
+	if prefix, ok := flags[httpPathPrefixFlag]; ok {
 		return path.Join(prefix, defaultPath)
 	}
 	return defaultPath
@@ -408,15 +422,14 @@ func BuildPathWithPrefixFlag(flags map[string]string, defaultPath string) string
 
 // HTTPProtoFromFlags returns HTTP protocol prefix from provided flags
 func HTTPProtoFromFlags(flags map[string]string) string {
-	proto := "http"
-	if flags["tls"] == "true" {
-		proto = "https"
+	if UseTLS(flags) {
+		return "https"
 	}
-	return proto
+	return "http"
 }
 
-func joinPathAuthKey(urlPath string, keyName string, extraArgs map[string]string) string {
-	if authKey, ok := extraArgs[keyName]; ok {
+func joinPathAuthKey(urlPath string, keyName string, flags map[string]string) string {
+	if authKey, ok := flags[keyName]; ok {
 		separator := "?"
 		idx := strings.IndexByte(urlPath, '?')
 		if idx > 0 {

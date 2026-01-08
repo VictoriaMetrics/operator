@@ -52,11 +52,9 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				Labels: map[string]string{"my-label": "value"},
 			},
 			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{
-						Name: "http",
-					},
-				},
+				Ports: []corev1.ServicePort{{
+					Name: "http",
+				}},
 			},
 		},
 		spec: testVMServiceScrapeForServiceWithSpecArgs{
@@ -66,15 +64,17 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			},
 		},
 		wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
-			Endpoints: []vmv1beta1.Endpoint{
-				{
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						Path: "/metrics",
-					},
-					Port: "http",
+			Endpoints: []vmv1beta1.Endpoint{{
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					Path: "/metrics",
+				},
+				Port: "http",
+			}},
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"my-label": "value",
 				},
 			},
-			Selector: metav1.LabelSelector{MatchLabels: map[string]string{"my-label": "value"}},
 		},
 	})
 
@@ -100,15 +100,18 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			metricPath: "/metrics",
 		},
 		wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
-			Endpoints: []vmv1beta1.Endpoint{
-				{
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						Path: "/metrics",
-					},
-					Port: "http",
+			Endpoints: []vmv1beta1.Endpoint{{
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					Path: "/metrics",
 				},
+				Port: "http",
+			}},
+			Selector: metav1.LabelSelector{
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key:      vmv1beta1.AdditionalServiceLabel,
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+				}},
 			},
-			Selector: metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{Key: vmv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist}}},
 		},
 	})
 
@@ -147,18 +150,21 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 					},
 					Port: "vmbackup",
 					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-						RelabelConfigs: []*vmv1beta1.RelabelConfig{
-							{
-								SourceLabels: []string{"job"},
-								TargetLabel:  "job",
-								Regex:        vmv1beta1.StringOrArray{"(.+)"},
-								Replacement:  ptr.To("${1}-vmbackup"),
-							},
-						},
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{{
+							SourceLabels: []string{"job"},
+							TargetLabel:  "job",
+							Regex:        vmv1beta1.StringOrArray{"(.+)"},
+							Replacement:  ptr.To("${1}-vmbackup"),
+						}},
 					},
 				},
 			},
-			Selector: metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{Key: vmv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist}}},
+			Selector: metav1.LabelSelector{
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key:      vmv1beta1.AdditionalServiceLabel,
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+				}},
+			},
 		},
 	})
 
@@ -172,11 +178,9 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				},
 			},
 			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{
-						Name: "http",
-					},
-				},
+				Ports: []corev1.ServicePort{{
+					Name: "http",
+				}},
 			},
 		},
 		spec: testVMServiceScrapeForServiceWithSpecArgs{
@@ -186,16 +190,22 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			},
 		},
 		wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
-			Endpoints: []vmv1beta1.Endpoint{
-				{
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						Path: "/metrics",
-					},
-					Port: "http",
+			Endpoints: []vmv1beta1.Endpoint{{
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					Path: "/metrics",
 				},
-			},
+				Port: "http",
+			}},
 			TargetLabels: []string{"key"},
-			Selector:     metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{Key: vmv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist}}},
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"key": "value",
+				},
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key:      vmv1beta1.AdditionalServiceLabel,
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+				}},
+			},
 		},
 	})
 
@@ -209,11 +219,9 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				},
 			},
 			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{
-						Name: "http",
-					},
-				},
+				Ports: []corev1.ServicePort{{
+					Name: "http",
+				}},
 			},
 		},
 		spec: testVMServiceScrapeForServiceWithSpecArgs{
@@ -256,7 +264,15 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				},
 			},
 			TargetLabels: []string{"key"},
-			Selector:     metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{Key: vmv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist}}},
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"key": "value",
+				},
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key:      vmv1beta1.AdditionalServiceLabel,
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+				}},
+			},
 		},
 	})
 
@@ -270,11 +286,9 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				},
 			},
 			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{
-						Name: "http",
-					},
-				},
+				Ports: []corev1.ServicePort{{
+					Name: "http",
+				}},
 			},
 		},
 		spec: testVMServiceScrapeForServiceWithSpecArgs{
@@ -285,18 +299,26 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			},
 		},
 		wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
-			Endpoints: []vmv1beta1.Endpoint{
-				{
-					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-						Path:   "/metrics",
-						Params: map[string][]string{"authKey": {"some-access-key"}},
-						Scheme: "https",
-					},
-					EndpointAuth: vmv1beta1.EndpointAuth{TLSConfig: &vmv1beta1.TLSConfig{InsecureSkipVerify: true}},
-					Port:         "http",
+			Endpoints: []vmv1beta1.Endpoint{{
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					Path:   "/metrics",
+					Params: map[string][]string{"authKey": {"some-access-key"}},
+					Scheme: "https",
 				},
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					TLSConfig: &vmv1beta1.TLSConfig{InsecureSkipVerify: true},
+				},
+				Port: "http",
+			}},
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"key": "value",
+				},
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key:      vmv1beta1.AdditionalServiceLabel,
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+				}},
 			},
-			Selector: metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{Key: vmv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist}}},
 		},
 	})
 }

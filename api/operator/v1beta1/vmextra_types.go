@@ -392,37 +392,37 @@ func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 }
 
 // BuildReloadPathWithPort builds reload api path for given args
-func BuildReloadPathWithPort(extraArgs map[string]string, port string) string {
+func BuildReloadPathWithPort(extraArgs map[string]ArgValue, port string) string {
 	proto := HTTPProtoFromFlags(extraArgs)
 	urlPath := joinPathAuthKey(BuildPathWithPrefixFlag(extraArgs, reloadPath), reloadAuthKey, extraArgs)
 	return fmt.Sprintf("%s://localhost:%s%s", proto, port, urlPath)
 }
 
 // BuildPathWithPrefixFlag returns provided path with possible prefix from flags
-func BuildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
-	if prefix, ok := flags[vmPathPrefixFlagName]; ok {
-		return path.Join(prefix, defaultPath)
+func BuildPathWithPrefixFlag(flags map[string]ArgValue, defaultPath string) string {
+	if prefix, ok := flags[vmPathPrefixFlagName]; ok && len(prefix) > 0 {
+		return path.Join(prefix[0], defaultPath)
 	}
 	return defaultPath
 }
 
 // HTTPProtoFromFlags returns HTTP protocol prefix from provided flags
-func HTTPProtoFromFlags(flags map[string]string) string {
+func HTTPProtoFromFlags(flags map[string]ArgValue) string {
 	proto := "http"
-	if flags["tls"] == "true" {
+	if v, ok := flags["tls"]; ok && len(v) > 0 && v[0] == "true" {
 		proto = "https"
 	}
 	return proto
 }
 
-func joinPathAuthKey(urlPath string, keyName string, extraArgs map[string]string) string {
-	if authKey, ok := extraArgs[keyName]; ok {
+func joinPathAuthKey(urlPath string, keyName string, extraArgs map[string]ArgValue) string {
+	if authKey, ok := extraArgs[keyName]; ok && len(authKey) > 0 {
 		separator := "?"
 		idx := strings.IndexByte(urlPath, '?')
 		if idx > 0 {
 			separator = "&"
 		}
-		return urlPath + separator + "authKey=" + authKey
+		return urlPath + separator + "authKey=" + authKey[0]
 	}
 	return urlPath
 }
@@ -703,6 +703,40 @@ type KeyValue struct {
 	Value string `json:"value"`
 }
 
+// ArgValue is a helper type for argument value, which can be either string, comma-separated string or array.
+type ArgValue []string
+
+// UnmarshalJSON implements json.Unmarshaller interface
+func (m *ArgValue) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("cannot unmarshal match: %w", err)
+	}
+	rawType := reflect.TypeOf(raw)
+	switch rawType.Kind() {
+	case reflect.String:
+		var match string
+		if err := json.Unmarshal(data, &match); err != nil {
+			return err
+		}
+		*m = strings.Split(match, ",")
+		return nil
+	case reflect.Slice, reflect.Array:
+		var match []string
+		if err := json.Unmarshal(data, &match); err != nil {
+			return err
+		}
+		var result []string
+		for _, a := range match {
+			result = append(result, strings.Split(a, ",")...)
+		}
+		*m = result
+		return nil
+	default:
+		return &json.UnmarshalTypeError{Value: string(data), Type: rawType}
+	}
+}
+
 // StringOrArray is a helper type for storing string or array of string.
 type StringOrArray []string
 
@@ -718,7 +752,7 @@ func (m StringOrArray) MarshalYAML() (any, error) {
 	}
 }
 
-// UnmarshalYAML implements   yaml.Unmarshaler interface
+// UnmarshalYAML implements yaml.Unmarshaler interface
 func (m *StringOrArray) UnmarshalYAML(unmarshal func(any) error) error {
 	var raw any
 	if err := unmarshal(&raw); err != nil {
@@ -1201,7 +1235,9 @@ type CommonConfigReloaderParams struct {
 	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
 	// for example resyncInterval: "30s"
 	// +optional
-	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	ConfigReloaderExtraArgs map[string]ArgValue `json:"configReloaderExtraArgs,omitempty"`
 	// ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
 	// Given secret reference will be added to the application and vm-config-reloader as volume
 	// available since v0.57.0 version
@@ -1319,7 +1355,9 @@ type CommonApplicationDeploymentParams struct {
 	// ExtraArgs that will be passed to the application container
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional
-	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	ExtraArgs map[string]ArgValue `json:"extraArgs,omitempty"`
 	// ExtraEnvs that will be passed to the application container
 	// +optional
 	ExtraEnvs []corev1.EnvVar `json:"extraEnvs,omitempty"`

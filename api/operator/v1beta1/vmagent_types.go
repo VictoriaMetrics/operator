@@ -230,10 +230,8 @@ func (cr *VMAgent) GetReloaderParams() *CommonConfigReloaderParams {
 
 // UseProxyProtocol implements reloadable interface
 func (cr *VMAgent) UseProxyProtocol() bool {
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		return true
-	}
-	return false
+	v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]
+	return ok && len(v) > 0 && v[0] == "true"
 }
 
 // AutomountServiceAccountToken implements reloadable interface
@@ -545,7 +543,7 @@ func (cr *VMAgent) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMAgent) GetExtraArgs() map[string]string {
+func (cr *VMAgent) GetExtraArgs() map[string]ArgValue {
 	return cr.Spec.ExtraArgs
 }
 

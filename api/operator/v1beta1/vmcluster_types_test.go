@@ -9,7 +9,7 @@ import (
 func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
 	type opts struct {
 		port      string
-		extraArgs map[string]string
+		extraArgs map[string]ArgValue
 		want      string
 	}
 	f := func(o opts) {
@@ -28,16 +28,19 @@ func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
 
 	// delete path with prefix
 	f(opts{
-		port:      "8428",
-		extraArgs: map[string]string{vmPathPrefixFlagName: "/pref-1", "other-flag": "other-value"},
-		want:      "http://localhost:8428/pref-1/snapshot/delete",
+		port: "8428",
+		extraArgs: map[string]ArgValue{
+			vmPathPrefixFlagName: []string{"/pref-1"},
+			"other-flag":         []string{"other-value"},
+		},
+		want: "http://localhost:8428/pref-1/snapshot/delete",
 	})
 }
 
 func TestVMBackup_SnapshotCreatePathWithFlags(t *testing.T) {
 	type opts struct {
 		port      string
-		extraArgs map[string]string
+		extraArgs map[string]ArgValue
 		want      string
 	}
 	f := func(o opts) {
@@ -56,8 +59,8 @@ func TestVMBackup_SnapshotCreatePathWithFlags(t *testing.T) {
 	// with prefix
 	f(opts{
 		port: "8429",
-		extraArgs: map[string]string{
-			"http.pathPrefix": "/prefix/custom",
+		extraArgs: map[string]ArgValue{
+			"http.pathPrefix": []string{"/prefix/custom"},
 		},
 		want: "http://localhost:8429/prefix/custom/snapshot/create",
 	})
@@ -65,9 +68,9 @@ func TestVMBackup_SnapshotCreatePathWithFlags(t *testing.T) {
 	// with prefix and auth key
 	f(opts{
 		port: "8429",
-		extraArgs: map[string]string{
-			"http.pathPrefix": "/prefix/custom",
-			"snapshotAuthKey": "some-auth-key",
+		extraArgs: map[string]ArgValue{
+			"http.pathPrefix": []string{"/prefix/custom"},
+			"snapshotAuthKey": []string{"some-auth-key"},
 		},
 		want: "http://localhost:8429/prefix/custom/snapshot/create?authKey=some-auth-key",
 	})

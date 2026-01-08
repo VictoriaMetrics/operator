@@ -344,7 +344,7 @@ func (cr *VMAnomaly) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VMAnomaly) GetExtraArgs() map[string]string {
+func (cr *VMAnomaly) GetExtraArgs() map[string]vmv1beta1.ArgValue {
 	return cr.Spec.ExtraArgs
 }
 

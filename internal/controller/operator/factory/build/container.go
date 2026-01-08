@@ -158,7 +158,7 @@ func Resources(crdResources corev1.ResourceRequirements, defaultResources config
 // it trims in-place args if it was set via extraArgs
 // no need to check for extraEnvs, it has priority over args at VictoriaMetrics apps
 // dashes is either "-" or "--", depending on the process. alertmanager needs two dashes.
-func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, dashes string) []string {
+func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]vmv1beta1.ArgValue, dashes string) []string {
 	if len(extraArgs) == 0 {
 		// fast path
 		return args
@@ -185,7 +185,7 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 	// trim in-place
 	args = args[:cnt]
 	// add extraArgs
-	for argKey, argValue := range extraArgs {
+	for argKey, argValues := range extraArgs {
 		// hack for alertmanager migration
 		// TODO remove it at the 28.0 release
 		if len(dashes) == 2 && strings.HasPrefix(argKey, "-") {
@@ -193,9 +193,9 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 		}
 		// special hack for https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1145
 		if argKey == "rule" {
-			args = append(args, fmt.Sprintf("%s%s=%q", dashes, argKey, argValue))
+			args = append(args, fmt.Sprintf("%s%s=%q", dashes, argKey, strings.Join(argValues, ",")))
 		} else {
-			args = append(args, fmt.Sprintf("%s%s=%s", dashes, argKey, argValue))
+			args = append(args, fmt.Sprintf("%s%s=%s", dashes, argKey, strings.Join(argValues, ",")))
 		}
 	}
 	return args
@@ -436,7 +436,7 @@ func AddConfigReloadAuthKeyVolume(dst []corev1.Volume, spec *vmv1beta1.CommonCon
 }
 
 // AddConfigReloadAuthKeyToApp adds authKey env var to the given application container
-func AddConfigReloadAuthKeyToApp(container *corev1.Container, extraArgs map[string]string, spec *vmv1beta1.CommonConfigReloaderParams) {
+func AddConfigReloadAuthKeyToApp(container *corev1.Container, spec *vmv1beta1.CommonConfigReloaderParams) {
 	if spec.ConfigReloadAuthKeySecret == nil {
 		return
 	}

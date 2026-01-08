@@ -12,20 +12,20 @@ import (
 
 type serviceScrapeBuilder interface {
 	GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec
-	GetExtraArgs() map[string]string
+	GetExtraArgs() map[string]vmv1beta1.ArgValue
 	GetMetricPath() string
 }
 
 // VMServiceScrapeForServiceWithSpec build VMServiceScrape for VMAlertmanager
 func VMServiceScrapeForAlertmanager(service *corev1.Service, amCR *vmv1beta1.VMAlertmanager) *vmv1beta1.VMServiceScrape {
-	var extraArgs map[string]string
+	var extraArgs map[string]vmv1beta1.ArgValue
 
 	isTLS := amCR.Spec.WebConfig != nil && amCR.Spec.WebConfig.TLSServerConfig != nil
 
 	// use hack to emulate enabled tls in generic way with vm components
 	if isTLS {
-		extraArgs = map[string]string{
-			"tls": "true",
+		extraArgs = map[string]vmv1beta1.ArgValue{
+			"tls": []string{"true"},
 		}
 	}
 	return vmServiceScrapeForServiceWithSpec(service, amCR.GetServiceScrape(), extraArgs, amCR.GetMetricPath())
@@ -40,18 +40,12 @@ func VMServiceScrapeForServiceWithSpec(service *corev1.Service, builder serviceS
 
 // VMServiceScrapeForServiceWithSpec build VMServiceScrape for given service with optional spec
 // optionally could filter out ports from service
-func vmServiceScrapeForServiceWithSpec(service *corev1.Service, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]string, metricPath string, additionalPortNames ...string) *vmv1beta1.VMServiceScrape {
+func vmServiceScrapeForServiceWithSpec(service *corev1.Service, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]vmv1beta1.ArgValue, metricPath string, additionalPortNames ...string) *vmv1beta1.VMServiceScrape {
 	var endPoints []vmv1beta1.Endpoint
 	var isTLS bool
 	v, ok := extraArgs["tls"]
-	if ok {
-		// tls is array flag type at VictoriaMetrics components
-		// use first value
-		firstIdx := strings.IndexByte(v, ',')
-		if firstIdx > 0 {
-			v = v[:firstIdx]
-		}
-		isTLS = strings.ToLower(v) == "true"
+	if ok && len(v) > 0 {
+		isTLS = strings.ToLower(v[0]) == "true"
 	}
 	authKey := extraArgs["metricsAuthKey"]
 
@@ -101,9 +95,9 @@ func vmServiceScrapeForServiceWithSpec(service *corev1.Service, serviceScrapeSpe
 				InsecureSkipVerify: true,
 			}
 		}
-		if len(authKey) > 0 {
+		if len(authKey) > 0 && len(authKey[0]) > 0 {
 			ep.Params = map[string][]string{
-				"authKey": {authKey},
+				"authKey": {authKey[0]},
 			}
 		}
 		endPoints = append(endPoints, ep)
@@ -165,17 +159,11 @@ type podScrapeBuilder interface {
 
 // VMPodScrapeForObjectWithSpec build VMPodScrape for given podScrapeBuilder with provided args
 // optionally could filter out ports from service
-func VMPodScrapeForObjectWithSpec(psb podScrapeBuilder, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]string) *vmv1beta1.VMPodScrape {
+func VMPodScrapeForObjectWithSpec(psb podScrapeBuilder, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]vmv1beta1.ArgValue) *vmv1beta1.VMPodScrape {
 	var isTLS bool
 	v, ok := extraArgs["tls"]
-	if ok {
-		// tls is array flag type at VictoriaMetrics components
-		// use first value
-		firstIdx := strings.IndexByte(v, ',')
-		if firstIdx > 0 {
-			v = v[:firstIdx]
-		}
-		isTLS = strings.ToLower(v) == "true"
+	if ok && len(v) > 0 {
+		isTLS = strings.ToLower(v[0]) == "true"
 	}
 	authKey := extraArgs["metricsAuthKey"]
 
@@ -193,9 +181,9 @@ func VMPodScrapeForObjectWithSpec(psb podScrapeBuilder, serviceScrapeSpec *vmv1b
 			InsecureSkipVerify: true,
 		}
 	}
-	if len(authKey) > 0 {
+	if len(authKey) > 0 && len(authKey[0]) > 0 {
 		defaultEP.Params = map[string][]string{
-			"authKey": {authKey},
+			"authKey": {authKey[0]},
 		}
 	}
 

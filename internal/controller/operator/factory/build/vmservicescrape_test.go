@@ -11,27 +11,30 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-type testVMServiceScrapeForServiceWithSpecArgs struct {
+type testScrapeObject struct {
 	serviceScrapeSpecTemplate *vmv1beta1.VMServiceScrapeSpec
-	metricPath                string
 	extraArgs                 map[string]string
 }
 
-func (tb *testVMServiceScrapeForServiceWithSpecArgs) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
+func (tb *testScrapeObject) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return tb.serviceScrapeSpecTemplate
 }
 
-func (tb *testVMServiceScrapeForServiceWithSpecArgs) GetMetricPath() string {
-	return tb.metricPath
+func (tb *testScrapeObject) GetMetricsPath() string {
+	return vmv1beta1.BuildPathWithPrefixFlag(tb.extraArgs, "/metrics")
 }
 
-func (tb *testVMServiceScrapeForServiceWithSpecArgs) GetExtraArgs() map[string]string {
+func (tb *testScrapeObject) UseTLS() bool {
+	return vmv1beta1.UseTLS(tb.extraArgs)
+}
+
+func (tb *testScrapeObject) GetExtraArgs() map[string]string {
 	return tb.extraArgs
 }
 
 func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 	type opts struct {
-		spec                  testVMServiceScrapeForServiceWithSpecArgs
+		spec                  testScrapeObject
 		service               *corev1.Service
 		filterPortNames       []string
 		wantServiceScrapeSpec vmv1beta1.VMServiceScrapeSpec
@@ -39,7 +42,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 
 	f := func(o opts) {
 		t.Helper()
-		gotServiceScrape := VMServiceScrapeForServiceWithSpec(o.service, &o.spec, o.filterPortNames...)
+		gotServiceScrape := VMServiceScrape(o.service, &o.spec, o.filterPortNames...)
 		assert.Equal(t, o.wantServiceScrapeSpec, gotServiceScrape.Spec)
 	}
 
@@ -57,8 +60,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				}},
 			},
 		},
-		spec: testVMServiceScrapeForServiceWithSpecArgs{
-			metricPath: "/metrics",
+		spec: testScrapeObject{
 			serviceScrapeSpecTemplate: &vmv1beta1.VMServiceScrapeSpec{
 				Selector: metav1.LabelSelector{MatchLabels: map[string]string{"my-label": "value"}},
 			},
@@ -96,9 +98,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				},
 			},
 		},
-		spec: testVMServiceScrapeForServiceWithSpecArgs{
-			metricPath: "/metrics",
-		},
+		spec: testScrapeObject{},
 		wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
 			Endpoints: []vmv1beta1.Endpoint{{
 				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
@@ -133,9 +133,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				},
 			},
 		},
-		spec: testVMServiceScrapeForServiceWithSpecArgs{
-			metricPath: "/metrics",
-		},
+		spec: testScrapeObject{},
 		wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
 			Endpoints: []vmv1beta1.Endpoint{
 				{
@@ -183,8 +181,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				}},
 			},
 		},
-		spec: testVMServiceScrapeForServiceWithSpecArgs{
-			metricPath: "/metrics",
+		spec: testScrapeObject{
 			serviceScrapeSpecTemplate: &vmv1beta1.VMServiceScrapeSpec{
 				TargetLabels: []string{"key"},
 			},
@@ -224,8 +221,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				}},
 			},
 		},
-		spec: testVMServiceScrapeForServiceWithSpecArgs{
-			metricPath: "/metrics",
+		spec: testScrapeObject{
 			serviceScrapeSpecTemplate: &vmv1beta1.VMServiceScrapeSpec{
 				TargetLabels: []string{"key"},
 				Endpoints: []vmv1beta1.Endpoint{
@@ -291,8 +287,7 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				}},
 			},
 		},
-		spec: testVMServiceScrapeForServiceWithSpecArgs{
-			metricPath: "/metrics",
+		spec: testScrapeObject{
 			extraArgs: map[string]string{
 				"tls":            "true",
 				"metricsAuthKey": "some-access-key",

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"strings"
 
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
 	appsv1 "k8s.io/api/apps/v1"
@@ -218,12 +219,9 @@ func (cr *VMAlertmanager) SetLastSpec(prevSpec VMAlertmanagerSpec) {
 // GetReloadURL implements reloadable interface
 func (cr *VMAlertmanager) GetReloadURL(host string) string {
 	localReloadURL := &url.URL{
-		Scheme: "http",
+		Scheme: cr.accessScheme(),
 		Host:   fmt.Sprintf("%s:%s", host, cr.Port()),
 		Path:   path.Clean(cr.Spec.RoutePrefix + "/-/reload"),
-	}
-	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
-		localReloadURL.Scheme = "https"
 	}
 	return localReloadURL.String()
 }
@@ -413,12 +411,17 @@ func (cr *VMAlertmanager) asPodFQDN(idx int) string {
 	return fmt.Sprintf("%s://%s-%d.%s.%s.svc:%s", cr.accessScheme(), cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace, cr.Port())
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMAlertmanager) GetMetricPath() string {
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VMAlertmanager) GetMetricsPath() string {
 	if prefix := cr.Spec.RoutePrefix; prefix != "" {
-		return path.Join(prefix, metricPath)
+		return path.Join(prefix, metricsPath)
 	}
-	return metricPath
+	return metricsPath
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VMAlertmanager) UseTLS() bool {
+	return cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
@@ -470,20 +473,16 @@ func (cr *VMAlertmanager) ProbePort() string {
 	return cr.Spec.PortName
 }
 
+// ProbeScheme returns scheme for probe
+func (cr *VMAlertmanager) ProbeScheme() string {
+	return strings.ToUpper(cr.accessScheme())
+}
+
 func (cr *VMAlertmanager) accessScheme() string {
-	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
-		// special case for mTLS
+	if cr.UseTLS() {
 		return "https"
 	}
 	return "http"
-}
-
-// ProbeScheme returns scheme for probe
-func (cr *VMAlertmanager) ProbeScheme() string {
-	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
-		return "HTTPS"
-	}
-	return "HTTP"
 }
 
 func (*VMAlertmanager) ProbeNeedLiveness() bool {

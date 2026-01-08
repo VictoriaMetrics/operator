@@ -301,7 +301,7 @@ func (c *clusterWithURL) AsURL() string {
 func (pos *parsedObjects) fetchCRDRefURLs(ctx context.Context, rclient client.Client) map[string]string {
 	crdCacheURLCache := make(map[string]string)
 	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			if err := user.Validate(); err != nil {
 				return err
 			}

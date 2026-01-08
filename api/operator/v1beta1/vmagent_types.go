@@ -220,7 +220,7 @@ func (cr *VMAgent) GetShardCount() int {
 
 // GetReloadURL implements reloadable interface
 func (cr *VMAgent) GetReloadURL(host string) string {
-	return BuildLocalURL(reloadAuthKey, host, cr.Spec.Port, reloadPath, cr.Spec.ExtraArgs)
+	return BuildLocalURL(reloadAuthKeyFlag, host, cr.Spec.Port, reloadPath, cr.Spec.ExtraArgs)
 }
 
 // GetReloaderParams implements reloadable interface
@@ -539,9 +539,14 @@ func (cr *VMAgent) HealthPath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMAgent) GetMetricPath() string {
-	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VMAgent) GetMetricsPath() string {
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricsPath)
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VMAgent) UseTLS() bool {
+	return UseTLS(cr.Spec.ExtraArgs)
 }
 
 // ExtraArgs returns additionally configured command-line arguments

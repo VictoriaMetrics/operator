@@ -740,12 +740,17 @@ func (cr *VMCluster) Paused() bool {
 	return cr.Spec.Paused
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMSelect) GetMetricPath() string {
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VMSelect) GetMetricsPath() string {
 	if cr == nil {
 		return healthPath
 	}
-	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VMSelect) UseTLS() bool {
+	return UseTLS(cr.ExtraArgs)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -758,12 +763,12 @@ func (cr *VMSelect) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMInsert) GetMetricPath() string {
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VMInsert) GetMetricsPath() string {
 	if cr == nil {
 		return healthPath
 	}
-	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -771,22 +776,32 @@ func (cr *VMInsert) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
 }
 
+// UseTLS returns true if TLS is enabled
+func (cr *VMInsert) UseTLS() bool {
+	return UseTLS(cr.ExtraArgs)
+}
+
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VMInsert) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMStorage) GetMetricPath() string {
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VMStorage) GetMetricsPath() string {
 	if cr == nil {
 		return healthPath
 	}
-	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
 func (cr *VMStorage) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VMStorage) UseTLS() bool {
+	return UseTLS(cr.ExtraArgs)
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
@@ -796,12 +811,12 @@ func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
 
 // SnapshotCreatePathWithFlags returns url for accessing vmbackupmanager component
 func (*VMBackup) SnapshotCreatePathWithFlags(host, port string, extraArgs map[string]string) string {
-	return BuildLocalURL(snapshotAuthKey, host, port, snapshotCreate, extraArgs)
+	return BuildLocalURL(snapshotAuthKeyFlag, host, port, snapshotCreate, extraArgs)
 }
 
 // SnapshotDeletePathWithFlags returns url for accessing vmbackupmanager component
 func (*VMBackup) SnapshotDeletePathWithFlags(host, port string, extraArgs map[string]string) string {
-	return BuildLocalURL(snapshotAuthKey, host, port, snapshotDelete, extraArgs)
+	return BuildLocalURL(snapshotAuthKeyFlag, host, port, snapshotDelete, extraArgs)
 }
 
 // GetServiceAccountName returns service account name for all vmcluster components
@@ -1001,7 +1016,12 @@ func (cr *VMAuthLoadBalancerSpec) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
 }
 
-// GetMetricPath implements build.serviceScrapeBuilder interface
-func (cr *VMAuthLoadBalancerSpec) GetMetricPath() string {
-	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+// UseTLS returns true if TLS is enabled
+func (cr *VMAuthLoadBalancerSpec) UseTLS() bool {
+	return UseTLS(cr.ExtraArgs)
+}
+
+// GetMetricsPath implements build.serviceScrapeBuilder interface
+func (cr *VMAuthLoadBalancerSpec) GetMetricsPath() string {
+	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
 }

@@ -512,6 +512,7 @@ func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorCon
 			return fmt.Errorf("cannot setup controller=%q: %w", name, err)
 		}
 	}
+	build.SetDisabledControllers(disabledControllerNames)
 	return nil
 }
 

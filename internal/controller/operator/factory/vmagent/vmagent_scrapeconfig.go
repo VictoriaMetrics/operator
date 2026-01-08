@@ -53,7 +53,7 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -70,7 +70,7 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -86,7 +86,7 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -101,7 +101,7 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -116,7 +116,7 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -132,7 +132,7 @@ func (so *parsedObjects) validateObjects(cr *vmv1beta1.VMAgent) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, cr); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil

@@ -28,6 +28,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmalert"
@@ -58,8 +59,11 @@ func (r *VMRuleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules/status,verbs=get;update;patch
 func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	instance := &vmv1beta1.VMRule{}
 	l := r.Log.WithValues("vmrule", req.Name, "namespace", req.Namespace)
+	if build.IsControllerDisabled("VMAlert") {
+		l.Info("skipping VMRule reconcile since VMAlert controller is disabled")
+	}
+	instance := &vmv1beta1.VMRule{}
 	ctx = logger.AddToContext(ctx, l)
 
 	defer func() {

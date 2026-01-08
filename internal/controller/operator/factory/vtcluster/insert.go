@@ -41,9 +41,8 @@ func createOrUpdateVTInsert(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdateVTInsertHPA(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	cfg := config.MustGetBaseConfig()
-	if !ptr.Deref(cr.Spec.Insert.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-		svs := build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.Insert)
+	if !ptr.Deref(cr.Spec.Insert.DisableSelfServiceScrape, false) {
+		svs := build.VMServiceScrape(insertSvc, cr.Spec.Insert)
 		if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 			// for backward compatibility we must keep job label value
 			svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
@@ -122,8 +121,7 @@ func buildVTInsertDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	cfg := config.MustGetBaseConfig()
-	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.Insert.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.Insert.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.Insert.UseStrictSecurity, false), &cr.Spec.Insert.CommonApplicationDeploymentParams)
 	return stsSpec, nil
 }
 
@@ -229,7 +227,7 @@ func buildVTInsertPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 	insertContainers = build.Probe(insertContainers, cr.Spec.Insert)
 	operatorContainers := []corev1.Container{insertContainers}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.Insert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.Insert.UseStrictSecurity, cfg.EnableStrictSecurity))
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.Insert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.Insert.UseStrictSecurity, false))
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Insert.Containers)
 	if err != nil {
 		return nil, err

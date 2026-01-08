@@ -28,6 +28,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmalertmanager"
@@ -58,9 +59,11 @@ func (r *VMAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs/status,verbs=get;update;patch
 func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, resultErr error) {
-	var instance vmv1beta1.VMAlertmanagerConfig
-
 	l := r.Log.WithValues("vmalertmanagerconfig", req.Name, "namespace", req.Namespace)
+	if build.IsControllerDisabled("VMAlertmanager") {
+		l.Info("skipping VMAlertmanagerConfig reconcile since VMAlertmanager controller is disabled")
+	}
+	var instance vmv1beta1.VMAlertmanagerConfig
 	defer func() {
 		result, resultErr = handleReconcileErrWithoutStatus(ctx, r.Client, &instance, result, resultErr)
 	}()

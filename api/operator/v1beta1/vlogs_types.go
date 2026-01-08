@@ -256,9 +256,14 @@ func (cr *VLogs) PrefixedName() string {
 	return fmt.Sprintf("vlogs-%s", cr.Name)
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VLogs) GetMetricPath() string {
-	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VLogs) GetMetricsPath() string {
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricsPath)
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VLogs) UseTLS() bool {
+	return UseTLS(cr.Spec.ExtraArgs)
 }
 
 // Validate checks if spec is correct

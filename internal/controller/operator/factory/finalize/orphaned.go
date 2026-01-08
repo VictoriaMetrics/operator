@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 type orphanedCRD interface {
@@ -71,10 +72,27 @@ func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedC
 
 // RemoveOrphanedVMServiceScrapes removes VMSeviceScrapes detached from given object
 func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	if build.IsControllerDisabled("VMServiceScrape") {
+		return nil
+	}
 	gvk := schema.GroupVersionKind{
 		Group:   "operator.victoriametrics.com",
 		Version: "v1beta1",
 		Kind:    "VMServiceScrape",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+
+}
+
+// RemoveOrphanedVMPodScrapes removes VMPodScrapes detached from given object
+func RemoveOrphanedVMPodScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	if build.IsControllerDisabled("VMPodScrape") {
+		return nil
+	}
+	gvk := schema.GroupVersionKind{
+		Group:   "operator.victoriametrics.com",
+		Version: "v1beta1",
+		Kind:    "VMPodScrape",
 	}
 	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
 

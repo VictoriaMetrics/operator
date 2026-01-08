@@ -46,14 +46,16 @@ const (
 )
 
 const (
-	vmPathPrefixFlagName = "http.pathPrefix"
-	healthPath           = "/health"
-	metricPath           = "/metrics"
-	reloadPath           = "/-/reload"
-	reloadAuthKey        = "reloadAuthKey"
-	snapshotCreate       = "/snapshot/create"
-	snapshotDelete       = "/snapshot/delete"
-	snapshotAuthKey      = "snapshotAuthKey"
+	httpPathPrefixFlag  = "http.pathPrefix"
+	reloadAuthKeyFlag   = "reloadAuthKey"
+	tlsFlag             = "tls"
+	snapshotAuthKeyFlag = "snapshotAuthKey"
+
+	healthPath     = "/health"
+	metricsPath    = "/metrics"
+	reloadPath     = "/-/reload"
+	snapshotCreate = "/snapshot/create"
+	snapshotDelete = "/snapshot/delete"
 )
 
 const (
@@ -408,9 +410,21 @@ func BuildLocalURL(key, host, port, path string, extraArgs map[string]string) st
 	return localURL.String()
 }
 
+// UseTLS returns true if TLS is enabled
+func UseTLS(flags map[string]string) bool {
+	if v, ok := flags[tlsFlag]; ok {
+		firstIdx := strings.IndexByte(v, ',')
+		if firstIdx > 0 {
+			v = v[:firstIdx]
+		}
+		return strings.ToLower(v) == "true"
+	}
+	return false
+}
+
 // BuildPathWithPrefixFlag returns provided path with possible prefix from flags
 func BuildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
-	if prefix, ok := flags[vmPathPrefixFlagName]; ok {
+	if prefix, ok := flags[httpPathPrefixFlag]; ok {
 		return path.Join(prefix, defaultPath)
 	}
 	return defaultPath
@@ -418,11 +432,10 @@ func BuildPathWithPrefixFlag(flags map[string]string, defaultPath string) string
 
 // HTTPProtoFromFlags returns HTTP protocol prefix from provided flags
 func HTTPProtoFromFlags(flags map[string]string) string {
-	proto := "http"
-	if flags["tls"] == "true" {
-		proto = "https"
+	if UseTLS(flags) {
+		return "https"
 	}
-	return proto
+	return "http"
 }
 
 type EmbeddedPodDisruptionBudgetSpec struct {

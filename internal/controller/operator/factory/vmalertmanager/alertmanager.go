@@ -12,7 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -47,10 +46,8 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 	if err != nil {
 		return err
 	}
-	cfg := config.MustGetBaseConfig()
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForAlertmanager(service, cr))
-		if err != nil {
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(service, cr)); err != nil {
 			return err
 		}
 	}
@@ -92,24 +89,23 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 		}
 	}
-	cfg := config.MustGetBaseConfig()
-	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceScrape: %w", err)
-		}
-	}
-
 	svcName := cr.PrefixedName()
 	keepServices := map[string]struct{}{
 		svcName: {},
+	}
+	keepServicesScrapes := make(map[string]struct{})
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		keepServicesScrapes[svcName] = struct{}{}
 	}
 	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices[extraSvcName] = struct{}{}
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
-		return fmt.Errorf("cannot remove additional service: %w", err)
+		return fmt.Errorf("cannot remove services: %w", err)
+	}
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes); err != nil {
+		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
 	if !cr.IsOwnsServiceAccount() {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {

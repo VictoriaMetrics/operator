@@ -365,9 +365,14 @@ func (cr *VMAnomaly) HealthPath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMAnomaly) GetMetricPath() string {
-	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VMAnomaly) GetMetricsPath() string {
+	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricsPath)
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VMAnomaly) UseTLS() bool {
+	return vmv1beta1.UseTLS(cr.Spec.ExtraArgs)
 }
 
 // ExtraArgs returns additionally configured command-line arguments

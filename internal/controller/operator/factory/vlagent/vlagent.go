@@ -102,11 +102,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 		return err
 	}
 
-	cfg := config.MustGetBaseConfig()
-	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		ps := build.VMPodScrapeForObjectWithSpec(cr, cr.Spec.ServiceScrapeSpec, cr.Spec.ExtraArgs)
-		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, ps); err != nil {
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, build.VMPodScrape(cr)); err != nil {
 			return fmt.Errorf("cannot create or update scrape object: %w", err)
 		}
 	}
@@ -169,8 +166,7 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg := config.MustGetBaseConfig()
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	if cr.Spec.K8sCollector.Enabled {
 		dsSpec := &appsv1.DaemonSet{
@@ -434,7 +430,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	vlagentContainer = build.Probe(vlagentContainer, cr)
 	var operatorContainers []corev1.Container
@@ -693,24 +689,23 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 		}
 	}
-
-	cfg := config.MustGetBaseConfig()
-	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceScrape: %w", err)
-		}
-	}
 	svcName := cr.PrefixedName()
 	keepServices := map[string]struct{}{
 		svcName: {},
+	}
+	keepPodScrapes := make(map[string]struct{})
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		keepPodScrapes[svcName] = struct{}{}
 	}
 	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices[extraSvcName] = struct{}{}
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
-		return fmt.Errorf("cannot remove additional service: %w", err)
+		return fmt.Errorf("cannot remove services: %w", err)
+	}
+	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes); err != nil {
+		return fmt.Errorf("cannot remove podScrapes: %w", err)
 	}
 	if !cr.IsOwnsServiceAccount() {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {

@@ -248,14 +248,19 @@ func (cr *VMSingle) PrefixedName() string {
 	return fmt.Sprintf("vmsingle-%s", cr.Name)
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMSingle) GetMetricPath() string {
-	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VMSingle) GetMetricsPath() string {
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricsPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
 func (cr *VMSingle) GetExtraArgs() map[string]string {
 	return cr.Spec.ExtraArgs
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VMSingle) UseTLS() bool {
+	return UseTLS(cr.Spec.ExtraArgs)
 }
 
 // ServiceScrape returns overrides for serviceScrape builder

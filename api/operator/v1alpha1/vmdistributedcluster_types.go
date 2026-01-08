@@ -365,7 +365,7 @@ func (cr *VMDistributedCluster) GetAdditionalService(kind vmv1beta1.ClusterCompo
 
 // GetServiceAccountName returns service account name for all vmcluster components
 func (cr *VMDistributedCluster) GetServiceAccountName() string {
-	return cr.PrefixedName(vmv1beta1.ClusterComponentRoot)
+	return cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 }
 
 // PodAnnotations returns pod annotations for given component kind

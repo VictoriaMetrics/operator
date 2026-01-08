@@ -1097,6 +1097,9 @@ func Test_buildConfig(t *testing.T) {
 			},
 			Spec: vmv1beta1.VMAuthSpec{
 				SelectAllByDefault: true,
+				JWTIssuers: []*vmv1beta1.VMAuthJWTIssuer{
+					{},
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -1153,6 +1156,25 @@ func Test_buildConfig(t *testing.T) {
 					},
 				},
 			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-jwt",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					JWTToken: &vmv1beta1.VMUserJWTToken{},
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMAgent",
+								Name:      "test",
+								Namespace: "default",
+							},
+							Paths: []string{"/"},
+						},
+					},
+				},
+			},
 			&vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
@@ -1168,6 +1190,11 @@ func Test_buildConfig(t *testing.T) {
 - url_prefix:
   - http://vmagent-test.default.svc:8429
   bearer_token: bearer-token-2
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  jwt_token: {}
+jwt_issuers:
+- {}
 `,
 	})
 

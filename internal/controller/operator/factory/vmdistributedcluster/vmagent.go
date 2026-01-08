@@ -254,7 +254,6 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 	newVMAgentSpec.ServiceAccountName = desiredVMAgentSpec.ServiceAccountName
 	newVMAgentSpec.CommonDefaultableParams = desiredVMAgentSpec.CommonDefaultableParams
-	newVMAgentSpec.CommonConfigReloaderParams = desiredVMAgentSpec.CommonConfigReloaderParams
 	newVMAgentSpec.CommonApplicationDeploymentParams = desiredVMAgentSpec.CommonApplicationDeploymentParams
 
 	if desiredVMAgentSpec.RemoteWriteSettings == nil {

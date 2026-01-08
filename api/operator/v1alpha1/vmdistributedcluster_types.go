@@ -187,7 +187,6 @@ type CustomVMAgentSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonConfigReloaderParams        `json:",inline,omitempty"`
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 

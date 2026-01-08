@@ -104,6 +104,8 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 	baseURL := vmAgent.AsURL()
 	metricPath := vmAgent.GetMetricPath()
 
+	logger.WithContext(ctx).Info("Found VMAgent metrics path", "metricPath", metricPath)
+
 	var hosts []string
 	// Poll until pod IPs are discovered
 	err = wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
@@ -116,6 +118,7 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 		if len(endpointList.Items) == 0 {
 			return false, nil
 		}
+		logger.WithContext(ctx).Info("Found VMAgent endpoint", "endpoint", &endpointList.Items[0])
 		hosts = parseEndpointSliceAddresses(&endpointList.Items[0])
 		return len(hosts) > 0, nil
 	})
@@ -123,12 +126,15 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 		return err
 	}
 
+	logger.WithContext(ctx).Info("Found VMAgent hosts", "hosts", hosts)
 	// Poll until all pod IPs return empty query metric
 	err = wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		// Query each discovered ip. If any returns non-zero metric, continue polling.
 		for _, ip := range hosts {
 			metricsURL := buildPerIPMetricURL(baseURL, metricPath, ip)
+			logger.WithContext(ctx).Info("Found VMAgent instance metric URL", "url", metricsURL)
 			metricValue, ferr := fetchVMAgentDiskBufferMetric(ctx, httpClient, metricsURL)
+			logger.WithContext(ctx).Info("Found VMAgent instance metric value", "url", metricsURL, "value", metricValue)
 			if ferr != nil {
 				// Treat fetch errors as transient -> not ready, continue polling.
 				return false, nil

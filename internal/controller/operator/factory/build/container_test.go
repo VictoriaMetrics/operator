@@ -12,6 +12,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -556,9 +557,18 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 		cr                *vmv1beta1.VMAlert
 		cmNames           []string
 		expectedContainer corev1.Container
+		cfgMutator        func(*config.BaseOperatorConf)
 	}
 	f := func(o opts) {
 		t.Helper()
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
 		var extraMounts []corev1.VolumeMount
 		for _, cm := range o.cr.Spec.ConfigMaps {
 			extraMounts = append(extraMounts, corev1.VolumeMount{
@@ -584,12 +594,23 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				Namespace: "default",
 				Name:      "base",
 			},
+			Spec: vmv1beta1.VMAlertSpec{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ExtraArgs: map[string]string{
+						"reloadAuthKey": "test",
+					},
+				},
+			},
 		},
 		cmNames: []string{"cm-0", "cm-1"},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.EnableTCP6 = true
+		},
 		expectedContainer: corev1.Container{
 			Name: "config-reloader",
 			Args: []string{
-				"--reload-url=http://localhost:/-/reload",
+				"--enableTCP6",
+				"--reload-url=http://localhost:/-/reload?authKey=test",
 				"--watched-dir=/cm-dir/cm-0",
 				"--watched-dir=/cm-dir/cm-1",
 				"--webhook-method=POST",
@@ -652,7 +673,7 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 		expectedContainer: corev1.Container{
 			Name: "config-reloader",
 			Args: []string{
-				"--reload-url=http://localhost:/-/reload",
+				"--reload-url=http://127.0.0.1:/-/reload",
 				"--watched-dir=/cm-dir/cm-0",
 				"--webhook-method=POST",
 			},
@@ -717,7 +738,7 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 		expectedContainer: corev1.Container{
 			Name: "config-reloader",
 			Args: []string{
-				"--reload-url=http://localhost:/-/reload",
+				"--reload-url=http://127.0.0.1:/-/reload",
 				"--watched-dir=/cm-dir/cm-0",
 				"--watched-dir=/etc/vm/configs/extra-template-1",
 				"--watched-dir=/etc/vm/configs/extra-template-2",

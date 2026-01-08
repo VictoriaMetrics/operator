@@ -710,12 +710,12 @@ func (cr *VMAuth) IsUnmanaged() bool {
 }
 
 // GetReloadURL implements reloadable interface
-func (cr *VMAuth) GetReloadURL() string {
+func (cr *VMAuth) GetReloadURL(host string) string {
 	port := cr.Spec.Port
 	if len(cr.Spec.InternalListenPort) > 0 {
 		port = cr.Spec.InternalListenPort
 	}
-	return BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)
+	return BuildLocalURL(reloadAuthKey, host, port, reloadPath, cr.Spec.ExtraArgs)
 }
 
 // GetReloaderParams implements reloadable interface

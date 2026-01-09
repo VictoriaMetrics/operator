@@ -181,6 +181,9 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		volumes, vmMounts = build.AddSyslogTLSConfigToVolumes(volumes, vmMounts, cr.Spec.VLInsert.SyslogSpec, tlsServerConfigMountPath)
 	}
 
+	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
+	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
+
 	for _, s := range cr.Spec.VLInsert.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("secret-" + s),

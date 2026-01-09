@@ -362,6 +362,9 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		ports = build.AddSyslogPortsTo(ports, cr.Spec.SyslogSpec)
 	}
 
+	volumes, agentVolumeMounts = build.LicenseVolumeTo(volumes, agentVolumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
+	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
+
 	if cr.Spec.RemoteWriteSettings == nil || cr.Spec.RemoteWriteSettings.TmpDataPath == nil {
 		// do not mount pq if user provided own path
 		agentVolumeMounts = append(agentVolumeMounts,

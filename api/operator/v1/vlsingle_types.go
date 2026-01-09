@@ -82,6 +82,10 @@ type VLSingleSpec struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y)?$"
 	FutureRetention string `json:"futureRetention,omitempty"`
+	// License allows to configure license key to be used for enterprise features.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
+	// +optional
+	License *vmv1beta1.License `json:"license,omitempty"`
 	// LogNewStreams Whether to log creation of new streams; this can be useful for debugging of high cardinality issues with log streams; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields
 	LogNewStreams bool `json:"logNewStreams,omitempty"`
 	// Whether to log all the ingested log entries; this can be useful for debugging of data ingestion; see https://docs.victoriametrics.com/victorialogs/data-ingestion/

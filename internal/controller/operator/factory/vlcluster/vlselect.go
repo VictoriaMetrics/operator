@@ -240,6 +240,9 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	vmMounts := make([]corev1.VolumeMount, 0)
 	vmMounts = append(vmMounts, cr.Spec.VLSelect.VolumeMounts...)
 
+	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
+	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
+
 	for _, s := range cr.Spec.VLSelect.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("secret-" + s),

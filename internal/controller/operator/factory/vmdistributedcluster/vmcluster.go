@@ -204,9 +204,9 @@ func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		if err := rclient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}, vmCluster); err != nil {
 			if k8serrors.IsNotFound(err) {
-				return false, fmt.Errorf("VMCluster not found")
+				return false, nil
 			}
-			return false, fmt.Errorf("failed to fetch VMCluster %s/%s: %w", vmCluster.Namespace, vmCluster.Name, err)
+			return false, nil
 		}
 		lastStatus = vmCluster.Status.UpdateStatus
 		return vmCluster.GetGeneration() == vmCluster.Status.ObservedGeneration && vmCluster.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil

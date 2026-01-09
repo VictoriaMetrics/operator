@@ -849,6 +849,68 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 		})
 	})
 
+	It("should transition from Expanding to Operational without entering Failing state", func() {
+		namespacedName.Name = "status-transition-check"
+		vmAgentName := "status-transition-vmagent"
+		vmAuthName := "status-transition-vmauth"
+		vmClusterName := "status-transition-vmcluster"
+
+		By("creating a VMCluster")
+		vmCluster := &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      vmClusterName,
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod: "1",
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
+				},
+			},
+		}
+		createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+
+		By("creating a VMDistributedCluster")
+		cr := &vmv1alpha1.VMDistributedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      namespacedName.Name,
+			},
+			Spec: vmv1alpha1.VMDistributedClusterSpec{
+				VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
+				ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
+				ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+				VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
+				VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
+				Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
+					{Ref: &corev1.LocalObjectReference{Name: vmClusterName}},
+				}},
+			},
+		}
+
+		DeferCleanup(func() {
+			Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
+		})
+
+		Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+
+		By("waiting for Operational status while ensuring no Failing status occurs")
+		Eventually(func() error {
+			var fetchedCR vmv1alpha1.VMDistributedCluster
+			if err := k8sClient.Get(ctx, namespacedName, &fetchedCR); err != nil {
+				return err
+			}
+			if fetchedCR.Status.UpdateStatus == vmv1beta1.UpdateStatusFailed {
+				return StopTrying("VMDistributedCluster entered Failing state")
+			}
+			if fetchedCR.Status.UpdateStatus != vmv1beta1.UpdateStatusOperational {
+				return fmt.Errorf("waiting for Operational status, current: %s", fetchedCR.Status.UpdateStatus)
+			}
+			return nil
+		}, eventualVMDistributedClusterExpandingTimeout, "1s").Should(Succeed())
+	})
 	Context("fail", func() {
 		DescribeTable("should fail when creating vmdistributedcluster", func(cr *vmv1alpha1.VMDistributedCluster, vmclusters []vmv1beta1.VMCluster) {
 			for _, vmcluster := range vmclusters {

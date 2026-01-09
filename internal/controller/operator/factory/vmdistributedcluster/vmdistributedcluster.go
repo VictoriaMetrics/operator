@@ -169,12 +169,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			}
 		}
 
-		// TODO[vrutkovs]: remove it
-		// // Update vmauth lb with the included cluster (for both new and updated clusters)
-		// if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
-		// 	return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
-		// }
-
 		// Wait for VMCluster to be ready
 		logger.WithContext(ctx).Info("Waiting for VMCluster to become operational", "index", i, "name", vmClusterObj.Name)
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {

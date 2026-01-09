@@ -1,0 +1,31 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributedCluster
+metadata:
+  name: vmdistributedcluster-sample-paused
+spec:
+  paused: true
+  vmagent:
+    name: global-write-vmagent
+    spec:
+      replicaCount: 1
+  vmauth:
+    name: global-read-vmauth
+    spec:
+      replicaCount: 1
+  zones:
+    vmclusters:
+    - ref:
+        name: vmcluster-us-east-1
+      overrideSpec:
+        vmselect:
+          replicaCount: 3
+    - ref:
+        name: vmcluster-us-west-2
+      overrideSpec:
+        vmselect:
+          replicaCount: 4
+    - ref:
+        name: vmcluster-eu-west-1
+      overrideSpec:
+        vmselect:
+          replicaCount: 2

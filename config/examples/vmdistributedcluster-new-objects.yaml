@@ -1,0 +1,87 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributedCluster
+metadata:
+  name: vmdistributedcluster-sample-new
+spec:
+  vmagent:
+    name: global-write-vmagent
+    spec:
+      replicaCount: 1
+  vmauth:
+    name: global-read-vmauth
+    spec:
+      replicaCount: 1
+  zones:
+    vmclusters:
+    - name: vmcluster-us-east-1
+      spec:
+        retentionPeriod: "4"
+        replicationFactor: 2
+        vmstorage:
+          replicaCount: 2
+          storageDataPath: "/vm-data"
+          storage:
+            volumeClaimTemplate:
+              spec:
+                resources:
+                  requests:
+                    storage: 10Gi
+        vmselect:
+          replicaCount: 2
+          cacheMountPath: "/select-cache"
+          storage:
+            volumeClaimTemplate:
+              spec:
+                resources:
+                  requests:
+                    storage: 2Gi
+        vminsert:
+          replicaCount: 2
+    - name: vmcluster-us-west-2
+      spec:
+        retentionPeriod: "4"
+        replicationFactor: 2
+        vmstorage:
+          replicaCount: 2
+          storageDataPath: "/vm-data"
+          storage:
+            volumeClaimTemplate:
+              spec:
+                resources:
+                  requests:
+                    storage: 10Gi
+        vmselect:
+          replicaCount: 2
+          cacheMountPath: "/select-cache"
+          storage:
+            volumeClaimTemplate:
+              spec:
+                resources:
+                  requests:
+                    storage: 2Gi
+        vminsert:
+          replicaCount: 2
+    - name: vmcluster-eu-west-1
+      spec:
+        retentionPeriod: "4"
+        replicationFactor: 2
+        vmstorage:
+          replicaCount: 2
+          storageDataPath: "/vm-data"
+          storage:
+            volumeClaimTemplate:
+              spec:
+                resources:
+                  requests:
+                    storage: 10Gi
+        vmselect:
+          replicaCount: 2
+          cacheMountPath: "/select-cache"
+          storage:
+            volumeClaimTemplate:
+              spec:
+                resources:
+                  requests:
+                    storage: 2Gi
+        vminsert:
+          replicaCount: 2

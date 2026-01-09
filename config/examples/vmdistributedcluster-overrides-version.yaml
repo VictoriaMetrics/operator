@@ -1,0 +1,33 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributedCluster
+metadata:
+  name: vmdistributedcluster-sample-override-versions
+spec:
+  vmagent:
+    name: global-write-vmagent
+    spec:
+      replicaCount: 1
+  vmauth:
+    name: global-read-vmauth
+    spec:
+      replicaCount: 1
+  zones:
+    vmclusters:
+    - ref:
+        name: vmcluster-us-east-1
+      overrideSpec:
+        vmselect:
+          image:
+            tag: v1.90.0
+    - ref:
+        name: vmcluster-us-west-2
+      overrideSpec:
+        vmselect:
+          image:
+            tag: v1.90.0
+    - ref:
+        name: vmcluster-eu-west-1
+      overrideSpec:
+        vmselect:
+          image:
+            tag: v1.111.0

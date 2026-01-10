@@ -1,10 +1,16 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 type modelDetectionDirection string
@@ -36,47 +42,24 @@ func (p commonModelParams) schedulers() []string {
 	return p.Schedulers
 }
 
+func (p *commonModelParams) setClass(class string) {
+	p.Class = class
+}
+
 type anomalyModel interface {
 	validatable
+	setClass(string)
 	schedulers() []string
 	queries() []string
 }
 
-type model struct {
+type Model struct {
 	anomalyModel
 }
 
-var (
-	_ yaml.Marshaler   = (*model)(nil)
-	_ yaml.Unmarshaler = (*model)(nil)
-)
-
-// MarshalYAML implements yaml.Marshaller interface
-func (m *model) MarshalYAML() (any, error) {
-	return m.anomalyModel, nil
-}
-
-type onlineModel struct {
-	Decay float64 `yaml:"decay,omitempty"`
-}
-
-func (m *onlineModel) validate() error {
-	// See https://docs.victoriametrics.com/anomaly-detection/components/models/#decay
-	// Valid values are in the range [0, 1].
-	if m.Decay < 0 || m.Decay > 1 {
-		return fmt.Errorf("decay must be in range [0, 1], got %f", m.Decay)
-	}
-	return nil
-}
-
-// UnmarshalYAML implements yaml.Unmarshaler interface
-func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
-	var h header
-	if err := unmarshal(&h); err != nil {
-		return err
-	}
+func (m *Model) init(class string) error {
 	var mdl anomalyModel
-	switch h.Class {
+	switch class {
 	case "model.auto.AutoTunedModel", "auto":
 		mdl = new(autoTunedModel)
 	case "model.prophet.ProphetModel", "prophet":
@@ -102,12 +85,67 @@ func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
 	case "model.isolation_forest.IsolationForestMultivariateModel", "isolation_forest_multivariate":
 		mdl = new(isolationForestMultivariateModel)
 	default:
-		return fmt.Errorf("model class=%q is not supported", h.Class)
-	}
-	if err := unmarshal(mdl); err != nil {
-		return err
+		return fmt.Errorf("model class=%q is not supported", class)
 	}
 	m.anomalyModel = mdl
+	return nil
+}
+
+var (
+	_ yaml.Marshaler   = (*Model)(nil)
+	_ yaml.Unmarshaler = (*Model)(nil)
+)
+
+// Validate validates raw config
+func (m *Model) Validate(data []byte) error {
+	if err := yaml.Unmarshal(data, m); err != nil {
+		return err
+	}
+	return m.validate()
+}
+
+func modelFromSpec(spec *vmv1.VMAnomalyModelSpec) (*Model, error) {
+	var m Model
+	if err := m.init(spec.Class); err != nil {
+		return nil, err
+	}
+	if err := yaml.Unmarshal(spec.Params.Raw, m.anomalyModel); err != nil {
+		return nil, err
+	}
+	m.setClass(spec.Class)
+	return &m, nil
+}
+
+// MarshalYAML implements yaml.Marshaller interface
+func (m *Model) MarshalYAML() (any, error) {
+	return m.anomalyModel, nil
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler interface
+func (m *Model) UnmarshalYAML(unmarshal func(any) error) error {
+	var h header
+	if err := unmarshal(&h); err != nil {
+		return err
+	}
+	if err := m.init(h.Class); err != nil {
+		return err
+	}
+	if err := unmarshal(m.anomalyModel); err != nil {
+		return err
+	}
+	return nil
+}
+
+type onlineModel struct {
+	Decay float64 `yaml:"decay,omitempty"`
+}
+
+func (m *onlineModel) validate() error {
+	// See https://docs.victoriametrics.com/anomaly-detection/components/models/#decay
+	// Valid values are in the range [0, 1].
+	if m.Decay < 0 || m.Decay > 1 {
+		return fmt.Errorf("decay must be in range [0, 1], got %f", m.Decay)
+	}
 	return nil
 }
 
@@ -200,6 +238,7 @@ type onlineQuantileModel struct {
 	SeasonStartsFrom  time.Time `yaml:"season_starts_from,omitempty"`
 	MinSamplesSeen    int       `yaml:"min_n_samples_seen,omitempty"`
 	Compression       int       `yaml:"compression,omitempty"`
+	IqrThreshold      float64   `yaml:"iqr_threshold,omitempty"`
 }
 
 func (m *onlineQuantileModel) validate() error {
@@ -270,4 +309,31 @@ type stdModel struct {
 
 func (m *stdModel) validate() error {
 	return nil
+}
+
+func selectModels(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) (*build.ChildObjects[*vmv1.VMAnomalyModel], error) {
+	var selectedConfigs []*vmv1.VMAnomalyModel
+	var nsn []string
+	opts := &k8stools.SelectorOpts{
+		DefaultNamespace: cr.Namespace,
+		SelectAll:        cr.Spec.SelectAllByDefault,
+	}
+	if cr.Spec.ModelSelector != nil {
+		opts.ObjectSelector = cr.Spec.ModelSelector.ObjectSelector
+		opts.NamespaceSelector = cr.Spec.ModelSelector.NamespaceSelector
+	}
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1.VMAnomalyModelList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			rclient.Scheme().Default(item)
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			selectedConfigs = append(selectedConfigs, item)
+		}
+	}); err != nil {
+		return nil, err
+	}
+	return build.NewChildObjects("vmanomalymodels", selectedConfigs, nsn), nil
 }

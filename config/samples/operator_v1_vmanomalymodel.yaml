@@ -1,0 +1,11 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VMAnomalyModel
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: sample
+spec:
+  class: zscore
+  params:
+    z_threshold: 3.0

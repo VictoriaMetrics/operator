@@ -29,7 +29,7 @@ func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
 	// delete path with prefix
 	f(opts{
 		port:      "8428",
-		extraArgs: map[string]string{vmPathPrefixFlagName: "/pref-1", "other-flag": "other-value"},
+		extraArgs: map[string]string{httpPathPrefixFlag: "/pref-1", "other-flag": "other-value"},
 		want:      "http://localhost:8428/pref-1/snapshot/delete",
 	})
 }

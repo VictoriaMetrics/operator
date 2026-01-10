@@ -29,14 +29,14 @@ func Test_buildPathWithPrefixFlag(t *testing.T) {
 	// with some prefix
 	f(opts{
 		defaultPath: healthPath,
-		flags:       map[string]string{"some.flag": "some-value", vmPathPrefixFlagName: "/prefix/path/"},
+		flags:       map[string]string{"some.flag": "some-value", httpPathPrefixFlag: "/prefix/path/"},
 		want:        fmt.Sprintf("/prefix/path%s", healthPath),
 	})
 
 	// with bad path
 	f(opts{
 		defaultPath: healthPath,
-		flags:       map[string]string{"some.flag": "some-value", vmPathPrefixFlagName: "badpath/badvalue"},
+		flags:       map[string]string{"some.flag": "some-value", httpPathPrefixFlag: "badpath/badvalue"},
 		want:        fmt.Sprintf("badpath/badvalue%s", healthPath),
 	})
 }

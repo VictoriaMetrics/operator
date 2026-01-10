@@ -89,9 +89,8 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 		return err
 	}
 
-	cfg := config.MustGetBaseConfig()
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(svc, cr))
 		if err != nil {
 			return fmt.Errorf("cannot create serviceScrape for vtsingle: %w", err)
 		}
@@ -140,8 +139,7 @@ func newDeployment(r *vmv1.VTSingle) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	cfg := config.MustGetBaseConfig()
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(r.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &r.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, ptr.Deref(r.Spec.UseStrictSecurity, false), &r.Spec.CommonApplicationDeploymentParams)
 	return depSpec, nil
 }
 
@@ -252,7 +250,7 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 
 	operatorContainers := []corev1.Container{vtsingleContainer}
 
-	build.AddStrictSecuritySettingsToContainers(r.Spec.SecurityContext, operatorContainers, ptr.Deref(r.Spec.UseStrictSecurity, cfg.EnableStrictSecurity))
+	build.AddStrictSecuritySettingsToContainers(r.Spec.SecurityContext, operatorContainers, ptr.Deref(r.Spec.UseStrictSecurity, false))
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, r.Spec.Containers)
 	if err != nil {
@@ -306,25 +304,24 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTSingle) error {
 	owner := cr.AsOwner()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	cfg := config.MustGetBaseConfig()
-	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceScrape: %w", err)
-		}
-	}
 
 	svcName := cr.PrefixedName()
 	keepServices := map[string]struct{}{
 		svcName: {},
+	}
+	keepServicesScrapes := make(map[string]struct{})
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		keepServicesScrapes[svcName] = struct{}{}
 	}
 	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices[extraSvcName] = struct{}{}
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
-		return fmt.Errorf("cannot remove additional service: %w", err)
+		return fmt.Errorf("cannot remove services: %w", err)
+	}
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes); err != nil {
+		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
 	if !cr.IsOwnsServiceAccount() {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {

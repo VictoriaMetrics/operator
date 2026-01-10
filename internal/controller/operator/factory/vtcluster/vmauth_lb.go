@@ -23,7 +23,6 @@ import (
 )
 
 func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
-
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildLBConfigSecretMeta(prevCR))
@@ -77,14 +76,14 @@ func buildVMauthLBSecret(cr *vmv1.VTCluster) *corev1.Secret {
 	selectProto := "http"
 	if cr.Spec.Select != nil {
 		selectPort = cr.Spec.Select.Port
-		if v, ok := cr.Spec.Select.ExtraArgs["tls"]; ok && v == "true" {
+		if cr.Spec.Select.UseTLS() {
 			selectProto = "https"
 		}
 	}
 	if cr.Spec.Insert != nil {
 		insertPort = cr.Spec.Insert.Port
-		if v, ok := cr.Spec.Insert.ExtraArgs["tls"]; ok && v == "true" {
-			selectProto = "https"
+		if cr.Spec.Insert.UseTLS() {
+			insertProto = "https"
 		}
 	}
 	insertURL := fmt.Sprintf("%s://%s.%s:%s",
@@ -180,7 +179,7 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 	}
 	var err error
 
-	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, cfg.EnableStrictSecurity))
+	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
 	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
@@ -220,7 +219,7 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, false), &spec.CommonApplicationDeploymentParams)
 
 	return lbDep, nil
 
@@ -245,10 +244,12 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb service: %w", err)
 	}
-	svs := build.VMServiceScrapeForServiceWithSpec(svc, &cr.Spec.RequestsLoadBalancer.Spec)
-	svs.Spec.Selector.MatchLabels[vmv1beta1.VMAuthLBServiceProxyTargetLabel] = "vmauth"
-	if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
-		return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
+	if !ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, false) {
+		svs := build.VMServiceScrape(svc, &cr.Spec.RequestsLoadBalancer.Spec)
+		svs.Spec.Selector.MatchLabels[vmv1beta1.VMAuthLBServiceProxyTargetLabel] = "vmauth"
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
+			return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
+		}
 	}
 	return nil
 }

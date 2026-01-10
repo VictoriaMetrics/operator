@@ -33,7 +33,7 @@ import (
 // needed in update checked by revision status
 // its controlled by k8s controller-manager
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
-	if !build.MustSkipRuntimeValidation {
+	if !build.MustSkipRuntimeValidation() {
 		if err := cr.Validate(); err != nil {
 			return err
 		}
@@ -63,7 +63,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		}
 	}
 
-	cfg := config.MustGetBaseConfig()
 	if cr.Spec.VMStorage != nil {
 		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
 			err := createOrUpdatePodDisruptionBudgetForVMStorage(ctx, rclient, cr, prevCR)
@@ -82,9 +81,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		if err := createOrUpdateVMStorageHPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
-		if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.VMStorage, "vmbackupmanager"))
-			if err != nil {
+		if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, false) {
+			if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(storageSvc, cr.Spec.VMStorage, "vmbackupmanager")); err != nil {
 				return fmt.Errorf("cannot create VMServiceScrape for vmStorage: %w", err)
 			}
 		}
@@ -108,9 +106,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		if err != nil {
 			return err
 		}
-		if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-
-			svs := build.VMServiceScrapeForServiceWithSpec(selectSvc, cr.Spec.VMSelect)
+		if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
+			svs := build.VMServiceScrape(selectSvc, cr.Spec.VMSelect)
 			if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 				// for backward compatibility we must keep job label value
 				svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
@@ -138,8 +135,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
-		if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-			svs := build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.VMInsert)
+		if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
+			svs := build.VMServiceScrape(insertSvc, cr.Spec.VMInsert)
 			if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 				// for backward compatibility we must keep job label value
 				svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
@@ -472,8 +469,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy
 	}
-	cfg := config.MustGetBaseConfig()
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.VMSelect.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false), &cr.Spec.VMSelect.CommonApplicationDeploymentParams)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		cr.Spec.VMSelect.StorageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec)
 	}
@@ -623,7 +619,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	vmselectContainer = build.Probe(vmselectContainer, cr.Spec.VMSelect)
 	operatorContainers := []corev1.Container{vmselectContainer}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, cfg.EnableStrictSecurity))
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false))
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMSelect.Containers)
 	if err != nil {
 		return nil, err
@@ -700,8 +696,7 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	cfg := config.MustGetBaseConfig()
-	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.VMInsert.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, false), &cr.Spec.VMInsert.CommonApplicationDeploymentParams)
 	return stsSpec, nil
 }
 
@@ -828,7 +823,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	vminsertContainer = build.Probe(vminsertContainer, cr.Spec.VMInsert)
 	operatorContainers := []corev1.Container{vminsertContainer}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMInsert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, cfg.EnableStrictSecurity))
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMInsert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, false))
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMInsert.Containers)
 	if err != nil {
 		return nil, err
@@ -900,8 +895,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 	if cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy
 	}
-	cfg := config.MustGetBaseConfig()
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.VMStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)
@@ -1071,7 +1065,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 			}
 		}
 	}
-	useStrictSecurity := ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, cfg.EnableStrictSecurity)
+	useStrictSecurity := ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false)
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMStorage.SecurityContext, initContainers, useStrictSecurity)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.VMStorage.InitContainers)
 	if err != nil {
@@ -1185,8 +1179,6 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	newInsert := cr.Spec.VMInsert
 	newLB := cr.Spec.RequestsLoadBalancer
 
-	cfg := config.MustGetBaseConfig()
-	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
 	cc := finalize.NewChildCleaner()
 
 	if newStorage == nil {
@@ -1201,7 +1193,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		if newStorage.HPA != nil {
 			cc.KeepHPA(commonName)
 		}
-		if !ptr.Deref(newStorage.DisableSelfServiceScrape, disableSelfScrape) {
+		if !ptr.Deref(newStorage.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(commonName)
 		}
 		cc.KeepService(commonName)
@@ -1231,7 +1223,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			scrapeName = cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)
 			cc.KeepService(scrapeName)
 		}
-		if !ptr.Deref(newSelect.DisableSelfServiceScrape, disableSelfScrape) {
+		if !ptr.Deref(newSelect.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(scrapeName)
 		}
 	}
@@ -1257,7 +1249,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			scrapeName = cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)
 			cc.KeepService(scrapeName)
 		}
-		if !ptr.Deref(newInsert.DisableSelfServiceScrape, disableSelfScrape) {
+		if !ptr.Deref(newInsert.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(scrapeName)
 		}
 	}
@@ -1266,7 +1258,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		if newLB.Spec.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
 		}
-		if !ptr.Deref(newLB.Spec.DisableSelfServiceScrape, disableSelfScrape) {
+		if !ptr.Deref(newLB.Spec.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(commonName)
 		}
 		cc.KeepService(commonName)
@@ -1306,15 +1298,23 @@ func buildVMAuthLBSecret(cr *vmv1beta1.VMCluster) *corev1.Secret {
 	}
 	insertPort := "8480"
 	selectPort := "8481"
+	insertProto := "http"
+	selectProto := "http"
 	if cr.Spec.VMSelect != nil {
 		selectPort = cr.Spec.VMSelect.Port
+		if cr.Spec.VMSelect.UseTLS() {
+			selectProto = "https"
+		}
 	}
 	if cr.Spec.VMInsert != nil {
 		insertPort = cr.Spec.VMInsert.Port
+		if cr.Spec.VMInsert.UseTLS() {
+			insertProto = "https"
+		}
 	}
 
-	insertUrl := fmt.Sprintf("http://srv+%s.%s:%s", cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert), targetHostSuffix, insertPort)
-	selectUrl := fmt.Sprintf("http://srv+%s.%s:%s", cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort)
+	insertUrl := fmt.Sprintf("%s://srv+%s.%s:%s", insertProto, cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert), targetHostSuffix, insertPort)
+	selectUrl := fmt.Sprintf("%s://srv+%s.%s:%s", selectProto, cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect), targetHostSuffix, selectPort)
 
 	lbConfig := fmt.Sprintf(`
 unauthorized_user:
@@ -1405,7 +1405,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	}
 	var err error
 
-	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, cfg.EnableStrictSecurity))
+	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
 	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
@@ -1444,7 +1444,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, false), &spec.CommonApplicationDeploymentParams)
 
 	return lbDep, nil
 }
@@ -1468,10 +1468,12 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb service: %w", err)
 	}
-	svs := build.VMServiceScrapeForServiceWithSpec(svc, &cr.Spec.RequestsLoadBalancer.Spec)
-	svs.Spec.Selector.MatchLabels[vmv1beta1.VMAuthLBServiceProxyTargetLabel] = "vmauth"
-	if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
-		return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
+	if !ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, false) {
+		svs := build.VMServiceScrape(svc, &cr.Spec.RequestsLoadBalancer.Spec)
+		svs.Spec.Selector.MatchLabels[vmv1beta1.VMAuthLBServiceProxyTargetLabel] = "vmauth"
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
+			return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
+		}
 	}
 	return nil
 }

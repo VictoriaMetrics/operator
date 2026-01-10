@@ -675,9 +675,14 @@ func (cr *VMAuth) ConfigSecretName() string {
 	return fmt.Sprintf("vmauth-config-%s", cr.Name)
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMAuth) GetMetricPath() string {
-	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VMAuth) GetMetricsPath() string {
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricsPath)
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VMAuth) UseTLS() bool {
+	return UseTLS(cr.Spec.ExtraArgs)
 }
 
 // GetExtraArgs returns additionally configured command-line arguments

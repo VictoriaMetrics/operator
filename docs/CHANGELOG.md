@@ -20,6 +20,7 @@ aliases:
 **Update note 5: VMAgent's, VMAuth's, VMAlert's and VMAlertmanager's spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.**
 **Update note 6: VMAgent's spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.**
 **Update node 7: VMAuth's spec.unauthorizedUserAccessSpec.url_prefix and spec.unauthorizedUserAccessSpec.url_map are deprecated and will be removed in next releases. Use spec.unauthorizedUserAccessSpec.targetRef instead.**
+**Update note 8: VMProbe's spec.targets.ingress property is deprecated and will be removed in next releases. Use spec.targets.k8s instead.**
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.133.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.133.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1).
@@ -29,6 +30,7 @@ aliases:
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent): support logs collection. See [#1501](https://github.com/VictoriaMetrics/operator/issues/1501).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): use `operator_bad_objects_total` metric with `object_namespace` and `crd` labels to track invalid objects managed by VMAgent, VMAuth, VMAlert and VMAlertmanager. Old `operator_alertmanager_bad_objects_count` and `operator_vmalert_bad_objects_count` are deprecated and will be removed in next releases.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): added HPA support for all cluster CR storage. See [#1678](https://github.com/VictoriaMetrics/operator/issues/1678).
+* FEATURE: [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): added `spec.targets.k8s` property, that allows to configure probe for `ingress`, `pod` and `service` roles. See [#1078](https://github.com/VictoriaMetrics/operator/issues/1078) and [#1716](https://github.com/VictoriaMetrics/operator/issues/1716).
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed HPA cleanup logic for all cluster resources, before it was constantly recreated. Bug introduced in [this commit](https://github.com/VictoriaMetrics/operator/commit/983d1678c37497a7d03d2f57821219fd4975deec).
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): prevent cluster load balancer secret from infinite reconcile.

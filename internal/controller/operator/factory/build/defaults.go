@@ -981,8 +981,10 @@ func addEntSuffixToTag(versionTag string) string {
 	if !strings.HasPrefix(versionTag, "v") || strings.Count(versionTag, ".") != 2 {
 		return versionTag
 	}
-	idx := strings.Index(versionTag, "-")
-	if idx > 0 {
+	if idx := strings.Index(versionTag, "@"); idx != -1 {
+		return versionTag
+	}
+	if idx := strings.Index(versionTag, "-"); idx > 0 {
 		suffix := versionTag[idx:]
 		switch suffix {
 		case "-enterprise", "-enterprise-cluster":

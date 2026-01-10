@@ -9,13 +9,14 @@
 | WATCH_NAMESPACE: `-` <a href="#variables-watch-namespace" id="variables-watch-namespace">#</a><br>Defines a list of namespaces to be watched by operator. Operator don't perform any cluster wide API calls if namespaces not empty. In case of empty list it performs only clusterwide api calls. |
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |
 | VM_CUSTOMCONFIGRELOADERIMAGE: `-` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a><br>Deprecated: use VM_CONFIG_RELOADER_IMAGE instead |
-| VM_CONFIG_RELOADER_IMAGE: `victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}` <a href="#variables-vm-config-reloader-image" id="variables-vm-config-reloader-image">#</a> |
 | VM_PSPAUTOCREATEENABLED: `false` <a href="#variables-vm-pspautocreateenabled" id="variables-vm-pspautocreateenabled">#</a> |
 | VM_ENABLETCP6: `false` <a href="#variables-vm-enabletcp6" id="variables-vm-enabletcp6">#</a> |
-| VM_CONFIG_RELOADER_LIMIT_CPU: `unlimited` <a href="#variables-vm-config-reloader-limit-cpu" id="variables-vm-config-reloader-limit-cpu">#</a><br>defines global resource.limits.cpu for all config-reloader containers |
+| VM_CONFIG_RELOADER_IMAGE: `victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}` <a href="#variables-vm-config-reloader-image" id="variables-vm-config-reloader-image">#</a><br>default image for all config-reloader containers |
 | VM_CONFIG_RELOADER_LIMIT_MEMORY: `unlimited` <a href="#variables-vm-config-reloader-limit-memory" id="variables-vm-config-reloader-limit-memory">#</a><br>defines global resource.limits.memory for all config-reloader containers |
-| VM_CONFIG_RELOADER_REQUEST_CPU: `10m` <a href="#variables-vm-config-reloader-request-cpu" id="variables-vm-config-reloader-request-cpu">#</a><br>defines global resource.requests.cpu for all config-reloader containers |
+| VM_CONFIG_RELOADER_LIMIT_CPU: `unlimited` <a href="#variables-vm-config-reloader-limit-cpu" id="variables-vm-config-reloader-limit-cpu">#</a><br>defines global resource.limits.cpu for all config-reloader containers |
 | VM_CONFIG_RELOADER_REQUEST_MEMORY: `25Mi` <a href="#variables-vm-config-reloader-request-memory" id="variables-vm-config-reloader-request-memory">#</a><br>defines global resource.requests.memory for all config-reloader containers |
+| VM_CONFIG_RELOADER_REQUEST_CPU: `10m` <a href="#variables-vm-config-reloader-request-cpu" id="variables-vm-config-reloader-request-cpu">#</a><br>defines global resource.requests.cpu for all config-reloader containers |
+| VM_CONFIG_RELOADER_EMPTY_DIR: `{}` <a href="#variables-vm-config-reloader-empty-dir" id="variables-vm-config-reloader-empty-dir">#</a><br>defines emptyDir configuration for config reloader volume |
 | VM_VLOGSDEFAULT_IMAGE: `victoriametrics/victoria-logs` <a href="#variables-vm-vlogsdefault-image" id="variables-vm-vlogsdefault-image">#</a> |
 | VM_VLOGSDEFAULT_VERSION: `${VM_LOGS_VERSION}` <a href="#variables-vm-vlogsdefault-version" id="variables-vm-vlogsdefault-version">#</a> |
 | VM_VLOGSDEFAULT_PORT: `9428` <a href="#variables-vm-vlogsdefault-port" id="variables-vm-vlogsdefault-port">#</a> |

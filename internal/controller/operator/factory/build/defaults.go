@@ -583,27 +583,15 @@ func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 		if common.ConfigReloaderImageTag != "" {
 			common.ConfigReloaderImage = common.ConfigReloaderImageTag
 		} else {
-			common.ConfigReloaderImage = c.ConfigReloaderImage
+			common.ConfigReloaderImage = c.ConfigReloader.Image
 		}
+	}
+	if common.ConfigReloaderEmptyDir == nil {
+		common.ConfigReloaderEmptyDir = c.ConfigReloaderEmptyDir()
 	}
 
 	common.ConfigReloaderImage = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImage)
-	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource{
-		Limit: struct {
-			Mem string
-			Cpu string
-		}{
-			Cpu: c.ConfigReloaderLimitCPU,
-			Mem: c.ConfigReloaderLimitMemory,
-		},
-		Request: struct {
-			Mem string
-			Cpu string
-		}{
-			Cpu: c.ConfigReloaderRequestCPU,
-			Mem: c.ConfigReloaderRequestMemory,
-		},
-	}, useDefaultResources)
+	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource(c.ConfigReloader.Resource), useDefaultResources)
 }
 
 func addDefaultsToVMBackup(cr *vmv1beta1.VMBackup, useDefaultResources bool, appDefaults *config.ApplicationDefaults) {

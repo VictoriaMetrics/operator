@@ -1,7 +1,10 @@
 package build
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"path"
 	"strconv"
 	"strings"
@@ -250,4 +253,28 @@ func RelabelVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, cr re
 		})
 	}
 	return volumes, mounts
+}
+
+// GzipConfig compresses data config
+func GzipConfig(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	if _, err := w.Write(data); err != nil {
+		return nil, fmt.Errorf("failed to write compressed data to buffer: %w", err)
+	}
+	if err := w.Close(); err != nil {
+		return nil, fmt.Errorf("failed to flush compressed data to buffer: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// GunzipConfig uncompresses data config
+func GunzipConfig(data []byte) ([]byte, error) {
+	r := bytes.NewReader(data)
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to uncompress config: %w", err)
+	}
+	defer gr.Close()
+	return io.ReadAll(gr)
 }

@@ -105,7 +105,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if !cr.Spec.IngestOnlyMode {
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
@@ -217,7 +217,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					rv.err = fmt.Errorf("cannot fill placeholders for %T sharded vmagent(%d): %w", newAppTpl, shardNum, err)
 					return
 				}
-				if !cr.Spec.IngestOnlyMode {
+				if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 					patchShardContainers(newApp.Spec.Template.Spec.Containers, shardNum, shardCount)
 				}
 			}
@@ -231,7 +231,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 							rv.err = fmt.Errorf("cannot fill placeholders for prev %T sharded vmagent(%d): %w", newAppTpl, shardNum, err)
 							return
 						}
-						if !prevCR.Spec.IngestOnlyMode {
+						if !ptr.Deref(prevCR.Spec.IngestOnlyMode, false) {
 							patchShardContainers(prevApp.Spec.Template.Spec.Containers, shardNum, shardCount)
 						}
 					} else {
@@ -255,7 +255,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					rv.err = fmt.Errorf("cannot fill placeholders for %T in sharded vmagent(%d): %w", newAppTpl, shardNum, err)
 					return
 				}
-				if !cr.Spec.IngestOnlyMode {
+				if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 					patchShardContainers(newApp.Spec.Template.Spec.Containers, shardNum, shardCount)
 				}
 			}
@@ -269,7 +269,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 							rv.err = fmt.Errorf("cannot fill placeholders for prev %T in sharded vmagent(%d): %w", newAppTpl, shardNum, err)
 							return
 						}
-						if !prevCR.Spec.IngestOnlyMode {
+						if !ptr.Deref(prevCR.Spec.IngestOnlyMode, false) {
 							patchShardContainers(prevApp.Spec.Template.Spec.Containers, shardNum, shardCount)
 						}
 					} else {
@@ -548,7 +548,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	volumes = append(volumes, cr.Spec.Volumes...)
 
-	if !cr.Spec.IngestOnlyMode {
+	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 		args = append(args,
 			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConfOutDir, configFilename)))
 
@@ -675,7 +675,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	// conditional add config reloader container
-	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
+	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
 		ss := &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: cr.PrefixedName(),
@@ -684,7 +684,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		}
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
-		if !cr.Spec.IngestOnlyMode {
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
 			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 		}

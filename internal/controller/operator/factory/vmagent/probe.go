@@ -12,13 +12,13 @@ import (
 
 func generateProbeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	sp *vmv1beta1.CommonScrapeParams,
+	pos *parsedObjects,
 	sc *vmv1beta1.VMProbe,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	apiserverConfig := cr.Spec.APIServerConfig
-	se := cr.Spec.CommonScrapeSecurityEnforcements
+	se := &sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -26,7 +26,7 @@ func generateProbeConfig(
 		},
 	}
 
-	scrapeClass := getScrapeClass(spec.ScrapeClassName, cr)
+	scrapeClass := getScrapeClass(spec.ScrapeClassName, sp)
 	if scrapeClass != nil {
 		mergeEndpointAuthWithScrapeClass(&spec.EndpointAuth, scrapeClass)
 	}
@@ -47,7 +47,7 @@ func generateProbeConfig(
 		spec.Scheme = spec.VMProberSpec.Scheme
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &spec.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &spec.EndpointScrapeParams, sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, spec.EndpointScrapeParams, se)
 
@@ -80,15 +80,15 @@ func generateProbeConfig(
 	}
 	if spec.Targets.Ingress != nil {
 
-		skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+		skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 		relabelings = addSelectorToRelabelingFor(relabelings, "ingress", spec.Targets.Ingress.Selector, skipRelabelSelectors)
-		selectedNamespaces := getNamespacesFromNamespaceSelector(&spec.Targets.Ingress.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
+		selectedNamespaces := getNamespacesFromNamespaceSelector(&spec.Targets.Ingress.NamespaceSelector, sc.Namespace, pos.IgnoreNamespaceSelectors)
 
 		k8sSDOpts := generateK8SSDConfigOptions{
 			namespaces:         selectedNamespaces,
-			shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+			shouldAddSelectors: sp.EnableKubernetesAPISelectors,
 			selectors:          spec.Targets.Ingress.Selector,
-			apiServerConfig:    apiserverConfig,
+			apiServerConfig:    pos.APIServerConfig,
 			role:               k8sSDRoleIngress,
 			namespace:          sc.Namespace,
 		}
@@ -152,7 +152,7 @@ func generateProbeConfig(
 		},
 	}...)
 
-	for _, trc := range cr.Spec.ProbeScrapeRelabelTemplate {
+	for _, trc := range sp.ProbeScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

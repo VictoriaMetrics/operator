@@ -29,7 +29,8 @@ func TestGenerateScrapeConfig(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generateScrapeConfig(ctx, o.cr, o.sc, ac)
+		sp := &o.cr.Spec.CommonScrapeParams
+		got, err := generateScrapeConfig(ctx, sp, o.sc, ac)
 		if err != nil {
 			t.Errorf("cannot execute generateScrapeConfig, err: %e", err)
 			return

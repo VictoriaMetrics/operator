@@ -193,7 +193,7 @@ metadata:
 spec:
   # ...
   selectAllByDefault: true
-  vmAgentExternalLabelName: vmagent_ha
+  externalLabelName: vmagent_ha
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   scrapeInterval: 30s
@@ -225,7 +225,7 @@ metadata:
 spec:
   # ...
   selectAllByDefault: true
-  vmAgentExternalLabelName: vmagent_ha
+  externalLabelName: vmagent_ha
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   scrapeInterval: 30s
@@ -259,7 +259,7 @@ metadata:
 spec:
   # ...
   selectAllByDefault: true
-  vmAgentExternalLabelName: vmagent_ha
+  externalLabelName: vmagent_ha
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
   # Replication:

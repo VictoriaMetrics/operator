@@ -12,14 +12,14 @@ import (
 
 func generateStaticScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	sp *vmv1beta1.CommonScrapeParams,
 	sc *vmv1beta1.VMStaticScrape,
 	ep *vmv1beta1.TargetEndpoint,
 	i int,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	se := cr.Spec.CommonScrapeSecurityEnforcements
+	se := &sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -27,7 +27,7 @@ func generateStaticScrapeConfig(
 		},
 	}
 
-	scrapeClass := getScrapeClass(spec.ScrapeClassName, cr)
+	scrapeClass := getScrapeClass(spec.ScrapeClassName, sp)
 	if scrapeClass != nil {
 		mergeEndpointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
 		mergeEndpointRelabelingsWithScrapeClass(&ep.EndpointRelabelings, scrapeClass)
@@ -48,9 +48,9 @@ func generateStaticScrapeConfig(
 		ep.SeriesLimit = spec.SeriesLimit
 	}
 	if ep.ScrapeTimeout == "" {
-		ep.ScrapeTimeout = cr.Spec.ScrapeTimeout
+		ep.ScrapeTimeout = sp.ScrapeTimeout
 	}
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 
@@ -66,7 +66,7 @@ func generateStaticScrapeConfig(
 	for _, c := range ep.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.StaticScrapeRelabelTemplate {
+	for _, trc := range sp.StaticScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

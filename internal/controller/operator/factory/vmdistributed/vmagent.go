@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -176,7 +177,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	if err := json.Unmarshal(vmagentData, &vmagentSpec); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal spec.vmagent.spec of VMDistributed=%s/%s: %w", cr.Name, cr.Namespace, err)
 	}
-	vmagentSpec.IngestOnlyMode = true
+	vmagentSpec.IngestOnlyMode = ptr.To(true)
 	if vmagentSpec.RemoteWriteSettings == nil {
 		vmagentSpec.RemoteWriteSettings = &vmv1beta1.VMAgentRemoteWriteSettings{}
 	}

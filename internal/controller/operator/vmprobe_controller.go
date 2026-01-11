@@ -91,10 +91,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsProbeUnmanaged() {
-			continue
-		}
-		if item.Spec.DaemonSetMode {
+		if item.IsUnmanaged(instance) {
 			continue
 		}
 		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
@@ -103,10 +100,11 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
+			objectSelector, namespaceSelector := item.ScrapeSelectors(item)
 			opts := &k8stools.SelectorOpts{
 				SelectAll:         item.Spec.SelectAllByDefault,
-				NamespaceSelector: item.Spec.ProbeNamespaceSelector,
-				ObjectSelector:    item.Spec.ProbeSelector,
+				NamespaceSelector: namespaceSelector,
+				ObjectSelector:    objectSelector,
 				DefaultNamespace:  instance.Namespace,
 			}
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)

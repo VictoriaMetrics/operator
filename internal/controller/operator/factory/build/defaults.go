@@ -212,6 +212,9 @@ func addVMAgentDefaults(objI any) {
 	cv := config.ApplicationDefaults(c.VMAgentDefault)
 	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
+	if cr.Spec.IngestOnlyMode == nil {
+		cr.Spec.IngestOnlyMode = ptr.To(false)
+	}
 }
 
 func addVLAgentDefaults(objI any) {

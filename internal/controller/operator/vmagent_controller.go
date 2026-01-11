@@ -88,7 +88,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return result, &getError{origin: err, controller: "vmagent", requestObject: req}
 	}
-	if !instance.IsUnmanaged() {
+	if !instance.IsUnmanaged(nil) {
 		agentSync.Lock()
 		defer agentSync.Unlock()
 	}

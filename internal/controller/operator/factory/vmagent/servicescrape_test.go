@@ -29,7 +29,12 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generateServiceScrapeConfig(ctx, o.cr, o.sc, o.sc.Spec.Endpoints[0], 0, ac)
+		pos := &parsedObjects{
+			Namespace:       o.cr.Namespace,
+			APIServerConfig: o.cr.Spec.APIServerConfig,
+		}
+		sp := &o.cr.Spec.CommonScrapeParams
+		got, err := generateServiceScrapeConfig(ctx, sp, pos, o.sc, o.sc.Spec.Endpoints[0], 0, ac)
 		if err != nil {
 			t.Errorf("cannot generate ServiceScrapeConfig, err: %e", err)
 			return

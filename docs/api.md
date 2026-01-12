@@ -2388,7 +2388,7 @@ Appears in: [KubernetesSDConfig](#kubernetessdconfig)
 NamespaceSelector is a selector for selecting either all namespaces or a
 list of namespaces.
 
-Appears in: [DiscoverySelector](#discoveryselector), [ProbeTargetIngress](#probetargetingress), [VMPodScrapeSpec](#vmpodscrapespec), [VMServiceScrapeSpec](#vmservicescrapespec)
+Appears in: [DiscoverySelector](#discoveryselector), [VMPodScrapeSpec](#vmpodscrapespec), [VMProbeTargetK8s](#vmprobetargetk8s), [VMServiceScrapeSpec](#vmservicescrapespec)
 
 | Field | Description |
 | --- | --- |
@@ -2558,21 +2558,6 @@ Appears in: [VMPodScrapeSpec](#vmpodscrapespec)
 | vm_scrape_params<a href="#podmetricsendpoint-vm_scrape_params" id="podmetricsendpoint-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
 
 
-#### ProbeTargetIngress
-
-
-
-ProbeTargetIngress defines the set of Ingress objects considered for probing.
-
-Appears in: [VMProbeTargets](#vmprobetargets)
-
-| Field | Description |
-| --- | --- |
-| namespaceSelector<a href="#probetargetingress-namespaceselector" id="probetargetingress-namespaceselector">#</a><br/>_[NamespaceSelector](#namespaceselector)_ | _(Required)_<br/>Select Ingress objects by namespace. |
-| relabelingConfigs<a href="#probetargetingress-relabelingconfigs" id="probetargetingress-relabelingconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Required)_<br/>RelabelConfigs to apply to samples during service discovery. |
-| selector<a href="#probetargetingress-selector" id="probetargetingress-selector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Required)_<br/>Select Ingress objects by labels. |
-
-
 #### ProxyAuth
 
 
@@ -2668,7 +2653,7 @@ Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 RelabelConfig allows dynamic rewriting of the label set
 More info: https://docs.victoriametrics.com/victoriametrics/#relabeling
 
-Appears in: [CommonRelabelParams](#commonrelabelparams), [CommonScrapeParams](#commonscrapeparams), [Endpoint](#endpoint), [EndpointRelabelings](#endpointrelabelings), [PodMetricsEndpoint](#podmetricsendpoint), [ProbeTargetIngress](#probetargetingress), [ScrapeClass](#scrapeclass), [StreamAggrRule](#streamaggrrule), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAgentSpec](#vmagentspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMProbeTargetStaticConfig](#vmprobetargetstaticconfig), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [CommonRelabelParams](#commonrelabelparams), [CommonScrapeParams](#commonscrapeparams), [Endpoint](#endpoint), [EndpointRelabelings](#endpointrelabelings), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [StreamAggrRule](#streamaggrrule), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAgentSpec](#vmagentspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMProbeTargetK8s](#vmprobetargetk8s), [VMProbeTargetStaticConfig](#vmprobetargetstaticconfig), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -4471,6 +4456,22 @@ Appears in: [VMProbe](#vmprobe)
 | vm_scrape_params<a href="#vmprobespec-vm_scrape_params" id="vmprobespec-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
 
 
+#### VMProbeTargetK8s
+
+
+
+VMProbeTargetK8s defines the set of k8s objects considered for probing.
+
+Appears in: [VMProbeTargets](#vmprobetargets)
+
+| Field | Description |
+| --- | --- |
+| namespaceSelector<a href="#vmprobetargetk8s-namespaceselector" id="vmprobetargetk8s-namespaceselector">#</a><br/>_[NamespaceSelector](#namespaceselector)_ | _(Required)_<br/>Select k8s objects by namespace. |
+| relabelingConfigs<a href="#vmprobetargetk8s-relabelingconfigs" id="vmprobetargetk8s-relabelingconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Required)_<br/>RelabelConfigs to apply to samples during service discovery. |
+| role<a href="#vmprobetargetk8s-role" id="vmprobetargetk8s-role">#</a><br/>_string_ | _(Required)_<br/>Role defines k8s role name |
+| selector<a href="#vmprobetargetk8s-selector" id="vmprobetargetk8s-selector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Required)_<br/>Select k8s objects by labels. |
+
+
 #### VMProbeTargetStaticConfig
 
 
@@ -4496,7 +4497,8 @@ Appears in: [VMProbeSpec](#vmprobespec)
 
 | Field | Description |
 | --- | --- |
-| ingress<a href="#vmprobetargets-ingress" id="vmprobetargets-ingress">#</a><br/>_[ProbeTargetIngress](#probetargetingress)_ | _(Required)_<br/>Ingress defines the set of dynamically discovered ingress objects which hosts are considered for probing. |
+| ingress<a href="#vmprobetargets-ingress" id="vmprobetargets-ingress">#</a><br/>_[VMProbeTargetK8s](#vmprobetargetk8s)_ | _(Required)_<br/>Ingress defines the set of dynamically discovered Ingress objects which hosts are considered for probing.<br />Deprecated: use k8s configs instead |
+| k8s<a href="#vmprobetargets-k8s" id="vmprobetargets-k8s">#</a><br/>_[VMProbeTargetK8s](#vmprobetargetk8s) array_ | _(Required)_<br/>K8s defines k8s targets, which are considered for probing. |
 | staticConfig<a href="#vmprobetargets-staticconfig" id="vmprobetargets-staticconfig">#</a><br/>_[VMProbeTargetStaticConfig](#vmprobetargetstaticconfig)_ | _(Required)_<br/>StaticConfig defines static targets which are considers for probing. |
 
 

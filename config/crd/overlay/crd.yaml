@@ -790,6 +790,49 @@ spec:
                       type: string
                     type: array
                 type: object
+              license:
+                description: |-
+                  License allows to configure license key to be used for enterprise features.
+                  See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
+                properties:
+                  forceOffline:
+                    description: Enforce offline verification of the license key.
+                    type: boolean
+                  key:
+                    description: |-
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
+                      To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                    type: string
+                  keyRef:
+                    description: KeyRef is reference to secret with license key for
+                      enterprise features.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  reloadInterval:
+                    description: Interval to be used for checking for license key
+                      changes. Note that this is only applicable when using KeyRef.
+                    type: string
+                type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object
@@ -2372,6 +2415,49 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              license:
+                description: |-
+                  License allows to configure license key to be used for enterprise features.
+                  See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
+                properties:
+                  forceOffline:
+                    description: Enforce offline verification of the license key.
+                    type: boolean
+                  key:
+                    description: |-
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
+                      To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                    type: string
+                  keyRef:
+                    description: KeyRef is reference to secret with license key for
+                      enterprise features.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  reloadInterval:
+                    description: Interval to be used for checking for license key
+                      changes. Note that this is only applicable when using KeyRef.
+                    type: string
+                type: object
               managedMetadata:
                 description: |-
                   ManagedMetadata defines metadata that will be added to the all objects
@@ -6196,6 +6282,49 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              license:
+                description: |-
+                  License allows to configure license key to be used for enterprise features.
+                  See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
+                properties:
+                  forceOffline:
+                    description: Enforce offline verification of the license key.
+                    type: boolean
+                  key:
+                    description: |-
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
+                      To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                    type: string
+                  keyRef:
+                    description: KeyRef is reference to secret with license key for
+                      enterprise features.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  reloadInterval:
+                    description: Interval to be used for checking for license key
+                      changes. Note that this is only applicable when using KeyRef.
+                    type: string
+                type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object

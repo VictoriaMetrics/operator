@@ -61,6 +61,11 @@ type VLClusterSpec struct {
 	VLSelect  *VLSelect  `json:"vlselect,omitempty"`
 	VLStorage *VLStorage `json:"vlstorage,omitempty"`
 
+	// License allows to configure license key to be used for enterprise features.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
+	// +optional
+	License *vmv1beta1.License `json:"license,omitempty"`
+
 	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional

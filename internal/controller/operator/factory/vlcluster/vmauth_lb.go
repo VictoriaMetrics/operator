@@ -128,13 +128,13 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		},
 	}
 	volumes = append(volumes, spec.Volumes...)
-	vmounts := []corev1.VolumeMount{
+	vmMounts := []corev1.VolumeMount{
 		{
 			MountPath: "/opt/vmauth-config/",
 			Name:      configMountName,
 		},
 	}
-	vmounts = append(vmounts, spec.VolumeMounts...)
+	vmMounts = append(vmMounts, spec.VolumeMounts...)
 	cfg := config.MustGetBaseConfig()
 
 	args := []string{
@@ -157,6 +157,9 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		args = append(args, "-envflag.enable=true")
 	}
 
+	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
+	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
+
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vmauthLBCnt := corev1.Container{
@@ -174,7 +177,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		Resources:       spec.Resources,
 		Image:           fmt.Sprintf("%s:%s", spec.Image.Repository, spec.Image.Tag),
 		ImagePullPolicy: spec.Image.PullPolicy,
-		VolumeMounts:    vmounts,
+		VolumeMounts:    vmMounts,
 	}
 	vmauthLBCnt = build.Probe(vmauthLBCnt, &spec)
 	containers := []corev1.Container{

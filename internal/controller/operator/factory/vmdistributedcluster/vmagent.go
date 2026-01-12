@@ -127,12 +127,13 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 	}
 
 	logger.WithContext(ctx).Info("Found VMAgent hosts", "hosts", hosts)
-	// Poll until all pod IPs return empty query metric
-	err = wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
-		// Query each discovered ip. If any returns non-zero metric, continue polling.
-		for _, ip := range hosts {
-			metricsURL := buildPerIPMetricURL(baseURL, metricPath, ip)
-			logger.WithContext(ctx).Info("Found VMAgent instance metric URL", "url", metricsURL)
+	for _, ip := range hosts {
+		metricsURL := buildPerIPMetricURL(baseURL, metricPath, ip)
+		logger.WithContext(ctx).Info("Found VMAgent instance metric URL", "url", metricsURL)
+
+		// Poll until all pod IPs return empty query metric
+		err = wait.PollUntilContextTimeout(ctx, 30*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
+			// Query each discovered ip. If any returns non-zero metric, continue polling.
 			metricValue, ferr := fetchVMAgentDiskBufferMetric(ctx, httpClient, metricsURL)
 			logger.WithContext(ctx).Info("Found VMAgent instance metric value", "url", metricsURL, "value", metricValue)
 			if ferr != nil {
@@ -142,12 +143,12 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 			if metricValue != 0 {
 				return false, nil
 			}
+			// All discovered addresses reported zero -> done.
+			return true, nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to wait for VMAgent metrics: %w", err)
 		}
-		// All discovered addresses reported zero -> done.
-		return true, nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to wait for VMAgent metrics: %w", err)
 	}
 	return nil
 }

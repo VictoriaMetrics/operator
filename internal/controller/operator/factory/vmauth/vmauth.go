@@ -346,7 +346,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
 	vmauthContainer = addVMAuthProbes(cr, vmauthContainer)
-	build.AddConfigReloadAuthKeyToApp(&vmauthContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
+	build.AddConfigReloadAuthKeyToApp(&vmauthContainer, &cr.Spec.CommonConfigReloaderParams)
 
 	// move vmauth container to the 0 index
 	operatorContainers = append([]corev1.Container{vmauthContainer}, operatorContainers...)

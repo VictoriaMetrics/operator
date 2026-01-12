@@ -285,7 +285,7 @@ func (cr *VLSingle) Validate() error {
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr *VLSingle) GetExtraArgs() map[string]string {
+func (cr *VLSingle) GetExtraArgs() map[string]vmv1beta1.ArgValue {
 	return cr.Spec.ExtraArgs
 }
 

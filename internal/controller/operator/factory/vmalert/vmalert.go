@@ -295,7 +295,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	vmalertContainer = build.Probe(vmalertContainer, cr)
-	build.AddConfigReloadAuthKeyToApp(&vmalertContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
+	build.AddConfigReloadAuthKeyToApp(&vmalertContainer, &cr.Spec.CommonConfigReloaderParams)
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
 	if !cr.IsUnmanaged() {

@@ -286,7 +286,7 @@ func (cr *VLInsert) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VLInsert) GetExtraArgs() map[string]string {
+func (cr *VLInsert) GetExtraArgs() map[string]vmv1beta1.ArgValue {
 	return cr.ExtraArgs
 }
 
@@ -438,7 +438,7 @@ func (cr *VLSelect) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VLSelect) GetExtraArgs() map[string]string {
+func (cr *VLSelect) GetExtraArgs() map[string]vmv1beta1.ArgValue {
 	return cr.ExtraArgs
 }
 
@@ -575,7 +575,7 @@ func (cr *VLStorage) GetMetricPath() string {
 }
 
 // ExtraArgs returns additionally configured command-line arguments
-func (cr *VLStorage) GetExtraArgs() map[string]string {
+func (cr *VLStorage) GetExtraArgs() map[string]vmv1beta1.ArgValue {
 	return cr.ExtraArgs
 }
 
@@ -776,7 +776,7 @@ func (cr *VLCluster) IsOwnsServiceAccount() bool {
 // nolint:dupl,lll
 func (cr *VLCluster) AsURL(kind vmv1beta1.ClusterComponent) string {
 	var port string
-	var extraArgs map[string]string
+	var extraArgs map[string]vmv1beta1.ArgValue
 	switch kind {
 	case vmv1beta1.ClusterComponentSelect:
 		if cr.Spec.VLSelect == nil {

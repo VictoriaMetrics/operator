@@ -14,7 +14,7 @@ import (
 type testVMServiceScrapeForServiceWithSpecArgs struct {
 	serviceScrapeSpecTemplate *vmv1beta1.VMServiceScrapeSpec
 	metricPath                string
-	extraArgs                 map[string]string
+	extraArgs                 map[string]vmv1beta1.ArgValue
 }
 
 func (tb *testVMServiceScrapeForServiceWithSpecArgs) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
@@ -25,7 +25,7 @@ func (tb *testVMServiceScrapeForServiceWithSpecArgs) GetMetricPath() string {
 	return tb.metricPath
 }
 
-func (tb *testVMServiceScrapeForServiceWithSpecArgs) GetExtraArgs() map[string]string {
+func (tb *testVMServiceScrapeForServiceWithSpecArgs) GetExtraArgs() map[string]vmv1beta1.ArgValue {
 	return tb.extraArgs
 }
 
@@ -293,9 +293,9 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 		},
 		spec: testVMServiceScrapeForServiceWithSpecArgs{
 			metricPath: "/metrics",
-			extraArgs: map[string]string{
-				"tls":            "true",
-				"metricsAuthKey": "some-access-key",
+			extraArgs: map[string]vmv1beta1.ArgValue{
+				"tls":            []string{"true"},
+				"metricsAuthKey": []string{"some-access-key"},
 			},
 		},
 		wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{

@@ -312,7 +312,9 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				func(cr *vmv1beta1.VMAlert) {
 					cr.Spec.ReplicaCount = ptr.To[int32](3)
 					cr.Spec.LogLevel = "INFO"
-					cr.Spec.ExtraArgs = map[string]string{"http.pathPrefix": "/somenew/prefix"}
+					cr.Spec.ExtraArgs = map[string]vmv1beta1.ArgValue{
+						"http.pathPrefix": []string{"/somenew/prefix"},
+					}
 				},
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() string {

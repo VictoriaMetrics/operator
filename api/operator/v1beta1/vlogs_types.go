@@ -273,7 +273,7 @@ func (cr *VLogs) Validate() error {
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
-func (cr *VLogs) GetExtraArgs() map[string]string {
+func (cr *VLogs) GetExtraArgs() map[string]ArgValue {
 	return cr.Spec.ExtraArgs
 }
 

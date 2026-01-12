@@ -676,8 +676,8 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMStorage = nil
 						cr.Spec.VMInsert = nil
-						cr.Spec.VMSelect.ExtraArgs = map[string]string{
-							"storageNode": "non-exist-vmstorage:8402",
+						cr.Spec.VMSelect.ExtraArgs = map[string]vmv1beta1.ArgValue{
+							"storageNode": []string{"non-exist-vmstorage:8402"},
 						}
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {

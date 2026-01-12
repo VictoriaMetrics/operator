@@ -566,7 +566,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		volumes = append(volumes, corev1.Volume{
 			Name: "config-out",
 			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
+				EmptyDir: cr.Spec.ConfigReloaderEmptyDir,
 			},
 		})
 		volumes = append(volumes, corev1.Volume{

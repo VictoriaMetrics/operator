@@ -149,17 +149,20 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 				return fmt.Errorf("failed to create vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 			}
 		} else {
-			logger.WithContext(ctx).Info("Excluding VMCluster from vmauth configuration", "index", i, "name", vmClusterObj.Name)
-			// Update vmauth lb with excluded cluster
-			activeVMClusters := make([]*vmv1beta1.VMCluster, 0, len(vmClusters)-1)
-			for _, vmc := range vmClusters {
-				if vmc.Name == vmClusterObj.Name {
-					continue
+			// Drain cluster reads only if the spec has been modified
+			if modifiedSpec {
+				logger.WithContext(ctx).Info("Excluding VMCluster from vmauth configuration", "index", i, "name", vmClusterObj.Name)
+				// Update vmauth lb with excluded cluster
+				activeVMClusters := make([]*vmv1beta1.VMCluster, 0, len(vmClusters)-1)
+				for _, vmc := range vmClusters {
+					if vmc.Name == vmClusterObj.Name {
+						continue
+					}
+					activeVMClusters = append(activeVMClusters, vmc)
 				}
-				activeVMClusters = append(activeVMClusters, vmc)
-			}
-			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, activeVMClusters); err != nil {
-				return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
+				if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, activeVMClusters); err != nil {
+					return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
+				}
 			}
 
 			logger.WithContext(ctx).Info("Updating VMCluster", "index", i, "name", vmClusterObj.Name)

@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -27,8 +27,9 @@ func Test_generateStaticScrapeConfig(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generateStaticScrapeConfig(ctx, o.cr, o.sc, o.sc.Spec.TargetEndpoints[0], 0, ac)
+		ac := getAssetsCache(ctx, fclient)
+		sp := &o.cr.Spec.CommonScrapeParams
+		got, err := generateStaticScrapeConfig(ctx, sp, o.sc, o.sc.Spec.TargetEndpoints[0], 0, ac)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -363,9 +364,9 @@ proxy_basic_auth:
   password: proxy-password
 tls_config:
   insecure_skip_verify: true
-  ca_file: /etc/vmagent-tls/certs/default_tls-cfg_ca
+  ca_file: /tls/default_tls-cfg_ca
   cert_file: /tmp/cert-part
-  key_file: /etc/vmagent-tls/certs/default_tls-cfg_key
+  key_file: /tls/default_tls-cfg_key
 bearer_token: token-value
 basic_auth:
   username: admin

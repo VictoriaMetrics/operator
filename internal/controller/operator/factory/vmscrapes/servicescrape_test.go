@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -28,8 +28,13 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generateServiceScrapeConfig(ctx, o.cr, o.sc, o.sc.Spec.Endpoints[0], 0, ac)
+		ac := getAssetsCache(ctx, fclient)
+		pos := &ParsedObjects{
+			Namespace:       o.cr.Namespace,
+			APIServerConfig: o.cr.Spec.APIServerConfig,
+		}
+		sp := &o.cr.Spec.CommonScrapeParams
+		got, err := generateServiceScrapeConfig(ctx, sp, pos, o.sc, o.sc.Spec.Endpoints[0], 0, ac)
 		if err != nil {
 			t.Errorf("cannot generate ServiceScrapeConfig, err: %e", err)
 			return
@@ -147,7 +152,7 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+  ca_file: /tls/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
 	})
@@ -252,7 +257,7 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+  ca_file: /tls/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
 	})
@@ -357,7 +362,7 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+  ca_file: /tls/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
 	})
@@ -454,7 +459,7 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+  ca_file: /tls/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
 	})
@@ -537,7 +542,7 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 tls_config:
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+  ca_file: /tls/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
 	})
@@ -849,9 +854,9 @@ oauth2:
   proxy_url: http://oauth2-access-proxy
   tls_config:
     insecure_skip_verify: true
-    ca_file: /etc/vmagent-tls/certs/default_configmap_tls-cm_ca
-    cert_file: /etc/vmagent-tls/certs/default_tls_key
-    key_file: /etc/vmagent-tls/certs/default_tls_cert
+    ca_file: /tls/default_configmap_tls-cm_ca
+    cert_file: /tls/default_tls_key
+    key_file: /tls/default_tls_cert
 `,
 	})
 
@@ -961,7 +966,7 @@ relabel_configs:
   target_label: node
   regex: .+
 tls_config:
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+  ca_file: /tls/default_tls-secret_ca
 bearer_token_file: /var/run/token
 `,
 	})
@@ -986,7 +991,7 @@ bearer_token_file: /var/run/token
 				APIServerConfig: &vmv1beta1.APIServerConfig{
 					Host: "default-k8s-host",
 					TLSConfig: &vmv1beta1.TLSConfig{
-						CAFile: "/etc/vmagent-tls/certs/default_k8s_host_ca",
+						CAFile: "/tls/default_k8s_host_ca",
 					},
 				},
 			},
@@ -1024,7 +1029,7 @@ kubernetes_sd_configs:
     - default
   api_server: default-k8s-host
   tls_config:
-    ca_file: /etc/vmagent-tls/certs/default_k8s_host_ca
+    ca_file: /tls/default_k8s_host_ca
   selectors:
   - role: endpoints
     label: dc=prod,env=dev,team=go
@@ -1395,7 +1400,7 @@ relabel_configs:
   action: replace
 tls_config:
   ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-  cert_file: /etc/vmagent-tls/certs/default_tls-secret_cert
+  cert_file: /tls/default_tls-secret_cert
 `,
 	})
 

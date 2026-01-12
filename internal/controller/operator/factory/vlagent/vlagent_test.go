@@ -400,7 +400,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.tlsCAFile=/etc/vl/remote-write-assets/tls-secret/ca,/path/to_ca`,
 		`-remoteWrite.tlsCertFile=,/etc/vl/remote-write-assets/tls-secret/cert`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 		`-remoteWrite.url=localhost:9429,localhost:9429`,
 	},
 	)
@@ -431,7 +430,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		`-remoteWrite.url=localhost:9429`,
 		`-remoteWrite.tlsInsecureSkipVerify=true`,
 		`-remoteWrite.tlsKeyFile=/etc/vl/remote-write-assets/tls-secret/key`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test insecure
@@ -451,7 +449,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.url=localhost:9429`,
 		`-remoteWrite.tlsInsecureSkipVerify=true`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test sendTimeout
@@ -474,7 +471,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.url=localhost:9429,localhost:9431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test maxDiskUsage
@@ -499,7 +495,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.url=localhost:9429,localhost:9431,localhost:9432`,
 		`-remoteWrite.maxDiskUsagePerURL=1500MB,500MB,`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test automatic maxDiskUsage
@@ -536,7 +531,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.maxDiskUsagePerURL=3579139413`,
 		`-remoteWrite.url=localhost:9429,localhost:9431,localhost:9432`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test automatic maxDiskUsage with at least one defined
@@ -574,7 +568,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.url=localhost:9429,localhost:9431,localhost:9432`,
 		`-remoteWrite.maxDiskUsagePerURL=5000MB,3579139413,3579139413`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test oauth2
@@ -616,7 +609,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		`-remoteWrite.oauth2.endpointParams=,'{"query":"value1","timeout":"30s"}'`,
 		`-remoteWrite.url=localhost:9429,localhost:9431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test bearer token
@@ -643,7 +635,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		`-remoteWrite.bearerTokenFile=,/etc/vl/remote-write-assets/some-secret/some-key`,
 		`-remoteWrite.url=localhost:9429,localhost:9431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test with headers
@@ -672,7 +663,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		`-remoteWrite.headers='','key: value^^second-key: value2'`,
 		`-remoteWrite.url=localhost:9429,localhost:9431`,
 		`-remoteWrite.sendTimeout=10s,15s`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test with proxyURL (one remote write with defaults)
@@ -698,7 +688,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.proxyURL=,http://proxy.example.com,`,
 		`-remoteWrite.url=http://localhost:9431,http://localhost:9432,http://localhost:9433`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 
 	// test with StatefulMode
@@ -708,9 +697,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1.VLAgentSpec{},
-	}, []string{
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
-	})
+	}, nil)
 
 	// test simple ok
 	f(&vmv1.VLAgent{
@@ -718,9 +705,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 			Name:      "default-vlagent",
 			Namespace: "default",
 		},
-	}, []string{
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
-	})
+	}, nil)
 
 	// with remoteWriteSettings
 	f(&vmv1.VLAgent{
@@ -760,7 +745,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		},
 	}, []string{
 		`-remoteWrite.maxDiskUsagePerURL=500MB`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 		`-remoteWrite.url=localhost:9431`,
 	})
 
@@ -802,7 +786,6 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		`-remoteWrite.url=localhost:9429,localhost:9431,localhost:9432`,
 		`-remoteWrite.maxBlockSize=1000`,
 		`-remoteWrite.maxDiskUsagePerURL=3579139413`,
-		`-remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data`,
 	})
 }
 
@@ -860,7 +843,7 @@ containers:
     image: vm-repo:v1.97.1
     args:
       - -httpListenAddr=:9425
-      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
+      - -tmpDataPath=/vlagent-data
     ports:
       - name: http
         containerport: 9425
@@ -878,8 +861,8 @@ containers:
           format: BinarySI
       claims: []
     volumemounts:
-      - name: persistent-queue-data
-        mountpath: /vlagent_pq/vlagent-remotewrite-data
+      - name: tmp-data
+        mountpath: /vlagent-data
     livenessprobe:
       probehandler:
         httpget:
@@ -924,14 +907,14 @@ containers:
     image: victoriametrics/vlagent:v1.97.1
     args:
       - -httpListenAddr=:9429
-      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
+      - -tmpDataPath=/vlagent-data
     ports:
       - name: http
         containerport: 9429
         protocol: TCP
     volumemounts:
-      - name: persistent-queue-data
-        mountpath: /vlagent_pq/vlagent-remotewrite-data
+      - name: tmp-data
+        mountpath: /vlagent-data
     livenessprobe:
       probehandler:
         httpget:
@@ -991,15 +974,15 @@ containers:
     args:
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
-      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+      - -tmpDataPath=/vlagent-data
     ports:
       - name: http
         containerport: 9425
         protocol: TCP
     volumemounts:
-      - name: persistent-queue-data
-        mountpath: /vlagent_pq/vlagent-remotewrite-data
+      - name: tmp-data
+        mountpath: /vlagent-data
     livenessprobe:
       probehandler:
         httpget:
@@ -1064,11 +1047,11 @@ containers:
     args:
       - -httpListenAddr=:9425
       - -kubernetesCollector
-      - -kubernetesCollector.checkpointsPath=/var/lib/vlagent_checkpoints/checkpoints.json
+      - -kubernetesCollector.includePodLabels
       - -kubernetesCollector.msgField="msg,message"
       - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
-      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+      - -tmpDataPath=/var/lib/vlagent-data
     ports:
       - name: http
         containerport: 9425
@@ -1080,10 +1063,8 @@ containers:
       - name: varlib
         readonly: true
         mountpath: /var/lib
-      - name: checkpoints
-        mountpath: /var/lib/vlagent_checkpoints
-      - name: persistent-queue-data
-        mountpath: /vlagent_pq/vlagent-remotewrite-data
+      - name: tmp-data
+        mountpath: /var/lib/vlagent-data
     livenessprobe:
       probehandler:
         httpget:
@@ -1118,13 +1099,10 @@ volumes:
   volumesource:
     hostpath:
       path: /var/lib
-- name: checkpoints
+- name: tmp-data
   volumesource:
     hostpath:
-      path: /var/lib/vlagent_checkpoints
-- name: persistent-queue-data
-  volumesource:
-    emptydir: {}
+      path: /var/lib/vlagent-data
 
     `)
 
@@ -1163,15 +1141,15 @@ containers:
     args:
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=10GB,20MB,10GB
-      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+      - -tmpDataPath=/vlagent-data
     ports:
       - name: http
         containerport: 9425
         protocol: TCP
     volumemounts:
-      - name: persistent-queue-data
-        mountpath: /vlagent_pq/vlagent-remotewrite-data
+      - name: tmp-data
+        mountpath: /vlagent-data
     livenessprobe:
       probehandler:
         httpget:
@@ -1239,15 +1217,15 @@ containers:
     args:
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=35GiB
-      - -remoteWrite.tmpDataPath=/vlagent_pq/vlagent-remotewrite-data
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+      - -tmpDataPath=/vlagent-data
     ports:
       - name: http
         containerport: 9425
         protocol: TCP
     volumemounts:
-      - name: persistent-queue-data
-        mountpath: /vlagent_pq/vlagent-remotewrite-data
+      - name: tmp-data
+        mountpath: /vlagent-data
     livenessprobe:
       probehandler:
         httpget:

@@ -140,6 +140,16 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			Expect(vmagent.OwnerReferences[0].Name).To(Equal(cr.Name))
 			Expect(vmagent.OwnerReferences[0].Kind).To(Equal("VMDistributedCluster"))
 			Expect(vmagent.OwnerReferences[0].UID).To(Equal(cr.UID))
+
+			var vmauth vmv1beta1.VMAuth
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAuthName, Namespace: namespace}, &vmauth)
+			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
+			Expect(vmauth.OwnerReferences).To(HaveLen(1))
+			Expect(vmauth.OwnerReferences[0].Name).To(Equal(cr.Name))
+			Expect(vmauth.OwnerReferences[0].Kind).To(Equal("VMDistributedCluster"))
+			Expect(vmauth.OwnerReferences[0].UID).To(Equal(cr.UID))
+			Expect(vmauth.Spec.Port).To(Equal("8427"))
 		})
 
 		It("should successfully create a VMDistributedCluster with inline VMCluster specs", func() {

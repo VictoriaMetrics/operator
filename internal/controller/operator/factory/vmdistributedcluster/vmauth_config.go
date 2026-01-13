@@ -19,14 +19,20 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
+func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
 	if cr.Spec.VMAuth.Name == "" {
 		return nil
 	}
 
 	var vmSelectURLs []string
 	for _, cluster := range vmClusters {
-		url := fmt.Sprintf("http://vmselect-%s.%s.svc:8481/", cluster.Name, cluster.Namespace)
+		vmHost := cluster.PrefixedName(vmv1beta1.ClusterComponentSelect)
+		vmPort := cluster.Spec.VMSelect.Port
+		if cluster.Spec.RequestsLoadBalancer.Enabled && !cluster.Spec.RequestsLoadBalancer.DisableSelectBalancing {
+			vmHost = cluster.PrefixedName(vmv1beta1.ClusterComponentBalancer)
+			vmPort = cluster.Spec.RequestsLoadBalancer.Spec.Port
+		}
+		url := fmt.Sprintf("http://%s.%s.svc:%s/", vmHost, cluster.Namespace, vmPort)
 		vmSelectURLs = append(vmSelectURLs, url)
 	}
 	sort.Strings(vmSelectURLs)

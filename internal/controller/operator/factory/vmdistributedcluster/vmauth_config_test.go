@@ -27,6 +27,8 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 
 	t.Run("should create VMAuth if it does not exist", func(t *testing.T) {
 		data := beforeEach()
+		data.vmcluster1.Spec.VMSelect.Port = "8481"
+		data.vmcluster2.Spec.VMSelect.Port = "8481"
 		data.cr.Spec.VMAuth.Name = "vmauth-lb"
 		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthLoadBalancerSpec{
 			LogLevel: "INFO",
@@ -77,6 +79,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 
 	t.Run("should update VMAuth if spec changes", func(t *testing.T) {
 		data := beforeEach()
+		data.vmcluster1.Spec.VMSelect.Port = "8481"
 		data.cr.Spec.VMAuth.Name = "vmauth-lb"
 
 		// Create existing VMAuth with different spec
@@ -123,6 +126,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 
 	t.Run("should not update VMAuth if spec matches", func(t *testing.T) {
 		data := beforeEach()
+		data.vmcluster1.Spec.VMSelect.Port = "8481"
 		data.cr.Spec.VMAuth.Name = "vmauth-lb"
 		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthLoadBalancerSpec{
 			LogLevel: "INFO",
@@ -155,6 +159,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 
 	t.Run("should adopt existing VMAuth if owner reference is missing", func(t *testing.T) {
 		data := beforeEach()
+		data.vmcluster1.Spec.VMSelect.Port = "8481"
 		data.cr.Spec.VMAuth.Name = "vmauth-lb"
 		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthLoadBalancerSpec{
 			LogLevel: "INFO",
@@ -199,5 +204,47 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 		updatedVMAuth := updateAction.Object.(*vmv1beta1.VMAuth)
 		assert.NotEmpty(t, updatedVMAuth.OwnerReferences)
 		assert.Equal(t, data.cr.Name, updatedVMAuth.OwnerReferences[0].Name)
+	})
+
+	t.Run("should use load balancer service URL if RequestsLoadBalancer is enabled", func(t *testing.T) {
+		data := beforeEach()
+		data.cr.Spec.VMAuth.Name = "vmauth-lb"
+
+		data.vmcluster1.Spec.VMSelect.Port = "8481"
+		data.vmcluster2.Spec.VMSelect.Port = "8481"
+
+		// Enable load balancer for vmcluster1
+		data.vmcluster1.Spec.RequestsLoadBalancer.Enabled = true
+		data.vmcluster1.Spec.RequestsLoadBalancer.Spec.Port = "8427"
+
+		rclient := data.trackingClient
+		ctx := context.Background()
+
+		clusters := []*vmv1beta1.VMCluster{data.vmcluster1, data.vmcluster2}
+		err := createOrUpdateVMAuthLB(ctx, rclient, data.cr, nil, clusters)
+		assert.NoError(t, err)
+
+		var createAction *action
+		for _, a := range rclient.Actions {
+			if a.Method == "Create" {
+				if _, ok := a.Object.(*vmv1beta1.VMAuth); ok {
+					createAction = &a
+					break
+				}
+			}
+		}
+		require.NotNil(t, createAction, "VMAuth should be created")
+
+		createdVMAuth := createAction.Object.(*vmv1beta1.VMAuth)
+		require.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
+		require.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.URLMap, 1)
+		urlMap := createdVMAuth.Spec.UnauthorizedUserAccessSpec.URLMap[0]
+
+		expectedURLs := []string{
+			"http://vmclusterlb-vmcluster-1.default.svc:8427/",
+			"http://vmselect-vmcluster-2.default.svc:8481/",
+		}
+		sort.Strings(expectedURLs)
+		assert.Equal(t, vmv1beta1.StringOrArray(expectedURLs), urlMap.URLPrefix)
 	})
 }

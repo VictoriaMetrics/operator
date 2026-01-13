@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"time"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -93,4 +95,29 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 
 	currentVMAuth.Spec = vmAuthSpec
 	return rclient.Update(ctx, currentVMAuth)
+}
+
+func WaitForVMAuthReady(ctx context.Context, rclient client.Client, vmAuth *vmv1beta1.VMAuth, readyDeadline *metav1.Duration) error {
+	defaultReadyDeadline := time.Minute
+	if readyDeadline != nil {
+		defaultReadyDeadline = readyDeadline.Duration
+	}
+
+	var lastStatus vmv1beta1.UpdateStatus
+	// Fetch VMAuth in a loop until it has UpdateStatusOperational status
+	err := wait.PollUntilContextTimeout(ctx, time.Second, defaultReadyDeadline, true, func(ctx context.Context) (done bool, err error) {
+		if err := rclient.Get(ctx, types.NamespacedName{Name: vmAuth.Name, Namespace: vmAuth.Namespace}, vmAuth); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, nil
+		}
+		lastStatus = vmAuth.Status.UpdateStatus
+		return vmAuth.GetGeneration() == vmAuth.Status.ObservedGeneration && vmAuth.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait for VMAuth %s/%s to be ready: %w, current status: %s", vmAuth.Namespace, vmAuth.Name, err, lastStatus)
+	}
+
+	return nil
 }

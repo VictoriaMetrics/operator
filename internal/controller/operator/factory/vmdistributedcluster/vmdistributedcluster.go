@@ -60,6 +60,17 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	if err != nil {
 		return fmt.Errorf("failed to update or create vmauth: %w", err)
 	}
+	if cr.Spec.VMAuth.Name != "" {
+		vmAuth := &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      cr.Spec.VMAuth.Name,
+				Namespace: cr.Namespace,
+			},
+		}
+		if err := WaitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
+			return fmt.Errorf("failed to wait for vmauth ready: %w", err)
+		}
+	}
 
 	// Update or create the VMAgent
 	vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme, vmClusters)
@@ -163,6 +174,17 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 				if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, activeVMClusters); err != nil {
 					return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
 				}
+				if cr.Spec.VMAuth.Name != "" {
+					vmAuth := &vmv1beta1.VMAuth{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      cr.Spec.VMAuth.Name,
+							Namespace: cr.Namespace,
+						},
+					}
+					if err := WaitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
+						return fmt.Errorf("failed to wait for vmauth ready: %w", err)
+					}
+				}
 			}
 
 			logger.WithContext(ctx).Info("Updating VMCluster", "index", i, "name", vmClusterObj.Name)
@@ -190,6 +212,17 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		logger.WithContext(ctx).Info("Re-enabling VMCluster in vmauth", "index", i, "name", vmClusterObj.Name)
 		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
 			return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
+		}
+		if cr.Spec.VMAuth.Name != "" {
+			vmAuth := &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cr.Spec.VMAuth.Name,
+					Namespace: cr.Namespace,
+				},
+			}
+			if err := WaitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
+				return fmt.Errorf("failed to wait for vmauth ready: %w", err)
+			}
 		}
 
 		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)

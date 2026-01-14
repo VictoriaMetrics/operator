@@ -16,8 +16,11 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
+
+var defaultVMSelectPort = config.MustGetBaseConfig().VMClusterDefault.VMSelectDefault.Port
 
 func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
 	if cr.Spec.VMAuth.Name == "" {
@@ -28,9 +31,16 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *v
 	for _, cluster := range vmClusters {
 		vmHost := cluster.PrefixedName(vmv1beta1.ClusterComponentSelect)
 		vmPort := cluster.Spec.VMSelect.Port
+		if vmPort == "" {
+			vmPort = defaultVMSelectPort
+		}
+
 		if cluster.Spec.RequestsLoadBalancer.Enabled && !cluster.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 			vmHost = cluster.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 			vmPort = cluster.Spec.RequestsLoadBalancer.Spec.Port
+			if vmPort == "" {
+				vmPort = defaultVMSelectPort
+			}
 		}
 		url := fmt.Sprintf("http://%s.%s.svc:%s/", vmHost, cluster.Namespace, vmPort)
 		vmSelectURLs = append(vmSelectURLs, url)

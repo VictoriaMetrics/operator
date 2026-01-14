@@ -15,6 +15,7 @@ import (
 func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster) error {
 	ns := cr.GetNamespace()
 	objsToRemove := []client.Object{}
+	objsToDisown := []client.Object{}
 	if len(cr.Spec.VMAgent.Name) > 0 && cr.Spec.VMAgent.Spec != nil {
 		vmAgentMeta := metav1.ObjectMeta{
 			Namespace: ns,
@@ -31,7 +32,16 @@ func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr
 	}
 	for _, vmclusterSpec := range cr.Spec.Zones.VMClusters {
 		// Don't attempt to delete referenced or plain invalid clusters
-		if vmclusterSpec.Ref != nil || len(vmclusterSpec.Name) == 0 {
+		if len(vmclusterSpec.Name) == 0 {
+			continue
+		}
+		if vmclusterSpec.Ref != nil {
+			objsToDisown = append(objsToDisown, &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      vmclusterSpec.Name,
+					Namespace: cr.Namespace,
+				},
+			})
 			continue
 		}
 		vmcluster := &vmv1beta1.VMCluster{
@@ -46,6 +56,12 @@ func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr
 	for _, objToRemove := range objsToRemove {
 		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
+		}
+	}
+	for _, objToDisown := range objsToDisown {
+		objToDisown.SetOwnerReferences([]metav1.OwnerReference{})
+		if err := rclient.Update(ctx, objToDisown); err != nil {
+			return fmt.Errorf("failed to disown object=%s: %w", objToDisown.GetObjectKind().GroupVersionKind(), err)
 		}
 	}
 	// Remove the CR

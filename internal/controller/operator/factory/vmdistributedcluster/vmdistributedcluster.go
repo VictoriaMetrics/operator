@@ -21,6 +21,7 @@ import (
 
 var (
 	defaultVMClusterWaitReadyDeadline   = metav1.Duration{Duration: 5 * time.Minute}
+	defaultVMAgentCheckInterval         = 30 * time.Second
 	defaultVMAgentFlushDeadlineDeadline = metav1.Duration{Duration: 1 * time.Minute}
 	defaultZoneUpdatePause              = metav1.Duration{Duration: 1 * time.Minute}
 )
@@ -202,7 +203,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 
 		// Wait for VMAgent metrics to show no pending queue
 		logger.WithContext(ctx).Info("Fetching VMAgent metrics", "index", i, "name", vmClusterObj.Name, "timeout", vmAgentFlushDeadlineDeadline)
-		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmAgentFlushDeadlineDeadline, rclient); err != nil {
+		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmAgentFlushDeadlineDeadline, defaultVMAgentCheckInterval, rclient); err != nil {
 			// Ignore this error when running e2e tests - these need to run in the same network as pods
 			if os.Getenv("E2E_TEST") != "true" {
 				return fmt.Errorf("failed to wait for VMAgent metrics to show no pending queue: %w", err)

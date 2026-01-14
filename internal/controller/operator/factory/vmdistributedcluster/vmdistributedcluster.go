@@ -114,6 +114,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 
 		// Update the VMCluster when overrideSpec needs to be applied or ownerref set
 		mergedSpec := vmClusterObj.Spec
+		previousVMClusterObjSpec := vmClusterObj.Spec.DeepCopy()
 		modifiedSpec := false
 
 		// Apply GlobalOverrideSpec if it is set
@@ -123,18 +124,37 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 				return fmt.Errorf("failed to apply global override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
 		}
+		diff := cmp.Diff(*previousVMClusterObjSpec, mergedSpec)
+		if diff != "" {
+			logger.WithContext(ctx).Info("GlobalOverrideSpec diff", "diff", diff, "modifiedSpec", modifiedSpec, "index", i, "name", vmClusterObj.Name)
+			logger.WithContext(ctx).Info(diff)
+		}
+
 		// Apply cluster-specific override if it exist
+		previousVMClusterObjSpec = mergedSpec.DeepCopy()
 		if zoneRefOrSpec.Ref != nil && zoneRefOrSpec.OverrideSpec != nil {
 			mergedSpec, modifiedSpec, err = ApplyOverrideSpec(mergedSpec, zoneRefOrSpec.OverrideSpec)
 			if err != nil {
 				return fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
 		}
+		diff = cmp.Diff(*previousVMClusterObjSpec, mergedSpec)
+		if diff != "" {
+			logger.WithContext(ctx).Info("zoneRefOrSpec.Ref diff", "diff", diff, "modifiedSpec", modifiedSpec, "index", i, "name", vmClusterObj.Name)
+			logger.WithContext(ctx).Info(diff)
+		}
+
+		previousVMClusterObjSpec = mergedSpec.DeepCopy()
 		if zoneRefOrSpec.Spec != nil {
 			mergedSpec, modifiedSpec, err = mergeVMClusterSpecs(mergedSpec, *zoneRefOrSpec.Spec)
 			if err != nil {
 				return fmt.Errorf("failed to merge spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
+		}
+		diff = cmp.Diff(*previousVMClusterObjSpec, mergedSpec)
+		if diff != "" {
+			logger.WithContext(ctx).Info("zoneRefOrSpec.Spec diff", "diff", diff, "modifiedSpec", modifiedSpec, "index", i, "name", vmClusterObj.Name)
+			logger.WithContext(ctx).Info(diff)
 		}
 
 		// Apply VMDistributedCluster License to VMCluster if not already set

@@ -22,12 +22,15 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 const (
 	VMAgentQueueMetricName = "vm_persistentqueue_bytes_pending"
 )
+
+var defaultVMInsertPort = config.MustGetBaseConfig().VMClusterDefault.VMInsertDefault.Port
 
 // VMAgentMetrics defines the interface for VMAgent objects that can provide metrics URLs
 type VMAgentMetrics interface {
@@ -322,7 +325,16 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 
 // remoteWriteURL generates the remote write URL based on the provided VMCluster and tenant.
 func remoteWriteURL(vmCluster *vmv1beta1.VMCluster) string {
-	return fmt.Sprintf("http://%s.%s.svc.cluster.local.:8480/insert/multitenant/prometheus/api/v1/write", vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert), vmCluster.Namespace)
+	vmHost := vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert)
+	vmInsertPort := vmCluster.Spec.VMInsert.Port
+	if vmCluster.Spec.RequestsLoadBalancer.Enabled && !vmCluster.Spec.RequestsLoadBalancer.DisableInsertBalancing {
+		vmInsertPort = vmCluster.Spec.RequestsLoadBalancer.Spec.Port
+		vmHost = vmCluster.PrefixedName(vmv1beta1.ClusterComponentBalancer)
+	}
+	if vmInsertPort == "" {
+		vmInsertPort = defaultVMInsertPort
+	}
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local.:%s/insert/multitenant/prometheus/api/v1/write", vmHost, vmCluster.Namespace, vmInsertPort)
 }
 
 func preserveVMAgentOrder(desiredVMAgentSpec *vmv1alpha1.CustomVMAgentSpec, remoteWriteURLs []string, vmAgentWriteSpec []vmv1beta1.VMAgentRemoteWriteSpec, writeSpecMap map[string]vmv1alpha1.CustomVMAgentRemoteWriteSpec) {

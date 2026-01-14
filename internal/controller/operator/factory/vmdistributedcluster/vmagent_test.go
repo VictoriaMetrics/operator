@@ -111,7 +111,7 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, time.Second, trClient)
+		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, time.Second, 1*time.Second, trClient)
 		assert.NoError(t, err)
 	})
 
@@ -130,7 +130,7 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, time.Second*2, trClient)
+		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, 2*time.Second, 1*time.Second, trClient)
 		assert.NoError(t, err)
 		assert.True(t, callCount > 1) // Ensure it polled multiple times
 	})
@@ -145,7 +145,7 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, 500*time.Millisecond, trClient) // Shorter deadline
+		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, 500*time.Millisecond, 1*time.Second, trClient) // Shorter deadline
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
 	})

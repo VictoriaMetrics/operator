@@ -85,7 +85,7 @@ func buildPerIPMetricURL(baseURL, metricPath, ip string) string {
 // The function will try to discover pod IPs via an EndpointSlice named the same as the service
 // (prefixed name). If discovery yields addresses, it polls each IP. Otherwise, it falls back to the
 // single AsURL()+GetMetricPath() behavior.
-func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmAgent VMAgentWithStatus, deadline time.Duration, rclient client.Client) error {
+func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmAgent VMAgentWithStatus, deadline, interval time.Duration, rclient client.Client) error {
 	// Wait for vmAgent to become ready
 	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		vmAgentObj := &vmv1beta1.VMAgent{}
@@ -132,7 +132,7 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 		logger.WithContext(ctx).Info("Found VMAgent instance metric URL", "url", metricsURL)
 
 		// Poll until all pod IPs return empty query metric
-		err = wait.PollUntilContextTimeout(ctx, 30*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
+		err = wait.PollUntilContextTimeout(ctx, interval, deadline, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
 			metricValue, ferr := fetchVMAgentDiskBufferMetric(ctx, httpClient, metricsURL)
 			logger.WithContext(ctx).Info("Found VMAgent instance metric value", "url", metricsURL, "value", metricValue)

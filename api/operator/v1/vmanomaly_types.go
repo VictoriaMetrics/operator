@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -94,6 +95,9 @@ type VMAnomalySpec struct {
 	// Monitoring configures how expose anomaly metrics
 	// See https://docs.victoriametrics.com/anomaly-detection/components/monitoring/
 	Monitoring *VMAnomalyMonitoringSpec `json:"monitoring,omitempty"`
+	// Server configures HTTP server for VMAnomaly
+	// +optional
+	Server *VMAnomalyServerSpec `json:"server,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
@@ -233,6 +237,25 @@ type VMAnomalyMonitoringPushSpec struct {
 	// ExtraLabels defines a set of labels to attach to the pushed metrics
 	ExtraLabels             map[string]string `json:"extraLabels,omitempty" yaml:"extra_labels,omitempty"`
 	VMAnomalyHTTPClientSpec `json:",inline" yaml:",inline"`
+}
+
+// VMAnomalyServerSpec defines HTTP server configuration for VMAnomaly
+type VMAnomalyServerSpec struct {
+	// Addr defines IP address to listen on
+	// +optional
+	Addr string `json:"addr,omitempty" yaml:"addr,omitempty"`
+	// Port defines port to listen on
+	// +optional
+	Port string `json:"port,omitempty" yaml:"port,omitempty"`
+	// PathPrefix defines optional URL path prefix for all HTTP routes
+	// If set to 'my-app' or '/my-app', routes will be served under '/my-app/...'
+	// +optional
+	PathPrefix string `json:"pathPrefix,omitempty" yaml:"path_prefix,omitempty"`
+	// MaxConcurrentTasks defines maximum number of concurrent anomaly detection tasks
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=20
+	MaxConcurrentTasks int `json:"maxConcurrentTasks,omitempty" yaml:"max_concurrent_tasks,omitempty"`
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface
@@ -378,7 +401,10 @@ func (cr *VMAnomaly) Probe() *vmv1beta1.EmbeddedProbes {
 
 // ProbePath implements build.probeCRD interface
 func (cr *VMAnomaly) ProbePath() string {
-	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+	if cr.Spec.Server != nil && cr.Spec.Server.PathPrefix != "" {
+		return path.Join("/", cr.Spec.Server.PathPrefix, healthPath)
+	}
+	return healthPath
 }
 
 // ProbeScheme implements build.probeCRD interface

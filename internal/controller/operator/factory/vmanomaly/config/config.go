@@ -32,6 +32,23 @@ type config struct {
 	Server     *server               `yaml:"server,omitempty"`
 }
 
+type server struct {
+	Addr               string `yaml:"addr,omitempty"`
+	Port               string `yaml:"port,omitempty"`
+	PathPrefix         string `yaml:"path_prefix,omitempty"`
+	MaxConcurrentTasks int    `yaml:"max_concurrent_tasks,omitempty"`
+}
+
+func (s *server) validate() error {
+	if s == nil {
+		return nil
+	}
+	if s.MaxConcurrentTasks != 0 && (s.MaxConcurrentTasks < 1 || s.MaxConcurrentTasks > 20) {
+		return fmt.Errorf("max_concurrent_tasks must be between 1 and 20, got %d", s.MaxConcurrentTasks)
+	}
+	return nil
+}
+
 type settings struct {
 	Workers           int     `yaml:"n_workers,omitempty"`
 	ScoreOutsideRange float64 `yaml:"anomaly_score_outside_data_range,omitempty"`
@@ -39,6 +56,19 @@ type settings struct {
 }
 
 func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
+	crCanonicalName := strings.Join([]string{cr.Namespace, cr.Name}, "/")
+	if cr.Spec.Server != nil {
+		srv := cr.Spec.Server
+		data, err := yaml.Marshal(srv)
+		if err != nil {
+			return fmt.Errorf("failed to marshal anomaly CR server config, name=%q: %w", crCanonicalName, err)
+		}
+		var s server
+		if err = yaml.UnmarshalStrict(data, &s); err != nil {
+			return fmt.Errorf("failed to unmarshal anomaly CR server config, name=%q: %w", crCanonicalName, err)
+		}
+		c.Server = &s
+	}
 	c.Preset = strings.ToLower(c.Preset)
 	if strings.HasPrefix(c.Preset, "ui") {
 		c.Reader = &reader{
@@ -64,19 +94,14 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 				},
 			},
 		}
-		c.Server = &server{
-			Addr: "0.0.0.0",
-			Port: cr.Port(),
-		}
 		c.Monitoring = &monitoring{
-			Pull: &server{
+			Pull: &endpoint{
 				Addr: "0.0.0.0",
 				Port: cr.Spec.Monitoring.Pull.Port,
 			},
 		}
 		return nil
 	}
-	crCanonicalName := strings.Join([]string{cr.Namespace, cr.Name}, "/")
 	if cr.Spec.Reader == nil {
 		return fmt.Errorf("reader is required for anomaly name=%q", crCanonicalName)
 	}
@@ -183,6 +208,9 @@ func (c *config) validate() error {
 	}
 	if err := c.Monitoring.validate(); err != nil {
 		return fmt.Errorf("failed to validate monitoring section: %w", err)
+	}
+	if err := c.Server.validate(); err != nil {
+		return fmt.Errorf("failed to validate server section: %w", err)
 	}
 	return nil
 }

@@ -230,6 +230,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			}
 		}
 
+		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)
+		if i != len(vmClusters)-1 {
+			logger.WithContext(ctx).Info("Sleeping between zone updates", "index", i, "name", vmClusterObj.Name, "zoneUpdatePause", zoneUpdatePause)
+			time.Sleep(zoneUpdatePause)
+		}
+
 		logger.WithContext(ctx).Info("Re-enabling VMCluster in vmauth", "index", i, "name", vmClusterObj.Name)
 		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
 			return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
@@ -246,11 +252,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			}
 		}
 
-		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)
-		if i != len(vmClusters)-1 {
-			logger.WithContext(ctx).Info("Sleeping between zone updates", "index", i, "name", vmClusterObj.Name, "zoneUpdatePause", zoneUpdatePause)
-			time.Sleep(zoneUpdatePause)
-		}
 	}
 	logger.WithContext(ctx).Info("Reconciliation completed", "name", cr.Name)
 	return nil

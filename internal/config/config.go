@@ -664,6 +664,15 @@ func MustGetBaseConfig() *BaseOperatorConf {
 	return opConf
 }
 
+// GetLocalhost returns localhost value depending on global configuration
+func GetLocalhost() string {
+	cfg := MustGetBaseConfig()
+	if cfg.EnableTCP6 {
+		return "localhost"
+	}
+	return "127.0.0.1"
+}
+
 var validNamespaceRegex = regexp.MustCompile(`[a-z0-9]([-a-z0-9]*[a-z0-9])?`)
 
 // IsClusterWideAccessAllowed checks if cluster wide access for components is needed

@@ -215,6 +215,68 @@ schedulers:
 			return nil
 		},
 	})
+
+	// vmanomaly with server PathPrefix - probes should use prefixed path
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-anomaly",
+				Namespace:   "monitoring",
+				Annotations: map[string]string{"not": "touch"},
+				Labels:      map[string]string{"main": "system"},
+			},
+			Spec: vmv1.VMAnomalySpec{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+reader:
+  queries:
+    query_alias2:
+      expr: vm_metric
+models:
+  model_univariate_1:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['query_alias2']
+schedulers:
+  scheduler_periodic_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://test.com",
+					SamplingPeriod: "1m",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://write.endpoint",
+				},
+				Server: &vmv1.VMAnomalyServerSpec{
+					PathPrefix: "custom-prefix",
+				},
+			},
+		},
+		validate: func(set *appsv1.StatefulSet) error {
+			if len(set.Spec.Template.Spec.Containers) != 1 {
+				return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(set.Spec.Template.Spec.Containers), 1)
+			}
+			container := set.Spec.Template.Spec.Containers[0]
+			expectedPath := "/custom-prefix/health"
+			if container.LivenessProbe.HTTPGet.Path != expectedPath {
+				return fmt.Errorf("unexpected liveness probe path, got: %s, want: %s", container.LivenessProbe.HTTPGet.Path, expectedPath)
+			}
+			if container.ReadinessProbe.HTTPGet.Path != expectedPath {
+				return fmt.Errorf("unexpected readiness probe path, got: %s, want: %s", container.ReadinessProbe.HTTPGet.Path, expectedPath)
+			}
+
+			return nil
+		},
+	})
 }
 
 func Test_createDefaultConfig(t *testing.T) {

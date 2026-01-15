@@ -36,6 +36,7 @@ aliases:
 * BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/) and [vtsingle](https://docs.victoriametrics.com/operator/resources/vtsingle): do not mount emptydir if storage data volume is already present in volumes list. Before it was impossible to mount external PVC without overriding default storageDataPath using `spec.extraArgs` and without having unneeded emptydir listed among pod volumes. Related issues [#1477](https://github.com/VictoriaMetrics/operator/issues/1477).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use Service labels instead of selector in VMServiceScrape selector. See [#1709](https://github.com/VictoriaMetrics/operator/issues/1709).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update Alertmanager dependency to fix config validation for Incident.io. See [#1730](https://github.com/VictoriaMetrics/operator/issues/1730).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): do not add `-enterprise` suffix to image, if tag contains `@` symbol. See [#1723](https://github.com/VictoriaMetrics/operator/issues/1723).
 
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 

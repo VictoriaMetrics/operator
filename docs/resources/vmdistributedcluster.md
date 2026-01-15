@@ -112,6 +112,29 @@ spec:
           name: cluster-prod-2
 ```
 
+### VMDistributedCluster and distributed chart
+
+VMDistributedCluster can be used alongside the resources created by the distributed chart. The distributed chart provides a convenient way to create multiple `VMCluster` objects and surrounding resources.
+
+In order to update VMClusters in a coordinated manner, add VMCluster resources to the `vmclusters` list as refs:
+```
+    vmclusters:
+      - ref:
+          name: cluster-1
+      - ref:
+          name: cluster-2
+      - ref:
+          name: cluster-3
+```
+
+and set vmauth pointing to global read vmauth:
+```
+  vmauth:
+    name: vmauth-global-read-<release name>
+```
+
+This will also create a global write VMAgent, pointing to VMCluster loadbalancers automatically.
+
 ### Current shortcomings
 - Only `VMCluster` objects are supported for distributed management.
 - Only one `VMAgent` and one `VMAuth` can be managed per `VMDistributedCluster`.

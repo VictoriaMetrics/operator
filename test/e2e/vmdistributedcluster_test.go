@@ -276,7 +276,7 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
 						Name: inlineVMAuthName,
-						Spec: &vmv1beta1.VMAuthLoadBalancerSpec{
+						Spec: &vmv1beta1.VMAuthSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
@@ -1044,7 +1044,7 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					},
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
 						Name: vmauthName,
-						Spec: &vmv1beta1.VMAuthLoadBalancerSpec{
+						Spec: &vmv1beta1.VMAuthSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},

@@ -30,7 +30,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 		data.vmcluster1.Spec.VMSelect.Port = "8481"
 		data.vmcluster2.Spec.VMSelect.Port = "8481"
 		data.cr.Spec.VMAuth.Name = "vmauth-lb"
-		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthLoadBalancerSpec{
+		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
 			LogLevel: "INFO",
 		}
 		rclient := data.trackingClient
@@ -99,7 +99,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 		require.NoError(t, err)
 		rclient.Actions = []action{} // Clear create action
 
-		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthLoadBalancerSpec{
+		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
 			LogLevel: "INFO",
 		}
 
@@ -128,7 +128,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 		data := beforeEach()
 		data.vmcluster1.Spec.VMSelect.Port = "8481"
 		data.cr.Spec.VMAuth.Name = "vmauth-lb"
-		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthLoadBalancerSpec{
+		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
 			LogLevel: "INFO",
 		}
 
@@ -161,7 +161,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 		data := beforeEach()
 		data.vmcluster1.Spec.VMSelect.Port = "8481"
 		data.cr.Spec.VMAuth.Name = "vmauth-lb"
-		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthLoadBalancerSpec{
+		data.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
 			LogLevel: "INFO",
 		}
 

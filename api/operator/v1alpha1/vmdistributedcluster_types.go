@@ -251,7 +251,7 @@ type VMAuthNameAndSpec struct {
 	Name string `json:"name,omitempty"`
 	// Spec defines the desired state of a new VMAuth.
 	// +optional
-	Spec *vmv1beta1.VMAuthLoadBalancerSpec `json:"spec,omitempty"`
+	Spec *vmv1beta1.VMAuthSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -334,13 +334,13 @@ func (cr *VMDistributedCluster) PodLabels(kind vmv1beta1.ClusterComponent) map[s
 	return labels.Merge(podMetadata.Labels, selectorLabels)
 }
 
-func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthLoadBalancerSpec {
+func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthSpec {
 	if cr == nil {
 		return nil
 	}
 	spec := cr.Spec.VMAuth.Spec
 	if spec == nil {
-		spec = &vmv1beta1.VMAuthLoadBalancerSpec{
+		spec = &vmv1beta1.VMAuthSpec{
 			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
 		}
 	}

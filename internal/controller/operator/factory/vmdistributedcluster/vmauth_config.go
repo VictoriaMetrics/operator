@@ -50,7 +50,6 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *v
 	if cr.Spec.VMAuth.Spec != nil {
 		src := cr.Spec.VMAuth.Spec
 		vmAuthSpec.PodMetadata = src.PodMetadata
-		vmAuthSpec.ServiceSpec = src.AdditionalServiceSpec
 		vmAuthSpec.ServiceScrapeSpec = src.ServiceScrapeSpec
 		vmAuthSpec.LogFormat = src.LogFormat
 		vmAuthSpec.LogLevel = src.LogLevel

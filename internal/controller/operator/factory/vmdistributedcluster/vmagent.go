@@ -326,7 +326,10 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 // remoteWriteURL generates the remote write URL based on the provided VMCluster and tenant.
 func remoteWriteURL(vmCluster *vmv1beta1.VMCluster) string {
 	vmHost := vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert)
-	vmInsertPort := vmCluster.Spec.VMInsert.Port
+	vmInsertPort := ""
+	if vmCluster.Spec.VMInsert != nil {
+		vmInsertPort = vmCluster.Spec.VMInsert.Port
+	}
 	if vmCluster.Spec.RequestsLoadBalancer.Enabled && !vmCluster.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 		vmInsertPort = vmCluster.Spec.RequestsLoadBalancer.Spec.Port
 		vmHost = vmCluster.PrefixedName(vmv1beta1.ClusterComponentBalancer)

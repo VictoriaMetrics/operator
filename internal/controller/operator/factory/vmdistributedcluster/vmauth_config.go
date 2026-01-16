@@ -30,17 +30,16 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *v
 	var vmSelectURLs []string
 	for _, cluster := range vmClusters {
 		vmHost := cluster.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		vmPort := cluster.Spec.VMSelect.Port
-		if vmPort == "" {
-			vmPort = defaultVMSelectPort
+		vmPort := ""
+		if cluster.Spec.VMSelect != nil {
+			vmPort = cluster.Spec.VMSelect.Port
 		}
-
 		if cluster.Spec.RequestsLoadBalancer.Enabled && !cluster.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 			vmHost = cluster.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 			vmPort = cluster.Spec.RequestsLoadBalancer.Spec.Port
-			if vmPort == "" {
-				vmPort = defaultVMSelectPort
-			}
+		}
+		if vmPort == "" {
+			vmPort = defaultVMSelectPort
 		}
 		url := fmt.Sprintf("http://%s.%s.svc:%s/", vmHost, cluster.Namespace, vmPort)
 		vmSelectURLs = append(vmSelectURLs, url)

@@ -349,31 +349,25 @@ const (
 
 var defaultTerminationGracePeriod = int64(30)
 
-func addVMClusterDefaults(objI any) {
-	cr := objI.(*vmv1beta1.VMCluster)
+func addVMClusterSpecDefaults(objI any, useStrictSecurity bool) {
+	cr := objI.(*vmv1beta1.VMClusterSpec)
 	c := getCfg()
-
-	// cluster is tricky is has main strictSecurity and per app
-	useStrictSecurity := c.EnableStrictSecurity
-	if cr.Spec.UseStrictSecurity != nil {
-		useStrictSecurity = *cr.Spec.UseStrictSecurity
-	}
-	if cr.Spec.ClusterDomainName == "" {
-		cr.Spec.ClusterDomainName = c.ClusterDomainName
+	if cr.ClusterDomainName == "" {
+		cr.ClusterDomainName = c.ClusterDomainName
 	}
 
-	if cr.Spec.VMStorage != nil {
-		if cr.Spec.VMStorage.UseStrictSecurity == nil {
-			cr.Spec.VMStorage.UseStrictSecurity = &useStrictSecurity
+	if cr.VMStorage != nil {
+		if cr.VMStorage.UseStrictSecurity == nil {
+			cr.VMStorage.UseStrictSecurity = &useStrictSecurity
 		}
-		if cr.Spec.VMStorage.DisableSelfServiceScrape == nil {
-			cr.Spec.VMStorage.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		if cr.VMStorage.DisableSelfServiceScrape == nil {
+			cr.VMStorage.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
-		cr.Spec.VMStorage.ImagePullSecrets = append(cr.Spec.VMStorage.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
+		cr.VMStorage.ImagePullSecrets = append(cr.VMStorage.ImagePullSecrets, cr.ImagePullSecrets...)
 
 		useBackupDefaultResources := c.VMBackup.UseDefaultResources
-		if cr.Spec.VMStorage.UseDefaultResources != nil {
-			useBackupDefaultResources = *cr.Spec.VMStorage.UseDefaultResources
+		if cr.VMStorage.UseDefaultResources != nil {
+			useBackupDefaultResources = *cr.VMStorage.UseDefaultResources
 		}
 		backupDefaults := &config.ApplicationDefaults{
 			Image:               c.VMBackup.Image,
@@ -391,143 +385,143 @@ func addVMClusterDefaults(objI any) {
 				}
 			}(c.VMBackup.Resource),
 		}
-		if cr.Spec.VMStorage.Image.Repository == "" {
-			cr.Spec.VMStorage.Image.Repository = c.VMClusterDefault.VMStorageDefault.Image
+		if cr.VMStorage.Image.Repository == "" {
+			cr.VMStorage.Image.Repository = c.VMClusterDefault.VMStorageDefault.Image
 		}
-		cr.Spec.VMStorage.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.VMStorage.Image.Repository)
+		cr.VMStorage.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.VMStorage.Image.Repository)
 
-		if cr.Spec.VMStorage.Image.Tag == "" {
-			if cr.Spec.ClusterVersion != "" {
-				cr.Spec.VMStorage.Image.Tag = cr.Spec.ClusterVersion
+		if cr.VMStorage.Image.Tag == "" {
+			if cr.ClusterVersion != "" {
+				cr.VMStorage.Image.Tag = cr.ClusterVersion
 			} else {
-				cr.Spec.VMStorage.Image.Tag = c.VMClusterDefault.VMStorageDefault.Version
+				cr.VMStorage.Image.Tag = c.VMClusterDefault.VMStorageDefault.Version
 			}
 		}
-		if cr.Spec.VMStorage.VMInsertPort == "" {
-			cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
+		if cr.VMStorage.VMInsertPort == "" {
+			cr.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
 		}
-		if cr.Spec.VMStorage.VMSelectPort == "" {
-			cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
+		if cr.VMStorage.VMSelectPort == "" {
+			cr.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
 		}
-		if cr.Spec.VMStorage.Port == "" {
-			cr.Spec.VMStorage.Port = c.VMClusterDefault.VMStorageDefault.Port
+		if cr.VMStorage.Port == "" {
+			cr.VMStorage.Port = c.VMClusterDefault.VMStorageDefault.Port
 		}
 
-		if cr.Spec.VMStorage.DNSPolicy == "" {
-			cr.Spec.VMStorage.DNSPolicy = corev1.DNSClusterFirst
+		if cr.VMStorage.DNSPolicy == "" {
+			cr.VMStorage.DNSPolicy = corev1.DNSClusterFirst
 		}
-		if cr.Spec.VMStorage.SchedulerName == "" {
-			cr.Spec.VMStorage.SchedulerName = "default-scheduler"
+		if cr.VMStorage.SchedulerName == "" {
+			cr.VMStorage.SchedulerName = "default-scheduler"
 		}
-		if cr.Spec.VMStorage.Image.PullPolicy == "" {
-			cr.Spec.VMStorage.Image.PullPolicy = corev1.PullIfNotPresent
+		if cr.VMStorage.Image.PullPolicy == "" {
+			cr.VMStorage.Image.PullPolicy = corev1.PullIfNotPresent
 		}
-		if cr.Spec.VMStorage.StorageDataPath == "" {
-			cr.Spec.VMStorage.StorageDataPath = vmStorageDefaultDBPath
+		if cr.VMStorage.StorageDataPath == "" {
+			cr.VMStorage.StorageDataPath = vmStorageDefaultDBPath
 		}
-		if cr.Spec.VMStorage.TerminationGracePeriodSeconds == nil {
-			cr.Spec.VMStorage.TerminationGracePeriodSeconds = &defaultTerminationGracePeriod
+		if cr.VMStorage.TerminationGracePeriodSeconds == nil {
+			cr.VMStorage.TerminationGracePeriodSeconds = &defaultTerminationGracePeriod
 		}
-		if cr.Spec.VMStorage.UseDefaultResources == nil {
-			cr.Spec.VMStorage.UseDefaultResources = &c.VMClusterDefault.UseDefaultResources
+		if cr.VMStorage.UseDefaultResources == nil {
+			cr.VMStorage.UseDefaultResources = &c.VMClusterDefault.UseDefaultResources
 		}
-		cr.Spec.VMStorage.Resources = Resources(cr.Spec.VMStorage.Resources,
+		cr.VMStorage.Resources = Resources(cr.VMStorage.Resources,
 			config.Resource(c.VMClusterDefault.VMStorageDefault.Resource),
-			*cr.Spec.VMStorage.UseDefaultResources,
+			*cr.VMStorage.UseDefaultResources,
 		)
-		addDefaultsToVMBackup(cr.Spec.VMStorage.VMBackup, useBackupDefaultResources, backupDefaults)
+		addDefaultsToVMBackup(cr.VMStorage.VMBackup, useBackupDefaultResources, backupDefaults)
 	}
 
-	if cr.Spec.VMInsert != nil {
-		if cr.Spec.VMInsert.UseStrictSecurity == nil {
-			cr.Spec.VMInsert.UseStrictSecurity = &useStrictSecurity
+	if cr.VMInsert != nil {
+		if cr.VMInsert.UseStrictSecurity == nil {
+			cr.VMInsert.UseStrictSecurity = &useStrictSecurity
 		}
-		if cr.Spec.VMInsert.DisableSelfServiceScrape == nil {
-			cr.Spec.VMInsert.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		if cr.VMInsert.DisableSelfServiceScrape == nil {
+			cr.VMInsert.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
-		cr.Spec.VMInsert.ImagePullSecrets = append(cr.Spec.VMInsert.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
+		cr.VMInsert.ImagePullSecrets = append(cr.VMInsert.ImagePullSecrets, cr.ImagePullSecrets...)
 
-		if cr.Spec.VMInsert.Image.Repository == "" {
-			cr.Spec.VMInsert.Image.Repository = c.VMClusterDefault.VMInsertDefault.Image
+		if cr.VMInsert.Image.Repository == "" {
+			cr.VMInsert.Image.Repository = c.VMClusterDefault.VMInsertDefault.Image
 		}
-		cr.Spec.VMInsert.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.VMInsert.Image.Repository)
-		if cr.Spec.VMInsert.Image.Tag == "" {
-			if cr.Spec.ClusterVersion != "" {
-				cr.Spec.VMInsert.Image.Tag = cr.Spec.ClusterVersion
+		cr.VMInsert.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.VMInsert.Image.Repository)
+		if cr.VMInsert.Image.Tag == "" {
+			if cr.ClusterVersion != "" {
+				cr.VMInsert.Image.Tag = cr.ClusterVersion
 			} else {
-				cr.Spec.VMInsert.Image.Tag = c.VMClusterDefault.VMInsertDefault.Version
+				cr.VMInsert.Image.Tag = c.VMClusterDefault.VMInsertDefault.Version
 			}
 		}
-		if cr.Spec.VMInsert.Port == "" {
-			cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
+		if cr.VMInsert.Port == "" {
+			cr.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
 		}
-		if cr.Spec.VMInsert.UseDefaultResources == nil {
-			cr.Spec.VMInsert.UseDefaultResources = &c.VMClusterDefault.UseDefaultResources
+		if cr.VMInsert.UseDefaultResources == nil {
+			cr.VMInsert.UseDefaultResources = &c.VMClusterDefault.UseDefaultResources
 		}
-		cr.Spec.VMInsert.Resources = Resources(cr.Spec.VMInsert.Resources,
+		cr.VMInsert.Resources = Resources(cr.VMInsert.Resources,
 			config.Resource(c.VMClusterDefault.VMInsertDefault.Resource),
-			*cr.Spec.VMInsert.UseDefaultResources,
+			*cr.VMInsert.UseDefaultResources,
 		)
 
 	}
-	if cr.Spec.VMSelect != nil {
-		if cr.Spec.VMSelect.UseStrictSecurity == nil {
-			cr.Spec.VMSelect.UseStrictSecurity = &useStrictSecurity
+	if cr.VMSelect != nil {
+		if cr.VMSelect.UseStrictSecurity == nil {
+			cr.VMSelect.UseStrictSecurity = &useStrictSecurity
 		}
-		if cr.Spec.VMSelect.DisableSelfServiceScrape == nil {
-			cr.Spec.VMSelect.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		if cr.VMSelect.DisableSelfServiceScrape == nil {
+			cr.VMSelect.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
 
-		cr.Spec.VMSelect.ImagePullSecrets = append(cr.Spec.VMSelect.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
+		cr.VMSelect.ImagePullSecrets = append(cr.VMSelect.ImagePullSecrets, cr.ImagePullSecrets...)
 
-		if cr.Spec.VMSelect.Image.Repository == "" {
-			cr.Spec.VMSelect.Image.Repository = c.VMClusterDefault.VMSelectDefault.Image
+		if cr.VMSelect.Image.Repository == "" {
+			cr.VMSelect.Image.Repository = c.VMClusterDefault.VMSelectDefault.Image
 		}
-		cr.Spec.VMSelect.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.Spec.VMSelect.Image.Repository)
-		if cr.Spec.VMSelect.Image.Tag == "" {
-			if cr.Spec.ClusterVersion != "" {
-				cr.Spec.VMSelect.Image.Tag = cr.Spec.ClusterVersion
+		cr.VMSelect.Image.Repository = formatContainerImage(c.ContainerRegistry, cr.VMSelect.Image.Repository)
+		if cr.VMSelect.Image.Tag == "" {
+			if cr.ClusterVersion != "" {
+				cr.VMSelect.Image.Tag = cr.ClusterVersion
 			} else {
-				cr.Spec.VMSelect.Image.Tag = c.VMClusterDefault.VMSelectDefault.Version
+				cr.VMSelect.Image.Tag = c.VMClusterDefault.VMSelectDefault.Version
 			}
 		}
-		if cr.Spec.VMSelect.Port == "" {
-			cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
+		if cr.VMSelect.Port == "" {
+			cr.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
 		}
 
-		if cr.Spec.VMSelect.DNSPolicy == "" {
-			cr.Spec.VMSelect.DNSPolicy = corev1.DNSClusterFirst
+		if cr.VMSelect.DNSPolicy == "" {
+			cr.VMSelect.DNSPolicy = corev1.DNSClusterFirst
 		}
-		if cr.Spec.VMSelect.SchedulerName == "" {
-			cr.Spec.VMSelect.SchedulerName = "default-scheduler"
+		if cr.VMSelect.SchedulerName == "" {
+			cr.VMSelect.SchedulerName = "default-scheduler"
 		}
-		if cr.Spec.VMSelect.Image.PullPolicy == "" {
-			cr.Spec.VMSelect.Image.PullPolicy = corev1.PullIfNotPresent
+		if cr.VMSelect.Image.PullPolicy == "" {
+			cr.VMSelect.Image.PullPolicy = corev1.PullIfNotPresent
 		}
 		// use "/cache" as default cache dir instead of "/tmp" if `CacheMountPath` not set
-		if cr.Spec.VMSelect.CacheMountPath == "" {
-			cr.Spec.VMSelect.CacheMountPath = "/cache"
+		if cr.VMSelect.CacheMountPath == "" {
+			cr.VMSelect.CacheMountPath = "/cache"
 		}
-		if cr.Spec.VMSelect.UseDefaultResources == nil {
-			cr.Spec.VMSelect.UseDefaultResources = &c.VMClusterDefault.UseDefaultResources
+		if cr.VMSelect.UseDefaultResources == nil {
+			cr.VMSelect.UseDefaultResources = &c.VMClusterDefault.UseDefaultResources
 		}
-		cr.Spec.VMSelect.Resources = Resources(cr.Spec.VMSelect.Resources,
+		cr.VMSelect.Resources = Resources(cr.VMSelect.Resources,
 			config.Resource(c.VMClusterDefault.VMSelectDefault.Resource),
-			*cr.Spec.VMSelect.UseDefaultResources,
+			*cr.VMSelect.UseDefaultResources,
 		)
 	}
-	if cr.Spec.RequestsLoadBalancer.Enabled {
-		if cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity == nil {
-			cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity = &useStrictSecurity
+	if cr.RequestsLoadBalancer.Enabled {
+		if cr.RequestsLoadBalancer.Spec.UseStrictSecurity == nil {
+			cr.RequestsLoadBalancer.Spec.UseStrictSecurity = &useStrictSecurity
 		}
-		if cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape == nil {
-			cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+		if cr.RequestsLoadBalancer.Spec.DisableSelfServiceScrape == nil {
+			cr.RequestsLoadBalancer.Spec.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
 		}
-		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
+		cr.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.ImagePullSecrets...)
 
 		cv := config.ApplicationDefaults(c.VMAuthDefault)
-		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
-		spec := &cr.Spec.RequestsLoadBalancer.Spec
+		addDefaultsToCommonParams(&cr.RequestsLoadBalancer.Spec.CommonDefaultableParams, cr.License, &cv)
+		spec := &cr.RequestsLoadBalancer.Spec
 		if spec.EmbeddedProbes == nil {
 			spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{}
 		}
@@ -542,6 +536,18 @@ func addVMClusterDefaults(objI any) {
 			spec.AdditionalServiceSpec.UseAsDefault = true
 		}
 	}
+}
+
+func addVMClusterDefaults(objI any) {
+	cr := objI.(*vmv1beta1.VMCluster)
+	c := getCfg()
+
+	// cluster is tricky is has main strictSecurity and per app
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
+	addVMClusterSpecDefaults(&cr.Spec, useStrictSecurity)
 }
 
 func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, license *vmv1beta1.License, appDefaults *config.ApplicationDefaults) {
@@ -1006,11 +1012,14 @@ func addVMDistributedClusterDefaults(objI any) {
 		return
 	}
 	c := getCfg()
-
 	cv := config.ApplicationDefaults(c.VMAuthDefault)
-	if cr.Spec.VMAuth.Spec == nil {
-		cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthLoadBalancerSpec{}
-	}
 	addDefaultsToCommonParams(&cr.Spec.VMAuth.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
-	addDefaultsToConfigReloader(&cr.Spec.VMAuth.Spec.CommonConfigReloaderParams, true)
+	addDefaultsToConfigReloader(&cr.Spec.VMAuth.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.VMAuth.Spec.UseDefaultResources, false))
+
+	cv = config.ApplicationDefaults(c.VMAgentDefault)
+	addDefaultsToCommonParams(&cr.Spec.VMAgent.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
+
+	for i := range cr.Spec.Zones.VMClusters {
+		addVMClusterSpecDefaults(&cr.Spec.Zones.VMClusters[i].Spec, false)
+	}
 }

@@ -371,3 +371,20 @@ func preserveVMAgentOrder(desiredVMAgentSpec *vmv1alpha1.CustomVMAgentSpec, remo
 		})
 	}
 }
+
+func listVMAgents(ctx context.Context, rclient client.Client, namespace string, labelSelector *metav1.LabelSelector) ([]*vmv1beta1.VMAgent, error) {
+	labelsSelector, err := metav1.LabelSelectorAsSelector(labelSelector)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse selector as labelSelector: %w", err)
+	}
+
+	vmAgentList := &vmv1beta1.VMAgentList{}
+	if err := rclient.List(ctx, vmAgentList, client.InNamespace(namespace), client.MatchingLabelsSelector{Selector: labelsSelector}); err != nil {
+		return nil, err
+	}
+	vmAgents := make([]*vmv1beta1.VMAgent, 0, len(vmAgentList.Items))
+	for i := range vmAgentList.Items {
+		vmAgents = append(vmAgents, &vmAgentList.Items[i])
+	}
+	return vmAgents, nil
+}

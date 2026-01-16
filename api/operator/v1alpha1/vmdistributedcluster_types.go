@@ -110,6 +110,11 @@ type VMAgentNameAndSpec struct {
 	// Name specifies the static name to be used for the VMAgent when Spec is provided.
 	// +optional
 	Name string `json:"name,omitempty"`
+
+	// LabelSelector specifies VMAgents to be selected for metrics check.
+	// +optional
+	LabelSelector *metav1.LabelSelector `json:"labelSelector,omitempty"`
+
 	// Spec defines the desired state of a new VMAgent.
 	// Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator.
 	// +optional

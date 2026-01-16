@@ -74,9 +74,21 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 	}
 
 	// Update or create the VMAgent
-	vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme, vmClusters)
-	if err != nil {
-		return fmt.Errorf("failed to update or create VMAgent: %w", err)
+	var vmAgentObjs []*vmv1beta1.VMAgent
+	if cr.Spec.VMAgent.LabelSelector == nil {
+		vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme, vmClusters)
+		if err != nil {
+			return fmt.Errorf("failed to update or create VMAgent: %w", err)
+		}
+		vmAgentObjs = append(vmAgentObjs, vmAgentObj)
+	} else {
+		vmAgentObjs, err := listVMAgents(ctx, rclient, cr.Namespace, cr.Spec.VMAgent.LabelSelector)
+		if err != nil {
+			return fmt.Errorf("failed to list VMAgents: %w", err)
+		}
+		if len(vmAgentObjs) == 0 {
+			return fmt.Errorf("no VMAgents found with label selector %v", cr.Spec.VMAgent.LabelSelector)
+		}
 	}
 
 	// Setup deadlines and timeouts
@@ -229,10 +241,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 
 		// Wait for VMAgent metrics to show no pending queue
 		logger.WithContext(ctx).Info("Fetching VMAgent metrics", "index", i, "name", vmClusterObj.Name, "timeout", vmAgentFlushDeadlineDeadline)
-		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmAgentFlushDeadlineDeadline, defaultVMAgentCheckInterval, rclient); err != nil {
-			// Ignore this error when running e2e tests - these need to run in the same network as pods
-			if os.Getenv("E2E_TEST") != "true" {
-				return fmt.Errorf("failed to wait for VMAgent metrics to show no pending queue: %w", err)
+		for _, vmAgentObj := range vmAgentObjs {
+			if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmAgentFlushDeadlineDeadline, defaultVMAgentCheckInterval, rclient); err != nil {
+				// Ignore this error when running e2e tests - these need to run in the same network as pods
+				if os.Getenv("E2E_TEST") != "true" {
+					return fmt.Errorf("failed to wait for VMAgent %s metrics to show no pending queue: %w", vmAgentObj.Name, err)
+				}
 			}
 		}
 

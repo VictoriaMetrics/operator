@@ -77,13 +77,17 @@ func (*VMDistributedClusterCustomValidator) ValidateDelete(_ context.Context, _ 
 
 // validateVMDistributedClusterSpec validates the VMDistributedCluster spec
 func validateVMDistributedClusterSpec(spec *vmv1alpha1.VMDistributedClusterSpec) error {
-	// Validate VMAgent
-	if spec.VMAgent.Name == "" {
-		return fmt.Errorf("VMAgent.Name must be set")
-	}
 	// Validate VMAuth
 	if spec.VMAuth.Name == "" {
 		return fmt.Errorf("VMAuth.Name must be set")
+	}
+
+	// VMAgent needs to specify either Name or LabelSelector
+	if spec.VMAgent.Name != "" && spec.VMAgent.LabelSelector != nil {
+		return fmt.Errorf("VMAgent.Name and LabelSelector cannot be set at the same time")
+	}
+	if spec.VMAgent.Spec != nil && spec.VMAgent.LabelSelector != nil {
+		return fmt.Errorf("VMAgent.Spec and LabelSelector cannot be set at the same time")
 	}
 
 	return validateZoneSpec(&spec.Zones)

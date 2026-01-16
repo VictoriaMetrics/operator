@@ -221,6 +221,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 
+		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)
+		if i != len(vmClusters)-1 {
+			logger.WithContext(ctx).Info("Sleeping between zone updates", "index", i, "name", vmClusterObj.Name, "zoneUpdatePause", zoneUpdatePause)
+			time.Sleep(zoneUpdatePause)
+		}
+
 		// Wait for VMAgent metrics to show no pending queue
 		logger.WithContext(ctx).Info("Fetching VMAgent metrics", "index", i, "name", vmClusterObj.Name, "timeout", vmAgentFlushDeadlineDeadline)
 		if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmAgentFlushDeadlineDeadline, defaultVMAgentCheckInterval, rclient); err != nil {
@@ -228,12 +234,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			if os.Getenv("E2E_TEST") != "true" {
 				return fmt.Errorf("failed to wait for VMAgent metrics to show no pending queue: %w", err)
 			}
-		}
-
-		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)
-		if i != len(vmClusters)-1 {
-			logger.WithContext(ctx).Info("Sleeping between zone updates", "index", i, "name", vmClusterObj.Name, "zoneUpdatePause", zoneUpdatePause)
-			time.Sleep(zoneUpdatePause)
 		}
 
 		logger.WithContext(ctx).Info("Re-enabling VMCluster in vmauth", "index", i, "name", vmClusterObj.Name)

@@ -299,7 +299,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, data.scheme, httpTimeout)
+		err := CreateOrUpdate(ctx, data.cr, rclient, httpTimeout)
 		assert.NoError(t, err) // No error as it's paused
 		assert.Empty(t, rclient.Actions)
 	})
@@ -310,7 +310,7 @@ func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
 		rclient := data.trackingClient
 		ctx := context.TODO()
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, data.scheme, httpTimeout)
+		err := CreateOrUpdate(ctx, data.cr, rclient, httpTimeout)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to fetch vmclusters")
 	})

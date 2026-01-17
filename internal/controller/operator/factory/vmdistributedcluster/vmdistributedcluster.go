@@ -28,13 +28,6 @@ var (
 
 // CreateOrUpdate handles VM deployment reconciliation.
 func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, httpTimeout time.Duration) error {
-	// Store the previous CR for comparison
-	var prevCR *vmv1alpha1.VMDistributedCluster
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
-
 	// No actions performed if CR is paused
 	if cr.Paused() {
 		return nil
@@ -56,27 +49,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 	}
 
-	// Ensure VMAuth exists first so we can set it as the owner for the automatically-created VMUser.
-	err = createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters)
-	if err != nil {
-		return fmt.Errorf("failed to update or create vmauth: %w", err)
-	}
-	if cr.Spec.VMAuth.Name != "" {
-		vmAuth := &vmv1beta1.VMAuth{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      cr.Spec.VMAuth.Name,
-				Namespace: cr.Namespace,
-			},
-		}
-		if err := WaitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
-			return fmt.Errorf("failed to wait for vmauth ready: %w", err)
-		}
-	}
+	// TODO[vrutkovs]: if vmauth exists wait for it become operational
 
 	// Update or create the VMAgent
 	var vmAgentObjs []*vmv1beta1.VMAgent
 	if cr.Spec.VMAgent.LabelSelector == nil {
-		vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, scheme, vmClusters)
+		vmAgentObj, err := updateOrCreateVMAgent(ctx, rclient, cr, vmClusters)
 		if err != nil {
 			return fmt.Errorf("failed to update or create VMAgent: %w", err)
 		}
@@ -176,7 +154,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 
 		// Set owner reference for this vmcluster
-		modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmClusterObj, scheme)
+		modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmClusterObj, rclient.Scheme())
 		if err != nil {
 			return fmt.Errorf("failed to set owner reference for vmcluster %s: %w", vmClusterObj.Name, err)
 		}
@@ -204,7 +182,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 					}
 					activeVMClusters = append(activeVMClusters, vmc)
 				}
-				if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, activeVMClusters); err != nil {
+				if err := createOrUpdateVMAuthLB(ctx, rclient, cr, activeVMClusters); err != nil {
 					return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
 				}
 				if cr.Spec.VMAuth.Name != "" {
@@ -251,7 +229,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		}
 
 		logger.WithContext(ctx).Info("Re-enabling VMCluster in vmauth", "index", i, "name", vmClusterObj.Name)
-		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, prevCR, vmClusters); err != nil {
+		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, vmClusters); err != nil {
 			return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
 		}
 		if cr.Spec.VMAuth.Name != "" {

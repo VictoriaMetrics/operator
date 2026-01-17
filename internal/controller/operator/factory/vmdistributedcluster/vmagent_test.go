@@ -192,7 +192,7 @@ func TestUpdateOrCreateVMAgent_PreserveExistingOrder(t *testing.T) {
 
 	// Call updateOrCreateVMAgent with vmClusters in reverse desired order [vmcluster2, vmcluster1]
 	vmClusters := []*vmv1beta1.VMCluster{data.vmcluster2, data.vmcluster1}
-	_, err := updateOrCreateVMAgent(ctx, data.trackingClient, data.cr, data.scheme, vmClusters)
+	_, err := updateOrCreateVMAgent(ctx, data.trackingClient, data.cr, vmClusters)
 	assert.NoError(t, err)
 
 	// Fetch the resulting vmagent
@@ -225,7 +225,7 @@ func TestUpdateOrCreateVMAgent_Append(t *testing.T) {
 
 	// Call updateOrCreateVMAgent specifying new cluster first (it should be appended at the end)
 	vmClusters := []*vmv1beta1.VMCluster{data.vmcluster2, data.vmcluster1}
-	_, err := updateOrCreateVMAgent(ctx, data.trackingClient, data.cr, data.scheme, vmClusters)
+	_, err := updateOrCreateVMAgent(ctx, data.trackingClient, data.cr, vmClusters)
 	assert.NoError(t, err)
 
 	// Fetch the resulting vmagent

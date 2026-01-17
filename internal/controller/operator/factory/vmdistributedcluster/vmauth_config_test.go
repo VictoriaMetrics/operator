@@ -2,7 +2,6 @@ package vmdistributedcluster
 
 import (
 	"context"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +19,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 		rclient := data.trackingClient
 		ctx := context.Background()
 
-		err := createOrUpdateVMAuthLB(ctx, rclient, data.cr, nil, []*vmv1beta1.VMCluster{data.vmcluster1, data.vmcluster2})
+		err := createOrUpdateVMAuthLB(ctx, rclient, data.cr, []*vmv1beta1.VMCluster{data.vmcluster1, data.vmcluster2})
 		assert.NoError(t, err)
 		assert.Empty(t, rclient.Actions)
 	})
@@ -37,7 +36,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 		ctx := context.Background()
 
 		clusters := []*vmv1beta1.VMCluster{data.vmcluster1, data.vmcluster2}
-		err := createOrUpdateVMAuthLB(ctx, rclient, data.cr, nil, clusters)
+		err := createOrUpdateVMAuthLB(ctx, rclient, data.cr, clusters)
 		assert.NoError(t, err)
 
 		// Check actions
@@ -58,19 +57,27 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 		assert.Equal(t, "INFO", createdVMAuth.Spec.LogLevel)
 
 		require.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
-		require.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.URLMap, 1)
-		urlMap := createdVMAuth.Spec.UnauthorizedUserAccessSpec.URLMap[0]
+		require.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 2)
 
-		expectedURLs := []string{
-			"http://vmselect-vmcluster-1.default.svc:8481/",
-			"http://vmselect-vmcluster-2.default.svc:8481/",
-		}
-		sort.Strings(expectedURLs)
-		assert.Equal(t, vmv1beta1.StringOrArray(expectedURLs), urlMap.URLPrefix)
-		assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, urlMap.SrcPaths)
-		assert.Equal(t, ptr.To(0), urlMap.DropSrcPathPrefixParts)
-		assert.Equal(t, ptr.To("first_available"), urlMap.LoadBalancingPolicy)
-		assert.Equal(t, []int{500, 502, 503}, urlMap.RetryStatusCodes)
+		firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
+		assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
+		assert.Equal(t, ptr.To("first_available"), firstTargetRef.LoadBalancingPolicy)
+		assert.Equal(t, []int{500, 502, 503}, firstTargetRef.RetryStatusCodes)
+		assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, firstTargetRef.Paths)
+		require.NotNil(t, firstTargetRef.CRD)
+		assert.Equal(t, "VMCluster/vmselect", firstTargetRef.CRD.Kind)
+		assert.Equal(t, data.vmcluster1.Name, firstTargetRef.CRD.Name)
+		assert.Equal(t, data.vmcluster1.Namespace, firstTargetRef.CRD.Namespace)
+
+		secondTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[1]
+		assert.Equal(t, ptr.To(0), secondTargetRef.DropSrcPathPrefixParts)
+		assert.Equal(t, ptr.To("first_available"), secondTargetRef.LoadBalancingPolicy)
+		assert.Equal(t, []int{500, 502, 503}, secondTargetRef.RetryStatusCodes)
+		assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, secondTargetRef.Paths)
+		require.NotNil(t, secondTargetRef.CRD)
+		assert.Equal(t, "VMCluster/vmselect", secondTargetRef.CRD.Kind)
+		assert.Equal(t, data.vmcluster2.Name, secondTargetRef.CRD.Name)
+		assert.Equal(t, data.vmcluster2.Namespace, secondTargetRef.CRD.Namespace)
 
 		// Verify OwnerReference
 		assert.NotEmpty(t, createdVMAuth.OwnerReferences)
@@ -105,7 +112,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 
 		ctx := context.Background()
 		clusters := []*vmv1beta1.VMCluster{data.vmcluster1}
-		err = createOrUpdateVMAuthLB(ctx, rclient, data.cr, nil, clusters)
+		err = createOrUpdateVMAuthLB(ctx, rclient, data.cr, clusters)
 		assert.NoError(t, err)
 
 		// Check for update action
@@ -138,13 +145,13 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 
 		// We first let the function create it to get the exact state
 		rclient := data.trackingClient
-		err := createOrUpdateVMAuthLB(ctx, rclient, data.cr, nil, clusters)
+		err := createOrUpdateVMAuthLB(ctx, rclient, data.cr, clusters)
 		require.NoError(t, err)
 
 		rclient.Actions = []action{} // Clear actions
 
 		// Run again
-		err = createOrUpdateVMAuthLB(ctx, rclient, data.cr, nil, clusters)
+		err = createOrUpdateVMAuthLB(ctx, rclient, data.cr, clusters)
 		assert.NoError(t, err)
 
 		// Should contain no updates
@@ -186,7 +193,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 
 		ctx := context.Background()
 		clusters := []*vmv1beta1.VMCluster{data.vmcluster1}
-		err = createOrUpdateVMAuthLB(ctx, rclient, data.cr, nil, clusters)
+		err = createOrUpdateVMAuthLB(ctx, rclient, data.cr, clusters)
 		assert.NoError(t, err)
 
 		// Expect Update action
@@ -221,7 +228,7 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 		ctx := context.Background()
 
 		clusters := []*vmv1beta1.VMCluster{data.vmcluster1, data.vmcluster2}
-		err := createOrUpdateVMAuthLB(ctx, rclient, data.cr, nil, clusters)
+		err := createOrUpdateVMAuthLB(ctx, rclient, data.cr, clusters)
 		assert.NoError(t, err)
 
 		var createAction *action
@@ -237,14 +244,26 @@ func TestCreateOrUpdateVMAuthLB(t *testing.T) {
 
 		createdVMAuth := createAction.Object.(*vmv1beta1.VMAuth)
 		require.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
-		require.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.URLMap, 1)
-		urlMap := createdVMAuth.Spec.UnauthorizedUserAccessSpec.URLMap[0]
+		require.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 2)
 
-		expectedURLs := []string{
-			"http://vmclusterlb-vmcluster-1.default.svc:8427/",
-			"http://vmselect-vmcluster-2.default.svc:8481/",
-		}
-		sort.Strings(expectedURLs)
-		assert.Equal(t, vmv1beta1.StringOrArray(expectedURLs), urlMap.URLPrefix)
+		firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
+		assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
+		assert.Equal(t, ptr.To("first_available"), firstTargetRef.LoadBalancingPolicy)
+		assert.Equal(t, []int{500, 502, 503}, firstTargetRef.RetryStatusCodes)
+		assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, firstTargetRef.Paths)
+		require.NotNil(t, firstTargetRef.CRD)
+		assert.Equal(t, "VMCluster/vmselect", firstTargetRef.CRD.Kind)
+		assert.Equal(t, data.vmcluster1.Name, firstTargetRef.CRD.Name)
+		assert.Equal(t, data.vmcluster1.Namespace, firstTargetRef.CRD.Namespace)
+
+		secondTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[1]
+		assert.Equal(t, ptr.To(0), secondTargetRef.DropSrcPathPrefixParts)
+		assert.Equal(t, ptr.To("first_available"), secondTargetRef.LoadBalancingPolicy)
+		assert.Equal(t, []int{500, 502, 503}, secondTargetRef.RetryStatusCodes)
+		assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, secondTargetRef.Paths)
+		require.NotNil(t, secondTargetRef.CRD)
+		assert.Equal(t, "VMCluster/vmselect", secondTargetRef.CRD.Kind)
+		assert.Equal(t, data.vmcluster2.Name, secondTargetRef.CRD.Name)
+		assert.Equal(t, data.vmcluster2.Namespace, secondTargetRef.CRD.Namespace)
 	})
 }

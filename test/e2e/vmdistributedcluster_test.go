@@ -171,8 +171,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 							Name: "inline-cluster-1",
 							Spec: &vmv1beta1.VMClusterSpec{
 								ClusterVersion: "v1.125.0-cluster",
-								VMSelect: &vmv1beta1.VMSelect{},
-								VMInsert: &vmv1beta1.VMInsert{},
+								VMSelect:       &vmv1beta1.VMSelect{},
+								VMInsert:       &vmv1beta1.VMInsert{},
 								VMStorage: &vmv1beta1.VMStorage{
 									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 										ReplicaCount: ptr.To[int32](1),
@@ -254,8 +254,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
-					VMSelect: &vmv1beta1.VMSelect{},
-					VMInsert: &vmv1beta1.VMInsert{},
+					VMSelect:        &vmv1beta1.VMSelect{},
+					VMInsert:        &vmv1beta1.VMInsert{},
 					VMStorage: &vmv1beta1.VMStorage{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
@@ -330,8 +330,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					ClusterVersion: "v1.126.0-cluster",
-					VMInsert: &vmv1beta1.VMInsert{},
-					VMSelect: &vmv1beta1.VMSelect{},
+					VMInsert:       &vmv1beta1.VMInsert{},
+					VMSelect:       &vmv1beta1.VMSelect{},
 					VMStorage: &vmv1beta1.VMStorage{
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
@@ -839,7 +839,7 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				latestCR.Kind = "VMDistributedCluster"
 				latestCR.APIVersion = vmv1alpha1.GroupVersion.String()
 				k8sClient.Scheme().Default(&latestCR)
-				Expect(vmdc.CreateOrUpdate(ctx, &latestCR, k8sClient, k8sClient.Scheme(), httpTimeout)).To(Succeed())
+				Expect(vmdc.CreateOrUpdate(ctx, &latestCR, k8sClient, httpTimeout)).To(Succeed())
 			}
 
 			// Verify resource versions have not changed (no updates performed)

@@ -1,11 +1,8 @@
 package vmalertmanager
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
-	"io"
 	"os"
 	"testing"
 
@@ -20,6 +17,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -1870,35 +1868,24 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 
 		var createdSecret corev1.Secret
 		secretName := o.cr.ConfigSecretName()
-		err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret)
-		if err != nil {
+		if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret); err != nil {
 			if k8serrors.IsNotFound(err) && o.secretMustBeMissing {
 				return
 			}
 			t.Fatalf("config for alertmanager not exist, err: %v", err)
 		}
 
-		uncompress := func(data []byte) []byte {
-			dataBuf := bytes.NewBuffer(data)
-			dataReader, err := gzip.NewReader(dataBuf)
-			if err != nil {
-				t.Fatalf("failed to uncompress config: %s", err)
-			}
-			d, err := io.ReadAll(dataReader)
-			if err != nil {
-				t.Fatalf("cannot read cfg: %s", err)
-			}
-			dataReader.Close()
-			return d
-		}
-
 		// check secret config after creating
 		d, ok := createdSecret.Data[alertmanagerSecretConfigKeyGz]
 		if !ok {
-			t.Fatalf("config for alertmanager not exist, err: %v", err)
+			t.Fatalf("config for alertmanager not exist")
 		}
 		var secretConfig alertmanagerConfig
-		assert.NoError(t, yaml.Unmarshal(uncompress(d), &secretConfig))
+		if data, err := build.GunzipConfig(d); err != nil {
+			t.Fatalf("failed to gunzip config: %s", err)
+		} else {
+			assert.NoError(t, yaml.Unmarshal(data, &secretConfig))
+		}
 		var amc vmv1beta1.VMAlertmanagerConfig
 		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: "test-amc"}, &amc))
 		// we add blachole as first route by default
@@ -1907,12 +1894,11 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 		assert.Len(t, secretConfig.Route.Routes, 1)
 		assert.Len(t, secretConfig.Route.Routes[0], len(amc.Spec.Route.Routes)+2)
 		// Update secret with alert manager config
-		if err = CreateOrUpdateConfig(ctx, fclient, o.cr, nil); (err != nil) != o.wantErr {
+		if err := CreateOrUpdateConfig(ctx, fclient, o.cr, nil); (err != nil) != o.wantErr {
 			t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, o.wantErr)
 		}
 
-		err = fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret)
-		if err != nil {
+		if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret); err != nil {
 			if k8serrors.IsNotFound(err) && o.secretMustBeMissing {
 				return
 			}
@@ -1922,11 +1908,12 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 		// check secret config after updating
 		d, ok = createdSecret.Data[alertmanagerSecretConfigKeyGz]
 		if !ok {
-			t.Fatalf("config for alertmanager not exist, err: %v", err)
+			t.Fatalf("config for alertmanager not exist")
 		}
-		err = yaml.Unmarshal(uncompress(d), &secretConfig)
-		if err != nil {
-			t.Fatalf("could not unmarshall secret config data into structure, err: %v", err)
+		if data, err := build.GunzipConfig(d); err != nil {
+			t.Fatalf("failed to gunzip alertmanager config: %s", err)
+		} else {
+			assert.NoError(t, yaml.Unmarshal(data, &secretConfig))
 		}
 		assert.Len(t, secretConfig.Receivers, len(amc.Spec.Receivers)+1)
 		assert.Len(t, secretConfig.InhibitRules, len(amc.Spec.InhibitRules))

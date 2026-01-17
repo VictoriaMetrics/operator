@@ -24,7 +24,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&corev1.Service{}, addServiceDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.Deployment{}, addDeploymentDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.StatefulSet{}, addStatefulsetDefaults)
-	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VMDistributedCluster{}, addVMDistributedClusterDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VMDistributed{}, addVMDistributedDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAuth{}, addVMAuthDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAgent{}, addVMAgentDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAlert{}, addVMAlertDefaults)
@@ -1006,8 +1006,8 @@ func addEntSuffixToTag(versionTag string) string {
 	return versionTag
 }
 
-func addVMDistributedClusterDefaults(objI any) {
-	cr, ok := objI.(*vmv1alpha1.VMDistributedCluster)
+func addVMDistributedDefaults(objI any) {
+	cr, ok := objI.(*vmv1alpha1.VMDistributed)
 	if !ok {
 		return
 	}

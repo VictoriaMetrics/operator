@@ -15997,14 +15997,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: vmdistributedclusters.operator.victoriametrics.com
+  name: vmdistributeds.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
   names:
-    kind: VMDistributedCluster
-    listKind: VMDistributedClusterList
-    plural: vmdistributedclusters
-    singular: vmdistributedcluster
+    kind: VMDistributed
+    listKind: VMDistributedList
+    plural: vmdistributeds
+    singular: vmdistributed
   scope: Namespaced
   versions:
     - additionalPrinterColumns:

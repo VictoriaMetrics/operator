@@ -1,25 +1,25 @@
 ---
 weight: 12
-title: VMDistributedCluster
+title: VMDistributed
 menu:
   docs:
-    identifier: operator-cr-vmdistributedcluster
+    identifier: operator-cr-VMDistributed
     parent: operator-cr
     weight: 12
 aliases:
-  - /operator/resources/vmdistributedcluster/
+  - /operator/resources/VMDistributed/
 tags:
   - CRD
-  - VMDistributedCluster
+  - VMDistributed
 ---
 
-`VMDistributedCluster` is the Custom Resource Definition for orchestrated updates of several VictoriaMetrics clusters. It allows you to define and manage cluster components of a distributed VictoriaMetrics setup and apply changes to them sequentially, ensuring high availability and minimal disruption.
+`VMDistributed` is the Custom Resource Definition for orchestrated updates of several VictoriaMetrics clusters. It allows you to define and manage cluster components of a distributed VictoriaMetrics setup and apply changes to them sequentially, ensuring high availability and minimal disruption.
 
 For a high-level overview of VictoriaMetrics distributed cluster architecture, refer to the official [VictoriaMetrics documentation](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/).
 
 ## Specification
 
-The `VMDistributedCluster` resource allows you to configure various aspects of your VictoriaMetrics distributed cluster. The specification includes:
+The `VMDistributed` resource allows you to configure various aspects of your VictoriaMetrics distributed cluster. The specification includes:
 
 *   `paused`: If set to `true`, the operator will not perform any actions on the underlying managed objects. Useful for temporarily halting reconciliation.
 *   `readyDeadline`: The deadline for each `VMCluster` to become ready during an update. Default is `5m`.
@@ -41,11 +41,11 @@ Each entry in the `vmclusters` array allows you to either reference an existing 
 *   `name`: The name to be used for the `VMCluster` when `spec` is provided.
 *   `spec`: A `vmv1beta1.VMClusterSpec` object that defines the desired state of a new `VMCluster` managed by this resource.
 
-**Example: Defining a `VMDistributedCluster` with inline `VMCluster` specifications:**
+**Example: Defining a `VMDistributed` with inline `VMCluster` specifications:**
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1alpha1
-kind: VMDistributedCluster
+kind: VMDistributed
 metadata:
   name: my-distributed-cluster
 spec:
@@ -89,7 +89,7 @@ spec:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1alpha1
-kind: VMDistributedCluster
+kind: VMDistributed
 metadata:
   name: managed-distributed-cluster
 spec:
@@ -112,9 +112,9 @@ spec:
           name: cluster-prod-2
 ```
 
-### VMDistributedCluster and distributed chart
+### VMDistributed and distributed chart
 
-VMDistributedCluster can be used alongside the resources created by the distributed chart. The distributed chart provides a convenient way to create multiple `VMCluster` objects and surrounding resources.
+VMDistributed can be used alongside the resources created by the distributed chart. The distributed chart provides a convenient way to create multiple `VMCluster` objects and surrounding resources.
 
 In order to update VMClusters in a coordinated manner, add VMCluster resources to the `vmclusters` list as refs:
 ```
@@ -137,7 +137,7 @@ This will also create a global write VMAgent, pointing to VMCluster loadbalancer
 
 ### Current shortcomings
 - Only `VMCluster` objects are supported for distributed management.
-- Only one `VMAgent` and one `VMAuth` can be managed per `VMDistributedCluster`.
-- All objects must belong to the same namespace as the `VMDistributedCluster`.
-- Referenced `VMCluster` objects (using `ref`) are not actively watched for external changes; they are reconciled periodically or when the `VMDistributedCluster` itself changes.
+- Only one `VMAgent` and one `VMAuth` can be managed per `VMDistributed`.
+- All objects must belong to the same namespace as the `VMDistributed`.
+- Referenced `VMCluster` objects (using `ref`) are not actively watched for external changes; they are reconciled periodically or when the `VMDistributed` itself changes.
 - Objects must be referred to by name; label selectors are not supported for cluster selection.

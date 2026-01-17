@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// VMDistributedClusterInformer provides access to a shared informer and lister for
-// VMDistributedClusters.
-type VMDistributedClusterInformer interface {
+// VMDistributedInformer provides access to a shared informer and lister for
+// VMDistributeds.
+type VMDistributedInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() operatorv1alpha1.VMDistributedClusterLister
+	Lister() operatorv1alpha1.VMDistributedLister
 }
 
-type vMDistributedClusterInformer struct {
+type vMDistributedInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewVMDistributedClusterInformer constructs a new informer for VMDistributedCluster type.
+// NewVMDistributedInformer constructs a new informer for VMDistributed type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewVMDistributedClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredVMDistributedClusterInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewVMDistributedInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredVMDistributedInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredVMDistributedClusterInformer constructs a new informer for VMDistributedCluster type.
+// NewFilteredVMDistributedInformer constructs a new informer for VMDistributed type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredVMDistributedClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredVMDistributedInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().VMDistributedClusters(namespace).List(context.TODO(), options)
+				return client.OperatorV1alpha1().VMDistributeds(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().VMDistributedClusters(namespace).Watch(context.TODO(), options)
+				return client.OperatorV1alpha1().VMDistributeds(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&apioperatorv1alpha1.VMDistributedCluster{},
+		&apioperatorv1alpha1.VMDistributed{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *vMDistributedClusterInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredVMDistributedClusterInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *vMDistributedInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredVMDistributedInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *vMDistributedClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apioperatorv1alpha1.VMDistributedCluster{}, f.defaultInformer)
+func (f *vMDistributedInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&apioperatorv1alpha1.VMDistributed{}, f.defaultInformer)
 }
 
-func (f *vMDistributedClusterInformer) Lister() operatorv1alpha1.VMDistributedClusterLister {
-	return operatorv1alpha1.NewVMDistributedClusterLister(f.Informer().GetIndexer())
+func (f *vMDistributedInformer) Lister() operatorv1alpha1.VMDistributedLister {
+	return operatorv1alpha1.NewVMDistributedLister(f.Informer().GetIndexer())
 }

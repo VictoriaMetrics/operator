@@ -1,4 +1,4 @@
-package vmdistributedcluster
+package VMDistributed
 
 import (
 	"context"
@@ -137,10 +137,10 @@ func TestSetOwnerRefIfNeeded(t *testing.T) {
 	_ = vmv1alpha1.AddToScheme(scheme)
 	_ = vmv1beta1.AddToScheme(scheme)
 
-	cr := &vmv1alpha1.VMDistributedCluster{
+	cr := &vmv1alpha1.VMDistributed{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: vmv1alpha1.GroupVersion.String(),
-			Kind:       "VMDistributedCluster",
+			Kind:       "VMDistributed",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "vdc",
@@ -172,10 +172,10 @@ func TestSetOwnerRefIfNeeded(t *testing.T) {
 }
 
 func TestEnsureNoVMClusterOwners(t *testing.T) {
-	cr := &vmv1alpha1.VMDistributedCluster{
+	cr := &vmv1alpha1.VMDistributed{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: vmv1alpha1.GroupVersion.String(),
-			Kind:       "VMDistributedCluster",
+			Kind:       "VMDistributed",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "vdc",
@@ -183,10 +183,10 @@ func TestEnsureNoVMClusterOwners(t *testing.T) {
 			UID:       k8stypes.UID("owner-uid"),
 		},
 	}
-	otherCR := &vmv1alpha1.VMDistributedCluster{
+	otherCR := &vmv1alpha1.VMDistributed{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: vmv1alpha1.GroupVersion.String(),
-			Kind:       "VMDistributedCluster",
+			Kind:       "VMDistributed",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "other",

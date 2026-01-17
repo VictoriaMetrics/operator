@@ -17,10 +17,10 @@ limitations under the License.
 
 package v1alpha1
 
-// VMDistributedClusterListerExpansion allows custom methods to be added to
-// VMDistributedClusterLister.
-type VMDistributedClusterListerExpansion interface{}
+// VMDistributedListerExpansion allows custom methods to be added to
+// VMDistributedLister.
+type VMDistributedListerExpansion interface{}
 
-// VMDistributedClusterNamespaceListerExpansion allows custom methods to be added to
-// VMDistributedClusterNamespaceLister.
-type VMDistributedClusterNamespaceListerExpansion interface{}
+// VMDistributedNamespaceListerExpansion allows custom methods to be added to
+// VMDistributedNamespaceLister.
+type VMDistributedNamespaceListerExpansion interface{}

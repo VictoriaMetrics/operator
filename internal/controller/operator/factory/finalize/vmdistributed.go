@@ -11,8 +11,8 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// OnVMDistributedClusterDelete removes all objects related to vmdistributedcluster component
-func OnVMDistributedClusterDelete(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster) error {
+// OnVMDistributedDelete removes all objects related to VMDistributed component
+func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed) error {
 	ns := cr.GetNamespace()
 	objsToRemove := []client.Object{}
 	objsToDisown := []client.Object{}

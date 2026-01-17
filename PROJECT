@@ -279,7 +279,7 @@ resources:
   controller: true
   domain: victoriametrics.com
   group: operator
-  kind: VMDistributedCluster
+  kind: VMDistributed
   path: github.com/VictoriaMetrics/operator/api/operator/v1alpha1
   version: v1alpha1
 version: "3"

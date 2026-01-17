@@ -1,4 +1,4 @@
-package vmdistributedcluster
+package VMDistributed
 
 import (
 	"context"
@@ -184,8 +184,8 @@ func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, 
 	return 0, fmt.Errorf("metric %s not found", VMAgentQueueMetricName)
 }
 
-// updateOrCreateVMAgent ensures that the VMAgent is updated or created based on the provided VMDistributedCluster.
-func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) (*vmv1beta1.VMAgent, error) {
+// updateOrCreateVMAgent ensures that the VMAgent is updated or created based on the provided VMDistributed.
+func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluster) (*vmv1beta1.VMAgent, error) {
 	logger.WithContext(ctx).Info("Reconciling VMAgent")
 
 	// Get existing vmagent obj using Name and cr namespace
@@ -257,7 +257,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	newVMAgentSpec.PersistentVolumeClaimRetentionPolicy = desiredVMAgentSpec.PersistentVolumeClaimRetentionPolicy
 	newVMAgentSpec.ClaimTemplates = desiredVMAgentSpec.ClaimTemplates
 	newVMAgentSpec.License = desiredVMAgentSpec.License
-	// If License is not set in VMAgent spec but is set in VMDistributedCluster, use the VMDistributedCluster License
+	// If License is not set in VMAgent spec but is set in VMDistributed, use the VMDistributed License
 	if newVMAgentSpec.License == nil && cr.Spec.License != nil {
 		newVMAgentSpec.License = cr.Spec.License
 	}

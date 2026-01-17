@@ -23,8 +23,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// VMDistributedClusters returns a VMDistributedClusterInformer.
-	VMDistributedClusters() VMDistributedClusterInformer
+	// VMDistributeds returns a VMDistributedInformer.
+	VMDistributeds() VMDistributedInformer
 }
 
 type version struct {
@@ -38,7 +38,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// VMDistributedClusters returns a VMDistributedClusterInformer.
-func (v *version) VMDistributedClusters() VMDistributedClusterInformer {
-	return &vMDistributedClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// VMDistributeds returns a VMDistributedInformer.
+func (v *version) VMDistributeds() VMDistributedInformer {
+	return &vMDistributedInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

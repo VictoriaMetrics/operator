@@ -24,7 +24,7 @@ resources:
 - bases/operator.victoriametrics.com_vtsingles.yaml
 - bases/operator.victoriametrics.com_vtclusters.yaml
 - bases/operator.victoriametrics.com_vmanomalies.yaml
-- bases/operator.victoriametrics.com_vmdistributedclusters.yaml
+- bases/operator.victoriametrics.com_vmdistributeds.yaml
 patches:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD

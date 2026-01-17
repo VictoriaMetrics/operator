@@ -198,9 +198,9 @@ rules:
   - vmanomalies
   - vmanomalies/finalizers
   - vmanomalies/status
-  - vmdistributedclusters
-  - vmdistributedclusters/finalizers
-  - vmdistributedclusters/status
+  - vmdistributeds
+  - vmdistributeds/finalizers
+  - vmdistributeds/status
   verbs:
   - '*'
 - apiGroups:

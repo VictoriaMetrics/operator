@@ -1,4 +1,4 @@
-package vmdistributedcluster
+package VMDistributed
 
 import (
 	"context"

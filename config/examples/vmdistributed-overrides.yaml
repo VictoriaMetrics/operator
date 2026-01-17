@@ -35,9 +35,9 @@ spec:
     replicaCount: 1
 ---
 apiVersion: operator.victoriametrics.com/v1alpha1
-kind: VMDistributedCluster
+kind: VMDistributed
 metadata:
-  name: vmdistributedcluster-sample-override
+  name: VMDistributed-sample-override
 spec:
   vmagent:
     name: global-write-vmagent

@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1alpha1
-kind: VMDistributedCluster
+kind: VMDistributed
 metadata:
-  name: vmdistributedcluster-sample-new
+  name: VMDistributed-sample-new
 spec:
   vmagent:
     name: global-write-vmagent

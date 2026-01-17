@@ -35,15 +35,15 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributedcluster"
+	VMDistributed "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributed"
 )
 
 const (
 	httpTimeout = 10 * time.Second
 )
 
-// VMDistributedClusterReconciler reconciles a VMDistributedCluster object
-type VMDistributedClusterReconciler struct {
+// VMDistributedReconciler reconciles a VMDistributed object
+type VMDistributedReconciler struct {
 	client.Client
 	BaseConf     *config.BaseOperatorConf
 	Log          logr.Logger
@@ -51,44 +51,44 @@ type VMDistributedClusterReconciler struct {
 }
 
 // Init implements crdController interface
-func (r *VMDistributedClusterReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMDistributedReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
 	r.Client = rclient
-	r.Log = l.WithName("controller.VMDistributedClusterReconciler")
+	r.Log = l.WithName("controller.VMDistributedReconciler")
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
 
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributedclusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributedclusters/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributedclusters/finalizers,verbs=update
-func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vmdistributedcluster", req.Name, "namespace", req.Namespace)
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributeds,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributeds/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributeds/finalizers,verbs=update
+func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+	l := r.Log.WithValues("VMDistributed", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1alpha1.VMDistributedCluster{}
+	instance := &vmv1alpha1.VMDistributed{}
 
 	// Handle reconcile errors
 	defer func() {
 		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
 	}()
 
-	// Fetch VMDistributedCluster instance
+	// Fetch VMDistributed instance
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmdistributedcluster", req}
+		return result, &getError{err, "VMDistributed", req}
 	}
 
 	// Register metrics
-	RegisterObjectStat(instance, "vmdistributedcluster")
+	RegisterObjectStat(instance, "VMDistributed")
 
 	// Check if the instance is being deleted
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMDistributedClusterDelete(ctx, r, instance); err != nil {
-			return result, fmt.Errorf("cannot remove finalizer from vmdistributedcluster: %w", err)
+		if err := finalize.OnVMDistributedDelete(ctx, r, instance); err != nil {
+			return result, fmt.Errorf("cannot remove finalizer from VMDistributed: %w", err)
 		}
 		return result, nil
 	}
 	// Check parsing error
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmdistributedcluster"}
+		return result, &parsingError{instance.Spec.ParsingError, "VMDistributed"}
 	}
 
 	// Add finalizer if necessary
@@ -97,8 +97,8 @@ func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 	r.Client.Scheme().Default(instance)
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vmdistributedcluster.CreateOrUpdate(ctx, instance, r, httpTimeout); err != nil {
-			return result, fmt.Errorf("vmdistributedcluster %s update failed: %w", instance.Name, err)
+		if err := VMDistributed.CreateOrUpdate(ctx, instance, r, httpTimeout); err != nil {
+			return result, fmt.Errorf("VMDistributed %s update failed: %w", instance.Name, err)
 		}
 
 		return result, nil
@@ -110,9 +110,9 @@ func (r *VMDistributedClusterReconciler) Reconcile(ctx context.Context, req ctrl
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *VMDistributedClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *VMDistributedReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&vmv1alpha1.VMDistributedCluster{}).
+		For(&vmv1alpha1.VMDistributed{}).
 		Owns(&vmv1beta1.VMServiceScrape{}).
 		Owns(&vmv1beta1.VMAgent{}).
 		Owns(&appsv1.Deployment{}).

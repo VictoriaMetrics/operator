@@ -31,9 +31,9 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// VMDistributedClusterSpec defines the desired state of VMDistributedClusterSpec
+// VMDistributedSpec defines the desired state of VMDistributedSpec
 // +k8s:openapi-gen=true
-type VMDistributedClusterSpec struct {
+type VMDistributedSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
 	// ReadyDeadline is the deadline for the VMCluster to be ready.
@@ -255,12 +255,12 @@ type VMAuthNameAndSpec struct {
 }
 
 // +k8s:openapi-gen=true
-// VMDistributedClusterStatus defines the observed state of VMDistributedClusterStatus
-type VMDistributedClusterStatus struct {
+// VMDistributedStatus defines the observed state of VMDistributedStatus
+type VMDistributedStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
 }
 
-// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMDistributedCluster App"
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMDistributed App"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
@@ -269,48 +269,48 @@ type VMDistributedClusterStatus struct {
 // +kubebuilder:object:root=true
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=vmdistributedclusters,scope=Namespaced
+// +kubebuilder:resource:path=vmdistributed,scope=Namespaced
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="current status of update rollout"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// VMDistributedClusterSpec is progressively rolling out updates to multiple VMClusters.
-type VMDistributedCluster struct {
+// VMDistributedSpec is progressively rolling out updates to multiple VMClusters.
+type VMDistributed struct {
 	metav1.TypeMeta `json:",inline"`
 
 	// metadata is a standard object metadata
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty,omitzero"`
 
-	// spec defines the desired state of VMDistributedCluster
+	// spec defines the desired state of VMDistributed
 	// +required
-	Spec VMDistributedClusterSpec `json:"spec"`
+	Spec VMDistributedSpec `json:"spec"`
 
-	// status defines the observed state of VMDistributedCluster
+	// status defines the observed state of VMDistributed
 	// +optional
-	Status VMDistributedClusterStatus `json:"status,omitempty,omitzero"`
+	Status VMDistributedStatus `json:"status,omitempty,omitzero"`
 }
 
 // SelectorLabels defines selector labels for given component kind
-func (cr *VMDistributedCluster) SelectorLabels(kind vmv1beta1.ClusterComponent) map[string]string {
+func (cr *VMDistributed) SelectorLabels(kind vmv1beta1.ClusterComponent) map[string]string {
 	return vmv1beta1.ClusterSelectorLabels(kind, cr.Name, "vmd")
 }
 
 // PrefixedName returns prefixed name for the given component kind
-func (cr *VMDistributedCluster) PrefixedName(kind vmv1beta1.ClusterComponent) string {
+func (cr *VMDistributed) PrefixedName(kind vmv1beta1.ClusterComponent) string {
 	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, "vmd", false)
 }
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
-func (cr *VMDistributedCluster) FinalLabels(kind vmv1beta1.ClusterComponent) map[string]string {
+func (cr *VMDistributed) FinalLabels(kind vmv1beta1.ClusterComponent) map[string]string {
 	return vmv1beta1.AddClusterLabels(cr.SelectorLabels(kind), "vmd")
 }
 
 // AnnotationsFiltered returns global annotations to be applied by objects generate for vmcluster
-func (cr *VMDistributedCluster) AnnotationsFiltered() map[string]string {
+func (cr *VMDistributed) AnnotationsFiltered() map[string]string {
 	return map[string]string{}
 }
 
 // AsOwner returns owner references with current object as owner
-func (cr *VMDistributedCluster) AsOwner() metav1.OwnerReference {
+func (cr *VMDistributed) AsOwner() metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         cr.APIVersion,
 		Kind:               cr.Kind,
@@ -322,7 +322,7 @@ func (cr *VMDistributedCluster) AsOwner() metav1.OwnerReference {
 }
 
 // PodLabels returns pod labels for given component kind
-func (cr *VMDistributedCluster) PodLabels(kind vmv1beta1.ClusterComponent) map[string]string {
+func (cr *VMDistributed) PodLabels(kind vmv1beta1.ClusterComponent) map[string]string {
 	selectorLabels := cr.SelectorLabels(kind)
 	podMetadata := cr.PodMetadata(kind)
 	if podMetadata == nil {
@@ -331,7 +331,7 @@ func (cr *VMDistributedCluster) PodLabels(kind vmv1beta1.ClusterComponent) map[s
 	return labels.Merge(podMetadata.Labels, selectorLabels)
 }
 
-func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthSpec {
+func (cr *VMDistributed) GetVMAuthSpec() *vmv1beta1.VMAuthSpec {
 	if cr == nil {
 		return nil
 	}
@@ -343,7 +343,7 @@ func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthSpec {
 	}
 	// Make a copy to avoid modifying the original spec
 	specCopy := spec.DeepCopy()
-	// If License is not set in VMAuth spec but is set in VMDistributedCluster, use the VMDistributedCluster License
+	// If License is not set in VMAuth spec but is set in VMDistributed, use the VMDistributed License
 	if specCopy.License == nil && cr.Spec.License != nil {
 		specCopy.License = cr.Spec.License
 	}
@@ -351,27 +351,27 @@ func (cr *VMDistributedCluster) GetVMAuthSpec() *vmv1beta1.VMAuthSpec {
 }
 
 // PodMetadata returns pod metadata for given component kind
-func (cr *VMDistributedCluster) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.EmbeddedObjectMetadata {
+func (cr *VMDistributed) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.EmbeddedObjectMetadata {
 	return cr.GetVMAuthSpec().PodMetadata
 }
 
 // FinalAnnotations returns global annotations to be applied by objects generate for vmcluster
-func (cr *VMDistributedCluster) FinalAnnotations() map[string]string {
+func (cr *VMDistributed) FinalAnnotations() map[string]string {
 	return map[string]string{}
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VMDistributedCluster) GetAdditionalService(kind vmv1beta1.ClusterComponent) *vmv1beta1.AdditionalServiceSpec {
+func (cr *VMDistributed) GetAdditionalService(kind vmv1beta1.ClusterComponent) *vmv1beta1.AdditionalServiceSpec {
 	return nil
 }
 
 // GetServiceAccountName returns service account name for all vmcluster components
-func (cr *VMDistributedCluster) GetServiceAccountName() string {
+func (cr *VMDistributed) GetServiceAccountName() string {
 	return cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 }
 
 // PodAnnotations returns pod annotations for given component kind
-func (cr *VMDistributedCluster) PodAnnotations(kind vmv1beta1.ClusterComponent) map[string]string {
+func (cr *VMDistributed) PodAnnotations(kind vmv1beta1.ClusterComponent) map[string]string {
 	podMetadata := cr.PodMetadata(kind)
 	if podMetadata == nil {
 		return nil
@@ -379,86 +379,86 @@ func (cr *VMDistributedCluster) PodAnnotations(kind vmv1beta1.ClusterComponent) 
 	return podMetadata.Annotations
 }
 
-func (cr *VMDistributedCluster) IsOwnsServiceAccount() bool {
+func (cr *VMDistributed) IsOwnsServiceAccount() bool {
 	return false
 }
 
 // PrefixedInternalName returns prefixed name for the given component kind
-func (cr *VMDistributedCluster) PrefixedInternalName(kind vmv1beta1.ClusterComponent) string {
+func (cr *VMDistributed) PrefixedInternalName(kind vmv1beta1.ClusterComponent) string {
 	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, "vmd", true)
 }
 
 // PrefixedInternalName returns prefixed name for the given component kind
-func (cr *VMDistributedCluster) AllLabels() map[string]string {
+func (cr *VMDistributed) AllLabels() map[string]string {
 	return cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)
 }
 
 // +kubebuilder:object:root=true
 
-// VMDistributedClusterList contains a list of VMDistributedCluster
-type VMDistributedClusterList struct {
+// VMDistributedList contains a list of VMDistributed
+type VMDistributedList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []VMDistributedCluster `json:"items"`
+	Items           []VMDistributed `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&VMDistributedCluster{}, &VMDistributedClusterList{})
+	SchemeBuilder.Register(&VMDistributed{}, &VMDistributedList{})
 }
 
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
-func (cr *VMDistributedCluster) GetStatus() *VMDistributedClusterStatus {
+func (cr *VMDistributed) GetStatus() *VMDistributedStatus {
 	return &cr.Status
 }
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
-func (cr *VMDistributedCluster) DefaultStatusFields(vs *VMDistributedClusterStatus) {
+func (cr *VMDistributed) DefaultStatusFields(vs *VMDistributedStatus) {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMDistributedClusterStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+func (cr *VMDistributedStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
 	return &cr.StatusMetadata
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMDistributedCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
+func (cr *VMDistributed) LastAppliedSpecAsPatch() (client.Patch, error) {
 	return vmv1beta1.LastAppliedChangesAsPatch(cr.Spec)
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMDistributedCluster) HasSpecChanges() (bool, error) {
+func (cr *VMDistributed) HasSpecChanges() (bool, error) {
 	return vmv1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
 }
 
 // Paused checks if resource reconcile should be paused
-func (cr *VMDistributedCluster) Paused() bool {
+func (cr *VMDistributed) Paused() bool {
 	return cr.Spec.Paused
 }
 
-func (cr *VMDistributedCluster) GetVMUserName() string {
+func (cr *VMDistributed) GetVMUserName() string {
 	return fmt.Sprintf("%s-user", cr.Name)
 }
 
 // AutomountServiceAccountToken implements reloadable interface
-func (cr *VMDistributedCluster) AutomountServiceAccountToken() bool {
+func (cr *VMDistributed) AutomountServiceAccountToken() bool {
 	return true
 }
 
 // GetReloaderParams implements reloadable interface
-func (cr *VMDistributedCluster) GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams {
+func (cr *VMDistributed) GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams {
 	return &cr.GetVMAuthSpec().CommonConfigReloaderParams
 }
 
 // UseProxyProtocol implements reloadable interface
-func (cr *VMDistributedCluster) UseProxyProtocol() bool {
+func (cr *VMDistributed) UseProxyProtocol() bool {
 	return false
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMDistributedClusterSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMDistributedClusterSpec
+func (cr *VMDistributedSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMDistributedSpec
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmdistributedcluster spec: %s, err: %s", string(src), err)
+		cr.ParsingError = fmt.Sprintf("cannot parse VMDistributed spec: %s, err: %s", string(src), err)
 		return nil
 	}
 	return nil

@@ -372,7 +372,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		webhookv1.SetupVMAnomalyWebhookWithManager,
 		webhookv1beta1.SetupVMSingleWebhookWithManager,
 		webhookv1beta1.SetupVMClusterWebhookWithManager,
-		webhookv1alpha1.SetupVMDistributedClusterWebhookWithManager,
+		webhookv1alpha1.SetupVMDistributedWebhookWithManager,
 		webhookv1beta1.SetupVLogsWebhookWithManager,
 		webhookv1.SetupVLAgentWebhookWithManager,
 		webhookv1.SetupVLSingleWebhookWithManager,
@@ -492,7 +492,7 @@ var controllersByName = map[string]crdController{
 	"VMNodeScrape":         &vmcontroller.VMNodeScrapeReconciler{},
 	"VMStaticScrape":       &vmcontroller.VMStaticScrapeReconciler{},
 	"VMScrapeConfig":       &vmcontroller.VMScrapeConfigReconciler{},
-	"VMDistributedCluster": &vmcontroller.VMDistributedClusterReconciler{},
+	"VMDistributed":        &vmcontroller.VMDistributedReconciler{},
 }
 
 func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorConf) error {

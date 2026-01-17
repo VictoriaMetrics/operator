@@ -1,4 +1,4 @@
-package vmdistributedcluster
+package VMDistributed
 
 import (
 	"context"
@@ -218,12 +218,12 @@ func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster
 	return nil
 }
 
-// setOwnerRefIfNeeded ensures obj has VMDistributedCluster owner reference set.
-func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributedCluster, obj client.Object, scheme *runtime.Scheme) (bool, error) {
+// setOwnerRefIfNeeded ensures obj has VMDistributed owner reference set.
+func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributed, obj client.Object, scheme *runtime.Scheme) (bool, error) {
 	if ok, err := controllerutil.HasOwnerReference(obj.GetOwnerReferences(), cr, scheme); err != nil {
 		return false, fmt.Errorf("failed to check owner reference for %s %s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), err)
 	} else if !ok {
-		// Set owner reference for the VMCluster to the VMDistributedCluster
+		// Set owner reference for the VMCluster to the VMDistributed
 		if err := controllerutil.SetOwnerReference(cr, obj, scheme); err != nil {
 			return false, fmt.Errorf("failed to set owner reference for %s %s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), err)
 		}
@@ -233,7 +233,7 @@ func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributedCluster, obj client.Object,
 }
 
 // ensureNoVMClusterOwners validates that vmClusterObj has no owner references other than cr.
-func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributedCluster, vmClusterObj *vmv1beta1.VMCluster) error {
+func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributed, vmClusterObj *vmv1beta1.VMCluster) error {
 	for _, owner := range vmClusterObj.GetOwnerReferences() {
 		isCROwner := owner.APIVersion == cr.APIVersion &&
 			owner.Kind == cr.Kind &&

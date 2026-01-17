@@ -1,4 +1,4 @@
-package vmdistributedcluster
+package VMDistributed
 
 import (
 	"cmp"
@@ -20,7 +20,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
+func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluster) error {
 	if cr.Spec.VMAuth.Name == "" {
 		return nil
 	}

@@ -1,4 +1,4 @@
-package vmdistributedcluster
+package VMDistributed
 
 import (
 	"context"
@@ -26,7 +26,7 @@ var (
 )
 
 // CreateOrUpdate handles VM deployment reconciliation.
-func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rclient client.Client, httpTimeout time.Duration) error {
+func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient client.Client, httpTimeout time.Duration) error {
 	// No actions performed if CR is paused
 	if cr.Paused() {
 		return nil
@@ -40,7 +40,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
 	}
 
-	// Throw error if VMCluster has any other owner - that means it is managed by one instance of VMDistributedCluster only
+	// Throw error if VMCluster has any other owner - that means it is managed by one instance of VMDistributed only
 	for _, vmCluster := range vmClusters {
 		err := ensureNoVMClusterOwners(cr, vmCluster)
 		if err != nil {
@@ -146,7 +146,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributedCluster, rc
 			logger.WithContext(ctx).Info(diff)
 		}
 
-		// Apply VMDistributedCluster License to VMCluster if not already set
+		// Apply VMDistributed License to VMCluster if not already set
 		if mergedSpec.License == nil && cr.Spec.License != nil {
 			mergedSpec.License = cr.Spec.License.DeepCopy()
 			modifiedSpec = true

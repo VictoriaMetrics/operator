@@ -29,7 +29,7 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 )
 
-var _ = Describe("VMDistributedCluster Controller", func() {
+var _ = Describe("VMDistributed Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -39,13 +39,13 @@ var _ = Describe("VMDistributedCluster Controller", func() {
 			Name:      resourceName,
 			Namespace: "default",
 		}
-		VMDistributedCluster := &vmv1alpha1.VMDistributedCluster{}
+		VMDistributed := &vmv1alpha1.VMDistributed{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind VMDistributedCluster")
-			err := k8sClient.Get(ctx, typeNamespacedName, VMDistributedCluster)
+			By("creating the custom resource for the Kind VMDistributed")
+			err := k8sClient.Get(ctx, typeNamespacedName, VMDistributed)
 			if err != nil && k8serrors.IsNotFound(err) {
-				resource := &vmv1alpha1.VMDistributedCluster{
+				resource := &vmv1alpha1.VMDistributed{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -57,16 +57,16 @@ var _ = Describe("VMDistributedCluster Controller", func() {
 		})
 
 		AfterEach(func() {
-			resource := &vmv1alpha1.VMDistributedCluster{}
+			resource := &vmv1alpha1.VMDistributed{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance VMDistributedCluster")
+			By("Cleanup the specific resource instance VMDistributed")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &VMDistributedClusterReconciler{
+			controllerReconciler := &VMDistributedReconciler{
 				Client:       k8sClient,
 				OriginScheme: k8sClient.Scheme(),
 			}

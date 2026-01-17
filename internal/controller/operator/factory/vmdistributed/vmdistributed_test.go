@@ -1,4 +1,4 @@
-package vmdistributedcluster
+package VMDistributed
 
 import (
 	"context"
@@ -201,8 +201,8 @@ func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 	}
 }
 
-// newVMDistributedCluster constructs a VMDistributedCluster for tests.
-func newVMDistributedCluster(name string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgentSpec vmv1alpha1.VMAgentNameAndSpec, extras ...interface{}) *vmv1alpha1.VMDistributedCluster {
+// newVMDistributed constructs a VMDistributed for tests.
+func newVMDistributed(name string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgentSpec vmv1alpha1.VMAgentNameAndSpec, extras ...interface{}) *vmv1alpha1.VMDistributed {
 	var vmAuth vmv1alpha1.VMAuthNameAndSpec
 
 	// Parse extras to find VMAuth (ignore any legacy VMUser parameters).
@@ -219,16 +219,16 @@ func newVMDistributedCluster(name string, zones []vmv1alpha1.VMClusterRefOrSpec,
 		}
 	}
 
-	return &vmv1alpha1.VMDistributedCluster{
+	return &vmv1alpha1.VMDistributed{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "VMDistributedCluster",
+			Kind:       "VMDistributed",
 			APIVersion: vmv1alpha1.GroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: "default",
 		},
-		Spec: vmv1alpha1.VMDistributedClusterSpec{
+		Spec: vmv1alpha1.VMDistributedSpec{
 			Zones:   vmv1alpha1.ZoneSpec{VMClusters: zones},
 			VMAgent: vmAgentSpec,
 			VMAuth:  vmAuth,
@@ -240,7 +240,7 @@ type testData struct {
 	vmagent        *vmv1beta1.VMAgent
 	vmcluster1     *vmv1beta1.VMCluster
 	vmcluster2     *vmv1beta1.VMCluster
-	cr             *vmv1alpha1.VMDistributedCluster
+	cr             *vmv1alpha1.VMDistributed
 	trackingClient *trackingClient
 	scheme         *runtime.Scheme
 }
@@ -267,7 +267,7 @@ func beforeEach() testData {
 		{Ref: &corev1.LocalObjectReference{Name: "vmcluster-2"}},
 	}
 	vmAgentSpec := vmv1alpha1.VMAgentNameAndSpec{Name: vmagent.Name}
-	cr := newVMDistributedCluster("test-vdc", zones, vmAgentSpec, vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"})
+	cr := newVMDistributed("test-vdc", zones, vmAgentSpec, vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"})
 
 	// Create a new trackingClient
 	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(

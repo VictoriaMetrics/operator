@@ -1610,14 +1610,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: vmdistributedclusters.operator.victoriametrics.com
+  name: vmdistributed.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
   names:
-    kind: VMDistributedCluster
-    listKind: VMDistributedClusterList
-    plural: vmdistributedclusters
-    singular: vmdistributedcluster
+    kind: VMDistributed
+    listKind: VMDistributedList
+    plural: vmdistributed
+    singular: vmdistributed
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -1631,8 +1631,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: VMDistributedClusterSpec is progressively rolling out updates
-          to multiple VMClusters.
+        description: VMDistributedSpec is progressively rolling out updates to multiple
+          VMClusters.
         properties:
           apiVersion:
             description: |-
@@ -1652,11 +1652,11 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of VMDistributedCluster
+            description: spec defines the desired state of VMDistributed
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: status defines the observed state of VMDistributedCluster
+            description: status defines the observed state of VMDistributed
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",

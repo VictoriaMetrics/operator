@@ -1,13 +1,17 @@
 apiVersion: operator.victoriametrics.com/v1alpha1
-kind: VMDistributedCluster
+kind: VMDistributed
 metadata:
-  name: vmdistributedcluster-sample-vmagent
+  name: VMDistributed-sample-vmauth
 spec:
   vmagent:
     name: global-write-vmagent
     spec:
+      replicaCount: 1
+  vmauth:
+    name: global-read-vmauth
+    spec:
       image:
-        repository: victoriametrics/vmagent
+        repository: victoriametrics/vmauth
         pullPolicy: IfNotPresent
       replicaCount: 1
       resources:
@@ -17,10 +21,6 @@ spec:
         limits:
           cpu: "500m"
           memory: "850Mi"
-  vmauth:
-    name: global-read-vmauth
-    spec:
-      replicaCount: 1
   zones:
     vmclusters:
     - name: vmcluster-us-east-1

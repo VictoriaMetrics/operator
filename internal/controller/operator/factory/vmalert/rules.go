@@ -211,7 +211,7 @@ func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAle
 	pos := &parsedObjects{rules: build.NewChildObjects("vmrule", rules, nsn)}
 	data := make(map[string]string)
 	pos.rules.ForEachCollectSkipInvalid(func(rule *vmv1beta1.VMRule) error {
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			if err := rule.Validate(); err != nil {
 				return err
 			}

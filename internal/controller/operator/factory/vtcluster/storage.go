@@ -52,10 +52,8 @@ func createOrUpdateVTStorage(ctx context.Context, rclient client.Client, cr, pre
 	if err != nil {
 		return err
 	}
-	cfg := config.MustGetBaseConfig()
-	if !ptr.Deref(cr.Spec.Storage.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.Storage))
-		if err != nil {
+	if !ptr.Deref(cr.Spec.Storage.DisableSelfServiceScrape, false) {
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(storageSvc, cr.Spec.Storage)); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for VTStorage: %w", err)
 		}
 	}
@@ -174,8 +172,7 @@ func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.Storage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.Storage.PersistentVolumeClaimRetentionPolicy
 	}
-	cfg := config.MustGetBaseConfig()
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.Storage.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.Storage.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.Storage.UseStrictSecurity, false), &cr.Spec.Storage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.Storage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.Storage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.Storage.ClaimTemplates...)
@@ -296,7 +293,7 @@ func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) 
 	storageContainers := []corev1.Container{vmstorageContainer}
 	var initContainers []corev1.Container
 
-	useStrictSecurity := ptr.Deref(cr.Spec.Storage.UseStrictSecurity, cfg.EnableStrictSecurity)
+	useStrictSecurity := ptr.Deref(cr.Spec.Storage.UseStrictSecurity, false)
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.Storage.SecurityContext, initContainers, useStrictSecurity)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.Storage.InitContainers)
 	if err != nil {

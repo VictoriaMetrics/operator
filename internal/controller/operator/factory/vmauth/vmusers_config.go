@@ -333,7 +333,7 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, refs []vmv1beta
 // fetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
 func (pos *parsedObjects) fetchCRDRefURLs(ctx context.Context, rclient client.Client, crdURLCache map[string]string) {
 	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			if err := user.Validate(); err != nil {
 				return err
 			}

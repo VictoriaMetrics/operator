@@ -195,23 +195,12 @@ schedulers:
 			},
 		},
 		validate: func(set *appsv1.StatefulSet) error {
-			if len(set.Spec.Template.Spec.Containers) != 1 {
-				return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(set.Spec.Template.Spec.Containers), 2)
-			}
+			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
 			container := set.Spec.Template.Spec.Containers[0]
-			if container.Name != "vmanomaly" {
-				return fmt.Errorf("unexpected container name, got: %s, want: %s", container.Name, "vmanomaly")
-			}
-			if container.LivenessProbe.TimeoutSeconds != 20 {
-				return fmt.Errorf("unexpected liveness probe config, want timeout: %d, got: %d", container.LivenessProbe.TimeoutSeconds, 20)
-			}
-			if container.LivenessProbe.HTTPGet.Path != "/health" {
-				return fmt.Errorf("unexpected path for probe, got: %s, want: %s", container.LivenessProbe.HTTPGet.Path, "/health")
-			}
-			if container.ReadinessProbe.HTTPGet.Path != "/health" {
-				return fmt.Errorf("unexpected path for probe, got: %s, want: %s", container.ReadinessProbe.HTTPGet.Path, "/health")
-			}
-
+			assert.Equal(t, container.Name, "vmanomaly")
+			assert.Equal(t, container.LivenessProbe.TimeoutSeconds, int32(20))
+			assert.Equal(t, container.LivenessProbe.HTTPGet.Path, "/health")
+			assert.Equal(t, container.ReadinessProbe.HTTPGet.Path, "/health")
 			return nil
 		},
 	})
@@ -297,7 +286,7 @@ func Test_createDefaultConfig(t *testing.T) {
 		}
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, fclient, cfg)
-		if _, err := createOrUpdateConfig(ctx, fclient, o.cr, nil, ac); (err != nil) != o.wantErr {
+		if _, err := createOrUpdateConfig(ctx, fclient, o.cr, nil, nil, ac); (err != nil) != o.wantErr {
 			t.Fatalf("createOrUpdateConfig() error = %v, wantErr %v", err, o.wantErr)
 		}
 		if o.wantErr {

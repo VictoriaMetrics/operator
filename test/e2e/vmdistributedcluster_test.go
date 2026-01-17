@@ -74,11 +74,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
@@ -108,13 +112,6 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 						Spec: &vmv1beta1.VMAuthSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-								Port: "8417",
-								Image: vmv1beta1.Image{
-									Repository: "docker.io/victoriametrics/vmauth",
-									Tag:        "latest",
-								},
 							},
 						},
 					},
@@ -171,24 +168,30 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 							Name: "inline-cluster-1",
 							Spec: &vmv1beta1.VMClusterSpec{
 								ClusterVersion: "v1.125.0-cluster",
-								VMSelect:       &vmv1beta1.VMSelect{},
-								VMInsert:       &vmv1beta1.VMInsert{},
-								VMStorage: &vmv1beta1.VMStorage{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									},
-								},
+								VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
+								VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
+								VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
 							},
 						},
 						{
 							Name: "inline-cluster-2",
 							Spec: &vmv1beta1.VMClusterSpec{
 								ClusterVersion: "v1.126.0-cluster",
-								VMStorage: &vmv1beta1.VMStorage{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](2),
-									},
-								},
+								VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
+								VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
+								VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
 							},
 						},
 					}},
@@ -254,13 +257,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
-					VMSelect:        &vmv1beta1.VMSelect{},
-					VMInsert:        &vmv1beta1.VMInsert{},
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
@@ -330,13 +335,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					ClusterVersion: "v1.126.0-cluster",
-					VMInsert:       &vmv1beta1.VMInsert{},
-					VMSelect:       &vmv1beta1.VMSelect{},
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, initialCluster, namespace)
@@ -391,11 +398,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				Spec: vmv1beta1.VMClusterSpec{
 					ClusterVersion:  "v1.126.0-cluster",
 					RetentionPeriod: "30d",
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
@@ -408,11 +419,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				Spec: vmv1beta1.VMClusterSpec{
 					ClusterVersion:  "v1.126.0-cluster",
 					RetentionPeriod: "30d",
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
@@ -486,11 +501,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
@@ -553,11 +572,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					ClusterVersion: initialVersion,
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
@@ -568,11 +591,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					ClusterVersion: initialVersion,
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
@@ -669,11 +696,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					ClusterVersion: "v1.126.0-cluster",
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
@@ -772,11 +803,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					Name:      "vmcluster-idempotent",
 				},
 				Spec: vmv1beta1.VMClusterSpec{
-					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
-					},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
 				},
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
@@ -879,11 +914,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			},
 			Spec: vmv1beta1.VMClusterSpec{
 				RetentionPeriod: "1",
-				VMStorage: &vmv1beta1.VMStorage{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					},
-				},
+				VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To[int32](1),
+				}},
+				VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To[int32](1),
+				}},
+				VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To[int32](1),
+				}},
 			},
 		}
 		createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
@@ -977,6 +1016,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 						{
 							Spec: &vmv1beta1.VMClusterSpec{
 								ClusterVersion: "v1.126.0-cluster",
+								VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
+								VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
+								VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
 							},
 						},
 					}},
@@ -1014,6 +1062,15 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 							},
 							Spec: &vmv1beta1.VMClusterSpec{
 								ClusterVersion: "v1.126.0-cluster",
+								VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
+								VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
+								VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								}},
 							},
 						},
 					}},

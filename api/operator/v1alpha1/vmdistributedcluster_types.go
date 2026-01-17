@@ -287,7 +287,6 @@ type VMDistributedCluster struct {
 	// status defines the observed state of VMDistributedCluster
 	// +optional
 	Status VMDistributedClusterStatus `json:"status,omitempty,omitzero"`
-
 }
 
 // SelectorLabels defines selector labels for given component kind

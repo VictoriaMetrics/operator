@@ -15,7 +15,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -186,7 +185,7 @@ func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, 
 }
 
 // updateOrCreateVMAgent ensures that the VMAgent is updated or created based on the provided VMDistributedCluster.
-func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, scheme *runtime.Scheme, vmClusters []*vmv1beta1.VMCluster) (*vmv1beta1.VMAgent, error) {
+func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) (*vmv1beta1.VMAgent, error) {
 	logger.WithContext(ctx).Info("Reconciling VMAgent")
 
 	// Get existing vmagent obj using Name and cr namespace
@@ -295,7 +294,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 
 	// Ensure owner reference is set to current CR
-	if modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmAgentObj, scheme); err != nil {
+	if modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmAgentObj, rclient.Scheme()); err != nil {
 		// setOwnerRefIfNeeded already returns wrapped error
 		return nil, fmt.Errorf("failed to set owner reference for VMAgent %s: %w", vmAgentObj.Name, err)
 	} else if modifiedOwnerRef {

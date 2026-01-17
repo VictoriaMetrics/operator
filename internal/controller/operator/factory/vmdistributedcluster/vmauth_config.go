@@ -1,10 +1,11 @@
 package vmdistributedcluster
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"reflect"
-	"sort"
+	"slices"
 	"time"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,13 +17,10 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-var defaultVMSelectPort = config.MustGetBaseConfig().VMClusterDefault.VMSelectDefault.Port
-
-func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
+func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributedCluster, vmClusters []*vmv1beta1.VMCluster) error {
 	if cr.Spec.VMAuth.Name == "" {
 		return nil
 	}
@@ -48,8 +46,11 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *v
 	})
 
 	vmAuthSpec := cr.Spec.VMAuth.Spec.DeepCopy()
+	if vmAuthSpec == nil {
+		vmAuthSpec = &vmv1beta1.VMAuthSpec{}
+	}
 
-  	vmAuthSpec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+	vmAuthSpec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
 		TargetRefs: targetRefs,
 	}
 
@@ -58,7 +59,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *v
 			Name:      cr.Spec.VMAuth.Name,
 			Namespace: cr.Namespace,
 		},
-		Spec: vmAuthSpec,
+		Spec: *vmAuthSpec,
 	}
 
 	currentVMAuth := &vmv1beta1.VMAuth{}
@@ -83,7 +84,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *v
 		return nil
 	}
 
-	currentVMAuth.Spec = vmAuthSpec
+	currentVMAuth.Spec = *vmAuthSpec
 	return rclient.Update(ctx, currentVMAuth)
 }
 

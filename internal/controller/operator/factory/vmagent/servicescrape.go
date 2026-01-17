@@ -12,16 +12,16 @@ import (
 
 func generateServiceScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	sp *vmv1beta1.CommonScrapeParams,
+	pos *parsedObjects,
 	sc *vmv1beta1.VMServiceScrape,
 	ep vmv1beta1.Endpoint,
 	i int,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	apiserverConfig := cr.Spec.APIServerConfig
-	se := cr.Spec.CommonScrapeSecurityEnforcements
-	scrapeClass := getScrapeClass(spec.ScrapeClassName, cr)
+	se := &sp.CommonScrapeSecurityEnforcements
+	scrapeClass := getScrapeClass(spec.ScrapeClassName, sp)
 	if scrapeClass != nil {
 		mergeEndpointAuthWithScrapeClass(&ep.EndpointAuth, scrapeClass)
 		mergeEndpointRelabelingsWithScrapeClass(&ep.EndpointRelabelings, scrapeClass)
@@ -39,7 +39,7 @@ func generateServiceScrapeConfig(
 		spec.DiscoveryRole = k8sSDRoleEndpoints
 	}
 
-	selectedNamespaces := getNamespacesFromNamespaceSelector(&spec.NamespaceSelector, sc.Namespace, se.IgnoreNamespaceSelectors)
+	selectedNamespaces := getNamespacesFromNamespaceSelector(&spec.NamespaceSelector, sc.Namespace, pos.IgnoreNamespaceSelectors)
 	if ep.AttachMetadata.Node == nil && spec.AttachMetadata.Node != nil {
 		ep.AttachMetadata.Node = spec.AttachMetadata.Node
 	}
@@ -48,9 +48,9 @@ func generateServiceScrapeConfig(
 	}
 	k8sSDOpts := generateK8SSDConfigOptions{
 		namespaces:         selectedNamespaces,
-		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+		shouldAddSelectors: sp.EnableKubernetesAPISelectors,
 		selectors:          spec.Selector,
-		apiServerConfig:    apiserverConfig,
+		apiServerConfig:    pos.APIServerConfig,
 		role:               spec.DiscoveryRole,
 		attachMetadata:     &ep.AttachMetadata,
 		namespace:          sc.Namespace,
@@ -68,14 +68,14 @@ func generateServiceScrapeConfig(
 		ep.SeriesLimit = spec.SeriesLimit
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, sp)
 
 	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
 
 	// Exact label matches.
-	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+	skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "service", spec.Selector, skipRelabelSelectors)
 
 	// Filter targets based on correct port for the endpoint.
@@ -243,7 +243,7 @@ func generateServiceScrapeConfig(
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
 
-	for _, trc := range cr.Spec.ServiceScrapeRelabelTemplate {
+	for _, trc := range sp.ServiceScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 

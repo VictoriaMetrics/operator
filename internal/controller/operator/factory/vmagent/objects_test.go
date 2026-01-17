@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,13 +56,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		got, _, err := selectServiceScrapes(context.TODO(), o.cr, fclient)
-		if err != nil {
-			t.Errorf("SelectServiceScrapes() error = %v", err)
-			return
-		}
+		sp := &o.cr.Spec.CommonScrapeParams
+		pos := &parsedObjects{Namespace: o.cr.Namespace}
+		assert.NoError(t, pos.selectServiceScrapes(context.TODO(), fclient, sp))
 		gotNames := []string{}
-		for _, monitorName := range got {
+		for _, monitorName := range pos.serviceScrapes.All() {
 			gotNames = append(gotNames, fmt.Sprintf("%s/%s", monitorName.Namespace, monitorName.Name))
 		}
 		sort.Strings(gotNames)
@@ -287,14 +286,12 @@ func TestSelectPodMonitors(t *testing.T) {
 	}
 	f := func(o opts) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		got, _, err := selectPodScrapes(context.TODO(), o.cr, fclient)
-		if err != nil {
-			t.Errorf("SelectPodScrapes() error = %v", err)
-			return
-		}
+		sp := &o.cr.Spec.CommonScrapeParams
+		pos := &parsedObjects{Namespace: o.cr.Namespace}
+		assert.NoError(t, pos.selectPodScrapes(context.TODO(), fclient, sp))
 		var gotNames []string
 
-		for _, k := range got {
+		for _, k := range pos.podScrapes.All() {
 			gotNames = append(gotNames, fmt.Sprintf("%s/%s", k.Namespace, k.Name))
 		}
 		sort.Strings(gotNames)
@@ -375,18 +372,16 @@ func TestSelectProbes(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		got, _, err := selectProbes(context.TODO(), o.cr, fclient)
-		if err != nil {
-			t.Errorf("SelectProbes() error = %v", err)
-			return
-		}
+		sp := &o.cr.Spec.CommonScrapeParams
+		pos := &parsedObjects{Namespace: o.cr.Namespace}
+		assert.NoError(t, pos.selectProbes(context.TODO(), fclient, sp))
 		var result []string
-		for _, k := range got {
+		for _, k := range pos.probes.All() {
 			result = append(result, fmt.Sprintf("%s/%s", k.Namespace, k.Name))
 		}
 		sort.Strings(result)
 		if !reflect.DeepEqual(result, o.want) {
-			t.Errorf("SelectProbes(): %s", cmp.Diff(got, o.want))
+			t.Errorf("SelectProbes(): %s", cmp.Diff(result, o.want))
 		}
 	}
 

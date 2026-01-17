@@ -494,7 +494,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						cr.Spec.ReplicaCount = ptr.To[int32](1)
 						cr.Spec.ShardCount = ptr.To(2)
 						cr.Spec.StatefulMode = true
-						cr.Spec.IngestOnlyMode = true
+						cr.Spec.IngestOnlyMode = ptr.To(true)
 					},
 					verify: func(cr *vmv1beta1.VMAgent) {
 						var createdSts appsv1.StatefulSet

@@ -4007,6 +4007,24 @@ VMAuth is the Schema for the vmauths API
 | spec<a href="#vmauth-spec" id="vmauth-spec">#</a><br/>_[VMAuthSpec](#vmauthspec)_ | _(Required)_<br/> |
 
 
+#### VMAuthJWTIssuer
+
+
+
+VMAuthJWTIssuer defines JWT issuer parameters
+
+Appears in: [VMAuthSpec](#vmauthspec)
+
+| Field | Description |
+| --- | --- |
+| discovery_url<a href="#vmauthjwtissuer-discovery_url" id="vmauthjwtissuer-discovery_url">#</a><br/>_string_ | _(Optional)_<br/>DiscoveryURL is OpenID Connect discovery URL |
+| jwks_url<a href="#vmauthjwtissuer-jwks_url" id="vmauthjwtissuer-jwks_url">#</a><br/>_string_ | _(Optional)_<br/>JWKsURL is the OpenID Connect JWKS URL |
+| match<a href="#vmauthjwtissuer-match" id="vmauthjwtissuer-match">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Match defines map of claims to match issuer against |
+| public_key_files<a href="#vmauthjwtissuer-public_key_files" id="vmauthjwtissuer-public_key_files">#</a><br/>_string array_ | _(Required)_<br/>PublicKeyFiles is a list of paths pointing to public key files in PEM format to use<br />for verifying JWT tokens |
+| public_key_secrets<a href="#vmauthjwtissuer-public_key_secrets" id="vmauthjwtissuer-public_key_secrets">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core) array_ | _(Required)_<br/>PublicKeySecrets is a list of k8s Secret selectors pointing to public key files in PEM format to use<br />for verifying JWT tokens |
+| sync_period<a href="#vmauthjwtissuer-sync_period" id="vmauthjwtissuer-sync_period">#</a><br/>_string_ | _(Required)_<br/>SyncPeriod defines how frequently JWT issuer keys are synchronized |
+
+
 #### VMAuthLoadBalancer
 
 
@@ -4124,6 +4142,7 @@ Appears in: [VMAuth](#vmauth)
 | initContainers<a href="#vmauthspec-initcontainers" id="vmauthspec-initcontainers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
 | internalListenPort<a href="#vmauthspec-internallistenport" id="vmauthspec-internallistenport">#</a><br/>_string_ | _(Optional)_<br/>InternalListenPort instructs vmauth to serve internal routes at given port<br />available from v0.56.0 operator<br />and v1.111.0 vmauth version<br />related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security |
 | ip_filters<a href="#vmauthspec-ip_filters" id="vmauthspec-ip_filters">#</a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters) |
+| jwt_issuers<a href="#vmauthspec-jwt_issuers" id="vmauthspec-jwt_issuers">#</a><br/>_[VMAuthJWTIssuer](#vmauthjwtissuer) array_ | _(Optional)_<br/>JWTIssuers represents configuration section for JWT issuers |
 | license<a href="#vmauthspec-license" id="vmauthspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/) |
 | load_balancing_policy<a href="#vmauthspec-load_balancing_policy" id="vmauthspec-load_balancing_policy">#</a><br/>_string_ | _(Optional)_<br/>LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded") |
 | logFormat<a href="#vmauthspec-logformat" id="vmauthspec-logformat">#</a><br/>_string_ | _(Optional)_<br/>LogFormat for VMAuth to be configured with. |
@@ -5011,6 +5030,20 @@ Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmaut
 | deny_list<a href="#vmuseripfilters-deny_list" id="vmuseripfilters-deny_list">#</a><br/>_string array_ | _(Required)_<br/> |
 
 
+#### VMUserJWTToken
+
+
+
+VMUserJWTToken describes JWT auth for user
+
+Appears in: [VMUserSpec](#vmuserspec)
+
+| Field | Description |
+| --- | --- |
+| allow_unhealthy<a href="#vmuserjwttoken-allow_unhealthy" id="vmuserjwttoken-allow_unhealthy">#</a><br/>_boolean_ | _(Required)_<br/>AllowUnhealthy defines if unhealthy JWT issuer status is ignored |
+| match<a href="#vmuserjwttoken-match" id="vmuserjwttoken-match">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Match defines claim match map |
+
+
 #### VMUserSpec
 
 
@@ -5030,6 +5063,7 @@ Appears in: [VMUser](#vmuser)
 | generatePassword<a href="#vmuserspec-generatepassword" id="vmuserspec-generatepassword">#</a><br/>_boolean_ | _(Optional)_<br/>GeneratePassword instructs operator to generate password for user<br />if spec.password if empty. |
 | headers<a href="#vmuserspec-headers" id="vmuserspec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth |
 | ip_filters<a href="#vmuserspec-ip_filters" id="vmuserspec-ip_filters">#</a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters) |
+| jwt_token<a href="#vmuserspec-jwt_token" id="vmuserspec-jwt_token">#</a><br/>_[VMUserJWTToken](#vmuserjwttoken)_ | _(Required)_<br/>JWTToken defines JWT auth section for user |
 | load_balancing_policy<a href="#vmuserspec-load_balancing_policy" id="vmuserspec-load_balancing_policy">#</a><br/>_string_ | _(Optional)_<br/>LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded") |
 | managedMetadata<a href="#vmuserspec-managedmetadata" id="vmuserspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
 | max_concurrent_requests<a href="#vmuserspec-max_concurrent_requests" id="vmuserspec-max_concurrent_requests">#</a><br/>_integer_ | _(Optional)_<br/>MaxConcurrentRequests defines max concurrent requests per user<br />300 is default value for vmauth |

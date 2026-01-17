@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	v2 "k8s.io/api/autoscaling/v2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,9 +15,9 @@ import (
 )
 
 // HPA creates or update horizontalPodAutoscaler object
-func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.HorizontalPodAutoscaler) error {
+func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *autoscalingv2.HorizontalPodAutoscaler) error {
 	return retryOnConflict(func() error {
-		var currentHPA v2.HorizontalPodAutoscaler
+		var currentHPA autoscalingv2.HorizontalPodAutoscaler
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newHPA.GetName(), Namespace: newHPA.GetNamespace()}, &currentHPA); err != nil {
 			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating HPA %s configuration", newHPA.Name))

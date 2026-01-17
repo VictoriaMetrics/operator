@@ -1,3 +1,10 @@
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: example
+spec: {}
+---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
@@ -18,8 +25,9 @@ spec:
       cpu: "500m"
       memory: "850Mi"
   unauthorizedUserAccessSpec:
-    static:
-      - urls:
-          - http://vmsingle:8429/
-          - http://vmsingle-2:8429/
-    paths: ["/*"]
+    targetRefs:
+      - crd:
+          kind: VMSingle
+          name: example
+          namespace: default
+        paths: ["/*", "/health"]

@@ -61,10 +61,14 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
-						UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-							{
-								URLPrefix: []string{"http://localhost:8490"},
-								SrcPaths:  []string{"/.*"},
+						UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+							TargetRefs: []vmv1beta1.TargetRef{
+								{
+									Static: &vmv1beta1.StaticRef{
+										URLs: []string{"http://localhost:8490"},
+									},
+									Paths: []string{"/.*"},
+								},
 							},
 						},
 					},
@@ -188,10 +192,14 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,
 						},
-						UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-							{
-								URLPrefix: []string{"http://localhost:8490"},
-								SrcPaths:  []string{"/.*"},
+						UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+							TargetRefs: []vmv1beta1.TargetRef{
+								{
+									Static: &vmv1beta1.StaticRef{
+										URLs: []string{"http://localhost:8490"},
+									},
+									Paths: []string{"/.*"},
+								},
 							},
 						},
 					},
@@ -262,10 +270,14 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-								{
-									URLPrefix: []string{"http://localhost:8490"},
-									SrcPaths:  []string{"/.*"},
+							UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+								TargetRefs: []vmv1beta1.TargetRef{
+									{
+										Static: &vmv1beta1.StaticRef{
+											URLs: []string{"http://localhost:8490"},
+										},
+										Paths: []string{"/.*"},
+									},
 								},
 							},
 						},
@@ -288,10 +300,14 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-								{
-									URLPrefix: []string{"http://localhost:8490"},
-									SrcPaths:  []string{"/.*"},
+							UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+								TargetRefs: []vmv1beta1.TargetRef{
+									{
+										Static: &vmv1beta1.StaticRef{
+											URLs: []string{"http://localhost:8490"},
+										},
+										Paths: []string{"/.*"},
+									},
 								},
 							},
 						},
@@ -345,10 +361,14 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
-							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-								{
-									URLPrefix: []string{"http://localhost:8490"},
-									SrcPaths:  []string{"/.*"},
+							UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+								TargetRefs: []vmv1beta1.TargetRef{
+									{
+										Static: &vmv1beta1.StaticRef{
+											URLs: []string{"http://localhost:8490"},
+										},
+										Paths: []string{"/.*"},
+									},
 								},
 							},
 						},
@@ -394,10 +414,14 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 								MaxUnavailable: &intstr.IntOrString{IntVal: 1},
 							},
-							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-								{
-									URLPrefix: []string{"http://localhost:8490"},
-									SrcPaths:  []string{"/.*"},
+							UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+								TargetRefs: []vmv1beta1.TargetRef{
+									{
+										Static: &vmv1beta1.StaticRef{
+											URLs: []string{"http://localhost:8490"},
+										},
+										Paths: []string{"/.*"},
+									},
 								},
 							},
 						},
@@ -471,10 +495,14 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-								{
-									URLPrefix: []string{"http://localhost:8490"},
-									SrcPaths:  []string{"/.*"},
+							UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+								TargetRefs: []vmv1beta1.TargetRef{
+									{
+										Static: &vmv1beta1.StaticRef{
+											URLs: []string{"http://localhost:8490"},
+										},
+										Paths: []string{"/.*"},
+									},
 								},
 							},
 						},
@@ -544,10 +572,14 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-								{
-									URLPrefix: []string{"http://localhost:8490"},
-									SrcPaths:  []string{"/.*"},
+							UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+								TargetRefs: []vmv1beta1.TargetRef{
+									{
+										Static: &vmv1beta1.StaticRef{
+											URLs: []string{"http://localhost:8490"},
+										},
+										Paths: []string{"/.*"},
+									},
 								},
 							},
 						},
@@ -607,10 +639,14 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
-							UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-								{
-									URLPrefix: []string{"http://localhost:8490"},
-									SrcPaths:  []string{"/.*"},
+							UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+								TargetRefs: []vmv1beta1.TargetRef{
+									{
+										Static: &vmv1beta1.StaticRef{
+											URLs: []string{"http://localhost:8490"},
+										},
+										Paths: []string{"/.*"},
+									},
 								},
 							},
 						},

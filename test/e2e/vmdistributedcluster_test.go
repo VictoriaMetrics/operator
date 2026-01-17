@@ -66,11 +66,11 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 
 	Context("create", func() {
 		It("should successfully create a VMDistributedCluster with inline VMAgent spec", func() {
-			By("creating a VMCluster")
-			vmCluster := &vmv1beta1.VMCluster{
+			By("creating 2 VMClusters")
+			vmCluster1 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "vmcluster-inline-vmauth",
+					Name:      "inline-vmagent-vmcluster-1",
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
@@ -85,7 +85,27 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					}},
 				},
 			}
-			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
+
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "inline-vmagent-vmcluster-2",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 
 			By("creating a VMDistributedCluster with inline VMAgent spec")
 			namespacedName.Name = "distributed-cluster-with-inline-vmagent"
@@ -116,7 +136,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 						},
 					},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster1.Name}},
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster2.Name}},
 					}},
 				},
 			}
@@ -249,11 +270,11 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 		})
 
 		It("should successfully create a VMDistributedCluster with inline VMAuth spec", func() {
-			By("creating a VMCluster")
-			vmCluster := &vmv1beta1.VMCluster{
+			By("creating VMClusters")
+			vmCluster1 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "vmcluster-inline-vmauth",
+					Name:      "inline-vmauth-vmcluster1",
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
@@ -268,7 +289,26 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					}},
 				},
 			}
-			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "inline-vmauth-vmcluster2",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 
 			By("creating a VMDistributedCluster with inline VMAuth spec")
 			inlineVMAuthName := "inline-vmauth-proxy"
@@ -299,7 +339,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 						},
 					},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster1.Name}},
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster2.Name}},
 					}},
 				},
 			}
@@ -328,10 +369,10 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 
 		It("should successfully create a VMDistributedCluster with VMCluster references and override spec", func() {
 			By("creating an initial VMCluster")
-			initialCluster := &vmv1beta1.VMCluster{
+			vmCluster1 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "referenced-cluster",
+					Name:      "referenced-cluster-1",
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					ClusterVersion: "v1.126.0-cluster",
@@ -346,7 +387,27 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					}},
 				},
 			}
-			createVMClusterAndEnsureOperational(ctx, k8sClient, initialCluster, namespace)
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
+
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "referenced-cluster-2",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: "v1.126.0-cluster",
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 
 			By("creating a VMDistributedCluster referencing the existing VMCluster with an override spec")
 			namespacedName.Name = "ref-override-cluster"
@@ -363,7 +424,13 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
-							Ref: &corev1.LocalObjectReference{Name: initialCluster.Name},
+							Ref: &corev1.LocalObjectReference{Name: vmCluster1.Name},
+							OverrideSpec: &apiextensionsv1.JSON{
+								Raw: []byte(`{"retentionPeriod": "10h"}`),
+							},
+						},
+						{
+							Ref: &corev1.LocalObjectReference{Name: vmCluster2.Name},
 							OverrideSpec: &apiextensionsv1.JSON{
 								Raw: []byte(`{"retentionPeriod": "10h"}`),
 							},
@@ -380,11 +447,11 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualVMDistributedClusterExpandingTimeout).WithContext(ctx).Should(Succeed())
-			verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*initialCluster}, namespace)
+			verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*vmCluster1}, namespace)
 
 			By("verifying that the referenced VMCluster has the override applied")
 			var updatedCluster vmv1beta1.VMCluster
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: initialCluster.Name, Namespace: namespace}, &updatedCluster)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, &updatedCluster)).To(Succeed())
 			Expect(updatedCluster.Spec.RetentionPeriod).To(Equal("10h"))
 		})
 
@@ -514,6 +581,26 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-2",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
+
 			namespacedName.Name = "distributed-agent-upgrade"
 			vmAgentName := "global-vmagent"
 			cr := &vmv1alpha1.VMDistributedCluster{
@@ -529,6 +616,11 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 						{
 							Ref: &corev1.LocalObjectReference{
 								Name: vmCluster1.Name,
+							},
+						},
+						{
+							Ref: &corev1.LocalObjectReference{
+								Name: vmCluster2.Name,
 							},
 						},
 					}},
@@ -689,10 +781,10 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 
 		It("should skip reconciliation when VMDistributedCluster is paused", func() {
 			By("creating a VMCluster")
-			vmCluster := &vmv1beta1.VMCluster{
+			vmCluster1 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "vmcluster-paused",
+					Name:      "vmcluster-paused-1",
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					ClusterVersion: "v1.126.0-cluster",
@@ -707,7 +799,27 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					}},
 				},
 			}
-			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
+
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-paused-2",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: "v1.126.0-cluster",
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 
 			By("creating a VMDistributedCluster")
 			namespacedName.Name = "distributed-paused"
@@ -723,7 +835,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster1.Name}},
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster2.Name}},
 					},
 					},
 				}}
@@ -734,7 +847,7 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributedCluster{}, namespacedName)
 			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
-			verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*vmCluster}, namespace)
+			verifyOwnerReferences(ctx, cr, []vmv1beta1.VMCluster{*vmCluster1}, namespace)
 
 			By("pausing the VMDistributedCluster")
 			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
@@ -748,8 +861,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
 
 			By("attempting to scale the VMCluster while paused")
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
-			initialReplicas := *vmCluster.Spec.VMStorage.ReplicaCount
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, vmCluster1)).To(Succeed())
+			initialReplicas := *vmCluster1.Spec.VMStorage.ReplicaCount
 
 			// Re-fetch the latest VMDistributedCluster object to avoid conflict errors
 			Eventually(func() error {
@@ -764,8 +877,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			}, eventualVMDistributedClusterExpandingTimeout).Should(Succeed())
 
 			Consistently(func() int32 {
-				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
-				return *vmCluster.Spec.VMStorage.ReplicaCount
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, vmCluster1)).To(Succeed())
+				return *vmCluster1.Spec.VMStorage.ReplicaCount
 			}, "10s", "1s").Should(Equal(initialReplicas))
 
 			By("unpausing the VMDistributedCluster")
@@ -785,8 +898,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 
 			By("verifying reconciliation resumes after unpausing")
 			Eventually(func() int32 {
-				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, vmCluster)).To(Succeed())
-				return *vmCluster.Spec.VMStorage.ReplicaCount
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, vmCluster1)).To(Succeed())
+				return *vmCluster1.Spec.VMStorage.ReplicaCount
 			}, eventualDeploymentAppReadyTimeout).Should(Equal(initialReplicas + 1))
 		})
 
@@ -797,10 +910,10 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 			)
 
 			By("creating a VMCluster for idempotency test")
-			vmCluster := &vmv1beta1.VMCluster{
+			vmCluster1 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "vmcluster-idempotent",
+					Name:      "vmcluster-idempotent-1",
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -814,7 +927,26 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					}},
 				},
 			}
-			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
+
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "vmcluster-idempotent-2",
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					}},
+				},
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 
 			By("creating a VMDistributedCluster with this VMCluster")
 			namespacedName.Name = "distributed-idempotent"
@@ -830,7 +962,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-						{Ref: &corev1.LocalObjectReference{Name: vmCluster.Name}},
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster1.Name}},
+						{Ref: &corev1.LocalObjectReference{Name: vmCluster2.Name}},
 					}},
 				},
 			}
@@ -844,7 +977,7 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 
 			// Capture resource versions of key child resources
 			var beforeCluster vmv1beta1.VMCluster
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, &beforeCluster)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, &beforeCluster)).To(Succeed())
 			clusterRV := beforeCluster.ResourceVersion
 
 			var beforeAgent vmv1beta1.VMAgent
@@ -879,7 +1012,7 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 
 			// Verify resource versions have not changed (no updates performed)
 			var afterCluster vmv1beta1.VMCluster
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: namespace}, &afterCluster)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, &afterCluster)).To(Succeed())
 			Expect(afterCluster.ResourceVersion).To(Equal(clusterRV), "VMCluster resource version should not change")
 
 			var afterAgent vmv1beta1.VMAgent
@@ -904,13 +1037,14 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 		namespacedName.Name = "status-transition-check"
 		vmAgentName := "status-transition-vmagent"
 		vmAuthName := "status-transition-vmauth"
-		vmClusterName := "status-transition-vmcluster"
+		vmCluster1Name := "status-transition-vmcluster-1"
+		vmCluster2Name := "status-transition-vmcluster-2"
 
 		By("creating a VMCluster")
-		vmCluster := &vmv1beta1.VMCluster{
+		vmCluster1 := &vmv1beta1.VMCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: namespace,
-				Name:      vmClusterName,
+				Name:      vmCluster1Name,
 			},
 			Spec: vmv1beta1.VMClusterSpec{
 				RetentionPeriod: "1",
@@ -925,7 +1059,27 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				}},
 			},
 		}
-		createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
+		createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
+
+		vmCluster2 := &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      vmCluster2Name,
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod: "1",
+				VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To[int32](1),
+				}},
+				VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To[int32](1),
+				}},
+				VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To[int32](1),
+				}},
+			},
+		}
+		createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 
 		By("creating a VMDistributedCluster")
 		cr := &vmv1alpha1.VMDistributedCluster{
@@ -940,7 +1094,8 @@ var _ = Describe("e2e vmdistributedcluster", Ordered, Label("vm", "vmdistributed
 				VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 				VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 				Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
-					{Ref: &corev1.LocalObjectReference{Name: vmClusterName}},
+					{Ref: &corev1.LocalObjectReference{Name: vmCluster1Name}},
+					{Ref: &corev1.LocalObjectReference{Name: vmCluster2Name}},
 				}},
 			},
 		}

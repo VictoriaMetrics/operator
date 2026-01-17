@@ -27,54 +27,30 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, _ *v
 		return nil
 	}
 
-	var vmSelectURLs []string
+	var targetRefs []vmv1beta1.TargetRef
 	for _, cluster := range vmClusters {
-		vmHost := cluster.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		vmPort := ""
-		if cluster.Spec.VMSelect != nil {
-			vmPort = cluster.Spec.VMSelect.Port
-		}
-		if cluster.Spec.RequestsLoadBalancer.Enabled && !cluster.Spec.RequestsLoadBalancer.DisableSelectBalancing {
-			vmHost = cluster.PrefixedName(vmv1beta1.ClusterComponentBalancer)
-			vmPort = cluster.Spec.RequestsLoadBalancer.Spec.Port
-		}
-		if vmPort == "" {
-			vmPort = defaultVMSelectPort
-		}
-		url := fmt.Sprintf("http://%s.%s.svc:%s/", vmHost, cluster.Namespace, vmPort)
-		vmSelectURLs = append(vmSelectURLs, url)
-	}
-	sort.Strings(vmSelectURLs)
-
-	vmAuthSpec := vmv1beta1.VMAuthSpec{}
-	if cr.Spec.VMAuth.Spec != nil {
-		src := cr.Spec.VMAuth.Spec
-		vmAuthSpec.PodMetadata = src.PodMetadata
-		vmAuthSpec.ServiceScrapeSpec = src.ServiceScrapeSpec
-		vmAuthSpec.LogFormat = src.LogFormat
-		vmAuthSpec.LogLevel = src.LogLevel
-		vmAuthSpec.License = src.License
-		vmAuthSpec.PodDisruptionBudget = src.PodDisruptionBudget
-		vmAuthSpec.UpdateStrategy = src.UpdateStrategy
-		vmAuthSpec.RollingUpdate = src.RollingUpdate
-		vmAuthSpec.CommonApplicationDeploymentParams = src.CommonApplicationDeploymentParams
-		vmAuthSpec.CommonDefaultableParams = src.CommonDefaultableParams
-		vmAuthSpec.EmbeddedProbes = src.EmbeddedProbes
-		vmAuthSpec.CommonConfigReloaderParams = src.CommonConfigReloaderParams
-	}
-
-	vmAuthSpec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
-		URLMap: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-			{
-				URLMapCommon: vmv1beta1.URLMapCommon{
-					DropSrcPathPrefixParts: ptr.To(0),
-					LoadBalancingPolicy:    ptr.To("first_available"),
-					RetryStatusCodes:       []int{500, 502, 503},
-				},
-				SrcPaths:  []string{"/select/.+", "/admin/tenants"},
-				URLPrefix: vmv1beta1.StringOrArray(vmSelectURLs),
+		targetRefs = append(targetRefs, vmv1beta1.TargetRef{
+			URLMapCommon: vmv1beta1.URLMapCommon{
+				DropSrcPathPrefixParts: ptr.To(0),
+				LoadBalancingPolicy:    ptr.To("first_available"),
+				RetryStatusCodes:       []int{500, 502, 503},
 			},
-		},
+			Paths: []string{"/select/.+", "/admin/tenants"},
+			CRD: &vmv1beta1.CRDRef{
+				Kind:      "VMCluster/vmselect",
+				Name:      cluster.Name,
+				Namespace: cluster.Namespace,
+			},
+		})
+	}
+	slices.SortFunc(targetRefs, func(a, b vmv1beta1.TargetRef) int {
+		return cmp.Compare(a.CRD.Name, b.CRD.Name)
+	})
+
+	vmAuthSpec := cr.Spec.VMAuth.Spec.DeepCopy()
+
+  	vmAuthSpec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+		TargetRefs: targetRefs,
 	}
 
 	newVMAuth := &vmv1beta1.VMAuth{

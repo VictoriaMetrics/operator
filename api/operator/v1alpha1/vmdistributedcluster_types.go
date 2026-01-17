@@ -288,8 +288,6 @@ type VMDistributedCluster struct {
 	// +optional
 	Status VMDistributedClusterStatus `json:"status,omitempty,omitzero"`
 
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMDistributedClusterSpec `json:"-" yaml:"-"`
 }
 
 // SelectorLabels defines selector labels for given component kind

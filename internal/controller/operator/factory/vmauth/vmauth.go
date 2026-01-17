@@ -561,13 +561,24 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 
 func setInternalSvcPort(cr *vmv1beta1.VMAuth) func(svc *corev1.Service) {
 	return func(svc *corev1.Service) {
+		hasPortByNumber := func(number int32) bool {
+			for _, port := range svc.Spec.Ports {
+				if port.Port == number {
+					return true
+				}
+			}
+			return false
+		}
+
 		if len(cr.Spec.InternalListenPort) > 0 {
 			p := intstr.Parse(cr.Spec.InternalListenPort)
-			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-				Name:       internalPortName,
-				Port:       p.IntVal,
-				TargetPort: p,
-			})
+			if !hasPortByNumber(p.IntVal) {
+				svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+					Name:       internalPortName,
+					Port:       p.IntVal,
+					TargetPort: p,
+				})
+			}
 		}
 	}
 }

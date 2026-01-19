@@ -34,7 +34,7 @@ var (
 	initConf sync.Once
 
 	defaultEnvs = map[string]string{
-		"VM_METRICS_VERSION":  "v1.133.0",
+		"VM_METRICS_VERSION":  "v1.134.0",
 		"VM_LOGS_VERSION":     "v1.43.1",
 		"VM_ANOMALY_VERSION":  "v1.28.2",
 		"VM_TRACES_VERSION":   "v0.6.0",

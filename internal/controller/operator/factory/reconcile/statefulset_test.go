@@ -431,12 +431,12 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		assert.NoErrorf(t, err, "failed to create sts")
 
 		// expect 1 create
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
+		assert.Equal(t, 1, clientStats.CreateCalls.Count(sts))
 		// expect 0 update
 		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 0 update")
 
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
-		assert.Equal(t, int64(0), clientStats.UpdateCalls.Load())
+		assert.Equal(t, 1, clientStats.CreateCalls.Count(sts))
+		assert.Equal(t, 0, clientStats.UpdateCalls.Count(sts))
 
 		// expect 1 UpdateCalls
 		reloadSts()
@@ -444,23 +444,23 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 
 		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 1 update")
 
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
-		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
+		assert.Equal(t, 1, clientStats.CreateCalls.Count(sts))
+		assert.Equal(t, 1, clientStats.UpdateCalls.Count(sts))
 
 		// expected still same 1 update
 		reloadSts()
 
 		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect still 1 update")
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
-		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
+		assert.Equal(t, 1, clientStats.CreateCalls.Count(sts))
+		assert.Equal(t, 1, clientStats.UpdateCalls.Count(sts))
 
 		// expected 2 updates
 		prevSts.Spec.Template.Annotations = sts.Spec.Template.Annotations
 		sts.Spec.Template.Annotations = nil
 
 		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 2 updates")
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
-		assert.Equal(t, int64(2), clientStats.UpdateCalls.Load())
+		assert.Equal(t, 1, clientStats.CreateCalls.Count(sts))
+		assert.Equal(t, 2, clientStats.UpdateCalls.Count(sts))
 	}
 
 	f(&appsv1.StatefulSet{

@@ -450,7 +450,7 @@ var _ = Describe("e2e VMDistributed", Ordered, Label("vm", "vmdistributed"), fun
 		})
 
 		It("should successfully create a VMDistributed with VMCluster references and override spec", func() {
-			By("creating an initial VMCluster")
+			By("creating an initial VMClusters")
 			vmCluster1 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -476,7 +476,6 @@ var _ = Describe("e2e VMDistributed", Ordered, Label("vm", "vmdistributed"), fun
 					Name:      "referenced-cluster-2",
 				},
 				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: "v1.126.0-cluster",
 					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ReplicaCount: ptr.To[int32](1),
 					}},
@@ -510,13 +509,13 @@ var _ = Describe("e2e VMDistributed", Ordered, Label("vm", "vmdistributed"), fun
 						{
 							Ref: &corev1.LocalObjectReference{Name: vmCluster1.Name},
 							OverrideSpec: &apiextensionsv1.JSON{
-								Raw: []byte(`{"retentionPeriod": "10h"}`),
+								Raw: []byte(`{"retentionPeriod": "1M"}`),
 							},
 						},
 						{
 							Ref: &corev1.LocalObjectReference{Name: vmCluster2.Name},
 							OverrideSpec: &apiextensionsv1.JSON{
-								Raw: []byte(`{"retentionPeriod": "10h"}`),
+								Raw: []byte(`{"retentionPeriod": "2M"}`),
 							},
 						},
 					}},
@@ -531,12 +530,15 @@ var _ = Describe("e2e VMDistributed", Ordered, Label("vm", "vmdistributed"), fun
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
 			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
-			verifyOwnerReferences(ctx, cr, []*vmv1beta1.VMCluster{vmCluster1}, namespace)
+			verifyOwnerReferences(ctx, cr, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2}, namespace)
 
-			By("verifying that the referenced VMCluster has the override applied")
+			By("verifying that the referenced VMClusters have the override applied")
 			var updatedCluster vmv1beta1.VMCluster
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, &updatedCluster)).To(Succeed())
-			Expect(updatedCluster.Spec.RetentionPeriod).To(Equal("10h"))
+			Expect(updatedCluster.Spec.RetentionPeriod).To(Equal("1M"))
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster2.Name, Namespace: namespace}, &updatedCluster)).To(Succeed())
+			Expect(updatedCluster.Spec.RetentionPeriod).To(Equal("2M"))
 		})
 
 		It("should apply global overrides before cluster-specific overrides", func() {

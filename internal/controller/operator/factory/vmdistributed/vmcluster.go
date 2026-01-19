@@ -197,8 +197,7 @@ func mergeVMClusterSpecs(baseSpec, zoneSpec vmv1beta1.VMClusterSpec) (vmv1beta1.
 	return mergedSpec, modified, nil
 }
 
-// waitForVMClusterReady polls VMCluster until it reports UpdateStatusOperational or deadline is hit.
-func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration) error {
+func waitForVMClusterToReachStatus(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration, status vmv1beta1.UpdateStatus) error {
 	var lastStatus vmv1beta1.UpdateStatus
 	// Fetch VMCluster in a loop until it has UpdateStatusOperational status
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
@@ -209,7 +208,7 @@ func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster
 			return false, nil
 		}
 		lastStatus = vmCluster.Status.UpdateStatus
-		return vmCluster.GetGeneration() == vmCluster.Status.ObservedGeneration && vmCluster.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
+		return vmCluster.GetGeneration() == vmCluster.Status.ObservedGeneration && vmCluster.Status.UpdateStatus == status, nil
 	})
 	if err != nil {
 		return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w, current status: %s", vmCluster.Namespace, vmCluster.Name, err, lastStatus)
@@ -217,6 +216,14 @@ func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster
 
 	return nil
 }
+
+func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration) error {
+	return waitForVMClusterToReachStatus(ctx, rclient, vmCluster, deadline, vmv1beta1.UpdateStatusOperational)
+}
+
+// func waitForVMClusterExpanding(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration) error {
+// 	return waitForVMClusterToReachStatus(ctx, rclient, vmCluster, deadline, vmv1beta1.UpdateStatusExpanding)
+// }
 
 // setOwnerRefIfNeeded ensures obj has VMDistributed owner reference set.
 func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributed, obj client.Object, scheme *runtime.Scheme) (bool, error) {

@@ -202,6 +202,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 			if err := rclient.Update(ctx, vmClusterObj); err != nil {
 				return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 			}
+
+			// if err := waitForVMClusterExpanding(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
+			// 	return fmt.Errorf("failed to wait for vmcluster ready: %w", err)
+			// }
 		}
 
 		// Wait for VMCluster to be ready

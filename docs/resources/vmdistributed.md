@@ -25,8 +25,8 @@ The `VMDistributed` resource allows you to configure various aspects of your Vic
 *   `readyDeadline`: The deadline for each `VMCluster` to become ready during an update. Default is `5m`.
 *   `vmAgentFlushDeadline`: The deadline for `VMAgent` to flush its accumulated queue before proceeding to the next cluster update. Default is `1m`.
 *   `zoneUpdatePause`: The time the operator should wait between zone updates to ensure a smooth transition. Default is `1m`.
-*   `vmagent`: Configuration for a `VMAgent` instance that will be configured to route traffic to managed `VMCluster` instances. It acts as a global write path entrypoint.
-*   `vmauth`: Configuration for a `VMAuth` instance that acts as a proxy/load-balancer for the `vmselect` components of the managed clusters. It acts as a global read path entrypoint.
+*   `vmagent`: Configuration for a `VMAgent` instance that will be configured to route traffic to managed `VMCluster` instances. It acts as a global write path entry point.
+*   `vmauth`: Configuration for a `VMAuth` instance that acts as a proxy/load-balancer for the `vmselect` components of the managed clusters. It acts as a global read path entry point.
 *   `zones`: Defines the set of VictoriaMetrics clusters that form the distributed setup.
     *   `globalOverrideSpec`: An optional JSON object that specifies an override to the `VMClusterSpec` applied to **all** clusters in the `zones` list.
     *   `vmclusters`: A list of `VMClusterRefOrSpec` objects defining the individual clusters.
@@ -133,7 +133,19 @@ and set vmauth pointing to global read vmauth:
     name: vmauth-global-read-<release name>
 ```
 
-This will also create a global write VMAgent, pointing to VMCluster loadbalancers automatically.
+VMAgents can be referenced by a label selector:
+```
+  vmagent:
+    labelSelector:
+      matchLabels:
+        app: vmagent
+```
+
+### Ownership and references
+
+VMDistributed owns VMAgents, and VMAuths created or referenced by the distributed chart. These objects are created with the same namespace as the VMDistributed and will be deleted when the VMDistributed is deleted.
+
+When VMCluster is referenced via `ref`, these objects will have `ownerRef` set to the VMDistributed, but they will not be deleted when the VMDistributed is deleted. Instead, only `ownerRef` will be removed from them.
 
 ### Current shortcomings
 - Only `VMCluster` objects are supported for distributed management.

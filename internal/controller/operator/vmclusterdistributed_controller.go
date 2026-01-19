@@ -97,7 +97,7 @@ func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	r.Client.Scheme().Default(instance)
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := VMDistributed.CreateOrUpdate(ctx, instance, r, httpTimeout); err != nil {
+		if err := vmdistributed.CreateOrUpdate(ctx, instance, r, httpTimeout); err != nil {
 			return result, fmt.Errorf("VMDistributed %s update failed: %w", instance.Name, err)
 		}
 

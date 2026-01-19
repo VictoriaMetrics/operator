@@ -50,6 +50,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1
 		vmAuthSpec = &vmv1beta1.VMAuthSpec{}
 	}
 
+	vmAuthSpec.SelectAllByDefault = true
 	vmAuthSpec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
 		TargetRefs: targetRefs,
 	}

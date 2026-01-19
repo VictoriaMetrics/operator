@@ -1013,10 +1013,16 @@ func addVMDistributedDefaults(objI any) {
 	}
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VMAuthDefault)
+	if cr.Spec.VMAuth.Spec == nil {
+		cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{}
+	}
 	addDefaultsToCommonParams(&cr.Spec.VMAuth.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.VMAuth.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.VMAuth.Spec.UseDefaultResources, false))
 
 	cv = config.ApplicationDefaults(c.VMAgentDefault)
+	if cr.Spec.VMAgent.Spec == nil {
+		cr.Spec.VMAgent.Spec = &vmv1alpha1.CustomVMAgentSpec{}
+	}
 	addDefaultsToCommonParams(&cr.Spec.VMAgent.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 
 	for i := range cr.Spec.Zones.VMClusters {

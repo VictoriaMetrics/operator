@@ -35,7 +35,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	VMDistributed "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributed"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributed"
 )
 
 const (
@@ -58,7 +58,7 @@ func (r *VMDistributedReconciler) Init(rclient client.Client, l logr.Logger, sc 
 	r.BaseConf = cf
 }
 
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributeds,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributed,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributeds/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=VMDistributeds/finalizers,verbs=update
 func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {

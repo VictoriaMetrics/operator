@@ -437,14 +437,14 @@ var _ = Describe("e2e VMDistributed", Ordered, Label("vm", "vmdistributed"), fun
 			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			By("verifying that the inline VMAuth is created and operational")
-			var createdVMAuthLBDeployment appsv1.Deployment
-			vmAuthNsn := types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: namespace}
-			Expect(k8sClient.Get(ctx, vmAuthNsn, &createdVMAuthLBDeployment)).To(Succeed())
-			Expect(*createdVMAuthLBDeployment.Spec.Replicas).To(Equal(int32(1)))
+			var createdVMAuth vmv1beta1.VMAuth
+			vmAuthNsn := types.NamespacedName{Name: inlineVMAuthName, Namespace: namespace}
+			Expect(k8sClient.Get(ctx, vmAuthNsn, &createdVMAuth)).To(Succeed())
+			Expect(createdVMAuth.Spec.CommonApplicationDeploymentParams.ReplicaCount).To(HaveValue(Equal(int32(1))))
 
 			By("verifying VMAuth has correct owner reference")
-			Expect(createdVMAuthLBDeployment.GetOwnerReferences()).To(HaveLen(1))
-			ownerRef := createdVMAuthLBDeployment.GetOwnerReferences()[0]
+			Expect(createdVMAuth.GetOwnerReferences()).To(HaveLen(1))
+			ownerRef := createdVMAuth.GetOwnerReferences()[0]
 			Expect(ownerRef.Kind).To(Equal("VMDistributed"))
 			Expect(ownerRef.Name).To(Equal(cr.Name))
 		})

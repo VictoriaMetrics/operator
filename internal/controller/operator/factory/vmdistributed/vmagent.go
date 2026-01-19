@@ -269,6 +269,8 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 		desiredVMAgentSpec.RemoteWriteSettings = &vmv1beta1.VMAgentRemoteWriteSettings{}
 	}
 	desiredVMAgentSpec.RemoteWriteSettings.UseMultiTenantMode = true
+
+	newVMAgentSpec.IngestOnlyMode = true
 	newVMAgentSpec.RemoteWriteSettings = desiredVMAgentSpec.RemoteWriteSettings
 	newVMAgentSpec.RemoteWrite = make([]vmv1beta1.VMAgentRemoteWriteSpec, len(desiredVMAgentSpec.RemoteWrite))
 	for i, remoteWrite := range desiredVMAgentSpec.RemoteWrite {

@@ -36,10 +36,10 @@ type VMDistributedsGetter interface {
 
 // VMDistributedInterface has methods to work with VMDistributed resources.
 type VMDistributedInterface interface {
-	Create(ctx context.Context, VMDistributed *operatorv1alpha1.VMDistributed, opts v1.CreateOptions) (*operatorv1alpha1.VMDistributed, error)
-	Update(ctx context.Context, VMDistributed *operatorv1alpha1.VMDistributed, opts v1.UpdateOptions) (*operatorv1alpha1.VMDistributed, error)
+	Create(ctx context.Context, vMDistributed *operatorv1alpha1.VMDistributed, opts v1.CreateOptions) (*operatorv1alpha1.VMDistributed, error)
+	Update(ctx context.Context, vMDistributed *operatorv1alpha1.VMDistributed, opts v1.UpdateOptions) (*operatorv1alpha1.VMDistributed, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, VMDistributed *operatorv1alpha1.VMDistributed, opts v1.UpdateOptions) (*operatorv1alpha1.VMDistributed, error)
+	UpdateStatus(ctx context.Context, vMDistributed *operatorv1alpha1.VMDistributed, opts v1.UpdateOptions) (*operatorv1alpha1.VMDistributed, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*operatorv1alpha1.VMDistributed, error)
@@ -49,14 +49,14 @@ type VMDistributedInterface interface {
 	VMDistributedExpansion
 }
 
-// VMDistributeds implements VMDistributedInterface
-type VMDistributeds struct {
+// vMDistributeds implements VMDistributedInterface
+type vMDistributeds struct {
 	*gentype.ClientWithList[*operatorv1alpha1.VMDistributed, *operatorv1alpha1.VMDistributedList]
 }
 
 // newVMDistributeds returns a VMDistributeds
-func newVMDistributeds(c *OperatorV1alpha1Client, namespace string) *VMDistributeds {
-	return &VMDistributeds{
+func newVMDistributeds(c *OperatorV1alpha1Client, namespace string) *vMDistributeds {
+	return &vMDistributeds{
 		gentype.NewClientWithList[*operatorv1alpha1.VMDistributed, *operatorv1alpha1.VMDistributedList](
 			"vmdistributeds",
 			c.RESTClient(),

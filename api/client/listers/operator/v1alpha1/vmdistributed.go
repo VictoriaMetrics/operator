@@ -42,7 +42,7 @@ type vMDistributedLister struct {
 
 // NewVMDistributedLister returns a new VMDistributedLister.
 func NewVMDistributedLister(indexer cache.Indexer) VMDistributedLister {
-	return &vMDistributedLister{listers.New[*operatorv1alpha1.VMDistributed](indexer, operatorv1alpha1.Resource("VMDistributed"))}
+	return &vMDistributedLister{listers.New[*operatorv1alpha1.VMDistributed](indexer, operatorv1alpha1.Resource("vmdistributed"))}
 }
 
 // VMDistributeds returns an object that can list and get VMDistributeds.
@@ -62,7 +62,7 @@ type VMDistributedNamespaceLister interface {
 	VMDistributedNamespaceListerExpansion
 }
 
-// VMDistributedNamespaceLister implements the VMDistributedNamespaceLister
+// vMDistributedNamespaceLister implements the VMDistributedNamespaceLister
 // interface.
 type vMDistributedNamespaceLister struct {
 	listers.ResourceIndexer[*operatorv1alpha1.VMDistributed]

@@ -35,7 +35,7 @@ func newFakeVMDistributeds(fake *FakeOperatorV1alpha1, namespace string) operato
 			fake.Fake,
 			namespace,
 			v1alpha1.SchemeGroupVersion.WithResource("vmdistributeds"),
-			v1alpha1.SchemeGroupVersion.WithKind("vmdistributed"),
+			v1alpha1.SchemeGroupVersion.WithKind("VMDistributed"),
 			func() *v1alpha1.VMDistributed { return &v1alpha1.VMDistributed{} },
 			func() *v1alpha1.VMDistributedList { return &v1alpha1.VMDistributedList{} },
 			func(dst, src *v1alpha1.VMDistributedList) { dst.ListMeta = src.ListMeta },

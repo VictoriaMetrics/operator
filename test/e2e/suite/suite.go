@@ -173,7 +173,6 @@ func InitOperatorProcess() {
 			for _, t := range []string{"LIMIT", "REQUEST"} {
 				for rn, rv := range resources {
 					envName := fmt.Sprintf("VM_%s_RESOURCE_%s_%s", prefix, t, rn)
-					fmt.Println(envName, rv)
 					Expect(os.Setenv(envName, rv)).To(Succeed())
 				}
 			}

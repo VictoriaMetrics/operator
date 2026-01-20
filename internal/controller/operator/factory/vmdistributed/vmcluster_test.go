@@ -43,20 +43,6 @@ func TestMergeMapsRecursive_BasicAndNil(t *testing.T) {
 	assert.Equal(t, "added", base["a"].(map[string]interface{})["z"])
 	assert.Equal(t, "root-keep", base["d"])
 	assert.Equal(t, "root-added", base["e"])
-
-	// nil override removes keys
-	override2 := map[string]interface{}{
-		"a": map[string]interface{}{
-			"z": nil,
-		},
-		"d": nil,
-	}
-	modified2 := mergeMapsRecursive(base, override2)
-	assert.True(t, modified2)
-	_, ok := base["a"].(map[string]interface{})["z"]
-	assert.False(t, ok)
-	_, ok = base["d"]
-	assert.False(t, ok)
 }
 
 func TestMergeVMClusterSpecs_DeepMerge(t *testing.T) {

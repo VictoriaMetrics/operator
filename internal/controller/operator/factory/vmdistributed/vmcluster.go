@@ -119,20 +119,13 @@ func ApplyOverrideSpec(baseSpec vmv1beta1.VMClusterSpec, overrideSpec *apiextens
 // mergeMapsRecursive deeply merges overrideMap into baseMap.
 // It handles nested maps (which correspond to nested structs after JSON unmarshal).
 // Values from overrideMap overwrite values in baseMap.
-// If an override value is nil, it explicitly clears the corresponding field in baseMap.
 // It returns a boolean indicating if the baseMap was modified.
 func mergeMapsRecursive(baseMap, overrideMap map[string]interface{}) bool {
 	modified := false
+	if baseMap == nil {
+		baseMap = make(map[string]any)
+	}
 	for key, overrideValue := range overrideMap {
-		if overrideValue == nil {
-			if _, ok := baseMap[key]; ok {
-				// If override explicitly sets a field to nil and it existed in base, delete it.
-				delete(baseMap, key)
-				modified = true
-			}
-			continue
-		}
-
 		if baseVal, ok := baseMap[key]; ok {
 			if baseMapNested, isBaseMap := baseVal.(map[string]interface{}); isBaseMap {
 				if overrideMapNested, isOverrideMap := overrideValue.(map[string]interface{}); isOverrideMap {

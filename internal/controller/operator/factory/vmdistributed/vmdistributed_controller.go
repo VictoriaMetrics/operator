@@ -108,12 +108,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 
 		// Apply GlobalOverrideSpec if it is set
 		if cr.Spec.Zones.GlobalOverrideSpec != nil {
-			var localModifiedSpec bool
-			mergedSpec, localModifiedSpec, err = ApplyOverrideSpec(vmClusterObj.Spec, cr.Spec.Zones.GlobalOverrideSpec)
+			mergedSpec, modifiedSpec, err = ApplyOverrideSpec(vmClusterObj.Spec, cr.Spec.Zones.GlobalOverrideSpec)
 			if err != nil {
 				return fmt.Errorf("failed to apply global override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
-			modifiedSpec = modifiedSpec || localModifiedSpec
 		}
 		diff := cmp.Diff(*previousVMClusterObjSpec, mergedSpec)
 		if diff != "" {
@@ -124,12 +122,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		// Apply cluster-specific override if it exist
 		previousVMClusterObjSpec = mergedSpec.DeepCopy()
 		if zoneRefOrSpec.Ref != nil && zoneRefOrSpec.OverrideSpec != nil {
-			var localModifiedSpec bool
-			mergedSpec, localModifiedSpec, err = ApplyOverrideSpec(mergedSpec, zoneRefOrSpec.OverrideSpec)
+			mergedSpec, modifiedSpec, err = ApplyOverrideSpec(mergedSpec, zoneRefOrSpec.OverrideSpec)
 			if err != nil {
 				return fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
-			modifiedSpec = modifiedSpec || localModifiedSpec
 		}
 		diff = cmp.Diff(*previousVMClusterObjSpec, mergedSpec)
 		if diff != "" {
@@ -139,12 +135,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 
 		previousVMClusterObjSpec = mergedSpec.DeepCopy()
 		if zoneRefOrSpec.Spec != nil {
-			var localModifiedSpec bool
-			mergedSpec, localModifiedSpec, err = mergeVMClusterSpecs(mergedSpec, *zoneRefOrSpec.Spec)
+			mergedSpec, modifiedSpec, err = mergeVMClusterSpecs(mergedSpec, *zoneRefOrSpec.Spec)
 			if err != nil {
 				return fmt.Errorf("failed to merge spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
-			modifiedSpec = modifiedSpec || localModifiedSpec
 		}
 		diff = cmp.Diff(*previousVMClusterObjSpec, mergedSpec)
 		if diff != "" {
@@ -197,7 +191,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 							Namespace: cr.Namespace,
 						},
 					}
-					if err := WaitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
+					if err := waitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
 						return fmt.Errorf("failed to wait for vmauth ready: %w", err)
 					}
 				}
@@ -208,10 +202,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 			if err := rclient.Update(ctx, vmClusterObj); err != nil {
 				return fmt.Errorf("failed to update vmcluster %s at index %d after applying override spec: %w", vmClusterObj.Name, i, err)
 			}
-
-			// if err := waitForVMClusterExpanding(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
-			// 	return fmt.Errorf("failed to wait for vmcluster ready: %w", err)
-			// }
 		}
 
 		// Wait for VMCluster to be ready
@@ -248,7 +238,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 					Namespace: cr.Namespace,
 				},
 			}
-			if err := WaitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
+			if err := waitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
 				return fmt.Errorf("failed to wait for vmauth ready: %w", err)
 			}
 		}

@@ -89,7 +89,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1
 	return rclient.Update(ctx, currentVMAuth)
 }
 
-func WaitForVMAuthReady(ctx context.Context, rclient client.Client, vmAuth *vmv1beta1.VMAuth, readyDeadline *metav1.Duration) error {
+func waitForVMAuthReady(ctx context.Context, rclient client.Client, vmAuth *vmv1beta1.VMAuth, readyDeadline *metav1.Duration) error {
 	defaultReadyDeadline := time.Minute
 	if readyDeadline != nil {
 		defaultReadyDeadline = readyDeadline.Duration

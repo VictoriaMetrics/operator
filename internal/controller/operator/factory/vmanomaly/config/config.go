@@ -37,6 +37,7 @@ type server struct {
 	Port               string `yaml:"port,omitempty"`
 	PathPrefix         string `yaml:"path_prefix,omitempty"`
 	MaxConcurrentTasks int    `yaml:"max_concurrent_tasks,omitempty"`
+	UIDefaultState     string `yaml:"ui_default_state,omitempty"`
 }
 
 func (s *server) validate() error {

@@ -736,6 +736,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 
 
 VMAnomalyServerSpec defines HTTP server configuration for VMAnomaly
+See docs: https://docs.victoriametrics.com/anomaly-detection/components/server/
 
 Appears in: [VMAnomalySpec](#vmanomalyspec)
 
@@ -745,6 +746,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | maxConcurrentTasks<a href="#vmanomalyserverspec-maxconcurrenttasks" id="vmanomalyserverspec-maxconcurrenttasks">#</a><br/>_integer_ | _(Optional)_<br/>MaxConcurrentTasks defines maximum number of concurrent anomaly detection tasks |
 | pathPrefix<a href="#vmanomalyserverspec-pathprefix" id="vmanomalyserverspec-pathprefix">#</a><br/>_string_ | _(Optional)_<br/>PathPrefix defines optional URL path prefix for all HTTP routes<br />If set to 'my-app' or '/my-app', routes will be served under '/my-app/...' |
 | port<a href="#vmanomalyserverspec-port" id="vmanomalyserverspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port defines port to listen on |
+| uiDefaultState<a href="#vmanomalyserverspec-uidefaultstate" id="vmanomalyserverspec-uidefaultstate">#</a><br/>_string_ | _(Optional)_<br/>UIDefaultState defines default query state for anomaly UI |
 
 
 #### VMAnomalySpec

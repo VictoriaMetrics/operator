@@ -145,18 +145,31 @@ func InitOperatorProcess() {
 		Expect(os.Setenv("VM_PODWAITREADYTIMEOUT", "20s")).To(Succeed())
 		Expect(os.Setenv("VM_PODWAITREADYINTERVALCHECK", "1s")).To(Succeed())
 		Expect(os.Setenv("VM_APPREADYTIMEOUT", "50s")).To(Succeed())
-		resourceEnvsPRefixes := []string{
-			"VM_VMBACKUP_RESOURCE_REQUEST_",
-			"VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMAGENTDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMALERTDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMSINGLEDEFAULT_RESOURCE_REQUEST_",
+		resourceEnvsPrefixes := []string{
+			"VM_VMBACKUP_RESOURCE_",
+			"VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_RESOURCE_",
+			"VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_RESOURCE_",
+			"VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_",
+			"VM_VLCLUSTERDEFAULT_VLSTORAGEDEFAULT_RESOURCE_",
+			"VM_VLCLUSTERDEFAULT_VLSELECTDEFAULT_RESOURCE_",
+			"VM_VLCLUSTERDEFAULT_VLINSERTDEFAULT_RESOURCE_",
+			"VM_VTCLUSTERDEFAULT_STORAGE_RESOURCE_",
+			"VM_VTCLUSTERDEFAULT_SELECT_RESOURCE_",
+			"VM_VTCLUSTERDEFAULT_INSERT_RESOURCE_",
+			"VM_VMAGENTDEFAULT_RESOURCE_",
+			"VM_VMAUTHDEFAULT_RESOURCE_",
+			"VM_VMALERTDEFAULT_RESOURCE_",
+			"VM_VMSINGLEDEFAULT_RESOURCE_",
+			"VM_VMAUTHDEFAULT_RESOURCE_",
+			"VM_VLAGENTDEFAULT_RESOURCE_",
+			"VM_VLSINGLEDEFAULT_RESOURCE_",
+			"VM_VTSINGLEDEFAULT_RESOURCE_",
 		}
-		for _, minRequests := range resourceEnvsPRefixes {
-			Expect(os.Setenv(minRequests+"CPU", "10m")).To(Succeed())
-			Expect(os.Setenv(minRequests+"MEM", "10Mi")).To(Succeed())
+		for _, prefix := range resourceEnvsPrefixes {
+			for _, t := range []string{"LIMIT", "REQUEST"} {
+				Expect(os.Setenv(prefix+t+"_CPU", "10m")).To(Succeed())
+				Expect(os.Setenv(prefix+t+"_MEM", "10Mi")).To(Succeed())
+			}
 		}
 
 		// disable web servers because it fails to listen when running several test packages one after another

@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -28,31 +27,16 @@ func genVMClusterSpec(opts ...func(*vmv1beta1.VMClusterSpec)) *vmv1beta1.VMClust
 	commonApplicationDeploymentParams := vmv1beta1.CommonApplicationDeploymentParams{
 		ReplicaCount: ptr.To[int32](1),
 	}
-	commonDefaultableParams := vmv1beta1.CommonDefaultableParams{
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
-				corev1.ResourceMemory: resource.MustParse("100Mi"),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
-				corev1.ResourceMemory: resource.MustParse("100Mi"),
-			},
-		},
-	}
 
 	s := &vmv1beta1.VMClusterSpec{
 		VMSelect: &vmv1beta1.VMSelect{
 			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
-			CommonDefaultableParams:           commonDefaultableParams,
 		},
 		VMInsert: &vmv1beta1.VMInsert{
 			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
-			CommonDefaultableParams:           commonDefaultableParams,
 		},
 		VMStorage: &vmv1beta1.VMStorage{
 			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
-			CommonDefaultableParams:           commonDefaultableParams,
 		},
 	}
 	for _, opt := range opts {

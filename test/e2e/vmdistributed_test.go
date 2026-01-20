@@ -729,28 +729,14 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			// Verify VMDistributed status reflects both clusters are upgraded/operational
-			names := []string{
-				vmCluster1.Name,
-				vmCluster2.Name,
-			}
-
-			// Verify both clusters have desired version set
-			Eventually(func() error {
-				vmCluster1 := &vmv1beta1.VMCluster{}
-				vmCluster2 := &vmv1beta1.VMCluster{}
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: names[0], Namespace: namespace}, vmCluster1)
-				if err != nil {
-					return err
-				}
-				err = k8sClient.Get(ctx, types.NamespacedName{Name: names[1], Namespace: namespace}, vmCluster2)
-				if err != nil {
-					return err
-				}
-				if vmCluster1.Spec.ClusterVersion != updateVersion || vmCluster2.Spec.ClusterVersion != updateVersion {
-					return fmt.Errorf("expected both clusters to have version %s, but got %s and %s", updateVersion, vmCluster1.Spec.ClusterVersion, vmCluster2.Spec.ClusterVersion)
-				}
-				return nil
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			newVMCluster1 := &vmv1beta1.VMCluster{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, newVMCluster1)).To(Succeed())
+			Expect(newVMCluster1.Spec.ClusterVersion).To(Equal(updateVersion))
+			Expect(newVMCluster1.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
+			newVMCluster2 := &vmv1beta1.VMCluster{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster2.Name, Namespace: namespace}, newVMCluster2)).To(Succeed())
+			Expect(newVMCluster2.Spec.ClusterVersion).To(Equal(updateVersion))
+			Expect(newVMCluster2.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 		})
 
 		It("should skip reconciliation when VMDistributed is paused", func() {

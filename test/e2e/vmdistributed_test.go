@@ -163,7 +163,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 	vmAgentName := "new-vmagent"
 	vmAuthName := "new-vmauth"
 
-	Context("create", func() {
+	Context("create", Serial, func() {
 		It("should successfully create a VMDistributed with inline VMAgent spec", func() {
 			By("creating 2 VMClusters")
 			vmCluster1 := &vmv1beta1.VMCluster{
@@ -1026,7 +1026,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 		})
 	})
 
-	Context("fail", func() {
+	Context("fail", Serial, func() {
 		DescribeTable("should fail when creating VMDistributed", func(cr *vmv1alpha1.VMDistributed) {
 			namespacedName.Name = cr.Name
 			DeferCleanup(func() {
@@ -1117,7 +1117,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 		)
 	})
 
-	Context("delete", func() {
+	Context("delete", Serial, func() {
 
 		It("should delete VMDistributed and remove it from the cluster", func() {
 			namespacedName.Name = "vmdistributed-remove"

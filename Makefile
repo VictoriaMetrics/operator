@@ -103,6 +103,7 @@ api-gen: client-gen lister-gen informer-gen
 		--input-base "" \
                 --plural-exceptions "VLogs:VLogs" \
 		--plural-exceptions "VMAnomaly:VMAnomalies" \
+		--plural-exceptions "VMDistributed:VMDistributed" \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client \
 		--output-dir ./api/client \
 		--go-header-file hack/boilerplate.go.txt \

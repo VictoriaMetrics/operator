@@ -27,7 +27,7 @@ import (
 
 type OperatorV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	VMDistributedsGetter
+	VMDistributedGetter
 }
 
 // OperatorV1alpha1Client is used to interact with features provided by the operator group.
@@ -35,8 +35,8 @@ type OperatorV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *OperatorV1alpha1Client) VMDistributeds(namespace string) VMDistributedInterface {
-	return newVMDistributeds(c, namespace)
+func (c *OperatorV1alpha1Client) VMDistributed(namespace string) VMDistributedInterface {
+	return newVMDistributed(c, namespace)
 }
 
 // NewForConfig creates a new OperatorV1alpha1Client for the given config.

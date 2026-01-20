@@ -23,18 +23,18 @@ import (
 	gentype "k8s.io/client-go/gentype"
 )
 
-// fakeVMDistributeds implements VMDistributedInterface
-type fakeVMDistributeds struct {
+// fakeVMDistributed implements VMDistributedInterface
+type fakeVMDistributed struct {
 	*gentype.FakeClientWithList[*v1alpha1.VMDistributed, *v1alpha1.VMDistributedList]
 	Fake *FakeOperatorV1alpha1
 }
 
-func newFakeVMDistributeds(fake *FakeOperatorV1alpha1, namespace string) operatorv1alpha1.VMDistributedInterface {
-	return &fakeVMDistributeds{
+func newFakeVMDistributed(fake *FakeOperatorV1alpha1, namespace string) operatorv1alpha1.VMDistributedInterface {
+	return &fakeVMDistributed{
 		gentype.NewFakeClientWithList[*v1alpha1.VMDistributed, *v1alpha1.VMDistributedList](
 			fake.Fake,
 			namespace,
-			v1alpha1.SchemeGroupVersion.WithResource("vmdistributeds"),
+			v1alpha1.SchemeGroupVersion.WithResource("vmdistributed"),
 			v1alpha1.SchemeGroupVersion.WithKind("VMDistributed"),
 			func() *v1alpha1.VMDistributed { return &v1alpha1.VMDistributed{} },
 			func() *v1alpha1.VMDistributedList { return &v1alpha1.VMDistributedList{} },

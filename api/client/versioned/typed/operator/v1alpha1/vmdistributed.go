@@ -28,10 +28,10 @@ import (
 	gentype "k8s.io/client-go/gentype"
 )
 
-// VMDistributedsGetter has a method to return a VMDistributedInterface.
+// VMDistributedGetter has a method to return a VMDistributedInterface.
 // A group's client should implement this interface.
-type VMDistributedsGetter interface {
-	VMDistributeds(namespace string) VMDistributedInterface
+type VMDistributedGetter interface {
+	VMDistributed(namespace string) VMDistributedInterface
 }
 
 // VMDistributedInterface has methods to work with VMDistributed resources.
@@ -49,16 +49,16 @@ type VMDistributedInterface interface {
 	VMDistributedExpansion
 }
 
-// vMDistributeds implements VMDistributedInterface
-type vMDistributeds struct {
+// vMDistributed implements VMDistributedInterface
+type vMDistributed struct {
 	*gentype.ClientWithList[*operatorv1alpha1.VMDistributed, *operatorv1alpha1.VMDistributedList]
 }
 
-// newVMDistributeds returns a VMDistributeds
-func newVMDistributeds(c *OperatorV1alpha1Client, namespace string) *vMDistributeds {
-	return &vMDistributeds{
+// newVMDistributed returns a VMDistributed
+func newVMDistributed(c *OperatorV1alpha1Client, namespace string) *vMDistributed {
+	return &vMDistributed{
 		gentype.NewClientWithList[*operatorv1alpha1.VMDistributed, *operatorv1alpha1.VMDistributedList](
-			"vmdistributeds",
+			"vmdistributed",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,

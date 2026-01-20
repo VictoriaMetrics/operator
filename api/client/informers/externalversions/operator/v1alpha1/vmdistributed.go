@@ -32,7 +32,7 @@ import (
 )
 
 // VMDistributedInformer provides access to a shared informer and lister for
-// VMDistributeds.
+// VMDistributed.
 type VMDistributedInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.VMDistributedLister
@@ -61,13 +61,13 @@ func NewFilteredVMDistributedInformer(client versioned.Interface, namespace stri
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().VMDistributeds(namespace).List(context.TODO(), options)
+				return client.OperatorV1alpha1().VMDistributed(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().VMDistributeds(namespace).Watch(context.TODO(), options)
+				return client.OperatorV1alpha1().VMDistributed(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&apioperatorv1alpha1.VMDistributed{},

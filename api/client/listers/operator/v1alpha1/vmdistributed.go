@@ -24,14 +24,14 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// VMDistributedLister helps list VMDistributeds.
+// VMDistributedLister helps list VMDistributed.
 // All objects returned here must be treated as read-only.
 type VMDistributedLister interface {
-	// List lists all VMDistributeds in the indexer.
+	// List lists all VMDistributed in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*operatorv1alpha1.VMDistributed, err error)
-	// VMDistributeds returns an object that can list and get VMDistributeds.
-	VMDistributeds(namespace string) VMDistributedNamespaceLister
+	// VMDistributed returns an object that can list and get VMDistributed.
+	VMDistributed(namespace string) VMDistributedNamespaceLister
 	VMDistributedListerExpansion
 }
 
@@ -45,15 +45,15 @@ func NewVMDistributedLister(indexer cache.Indexer) VMDistributedLister {
 	return &vMDistributedLister{listers.New[*operatorv1alpha1.VMDistributed](indexer, operatorv1alpha1.Resource("vmdistributed"))}
 }
 
-// VMDistributeds returns an object that can list and get VMDistributeds.
-func (s *vMDistributedLister) VMDistributeds(namespace string) VMDistributedNamespaceLister {
+// VMDistributed returns an object that can list and get VMDistributed.
+func (s *vMDistributedLister) VMDistributed(namespace string) VMDistributedNamespaceLister {
 	return vMDistributedNamespaceLister{listers.NewNamespaced[*operatorv1alpha1.VMDistributed](s.ResourceIndexer, namespace)}
 }
 
-// VMDistributedNamespaceLister helps list and get VMDistributeds.
+// VMDistributedNamespaceLister helps list and get VMDistributed.
 // All objects returned here must be treated as read-only.
 type VMDistributedNamespaceLister interface {
-	// List lists all VMDistributeds in the indexer for a given namespace.
+	// List lists all VMDistributed in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*operatorv1alpha1.VMDistributed, err error)
 	// Get retrieves the VMDistributed from the indexer for a given namespace and name.

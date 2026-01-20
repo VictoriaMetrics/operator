@@ -27,8 +27,8 @@ type FakeOperatorV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeOperatorV1alpha1) VMDistributeds(namespace string) v1alpha1.VMDistributedInterface {
-	return newFakeVMDistributeds(c, namespace)
+func (c *FakeOperatorV1alpha1) VMDistributed(namespace string) v1alpha1.VMDistributedInterface {
+	return newFakeVMDistributed(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

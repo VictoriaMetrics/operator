@@ -2,171 +2,25 @@ package vmdistributed
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"reflect"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 const (
 	vmclusterWaitReadyDeadline = time.Minute
 	httpTimeout                = time.Second * 5
 )
-
-// action represents a client action
-type action struct {
-	Method    string
-	ObjectKey client.ObjectKey
-	Object    client.Object
-}
-
-var _ client.Client = (*trackingClient)(nil)
-
-type trackingClient struct {
-	client.Client // The embedded fake client
-	Actions       []action
-	objects       map[client.ObjectKey]client.Object // Store created/updated objects
-	mu            sync.Mutex
-}
-
-type trackingStatusWriter struct {
-	client.StatusWriter
-	*trackingClient
-}
-
-func (tc *trackingClient) Status() client.StatusWriter {
-	return &trackingStatusWriter{tc.Client.Status(), tc}
-}
-
-func (tc *trackingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-	tc.Actions = append(tc.Actions, action{Method: "Get", ObjectKey: key, Object: obj})
-
-	// If we have a stored copy in the internal map, use it and avoid calling the
-	// underlying fake client (which may try to use managedFields/structured-merge-diff).
-	if stored, ok := tc.objects[key]; ok && stored != nil {
-		// Deep-copy stored into obj via JSON marshal/unmarshal to avoid aliasing.
-		b, err := json.Marshal(stored)
-		if err != nil {
-			return fmt.Errorf("failed to marshal stored object for Get: %w", err)
-		}
-		if err := json.Unmarshal(b, obj); err != nil {
-			return fmt.Errorf("failed to unmarshal stored object into target for Get: %w", err)
-		}
-		return nil
-	}
-
-	// Fallback to underlying client if not present in the internal map.
-	return tc.Client.Get(ctx, key, obj, opts...)
-}
-
-func (tc *trackingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-	tc.Actions = append(tc.Actions, action{Method: "Update", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
-
-	// Deep copy the provided object and store it in the internal map. This avoids
-	// invoking the fake client's Update logic which may interact with managedFields
-	// and cause reflect panics if TypeMeta is not present or other edge cases.
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return fmt.Errorf("failed to marshal object for Update: %w", err)
-	}
-	stored := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(client.Object)
-	if err := json.Unmarshal(b, stored); err != nil {
-		return fmt.Errorf("failed to unmarshal object for Update: %w", err)
-	}
-	tc.objects[client.ObjectKeyFromObject(stored)] = stored
-	return nil
-}
-
-func (tc *trackingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-
-	// Ensure TypeMeta is set for objects created in tests. The fake client can
-	// attempt to use structured-merge-diff/managed fields which expects TypeMeta
-	// to be populated. Tests often construct objects without TypeMeta, which
-	// leads to reflect panics inside the fake client. Populate TypeMeta for
-	// common types used in these tests to avoid that where possible.
-	switch o := obj.(type) {
-	case *vmv1beta1.VMAgent:
-		if o.Kind == "" {
-			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMAgent"}
-		}
-	case *vmv1beta1.VMCluster:
-		if o.Kind == "" {
-			o.TypeMeta = metav1.TypeMeta{APIVersion: vmv1beta1.GroupVersion.String(), Kind: "VMCluster"}
-		}
-	case *corev1.ConfigMap:
-		if o.Kind == "" {
-			o.TypeMeta = metav1.TypeMeta{APIVersion: corev1.SchemeGroupVersion.String(), Kind: "ConfigMap"}
-		}
-	}
-
-	// Deep copy the object via JSON marshal/unmarshal and store in internal map.
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return fmt.Errorf("failed to marshal object for Create: %w", err)
-	}
-	stored := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(client.Object)
-	if err := json.Unmarshal(b, stored); err != nil {
-		return fmt.Errorf("failed to unmarshal object for Create: %w", err)
-	}
-	tc.objects[client.ObjectKeyFromObject(stored)] = stored
-
-	tc.Actions = append(tc.Actions, action{Method: "Create", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
-	// Do not call underlying client's Create to avoid managedFields/structured-merge interactions in tests.
-	return nil
-}
-
-func (tc *trackingClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-	tc.Actions = append(tc.Actions, action{Method: "Delete", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
-	return tc.Client.Delete(ctx, obj, opts...)
-}
-
-var _ client.StatusClient = (*trackingClient)(nil)
-
-func (tsw *trackingStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
-	tsw.mu.Lock()
-	defer tsw.mu.Unlock()
-	tsw.Actions = append(tsw.Actions, action{Method: "StatusCreate", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
-	return tsw.StatusWriter.Create(ctx, obj, subResource, opts...)
-}
-
-func (tsw *trackingStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
-	tsw.mu.Lock()
-	defer tsw.mu.Unlock()
-	tsw.Actions = append(tsw.Actions, action{Method: "StatusUpdate", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
-	return tsw.StatusWriter.Update(ctx, obj, opts...)
-}
-
-func (tsw *trackingStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
-	tsw.mu.Lock()
-	defer tsw.mu.Unlock()
-	tsw.Actions = append(tsw.Actions, action{Method: "StatusPatch", ObjectKey: client.ObjectKeyFromObject(obj), Object: obj})
-	return tsw.StatusWriter.Patch(ctx, obj, patch, opts...)
-}
-
-var _ client.SubResourceWriter = (*trackingStatusWriter)(nil)
 
 func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 	return &vmv1beta1.VMCluster{
@@ -236,22 +90,20 @@ func newVMDistributed(name string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgen
 	}
 }
 
-type testData struct {
-	vmagent        *vmv1beta1.VMAgent
-	vmcluster1     *vmv1beta1.VMCluster
-	vmcluster2     *vmv1beta1.VMCluster
-	cr             *vmv1alpha1.VMDistributed
-	trackingClient *trackingClient
-	scheme         *runtime.Scheme
+type opts struct {
+	prepare func(*testData)
+	verify  func(context.Context, *k8stools.TestClientWithStatsTrack, *testData)
 }
 
-func beforeEach() testData {
-	scheme := runtime.NewScheme()
-	_ = vmv1alpha1.AddToScheme(scheme)
-	_ = vmv1beta1.AddToScheme(scheme)
-	_ = corev1.AddToScheme(scheme)
-	_ = discoveryv1.AddToScheme(scheme)
+type testData struct {
+	vmagent           *vmv1beta1.VMAgent
+	vmcluster1        *vmv1beta1.VMCluster
+	vmcluster2        *vmv1beta1.VMCluster
+	cr                *vmv1alpha1.VMDistributed
+	predefinedObjects []runtime.Object
+}
 
+func beforeEach(o opts) *testData {
 	vmagent := &vmv1beta1.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-vmagent", Namespace: "default"},
 		Spec: vmv1beta1.VMAgentSpec{
@@ -268,50 +120,301 @@ func beforeEach() testData {
 	}
 	vmAgentSpec := vmv1alpha1.VMAgentNameAndSpec{Name: vmagent.Name}
 	cr := newVMDistributed("test-vdc", zones, vmAgentSpec, vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"})
-
-	// Create a new trackingClient
-	rclient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
-		vmagent,
-		vmcluster1,
-		vmcluster2,
-		cr,
-	).Build()
-	build.AddDefaults(rclient.Scheme())
-	tc := &trackingClient{
-		Client:  rclient,
-		Actions: []action{},
-		objects: make(map[client.ObjectKey]client.Object),
+	d := &testData{
+		vmagent:    vmagent,
+		vmcluster1: vmcluster1,
+		vmcluster2: vmcluster2,
+		cr:         cr,
+		predefinedObjects: []runtime.Object{
+			vmagent, vmcluster1, vmcluster2, cr,
+		},
 	}
-	return testData{
-		vmagent:        vmagent,
-		vmcluster1:     vmcluster1,
-		vmcluster2:     vmcluster2,
-		cr:             cr,
-		trackingClient: tc,
-		scheme:         scheme,
-	}
+	o.prepare(d)
+	return d
 }
 
-func TestCreateOrUpdate_ErrorHandling(t *testing.T) {
-	t.Run("Paused CR should do nothing", func(t *testing.T) {
-		data := beforeEach()
-		data.cr.Spec.Paused = true
-		rclient := data.trackingClient
-		ctx := context.TODO()
+func TestCreateOrUpdate(t *testing.T) {
+	f := func(o opts) {
+		t.Helper()
+		d := beforeEach(o)
+		rclient := k8stools.GetTestClientWithObjects(d.predefinedObjects)
+		ctx := context.Background()
+		o.verify(ctx, rclient, d)
+	}
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, httpTimeout)
-		assert.NoError(t, err) // No error as it's paused
-		assert.Empty(t, rclient.Actions)
+	// paused CR should do nothing
+	f(opts{
+		prepare: func(d *testData) {
+			d.cr.Spec.Paused = true
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			assert.NoError(t, CreateOrUpdate(ctx, d.cr, rclient, httpTimeout))
+			assert.Empty(t, rclient.TotalCallsCount(nil))
+		},
 	})
 
-	t.Run("Missing VMCluster should return error", func(t *testing.T) {
-		data := beforeEach()
-		data.cr.Spec.Zones.VMClusters[0].Ref.Name = "non-existent-vmcluster"
-		rclient := data.trackingClient
-		ctx := context.TODO()
+	// missing VMCluster should return error
+	f(opts{
+		prepare: func(d *testData) {
+			d.cr.Spec.Zones.VMClusters[0].Ref.Name = "non-existent-vmcluster"
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			err := CreateOrUpdate(ctx, d.cr, rclient, httpTimeout)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "failed to fetch vmclusters")
+		},
+	})
 
-		err := CreateOrUpdate(ctx, data.cr, rclient, httpTimeout)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to fetch vmclusters")
+	// check existing remote write urls order
+	f(opts{
+		prepare: func(d *testData) {
+			d.vmagent.Spec.RemoteWrite = []vmv1beta1.VMAgentRemoteWriteSpec{
+				{URL: remoteWriteURL(d.vmcluster1)},
+				{URL: remoteWriteURL(d.vmcluster2)},
+			}
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			vmClusters := []*vmv1beta1.VMCluster{d.vmcluster2, d.vmcluster1}
+			_, err := updateOrCreateVMAgent(ctx, rclient, d.cr, vmClusters)
+			assert.NoError(t, err)
+
+			// Fetch the resulting vmagent
+			var got vmv1beta1.VMAgent
+			assert.NoError(t, rclient.Get(ctx, client.ObjectKey{Name: d.vmagent.Name, Namespace: d.vmagent.Namespace}, &got))
+
+			// Verify urls order is preserved
+			assert.Len(t, got.Spec.RemoteWrite, 2)
+			assert.Equal(t, remoteWriteURL(d.vmcluster1), got.Spec.RemoteWrite[0].URL)
+			assert.Equal(t, remoteWriteURL(d.vmcluster2), got.Spec.RemoteWrite[1].URL)
+		},
+	})
+
+	// verify remote write urls is appended to vmagent in a valid order
+	f(opts{
+		prepare: func(d *testData) {
+			d.vmagent.Spec.RemoteWrite = []vmv1beta1.VMAgentRemoteWriteSpec{
+				{URL: remoteWriteURL(d.vmcluster1)},
+			}
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			vmClusters := []*vmv1beta1.VMCluster{d.vmcluster2, d.vmcluster1}
+			_, err := updateOrCreateVMAgent(ctx, rclient, d.cr, vmClusters)
+			assert.NoError(t, err)
+
+			// Fetch the resulting vmagent
+			got := &vmv1beta1.VMAgent{}
+			assert.NoError(t, rclient.Get(ctx, client.ObjectKey{Name: d.vmagent.Name, Namespace: d.vmagent.Namespace}, got))
+
+			// Verify urls order is preserved
+			assert.Len(t, got.Spec.RemoteWrite, 2)
+			assert.Equal(t, remoteWriteURL(d.vmcluster1), got.Spec.RemoteWrite[0].URL)
+			assert.Equal(t, remoteWriteURL(d.vmcluster2), got.Spec.RemoteWrite[1].URL)
+		},
+	})
+
+	// should do nothing if VMAuth name is empty
+	f(opts{
+		prepare: func(d *testData) {
+			d.cr.Spec.VMAuth.Name = ""
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, []*vmv1beta1.VMCluster{d.vmcluster1, d.vmcluster2}))
+			assert.Empty(t, rclient.TotalCallsCount(nil))
+		},
+	})
+
+	// should update VMAuth if spec changes
+	f(opts{
+		prepare: func(d *testData) {
+			d.vmcluster1.Spec.VMSelect.Port = "8481"
+			d.cr.Spec.VMAuth.Name = "vmauth-lb"
+			d.predefinedObjects = append(d.predefinedObjects, &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmauth-lb",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					LogLevel: "ERROR",
+				},
+			})
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			d.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
+				LogLevel: "INFO",
+			}
+			clusters := []*vmv1beta1.VMCluster{d.vmcluster1}
+			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, clusters))
+
+			// Check for update call
+			item := rclient.UpdateCalls.First(&vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmauth-lb",
+					Namespace: "default",
+				},
+			})
+			assert.NotNil(t, item, "VMAuth should be updated")
+			updatedVMAuth := item.(*vmv1beta1.VMAuth)
+			assert.Equal(t, "INFO", updatedVMAuth.Spec.LogLevel)
+		},
+	})
+
+	// should not update VMAuth if spec matches
+	f(opts{
+		prepare: func(d *testData) {
+			d.vmcluster1.Spec.VMSelect.Port = "8481"
+			d.cr.Spec.VMAuth.Name = "vmauth-lb"
+			d.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
+				LogLevel: "INFO",
+			}
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			clusters := []*vmv1beta1.VMCluster{d.vmcluster1}
+			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, clusters))
+
+			// Should contain no updates
+			assert.Nil(t, rclient.UpdateCalls.First(&vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmauth-lb",
+					Namespace: "default",
+				},
+			}))
+		},
+	})
+
+	// should create VMAuth if it does not exist
+	f(opts{
+		prepare: func(d *testData) {
+			d.vmcluster1.Spec.VMSelect.Port = "8481"
+			d.vmcluster2.Spec.VMSelect.Port = "8481"
+			d.cr.Spec.VMAuth.Name = "vmauth-lb"
+			d.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
+				LogLevel: "INFO",
+			}
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			clusters := []*vmv1beta1.VMCluster{d.vmcluster1, d.vmcluster2}
+			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, clusters))
+			createdItem := rclient.CreateCalls.First(&vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmauth-lb",
+					Namespace: "default",
+				},
+			})
+			assert.NotNil(t, createdItem)
+			createdVMAuth := createdItem.(*vmv1beta1.VMAuth)
+			assert.Equal(t, "vmauth-lb", createdVMAuth.Name)
+			assert.Equal(t, "default", createdVMAuth.Namespace)
+			assert.Equal(t, "INFO", createdVMAuth.Spec.LogLevel)
+			assert.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
+			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 2)
+
+			firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
+			assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
+			assert.Equal(t, ptr.To("first_available"), firstTargetRef.LoadBalancingPolicy)
+			assert.Equal(t, []int{500, 502, 503}, firstTargetRef.RetryStatusCodes)
+			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, firstTargetRef.Paths)
+			assert.NotNil(t, firstTargetRef.CRD)
+			assert.Equal(t, "VMCluster/vmselect", firstTargetRef.CRD.Kind)
+			assert.Equal(t, d.vmcluster1.Name, firstTargetRef.CRD.Name)
+			assert.Equal(t, d.vmcluster1.Namespace, firstTargetRef.CRD.Namespace)
+
+			secondTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[1]
+			assert.Equal(t, ptr.To(0), secondTargetRef.DropSrcPathPrefixParts)
+			assert.Equal(t, ptr.To("first_available"), secondTargetRef.LoadBalancingPolicy)
+			assert.Equal(t, []int{500, 502, 503}, secondTargetRef.RetryStatusCodes)
+			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, secondTargetRef.Paths)
+			assert.NotNil(t, secondTargetRef.CRD)
+			assert.Equal(t, "VMCluster/vmselect", secondTargetRef.CRD.Kind)
+			assert.Equal(t, d.vmcluster2.Name, secondTargetRef.CRD.Name)
+			assert.Equal(t, d.vmcluster2.Namespace, secondTargetRef.CRD.Namespace)
+
+			// Verify OwnerReference
+			assert.NotEmpty(t, createdVMAuth.OwnerReferences)
+			assert.Equal(t, d.cr.Name, createdVMAuth.OwnerReferences[0].Name)
+		},
+	})
+
+	// should adopt existing VMAuth if owner reference is missing
+	f(opts{
+		prepare: func(d *testData) {
+			d.vmcluster1.Spec.VMSelect.Port = "8481"
+			d.cr.Spec.VMAuth.Name = "vmauth-lb"
+			d.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
+				LogLevel: "INFO",
+			}
+			d.predefinedObjects = append(d.predefinedObjects, &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmauth-lb",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					// We intentionally don't set a full spec here,
+					// so the update will populate the missing fields (like Port)
+					// AND set the owner ref.
+					LogLevel: "INFO",
+				},
+			})
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			clusters := []*vmv1beta1.VMCluster{d.vmcluster1}
+			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, clusters))
+			updatedVMAuth := rclient.UpdateCalls.First(&vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmauth-lb",
+					Namespace: "default",
+				},
+			})
+			assert.NotNil(t, updatedVMAuth)
+			ownerReferences := updatedVMAuth.GetOwnerReferences()
+			assert.NotEmpty(t, ownerReferences)
+			assert.Equal(t, d.cr.Name, ownerReferences[0].Name)
+		},
+	})
+
+	// should use load balancer service URL if RequestsLoadBalancer is enabled
+	f(opts{
+		prepare: func(d *testData) {
+			d.cr.Spec.VMAuth.Name = "vmauth-lb"
+			d.vmcluster1.Spec.VMSelect.Port = "8481"
+			d.vmcluster2.Spec.VMSelect.Port = "8481"
+
+			// Enable load balancer for vmcluster1
+			d.vmcluster1.Spec.RequestsLoadBalancer.Enabled = true
+			d.vmcluster1.Spec.RequestsLoadBalancer.Spec.Port = "8427"
+		},
+		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
+			clusters := []*vmv1beta1.VMCluster{d.vmcluster1, d.vmcluster2}
+			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, clusters))
+			createdItem := rclient.CreateCalls.First(&vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmauth-lb",
+					Namespace: "default",
+				},
+			})
+
+			assert.NotNil(t, createdItem)
+			createdVMAuth := createdItem.(*vmv1beta1.VMAuth)
+			assert.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
+			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 2)
+			firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
+			assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
+			assert.Equal(t, ptr.To("first_available"), firstTargetRef.LoadBalancingPolicy)
+			assert.Equal(t, []int{500, 502, 503}, firstTargetRef.RetryStatusCodes)
+			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, firstTargetRef.Paths)
+			assert.NotNil(t, firstTargetRef.CRD)
+			assert.Equal(t, "VMCluster/vmselect", firstTargetRef.CRD.Kind)
+			assert.Equal(t, d.vmcluster1.Name, firstTargetRef.CRD.Name)
+			assert.Equal(t, d.vmcluster1.Namespace, firstTargetRef.CRD.Namespace)
+
+			secondTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[1]
+			assert.Equal(t, ptr.To(0), secondTargetRef.DropSrcPathPrefixParts)
+			assert.Equal(t, ptr.To("first_available"), secondTargetRef.LoadBalancingPolicy)
+			assert.Equal(t, []int{500, 502, 503}, secondTargetRef.RetryStatusCodes)
+			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, secondTargetRef.Paths)
+			assert.NotNil(t, secondTargetRef.CRD)
+			assert.Equal(t, "VMCluster/vmselect", secondTargetRef.CRD.Kind)
+			assert.Equal(t, d.vmcluster2.Name, secondTargetRef.CRD.Name)
+			assert.Equal(t, d.vmcluster2.Namespace, secondTargetRef.CRD.Namespace)
+		},
 	})
 }

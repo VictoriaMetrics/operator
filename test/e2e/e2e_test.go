@@ -29,12 +29,12 @@ import (
 )
 
 var (
-	eventualDeploymentAppReadyTimeout     = 60 * time.Second
-	eventualStatefulsetAppReadyTimeout    = 80 * time.Second
-	eventualDeletionTimeout               = 45 * time.Second
-	eventualDeploymentPodTimeout          = 25 * time.Second
-	eventualExpandingTimeout              = 25 * time.Second
-	eventualVMDistributedExpandingTimeout = 5 * time.Minute
+	eventualDeploymentAppReadyTimeout   = 60 * time.Second
+	eventualStatefulsetAppReadyTimeout  = 80 * time.Second
+	eventualDeletionTimeout             = 45 * time.Second
+	eventualDeploymentPodTimeout        = 25 * time.Second
+	eventualExpandingTimeout            = 25 * time.Second
+	eventualDistributedExpandingTimeout = 5 * time.Minute
 )
 
 // Run e2e tests using the Ginkgo runner.

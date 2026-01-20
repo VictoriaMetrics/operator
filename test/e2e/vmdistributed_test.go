@@ -59,7 +59,7 @@ func createVMClusterAndEnsureOperational(ctx context.Context, k8sClient client.C
 	Expect(k8sClient.Create(ctx, vmcluster)).To(Succeed())
 	Eventually(func() error {
 		return expectObjectStatusOperational(ctx, k8sClient, vmcluster, types.NamespacedName{Name: vmcluster.Name, Namespace: ns})
-	}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+	}, eventualDistributedExpandingTimeout).Should(Succeed())
 }
 
 func createVMUser(ctx context.Context, k8sClient client.Client, namespace string, vmClusters []*vmv1beta1.VMCluster) {
@@ -90,7 +90,7 @@ func createVMUser(ctx context.Context, k8sClient client.Client, namespace string
 	Expect(k8sClient.Create(ctx, vmUser)).NotTo(HaveOccurred())
 	Eventually(func() error {
 		return k8sClient.Get(ctx, types.NamespacedName{Name: vmUser.Name, Namespace: vmUser.Namespace}, vmUser)
-	}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+	}, eventualDistributedExpandingTimeout).Should(Succeed())
 }
 
 func createVMAuth(ctx context.Context, k8sClient client.Client, name, namespace string) {
@@ -112,7 +112,7 @@ func createVMAuth(ctx context.Context, k8sClient client.Client, name, namespace 
 	Expect(k8sClient.Create(ctx, vmAuth)).NotTo(HaveOccurred())
 	Eventually(func() error {
 		return k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, vmAuth)
-	}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+	}, eventualDistributedExpandingTimeout).Should(Succeed())
 }
 
 func createVMAgent(ctx context.Context, k8sClient client.Client, name, namespace string) {
@@ -137,7 +137,7 @@ func createVMAgent(ctx context.Context, k8sClient client.Client, name, namespace
 	Expect(k8sClient.Create(ctx, vmAgent)).NotTo(HaveOccurred())
 	Eventually(func() error {
 		return k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, vmAgent)
-	}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+	}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 }
 
 func verifyOwnerReferences(ctx context.Context, cr *vmv1alpha1.VMDistributed, vmclusters []*vmv1beta1.VMCluster, namespace string) {
@@ -224,12 +224,12 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			var vmagent vmv1beta1.VMAgent
 			Eventually(func() error {
 				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: namespace}, &vmagent)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 			Expect(vmagent.Spec.ReplicaCount).To(Equal(ptr.To[int32](2)))
 			Expect(vmagent.OwnerReferences).To(HaveLen(1))
 			Expect(vmagent.OwnerReferences[0].Name).To(Equal(cr.Name))
@@ -239,7 +239,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			var vmauth vmv1beta1.VMAuth
 			Eventually(func() error {
 				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAuthName, Namespace: namespace}, &vmauth)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 			Expect(vmauth.OwnerReferences).To(HaveLen(1))
 			Expect(vmauth.OwnerReferences[0].Name).To(Equal(cr.Name))
 			Expect(vmauth.OwnerReferences[0].Kind).To(Equal("VMDistributed"))
@@ -314,20 +314,20 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			}
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, inlineVMClusters, namespace)
 
 			By("waiting for VMDistributed to become operational")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			By("verifying that the inline VMClusters are created and operational")
 			namespacedName := types.NamespacedName{Name: "inline-cluster-1", Namespace: namespace}
 			Expect(k8sClient.Get(ctx, namespacedName, vmCluster1)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, vmCluster1, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 			Expect(*vmCluster1.Spec.VMSelect.ReplicaCount).To(Equal(int32(2)))
 			Expect(*vmCluster1.Spec.VMInsert.ReplicaCount).To(Equal(int32(0)))
 			Expect(*vmCluster1.Spec.VMStorage.ReplicaCount).To(Equal(int32(1)))
@@ -336,7 +336,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(k8sClient.Get(ctx, namespacedName, vmCluster2)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, vmCluster2, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 			Expect(*vmCluster2.Spec.VMSelect.ReplicaCount).To(Equal(int32(3)))
 			Expect(*vmCluster2.Spec.VMInsert.ReplicaCount).To(Equal(int32(0)))
 			Expect(*vmCluster2.Spec.VMStorage.ReplicaCount).To(Equal(int32(1)))
@@ -398,7 +398,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			By("waiting for VMDistributed to become operational")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			By("verifying that the inline VMAuth is created and operational")
 			var createdVMAuth vmv1beta1.VMAuth
@@ -473,7 +473,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			By("waiting for VMDistributed to become operational")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2}, namespace)
 
 			By("verifying that the referenced VMClusters have the override applied")
@@ -556,7 +556,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			By("waiting for VMDistributed to become operational")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2}, namespace)
 
 			By("verifying that both VMClusters have the global override applied")
@@ -628,7 +628,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, []*vmv1beta1.VMCluster{vmCluster1}, namespace)
 
 			// Update VMAgent
@@ -639,12 +639,12 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				obj.Spec.VMAgent = vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName}
 				return k8sClient.Update(ctx, &obj)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 
 			// Wait for VMDistributed to become operational after update
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 		})
 
 		It("should wait for VMCluster upgrade completion", func() {
@@ -706,7 +706,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, vmclusters, namespace)
 
 			// Apply spec update
@@ -721,12 +721,12 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			// Wait for VMDistributed to start expanding after its own upgrade
 			Eventually(func() error {
 				return expectObjectStatusExpanding(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			// Wait for VMDistributed to become operational after its own upgrade
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			// Verify VMDistributed status reflects both clusters are upgraded/operational
 			newVMCluster1 := &vmv1beta1.VMCluster{}
@@ -791,7 +791,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 			verifyOwnerReferences(ctx, cr, []*vmv1beta1.VMCluster{vmCluster1}, namespace)
 
 			By("pausing the VMDistributed")
@@ -803,7 +803,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				cr.Spec.Paused = true
 				return k8sClient.Update(ctx, cr)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 
 			By("attempting to scale the VMCluster while paused")
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, vmCluster1)).To(Succeed())
@@ -819,7 +819,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Raw: []byte(fmt.Sprintf(`{"vmstorage":{"replicaCount": %d}}`, initialReplicas+1)),
 				}
 				return k8sClient.Update(ctx, cr)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 
 			Consistently(func() int32 {
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1.Name, Namespace: namespace}, vmCluster1)).To(Succeed())
@@ -835,15 +835,15 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				cr.Spec.Paused = false
 				return k8sClient.Update(ctx, cr)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 
 			Eventually(func() error {
 				return expectObjectStatusExpanding(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 
 			By("verifying reconciliation resumes after unpausing")
 			Eventually(func() int32 {
@@ -905,7 +905,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 
 			// Capture resource versions of key child resources
 			var beforeCluster vmv1beta1.VMCluster
@@ -1011,7 +1011,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					return fmt.Errorf("waiting for Operational status, current: %s", fetchedCR.Status.UpdateStatus)
 				}
 				return nil
-			}, eventualVMDistributedExpandingTimeout, "1s").Should(Succeed())
+			}, eventualDistributedExpandingTimeout, "1s").Should(Succeed())
 		})
 	})
 
@@ -1024,7 +1024,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return suite.ExpectObjectStatus(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName, vmv1beta1.UpdateStatusFailed)
-			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).Should(Succeed())
 		},
 			Entry("with invalid VMCluster", &vmv1alpha1.VMDistributed{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1161,7 +1161,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, types.NamespacedName{Name: namespacedName.Name, Namespace: namespace})
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			By("ensuring VMAgent was created")
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmagentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})).To(Succeed())
@@ -1265,7 +1265,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, types.NamespacedName{Name: namespacedName.Name, Namespace: namespace})
-			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			By("ensuring VMAgent was created")
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})).To(Succeed())

@@ -122,7 +122,7 @@ func ApplyOverrideSpec(baseSpec vmv1beta1.VMClusterSpec, overrideSpec *apiextens
 // It returns a boolean indicating if the baseMap was modified.
 func mergeMapsRecursive(baseMap, overrideMap map[string]interface{}) bool {
 	modified := false
-	if baseMap == nil {
+	if baseMap == nil && len(overrideMap) > 0 {
 		baseMap = make(map[string]any)
 	}
 	for key, overrideValue := range overrideMap {

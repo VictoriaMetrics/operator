@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -59,12 +60,12 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 	for _, objToDisown := range objsToDisown {
 		err := rclient.Get(ctx, types.NamespacedName{Name: objToDisown.GetName(), Namespace: objToDisown.GetNamespace()}, objToDisown)
-		if err != nil {
+		if err != nil && !k8serrors.IsNotFound(err) {
 			return fmt.Errorf("failed to find referenced object %s %s/%s: %w", objToDisown.GetObjectKind().GroupVersionKind(), objToDisown.GetName(), objToDisown.GetNamespace(), err)
 		}
 		objToDisown.SetOwnerReferences([]metav1.OwnerReference{})
 		if err := rclient.Update(ctx, objToDisown); err != nil {
-			return fmt.Errorf("failed to disown object %s %s %s/%s: %w", objToDisown.GetObjectKind().GroupVersionKind(), objToDisown.GetName(), objToDisown.GetNamespace(), err)
+			return fmt.Errorf("failed to disown object %s %s/%s: %w", objToDisown.GetObjectKind().GroupVersionKind(), objToDisown.GetName(), objToDisown.GetNamespace(), err)
 		}
 	}
 	// Remove the CR

@@ -831,15 +831,17 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Raw: []byte(fmt.Sprintf(`{"clusterVersion": "%s"}`, updateVersion)),
 			}
 			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
+			// Wait for VMDistributed to start expanding after its own upgrade
+			Eventually(func() error {
+				return expectObjectStatusExpanding(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
+			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+
 			// Wait for VMDistributed to become operational after its own upgrade
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, namespacedName)
 			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			// Verify VMDistributed status reflects both clusters are upgraded/operational
-			var upgradedCluster vmv1alpha1.VMDistributed
-			Expect(k8sClient.Get(ctx, namespacedName, &upgradedCluster)).To(Succeed())
-
 			names := []string{
 				vmCluster1.Name,
 				vmCluster2.Name,

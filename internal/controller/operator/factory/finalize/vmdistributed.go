@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -57,9 +58,13 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 		}
 	}
 	for _, objToDisown := range objsToDisown {
+		err := rclient.Get(ctx, types.NamespacedName{Name: objToDisown.GetName(), Namespace: objToDisown.GetNamespace()}, objToDisown)
+		if err != nil {
+			return fmt.Errorf("failed to find referenced object %s %s/%s: %w", objToDisown.GetObjectKind().GroupVersionKind(), objToDisown.GetName(), objToDisown.GetNamespace(), err)
+		}
 		objToDisown.SetOwnerReferences([]metav1.OwnerReference{})
 		if err := rclient.Update(ctx, objToDisown); err != nil {
-			return fmt.Errorf("failed to disown object=%s: %w", objToDisown.GetObjectKind().GroupVersionKind(), err)
+			return fmt.Errorf("failed to disown object %s %s %s/%s: %w", objToDisown.GetObjectKind().GroupVersionKind(), objToDisown.GetName(), objToDisown.GetNamespace(), err)
 		}
 	}
 	// Remove the CR

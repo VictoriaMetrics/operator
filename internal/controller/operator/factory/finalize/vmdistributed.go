@@ -16,7 +16,7 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 	ns := cr.GetNamespace()
 	objsToRemove := []client.Object{}
 	objsToDisown := []client.Object{}
-	if len(cr.Spec.VMAgent.Name) > 0 && cr.Spec.VMAgent.Spec != nil {
+	if len(cr.Spec.VMAgent.Name) > 0 {
 		vmAgentMeta := metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      cr.Spec.VMAgent.Name,
@@ -31,14 +31,10 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 		objsToRemove = append(objsToRemove, &vmv1beta1.VMAuth{ObjectMeta: vmAuthMeta})
 	}
 	for _, vmclusterSpec := range cr.Spec.Zones.VMClusters {
-		// Don't attempt to delete referenced or plain invalid clusters
-		if len(vmclusterSpec.Name) == 0 {
-			continue
-		}
 		if vmclusterSpec.Ref != nil {
 			objsToDisown = append(objsToDisown, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmclusterSpec.Name,
+					Name:      vmclusterSpec.Ref.Name,
 					Namespace: cr.Namespace,
 				},
 			})

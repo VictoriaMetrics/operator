@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -22,6 +23,43 @@ import (
 	vmd "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributed"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
+
+func genVMClusterSpec(opts ...func(*vmv1beta1.VMClusterSpec)) *vmv1beta1.VMClusterSpec {
+	commonApplicationDeploymentParams := vmv1beta1.CommonApplicationDeploymentParams{
+		ReplicaCount: ptr.To[int32](1),
+	}
+	commonDefaultableParams := vmv1beta1.CommonDefaultableParams{
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("100Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("100Mi"),
+			},
+		},
+	}
+
+	s := &vmv1beta1.VMClusterSpec{
+		VMSelect: &vmv1beta1.VMSelect{
+			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
+			CommonDefaultableParams:           commonDefaultableParams,
+		},
+		VMInsert: &vmv1beta1.VMInsert{
+			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
+			CommonDefaultableParams:           commonDefaultableParams,
+		},
+		VMStorage: &vmv1beta1.VMStorage{
+			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
+			CommonDefaultableParams:           commonDefaultableParams,
+		},
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
 
 // createVMClusterAndEnsureOperational creates a VMCluster, sets up its deferred cleanup, and waits for it to become operational.
 func createVMClusterAndEnsureOperational(ctx context.Context, k8sClient client.Client, vmcluster *vmv1beta1.VMCluster, ns string) {
@@ -149,18 +187,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "inline-vmagent-vmcluster-1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "1",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 
@@ -169,18 +196,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "inline-vmagent-vmcluster-2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "1",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2})
@@ -282,31 +298,15 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Name: "inline-cluster-1",
-							Spec: &vmv1beta1.VMClusterSpec{
-								VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](2),
-								}},
-								VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-								VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-							},
+							Spec: genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+								s.VMSelect.ReplicaCount = ptr.To[int32](2)
+							}),
 						},
 						{
 							Name: "inline-cluster-2",
-							Spec: &vmv1beta1.VMClusterSpec{
-								VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-								VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](2),
-								}},
-								VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-							},
+							Spec: genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+								s.VMInsert.ReplicaCount = ptr.To[int32](2)
+							}),
 						},
 					}},
 				},
@@ -362,18 +362,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "inline-vmauth-vmcluster1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "1",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 			vmCluster2 := &vmv1beta1.VMCluster{
@@ -381,18 +370,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "inline-vmauth-vmcluster2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "1",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2})
@@ -455,17 +433,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "referenced-cluster-1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 
@@ -474,17 +442,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "referenced-cluster-2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2})
@@ -547,19 +505,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-global-1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion:  "v1.126.0-cluster",
-					RetentionPeriod: "30d",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+					s.ClusterVersion = "v1.126.0-cluster"
+					s.RetentionPeriod = "30d"
+				}),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 
@@ -568,19 +517,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-global-2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion:  "v1.126.0-cluster",
-					RetentionPeriod: "30d",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+					s.ClusterVersion = "v1.126.0-cluster"
+					s.RetentionPeriod = "30d"
+				}),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2})
@@ -652,18 +592,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "1",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 
@@ -672,18 +601,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "1",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2})
@@ -751,18 +669,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: initialVersion,
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+					s.ClusterVersion = initialVersion
+				}),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 			vmCluster2 := &vmv1beta1.VMCluster{
@@ -770,18 +679,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: initialVersion,
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+					s.ClusterVersion = initialVersion
+				}),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 			vmclusters := []*vmv1beta1.VMCluster{vmCluster1, vmCluster2}
@@ -873,18 +773,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-paused-1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: "v1.126.0-cluster",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+					s.ClusterVersion = "v1.126.0-cluster"
+				}),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 
@@ -893,18 +784,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-paused-2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: "v1.126.0-cluster",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+					s.ClusterVersion = "v1.126.0-cluster"
+				}),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2})
@@ -1009,17 +891,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-idempotent-1",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 
@@ -1028,17 +900,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      "vmcluster-idempotent-2",
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2})
@@ -1122,18 +984,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      vmCluster1Name,
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "1",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
 
@@ -1142,18 +993,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Namespace: namespace,
 					Name:      vmCluster2Name,
 				},
-				Spec: vmv1beta1.VMClusterSpec{
-					RetentionPeriod: "1",
-					VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-					VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
-					}},
-				},
+				Spec: *genVMClusterSpec(),
 			}
 			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
 			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2})
@@ -1246,18 +1086,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
-							Spec: &vmv1beta1.VMClusterSpec{
-								ClusterVersion: "v1.126.0-cluster",
-								VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-								VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-								VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-							},
+							Spec: genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+								s.ClusterVersion = "v1.126.0-cluster"
+							}),
 						},
 					}},
 				},
@@ -1292,18 +1123,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 							Ref: &corev1.LocalObjectReference{
 								Name: "vmcluster-existing",
 							},
-							Spec: &vmv1beta1.VMClusterSpec{
-								ClusterVersion: "v1.126.0-cluster",
-								VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-								VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-								VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-									ReplicaCount: ptr.To[int32](1),
-								}},
-							},
+							Spec: genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
+								s.ClusterVersion = "v1.126.0-cluster"
+							}),
 						},
 					}},
 				},
@@ -1349,31 +1171,11 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 							{
 								Name: vmc1Name,
-								Spec: &vmv1beta1.VMClusterSpec{
-									VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									}},
-									VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									}},
-									VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									}},
-								},
+								Spec: genVMClusterSpec(),
 							},
 							{
 								Name: vmc2Name,
-								Spec: &vmv1beta1.VMClusterSpec{
-									VMSelect: &vmv1beta1.VMSelect{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									}},
-									VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									}},
-									VMStorage: &vmv1beta1.VMStorage{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-										ReplicaCount: ptr.To[int32](1),
-									}},
-								},
+								Spec: genVMClusterSpec(),
 							},
 						},
 					},

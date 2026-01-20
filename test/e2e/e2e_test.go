@@ -41,7 +41,9 @@ var (
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	fmt.Fprintf(GinkgoWriter, "Starting vm-operator suite\n")
-	RunSpecs(t, "e2e suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+
+	RunSpecs(t, "End2End Suite", suiteConfig, reporterConfig)
 }
 
 var (

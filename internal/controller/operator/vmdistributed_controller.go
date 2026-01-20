@@ -62,7 +62,7 @@ func (r *VMDistributedReconciler) Init(rclient client.Client, l logr.Logger, sc 
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributed/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributed/finalizers,verbs=update
 func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("VMDistributed", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues("vmdistributed", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	instance := &vmv1alpha1.VMDistributed{}
 
@@ -73,11 +73,11 @@ func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// Fetch VMDistributed instance
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "VMDistributed", req}
+		return result, &getError{err, "vmdistributed", req}
 	}
 
 	// Register metrics
-	RegisterObjectStat(instance, "VMDistributed")
+	RegisterObjectStat(instance, "vmdistributed")
 
 	// Check if the instance is being deleted
 	if !instance.DeletionTimestamp.IsZero() {

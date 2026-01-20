@@ -238,3 +238,58 @@ func TestUpdateOrCreateVMAgent_Append(t *testing.T) {
 	assert.Equal(t, u1, got.Spec.RemoteWrite[0].URL)
 	assert.Equal(t, u2, got.Spec.RemoteWrite[1].URL)
 }
+
+func TestListVMAgents(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = vmv1beta1.AddToScheme(scheme)
+
+	vmAgent1 := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "agent1",
+			Namespace: "default",
+			Labels:    map[string]string{"app": "vmagent", "env": "prod"},
+		},
+	}
+	vmAgent2 := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "agent2",
+			Namespace: "default",
+			Labels:    map[string]string{"app": "vmagent", "env": "dev"},
+		},
+	}
+	vmAgent3 := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "agent3",
+			Namespace: "other",
+			Labels:    map[string]string{"app": "vmagent", "env": "prod"},
+		},
+	}
+
+	fc := fake.NewClientBuilder().WithScheme(scheme).WithObjects(vmAgent1, vmAgent2, vmAgent3).Build()
+
+	t.Run("match label selector", func(t *testing.T) {
+		selector := &metav1.LabelSelector{
+			MatchLabels: map[string]string{"env": "prod"},
+		}
+		agents, err := listVMAgents(context.Background(), fc, "default", selector)
+		assert.NoError(t, err)
+		assert.Len(t, agents, 1)
+		assert.Equal(t, "agent1", agents[0].Name)
+	})
+
+	t.Run("match all in namespace", func(t *testing.T) {
+		selector := &metav1.LabelSelector{}
+		agents, err := listVMAgents(context.Background(), fc, "default", selector)
+		assert.NoError(t, err)
+		assert.Len(t, agents, 2)
+	})
+
+	t.Run("match none", func(t *testing.T) {
+		selector := &metav1.LabelSelector{
+			MatchLabels: map[string]string{"env": "staging"},
+		}
+		agents, err := listVMAgents(context.Background(), fc, "default", selector)
+		assert.NoError(t, err)
+		assert.Len(t, agents, 0)
+	})
+}

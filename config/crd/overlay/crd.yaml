@@ -37093,6 +37093,13 @@ spec:
                     role:
                       description: Role of the Kubernetes entities that should be
                         discovered.
+                      enum:
+                      - node
+                      - pod
+                      - service
+                      - endpoints
+                      - endpointslice
+                      - ingress
                       type: string
                     selectors:
                       description: Selector to select objects.
@@ -37104,6 +37111,13 @@ spec:
                           label:
                             type: string
                           role:
+                            enum:
+                            - node
+                            - pod
+                            - service
+                            - endpoints
+                            - endpointslice
+                            - ingress
                             type: string
                         required:
                         - role

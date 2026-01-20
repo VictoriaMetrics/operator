@@ -52,10 +52,12 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 		}
 		objsToRemove = append(objsToRemove, vmcluster)
 	}
-	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
-			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
+		if err := removeFinalizeObjByNameWithOwnerReference(ctx, rclient, objToRemove, cr.Name, cr.Namespace, false); err != nil {
+			return err
+		}
+		if err := SafeDelete(ctx, rclient, objToRemove); err != nil {
+			return err
 		}
 	}
 	for _, objToDisown := range objsToDisown {

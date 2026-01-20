@@ -27,13 +27,16 @@ func genVMClusterSpec(opts ...func(*vmv1beta1.VMClusterSpec)) *vmv1beta1.VMClust
 	commonApplicationDeploymentParams := vmv1beta1.CommonApplicationDeploymentParams{
 		ReplicaCount: ptr.To[int32](1),
 	}
+	noReplicas := vmv1beta1.CommonApplicationDeploymentParams{
+		ReplicaCount: ptr.To[int32](0),
+	}
 
 	s := &vmv1beta1.VMClusterSpec{
 		VMSelect: &vmv1beta1.VMSelect{
 			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
 		},
 		VMInsert: &vmv1beta1.VMInsert{
-			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
+			CommonApplicationDeploymentParams: noReplicas,
 		},
 		VMStorage: &vmv1beta1.VMStorage{
 			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
@@ -289,7 +292,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 						{
 							Name: "inline-cluster-2",
 							Spec: genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
-								s.VMInsert.ReplicaCount = ptr.To[int32](2)
+								s.VMSelect.ReplicaCount = ptr.To[int32](3)
 							}),
 						},
 					}},
@@ -326,7 +329,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				return expectObjectStatusOperational(ctx, k8sClient, vmCluster1, namespacedName)
 			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
 			Expect(*vmCluster1.Spec.VMSelect.ReplicaCount).To(Equal(int32(2)))
-			Expect(*vmCluster1.Spec.VMInsert.ReplicaCount).To(Equal(int32(1)))
+			Expect(*vmCluster1.Spec.VMInsert.ReplicaCount).To(Equal(int32(0)))
 			Expect(*vmCluster1.Spec.VMStorage.ReplicaCount).To(Equal(int32(1)))
 
 			namespacedName = types.NamespacedName{Name: "inline-cluster-2", Namespace: namespace}
@@ -334,8 +337,8 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, vmCluster2, namespacedName)
 			}, eventualVMDistributedExpandingTimeout).Should(Succeed())
-			Expect(*vmCluster2.Spec.VMSelect.ReplicaCount).To(Equal(int32(1)))
-			Expect(*vmCluster2.Spec.VMInsert.ReplicaCount).To(Equal(int32(2)))
+			Expect(*vmCluster2.Spec.VMSelect.ReplicaCount).To(Equal(int32(3)))
+			Expect(*vmCluster2.Spec.VMInsert.ReplicaCount).To(Equal(int32(0)))
 			Expect(*vmCluster2.Spec.VMStorage.ReplicaCount).To(Equal(int32(1)))
 		})
 

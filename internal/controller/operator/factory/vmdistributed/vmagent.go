@@ -29,8 +29,6 @@ const (
 	VMAgentQueueMetricName = "vm_persistentqueue_bytes_pending"
 )
 
-var defaultVMInsertPort = config.MustGetBaseConfig().VMClusterDefault.VMInsertDefault.Port
-
 // VMAgentMetrics defines the interface for VMAgent objects that can provide metrics URLs
 type VMAgentMetrics interface {
 	AsURL() string
@@ -326,6 +324,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 
 // remoteWriteURL generates the remote write URL based on the provided VMCluster and tenant.
 func remoteWriteURL(vmCluster *vmv1beta1.VMCluster) string {
+	var defaultVMInsertPort = config.MustGetBaseConfig().VMClusterDefault.VMInsertDefault.Port
 	vmHost := vmCluster.PrefixedName(vmv1beta1.ClusterComponentInsert)
 	vmInsertPort := ""
 	if vmCluster.Spec.VMInsert != nil {

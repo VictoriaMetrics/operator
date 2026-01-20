@@ -1210,23 +1210,30 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 
 		It("should delete VMDistributed but keep referenced VMClusters", func() {
 			namespacedName.Name = "vmdistributed-keep-referenced"
-			vmagentName := namespacedName.Name + "-agent"
-			vmauthName := namespacedName.Name + "-vmauth"
-			vmcName := namespacedName.Name + "-referenced-c1"
+			vmCluster1Name := "vmcluster-1"
+			vmCluster2Name := "vmcluster-2"
 
-			By("creating a VMCluster to be referenced")
-			vmCluster := &vmv1beta1.VMCluster{
+			By("creating VMClusters to be referenced")
+			vmCluster1 := &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      vmcName,
+					Name:      vmCluster1Name,
 				},
 				Spec: *genVMClusterSpec(),
 			}
-			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster, namespace)
-			DeferCleanup(func() {
-				Expect(finalize.SafeDelete(ctx, k8sClient, vmCluster)).To(Succeed())
-			})
-			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster})
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster1, namespace)
+
+			vmCluster2 := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      vmCluster2Name,
+				},
+				Spec: *genVMClusterSpec(),
+			}
+			createVMClusterAndEnsureOperational(ctx, k8sClient, vmCluster2, namespace)
+			createVMUser(ctx, k8sClient, namespace, []*vmv1beta1.VMCluster{vmCluster1, vmCluster2})
+			createVMAuth(ctx, k8sClient, vmAuthName, namespace)
+			createVMAgent(ctx, k8sClient, vmAgentName, namespace)
 
 			cr := &vmv1alpha1.VMDistributed{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1242,7 +1249,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Zones: vmv1alpha1.ZoneSpec{
 						VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 							{
-								Ref: &corev1.LocalObjectReference{Name: vmcName},
+								Ref: &corev1.LocalObjectReference{Name: vmCluster1Name},
+							},
+							{
+								Ref: &corev1.LocalObjectReference{Name: vmCluster2Name},
 							},
 						},
 					},
@@ -1258,22 +1268,22 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			}, eventualVMDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			By("ensuring VMAgent was created")
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmagentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})).To(Succeed())
 
 			By("ensuring VMAuth was created")
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmauthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmAuthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})).To(Succeed())
 
 			By("deleting the VMDistributed")
 			Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
 
 			By("ensuring VMAgent is eventually removed")
 			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Name: vmagentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})
+				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})
 			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 			By("ensuring VMAuth is eventually removed")
 			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Name: vmauthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})
+				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAuthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})
 			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 			By("ensuring VMDistributed is eventually removed")
@@ -1283,7 +1293,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 
 			By("ensuring referenced VMCluster is not removed")
 			Consistently(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Name: vmcName, Namespace: namespace}, &vmv1beta1.VMCluster{})
+				return k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster1Name, Namespace: namespace}, &vmv1beta1.VMCluster{})
+			}, "10s", "1s").Should(Succeed())
+			Consistently(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster2Name, Namespace: namespace}, &vmv1beta1.VMCluster{})
 			}, "10s", "1s").Should(Succeed())
 		})
 	})

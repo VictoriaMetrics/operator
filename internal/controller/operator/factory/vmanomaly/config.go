@@ -16,16 +16,34 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmanomaly/config"
 )
 
+// CreateOrUpdateConfig builds configuration for VMAnomaly
+func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject client.Object) error {
+	var prevCR *vmv1.VMAnomaly
+	if cr.ParsedLastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+	ac := getAssetsCache(ctx, rclient, cr)
+	if _, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
+		return err
+	}
+	return nil
+}
+
 // createOrUpdateConfig reconcile configuration for vmanomaly and returns configuration consistent hash
-func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, ac *build.AssetsCache) (string, error) {
-	data, err := config.Load(cr, ac)
+func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, childObject client.Object, ac *build.AssetsCache) (string, error) {
+	pos, err := config.NewParsedObjects(ctx, rclient, cr)
+	if err != nil {
+		return "", err
+	}
+	data, err := pos.Load(cr, ac)
 	if err != nil {
 		return "", err
 	}
 	newSecretConfig := &corev1.Secret{
 		ObjectMeta: build.ResourceMeta(build.SecretConfigResourceKind, cr),
 		Data: map[string][]byte{
-			secretConfigKey: data,
+			configEnvsubstFilename: data,
 		},
 	}
 
@@ -46,6 +64,10 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 	}
 
 	if err := reconcile.Secret(ctx, rclient, newSecretConfig, prevSecretMeta); err != nil {
+		return "", err
+	}
+
+	if err := pos.UpdateStatusesForChildObjects(ctx, rclient, cr, childObject); err != nil {
 		return "", err
 	}
 

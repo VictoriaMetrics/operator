@@ -98,6 +98,18 @@ type VMAnomalySpec struct {
 	// Server configures HTTP server for VMAnomaly
 	// +optional
 	Server *VMAnomalyServerSpec `json:"server,omitempty"`
+	// SelectAllByDefault changes default behavior for empty CRD selectors, such ModelSelector and SchedulerSelector.
+	// with selectAllByDefault: true and empty object and namespace selectors
+	// Operator selects all existing VMAnomalyModel and VMAnomalyScheduler objects
+	// with selectAllByDefault: false - selects nothing
+	// +optional
+	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
+	// ModelSelector defines VMAnomalyModel's object and namespace selectors.
+	// +optional
+	ModelSelector *Selector `json:"modelSelector,omitempty"`
+	// SchedulerSelector defines VMAnomalyScheduler's object and namespace selectors.
+	// +optional
+	SchedulerSelector *Selector `json:"schedulerSelector,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
@@ -485,6 +497,14 @@ func (cr *VMAnomalySpec) UnmarshalJSON(src []byte) error {
 		return nil
 	}
 	return nil
+}
+
+// IsUnmanaged checks if object should manage any config objects
+func (cr *VMAnomaly) IsUnmanaged() bool {
+	if cr == nil {
+		return true
+	}
+	return !cr.Spec.SelectAllByDefault && (cr.Spec.ModelSelector.IsUnmanaged() && cr.Spec.SchedulerSelector.IsUnmanaged())
 }
 
 // +kubebuilder:object:root=true

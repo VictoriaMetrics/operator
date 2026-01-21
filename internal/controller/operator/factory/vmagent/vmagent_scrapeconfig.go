@@ -248,11 +248,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		}
 	}
 
-	if err := pos.updateStatusesForScrapeObjects(ctx, rclient, cr, childObject); err != nil {
-		return err
-	}
-
-	return nil
+	return pos.updateStatusesForScrapeObjects(ctx, rclient, cr, childObject)
 }
 
 func (pos *parsedObjects) updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {

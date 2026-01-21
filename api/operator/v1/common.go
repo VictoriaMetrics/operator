@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -87,6 +88,20 @@ func (o *OAuth2) Validate() error {
 	}
 
 	return nil
+}
+
+// Selector defines object and namespace selectors
+type Selector struct {
+	// ObjectSelector defines object to be selected for discovery.
+	// +optional
+	ObjectSelector *metav1.LabelSelector `json:"objectSelector,omitempty"`
+	// NamespaceSelector defines namespaces to be selected for object discovery.
+	// +optional
+	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector,omitempty"`
+}
+
+func (s *Selector) IsUnmanaged() bool {
+	return s == nil || (s.ObjectSelector == nil && s.NamespaceSelector == nil)
 }
 
 // TLSConfig specifies TLS configuration parameters

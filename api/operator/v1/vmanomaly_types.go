@@ -240,6 +240,7 @@ type VMAnomalyMonitoringPushSpec struct {
 }
 
 // VMAnomalyServerSpec defines HTTP server configuration for VMAnomaly
+// See docs: https://docs.victoriametrics.com/anomaly-detection/components/server/
 type VMAnomalyServerSpec struct {
 	// Addr defines IP address to listen on
 	// +optional
@@ -256,6 +257,9 @@ type VMAnomalyServerSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=20
 	MaxConcurrentTasks int `json:"maxConcurrentTasks,omitempty" yaml:"max_concurrent_tasks,omitempty"`
+	// UIDefaultState defines default query state for anomaly UI
+	// +optional
+	UIDefaultState string `json:"uiDefaultState,omitempty" yaml:"ui_default_state,omitempty"`
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface

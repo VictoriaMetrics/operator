@@ -695,7 +695,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 	}
 
-	operatorContainers = append(operatorContainers, vmagentContainer)
+	operatorContainers = append([]corev1.Container{vmagentContainer}, operatorContainers...)
 
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
 

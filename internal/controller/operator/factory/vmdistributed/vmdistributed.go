@@ -88,9 +88,16 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		Timeout: httpTimeout,
 	}
 
-	logger.WithContext(ctx).Info("Reconciling VMClusters")
+	logger.WithContext(ctx).Info("Waiting for all VMClusters to be ready")
+	for _, vmClusterObj := range vmClusters {
+		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
+			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
+		}
+	}
+	logger.WithContext(ctx).Info("All VMClusters are ready")
 
 	// Apply changes to VMClusters one by one if new spec needs to be applied
+	logger.WithContext(ctx).Info("Reconciling VMClusters")
 	for i, vmClusterObj := range vmClusters {
 		logger.WithContext(ctx).Info("Reconciling VMCluster", "index", i, "name", vmClusterObj.Name)
 

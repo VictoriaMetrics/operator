@@ -213,3 +213,7 @@ func waitForVMClusterToReachStatus(ctx context.Context, rclient client.Client, v
 func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration) error {
 	return waitForVMClusterToReachStatus(ctx, rclient, vmCluster, deadline, vmv1beta1.UpdateStatusOperational)
 }
+
+func waitForVMClusterToExpand(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration) error {
+	return waitForVMClusterToReachStatus(ctx, rclient, vmCluster, deadline, vmv1beta1.UpdateStatusExpanding)
+}
